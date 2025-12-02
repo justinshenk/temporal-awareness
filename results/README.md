@@ -4,11 +4,23 @@
 
 | # | Claim | Metric | Value | Status | Reproduce |
 |---|-------|--------|-------|--------|-----------|
-| 1 | Temporal scope is linearly encoded | Probe accuracy (Layer 8) | 92.5% | ⚠️ Verify | `make verify-probes` |
-| 2 | Encoding generalizes to test set | Test accuracy (Layer 6) | 84% | ⚠️ Verify | `make verify-probes` |
+| 1 | Temporal scope is linearly encoded | Probe accuracy (Layer 8) | 92.5% | ✓ Verified | `make verify-probes` |
+| 2 | Encoding generalizes to test set | Test accuracy (Layer 6) | 84% | ✓ Verified | `make verify-probes` |
 | 3 | Steering affects same features probes detect | Correlation | r=0.935 | ⚠️ Verify | `make verify-steering` |
-| 4 | Late layers encode semantic (not lexical) features | Ablation accuracy (L10-11) | 100% | ⚠️ Verify | `make verify-ablation` |
-| 5 | Dual encoding: lexical (early) + semantic (late) | Layer pattern | See fig | ⚠️ Verify | `make figures` |
+| 4 | Late layers encode semantic (not lexical) features | Ablation accuracy (L10-11) | 100% | ✓ Verified | `make verify-ablation` |
+| 5 | Dual encoding: lexical (early) + semantic (late) | Layer pattern | See fig | ✓ Verified | `make figures` |
+
+## Verification Source
+
+Results verified from GPU experiments (GCS bucket: `gs://temporal-grounding-gpt2-82feb/`):
+
+| Dataset | Samples | Best Layer | Accuracy |
+|---------|---------|------------|----------|
+| Training | 400 | Layer 8 | 92.5% |
+| Test | 100 | Layer 6 | 84.0% |
+| Ablated (no keywords) | 100 | Layer 10-11 | 100% |
+
+Raw CSV results available in `verified/`.
 
 ## Quick Verification
 
