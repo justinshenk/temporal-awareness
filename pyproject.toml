@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "temporal-reasoning"
+version = "0.1.0"
+description = "Detecting and steering temporal reasoning in LLMs"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "latents @ git+https://github.com/justinshenk/latents.git",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+    "tqdm>=4.65.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "black", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
