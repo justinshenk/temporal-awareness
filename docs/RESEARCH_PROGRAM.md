@@ -1,18 +1,12 @@
 # Temporal Grounding: Research Overview
 
-**Understanding how LLMs represent, reason about, and respond to time**
-
----
-
-## Why This Matters
-
-Without understanding how models represent time, we can't ensure AI systems reason responsibly about decisions that matter across time.
-
-We're looking for collaborators.
+**Investigating how LLMs represent and reason about time**
 
 ---
 
 ## Overview
+
+Without understanding how models represent time, we can't ensure AI systems reason responsibly about decisions that matter across time.
 
 This research investigates how time horizons are encoded in LLMs, whether these encodings are robust, and what this means for alignment and ethics.
 
