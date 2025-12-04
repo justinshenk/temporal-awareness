@@ -393,6 +393,102 @@ Analyzes LLM internal representations through the lens of financial decision-mak
 
 ---
 
+## 9. Ethics, Policy & Intergenerational Justice
+
+### Temporal Alignment of Pretrained Language Models
+
+**Authors:** Yizhong Wang et al.
+
+**Venue:** ACL Findings 2024
+
+**ArXiv:** [arXiv:2402.xxxxx](https://aclanthology.org/2024.findings-acl.892.pdf)
+
+**GitHub:** [yizhongw/llm-temporal-alignment](https://github.com/yizhongw/llm-temporal-alignment)
+
+**Summary:**
+Investigates "temporal chaos" in pretrained LMs - models with recent cutoffs (e.g., 2022) often answer questions using older knowledge (e.g., 2019). Develops methods to align LMs to use most recent knowledge.
+
+**Relevance:** Addresses temporal *factual* alignment. Our work addresses temporal *preference/horizon* alignment - complementary problems.
+
+---
+
+### Against Everyday Discounting, For Bounded Practicality
+
+**Authors:** EA Forum authors
+
+**Venue:** Effective Altruism Forum
+
+**Link:** [EA Forum](https://forum.effectivealtruism.org/posts/FLWHsfo3dhQB73879/against-everyday-discounting-for-bounded-practicality)
+
+**Summary:**
+Argues moral discounting (valuing future lives less because they occur later) is indefensible, while practical discounting remains rational for uncertainty/risk. Proposes two-track framework reconciling ethical impartiality with pragmatic realism.
+
+**Relevance:** Philosophical foundation for why AI temporal preferences matter. If LLMs inherit training data's present-bias, they impose a moral stance.
+
+---
+
+### Why We Should Negatively Discount the Well-Being of Future Generations
+
+**Authors:** Price
+
+**Venue:** Journal of Practical Ethics
+
+**Link:** [Journal of Practical Ethics](https://journals.publishing.umich.edu/jpe/article/id/6214/)
+
+**Summary:**
+Argues under moral uncertainty, we may have reason to *prioritize* future well-being over present - a negative discount rate.
+
+**Relevance:** Raises possibility that "neutral" temporal reasoning may itself be a value choice. What discount rate do LLMs implicitly encode?
+
+---
+
+### Towards Ethical Evolution: Responsible Autonomy of AI Across Generations
+
+**Authors:** Various
+
+**Venue:** AI and Ethics (Springer), 2025
+
+**Link:** [Springer](https://link.springer.com/article/10.1007/s43681-025-00759-9)
+
+**Summary:**
+Proposes "Temporal Genetic Responsibility" (TGR) framework - AI agents interact with past/future versions through temporal feedback loops and "immutable ethical genes."
+
+**Relevance:** Theoretical framework for AI ethics across time. Our mechanistic work could ground such frameworks empirically.
+
+---
+
+### Time Awareness in LLMs: Benchmarking Fact Recall Across Time
+
+**Authors:** Various
+
+**Venue:** arXiv 2024
+
+**ArXiv:** [arXiv:2409.13338](https://arxiv.org/abs/2409.13338)
+
+**Summary:**
+Evaluates temporal fact recall with day-level granularity (8,000+ events, 2018-2024). Finds base models often outperform instruction-tuned models on time-sensitive recall.
+
+**Relevance:** Benchmark for temporal *factual* knowledge. Our work focuses on temporal *reasoning preferences*.
+
+---
+
+### Research Gap This Project Addresses
+
+The philosophical work on intergenerational justice and the technical work on temporal reasoning exist **separately**.
+
+**Existing work asks:**
+- Philosophy: *Should* we discount future generations?
+- Technical: *Can* LLMs recall temporal facts?
+
+**Our work asks:**
+- *What* temporal preferences do LLMs encode internally?
+- *Can* we detect and steer these preferences?
+- *How* do surface features (register, framing) affect temporal reasoning?
+
+This connects interpretability techniques to ethical/policy questions about AI systems advising on consequential decisions.
+
+---
+
 ## Papers To Review
 
 - [ ] Back to the Future: Towards Explainable Temporal Reasoning with LLMs (arXiv:2310.01074)
