@@ -45,6 +45,7 @@ Each experiment requires its own purpose-built dataset, independent of Track A.
 | #11 | Active inference/phenomenology | Structured temporal cognition prompts |
 | #12 | Temporal defabrication (MPE) | Recursive generation + contemplative prompts |
 | #13 | Intertemporal preference framework | Reward/time tradeoff scenarios by domain |
+| #16 | Multi-agent temporal collusion | Single vs multi-agent scenarios |
 
 ---
 
@@ -76,6 +77,7 @@ Each experiment requires its own purpose-built dataset, independent of Track A.
 | #7 Consistency failures | Do models treat near/far futures inconsistently? |
 | #8 Value alignment | Do temporal preferences reflect user values? |
 | #9 Register bias | Does writing style shift advice horizons? |
+| #16 Multi-agent collusion | Do agents coordinate for longer horizons collectively? |
 
 ### Thrust 4: Theoretical Bridges
 
@@ -136,6 +138,7 @@ What do failures reveal about representations?
 | 11 | Active inference/phenomenology | B | Theory | ⬜ |
 | 12 | Temporal defabrication (MPE) | B | Theory | ⬜ |
 | 13 | Intertemporal preference framework | B | Theory | ⬜ |
+| 16 | Multi-agent temporal collusion | B | Robustness | ⬜ |
 | - | Probe validation | A | Foundations | ⚠️ Preliminary |
 
 ---
