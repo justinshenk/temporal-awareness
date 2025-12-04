@@ -489,6 +489,29 @@ This connects interpretability techniques to ethical/policy questions about AI s
 
 ---
 
+## 10. Probe Robustness and Red-teaming
+
+### Red-teaming Activation Probes using Prompted LLMs
+
+**Authors:** Phil Blandfort, Robert Graham
+
+**Venue:** arXiv 2025
+
+**ArXiv:** [arXiv:2511.00554](https://arxiv.org/abs/2511.00554)
+
+**Summary:**
+Develops a lightweight black-box red-teaming procedure for stress-testing activation probes using prompted LLMs with iterative feedback and in-context learning. No fine-tuning or model access required.
+
+**Key Findings:**
+1. Identified interpretable failure patterns in activation probes
+2. False positives triggered by legal language
+3. False negatives from bland procedural tones
+4. Probes retain some resilience even under adversarial pressure
+
+**Relevance:** Directly applicable to temporal probes. Our register bias hypothesis (#9) suggests similar vulnerabilities—formal language may trigger long-term classification regardless of actual temporal content. This methodology could stress-test our temporal probes before deployment.
+
+---
+
 ## Papers To Review
 
 - [ ] Back to the Future: Towards Explainable Temporal Reasoning with LLMs (arXiv:2310.01074)
