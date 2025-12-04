@@ -48,6 +48,7 @@ Each experiment requires its own purpose-built dataset, independent of Track A.
 | #14 | Red-teaming temporal probes | Adversarial inputs designed to fool probes |
 | #15 | Temporal complexity detection | Varying complexity prompts |
 | #16 | Multi-agent temporal collusion | Single vs multi-agent scenarios |
+| #17 | Probe reliability and guardrails | Distribution shift and edge cases |
 
 ---
 
@@ -82,6 +83,7 @@ Each experiment requires its own purpose-built dataset, independent of Track A.
 | #14 Red-teaming probes | Can adversarial inputs fool temporal probes? |
 | #15 Complexity detection | Does temporal complexity trigger different reasoning? |
 | #16 Multi-agent collusion | Do agents coordinate for longer horizons collectively? |
+| #17 Probe reliability | How do probes fail under distribution shift? |
 
 ### Thrust 4: Theoretical Bridges
 
@@ -145,6 +147,7 @@ What do failures reveal about representations?
 | 14 | Red-teaming temporal probes | B | Robustness | ⬜ |
 | 15 | Temporal complexity detection | B | Robustness | ⬜ |
 | 16 | Multi-agent temporal collusion | B | Robustness | ⬜ |
+| 17 | Probe reliability and guardrails | B | Robustness | ⬜ |
 | - | Probe validation | A | Foundations | ⚠️ Preliminary |
 
 ---
