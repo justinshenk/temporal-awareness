@@ -1,5 +1,7 @@
 no_explicit_temporal_words_rule = "- temporal_keywords: No explicit temporal words (now, immediate, future, lasting, years, soon, quick, urgent, permanent, decade)"
+
 allowed_explicit_temporal_words_rule = " - temporal_keywords: No explicit temporal words (now, immediate, future, lasting, years, soon, quick, urgent, permanent, decade). However, make an exception for a given example and rate this factor with 5 for it everywhere."
+
 validation_prompt = """You are validating contrastive pairs for a temporal scope dataset used to train steering vectors.
 
 For each pair, score these factors from 1-5:

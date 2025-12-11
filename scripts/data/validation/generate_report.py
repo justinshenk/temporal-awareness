@@ -33,14 +33,6 @@ def style_html_table(tdf_styler, title, color="darkblue"):
             'selector': 'caption',
             'props': 'text-align: center; font-size: 120%; margin: 10px;'
         }
-        # tr = {
-        #     'selector': 'tr',
-        #     'props': 'line-widith: 12px;'
-        # }
-        # tdth = {
-        #     'selector': 'td,th',
-        #     'props': 'line-width: inherit; padding: 0;'
-        # }
         output = {
             'selector': '',
             'props': 'margin-left: auto !important; margin-right: auto !important;'
@@ -52,7 +44,6 @@ def style_html_table(tdf_styler, title, color="darkblue"):
         # HTML styles
         # FIXME: Should I change <h2> and </style>?
         return re.sub('</style>', f'</style><h2 style="text-align: center;">{header}</h2>', html, 1)
-
 
     tdf_styler.set_table_styles(__get_html_style_for_tables(color))
     headed_styler_html = __set_main_header(tdf_styler._repr_html_(), title)
@@ -70,11 +61,11 @@ if __name__ == '__main__':
     table_all_results_headers = ["average"] + table_score_headers + ["issues", "suggestion"]
     table_content = []
 
-    result_file_path = args.raw_results
-    assert(os.path.isfile(result_file_path))
-    with open(result_file_path, 'r') as f:
-        result_dict = json.load(f)
-        validated_cases = result_dict["results"]
+    raw_results_path = args.raw_results
+    assert(os.path.isfile(raw_results_path))
+    with open(raw_results_path, 'r') as f:
+        raw_dict = json.load(f)
+        validated_cases = raw_dict["results"]
         for validated in validated_cases:
             table_content.append([validated["pair"], validated["average"],
                 *[validated["scores"][header] for header in table_score_headers],
@@ -88,17 +79,17 @@ if __name__ == '__main__':
         df.index = df.index + 1
         df.sort_index(inplace=True)
 
-        pivot_content = result_dict["summary"].copy()
+        pivot_content = raw_dict["summary"].copy()
         pivot_df = pd.DataFrame([v for v in pivot_content.values()], index=pivot_content.keys(), columns=["Summary"])
         pivot_df.loc["Assessed by", :] = \
         f"""LLM Council: {pivot_content["Assessed by"]["LLM council"]},
             Chairman: {pivot_content["Assessed by"]["Chairman"]}"""
 
-        dataset_and_timestamp = re.search(r"validation_([a-zA-Z_]+_20[\d-]+).json", result_file_path).group(1)
-        with open((Path(result_file_path).parent / f"report_{dataset_and_timestamp}.html"), "w") as f:
+        dataset_and_timestamp = re.search(r"validation_([a-zA-Z_]+_20[\d-]+).json", raw_results_path).group(1)
+        with open((Path(raw_results_path).parent / f"report_{dataset_and_timestamp}.html"), "w") as f:
             def gradient_paint_score_rows(styler):
                 styler.background_gradient(axis=1, vmin=1, vmax=5, cmap="RdYlGn", low=0.4, high=0.8,
-                                            subset=["average"] + table_score_headers)
+                                           subset=["average"] + table_score_headers)
                 return styler
             df_styler = gradient_paint_score_rows(df.style)
             html_table = style_html_table(df_styler, f"Validation of dataset with LLM council")
