@@ -1,0 +1,1583 @@
+{
+  "summary": {
+    "Mean": 4.215,
+    "Excellent (4.5+)": 4,
+    "Good (3.5-4.4)": 46,
+    "Marginal (2.5-3.4)": 0,
+    "Poor (<2.5)": 0,
+    "Assessed by": {
+      "LLM council": [
+        "openai/gpt-5.1",
+        "google/gemini-3-pro-preview",
+        "x-ai/grok-4",
+        "anthropic/claude-opus-4.5"
+      ],
+      "Chairman": "google/gemini-3-pro-preview"
+    }
+  },
+  "results": [
+    {
+      "scores": {
+        "temporal_keywords": 2,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.31,
+      "issues": [
+        "Option A contains 'current', which is an explicit temporal keyword violating the negative constraint.",
+        "The options fail the single-dimension test: Option A proposes 'responses' (actions) while Option B proposes 'frameworks' (structural objects), mixing the temporal contrast with an entity-type contrast.",
+        "Idiomatic leakage is present in phrases like 'current situation' and 'institutional capacity', which strongly signal scope independent of the tactical/strategic labels."
+      ],
+      "suggestion": "Remove the explicit temporal marker 'current' and align the nouns to be strictly parallel. Example: (A) 'Tactical measures that resolve specific incidents' vs (B) 'Strategic initiatives that build institutional capacity'.",
+      "pair_index": 0,
+      "pair": {
+        "question": "When addressing this challenge, we should prioritize",
+        "immediate": " (A) Tactical responses that handle the current situation",
+        "long_term": " (B) Strategic frameworks that create institutional capacity",
+        "category": "tactical_strategic"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 3,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.31,
+      "issues": [
+        "The word 'rapid' in Option (A) acts as a close synonym to banned explicit keywords like 'quick', creating a lexical shortcut.",
+        "The pair violates the single dimension constraint: it contrasts 'Operational' (execution/efficiency) vs. 'Foundational' (principles/structure), introducing a semantic confound beyond just temporal scope.",
+        "Strong N-gram leakage: 'rapid execution' and 'systemic resilience' are idiomatic phrases that strongly signal short and long-term horizons respectively."
+      ],
+      "suggestion": "Align the options to the same domain level so they differ only on time horizon, and replace 'rapid' with a non-speed term. Example: (A) 'Maximizing responsiveness and throughput' (Immediate) vs. (B) 'Ensuring stability and systemic resilience' (Long-term).",
+      "pair_index": 1,
+      "pair": {
+        "question": "The most important consideration here is",
+        "immediate": " (A) Operational efficiency and rapid execution",
+        "long_term": " (B) Foundational principles and systemic resilience",
+        "category": "operational_foundational"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 2,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 3,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 2,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 3.92,
+      "issues": [
+        "Lexical: Option (A) includes 'current', which is an explicit temporal keyword.",
+        "Ngram Leakage: The terms 'Reactive' and 'Proactive' strongly encode temporal orientation, acting as idiomatic giveaways.",
+        "Structure: Grammatical non-parallelism; Option (A) uses an infinitive phrase ('to address'), while (B) uses a relative clause ('that prevent').",
+        "Sentiment: Significant valence asymmetry; 'Proactive interventions' and 'root causes' are inherently more desirable than 'Reactive measures' and 'symptoms'.",
+        "Multidimensionality: The contrast conflates temporal scope with causal depth (surface-level symptoms vs. deep root causes)."
+      ],
+      "suggestion": "Rewrite to eliminate the 'reactive/proactive' framing and the explicit word 'current'. Ensure grammatical parallelism and neutralize the desirability bias while retaining the focus on time horizon. Example: '(A) Addressing specific errors appearing in the system' vs '(B) Refining the architecture to ensure system stability'.",
+      "pair_index": 2,
+      "pair": {
+        "question": "Our focus should be on",
+        "immediate": " (A) Reactive measures to address current symptoms",
+        "long_term": " (B) Proactive interventions that prevent root causes",
+        "category": "reactive_proactive"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 3,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 3,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.15,
+      "issues": [
+        "Dimensional confound: The pair contrasts 'Tactical/Operational' work against 'Strategic/Visionary' work, rather than isolating the temporal dimension.",
+        "Lexical leakage: 'Deadlines' in Option A is a forceful temporal concept that acts as a strong short-term cue.",
+        "Specificity mismatch: Option A is concrete and verifiable ('tangible progress'), while Option B is abstract and aspirational ('transformational change')."
+      ],
+      "suggestion": "Remove the explicit 'deadlines' reference and align the abstraction levels. Try: (A) 'Hitting targets and delivering concrete results' vs (B) 'Building foundations and driving systemic evolution'. This isolates the accumulation of value over time vs. immediate output without relying on operational constraints.",
+      "pair_index": 3,
+      "pair": {
+        "question": "Success means",
+        "immediate": " (A) Meeting deadlines and showing tangible progress",
+        "long_term": " (B) Building value and creating transformational change",
+        "category": "urgent_transformational"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 1,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 3,
+        "clear_temporal": 5,
+        "both_valid": 4,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.0,
+      "issues": [
+        "Critical length mismatch: Option B is approximately 84% longer than Option A (46 vs 25 chars), failing the 50% threshold.",
+        "Multiple confounders/Single Dimension violation: The pair contrasts 'Reactive/Negative' (Triage) against 'Proactive/Positive' (Comprehensive planning), rather than purely contrasting timeframes.",
+        "Vocabulary confound: The word 'Comprehensive' in Option B implies higher quality/thoroughness, not just longer duration.",
+        "N-gram leakage: 'Damage control' and 'Preventive' are strongly associated with immediate and future contexts respectively, acting as unwanted proxies."
+      ],
+      "suggestion": "Shorten Option B to fix the length mismatch and strip adjectives to remove quality/sentiment judgements. Suggested revision: (A) 'Crisis containment' vs (B) 'Strategic prevention'.",
+      "pair_index": 4,
+      "pair": {
+        "question": "The right approach involves",
+        "immediate": " (A) Triage and damage control",
+        "long_term": " (B) Comprehensive planning and preventive measures",
+        "category": "emergency_preventive"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 5,
+        "length_match": 2,
+        "structure": 5,
+        "formality": 4,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.38,
+      "issues": [
+        "Significant length mismatch: Option B (~47 chars) is nearly twice the length of Option A (~24 chars), heavily violating the 50% threshold.",
+        "Multi-dimensional semantics: The pair contrasts competitive outcomes ('wins') against financial processes ('compound growth'), introducing axes beyond simple temporal scope.",
+        "Minor register mismatch: 'Wins' is casual/colloquial, whereas 'compound growth' is technical/formal."
+      ],
+      "suggestion": "Equalize length and maintain semantic focus on abstract qualities rather than outcomes. Try: (A) 'Speed, agility, and action' vs (B) 'Stability, durability, and growth'. This brings lengths within the 50% margin and removes the specific financial/competitive outcome dimension.",
+      "pair_index": 5,
+      "pair": {
+        "question": "We should optimize for",
+        "immediate": " (A) Speed, agility, and wins",
+        "long_term": " (B) Sustainability, durability, and compound growth",
+        "category": "speed_sustainability"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 4,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 5
+      },
+      "average": 4.38,
+      "issues": [
+        "Critical dimension mismatch: The options compare different concepts. Option A measures quantity (throughput/volume), while Option B measures quality/value (impact/performance).",
+        "Implicit lexical leakage: N-grams like 'sustained performance' and 'cumulative impact' strongly encode temporal duration, acting as a giveaway for the long-term label despite the absence of explicitly banned keywords."
+      ],
+      "suggestion": "Rewrite to ensure the metric (quantity/volume) remains constant while only varying the temporal aggregation. Example: '(A) Point-in-time throughput and output volume' vs '(B) Aggregated throughput and output volume'.",
+      "pair_index": 6,
+      "pair": {
+        "question": "The key metric is",
+        "immediate": " (A) Direct throughput and output volume",
+        "long_term": " (B) Cumulative impact and sustained performance",
+        "category": "throughput_cumulative"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 4,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 4,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.46,
+      "issues": [
+        "Multidimensionality: The options contrast different policy domains (Emergency Services vs. Infrastructure) rather than purely contrasting time horizons within a single domain.",
+        "N-gram Leakage: 'Firefighting' is a specific business idiom that strongly signals immediate/reactive scope, acting as a proxy for a temporal keyword.",
+        "Sentiment Imbalance: 'Firefighting' can carry negative connotations of poor planning (reactive), whereas 'Infrastructure development' is inherently positive (constructive)."
+      ],
+      "suggestion": "Remove the 'firefighting' metaphor to reduce idiom leakage and valence issues. Attempt to align the semantic domains more closely so the difference is purely temporal. Example: (A) 'Acute crisis response and operational stabilization' vs (B) 'Systemic capability building and infrastructure development'.",
+      "pair_index": 7,
+      "pair": {
+        "question": "Resource allocation should emphasize",
+        "immediate": " (A) Firefighting and crisis response capacity",
+        "long_term": " (B) Infrastructure development and capability building",
+        "category": "firefighting_infrastructure"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 4,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.23,
+      "issues": [
+        "Critical Violation: Option (A) contains 'Urgency' (a derivation of the excluded word 'urgent') and 'time sensitivity' contains the explicit word 'time'.",
+        "N-gram Leakage: The phrase 'time sensitivity' semantically leaks the temporal dimension entirely.",
+        "Multidimensionality: The contrast conflates temporal scope (fast vs. slow) with decision quality (rushed/reactive vs. thoughtful/deliberate), meaning the steering vector might pick up on 'carefulness' rather than just 'time'."
+      ],
+      "suggestion": "Rewrite Option (A) to remove explicit temporal roots while maintaining the semantic mapping to the 'immediate' label. For example, contrasting external pressure with internal deliberation. Suggestion: (A) 'External pressures and situational demands' vs (B) 'Strategic alignment and thorough analysis'. This removes the explicit 'time/urgency' keywords and balances the register.",
+      "pair_index": 8,
+      "pair": {
+        "question": "Decision-making should be guided by",
+        "immediate": " (A) Urgency and time sensitivity",
+        "long_term": " (B) Patience and deliberate consideration",
+        "category": "urgency_patience"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 4
+      },
+      "average": 4.62,
+      "issues": [
+        "Significant multidimensional confounder: The contrast between 'results-driven' and 'principle-driven' introduces a Pragmatism vs. Idealism (or Values) axis. This means the steering vector may learn to separate ethics from outcomes rather than purely separating immediate from long-term thinking.",
+        "Temporal scope is associative rather than intrinsic: 'Results' can be long-term and 'principles' can guide immediate action, making the temporal distinction ambiguous."
+      ],
+      "suggestion": "Retain the 'mindset' framing but remove the value-based contrast. Focus purely on the horizon of thought. Example: '(A) Focused on tactical execution and next steps' vs '(B) Focused on strategic direction and future roadmap'.",
+      "pair_index": 9,
+      "pair": {
+        "question": "The right mindset is",
+        "immediate": " (A) Action-oriented and results-driven",
+        "long_term": " (B) Vision-oriented and principle-driven",
+        "category": "action_vision"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 4,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 4,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.0,
+      "issues": [
+        "Option (A) contains the restricted explicit temporal keyword 'current', which violates the lexical constraints.",
+        "The pair fails the single_dimension criteria: 'Solving' (reactive/fixing) vs. 'Designing' (proactive/creating) introduces a semantic difference unrelated to time.",
+        "Lexical leakage is significant; the presence of 'current' makes the temporal scope trivially inferable.",
+        "There is a slight sentiment mismatch: 'bottlenecks and blockers' carries a negative connotation compared to the neutral/constructive 'systems and structures'."
+      ],
+      "suggestion": "Remove the explicit keyword 'current'. To fix the dimensionality issue, align the verbs so the only difference is the implied time horizon. For example, contrast reactive fixing with long-term fixing: (A) 'Solving specific bottlenecks' vs. (B) 'Solving structural limitations'.",
+      "pair_index": 10,
+      "pair": {
+        "question": "We need to think about",
+        "immediate": " (A) Solving current bottlenecks and blockers",
+        "long_term": " (B) Designing systems and structures",
+        "category": "solving_designing"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 3,
+        "sentiment": 3,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.23,
+      "issues": [
+        "Significant multidimensional confound: The pair contrasts reactive maintenance (patching) with proactive creation (architecting) rather than purely isolating temporal scope.",
+        "Valence mismatch: Option A uses negative terminology ('vulnerabilities', 'bugs') while Option B uses positive/aspirational terminology ('robust', 'solutions').",
+        "Specificity imbalance: Option A is concrete/tactical, while Option B is abstract/strategic.",
+        "Semantic leakage: The terms 'patching' (temporary) and 'foundations' (permanent) carry strong inherent temporal associations."
+      ],
+      "suggestion": "Revise to eliminate the Reactive vs. Proactive and Negative vs. Positive confounds. Ensure both options describe the same type of activity. For example, keep it purely maintenance-focused: '(A) Resolving specific errors in the current code' (Immediate/Concrete) vs '(B) Refactoring the code structure for stability' (Long-term/Abstract). Alternatively, use neutral phrasing that isolates the time horizon, such as '(A) Addressing immediate operational needs' vs '(B) Developing long-standing architectural standards'.",
+      "pair_index": 11,
+      "pair": {
+        "question": "The priority is",
+        "immediate": " (A) Patching vulnerabilities and fixing bugs",
+        "long_term": " (B) Architecting robust solutions and building foundations",
+        "category": "patching_architecting"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 4,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.62,
+      "issues": [
+        "The pair relies on a metaphor (Speed/Force vs. Path/Orientation) rather than a pure temporal distinction, introducing a secondary dimension.",
+        "Without specific context in the question stem (e.g., business or physics), the metaphorical mapping of 'velocity' to 'immediate' and 'trajectory' to 'long-term' is not strictly unambiguous.",
+        "The word 'trajectory' has a mild idiomatic association with future outcomes, leading to slight potential n-gram leakage."
+      ],
+      "suggestion": "Keep the options as they are to preserve vocabulary balance and keyword constraints, but modify the question stem to ground the metaphor. For example: 'When evaluating startup progress, what matters most is...' context makes the immediate vs. long-term distinction clear and valid.",
+      "pair_index": 12,
+      "pair": {
+        "question": "What matters most is",
+        "immediate": " (A) Velocity and momentum",
+        "long_term": " (B) Direction and trajectory",
+        "category": "velocity_trajectory"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 3,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.0,
+      "issues": [
+        "Severe violation of lexical constraint: contains explicit temporal keywords 'current' and 'eventual'.",
+        "Multidimensional contrast: Option A is negative valence (minimizing pain/loss avoidance) while Option B is positive valence (maximizing potential/gain seeking).",
+        "The temporal distinction relies almost entirely on the forbidden keywords rather than implicit context."
+      ],
+      "suggestion": "Remove explicit temporal adjectives and align the sentiment so both options focus on the same type of action (e.g., both fixing problems or both seeking growth). A better pair would be: (A) 'Resolving active bottlenecks' vs (B) 'Expanding system capacity'. this preserves the immediate vs. long-term contrast implicitly without valence mismatch.",
+      "pair_index": 13,
+      "pair": {
+        "question": "Our goal should be",
+        "immediate": " (A) Minimizing current pain points",
+        "long_term": " (B) Maximizing eventual potential",
+        "category": "minimizing_maximizing"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 4,
+        "clear_temporal": 3,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.38,
+      "issues": [
+        "Multidimensionality: The pair primarily tests the 'Exploration-Exploitation' trade-off (risk and novelty), which confounds the temporal signal.",
+        "Sentiment Mismatch: 'Exploiting' carries a slightly negative valence compared to the positive framing of 'Exploring', creating a sentiment steering vector artifact.",
+        "Ambiguity: The mapping to time is stereotypical rather than strict; one can explore immediately or exploit assets over a long horizon."
+      ],
+      "suggestion": "To isolate the temporal vector, move away from abstract strategy terms. A better contrast that avoids banned keywords would be: 'Optimizing current operations' (Immediate) vs 'Developing next-generation capabilities' (Long-term).",
+      "pair_index": 14,
+      "pair": {
+        "question": "The best strategy involves",
+        "immediate": " (A) Exploiting existing assets",
+        "long_term": " (B) Exploring new possibilities",
+        "category": "exploiting_exploring"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 2,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.0,
+      "issues": [
+        "Significant length mismatch: Option A (35 chars) is roughly 60% longer than Option B (22 chars), violating the 50% threshold.",
+        "Confounded dimensionality: The primary contrast is Magnitude (small vs. large) rather than Temporal Scope (immediate vs. long-term).",
+        "Ambiguity: 'Delivering incremental improvements' can be a long-term continuous strategy, making the 'immediate' label inaccurate.",
+        "Options rely on correlated attributes (size of change) rather than causal temporal definitions."
+      ],
+      "suggestion": "Rewrite to equalize length and isolate the temporal dimension without using 'increment/quantum' magnitude language. Example: 'Resolving today\\'s incidents' vs 'Architecting the platform' (Matches length ~25 chars; contrasts immediate action vs long-term building).",
+      "pair_index": 15,
+      "pair": {
+        "question": "We should care about",
+        "immediate": " (A) Delivering incremental improvements",
+        "long_term": " (B) Enabling quantum leaps",
+        "category": "incremental_quantum"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 4,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.46,
+      "issues": [
+        "Multidimensionality: The contrast conflates 'liquidity preference' (readily monetizable) with 'growth strategy' (network effects), confusing investment philosophy with temporal scope.",
+        "Ngram Leakage: 'Compounding returns' is a domain-specific idiom that strongly signals long-term horizons, while 'readily' acts as a strong soft cue for immediacy.",
+        "Structural/Specificity Asymmetry: Option B is more specific and correctly uses a compound object ('returns and network effects'), whereas Option A is generic with a single object."
+      ],
+      "suggestion": "Standardize the mechanism to focus strictly on the timeline of value realization rather than the source of value. For example: (A) 'Opportunities delivering value upon implementation' vs (B) 'Opportunities accruing value throughout their lifecycle.' This separates the temporal steering from the 'network effects' concept.",
+      "pair_index": 16,
+      "pair": {
+        "question": "Investment should target",
+        "immediate": " (A) Readily monetizable opportunities",
+        "long_term": " (B) Compounding returns and network effects",
+        "category": "monetizable_compounding"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 1,
+        "sentiment": 5,
+        "clear_temporal": 1,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 1
+      },
+      "average": 3.77,
+      "issues": [
+        "Specificity Mismatch: The options are explicit antonyms regarding abstraction (Granular/Specific vs Abstract/Holistic), violating the requirement for the 'Same abstraction level'.",
+        "Invalid Temporal Link: Granularity is a measure of resolution, not time. While 'concrete' often correlates with 'immediate' (Construal Level Theory), they are not synonyms. A granular analysis can apply to the distant past.",
+        "Single Dimension Violation: The pair differs primarily on the axis of Detail vs. Abstraction, not Time.",
+        "Label Error: The labels 'immediate' and 'long-term' do not accurate describe the content of the options."
+      ],
+      "suggestion": "This pair should be removed or strictly recategorized as 'Concrete vs Abstract' rather than 'Immediate vs Long-term'. If a temporal contrast is required, rewrite to focus on time horizons rather than resolution, such as: (A) 'Tactics for the current quarter' vs (B) 'Strategies for the coming decade' (ensure vocabulary fits the accepted keyword list).",
+      "pair_index": 17,
+      "pair": {
+        "question": "The appropriate level of analysis is",
+        "immediate": " (A) Granular, detailed, and specific",
+        "long_term": " (B) Abstract, high-level, and holistic",
+        "category": "granular_holistic"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 4,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 3,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 4
+      },
+      "average": 4.15,
+      "issues": [
+        "Severe violation of single-dimension constraint: 'Low-hanging fruit' implies ease/low-effort, while 'Deep roots' implies foundational stability/difficulty. This confounds temporal scope with effort.",
+        "Significant ngram leakage: Both options are strong idioms where the temporal connotation is stereotyped ('low-hanging fruit' is a known phrase for immediate results), violating the instruction to avoid idioms that give away scope.",
+        "Temporal clarity relies on business metaphors rather than unambiguous distinctions; 'deep roots' does not strictly mean long-term in all contexts (can mean 'thorough')."
+      ],
+      "suggestion": "Replace metaphors with non-idiomatic terms that isolate the time horizon without implying difficulty. Ensure no forbidden keywords (e.g., avoid 'quick'). Suggested replacement: 'Tactical objectives' vs 'Strategic planning'.",
+      "pair_index": 18,
+      "pair": {
+        "question": "Effort should be directed toward",
+        "immediate": " (A) Low-hanging fruit",
+        "long_term": " (B) Deep roots",
+        "category": "fruit_roots"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 3,
+        "single_dimension": 2,
+        "labels_correct": 4
+      },
+      "average": 4.31,
+      "issues": [
+        "Multidimensionality: The secondary adjectives 'direct' and 'expansive' introduce a confounding variable (focus/breadth) that is distinct from the intended temporal scope.",
+        "Spatial Ambiguity: 'Proximate' and 'Distant' are primarily spatial terms. In a training dataset, this risks explicitly training spatial steering vectors rather than temporal ones.",
+        "Vague Context: The prompt stem 'The right orientation is' offers no clues to interpret the ambiguity as temporal rather than spatial or strategic.",
+        "Formatting Error: The input contains redundant labels '(A) (A)' and '(B) (B)'."
+      ],
+      "suggestion": "Remove the confounding adjectives ('direct' and 'expansive') to ensure the contrast differs only on temporal scope. Either modify the stem to be explicitly temporal (e.g., 'The time horizon for this plan is') or use adjectives with stronger temporal associations that are not on the banned list (e.g., 'Current' vs 'Long-range'). Fix the duplicate label formatting.",
+      "pair_index": 19,
+      "pair": {
+        "question": "The right orientation is",
+        "immediate": " (A) Proximate and direct",
+        "long_term": " (B) Distant and expansive",
+        "category": "proximate_distant"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 2
+      },
+      "average": 4.23,
+      "issues": [
+        "Critically violated Single Dimension: The contrast is primarily Flexibility (adaptability) vs. Rigidity (consistency), rather than Temporal Scope.",
+        "Ambiguous Labels: 'Adaptability' is not inherently short-term (e.g., evolutionary adaptation is long-term), and 'Consistency' applies to daily habits as much as long-term strategies.",
+        "Minor Semantic Leakage: The word 'continuity' implies duration/time-passage, which serves as a soft temporal cue distinct from the strict keyword list."
+      ],
+      "suggestion": "The current concepts are too confounded with planning philosophy to serve as a clean temporal steering pair. To fix this without adding explicit keywords (like 'now' or 'years'), switch to concepts that are inherently transient vs. permanent. Example: (A) 'Reaction and impulse' vs. (B) 'Legacy and heritage'. Alternatively, if explicit framing is allowed, qualify them: (A) 'Tactical adjustments' vs. (B) 'Strategic preservation'.",
+      "pair_index": 20,
+      "pair": {
+        "question": "Planning should emphasize",
+        "immediate": " (A) Contingencies and adaptability",
+        "long_term": " (B) Consistency and continuity",
+        "category": "contingencies_continuity"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 2,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.31,
+      "issues": [
+        "Severe single-dimension failure: Confounds 'temporal scope' with 'outcome quality'. (A) is a minimal result (survival) while (B) is a maximal result (thriving).",
+        "Sentiment mismatch: 'Thriving' has a much higher positive valence than 'Surviving', which steers the model based on desirability rather than time.",
+        "N-gram leakage: The phrase 'beyond it' in option B functions as a strong temporal cue, even if 'beyond' is not on the strict banned keywords list."
+      ],
+      "suggestion": "Equalize the ambition level of the outcomes to isolate the temporal variable. Keep the verb constant. Example: '(A) Enduring the crisis itself' vs '(B) Enduring the subsequent aftermath'.",
+      "pair_index": 21,
+      "pair": {
+        "question": "The valuable outcome is",
+        "immediate": " (A) Surviving the crisis",
+        "long_term": " (B) Thriving beyond it",
+        "category": "surviving_thriving"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 2,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 4,
+        "clear_temporal": 5,
+        "both_valid": 4,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.15,
+      "issues": [
+        "Option (B) contains the explicit temporal keyword 'gradually', violating the negative constraint.",
+        "Significant lexical leakage in Option (B) ('emerging gradually') makes the distinction identifiable via n-grams rather than conceptual scope.",
+        "Repetitive phrasing creates a tautology between the question and Option (A) ('Attention should focus on... demanding attention').",
+        "Options differ on a secondary dimension: Option (A) focuses on 'Symptoms' while Option (B) focuses on 'Patterns'."
+      ],
+      "suggestion": "Rewrite to eliminate the temporal adverb 'gradually', fix the 'attention' repetition, and align the subject matter to a single dimension. For example: Change the prompt to 'The team analyzed:' and the options to (A) 'Acute, visible indicators' vs (B) 'Underlying, systemic indicators'. This isolates the temporal scope (short-term visibility vs long-term root cause) without explicit keywords.",
+      "pair_index": 22,
+      "pair": {
+        "question": "Attention should focus on",
+        "immediate": " (A) Symptoms demanding attention",
+        "long_term": " (B) Patterns emerging gradually",
+        "category": "symptoms_patterns"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 4,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 1,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 1
+      },
+      "average": 4.0,
+      "issues": [
+        "Dimensional Mismatch: The contrast is purely about conceptual breadth (narrow vs. broad), not temporal scope (immediate vs. long-term).",
+        "Spurious Labels: The labels teach the model a false correlation; 'narrow' does not imply 'immediate', nor does 'broad' imply 'long-term'.",
+        "Formatting Error: The input contains duplicated option letters '(A) (A)' and '(B) (B)'."
+      ],
+      "suggestion": "Rewrite the interaction to explicitly target time while fixing the formatting text. For example: Question: 'The planning horizon should be', (A) 'Short-term and targeted', (B) 'Long-term and comprehensive'.",
+      "pair_index": 23,
+      "pair": {
+        "question": "The right scope is",
+        "immediate": " (A) Narrow and targeted",
+        "long_term": " (B) Broad and comprehensive",
+        "category": "narrow_broad"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 2,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.38,
+      "issues": [
+        "Critical Violation: The word 'Rapid' in Option A is a direct speed synonym, violating the negative constraint on explicit temporal keywords. 'Patient' and 'steady' in Option B also strongly imply duration.",
+        "Multidimensionality: The pair contrasts 'changing course' (iteration) vs 'staying the course' (cultivation), mixing a strategy dimension (agility vs stability) with the temporal scope.",
+        "Formatting: The input text contains redundant labeling artifacts '(A) (A)'."
+      ],
+      "suggestion": "Rewrite to remove explicit speed adjectives and align the metaphors to focus strictly on the time horizon. Example: '(A) Continuous adjustment and pivoting' vs '(B) Consistent development and growth'. Ensure adjectives like 'rapid' or 'slow' are absent.",
+      "pair_index": 24,
+      "pair": {
+        "question": "Success requires",
+        "immediate": " (A) Rapid iteration and course correction",
+        "long_term": " (B) Patient cultivation and steady progress",
+        "category": "iteration_cultivation"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 3,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.31,
+      "issues": [
+        "Ngram leakage: 'on the fly' is a specific idiom that strongly implies immediacy, acting as a temporal proxy within the dataset.",
+        "Formality mismatch: Option A ('on the fly') is colloquial, whereas Option B ('deliberate roadmap') is formal business register.",
+        "Single dimension violation: The contrast conflates 'improvisational vs. structured' methodology with 'immediate vs. long-term' scope, meaning the steering vector might learn about planning styles rather than time."
+      ],
+      "suggestion": "Rewrite to standardize formality and isolate the temporal dimension from the planning style. A revised pair should keep the methodology constant (e.g., both about planning). For example: (A) 'Adapting to the situation as it unfolds' vs (B) 'Adhering to a pre-defined strategy'.",
+      "pair_index": 25,
+      "pair": {
+        "question": "The effective approach is",
+        "immediate": " (A) Improvising and adapting on the fly",
+        "long_term": " (B) Following a deliberate roadmap",
+        "category": "improvising_roadmap"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 3
+      },
+      "average": 4.23,
+      "issues": [
+        "Severe violation of single_dimension: The options contrast different mechanisms (Efficiency vs. Innovation) rather than the same mechanism over different timeframes. This introduces a semantic confound.",
+        "Implicit Temporality: The distinction between immediate and long-term relies entirely on external business heuristics (efficiency=short, innovation=long) rather than the text itself.",
+        "Conceptual Leakage: 'Paradigm shifts' implies a difference in magnitude (radical vs. incremental) rather than just a temporal difference."
+      ],
+      "suggestion": "Rewrite to hold the value creation mechanism constant while varying the temporal scope. For example, keep 'Innovation' as the focus: (A) 'Incremental updates for quick market wins' vs (B) 'Foundational research for future breakthroughs'. Alternatively, explicitly qualify the existing terms: (A) 'Immediate process efficiency' vs (B) 'Long-term structural innovation'.",
+      "pair_index": 26,
+      "pair": {
+        "question": "Value creation comes from",
+        "immediate": " (A) Efficiency gains and cost reduction",
+        "long_term": " (B) Innovation breakthroughs and paradigm shifts",
+        "category": "efficiency_innovation"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 4,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.62,
+      "issues": [
+        "The pair conflates temporal scope with a 'Reactive vs. Proactive' dimension. 'Foresight' is inherently proactive, while 'Responsiveness' is reactive.",
+        "The term 'Flexibility' in option A is not inherently short-term; distinct long-term flexibility is a valid concept.",
+        "Input formatting error: Label A contains a duplicated prefix '(A)  (A)'.",
+        "The prompt stem 'The key capability is' is somewhat short, slightly reducing semantic validity."
+      ],
+      "suggestion": "Remove the duplicate formatting prefixes. To fix the dimensionality issue, ensure the contrast is purely about *when* the action happens rather than the *type* of capability. For example: (A) 'Adapting to events as they happen' vs (B) 'Planning for events before they arise'.",
+      "pair_index": 27,
+      "pair": {
+        "question": "The key capability is",
+        "immediate": " (A) Responsiveness and flexibility",
+        "long_term": " (B) Foresight and anticipation",
+        "category": "responsiveness_foresight"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 2,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 4,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 3,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.23,
+      "issues": [
+        "Explicit temporal leakage: The word 'current' in Option A is an explicit temporal marker synonymous with 'now,' and 'emerging/developing' in Option B aspectually imply future process. This prevents the model from learning the latent temporal concept.",
+        "Multidimensional and Sentiment Confound: The pair contrasts 'needs/demands' (obligatory/maintenance/neutral-negative) against 'opportunities/possibilities' (aspirational/growth/positive). This introduces sentiment and topic biases alongside the temporal dimension.",
+        "Length imbalance: Option B is notably longer and arguably more complex than Option A."
+      ],
+      "suggestion": "Rewrite to strictly isolate the temporal dimension by using identical or neutral nouns and avoiding explicit keywords like 'current'. Example: 'Addressing pressing requirements' (Immediate) vs 'Anticipating potential requirements' (Long-term).",
+      "pair_index": 28,
+      "pair": {
+        "question": "Resources should be allocated to",
+        "immediate": " (A) Existing needs and current demands",
+        "long_term": " (B) Emerging opportunities and developing possibilities",
+        "category": "needs_opportunities"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 4,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.31,
+      "issues": [
+        "Proxy Variable: The pair tests 'Action vs. Reflection' (cognitive style), which is only weaking correlated with 'Immediate vs. Long-term'.",
+        "Ambiguity: 'Doing' is not inherently immediate (e.g., persistence), nor is 'Thinking' inherently long-term (e.g., hesitation), making the labels unreliable.",
+        "Formatting: The input text duplicates the option labels ('(A) (A)' and '(B) (B)'), creating a structure error."
+      ],
+      "suggestion": "Replace with process-oriented descriptions that imply timeframe without using forbidden keywords (e.g., 'quick', 'future'). Example: 'Jumping in to learn as you go' (implies immediacy) vs. 'Mapping out a complete strategy first' (implies delay for planning).",
+      "pair_index": 29,
+      "pair": {
+        "question": "The right balance favors",
+        "immediate": " (A) Doing over thinking",
+        "long_term": " (B) Thinking over doing",
+        "category": "doing_thinking"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 3,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.38,
+      "issues": [
+        "Violation of single_dimension: The contrast focuses on Discrete/Outcome ('Milestones') vs. Continuous/Process ('Momentum') rather than solely on temporal scope.",
+        "Label ambiguity: 'Milestones' are often effectively used for long-term project tracking, making the 'immediate' label inaccurate.",
+        "Lexical leakage: The word 'sustained' in Option B implies duration, providing a subtle cue to the long-term label.",
+        "Formatting artifact: The input text contains a typo with double labels '(A)  (A)'."
+      ],
+      "suggestion": "Standardize the metric to fix the dimensional confound and isolate the temporal aspect. For example: '(A) Current targets hit' vs '(B) Trajectory maintained'. This keeps the 'point vs. trend' distinction which maps better to 'immediate vs. long-term' without using prohibited keywords.",
+      "pair_index": 30,
+      "pair": {
+        "question": "Progress is measured by",
+        "immediate": " (A) Milestones achieved",
+        "long_term": " (B) Momentum sustained",
+        "category": "milestones_momentum"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 3,
+        "clear_temporal": 2,
+        "both_valid": 4,
+        "single_dimension": 1,
+        "labels_correct": 2
+      },
+      "average": 4.0,
+      "issues": [
+        "Fundamental validity failure: The primary contrast is Risk Tolerance (defensive vs. expansive) rather than Temporal Scope.",
+        "Ambiguous mapping: Defensive strategies can be long-term (e.g., capital preservation), and expansive strategies can be immediate (e.g., barely controlled growth). The labels are arbitrary.",
+        "Sentiment mismatch: Option A (Defensive) implies caution/negativity, while Option B (Expansive) implies ambition/positivity, introducing a steering confound.",
+        "Incomplete context: 'The appropriate stance is' is too truncated to fully validate whether both options are appropriate responses."
+      ],
+      "suggestion": "Rewrite the options to explicitly anchor the strategic concept to the distinct timeframes. Example: (A) 'Prioritizing immediate defense and protection' vs (B) 'Planning for long-term expansion and ambition'. Alternatively, discard this pair for temporal training as it inherently measures strategic personality rather than time horizon.",
+      "pair_index": 31,
+      "pair": {
+        "question": "The appropriate stance is",
+        "immediate": " (A) Defensive and protective",
+        "long_term": " (B) Expansive and ambitious",
+        "category": "defensive_expansive"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 1,
+        "sentiment": 5,
+        "clear_temporal": 3,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 4
+      },
+      "average": 4.23,
+      "issues": [
+        "Rubric Violation (Specificity): The current pair contrasts 'Concrete specifics' against 'Overarching themes'. This violates the requirement for both options to have the 'Same abstraction level'.",
+        "Rubric Violation (Single Dimension): Because the options differ in abstraction, they do not differ *only* on temporal scope. This acts as a confounding variable for the steering vector.",
+        "Implicit Temporality: The distinction between immediate and long-term relies entirely on the proxy of 'actionable vs. guiding', which creates ambiguity compared to a pure temporal contrast."
+      ],
+      "suggestion": "Rewrite to ensure both options represent the same level of abstraction (both concrete or both abstract) and differ only in time. Avoid banned keywords. Example: '(A) Specific plans for the current phase' vs '(B) Specific plans for subsequent phases'.",
+      "pair_index": 32,
+      "pair": {
+        "question": "Communication should emphasize",
+        "immediate": " (A) Concrete specifics and actionable details",
+        "long_term": " (B) Overarching themes and guiding principles",
+        "category": "specifics_themes"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 3,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.23,
+      "issues": [
+        "Major Single Dimension Violation: The pair contrasts 'Remedial/Reactive' (closing gaps) against 'Aspirational/Proactive' (raising standards). This encodes a difference in ambition and valence, not just temporal scope.",
+        "Temporal Ambiguity: 'Setting benchmarks' is often an immediate planning activity performed at the start of a project, making the 'long-term' label conceptually inaccurate.",
+        "Sentiment Confound: Option A focuses on fixing a deficit (negative-to-neutral), while Option B focuses on innovation (positive), creating a sentiment imbalance."
+      ],
+      "suggestion": "Revise to ensure both options represent positive/neutral contributions, differing only by the horizon of impact. Example: (A) 'Executing the established protocols' (Immediate/Maintenance) vs (B) 'Evolving the protocol logic' (Long-term/Structural).",
+      "pair_index": 33,
+      "pair": {
+        "question": "The worthy pursuit is",
+        "immediate": " (A) Closing gaps and meeting standards",
+        "long_term": " (B) Setting benchmarks and raising standards",
+        "category": "closing_setting"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 4,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 2,
+        "clear_temporal": 5,
+        "both_valid": 4,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.0,
+      "issues": [
+        "Ngram Leakage: 'Firefighting' is a strong business idiom that inherently signals immediate urgency, leaking the temporal scope without explicit time words.",
+        "Sentiment Mismatch: A significant valence gap exists between the stressful/negative connotation of 'firefighting' and the aspirational/positive connotation of 'culture-building'.",
+        "Dimensional Confounding: The pair contrasts 'reactive vs. proactive' and 'operational vs. strategic' alongside the temporal dimension, resulting in a low single_dimension score."
+      ],
+      "suggestion": "Neutralize the sentiment and remove idioms to isolate the temporal dimension. Rephrase as: (A) 'Resolving operational bottlenecks' vs. (B) 'Developing organizational capabilities'. This reduces the reactive/proactive semantic gap while maintaining the time horizon distinction.",
+      "pair_index": 34,
+      "pair": {
+        "question": "Organizational focus should be on",
+        "immediate": " (A) Firefighting and troubleshooting",
+        "long_term": " (B) Culture-building and capability development",
+        "category": "troubleshooting_culture"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 2,
+        "clear_temporal": 5,
+        "both_valid": 3,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 3.77,
+      "issues": [
+        "Critical Lexical Failure: The root word 'Time' appears in both options ('Time pressure', 'Timelessness'), and 'deadlines' is an explicit temporal marker.",
+        "Sentiment Mismatch: Option A ('pressure', 'deadlines') has negative/stressful valence, while Option B ('timelessness', 'endurance') has positive/noble valence.",
+        "Multidimensional Contrast: The pair contrasts 'urgency/stress' against 'stability/resilience', rather than isolating temporal scope.",
+        "Weak Validity: The question stem 'The key factor is' is too generic to determine if these are truly valid alternative answers without more context."
+      ],
+      "suggestion": "Rewrite to remove all explicit temporal roots and specific 'time' words while balancing sentiment (making both neutral). Provide context in the question. Example: 'In project management, the priority is often (A) meeting immediate quotas (B) ensuring structural integrity'.",
+      "pair_index": 35,
+      "pair": {
+        "question": "The key factor is",
+        "immediate": " (A) Time pressure and deadlines",
+        "long_term": " (B) Timelessness and endurance",
+        "category": "pressure_endurance"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 1,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 4,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.08,
+      "issues": [
+        "Violates lexical constraints: 'At this juncture' and 'for posterity' act as explicit synonyms for 'now' and 'future', causing significant n-gram leakage.",
+        "Fails single dimension criteria: The contrast uses different verbs ('fixing' vs 'building') which introduces a reactive vs. proactive action type and a negative vs. positive sentiment shift, confounding the temporal signal."
+      ],
+      "suggestion": "Remove the explicit temporal prepositional phrases entirely. Align the verbs to be identical to isolate the temporal dimension. Example: 'The tactical patches we are implementing' (Immediate) vs 'The strategic architecture we are implementing' (Long-term).",
+      "pair_index": 36,
+      "pair": {
+        "question": "Stakeholder messaging should highlight",
+        "immediate": " (A) What we're fixing at this juncture",
+        "long_term": " (B) What we're building for posterity",
+        "category": "fixing_building"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 3,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 4,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.15,
+      "issues": [
+        "Multidimensionality Leaks: The pair primarily contrasts spatial scale (close vs. far) and granularity (detail vs. perspective) rather than strictly temporal scope.",
+        "Abstraction Mismatch: 'Detail' is concrete while 'Perspective' is abstract, introducing a confounding variable in specificity.",
+        "Metaphorical Ambiguity: The mapping of 'Microscopic' to 'Immediate' and 'Telescopic' to 'Long-term' is weak and not inherently obvious without specific framing context.",
+        "Formatting Error: The prompt contains a typo with double labels '(A)  (A)'."
+      ],
+      "suggestion": "Standardize the nouns (e.g., change both to 'view' or 'focus') to resolve the specificity mismatch. Crucially, add a context line to validity map the spatial metaphor to time, such as: 'Regarding the time horizon of our analysis, we need: (A) A microscopic view (B) A telescopic view'.",
+      "pair_index": 37,
+      "pair": {
+        "question": "The appropriate lens is",
+        "immediate": " (A) Microscopic detail",
+        "long_term": " (B) Telescopic perspective",
+        "category": "microscopic_telescopic"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 4,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 1,
+        "clear_temporal": 3,
+        "both_valid": 2,
+        "single_dimension": 1,
+        "labels_correct": 5
+      },
+      "average": 3.62,
+      "issues": [
+        "Severe sentiment asymmetry: 'Band-aids' carries strong negative connotations (superficial, insufficient) while 'Cures' is positive, creating a Quality vs. Time confound.",
+        "Significant n-gram leakage: 'Band-aids' is an idiomatic phrase specifically denoting temporary fixes, leaking the temporal scope without explicit keywords.",
+        "Validity constraint violation: The prompt 'Effort should concentrate on' makes Option A (Band-aids) a logically incorrect or undesirable answer, violating the 'both_valid' requirement.",
+        "Multi-dimensional confound: The pair contrasts superficial vs. fundamental and bad vs. good, rather than just immediate vs. long-term."
+      ],
+      "suggestion": "Rewrite to neutralize valence and remove the specific idiom. Example: '(A) Rapid stabilization measures' vs '(B) Structural resolutions'. Alternatively, change the prompt context to justify the short-term option: 'In a crisis, priority is often given to...'.",
+      "pair_index": 38,
+      "pair": {
+        "question": "Effort should concentrate on",
+        "immediate": " (A) Band-aids and workarounds",
+        "long_term": " (B) Cures and solutions",
+        "category": "bandaids_cures"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 2,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 3
+      },
+      "average": 4.0,
+      "issues": [
+        "Significant dimensional impurity: The contrast is primarily philosophical (Realism vs. Idealism) rather than temporal. Pragmatism is not inherently short-term, nor is idealism inherently long-term.",
+        "Sentiment mismatch: 'Expedient' carries a negative connotation of convenience over principle, whereas 'Aspirational' suggests positive virtue.",
+        "Temporal ambiguity: While 'expedient' suggests immediacy, 'pragmatic' does not. The distinctions rely on loose connotation rather than clear definition."
+      ],
+      "suggestion": "Rewrite to isolate the temporal horizon while maintaining the philosophical tone. Structure the options to contrast adaptability/immediacy with consistency/duration. Example: '(A) Adaptable to current circumstances' vs '(B) Anchored in enduring principles'.",
+      "pair_index": 39,
+      "pair": {
+        "question": "The right philosophy is",
+        "immediate": " (A) Pragmatic and expedient",
+        "long_term": " (B) Idealistic and aspirational",
+        "category": "pragmatic_idealistic"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 2,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 3,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.31,
+      "issues": [
+        "\"Problem at hand\" is an idiomatic phrase that explicitly signals the present moment, constituting significant ngram leakage.",
+        "The pair confounds temporal scope with abstraction level: Option A refers to a concrete instance, while Option B refers to an abstract class.",
+        "The pair confounds action types: \"Solving\" (reactive) versus \"Preventing\" (proactive) introduces a dimension beyond simple time horizon."
+      ],
+      "suggestion": "Rewrite to remove the idiomatic leakage and parallelize the verbs to isolate the temporal dimension. Ensure both objects operate at a similar level of abstraction or explicitly contrast instance vs. system. Example: (A) 'Resolving the specific incident' vs (B) 'Resolving the systemic pattern'.",
+      "pair_index": 40,
+      "pair": {
+        "question": "Value lies in",
+        "immediate": " (A) Solving the problem at hand",
+        "long_term": " (B) Preventing the problem class",
+        "category": "solving_preventing"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.46,
+      "issues": [
+        "Multi-dimensional conflation: The pair contrasts 'Tactical' vs 'Strategic' (which implies hierarchy/abstraction levels) and 'Execution' vs 'Positioning' (action vs state). This failure of orthogonality introduces noise beyond pure temporal scope.",
+        "Formatting error: Option A contains a duplicated label '(A) (A)'.",
+        "Idiomatic leakage: The temporal distinction relies heavily on business jargon definitions rather than explicit context."
+      ],
+      "suggestion": "Rewrite the options to share a common head noun, ensuring the only variable is the temporal adjective. Example: '(A) Tactical priorities' vs '(B) Strategic priorities'. Correct the duplicated label in Option A.",
+      "pair_index": 41,
+      "pair": {
+        "question": "The focus should be",
+        "immediate": " (A) Tactical execution",
+        "long_term": " (B) Strategic positioning",
+        "category": "execution_positioning"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 2
+      },
+      "average": 4.15,
+      "issues": [
+        "Dimension Mismatch: The pair contrasts Scope/Scale (Local vs. Global) rather than Time. While scope correlates with duration, they are not synonymous.",
+        "Label Inaccuracy: 'Local' does not strictly imply 'Immediate', and 'Global' does not strictly imply 'Long-term'.",
+        "Steering Risk: Using this entry risks training the model to associate spatial or systemic scope with temporal vectors, confounding the steering direction."
+      ],
+      "suggestion": "Rewrite the pair to isolate the temporal dimension using implicit phrasing that avoids the prohibited keywords (e.g., immediate, lasting, quick). Example: (A) 'Transient patches' vs (B) 'Sustained solutions'.",
+      "pair_index": 42,
+      "pair": {
+        "question": "Impact comes from",
+        "immediate": " (A) Local optimizations",
+        "long_term": " (B) Global transformations",
+        "category": "local_global"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 3,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.46,
+      "issues": [
+        "The pair conflates 'Risk Tolerance' (Certainty vs. Potential) with 'Temporal Scope' (Immediate vs. Long-term).",
+        "Choice (A) implies risk aversion and Choice (B) implies risk-seeking, meaning the steering vector will capture risk preference rather than pure time preference.",
+        "The labels rely on a loose inference that 'Certainty' is always immediate and 'Potential' is always valid only in the long term, which is not semantically strict.",
+        "This represents a significant multi-dimensional confound."
+      ],
+      "suggestion": "Replace the concepts with metaphors that map specifically to time rather than risk. For example, use 'Utilization' vs 'accumulation' or 'Harvesting' vs 'Sowing'. If strict clarity is preferred over keyword avoidance, use 'Present stability' vs 'Future growth'.",
+      "pair_index": 43,
+      "pair": {
+        "question": "The right trade-off favors",
+        "immediate": " (A) Certainty over potential",
+        "long_term": " (B) Potential over certainty",
+        "category": "certainty_potential"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 1,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 5,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 5
+      },
+      "average": 4.23,
+      "issues": [
+        "Explicit temporal keywords present: 'current' (A) and 'ahead' (B) violate the lexical rubric.",
+        "Significant dimensional confound: The pair contrasts 'maintenance/tactics' vs. 'strategy/vision' rather than isolating temporal scope.",
+        "Minor vocabulary imbalance: 'Trajectory' is more abstract than 'operations'."
+      ],
+      "suggestion": "Rewrite to remove explicit temporal markers and align the type of action so the only variable is the time horizon. For example: (A) 'Managing core operations' vs (B) 'Setting organizational direction'.",
+      "pair_index": 44,
+      "pair": {
+        "question": "Leadership should emphasize",
+        "immediate": " (A) Managing current operations",
+        "long_term": " (B) Shaping the trajectory ahead",
+        "category": "managing_shaping"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 1,
+        "both_valid": 5,
+        "single_dimension": 1,
+        "labels_correct": 2
+      },
+      "average": 4.07,
+      "issues": [
+        "The primary contrast is spatial and metaphorical (perspective/abstraction) rather than explicitly temporal.",
+        "The pair fails the 'single dimension' criteria by contrasting concrete/practical against abstract/conceptual, introducing confounding variables.",
+        "The mapping of labels (immediate/long-term) is indirect and relies on Construal Level Theory associations rather than the text itself."
+      ],
+      "suggestion": "Rewrite the options to isolate the temporal distinction. Ensure the contrast reflects a difference in time horizon (e.g., current application vs. enduring strategy) rather than spatial vantage points, while maintaining the 'no explicit keywords' constraint if possible.",
+      "pair_index": 45,
+      "pair": {
+        "question": "The valuable perspective is",
+        "immediate": " (A) Ground-level and practical",
+        "long_term": " (B) Bird's-eye and conceptual",
+        "category": "ground_birds"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 4,
+        "ngram_leakage": 4,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.23,
+      "issues": [
+        "Formatting Error: The prompt contains redundant labels '(A)  (A)' and '(B)  (B)' which must be cleaned.",
+        "Major Semantic Ambiguity: 'Direct' refers to a causal mechanism (lack of intermediaries) rather than temporal scope. A direct payoff can theoretically happen far in the future.",
+        "Multidimensionality: The pair contrasts 'Simple/Linear' vs 'Complex/Exponential' rather than strictly 'Immediate' vs 'Long-term'.",
+        "Lexical Mismatch: 'Payoffs' (transactional) vs 'Benefits' (broad/abstract) creates an unnecessary noun mismatch."
+      ],
+      "suggestion": "Fix formatting labels. To resolve the temporal ambiguity without triggering the banned keywords list (e.g., 'immediate'), replace (A) with 'Upfront gains' and (B) with 'Compounding gains'. 'Upfront' provides a clear spatial metaphor for specific timing that contrasts correctly with the duration implied by 'Compounding'.",
+      "pair_index": 46,
+      "pair": {
+        "question": "Resources are best spent on",
+        "immediate": " (A) Direct payoffs",
+        "long_term": " (B) Compounding benefits",
+        "category": "payoffs_compounding"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 4,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 3
+      },
+      "average": 4.31,
+      "issues": [
+        "Primary distinction is ethical (Consequentialism vs. Deontology) rather than temporal.",
+        "Temporal scope is ambiguous: 'Achieving targets' can be a long-term goal, and 'Honoring principles' applies to immediate actions.",
+        "Slight specificity mismatch: 'Targets' are concrete outcomes while 'Principles' are abstract concepts."
+      ],
+      "suggestion": "Anchor the temporal aspect using context without explicit keywords. Example: change (A) to 'Meeting quarterly quotas' and (B) to 'Upholding core values'. This defines (A) by a short business cycle while leaving (B) as a foundational, enduring concept.",
+      "pair_index": 47,
+      "pair": {
+        "question": "The right commitment is to",
+        "immediate": " (A) Achieving targets",
+        "long_term": " (B) Honoring principles",
+        "category": "targets_principles"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 5,
+        "length_match": 5,
+        "structure": 5,
+        "formality": 5,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 4,
+        "both_valid": 5,
+        "single_dimension": 3,
+        "labels_correct": 5
+      },
+      "average": 4.77,
+      "issues": [
+        "The pair fails the single-dimension test: the adverbs 'appropriately' (normative suitability) and 'accurately' (epistemic precision) introduce a semantic contrast unrelated to time.",
+        "The temporal distinction is implicit (cognitive style of reactive vs. proactive) rather than explicitly defined by time horizons; 'anticipating' describes a future orientation but is not strictly 'long-term' in all contexts."
+      ],
+      "suggestion": "Harmonize the adverbs to remove the confounding semantic variable. Improve the pair by using a shared adverb, such as '(A) Reacting effectively' vs. '(B) Anticipating effectively'. This ensures the choices differ only on the temporal/cognitive scope.",
+      "pair_index": 48,
+      "pair": {
+        "question": "The measure of wisdom is",
+        "immediate": " (A) Reacting appropriately",
+        "long_term": " (B) Anticipating accurately",
+        "category": "reacting_anticipating"
+      }
+    },
+    {
+      "scores": {
+        "temporal_keywords": 5,
+        "vocabulary_balance": 5,
+        "ngram_leakage": 3,
+        "length_match": 2,
+        "structure": 5,
+        "formality": 4,
+        "hedging": 5,
+        "specificity": 5,
+        "sentiment": 5,
+        "clear_temporal": 2,
+        "both_valid": 5,
+        "single_dimension": 2,
+        "labels_correct": 2
+      },
+      "average": 3.85,
+      "issues": [
+        "Semantic Contradiction: 'Grit' is defined as passion and perseverance for long-term goals, which directly contradicts the 'immediate' label.",
+        "Length Mismatch: Option B ('Patience and perseverance', 25 chars) is approximately 67% longer than Option A ('Hustle and grit', 15 chars), failing the 50% threshold.",
+        "Multidimensionality: The pair conflates temporal scope (short vs long) with energy level (active/intense vs passive/steady)."
+      ],
+      "suggestion": "Replace Option A to remove the long-term connotation of 'grit' and improve length balance. Ex: 'Speed and intensity' vs 'Patience and perseverance'.",
+      "pair_index": 49,
+      "pair": {
+        "question": "Success demands",
+        "immediate": " (A) Hustle and grit",
+        "long_term": " (B) Patience and perseverance",
+        "category": "hustle_patience"
+      }
+    }
+  ]
+}
