@@ -17,6 +17,10 @@ This project investigates how LLMs encode temporal reasoning and whether we can:
 - Steering validation: r=0.935 correlation between steering and probe predictions
 - Late layers (6-11) encode semantic temporal features robust to keyword removal
 
+## Program
+
+[https://github.com/justinshenk/temporal-awareness/blob/main/docs/RESEARCH_PROGRAM.md]
+
 ## Framework
 
 We ground temporal awareness in **intertemporal preference**:
