@@ -19,7 +19,7 @@ This project investigates how LLMs encode temporal reasoning and whether we can:
 
 ## Program
 
-[https://github.com/justinshenk/temporal-awareness/blob/main/docs/RESEARCH_PROGRAM.md](Research Program)
+[Research Program](https://github.com/justinshenk/temporal-awareness/blob/main/docs/RESEARCH_PROGRAM.md)
 
 ## Framework
 
