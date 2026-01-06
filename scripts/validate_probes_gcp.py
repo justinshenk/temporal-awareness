@@ -134,14 +134,17 @@ def load_dataset(path):
     return data.get("pairs", data), data.get("metadata", {})
 
 
-def extract_activations(model, tokenizer, prompt, device="cpu"):
+def extract_activations(model, tokenizer, prompt, device="cpu", use_mean=False):
     """Extract last-token activations from all layers."""
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     activations = {}
 
     def hook_fn(layer_idx):
         def hook(module, input, output):
-            activations[layer_idx] = output[0][0, -1, :].detach().cpu().numpy()
+            if use_mean:
+                activations[layer_idx] = output[0][0, :, :].mean(dim=0).detach().cpu().numpy()
+            else:
+                activations[layer_idx] = output[0][0, -1, :].detach().cpu().numpy()
         return hook
 
     hooks = []
@@ -157,7 +160,7 @@ def extract_activations(model, tokenizer, prompt, device="cpu"):
     return activations
 
 
-def create_dataset(model, tokenizer, pairs, device="cpu"):
+def create_dataset(model, tokenizer, pairs, device="cpu", use_mean=False):
     """Create activation dataset from prompt pairs."""
     n_layers = len(model.transformer.h)
     activations_by_layer = {i: [] for i in range(n_layers)}
@@ -176,8 +179,8 @@ def create_dataset(model, tokenizer, pairs, device="cpu"):
         long_term_prompt = f"{question}\n\nChoices:\n{pair[long_term_key]}"
 
         # Extract activations
-        imm_acts = extract_activations(model, tokenizer, immediate_prompt, device)
-        lt_acts = extract_activations(model, tokenizer, long_term_prompt, device)
+        imm_acts = extract_activations(model, tokenizer, immediate_prompt, device, use_mean)
+        lt_acts = extract_activations(model, tokenizer, long_term_prompt, device, use_mean)
 
         for layer in range(n_layers):
             activations_by_layer[layer].append(imm_acts[layer])
@@ -247,6 +250,7 @@ def main():
     parser = argparse.ArgumentParser(description="Validate temporal probes on GCP")
     parser.add_argument("--gpu", action="store_true", help="Use GPU")
     parser.add_argument("--quick", action="store_true", help="Quick test (subset)")
+    parser.add_argument("--use-mean", action="store_true", help="Use activation means instead of last token")
     args = parser.parse_args()
 
     device = "cuda" if args.gpu and torch.cuda.is_available() else "cpu"
@@ -286,7 +290,7 @@ def main():
     print("="*70)
 
     start = time.time()
-    X_explicit, y_explicit = create_dataset(model, tokenizer, explicit_pairs, device)
+    X_explicit, y_explicit = create_dataset(model, tokenizer, explicit_pairs, device, args.use_mean)
     explicit_time = time.time() - start
     print(f"Extracted in {explicit_time:.1f}s")
 
@@ -295,7 +299,7 @@ def main():
     print("="*70)
 
     start = time.time()
-    X_implicit, y_implicit = create_dataset(model, tokenizer, implicit_pairs, device)
+    X_implicit, y_implicit = create_dataset(model, tokenizer, implicit_pairs, device, args.use_mean)
     implicit_time = time.time() - start
     print(f"Extracted in {implicit_time:.1f}s")
 
