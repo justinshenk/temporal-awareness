@@ -27,14 +27,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import pandas as pd
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from inspect import getmodule
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
 
 
 def load_caa_dataset(dataset_path):
     """Load CAA-format temporal dataset."""
     with open(dataset_path) as f:
-        data = json.load(f)
+        data = json.load(f) 
 
     if 'pairs' in data:
         pairs = data['pairs']
@@ -45,8 +46,26 @@ def load_caa_dataset(dataset_path):
 
     return pairs, metadata
 
+def extract_residual_stream_blocks(model):
+    # using Python reflection:
+    base_decoder = getattr(model, model.base_model_prefix)
+    base_decoder_block_class = getattr(getmodule(model), model._no_split_modules[0])
+    print(f"--- For model: {model.config.model_type} ---")
+    print(f"base_decoder name: {model.base_model_prefix}")
+    print(f"base_decoder_block_class : {base_decoder_block_class}")
 
-def extract_activations(model, tokenizer, prompt):
+    decoder_blocks = []
+    for name in dir(base_decoder):
+        if not name.startswith('_') \
+           and isinstance(val := getattr(base_decoder, name), torch.nn.ModuleList):
+            found_list = val
+            if not len(found_list) == 0 and isinstance(found_list[0], base_decoder_block_class):
+                decoder_blocks = found_list
+
+    return decoder_blocks
+
+
+def extract_activations(model, decoder_blocks, tokenizer, prompt):
     """
     Extract activations from all layers for a given prompt.
 
@@ -58,14 +77,18 @@ def extract_activations(model, tokenizer, prompt):
 
     def hook_fn(layer_idx):
         def hook(module, input, output):
-            # output[0] is hidden_states: (batch, seq_len, hidden_dim)
+            # output is hidden_states: (batch, seq_len, d_model)
             # Take last token activation
-            activations[layer_idx] = output[0][0, -1, :].detach().cpu().numpy()
+            if isinstance(output, tuple):
+                activations[layer_idx] = output[0][0, -1, :].detach().cpu().numpy()
+            elif isinstance(output, torch.Tensor) and len(output.shape) == 3:
+                activations[layer_idx] = output[0, -1, :].detach().cpu().numpy()                
         return hook
 
     # Register hooks for all layers
     hooks = []
-    for i, layer in enumerate(model.transformer.h):
+
+    for i, layer in enumerate(decoder_blocks):
         hook = layer.register_forward_hook(hook_fn(i))
         hooks.append(hook)
 
@@ -80,13 +103,13 @@ def extract_activations(model, tokenizer, prompt):
     return activations
 
 
-def create_probe_dataset(model, tokenizer, pairs):
+def create_probe_dataset(model, decoder_blocks, tokenizer, pairs):
     """
     Extract activations for all prompts and create probe training dataset.
 
     Args:
-        model: GPT-2 model
-        tokenizer: GPT-2 tokenizer
+        model: LLM model
+        tokenizer: LLM tokenizer
         pairs: List of CAA-format prompt pairs
 
     Returns:
@@ -96,7 +119,7 @@ def create_probe_dataset(model, tokenizer, pairs):
     print(f"Extracting activations from {len(pairs)} prompt pairs...")
     print(f"This will create {len(pairs) * 2} samples (immediate + long-term)\n")
 
-    n_layers = len(model.transformer.h)
+    n_layers = model.config.num_hidden_layers
 
     # Initialize storage
     activations_by_layer = {i: [] for i in range(n_layers)}
@@ -121,8 +144,8 @@ def create_probe_dataset(model, tokenizer, pairs):
         long_term_prompt = question + "\n\nChoices:\n" + pair[long_term_key]
 
         # Extract activations
-        immediate_acts = extract_activations(model, tokenizer, immediate_prompt)
-        long_term_acts = extract_activations(model, tokenizer, long_term_prompt)
+        immediate_acts = extract_activations(model, decoder_blocks, tokenizer, immediate_prompt)
+        long_term_acts = extract_activations(model, decoder_blocks, tokenizer, long_term_prompt)
 
         # Store activations and labels
         for layer in range(n_layers):
@@ -279,7 +302,8 @@ def detailed_evaluation(model, tokenizer, pairs, probe_path, layer):
         probe = pickle.load(f)
 
     # Extract activations
-    X_by_layer, y = create_probe_dataset(model, tokenizer, pairs)
+    decoder_blocks = extract_residual_stream_blocks(model)
+    X_by_layer, y = create_probe_dataset(model, decoder_blocks, tokenizer, pairs)
     X = X_by_layer[layer]
 
     # Split
@@ -307,16 +331,16 @@ def detailed_evaluation(model, tokenizer, pairs, probe_path, layer):
     print()
 
 
-def main():
+def main(args):
     print("="*70)
     print("TEMPORAL PROBE TRAINING (CAA FORMAT)")
     print("="*70)
     print()
 
     # Configuration
-    dataset_path = 'research/datasets/temporal_scope_caa.json'
-    model_name = 'gpt2'
-    output_dir = 'research/probes'
+    dataset_path = args.dataset
+    model_name = args.model
+    output_dir = args.output
 
     print(f"Configuration:")
     print(f"  Dataset: {dataset_path}")
@@ -337,15 +361,16 @@ def main():
     print()
 
     # Load model
-    print("Loading GPT-2...")
-    model = GPT2LMHeadModel.from_pretrained(model_name)
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    print(f"Loading {model_name}...")
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     model.eval()
     print("✓ Model loaded")
     print()
 
     # Extract activations and create dataset
-    X_by_layer, y = create_probe_dataset(model, tokenizer, pairs)
+    decoder_blocks = extract_residual_stream_blocks(model)
+    X_by_layer, y = create_probe_dataset(model, decoder_blocks, tokenizer, pairs)
 
     # Train probes
     results_df = train_probes(X_by_layer, y, output_dir)
@@ -394,4 +419,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main()
+    main(args)
