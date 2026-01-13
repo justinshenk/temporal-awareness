@@ -66,6 +66,7 @@ class AttributionPatching:
 
     def patch_residual(self):
         # FIXME: Implement batched version. But it will be memory-costly.
+        # FIXME: Might be we need to count each baseline separately.
         num_prompts = len(self.clean_tokens)
         clean_logits_top_3 = []
         corrupted_logits_top_3 = []
@@ -124,6 +125,7 @@ class AttributionPatching:
 
     def patch_layer_out(self):
         # FIXME: Implement batched version. But it will be memory-costly.
+        # FIXME: Might be we need to count each baseline separately.
         num_prompts = len(self.clean_tokens)
         clean_logits_top_3 = []
         corrupted_logits_top_3 = []
