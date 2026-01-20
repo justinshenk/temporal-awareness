@@ -12,7 +12,7 @@ def get_logit_diff(logits, clean_answer_id, corrupted_answer_id):
         logits = logits[-1, -1, :]
     correct_logit = logits[clean_answer_id]
     incorrect_logit = logits[corrupted_answer_id]
-    return correct_logit - incorrect_logit
+    return (correct_logit - incorrect_logit)
 
 def logit_metric(logits, clean_baseline, corrupted_baseline, clean_answer, corrupted_answer):
     return (get_logit_diff(logits, clean_answer, corrupted_answer) - corrupted_baseline) / (
@@ -64,9 +64,10 @@ class AttributionPatching:
             ActivationCache(grad_cache, self.model),
         )
 
-    def patch_residual(self):
+    def __patch__(self, layer_specific_algorithm):
         # FIXME: Implement batched version. But it will be memory-costly.
-        # FIXME: Might be we need to count each baseline separately.
+        # FIXME: Is attribution on more than 1 is acceptable? (Check one more time!)
+        # FIXME: Compare with batched implementation on phi3!
         num_prompts = len(self.clean_tokens)
         clean_logits_top_3 = []
         corrupted_logits_top_3 = []
@@ -87,11 +88,13 @@ class AttributionPatching:
         print(f"Clean logit TOP-3: {self.model.to_string(torch.stack(clean_logits_top_3))}")
         print()
         print(f"Corrupted logit TOP-3: {self.model.to_string(torch.stack(corrupted_logits_top_3))}")
-
+        print()
+        print()
+        
         print(f"Clean logit diff: {clean_logit_diff_avg:.4f}")
         print(f"Corrupted logit diff: {corrupted_logit_diff_avg:.4f}")
 
-        residual_attr_avg = 0
+        attr_avg = 0
         for i in range(0, num_prompts):
             clean_value, clean_cache, clean_grad_cache = self.get_cache_fwd_and_bwd(
                 self.clean_tokens[i], logit_metric,
@@ -104,6 +107,16 @@ class AttributionPatching:
                 self.clean_answer_ids[i], self.corrupted_answer_ids[i]
             )
 
+            attr, labels = layer_specific_algorithm(clean_cache,
+                                                    corrupted_cache,
+                                                    corrupted_grad_cache)
+            attr_avg += attr
+        attr_avg /= num_prompts
+
+        return attr_avg, labels
+
+    def patch_residual(self):
+        def residual_algorithm(clean_cache, corrupted_cache, corrupted_grad_cache):
             clean_residual, residual_labels = clean_cache.accumulated_resid(
                 -1, incl_mid=True, return_labels=True
             )
@@ -113,56 +126,16 @@ class AttributionPatching:
             corrupted_grad_residual = corrupted_grad_cache.accumulated_resid(
                 -1, incl_mid=True, return_labels=False
             )
-            residual_attr_avg += einops.reduce(
+            residual_attr = einops.reduce(
                 corrupted_grad_residual * (clean_residual - corrupted_residual),
                 "component batch pos d_model -> component pos",
                 "sum",
             )
-        residual_attr_avg /= num_prompts
-
-        return residual_attr_avg, residual_labels
-
+            return residual_attr, residual_labels
+        return self.__patch__(residual_algorithm)
 
     def patch_layer_out(self):
-        # FIXME: Implement batched version. But it will be memory-costly.
-        # FIXME: Might be we need to count each baseline separately.
-        num_prompts = len(self.clean_tokens)
-        clean_logits_top_3 = []
-        corrupted_logits_top_3 = []
-        clean_logit_diff_avg = 0
-        corrupted_logit_diff_avg = 0
-        for i in range(0, num_prompts):
-            clean_logits, __ = self.model.run_with_cache(self.clean_tokens[i])
-            clean_logits_top_3.append(torch.sort(clean_logits[-1, -1, :], descending=True).indices[0:3])
-            corrupted_logits, __ = self.model.run_with_cache(self.corrupted_tokens[i])
-            corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
-
-            clean_logit_diff_avg += get_logit_diff(clean_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
-            corrupted_logit_diff_avg += get_logit_diff(corrupted_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
-
-        clean_logit_diff_avg /= num_prompts
-        corrupted_logit_diff_avg /= num_prompts
-
-        print(f"Clean logit TOP-3: {self.model.to_string(torch.stack(clean_logits_top_3))}")
-        print()
-        print(f"Corrupted logit TOP-3: {self.model.to_string(torch.stack(corrupted_logits_top_3))}")
-
-        print(f"Clean logit diff: {clean_logit_diff_avg:.4f}")
-        print(f"Corrupted logit diff: {corrupted_logit_diff_avg:.4f}")
-
-        residual_attr_avg = 0
-        for i in range(0, num_prompts):
-            clean_value, clean_cache, clean_grad_cache = self.get_cache_fwd_and_bwd(
-                self.clean_tokens[i], logit_metric,
-                clean_logit_diff_avg, corrupted_logit_diff_avg,
-                self.clean_answer_ids[i], self.corrupted_answer_ids[i]
-            )
-            corrupted_value, corrupted_cache, corrupted_grad_cache = self.get_cache_fwd_and_bwd(
-                self.corrupted_tokens[i], logit_metric,
-                clean_logit_diff_avg, corrupted_logit_diff_avg,
-                self.clean_answer_ids[i], self.corrupted_answer_ids[i]
-            )
-
+        def layer_out_algorithm(clean_cache, corrupted_cache, corrupted_grad_cache):
             clean_layer_out, labels = clean_cache.decompose_resid(-1, return_labels=True)
             corrupted_layer_out = corrupted_cache.decompose_resid(-1, return_labels=False)
             corrupted_grad_layer_out = corrupted_grad_cache.decompose_resid(
@@ -173,6 +146,6 @@ class AttributionPatching:
                 "component batch pos d_model -> component pos",
                 "sum",
             )
-        residual_attr_avg /= num_prompts
+            return layer_out_attr, labels
 
-        return layer_out_attr, labels
+        return self.__patch__(layer_out_algorithm)
