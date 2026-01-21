@@ -20,7 +20,7 @@ RESULTS_PREFIX = "test_"
 OPTION_KEYS = ["A", "B"]
 NUM_STEPS = 10
 NUM_SAMPLES = 5  # Set to an integer to limit the number of samples, or None to use all
-output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_scores.json"
+output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_ig_scores.json"
 
 # Template that stitches question, immediate, and long-term parts into one prompt.
 TEMPLATE = "{}\n\n{}\n{}"
