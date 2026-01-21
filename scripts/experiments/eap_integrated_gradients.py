@@ -19,7 +19,8 @@ RESULTS_PREFIX = "test_"
 
 OPTION_KEYS = ["A", "B"]
 NUM_STEPS = 10
-output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_scores.json"
+NUM_SAMPLES = 5  # Set to an integer to limit the number of samples, or None to use all
+output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_ig_scores.json"
 
 # Template that stitches question, immediate, and long-term parts into one prompt.
 TEMPLATE = "{}\n\n{}\n{}"
@@ -33,12 +34,15 @@ def ensure_mech_interp_toolkit_installed() -> None:
         )
 
 
-def load_and_merge_pairs(input_file: Path, swap: bool = False) -> list:
+def load_and_merge_pairs(
+    input_file: Path, swap: bool = False, num_samples: int | None = None
+) -> list:
     """Load pairs from ``input_file`` and merge them into formatted prompts.
 
     Args:
         input_file: Path to JSON file containing question pairs
         swap: If True, swap option keys (A) and (B) in the prompts
+        num_samples: Maximum number of samples to load, or None to load all
 
     Returns:
         List of formatted prompt strings
@@ -48,8 +52,13 @@ def load_and_merge_pairs(input_file: Path, swap: bool = False) -> list:
 
     prompts = []
     option_a, option_b = OPTION_KEYS
+    pairs = data.get("pairs", [])
 
-    for pair in data.get("pairs", []):
+    # Limit the number of pairs if num_samples is specified
+    if num_samples is not None:
+        pairs = pairs[:num_samples]
+
+    for pair in pairs:
         prompt = TEMPLATE.format(
             pair.get("question", ""),
             pair.get("immediate", ""),
@@ -57,7 +66,7 @@ def load_and_merge_pairs(input_file: Path, swap: bool = False) -> list:
         )
         if swap:
             prompt = re.sub(
-                f"{re.escape(f'({option_a})')}|{re.escape(f'({option_b})')}",
+                f"{f'({option_a})'}|{f'({option_b})'}",
                 lambda m: option_b if m.group(0) == option_a else option_a,
                 prompt,
             )
@@ -91,8 +100,12 @@ def main() -> None:
         attn_type="sdpa",
     )
 
-    clean_prompts = load_and_merge_pairs(INPUT_FILE, swap=False)
-    corrupted_prompts = load_and_merge_pairs(INPUT_FILE, swap=True)
+    clean_prompts = load_and_merge_pairs(
+        INPUT_FILE, swap=False, num_samples=NUM_SAMPLES
+    )
+    corrupted_prompts = load_and_merge_pairs(
+        INPUT_FILE, swap=True, num_samples=NUM_SAMPLES
+    )
 
     clean_inputs = tokenizer(clean_prompts)
     corrupted_inputs = tokenizer(corrupted_prompts)
