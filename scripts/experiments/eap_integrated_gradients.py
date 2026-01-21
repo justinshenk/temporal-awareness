@@ -57,7 +57,7 @@ def load_and_merge_pairs(input_file: Path, swap: bool = False) -> list:
         )
         if swap:
             prompt = re.sub(
-                f"{re.escape(f'({option_a})')}|{re.escape(f'({option_b})')}",
+                f"{f'({option_a})'}|{f'({option_b})'}",
                 lambda m: option_b if m.group(0) == option_a else option_a,
                 prompt,
             )
