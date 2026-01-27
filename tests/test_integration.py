@@ -196,6 +196,172 @@ class TestBackendEquivalence:
 
 
 # =============================================================================
+# Component Tests (Attention, MLP, Residual Stream)
+# =============================================================================
+
+
+class TestComponentActivations:
+    """Test activation capture for different components (resid, attn, mlp)."""
+
+    @pytest.mark.parametrize("component", ["resid_post", "attn_out", "mlp_out"])
+    def test_transformerlens_captures_component(self, transformerlens_runner, component):
+        """TransformerLens captures activations for all components."""
+        prompt = "Test input"
+        layer = transformerlens_runner.n_layers // 2
+        hook_name = f"blocks.{layer}.hook_{component}"
+
+        _, cache = transformerlens_runner.run_with_cache(
+            prompt, names_filter=lambda n: n == hook_name
+        )
+
+        assert hook_name in cache, f"Hook {hook_name} not found in cache"
+        act = cache[hook_name]
+        assert act.ndim == 3, f"Expected 3D tensor, got {act.ndim}D"
+        assert act.shape[0] == 1, "Expected batch size 1"
+        assert act.shape[-1] == transformerlens_runner.d_model, "Dimension mismatch"
+
+
+@requires_nnsight
+class TestComponentBackendEquivalence:
+    """Verify backends produce equivalent activations for all components."""
+
+    @pytest.mark.parametrize("component", ["resid_post", "attn_out", "mlp_out"])
+    def test_activation_equivalence(self, transformerlens_runner, nnsight_runner, component):
+        """Both backends capture equivalent activations for each component."""
+        prompt = "Test input for activation capture"
+        layer = 5
+
+        hook_name = f"blocks.{layer}.hook_{component}"
+        names_filter = lambda n: n == hook_name
+
+        tl_logits, tl_cache = transformerlens_runner.run_with_cache(prompt, names_filter)
+        nn_logits, nn_cache = nnsight_runner.run_with_cache(prompt, names_filter)
+
+        # Both should have the hook
+        assert hook_name in tl_cache, f"TL missing {hook_name}"
+        assert hook_name in nn_cache, f"NN missing {hook_name}"
+
+        tl_act = tl_cache[hook_name]
+        nn_act = nn_cache[hook_name]
+
+        # Shapes must match
+        assert tl_act.shape == nn_act.shape, f"Shape mismatch: {tl_act.shape} vs {nn_act.shape}"
+
+        # Activations should be highly correlated (>0.99)
+        tl_flat = tl_act.flatten().float()
+        nn_flat = nn_act.flatten().float()
+        corr = torch.corrcoef(torch.stack([tl_flat, nn_flat]))[0, 1]
+        assert corr > 0.99, f"Correlation {corr:.4f} too low for {component}"
+
+    @pytest.mark.parametrize("component", ["resid_post", "attn_out", "mlp_out"])
+    def test_intervention_equivalence(self, transformerlens_runner, nnsight_runner, component):
+        """Both backends produce equivalent results for interventions on each component."""
+        from src.models.intervention_utils import steering
+
+        prompt = "The weather today is"
+        layer = 5
+
+        # Create a deterministic direction
+        np.random.seed(42)
+        direction = np.random.randn(transformerlens_runner.d_model).astype(np.float32)
+
+        intervention = steering(
+            layer=layer,
+            direction=direction,
+            strength=10.0,
+            component=component,
+        )
+
+        # Run with intervention
+        tl_logits = transformerlens_runner.forward_with_intervention(prompt, intervention)
+        nn_logits = nnsight_runner.forward_with_intervention(prompt, intervention)
+
+        # For resid_post, predictions should match exactly
+        # For attn_out/mlp_out, hook points may differ slightly between backends
+        tl_pred = tl_logits.argmax(dim=-1)
+        nn_pred = nn_logits.argmax(dim=-1)
+
+        if component == "resid_post":
+            assert tl_pred.tolist() == nn_pred.tolist(), (
+                f"Predictions differ for {component}: TL={tl_pred.tolist()}, NN={nn_pred.tolist()}"
+            )
+            # Probability distributions should be very similar
+            tl_probs = torch.softmax(tl_logits[0, -1, :], dim=-1)
+            nn_probs = torch.softmax(nn_logits[0, -1, :], dim=-1)
+            torch.testing.assert_close(tl_probs, nn_probs, rtol=1e-2, atol=1e-2)
+        else:
+            # For attn_out/mlp_out, verify probability distributions are correlated
+            # Hook points may differ between backends, so exact match isn't expected
+            tl_probs = torch.softmax(tl_logits[0, -1, :], dim=-1)
+            nn_probs = torch.softmax(nn_logits[0, -1, :], dim=-1)
+            corr = torch.corrcoef(torch.stack([tl_probs, nn_probs]))[0, 1]
+            assert corr > 0.9, f"Probability correlation {corr:.4f} too low for {component}"
+
+
+@requires_pyvene
+class TestPyveneComponentEquivalence:
+    """Verify pyvene produces equivalent activations for all components."""
+
+    @pytest.mark.parametrize("component", ["resid_post", "attn_out", "mlp_out"])
+    def test_activation_equivalence(self, transformerlens_runner, pyvene_runner, component):
+        """Pyvene and TransformerLens capture equivalent activations for each component."""
+        prompt = "Test input for pyvene"
+        layer = pyvene_runner.n_layers // 2
+
+        hook_name = f"blocks.{layer}.hook_{component}"
+        names_filter = lambda n: n == hook_name
+
+        tl_logits, tl_cache = transformerlens_runner.run_with_cache(prompt, names_filter)
+        pv_logits, pv_cache = pyvene_runner.run_with_cache(prompt, names_filter)
+
+        # Both should have the hook
+        assert hook_name in tl_cache, f"TL missing {hook_name}"
+        assert hook_name in pv_cache, f"Pyvene missing {hook_name}"
+
+        tl_act = tl_cache[hook_name]
+        pv_act = pv_cache[hook_name]
+
+        # Shapes must match
+        assert tl_act.shape == pv_act.shape, f"Shape mismatch: {tl_act.shape} vs {pv_act.shape}"
+
+        # Activations should be highly correlated
+        tl_flat = tl_act.flatten().float()
+        pv_flat = pv_act.flatten().float()
+        corr = torch.corrcoef(torch.stack([tl_flat, pv_flat]))[0, 1]
+        assert corr > 0.99, f"Correlation {corr:.4f} too low for {component}"
+
+    @pytest.mark.parametrize("component", ["resid_post", "attn_out", "mlp_out"])
+    def test_intervention_equivalence(self, transformerlens_runner, pyvene_runner, component):
+        """Pyvene and TransformerLens produce equivalent intervention results."""
+        from src.models.intervention_utils import steering
+
+        prompt = "The answer is"
+        layer = pyvene_runner.n_layers // 2
+
+        # Create a deterministic direction
+        np.random.seed(42)
+        direction = np.random.randn(transformerlens_runner.d_model).astype(np.float32)
+
+        intervention = steering(
+            layer=layer,
+            direction=direction,
+            strength=10.0,
+            component=component,
+        )
+
+        # Run with intervention
+        tl_logits = transformerlens_runner.forward_with_intervention(prompt, intervention)
+        pv_logits = pyvene_runner.forward_with_intervention(prompt, intervention)
+
+        # Predictions should match
+        tl_pred = tl_logits.argmax(dim=-1)
+        pv_pred = pv_logits.argmax(dim=-1)
+        assert tl_pred.tolist() == pv_pred.tolist(), (
+            f"Predictions differ for {component}: TL={tl_pred.tolist()}, PV={pv_pred.tolist()}"
+        )
+
+
+# =============================================================================
 # Pyvene Backend Tests - Core Functionality
 # =============================================================================
 

@@ -158,6 +158,9 @@ class MockModelRunner:
     def generate_from_cache(self, prefill_logits, frozen_kv_cache, max_new_tokens=256, temperature=0.0):
         return self._backend.generate_from_cache(prefill_logits, frozen_kv_cache, max_new_tokens, temperature)
 
+    def generate(self, prompt, max_new_tokens=256, temperature=0.0, intervention=None):
+        return self._backend.generate(prompt, max_new_tokens, temperature, intervention, None)
+
     def get_label_probs(self, prompt, choice_prefix, labels, past_kv_cache=None):
         return (0.6, 0.4)
 
@@ -404,52 +407,49 @@ class TestQueryDataset:
         assert pref.choice_prob == 0.6
         assert pref.alt_prob == 0.4
 
+    def test_skip_generation_infers_choice_from_probs(self, temp_dataset_dir):
+        """skip_generation=True skips generate() and infers choice from probs."""
+        config = QueryConfig(models=["test"], datasets=["001"], skip_generation=True)
+        runner = QueryRunner(config, temp_dataset_dir)
 
-# =============================================================================
-# Backend Equivalence Tests
-# =============================================================================
+        backend = MockBackend()
+        runner._model = MockModelRunner(backend)
+        runner._model_name = "test"
 
+        output = runner.query_dataset("001", "test")
 
-class TestBackendEquivalence:
-    """Test that both backends produce equivalent results."""
+        # generate should NOT have been called
+        gen_calls = [c for c in backend.calls if c[0] == "generate"]
+        assert len(gen_calls) == 0
 
-    def test_tokenize_decode_roundtrip(self):
-        """Both backends should tokenize and decode consistently."""
-        backend1 = MockBackend()
-        backend2 = MockBackend()
+        # Choice should be inferred from probs (0.6, 0.4) -> short_term wins
+        pref = output.preferences[0]
+        assert pref.choice == "short_term"
+        assert pref.response == ""  # No response when skipping generation
 
-        # Same tokenizer behavior
-        tok1 = backend1.get_tokenizer()
-        tok2 = backend2.get_tokenizer()
+    def test_skip_generation_long_term_when_higher_prob(self, temp_dataset_dir):
+        """skip_generation correctly picks long_term when it has higher prob."""
+        config = QueryConfig(models=["test"], datasets=["001"], skip_generation=True)
+        runner = QueryRunner(config, temp_dataset_dir)
 
-        text = "test input"
-        assert tok1.encode(text) == tok2.encode(text)
+        # Mock returns (0.3, 0.7) - long_term has higher prob
+        class LongTermBackend(MockBackend):
+            pass
 
-    def test_run_with_cache_same_filter_behavior(self):
-        """Both backends apply names_filter identically."""
-        backend1 = MockBackend()
-        backend2 = MockBackend()
+        class LongTermMockRunner(MockModelRunner):
+            def get_label_probs(self, prompt, choice_prefix, labels, past_kv_cache=None):
+                return (0.3, 0.7)  # long_term wins
 
-        names = ["blocks.5.hook_resid_post"]
-        names_filter = lambda n: n in names
+        backend = LongTermBackend()
+        runner._model = LongTermMockRunner(backend)
+        runner._model_name = "test"
 
-        input_ids = torch.tensor([[1, 2, 3]])
+        output = runner.query_dataset("001", "test")
 
-        _, cache1 = backend1.run_with_cache(input_ids, names_filter, None)
-        _, cache2 = backend2.run_with_cache(input_ids, names_filter, None)
-
-        # Both should have same keys
-        assert set(cache1.keys()) == set(cache2.keys())
-
-    def test_generate_deterministic_with_temp_zero(self):
-        """With temperature=0, generation should be deterministic."""
-        backend1 = MockBackend({"generate": "I select: a)"})
-        backend2 = MockBackend({"generate": "I select: a)"})
-
-        out1 = backend1.generate("prompt", 10, 0.0, None, None)
-        out2 = backend2.generate("prompt", 10, 0.0, None, None)
-
-        assert out1 == out2
+        pref = output.preferences[0]
+        assert pref.choice == "long_term"
+        assert pref.choice_prob == 0.7
+        assert pref.alt_prob == 0.3
 
 
 # =============================================================================

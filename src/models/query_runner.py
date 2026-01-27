@@ -33,6 +33,7 @@ class QueryConfig(SchemaClass):
     temperature: float = 0.0
     subsample: float = 1.0
     intervention: Optional[dict] = None  # Raw intervention config (loaded per-model)
+    skip_generation: bool = False  # If True, infer choice from probs only (~100x faster)
 
 
 @dataclass
@@ -140,6 +141,7 @@ class QueryRunner:
             temperature=data.get("temperature", 0.0),
             subsample=data.get("subsample", 1.0),
             intervention=data.get("intervention"),
+            skip_generation=data.get("skip_generation", False),
         )
 
     def _load_model(self, name: str) -> ModelRunner:
@@ -216,53 +218,39 @@ class QueryRunner:
             short_label = pair["short_term"]["label"]
             long_label = pair["long_term"]["label"]
 
-            # Step 1: Calculate kv cache for prompt and get prefill logits
-            kv_cache = model_runner.init_kv_cache()
-            prefill_logits, _ = model_runner.run_with_cache(
-                prompt,
-                names_filter=lambda name: name in activation_names,
-                past_kv_cache=kv_cache,
+            # Step 1: Get choice probabilities
+            probs = model_runner.get_label_probs(
+                prompt, choice_prefix, (short_label, long_label)
             )
-            kv_cache.freeze()
 
-            # Step 2: Run generation
-            if intervention is not None:
-                # Use regular generate with intervention (no KV cache optimization)
+            # Step 2: Generate response (or skip if skip_generation=True)
+            if self.config.skip_generation:
+                response = ""
+                choice = "short_term" if probs[0] > probs[1] else "long_term"
+            else:
                 response = model_runner.generate(
                     prompt,
                     max_new_tokens=self.config.max_new_tokens,
                     temperature=self.config.temperature,
                     intervention=intervention,
                 )
-            else:
-                # Use KV cache optimized generation
-                response = model_runner.generate_from_cache(
-                    prefill_logits,
-                    kv_cache,
-                    max_new_tokens=self.config.max_new_tokens,
-                    temperature=self.config.temperature,
+                choice = parse_choice(response, short_label, long_label, choice_prefix)
+
+            # Step 3: Capture internals (only if requested)
+            internals = None
+            if activation_names:
+                _, cache = model_runner.run_with_cache(
+                    prompt + response,
+                    names_filter=lambda name: name in activation_names,
                 )
-            choice = parse_choice(response, short_label, long_label, choice_prefix)
-
-            # Step 3: Capture internals
-            _, cache = model_runner.run_with_cache(
-                prompt + response,
-                names_filter=lambda name: name in activation_names,
-                past_kv_cache=kv_cache,
-            )
-            activations = {}
-            for name in activation_names:
-                if name in cache:
-                    activations[name] = cache[name][0].cpu()
-            internals = CapturedInternals(
-                activations=activations,
-                activation_names=list(activations.keys()),
-            )
-
-            # Step 4: Capture choice probs
-            probs = model_runner.get_label_probs(
-                prompt, choice_prefix, (short_label, long_label), kv_cache
-            )
+                activations = {}
+                for name in activation_names:
+                    if name in cache:
+                        activations[name] = cache[name][0].cpu()
+                internals = CapturedInternals(
+                    activations=activations,
+                    activation_names=list(activations.keys()),
+                )
 
             if choice == "short_term":
                 choice_prob, alt_prob = probs[0], probs[1]

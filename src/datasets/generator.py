@@ -50,10 +50,16 @@ class DatasetGenerator:
 
     @classmethod
     def load_dataset_config(cls, path: Path) -> DatasetConfig:
-        """
-        Load and parse dataset config from JSON file.
+        """Load and parse dataset config from JSON file."""
+        data = load_json(path)
+        return cls.load_dataset_config_from_dict(data)
 
-        Sample JSON (see schemas: DatasetConfig, ContextConfig, OptionRangeConfig):
+    @classmethod
+    def load_dataset_config_from_dict(cls, data: dict) -> DatasetConfig:
+        """
+        Parse dataset config from dictionary.
+
+        Sample dict (see schemas: DatasetConfig, ContextConfig, OptionRangeConfig):
         {
             "name": "cityhousing",
             "context": {
@@ -79,8 +85,6 @@ class DatasetGenerator:
             "time_horizons": [[5, "months"], [15, "years"]]
         }
         """
-        data = load_json(path)
-
         # Parse context (includes labels, method, seed)
         ctx = data["context"]
         labels = ctx.get("labels", ["a)", "b)"])

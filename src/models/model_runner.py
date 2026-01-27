@@ -208,6 +208,35 @@ class ModelRunner:
             for p in prompt
         ]
 
+    def get_divergent_token_ids(self, label1: str, label2: str) -> tuple[int, int]:
+        """Get first divergent token IDs for two labels.
+
+        For multi-token labels like OPTION_ONE/OPTION_TWO, finds where they diverge
+        and returns the token IDs at that position.
+
+        Args:
+            label1: First label string
+            label2: Second label string
+
+        Returns:
+            Tuple of (token_id_1, token_id_2) at the first divergent position
+        """
+        tokenizer = self.tokenizer
+        ids1 = tokenizer.encode(" " + label1, add_special_tokens=False)
+        ids2 = tokenizer.encode(" " + label2, add_special_tokens=False)
+
+        diverge_pos = 0
+        for i in range(min(len(ids1), len(ids2))):
+            if ids1[i] != ids2[i]:
+                diverge_pos = i
+                break
+        else:
+            diverge_pos = min(len(ids1), len(ids2))
+
+        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else ids1[-1]
+        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else ids2[-1]
+        return tok1, tok2
+
     def _get_label_probs_single(
         self,
         prompt: str,
@@ -215,27 +244,19 @@ class ModelRunner:
         labels: tuple[str, str],
         past_kv_cache: Any = None,
     ) -> tuple:
-        """Get probabilities for two label options.
-
-        Handles both simple labels (a/b, 1/2) and complex multi-token labels
-        (OPTION_ONE/OPTION_TWO) by finding where they diverge and looking at
-        the appropriate token position.
-        """
+        """Get probabilities for two label options."""
         tokenizer = self.tokenizer
         label1, label2 = labels
 
-        # Tokenize both labels with space prefix (model outputs space after "I select:")
         ids1 = tokenizer.encode(" " + label1, add_special_tokens=False)
         ids2 = tokenizer.encode(" " + label2, add_special_tokens=False)
 
-        # Find first position where tokens differ
         diverge_pos = 0
         for i in range(min(len(ids1), len(ids2))):
             if ids1[i] != ids2[i]:
                 diverge_pos = i
                 break
         else:
-            # One is prefix of the other
             diverge_pos = min(len(ids1), len(ids2))
 
         # Get the diverging tokens
@@ -270,6 +291,45 @@ class ModelRunner:
         formatted = self._apply_chat_template(prompt)
         input_ids = self.tokenize(formatted)
         return self._backend.run_with_cache(input_ids, names_filter, past_kv_cache)
+
+    def run_with_cache_and_grad(
+        self,
+        prompt: str,
+        names_filter: Optional[callable] = None,
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward pass with gradients enabled and return activation cache.
+
+        Unlike run_with_cache, this does NOT use torch.no_grad(), allowing
+        gradients to flow through cached activations for attribution patching.
+
+        Args:
+            prompt: Input text
+            names_filter: Optional function to filter which hooks to cache
+
+        Returns:
+            (logits, cache) where cache values have requires_grad=True
+        """
+        formatted = self._apply_chat_template(prompt)
+        input_ids = self.tokenize(formatted)
+        return self._backend.run_with_cache_and_grad(input_ids, names_filter)
+
+    def forward_with_intervention(
+        self,
+        prompt: str,
+        intervention: Intervention,
+    ) -> torch.Tensor:
+        """Run forward pass with intervention applied, returning logits.
+
+        Args:
+            prompt: Input text
+            intervention: Intervention to apply during forward pass
+
+        Returns:
+            Logits tensor from the forward pass
+        """
+        formatted = self._apply_chat_template(prompt)
+        input_ids = self.tokenize(formatted)
+        return self._backend.forward_with_intervention(input_ids, intervention)
 
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
@@ -315,6 +375,15 @@ class _BackendBase(ABC):
     ) -> tuple[torch.Tensor, dict]: ...
 
     @abstractmethod
+    def run_with_cache_and_grad(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward pass with gradients enabled."""
+        ...
+
+    @abstractmethod
     def generate_from_cache(
         self,
         prefill_logits: torch.Tensor,
@@ -325,6 +394,15 @@ class _BackendBase(ABC):
 
     @abstractmethod
     def init_kv_cache(self): ...
+
+    @abstractmethod
+    def forward_with_intervention(
+        self,
+        input_ids: torch.Tensor,
+        intervention: Intervention,
+    ) -> torch.Tensor:
+        """Run forward pass with intervention, returning logits."""
+        ...
 
 
 class _TransformerLensBackend(_BackendBase):
@@ -473,6 +551,38 @@ class _TransformerLensBackend(_BackendBase):
                 input_ids, names_filter=names_filter, past_kv_cache=past_kv_cache
             )
 
+    def run_with_cache_and_grad(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run with gradients enabled for attribution patching."""
+        cache = {}
+        hooks = []
+
+        # Determine which hooks to capture
+        n_layers = self.get_n_layers()
+        hooks_to_capture = []
+        for i in range(n_layers):
+            for component in ["resid_post", "attn_out", "mlp_out"]:
+                name = f"blocks.{i}.hook_{component}"
+                if names_filter is None or names_filter(name):
+                    hooks_to_capture.append((i, component, name))
+
+        # Register hooks that preserve gradients
+        def make_hook(hook_name):
+            def hook_fn(act, hook=None):
+                cache[hook_name] = act
+                return act
+            return hook_fn
+
+        fwd_hooks = [(name, make_hook(name)) for _, _, name in hooks_to_capture]
+
+        # Forward pass WITHOUT torch.no_grad()
+        logits = self.runner.model.run_with_hooks(input_ids, fwd_hooks=fwd_hooks)
+
+        return logits, cache
+
     def generate_from_cache(
         self,
         prefill_logits: torch.Tensor,
@@ -524,6 +634,23 @@ class _TransformerLensBackend(_BackendBase):
             device=self.runner.device,
             batch_size=1,
         )
+
+    def forward_with_intervention(
+        self,
+        input_ids: torch.Tensor,
+        intervention: Intervention,
+    ) -> torch.Tensor:
+        hook_fn, _ = create_intervention_hook(
+            intervention,
+            dtype=self.runner.dtype,
+            device=self.runner.device,
+        )
+        with torch.no_grad():
+            logits = self.runner.model.run_with_hooks(
+                input_ids,
+                fwd_hooks=[(intervention.hook_name, hook_fn)],
+            )
+        return logits
 
 
 class _NNsightBackend(_BackendBase):
@@ -636,6 +763,29 @@ class _NNsightBackend(_BackendBase):
                 result[tok_id] = probs[tok_id].item()
         return result
 
+    def _get_component_module(self, layer, component: str):
+        """Get the module for a specific component within a layer.
+
+        Components:
+            resid_post/resid_pre/resid_mid: layer output (block output)
+            attn_out: attention output
+            mlp_out: MLP output
+        """
+        if component in ("resid_post", "resid_pre", "resid_mid"):
+            return layer
+        elif component == "attn_out":
+            # GPT2: layer.attn, Pythia: layer.attention
+            if hasattr(layer, "attn"):
+                return layer.attn
+            elif hasattr(layer, "attention"):
+                return layer.attention
+            else:
+                raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
+        elif component == "mlp_out":
+            return layer.mlp
+        else:
+            raise ValueError(f"Unknown component: {component}")
+
     def run_with_cache(
         self,
         input_ids: torch.Tensor,
@@ -643,14 +793,45 @@ class _NNsightBackend(_BackendBase):
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
         cache = {}
-        with self.runner.model.trace(input_ids):
-            for i, layer in enumerate(self._layers):
-                name = f"blocks.{i}.hook_resid_post"
+
+        # Determine which hooks to capture
+        hooks_to_capture = []
+        for i in range(len(self._layers)):
+            for component in ["resid_post", "attn_out", "mlp_out"]:
+                name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
-                    cache[name] = layer.output[0].save()
+                    hooks_to_capture.append((i, component, name))
+
+        with self.runner.model.trace(input_ids):
+            for layer_idx, component, name in hooks_to_capture:
+                layer = self._layers[layer_idx]
+                module = self._get_component_module(layer, component)
+                # Module outputs differ: layer/attn return tuple, MLP returns tensor
+                if component == "mlp_out":
+                    # MLP returns tensor directly, ensure 3D shape [batch, seq, hidden]
+                    out = module.output.save()
+                else:
+                    # Layer and attention return tuple, first element is hidden states
+                    out = module.output[0].save()
+                cache[name] = out
             logits = self.runner.model.lm_head.output.save()
-        # nnsight 0.5.15 returns tensors directly (no .value)
-        return logits, {k: v for k, v in cache.items()}
+
+        # Ensure all cached tensors have batch dimension [1, seq, hidden]
+        result_cache = {}
+        for k, v in cache.items():
+            if v.ndim == 2:
+                v = v.unsqueeze(0)
+            result_cache[k] = v
+        return logits, result_cache
+
+    def run_with_cache_and_grad(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run with gradients enabled - nnsight preserves gradients by default."""
+        # nnsight tracing preserves gradients, so this is same as run_with_cache
+        return self.run_with_cache(input_ids, names_filter, None)
 
     def generate_from_cache(
         self,
@@ -666,6 +847,60 @@ class _NNsightBackend(_BackendBase):
 
     def init_kv_cache(self):
         pass
+
+    def forward_with_intervention(
+        self,
+        input_ids: torch.Tensor,
+        intervention: Intervention,
+    ) -> torch.Tensor:
+        layer = self._layers[intervention.layer]
+        module = self._get_component_module(layer, intervention.component)
+        values = torch.tensor(
+            intervention.scaled_values,
+            dtype=self.runner.dtype,
+            device=self.runner.device,
+        )
+        target = intervention.target
+        mode = intervention.mode
+        component = intervention.component
+
+        with self.runner.model.trace(input_ids):
+            # MLP returns tensor directly, layer/attn return tuple
+            if component == "mlp_out":
+                out = module.output
+            else:
+                out = module.output[0]
+
+            if target.axis == "all":
+                if mode == "add":
+                    out[:, :] += values
+                elif mode == "set":
+                    out[:, :] = values
+                elif mode == "mul":
+                    out[:, :] *= values
+            elif target.axis == "position":
+                seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
+                for pos in target.positions:
+                    if pos < seq_len:
+                        if out.ndim == 2:
+                            # 2D: [seq, hidden]
+                            if mode == "add":
+                                out[pos, :] += values
+                            elif mode == "set":
+                                out[pos, :] = values
+                            elif mode == "mul":
+                                out[pos, :] *= values
+                        else:
+                            # 3D: [batch, seq, hidden]
+                            if mode == "add":
+                                out[:, pos, :] += values
+                            elif mode == "set":
+                                out[:, pos, :] = values
+                            elif mode == "mul":
+                                out[:, pos, :] *= values
+            logits = self.runner.model.lm_head.output.save()
+
+        return logits.detach()
 
 
 class _PyveneBackend(_BackendBase):
@@ -728,19 +963,50 @@ class _PyveneBackend(_BackendBase):
                 return f"transformer.h[{layer}]"
             elif component == "mlp_output":
                 return f"transformer.h[{layer}].mlp"
+            elif component == "attn_output":
+                return f"transformer.h[{layer}].attn"
         elif self._layers_attr == "gpt_neox.layers":
             # Pythia/GPT-NeoX: use gpt_neox.layers[layer] style
             if component == "block_output":
                 return f"gpt_neox.layers[{layer}]"
             elif component == "mlp_output":
                 return f"gpt_neox.layers[{layer}].mlp"
+            elif component == "attn_output":
+                return f"gpt_neox.layers[{layer}].attention"
         else:
             # LLaMA style: use model.layers[layer] style
             if component == "block_output":
                 return f"model.layers[{layer}]"
             elif component == "mlp_output":
                 return f"model.layers[{layer}].mlp"
+            elif component == "attn_output":
+                return f"model.layers[{layer}].self_attn"
         return f"transformer.h[{layer}]"
+
+    def _get_component_module(self, layer_idx: int, component: str):
+        """Get the module for a specific component within a layer.
+
+        Components:
+            resid_post/resid_pre/resid_mid: layer (block output)
+            attn_out: attention module
+            mlp_out: MLP module
+        """
+        layer = self._layers[layer_idx]
+        if component in ("resid_post", "resid_pre", "resid_mid"):
+            return layer
+        elif component == "attn_out":
+            if hasattr(layer, "attn"):
+                return layer.attn
+            elif hasattr(layer, "attention"):
+                return layer.attention
+            elif hasattr(layer, "self_attn"):
+                return layer.self_attn
+            else:
+                raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
+        elif component == "mlp_out":
+            return layer.mlp
+        else:
+            raise ValueError(f"Unknown component: {component}")
 
     def generate(
         self,
@@ -846,60 +1112,78 @@ class _PyveneBackend(_BackendBase):
         names_filter: Optional[callable],
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
-        import pyvene as pv
-
         cache = {}
+        hooks = []
 
-        # Determine which layers to collect
-        layers_to_collect = []
+        # Determine which hooks to capture
+        hooks_to_capture = []
         for i in range(self._n_layers):
-            name = f"blocks.{i}.hook_resid_post"
-            if names_filter is None or names_filter(name):
-                layers_to_collect.append((i, name))
+            for component in ["resid_post", "attn_out", "mlp_out"]:
+                name = f"blocks.{i}.hook_{component}"
+                if names_filter is None or names_filter(name):
+                    hooks_to_capture.append((i, component, name))
 
-        if layers_to_collect:
-            # Create collect intervention config for all requested layers
-            # Use pyvene's abstract component name "block_output"
-            representations = [
-                pv.RepresentationConfig(
-                    layer=layer_idx,
-                    component="block_output",
-                    unit="pos",
-                    max_number_of_units=input_ids.shape[1],
-                    intervention_link_key=idx,
-                )
-                for idx, (layer_idx, _) in enumerate(layers_to_collect)
-            ]
+        # Use PyTorch forward hooks to capture activations
+        for layer_idx, component, name in hooks_to_capture:
+            module = self._get_component_module(layer_idx, component)
 
-            config = pv.IntervenableConfig(
-                model_type=type(self.runner.model),
-                representations=representations,
-                intervention_types=pv.CollectIntervention,
-            )
-            intervenable = pv.IntervenableModel(config, self.runner.model)
-            intervenable.set_device(self.runner.device)
+            def make_hook(hook_name):
+                def hook_fn(mod, inp, out):
+                    if isinstance(out, tuple):
+                        cache[hook_name] = out[0].detach()
+                    else:
+                        cache[hook_name] = out.detach()
+                return hook_fn
 
-            # Run and collect
-            # pyvene returns ((intervened_output, [collected_tensors]), original_output)
-            result, original_output = intervenable(
-                {"input_ids": input_ids},
-                output_original_output=True,
-            )
-            # result is (intervened_output, list_of_collected_tensors)
-            # result[1] contains the actual collected activation tensors
-            collected_tensors = result[1]
+            hooks.append(module.register_forward_hook(make_hook(name)))
 
-            # Map collected activations to cache
-            for idx, (layer_idx, name) in enumerate(layers_to_collect):
-                if idx < len(collected_tensors):
-                    cache[name] = collected_tensors[idx]
-
-            logits = original_output.logits
-        else:
-            # No collection needed, just forward pass
+        try:
             with torch.no_grad():
                 outputs = self.runner.model(input_ids)
             logits = outputs.logits
+        finally:
+            for hook in hooks:
+                hook.remove()
+
+        return logits, cache
+
+    def run_with_cache_and_grad(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run with gradients enabled for attribution patching."""
+        cache = {}
+        hooks = []
+
+        hooks_to_capture = []
+        for i in range(self._n_layers):
+            for component in ["resid_post", "attn_out", "mlp_out"]:
+                name = f"blocks.{i}.hook_{component}"
+                if names_filter is None or names_filter(name):
+                    hooks_to_capture.append((i, component, name))
+
+        for layer_idx, component, name in hooks_to_capture:
+            module = self._get_component_module(layer_idx, component)
+
+            def make_hook(hook_name):
+                def hook_fn(mod, inp, out):
+                    # Don't detach - preserve gradients
+                    if isinstance(out, tuple):
+                        cache[hook_name] = out[0]
+                    else:
+                        cache[hook_name] = out
+                return hook_fn
+
+            hooks.append(module.register_forward_hook(make_hook(name)))
+
+        try:
+            # No torch.no_grad() - preserve gradients
+            outputs = self.runner.model(input_ids)
+            logits = outputs.logits
+        finally:
+            for hook in hooks:
+                hook.remove()
 
         return logits, cache
 
@@ -959,3 +1243,50 @@ class _PyveneBackend(_BackendBase):
                 return self._frozen
 
         return HFKVCache()
+
+    def forward_with_intervention(
+        self,
+        input_ids: torch.Tensor,
+        intervention: Intervention,
+    ) -> torch.Tensor:
+        values = torch.tensor(
+            intervention.scaled_values,
+            dtype=self.runner.dtype,
+            device=self.runner.device,
+        )
+        target = intervention.target
+        mode = intervention.mode
+        module = self._get_component_module(intervention.layer, intervention.component)
+
+        def intervention_hook(mod, input, output):
+            if isinstance(output, tuple):
+                hidden = output[0]
+            else:
+                hidden = output
+
+            if target.axis == "all":
+                if mode == "add":
+                    hidden = hidden + values
+                elif mode == "set":
+                    hidden = values.expand_as(hidden)
+                elif mode == "mul":
+                    hidden = hidden * values
+            elif target.axis == "position":
+                for pos in target.positions:
+                    if pos < hidden.shape[1]:
+                        if mode == "add":
+                            hidden[:, pos, :] = hidden[:, pos, :] + values
+                        elif mode == "set":
+                            hidden[:, pos, :] = values
+                        elif mode == "mul":
+                            hidden[:, pos, :] = hidden[:, pos, :] * values
+
+            if isinstance(output, tuple):
+                return (hidden,) + output[1:]
+            return hidden
+
+        hook = module.register_forward_hook(intervention_hook)
+        with torch.no_grad():
+            outputs = self.runner.model(input_ids)
+        hook.remove()
+        return outputs.logits
