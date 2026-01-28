@@ -234,6 +234,14 @@ def run_attribution_patching(
             )
 
     aggregated = aggregate_attribution_results(all_results, runner.n_layers)
+
+    # Ensure token_labels matches aggregated result length (may be padded)
+    if aggregated and token_labels:
+        max_len = max(v.shape[1] for v in aggregated.values())
+        if len(token_labels) < max_len:
+            # Pad with position indices for missing labels
+            token_labels = token_labels + [f"pos{i}" for i in range(len(token_labels), max_len)]
+
     return aggregated, token_labels or [], section_markers or {}
 
 
