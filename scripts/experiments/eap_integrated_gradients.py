@@ -2,6 +2,7 @@
 Run EAP Integrated Gradients on clean vs corrupted prompts and save scores to JSON.
 """
 
+import gc
 import importlib.util
 import json
 import re
@@ -17,9 +18,12 @@ INPUT_FILE = PROJECT_ROOT / "data" / "raw" / "temporal_scope_caa.json"
 RESULTS_DIR = PROJECT_ROOT / "results" / "eap_integrated_gradients"
 RESULTS_PREFIX = "test_"
 
-OPTION_KEYS = ["A", "B"]
+OPTION_KEYS = ["(A)", "(B)"]
 NUM_STEPS = 10
-NUM_SAMPLES = 5  # Set to an integer to limit the number of samples, or None to use all
+NUM_SAMPLES = (
+    None  # Set to an integer to limit the number of samples, or None to use all
+)
+BATCH_SIZE = 5
 output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_ig_scores.json"
 
 # Template that stitches question, immediate, and long-term parts into one prompt.
@@ -66,7 +70,7 @@ def load_and_merge_pairs(
         )
         if swap:
             prompt = re.sub(
-                f"{f'({option_a})'}|{f'({option_b})'}",
+                f"{re.escape(option_a)}|{re.escape(option_b)}",
                 lambda m: option_b if m.group(0) == option_a else option_a,
                 prompt,
             )
@@ -80,6 +84,7 @@ def main() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     ensure_mech_interp_toolkit_installed()
 
+    from mech_interp_toolkit.activation_utils import concat_activations
     from mech_interp_toolkit.gradient_based_attribution import (
         eap_integrated_gradients,
     )
@@ -100,31 +105,59 @@ def main() -> None:
         attn_type="sdpa",
     )
 
-    clean_prompts = load_and_merge_pairs(
-        INPUT_FILE, swap=False, num_samples=NUM_SAMPLES
-    )
-    corrupted_prompts = load_and_merge_pairs(
-        INPUT_FILE, swap=True, num_samples=NUM_SAMPLES
-    )
-
-    clean_inputs = tokenizer(clean_prompts)
-    corrupted_inputs = tokenizer(corrupted_prompts)
-
     token_a = tokenizer.tokenizer.encode(OPTION_KEYS[0], add_special_tokens=False)
     token_b = tokenizer.tokenizer.encode(OPTION_KEYS[1], add_special_tokens=False)
 
     def metric_fn(logits: torch.Tensor) -> torch.Tensor:
-        return (logits[:, -1, token_a] - logits[:, -1, token_b]).sum()
+        return (logits[:, -1, token_a] - logits[:, -1, token_b]).mean()
 
-    eap_ig_scores = eap_integrated_gradients(
-        model,
-        clean_inputs,
-        corrupted_inputs,
-        metric_fn,
-        NUM_STEPS,
+    def chunk_list(prompt_list):
+        return [
+            prompt_list[i : i + BATCH_SIZE]
+            for i in range(0, len(prompt_list), BATCH_SIZE)
+        ]
+
+    all_clean_prompts = load_and_merge_pairs(
+        INPUT_FILE, swap=False, num_samples=NUM_SAMPLES
+    )
+    all_corrupted_prompts = load_and_merge_pairs(
+        INPUT_FILE, swap=True, num_samples=NUM_SAMPLES
     )
 
-    scores_dict = {str(key): value.item() for key, value in eap_ig_scores.items()}
+    chunked_clean_prompts = chunk_list(all_clean_prompts)
+    chunked_corrupted_prompts = chunk_list(all_corrupted_prompts)
+
+    scores_list = []
+
+    for i in range(len(chunked_clean_prompts)):
+        clean_inputs = tokenizer(chunked_clean_prompts[i])
+        corrupted_inputs = tokenizer(chunked_corrupted_prompts[i])
+
+        eap_ig_scores = eap_integrated_gradients(  # (batch, pos)
+            model,
+            clean_inputs,
+            corrupted_inputs,
+            metric_fn,
+            NUM_STEPS,
+        )
+        eap_ig_scores = eap_ig_scores.apply(
+            torch.nanmean, dim=-1, mask_aware=True
+        )  # (batch,)
+
+        # Move scores to CPU to free GPU memory
+        eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
+        scores_list.append(eap_ig_scores)
+
+        # Delete temporary objects to free memory
+        del eap_ig_scores
+        del clean_inputs
+        del corrupted_inputs
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+    scores = concat_activations(scores_list)
+    scores = scores.apply(torch.mean)  # scalar
+    scores_dict = {str(key): value.item() for key, value in scores.items()}
     output_file.write_text(json.dumps(scores_dict, indent=2))
 
 
