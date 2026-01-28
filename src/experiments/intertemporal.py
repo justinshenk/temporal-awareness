@@ -1,116 +1,50 @@
-#!/usr/bin/env python
 """
-Unified intertemporal preference experiment.
+Intertemporal preference experiment module.
 
-Runs the full analysis pipeline:
-1. Generate preference data (or load existing)
-2. Activation patching to find important positions
-3. Attribution patching for circuit analysis
-4. Compute steering vectors via contrastive analysis
-5. Evaluate steering vectors
-
-Usage:
-    # Quick test with minimal config
-    uv run python scripts/experiments/intertemporal_experiment.py --small
-
-    # Full pipeline
-    uv run python scripts/experiments/intertemporal_experiment.py
-
-    # Use existing preference data
-    uv run python scripts/experiments/intertemporal_experiment.py --preference-data <id>
-
-    # Skip slow steps
-    uv run python scripts/experiments/intertemporal_experiment.py --skip-attribution --skip-steering-eval
+Provides configs and the main experiment runner for analyzing
+temporal preferences in language models.
 """
 
 from __future__ import annotations
 
-import argparse
 import gc
-import sys
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Optional
 
 import numpy as np
 import torch
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.common.io import ensure_dir, save_json, get_timestamp
-from src.data import (
+from ..common.io import ensure_dir, save_json, get_timestamp
+from ..data import (
     generate_preference_data,
     load_pref_data_with_prompts,
-    find_preference_data,
-    get_preference_data_id,
     DEFAULT_DATASET_CONFIG,
     DEFAULT_MODEL,
+    PreferenceData,
 )
-from src.models import ModelRunner
-from src.experiments import (
+from ..models import ModelRunner
+from ..viz import plot_layer_position_heatmap
+from ..profiler import P
+from . import (
     run_activation_patching,
     run_attribution_patching,
     compute_steering_vector,
     apply_steering,
 )
-from src.viz import plot_layer_position_heatmap
-from src.profiler import P
 
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "out" / "experiments"
 
-# Small config for quick testing (20 samples for meaningful steering vectors)
-SMALL_CONFIG = {
-    "model": DEFAULT_MODEL,
-    "dataset_config": {
-        "name": "test_minimal",
-        "context": {
-            "reward_unit": "dollars",
-            "role": "you",
-            "situation": "Choose between options.",
-        },
-        "options": {
-            "short_term": {
-                "reward_range": [100, 500],
-                "time_range": [[1, "days"], [30, "days"]],
-                "reward_steps": [2, "linear"],
-                "time_steps": [2, "linear"],
-            },
-            "long_term": {
-                "reward_range": [800, 2000],
-                "time_range": [[1, "months"], [6, "months"]],
-                "reward_steps": [2, "linear"],
-                "time_steps": [2, "linear"],
-            },
-        },
-        "time_horizons": [None],
-        "add_formatting_variations": False,
-    },
-    "max_samples": 20,
-    "max_pairs": 1,
-    "ig_steps": 3,
-    "position_threshold": 0.03,
-    "contrastive_max_samples": 20,
-    "top_n_positions": 1,
-    "steering_strengths": [-1.0, 0.0, 1.0],
-    "test_prompts": ["Choose: $100 now or $300 in 3 months?"],
-}
-
-# Normal config for real experiments
-NORMAL_CONFIG = {
-    "model": DEFAULT_MODEL,
-    "dataset_config": DEFAULT_DATASET_CONFIG,
-    "max_samples": 50,
-    "max_pairs": 3,
-    "ig_steps": 10,
-    "position_threshold": 0.05,
-    "contrastive_max_samples": 200,
-    "top_n_positions": 1,
-    "steering_strengths": [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0],
-    "test_prompts": [
-        "You have two options: receive $100 today, or receive $150 in one year. Which do you prefer?",
-        "Would you rather have a small reward now or a larger reward later?",
-    ],
-}
+@dataclass
+class ExperimentArgs:
+    """Arguments for running the experiment."""
+    config: dict  # Experiment configuration (model, dataset_config, etc.)
+    preference_data: Optional[str] = None
+    skip_attribution: bool = False
+    skip_steering_eval: bool = False
+    output: Optional[Path] = None
+    project_root: Optional[Path] = None
+    config_name: str = "custom"  # For display purposes
 
 
 def get_memory_usage() -> dict:
@@ -135,45 +69,27 @@ def log_memory(stage: str):
         print(f"  [Memory @ {stage}] {mem_str}")
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run full intertemporal preference experiment",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--small", action="store_true",
-        help="Use minimal config for quick testing"
-    )
-    parser.add_argument(
-        "--preference-data", type=str,
-        help="Use existing preference data instead of generating new"
-    )
-    parser.add_argument(
-        "--skip-attribution", action="store_true",
-        help="Skip attribution patching (faster)"
-    )
-    parser.add_argument(
-        "--skip-steering-eval", action="store_true",
-        help="Skip steering vector evaluation"
-    )
-    parser.add_argument(
-        "--output", type=Path, default=DEFAULT_OUTPUT_DIR,
-        help="Output directory"
-    )
-    return parser.parse_args()
+def run_experiment(args: ExperimentArgs) -> int:
+    """
+    Run the full intertemporal preference experiment.
 
+    Args:
+        args: Experiment arguments with config dict
 
-def main() -> int:
-    args = parse_args()
-    config = SMALL_CONFIG if args.small else NORMAL_CONFIG
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
+    config = args.config
+    project_root = args.project_root or Path(__file__).parent.parent.parent
+    output_dir = args.output or project_root / "out" / "experiments"
 
-    print(f"Config: {'SMALL (test)' if args.small else 'NORMAL'}")
+    print(f"Config: {args.config_name}")
     print(f"Model: {config['model']}")
     print(f"Max samples: {config['max_samples']}")
 
     with P("total"):
         ts = get_timestamp()
-        run_dir = args.output / ts
+        run_dir = output_dir / ts
 
         # Create organized subdirectories
         viz_dir = run_dir / "viz"
@@ -187,7 +103,7 @@ def main() -> int:
         save_json({
             "config": config,
             "args": {
-                "small": args.small,
+                "config_name": args.config_name,
                 "skip_attribution": args.skip_attribution,
                 "skip_steering_eval": args.skip_steering_eval,
             },
@@ -200,8 +116,8 @@ def main() -> int:
             print("STEP 1: PREFERENCE DATA")
             print("=" * 60)
 
-            pref_dir = PROJECT_ROOT / "out" / "preference_data"
-            datasets_dir = PROJECT_ROOT / "out" / "datasets"
+            pref_dir = project_root / "out" / "preference_data"
+            datasets_dir = project_root / "out" / "datasets"
 
             if args.preference_data:
                 with P("load_data"):
@@ -458,7 +374,3 @@ def main() -> int:
 
     P.report()
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

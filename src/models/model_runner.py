@@ -18,7 +18,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import torch
 
@@ -342,14 +342,14 @@ class ModelRunner:
     def forward_with_intervention(
         self,
         prompt: str,
-        intervention: Intervention,
+        intervention: Union[Intervention, list[Intervention]],
         prepend_bos: bool = False,
     ) -> torch.Tensor:
-        """Run forward pass with intervention applied.
+        """Run forward pass with intervention(s) applied.
 
         Args:
             prompt: Input text
-            intervention: Intervention specifying layer, mode, values, and targets
+            intervention: Single Intervention or list of Interventions to apply
             prepend_bos: Whether to prepend BOS token (default False)
 
         Returns:
@@ -359,7 +359,9 @@ class ModelRunner:
         # Note: intervention.positions are relative to tokenized input
         # If prepend_bos=True, position 0 is BOS, position 1 is first real token
         input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
-        return self._backend.forward_with_intervention(input_ids, intervention)
+        # Normalize to list for uniform handling
+        interventions = [intervention] if isinstance(intervention, Intervention) else intervention
+        return self._backend.forward_with_intervention(input_ids, interventions)
 
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
@@ -429,9 +431,9 @@ class _BackendBase(ABC):
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,
-        intervention: Intervention,
+        interventions: list[Intervention],
     ) -> torch.Tensor:
-        """Run forward pass with intervention, returning logits."""
+        """Run forward pass with interventions, returning logits."""
         ...
 
 
@@ -671,17 +673,22 @@ class _TransformerLensBackend(_BackendBase):
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,
-        intervention: Intervention,
+        interventions: list[Intervention],
     ) -> torch.Tensor:
-        hook_fn, _ = create_intervention_hook(
-            intervention,
-            dtype=self.runner.dtype,
-            device=self.runner.device,
-        )
+        # Build hooks for all interventions
+        fwd_hooks = []
+        for intervention in interventions:
+            hook_fn, _ = create_intervention_hook(
+                intervention,
+                dtype=self.runner.dtype,
+                device=self.runner.device,
+            )
+            fwd_hooks.append((intervention.hook_name, hook_fn))
+
         with torch.no_grad():
             logits = self.runner.model.run_with_hooks(
                 input_ids,
-                fwd_hooks=[(intervention.hook_name, hook_fn)],
+                fwd_hooks=fwd_hooks,
             )
         return logits
 
@@ -924,53 +931,56 @@ class _NNsightBackend(_BackendBase):
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,
-        intervention: Intervention,
+        interventions: list[Intervention],
     ) -> torch.Tensor:
-        layer = self._layers[intervention.layer]
-        module = self._get_component_module(layer, intervention.component)
-        values = torch.tensor(
-            intervention.scaled_values,
-            dtype=self.runner.dtype,
-            device=self.runner.device,
-        )
-        target = intervention.target
-        mode = intervention.mode
-        component = intervention.component
-
+        # Apply all interventions within the same trace context
         with self.runner.model.trace(input_ids):
-            # MLP returns tensor directly, layer/attn return tuple
-            if component == "mlp_out":
-                out = module.output
-            else:
-                out = module.output[0]
+            for intervention in interventions:
+                layer = self._layers[intervention.layer]
+                module = self._get_component_module(layer, intervention.component)
+                values = torch.tensor(
+                    intervention.scaled_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                target = intervention.target
+                mode = intervention.mode
+                component = intervention.component
 
-            if target.axis == "all":
-                if mode == "add":
-                    out[:, :] += values
-                elif mode == "set":
-                    out[:, :] = values
-                elif mode == "mul":
-                    out[:, :] *= values
-            elif target.axis == "position":
-                seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
-                for pos in target.positions:
-                    if pos < seq_len:
-                        if out.ndim == 2:
-                            # 2D: [seq, hidden]
-                            if mode == "add":
-                                out[pos, :] += values
-                            elif mode == "set":
-                                out[pos, :] = values
-                            elif mode == "mul":
-                                out[pos, :] *= values
-                        else:
-                            # 3D: [batch, seq, hidden]
-                            if mode == "add":
-                                out[:, pos, :] += values
-                            elif mode == "set":
-                                out[:, pos, :] = values
-                            elif mode == "mul":
-                                out[:, pos, :] *= values
+                # MLP returns tensor directly, layer/attn return tuple
+                if component == "mlp_out":
+                    out = module.output
+                else:
+                    out = module.output[0]
+
+                if target.axis == "all":
+                    if mode == "add":
+                        out[:, :] += values
+                    elif mode == "set":
+                        out[:, :] = values
+                    elif mode == "mul":
+                        out[:, :] *= values
+                elif target.axis == "position":
+                    seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
+                    for pos in target.positions:
+                        if pos < seq_len:
+                            if out.ndim == 2:
+                                # 2D: [seq, hidden]
+                                if mode == "add":
+                                    out[pos, :] += values
+                                elif mode == "set":
+                                    out[pos, :] = values
+                                elif mode == "mul":
+                                    out[pos, :] *= values
+                            else:
+                                # 3D: [batch, seq, hidden]
+                                if mode == "add":
+                                    out[:, pos, :] += values
+                                elif mode == "set":
+                                    out[:, pos, :] = values
+                                elif mode == "mul":
+                                    out[:, pos, :] *= values
+
             logits = self.runner.model.lm_head.output.save()
 
         return logits.detach()
@@ -1324,46 +1334,58 @@ class _PyveneBackend(_BackendBase):
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,
-        intervention: Intervention,
+        interventions: list[Intervention],
     ) -> torch.Tensor:
-        values = torch.tensor(
-            intervention.scaled_values,
-            dtype=self.runner.dtype,
-            device=self.runner.device,
-        )
-        target = intervention.target
-        mode = intervention.mode
-        module = self._get_component_module(intervention.layer, intervention.component)
+        # Register hooks for all interventions
+        hooks = []
+        for intervention in interventions:
+            values = torch.tensor(
+                intervention.scaled_values,
+                dtype=self.runner.dtype,
+                device=self.runner.device,
+            )
+            target = intervention.target
+            mode = intervention.mode
+            module = self._get_component_module(intervention.layer, intervention.component)
 
-        def intervention_hook(mod, input, output):
-            if isinstance(output, tuple):
-                hidden = output[0]
-            else:
-                hidden = output
+            # Create closure to capture intervention-specific values
+            def make_hook(values, target, mode):
+                def intervention_hook(mod, input, output):
+                    if isinstance(output, tuple):
+                        hidden = output[0]
+                    else:
+                        hidden = output
 
-            if target.axis == "all":
-                if mode == "add":
-                    hidden = hidden + values
-                elif mode == "set":
-                    hidden = values.expand_as(hidden)
-                elif mode == "mul":
-                    hidden = hidden * values
-            elif target.axis == "position":
-                for pos in target.positions:
-                    if pos < hidden.shape[1]:
+                    if target.axis == "all":
                         if mode == "add":
-                            hidden[:, pos, :] = hidden[:, pos, :] + values
+                            hidden = hidden + values
                         elif mode == "set":
-                            hidden[:, pos, :] = values
+                            hidden = values.expand_as(hidden)
                         elif mode == "mul":
-                            hidden[:, pos, :] = hidden[:, pos, :] * values
+                            hidden = hidden * values
+                    elif target.axis == "position":
+                        for pos in target.positions:
+                            if pos < hidden.shape[1]:
+                                if mode == "add":
+                                    hidden[:, pos, :] = hidden[:, pos, :] + values
+                                elif mode == "set":
+                                    hidden[:, pos, :] = values
+                                elif mode == "mul":
+                                    hidden[:, pos, :] = hidden[:, pos, :] * values
 
-            if isinstance(output, tuple):
-                return (hidden,) + output[1:]
-            return hidden
+                    if isinstance(output, tuple):
+                        return (hidden,) + output[1:]
+                    return hidden
+                return intervention_hook
 
-        hook = module.register_forward_hook(intervention_hook)
+            hook = module.register_forward_hook(make_hook(values, target, mode))
+            hooks.append(hook)
+
         with torch.no_grad():
             outputs = self.runner.model(input_ids)
-        hook.remove()
+
+        # Remove all hooks
+        for hook in hooks:
+            hook.remove()
+
         return outputs.logits

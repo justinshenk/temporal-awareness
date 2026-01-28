@@ -336,6 +336,11 @@ def apply_steering(
     return runner.generate(prompt, max_new_tokens=max_new_tokens, intervention=intervention)
 
 
+from .intertemporal import (
+    ExperimentArgs,
+    run_experiment,
+)
+
 __all__ = [
     "ExperimentConfig",
     "ExperimentResults",
@@ -343,4 +348,7 @@ __all__ = [
     "run_attribution_patching",
     "compute_steering_vector",
     "apply_steering",
+    # Intertemporal experiment
+    "ExperimentArgs",
+    "run_experiment",
 ]
