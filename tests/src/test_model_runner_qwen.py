@@ -2,6 +2,12 @@
 
 Tests ModelRunner with Qwen2.5-0.5B, comparing across backends.
 Marked slow since they require model loading.
+
+IMPORTANT:
+1. NEVER use backend APIs directly - always use ModelRunner public API
+2. All backends must pass identical tests (verify cross-backend consistency)
+3. Tests should NEVER be skipped (xfail is acceptable for known issues)
+4. When adding new ModelRunner methods, add tests for ALL backends
 """
 
 import numpy as np
@@ -134,18 +140,6 @@ class TestQwenForwardWithIntervention:
 
             assert not torch.allclose(base_logits, steered_logits)
 
-    def test_capture_returns_cache(self, runner_tl, runner_nnsight, runner_pyvene):
-        """capture=True returns cache in all backends."""
-        prompt = "Hello"
-
-        for runner in [runner_tl, runner_nnsight, runner_pyvene]:
-            direction = np.random.randn(runner.d_model).astype(np.float32)
-            intervention = steering(layer=5, direction=direction)
-
-            result = runner.forward_with_intervention(prompt, intervention, capture=True)
-            assert isinstance(result, tuple)
-            logits, cache = result
-            assert isinstance(cache, dict)
 
 
 class TestQwenMultipleInterventions:
@@ -165,3 +159,114 @@ class TestQwenMultipleInterventions:
 
             logits = runner.forward_with_intervention(prompt, interventions)
             assert logits.shape[0] == 1
+
+
+class TestQwenForwardWithInterventionAndCache:
+    """Test forward_with_intervention_and_cache across backends.
+
+    This method combines intervention application with activation caching
+    and gradient preservation - used for attribution patching.
+    """
+
+    def test_returns_logits_and_cache(self, runner_tl, runner_nnsight, runner_pyvene):
+        """All backends return (logits, cache) tuple."""
+        prompt = "Hello world"
+
+        for runner in [runner_tl, runner_nnsight, runner_pyvene]:
+            direction = np.random.randn(runner.d_model).astype(np.float32)
+            intervention = steering(layer=5, direction=direction, strength=1.0)
+
+            logits, cache = runner.forward_with_intervention_and_cache(
+                prompt, intervention,
+                names_filter=lambda n: "hook_resid_post" in n,
+            )
+
+            assert logits.ndim == 3  # [batch, seq, vocab]
+            assert isinstance(cache, dict)
+            assert len(cache) > 0
+
+    def test_cache_contains_requested_hooks(self, runner_tl, runner_nnsight, runner_pyvene):
+        """Cache contains hooks matching names_filter."""
+        prompt = "Hello"
+
+        for runner in [runner_tl, runner_nnsight, runner_pyvene]:
+            direction = np.random.randn(runner.d_model).astype(np.float32)
+            intervention = steering(layer=5, direction=direction)
+
+            _, cache = runner.forward_with_intervention_and_cache(
+                prompt, intervention,
+                names_filter=lambda n: "blocks.0.hook_resid_post" in n,
+            )
+
+            assert "blocks.0.hook_resid_post" in cache
+
+    def test_intervention_applied_with_cache(self, runner_tl, runner_nnsight, runner_pyvene):
+        """Intervention is applied when caching."""
+        prompt = "Hello world"
+
+        for runner in [runner_tl, runner_nnsight, runner_pyvene]:
+            # Get baseline
+            base_logits, _ = runner.run_with_cache(prompt)
+
+            # With intervention
+            direction = np.random.randn(runner.d_model).astype(np.float32)
+            intervention = steering(layer=5, direction=direction, strength=100.0)
+            steered_logits, _ = runner.forward_with_intervention_and_cache(
+                prompt, intervention,
+            )
+
+            # Intervention should change output
+            assert not torch.allclose(base_logits, steered_logits)
+
+    def test_multiple_interventions_with_cache(self, runner_tl, runner_nnsight, runner_pyvene):
+        """Multiple interventions work with caching."""
+        prompt = "Hello"
+
+        for runner in [runner_tl, runner_nnsight, runner_pyvene]:
+            direction = np.random.randn(runner.d_model).astype(np.float32)
+            interventions = [
+                steering(layer=3, direction=direction, strength=1.0),
+                steering(layer=6, direction=direction, strength=1.0),
+            ]
+
+            logits, cache = runner.forward_with_intervention_and_cache(
+                prompt, interventions,
+                names_filter=lambda n: "hook_resid_post" in n,
+            )
+
+            assert logits.shape[0] == 1
+            assert len(cache) > 0
+
+
+class TestQwenRunWithCacheAndGrad:
+    """Test run_with_cache_and_grad across backends.
+
+    This method enables gradient flow through cached activations.
+    """
+
+    def test_cache_has_grad_tl(self, runner_tl):
+        """TransformerLens: cached activations require grad."""
+        prompt = "Hello"
+        _, cache = runner_tl.run_with_cache_and_grad(
+            prompt, names_filter=lambda n: "blocks.0.hook_resid_post" in n
+        )
+
+        act = cache.get("blocks.0.hook_resid_post")
+        assert act is not None
+        assert act.requires_grad
+
+    def test_cache_shapes_match(self, runner_tl, runner_nnsight, runner_pyvene):
+        """Cache shapes are consistent across backends."""
+        prompt = "Test"
+        hook_name = "blocks.0.hook_resid_post"
+
+        _, cache_tl = runner_tl.run_with_cache_and_grad(
+            prompt, names_filter=lambda n: n == hook_name
+        )
+        _, cache_pv = runner_pyvene.run_with_cache_and_grad(
+            prompt, names_filter=lambda n: n == hook_name
+        )
+
+        # d_model dimension should match
+        assert cache_tl[hook_name].shape[-1] == runner_tl.d_model
+        assert cache_pv[hook_name].shape[-1] == runner_pyvene.d_model

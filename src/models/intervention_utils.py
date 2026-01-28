@@ -1,4 +1,10 @@
-"""Factory functions for creating interventions."""
+"""Factory functions for creating interventions.
+
+IMPORTANT DESIGN PRINCIPLES:
+1. Use these utility functions to create Interventions - don't construct manually
+2. NEVER access backend APIs directly - always use ModelRunner methods
+3. All interventions work identically across backends (TL, NNsight, Pyvene)
+"""
 
 from __future__ import annotations
 

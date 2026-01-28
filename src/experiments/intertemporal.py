@@ -3,6 +3,12 @@ Intertemporal preference experiment module.
 
 Provides configs and the main experiment runner for analyzing
 temporal preferences in language models.
+
+IMPORTANT DESIGN PRINCIPLES:
+1. NEVER use TransformerLens/NNsight/Pyvene directly - ALWAYS use ModelRunner API
+2. All analysis functions use ModelRunner methods (run_with_cache, forward_with_intervention, etc.)
+3. No magic numbers in configs - use named constants or explicit config values
+4. Experiments should be reproducible (set random seeds, log all configs)
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ import numpy as np
 import torch
 
 from ..common.io import ensure_dir, save_json, get_timestamp
+from ..common.token_positions import build_position_labels
 from ..data import (
     generate_preference_data,
     load_pref_data_with_prompts,
@@ -27,6 +34,7 @@ from ..data import (
 from ..models import ModelRunner
 from ..viz import plot_layer_position_heatmap
 from ..profiler import P
+# Import functions from this package (avoid circular import for run_probe_training)
 from . import (
     run_activation_patching,
     run_attribution_patching,
@@ -42,6 +50,7 @@ class ExperimentArgs:
     preference_data: Optional[str] = None
     skip_attribution: bool = False
     skip_steering_eval: bool = False
+    skip_probes: bool = False
     output: Optional[Path] = None
     project_root: Optional[Path] = None
     config_name: str = "custom"  # For display purposes
@@ -330,6 +339,106 @@ def run_experiment(args: ExperimentArgs) -> int:
             else:
                 print("\n[Skipping steering evaluation]")
 
+            # Step 7: Probe training (optional)
+            probe_results = None
+            if not args.skip_probes:
+                print("\n" + "=" * 60)
+                print("STEP 7: PROBE TRAINING")
+                print("=" * 60)
+
+                # Local import to avoid circular dependency
+                from . import run_probe_training
+
+                # Get probe config from experiment config (with defaults)
+                probe_layers = config.get("probe_layers", None)
+                if probe_layers is None:
+                    # Default: sample 5 layers evenly
+                    n = runner.n_layers
+                    probe_layers = sorted(set([0, n // 4, n // 2, 3 * n // 4, n - 1]))
+
+                probe_positions = config.get("probe_positions", [
+                    "option_one", "option_two", "consider",
+                    {"relative_to": "end", "offset": -1},
+                ])
+                probe_max_samples = config.get("probe_max_samples", 200)
+
+                with P("probe_training"):
+                    probe_results, probes = run_probe_training(
+                        runner, pref_data,
+                        layers=probe_layers,
+                        token_positions=probe_positions,
+                        test_split=0.2,
+                        random_seed=42,
+                        max_samples=probe_max_samples,
+                    )
+
+                # Save probe results and visualizations
+                from ..common.token_positions import build_position_labels
+
+                for probe_type in ["choice", "time_horizon"]:
+                    type_results = probe_results.get(probe_type, [])
+                    if not type_results:
+                        continue
+
+                    best = max(type_results, key=lambda r: r.test_accuracy)
+                    print(f"  {probe_type}: Best L{best.layer} P{best.token_position} = {best.test_accuracy:.3f}")
+
+                    # Save results JSON
+                    save_json({
+                        "probe_type": probe_type,
+                        "model": pref_data.model,
+                        "layers": probe_results["_meta"]["layers"],
+                        "best": {
+                            "layer": best.layer,
+                            "position": best.token_position,
+                            "test_accuracy": best.test_accuracy,
+                        },
+                        "results": [
+                            {"layer": r.layer, "position": r.token_position,
+                             "test_accuracy": r.test_accuracy, "train_accuracy": r.train_accuracy}
+                            for r in type_results
+                        ],
+                    }, data_dir / f"probe_{probe_type}_results.json")
+
+                    # Create heatmap
+                    resolved_layers = probe_results["_meta"]["layers"]
+                    pos_info = probe_results["_meta"].get(f"{probe_type}_position_info") or \
+                               probe_results["_meta"].get("choice_position_info")
+                    pos_labels = build_position_labels(probe_positions, pos_info)
+
+                    matrix = np.full((len(resolved_layers), len(probe_positions)), np.nan)
+                    layer_idx_map = {l: i for i, l in enumerate(resolved_layers)}
+                    for r in type_results:
+                        matrix[layer_idx_map[r.layer], r.token_position] = r.test_accuracy
+
+                    title_map = {"choice": "Choice Probe", "time_horizon": "Time Horizon Probe"}
+                    plot_layer_position_heatmap(
+                        matrix, resolved_layers, pos_labels,
+                        viz_dir / f"probe_{probe_type}.png",
+                        title=f"{title_map.get(probe_type, probe_type)}",
+                        cbar_label="Test Accuracy", vmin=0.5, vmax=1.0,
+                    )
+                    print(f"    Saved: {viz_dir / f'probe_{probe_type}.png'}")
+
+                    # Save best probe's steering vector
+                    best_probe = probes.get((probe_type, best.layer, best.token_position))
+                    if best_probe:
+                        save_json({
+                            "type": "steering_vector",
+                            "source": "linear_probe",
+                            "probe_type": probe_type,
+                            "model": pref_data.model,
+                            "layer": best.layer,
+                            "position": best.token_position,
+                            "test_accuracy": best.test_accuracy,
+                            "direction": best_probe.get_steering_vector().tolist(),
+                            "bias": best_probe.get_bias(),
+                        }, data_dir / f"probe_{probe_type}_intervention.json")
+
+                log_memory("after_probes")
+            else:
+                print("\n[Skipping probe training]")
+
             # Save final metadata
             metadata = {
                 "timestamp": ts,
@@ -347,6 +456,7 @@ def run_experiment(args: ExperimentArgs) -> int:
                 "skipped": {
                     "attribution": args.skip_attribution,
                     "steering_eval": args.skip_steering_eval,
+                    "probes": args.skip_probes,
                 },
             }
             save_json(metadata, run_dir / "metadata.json")

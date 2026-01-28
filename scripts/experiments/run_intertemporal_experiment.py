@@ -2,6 +2,12 @@
 """
 Run the intertemporal preference experiment.
 
+IMPORTANT DESIGN PRINCIPLES:
+1. This is a thin CLI wrapper - core logic lives in src/experiments/intertemporal.py
+2. Configs (SMALL_CONFIG, NORMAL_CONFIG) are defined here, not in src/
+3. NEVER use TransformerLens/NNsight/Pyvene directly - use ModelRunner via experiment module
+4. No magic numbers - all config values should be explicit and documented
+
 Usage:
     # Quick test with minimal config
     uv run python scripts/experiments/run_intertemporal_experiment.py --small
@@ -67,6 +73,10 @@ SMALL_CONFIG = {
     "top_n_positions": 1,
     "steering_strengths": [-1.0, 0.0, 1.0],
     "test_prompts": ["Choose: $100 now or $300 in 3 months?"],
+    # Probe config (minimal for testing)
+    "probe_layers": None,  # Auto-select 5 layers
+    "probe_positions": ["option_one", "option_two", {"relative_to": "end", "offset": -1}],
+    "probe_max_samples": 20,
 }
 
 # Normal config for real experiments
@@ -84,6 +94,13 @@ NORMAL_CONFIG = {
         "You have two options: receive $100 today, or receive $150 in one year. Which do you prefer?",
         "Would you rather have a small reward now or a larger reward later?",
     ],
+    # Probe config
+    "probe_layers": None,  # Auto-select 5 layers
+    "probe_positions": [
+        "option_one", "option_two", "consider",
+        {"relative_to": "end", "offset": -1},
+    ],
+    "probe_max_samples": 200,
 }
 
 
@@ -109,6 +126,10 @@ def parse_args() -> ExperimentArgs:
         help="Skip steering vector evaluation"
     )
     parser.add_argument(
+        "--skip-probes", action="store_true",
+        help="Skip probe training"
+    )
+    parser.add_argument(
         "--output", type=Path,
         help="Output directory (default: out/experiments)"
     )
@@ -123,6 +144,7 @@ def parse_args() -> ExperimentArgs:
         preference_data=args.preference_data,
         skip_attribution=args.skip_attribution,
         skip_steering_eval=args.skip_steering_eval,
+        skip_probes=args.skip_probes,
         output=args.output,
         project_root=PROJECT_ROOT,
     )

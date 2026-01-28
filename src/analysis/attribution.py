@@ -1,4 +1,10 @@
-"""Attribution patching methods: standard, EAP, and EAP-IG."""
+"""Attribution patching methods: standard, EAP, and EAP-IG.
+
+IMPORTANT DESIGN PRINCIPLES (do not violate):
+1. NEVER use TransformerLens or any backend API directly - ALWAYS use ModelRunner API
+2. All functionality must work identically across all backends (TL, NNsight, Pyvene)
+3. Tests must cover all backends and verify matching behavior
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,7 @@ import numpy as np
 import torch
 
 from ..profiler import P
+from ..models.intervention_utils import patch
 
 if TYPE_CHECKING:
     from ..models import ModelRunner
@@ -252,19 +259,19 @@ def compute_eap_ig(
     Integrates gradients along path from corrupted to clean:
         IG = (clean - corrupted) · ∫₀¹ ∂metric/∂act(corrupted + α(clean - corrupted)) dα
 
+    IMPORTANT: Uses ModelRunner API only - NEVER use TransformerLens directly.
+
     Args:
         runner: Model runner
         clean_text: Clean input
         corrupted_text: Corrupted input
         metric: Patching metric
-        pos_mapping: Position mapping
+        pos_mapping: Position mapping (clean_pos -> corrupted_pos)
         n_steps: Integration steps (higher = more accurate but slower)
 
     Returns:
         Dict with 'attn' and 'mlp' attribution arrays
     """
-    from ..models.intervention_utils import interpolate
-
     n_layers = runner.n_layers
 
     def all_filter(n):
@@ -286,7 +293,8 @@ def compute_eap_ig(
         for step in range(n_steps):
             alpha = (step + 0.5) / n_steps
 
-            # Build interpolation interventions for all layers and components
+            # Build position-aware interpolation interventions
+            # For each (layer, component), we set corrupted positions to interpolated values
             interventions = []
             for layer in range(n_layers):
                 for comp in ["resid_post", "attn_out", "mlp_out"]:
@@ -294,24 +302,51 @@ def compute_eap_ig(
                     if hook_name not in clean_cache or hook_name not in corr_cache_base:
                         continue
 
-                    clean_act = clean_cache[hook_name][0].detach().cpu().numpy()
-                    corr_act = corr_cache_base[hook_name][0].detach().cpu().numpy()
+                    clean_act = clean_cache[hook_name]
+                    corr_act = corr_cache_base[hook_name]
 
-                    interventions.append(interpolate(
-                        layer=layer,
-                        source_values=corr_act,
-                        target_values=clean_act,
-                        alpha=alpha,
-                        component=comp,
-                    ))
+                    # Convert to numpy
+                    if isinstance(clean_act, torch.Tensor):
+                        clean_np = clean_act[0].detach().cpu().numpy()
+                    else:
+                        clean_np = np.array(clean_act[0])
 
-            # Run with interpolation and capture resid_post with gradients
-            logits, cache = runner.forward_with_intervention(
-                corrupted_text, interventions, with_grad=True, capture=True
+                    if isinstance(corr_act, torch.Tensor):
+                        corr_np = corr_act[0].detach().cpu().numpy()
+                    else:
+                        corr_np = np.array(corr_act[0])
+
+                    # For each valid position, create a patch intervention with interpolated value
+                    # We need to handle position mapping: clean_pos[i] maps to corr_pos[i]
+                    for i in range(len(clean_pos)):
+                        if not valid[i]:
+                            continue
+                        cp = clean_pos[i]
+                        rp = corr_pos[i]
+
+                        if cp >= clean_np.shape[0] or rp >= corr_np.shape[0]:
+                            continue
+
+                        # Interpolated value: corr + alpha * (clean - corr)
+                        interp_value = corr_np[rp] + alpha * (clean_np[cp] - corr_np[rp])
+
+                        interventions.append(patch(
+                            layer=layer,
+                            values=interp_value,
+                            positions=int(rp),
+                            component=comp,
+                        ))
+
+            # Use ModelRunner API: forward_with_intervention_and_cache
+            logits, cache = runner.forward_with_intervention_and_cache(
+                corrupted_text,
+                interventions,
+                names_filter=lambda n: "hook_resid_post" in n,
             )
+
             metric_val = metric.compute_raw(logits)
 
-            # Collect resid_post activations for gradient computation
+            # Collect all activations for batch gradient computation
             resid_acts = []
             resid_layers = []
             for layer in range(n_layers):

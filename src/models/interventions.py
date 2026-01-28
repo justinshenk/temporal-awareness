@@ -1,4 +1,11 @@
-"""Activation interventions for modifying model behavior during inference."""
+"""Activation interventions for modifying model behavior during inference.
+
+IMPORTANT DESIGN PRINCIPLES:
+1. Intervention is the core data structure - use intervention_utils.py factories to create
+2. NEVER access TransformerLens/NNsight/Pyvene directly - use ModelRunner API
+3. All intervention modes (add, set, mul, interpolate) work across ALL backends
+4. Tests verify cross-backend consistency
+"""
 
 from __future__ import annotations
 

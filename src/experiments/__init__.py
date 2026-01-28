@@ -6,6 +6,12 @@ This module provides unified functions for running the full analysis pipeline:
 - Attribution patching
 - Contrastive analysis (steering vectors)
 - Steering evaluation
+
+IMPORTANT DESIGN PRINCIPLES:
+1. NEVER use TransformerLens/NNsight/Pyvene APIs directly - ALWAYS use ModelRunner
+2. All experiment functions must work with any backend (configurable via ModelRunner)
+3. No magic numbers - use config parameters or named constants
+4. Check for existing code before adding new functions (avoid duplication)
 """
 
 from __future__ import annotations
@@ -341,6 +347,151 @@ from .intertemporal import (
     run_experiment,
 )
 
+
+def run_probe_training(
+    runner: ModelRunner,
+    pref_data: PreferenceData,
+    layers: list[int],
+    token_positions: list,
+    test_split: float = 0.2,
+    random_seed: int = 42,
+    max_samples: int = 200,
+) -> tuple[dict, dict]:
+    """Train linear probes for choice and time horizon prediction.
+
+    Trains two types of probes:
+    1. Choice probe: predicts model's short_term vs long_term choice
+    2. Time horizon probe: predicts prompt's time horizon (<1yr vs >1yr)
+
+    Args:
+        runner: ModelRunner instance
+        pref_data: Preference data with samples
+        layers: Layer indices to probe (negative indices count from end)
+        token_positions: Position specs for probing
+        test_split: Fraction of data for testing
+        random_seed: Random seed for reproducibility
+        max_samples: Max samples to use (0 for all)
+
+    Returns:
+        Tuple of (results_dict, probes_dict) where:
+        - results_dict maps probe_type to list of ProbeResult
+        - probes_dict maps (probe_type, layer, pos_idx) to trained LinearProbe
+    """
+    from sklearn.model_selection import train_test_split
+    from ..probes import LinearProbe, ProbeResult, prepare_samples, extract_activations
+
+    # Resolve negative layer indices
+    resolved_layers = []
+    for l in layers:
+        if l < 0:
+            resolved_layers.append(runner.n_layers + l)
+        else:
+            resolved_layers.append(l)
+
+    # Prepare samples for both probe types
+    with P("prepare_probe_samples"):
+        choice_samples, choice_labels = prepare_samples(
+            pref_data, "choice", "choice", random_seed
+        )
+        horizon_samples, horizon_labels = prepare_samples(
+            pref_data, "time_horizon", "time_horizon", random_seed
+        )
+
+    # Subsample if needed
+    if max_samples > 0 and len(choice_samples) > max_samples:
+        _, choice_samples, _, choice_labels = train_test_split(
+            choice_samples, choice_labels, test_size=max_samples,
+            stratify=choice_labels, random_state=random_seed
+        )
+        choice_samples = list(choice_samples)
+
+    if max_samples > 0 and len(horizon_samples) > max_samples:
+        _, horizon_samples, _, horizon_labels = train_test_split(
+            horizon_samples, horizon_labels, test_size=max_samples,
+            stratify=horizon_labels, random_state=random_seed
+        )
+        horizon_samples = list(horizon_samples)
+
+    print(f"  Choice samples: {len(choice_samples)}")
+    print(f"  Horizon samples: {len(horizon_samples)}")
+
+    # Early return if no choice samples (critical)
+    if len(choice_samples) < 4:  # Need at least 4 for train/test split
+        print("  WARNING: Insufficient choice samples for probe training")
+        return {}, {}
+
+    # Extract activations
+    with P("extract_probe_activations"):
+        choice_extraction = extract_activations(
+            runner, choice_samples, resolved_layers, token_positions
+        )
+        # Only extract for horizon if we have samples
+        if len(horizon_samples) >= 4:
+            horizon_extraction = extract_activations(
+                runner, horizon_samples, resolved_layers, token_positions
+            )
+        else:
+            horizon_extraction = None
+
+    # Train probes
+    results = {}
+    probes = {}
+
+    def train_probes_for_type(probe_type, X, y):
+        train_idx, test_idx = train_test_split(
+            np.arange(len(y)), test_size=test_split,
+            stratify=y, random_state=random_seed,
+        )
+
+        type_results = []
+        for (layer, pos_idx), X_lp in sorted(X.items()):
+            X_train, X_test = X_lp[train_idx], X_lp[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            probe = LinearProbe(random_state=random_seed)
+            cv_mean, cv_std, train_acc = probe.train(X_train, y_train, n_cv_folds=0)
+            test_acc, test_prec, test_rec, test_f1 = probe.evaluate(X_test, y_test)
+
+            result = ProbeResult(
+                layer=layer, token_position=pos_idx,
+                cv_accuracy_mean=cv_mean, cv_accuracy_std=cv_std,
+                train_accuracy=train_acc, test_accuracy=test_acc,
+                test_precision=test_prec, test_recall=test_rec,
+                test_f1=test_f1, n_train=len(y_train), n_test=len(y_test),
+                n_features=X_train.shape[1],
+            )
+            type_results.append(result)
+            probes[(probe_type, layer, pos_idx)] = probe
+
+        type_results.sort(key=lambda r: (r.layer, r.token_position))
+        return type_results
+
+    with P("train_choice_probe"):
+        results["choice"] = train_probes_for_type(
+            "choice", choice_extraction.X, choice_labels
+        )
+
+    # Only train time_horizon probe if we have enough samples
+    if horizon_extraction is not None and len(horizon_samples) >= 4:
+        with P("train_horizon_probe"):
+            results["time_horizon"] = train_probes_for_type(
+                "time_horizon", horizon_extraction.X, horizon_labels
+            )
+    else:
+        print("  Skipping time_horizon probe (insufficient samples)")
+        results["time_horizon"] = []
+
+    # Add extraction info for visualization
+    results["_meta"] = {
+        "layers": resolved_layers,
+        "token_positions": token_positions,
+        "choice_position_info": choice_extraction.position_info,
+        "horizon_position_info": horizon_extraction.position_info if horizon_extraction else None,
+    }
+
+    return results, probes
+
+
 __all__ = [
     "ExperimentConfig",
     "ExperimentResults",
@@ -348,6 +499,7 @@ __all__ = [
     "run_attribution_patching",
     "compute_steering_vector",
     "apply_steering",
+    "run_probe_training",
     # Intertemporal experiment
     "ExperimentArgs",
     "run_experiment",
