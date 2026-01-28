@@ -20,7 +20,9 @@ RESULTS_PREFIX = "test_"
 
 OPTION_KEYS = ["(A)", "(B)"]
 NUM_STEPS = 10
-NUM_SAMPLES = 20  # Set to an integer to limit the number of samples, or None to use all
+NUM_SAMPLES = (
+    None  # Set to an integer to limit the number of samples, or None to use all
+)
 BATCH_SIZE = 5
 output_file = RESULTS_DIR / f"{RESULTS_PREFIX}eap_ig_scores.json"
 
