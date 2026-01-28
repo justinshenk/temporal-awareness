@@ -31,20 +31,79 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data import DEFAULT_DATASET_CONFIG, DEFAULT_MODEL
 from src.experiments.intertemporal import ExperimentArgs, run_experiment
+
+
+# Default model for experiments
+DEFAULT_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+
+# Default dataset config (housing scenario with time horizons)
+# All configurable knobs for dataset generation:
+#   - name: identifier for the dataset
+#   - context: scenario setup (role, situation, reward units, labels, sampling method)
+#   - options: reward/time ranges and stepping for short_term and long_term
+#   - time_horizons: list of time constraints (None = no constraint)
+#   - add_formatting_variations: apply label/time/number formatting variations
+#   - prompt_format: name of prompt template to use (default: "default_prompt_format")
+DEFAULT_DATASET_CONFIG = {
+    "name": "standalone_default",
+    "context": {
+        # Scenario setup
+        "reward_unit": "housing units",
+        "role": "the city administration",
+        "situation": "Plan for housing development in the city.",
+        # Optional context fields
+        "task_in_question": "to decide between",  # Text for task description
+        "reasoning_ask": "why this choice was made",  # Text for asking reasoning
+        "domain": "housing",  # Domain identifier
+        "extra_situation": "",  # Additional context
+        # Sampling configuration
+        "labels": ["a)", "b)"],  # Option labels
+        "method": "grid",  # "grid" or "random" sampling
+        "seed": 42,  # Random seed for reproducibility
+    },
+    "options": {
+        "short_term": {
+            "reward_range": [1000, 5000],  # [min, max] reward values
+            "time_range": [[1, "months"], [6, "months"]],  # [min, max] time delays
+            "reward_steps": [2, "linear"],  # [n_steps, "linear"/"logarithmic"]
+            "time_steps": [2, "linear"],
+        },
+        "long_term": {
+            "reward_range": [8000, 30000],
+            "time_range": [[2, "years"], [10, "years"]],
+            "reward_steps": [2, "logarithmic"],
+            "time_steps": [2, "logarithmic"],
+        },
+    },
+    # Time horizons for probes (None = no time horizon constraint)
+    "time_horizons": [
+        {"value": 6, "unit": "months"},
+        {"value": 5, "unit": "years"},
+    ],
+    # Apply formatting variations (label order, time units, number spelling)
+    "add_formatting_variations": True,
+    # Prompt format template name
+    "prompt_format": "default_prompt_format",
+}
 
 
 # Small config for quick testing (20 samples for meaningful steering vectors)
 # Reward ratios balanced so model makes mixed choices (not always long-term)
 SMALL_CONFIG = {
+    # Model
     "model": DEFAULT_MODEL,
+
+    # Dataset generation config
     "dataset_config": {
         "name": "test_minimal",
         "context": {
             "reward_unit": "dollars",
             "role": "you",
             "situation": "Choose between options.",
+            "labels": ["a)", "b)"],
+            "method": "grid",
+            "seed": 42,
         },
         "options": {
             "short_term": {
@@ -62,40 +121,65 @@ SMALL_CONFIG = {
                 "time_steps": [2, "linear"],
             },
         },
-        "time_horizons": [None],
+        "time_horizons": [None],  # No time horizon = no time_horizon probe
         "add_formatting_variations": False,
     },
-    "max_samples": 20,
-    "max_pairs": 1,
-    "ig_steps": 3,
-    "position_threshold": 0.03,
-    "contrastive_max_samples": 20,
-    "top_n_positions": 1,
-    "steering_strengths": [-1.0, 0.0, 1.0],
+
+    # Data sampling
+    "max_samples": 20,  # Number of preference samples to generate
+
+    # Activation patching config
+    "max_pairs": 1,  # Number of clean/corrupted pairs for patching
+    "position_threshold": 0.03,  # Threshold for filtering important positions
+
+    # Attribution patching config
+    "ig_steps": 3,  # Integration steps for EAP-IG (higher = more accurate)
+
+    # Steering vector config
+    "contrastive_max_samples": 20,  # Samples for computing steering direction
+    "top_n_positions": 1,  # Number of top positions to use
+
+    # Steering evaluation config
+    "steering_strengths": [-1.0, 0.0, 1.0],  # Strengths to test
     "test_prompts": ["Choose: $100 now or $300 in 3 months?"],
-    # Probe config (minimal for testing)
-    "probe_layers": None,  # Auto-select 5 layers
+
+    # Probe training config
+    "probe_layers": None,  # None = auto-select 5 evenly-spaced layers
     "probe_positions": ["option_one", "option_two", {"relative_to": "end", "offset": -1}],
     "probe_max_samples": 20,
 }
 
 # Normal config for real experiments
 NORMAL_CONFIG = {
+    # Model
     "model": DEFAULT_MODEL,
+
+    # Dataset generation config (uses DEFAULT_DATASET_CONFIG with time horizons)
     "dataset_config": DEFAULT_DATASET_CONFIG,
-    "max_samples": 50,
-    "max_pairs": 3,
-    "ig_steps": 10,
-    "position_threshold": 0.05,
-    "contrastive_max_samples": 200,
-    "top_n_positions": 1,
+
+    # Data sampling
+    "max_samples": 50,  # Number of preference samples to generate
+
+    # Activation patching config
+    "max_pairs": 3,  # Number of clean/corrupted pairs for patching
+    "position_threshold": 0.05,  # Threshold for filtering important positions
+
+    # Attribution patching config
+    "ig_steps": 10,  # Integration steps for EAP-IG (higher = more accurate)
+
+    # Steering vector config
+    "contrastive_max_samples": 200,  # Samples for computing steering direction
+    "top_n_positions": 1,  # Number of top positions to use
+
+    # Steering evaluation config
     "steering_strengths": [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0],
     "test_prompts": [
         "You have two options: receive $100 today, or receive $150 in one year. Which do you prefer?",
         "Would you rather have a small reward now or a larger reward later?",
     ],
-    # Probe config
-    "probe_layers": None,  # Auto-select 5 layers
+
+    # Probe training config
+    "probe_layers": None,  # None = auto-select 5 evenly-spaced layers
     "probe_positions": [
         "option_one", "option_two", "consider",
         {"relative_to": "end", "offset": -1},
