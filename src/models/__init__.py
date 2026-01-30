@@ -11,23 +11,34 @@ from .query_runner import (
     parse_choice,
 )
 from .interventions import (
-    InterventionType,
-    ApplicationMode,
-    AblationType,
-    PatchSource,
-    PositionTarget,
-    InterventionConfig,
-    SteeringConfig,
-    ActivationPatchingConfig,
-    AblationConfig,
+    Intervention,
+    Target,
     create_intervention_hook,
     PatternMatcher,
 )
+from .intervention_utils import (
+    steering,
+    ablation,
+    patch,
+    scale,
+    interpolate,
+    compute_mean_activations,
+    get_activations,
+    random_direction,
+)
+from .intervention_loader import (
+    load_intervention,
+    load_intervention_from_dict,
+    load_intervention_json,
+    list_sample_interventions,
+)
 
 __all__ = [
+    # Model runner
     "ModelRunner",
     "ModelBackend",
     "LabelProbsOutput",
+    # Query runner
     "QueryRunner",
     "QueryConfig",
     "QueryOutput",
@@ -35,15 +46,23 @@ __all__ = [
     "InternalsConfig",
     "CapturedInternals",
     "parse_choice",
-    "InterventionType",
-    "ApplicationMode",
-    "AblationType",
-    "PatchSource",
-    "PositionTarget",
-    "InterventionConfig",
-    "SteeringConfig",
-    "ActivationPatchingConfig",
-    "AblationConfig",
+    # Interventions
+    "Intervention",
+    "Target",
     "create_intervention_hook",
     "PatternMatcher",
+    # Intervention utils
+    "steering",
+    "ablation",
+    "patch",
+    "scale",
+    "interpolate",
+    "compute_mean_activations",
+    "get_activations",
+    "random_direction",
+    # Intervention loader
+    "load_intervention",
+    "load_intervention_from_dict",
+    "load_intervention_json",
+    "list_sample_interventions",
 ]

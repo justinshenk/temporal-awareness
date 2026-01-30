@@ -6,11 +6,12 @@ import random
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from ..common.io import load_json
 from ..common.schema_utils import SchemaClass
 from .model_runner import ModelRunner
+from .interventions import Intervention
 
 
 @dataclass
@@ -31,6 +32,8 @@ class QueryConfig(SchemaClass):
     max_new_tokens: int = 256
     temperature: float = 0.0
     subsample: float = 1.0
+    intervention: Optional[dict] = None  # Raw intervention config (loaded per-model)
+    skip_generation: bool = False  # If True, infer choice from probs only (~100x faster)
 
 
 @dataclass
@@ -124,7 +127,7 @@ class QueryRunner:
         data = load_json(path)
 
         internals = None
-        if "internals" in data:
+        if data.get("internals"):
             internals = InternalsConfig(
                 activations=data["internals"],
                 token_positions=data.get("token_positions", []),
@@ -137,6 +140,8 @@ class QueryRunner:
             max_new_tokens=data.get("max_new_tokens", 256),
             temperature=data.get("temperature", 0.0),
             subsample=data.get("subsample", 1.0),
+            intervention=data.get("intervention"),
+            skip_generation=data.get("skip_generation", False),
         )
 
     def _load_model(self, name: str) -> ModelRunner:
@@ -144,7 +149,19 @@ class QueryRunner:
             return self._model
         self._model = ModelRunner(model_name=name)
         self._model_name = name
+        self._intervention = None  # Reset intervention for new model
         return self._model
+
+    def _load_intervention(
+        self, model_runner: ModelRunner
+    ) -> Optional[Intervention]:
+        """Load intervention config for the current model."""
+        if self.config.intervention is None:
+            return None
+
+        from .intervention_loader import load_intervention_from_dict
+
+        return load_intervention_from_dict(self.config.intervention, model_runner)
 
     def load_dataset(self, dataset_id: str) -> dict:
         """Load dataset by ID."""
@@ -185,7 +202,11 @@ class QueryRunner:
 
         model_runner = self._load_model(model_name)
         activation_names = self._get_activation_names()
+        intervention = self._load_intervention(model_runner)
         preferences = []
+
+        if intervention is not None:
+            print(f"Using intervention: mode={intervention.mode} at layer {intervention.layer}")
 
         print(f"Querying LLM for {len(samples)} samples...")
         for i, sample in enumerate(samples):
@@ -197,43 +218,39 @@ class QueryRunner:
             short_label = pair["short_term"]["label"]
             long_label = pair["long_term"]["label"]
 
-            # Step 1: Calculate kv cache for prompt and get prefill logits
-            kv_cache = model_runner.init_kv_cache()
-            prefill_logits, _ = model_runner.run_with_cache(
-                prompt,
-                names_filter=lambda name: name in activation_names,
-                past_kv_cache=kv_cache,
-            )
-            kv_cache.freeze()
-
-            # Step 2: Run generation using prefill logits and frozen cache
-            response = model_runner.generate_from_cache(
-                prefill_logits,
-                kv_cache,
-                max_new_tokens=self.config.max_new_tokens,
-                temperature=self.config.temperature,
-            )
-            choice = parse_choice(response, short_label, long_label, choice_prefix)
-
-            # Step 3: Capture internals
-            _, cache = model_runner.run_with_cache(
-                prompt + response,
-                names_filter=lambda name: name in activation_names,
-                past_kv_cache=kv_cache,
-            )
-            activations = {}
-            for name in activation_names:
-                if name in cache:
-                    activations[name] = cache[name][0].cpu()
-            internals = CapturedInternals(
-                activations=activations,
-                activation_names=list(activations.keys()),
-            )
-
-            # Step 4: Capture choice probs
+            # Step 1: Get choice probabilities
             probs = model_runner.get_label_probs(
-                prompt, choice_prefix, (short_label, long_label), kv_cache
+                prompt, choice_prefix, (short_label, long_label)
             )
+
+            # Step 2: Generate response (or skip if skip_generation=True)
+            if self.config.skip_generation:
+                response = ""
+                choice = "short_term" if probs[0] > probs[1] else "long_term"
+            else:
+                response = model_runner.generate(
+                    prompt,
+                    max_new_tokens=self.config.max_new_tokens,
+                    temperature=self.config.temperature,
+                    intervention=intervention,
+                )
+                choice = parse_choice(response, short_label, long_label, choice_prefix)
+
+            # Step 3: Capture internals (only if requested)
+            internals = None
+            if activation_names:
+                _, cache = model_runner.run_with_cache(
+                    prompt + response,
+                    names_filter=lambda name: name in activation_names,
+                )
+                activations = {}
+                for name in activation_names:
+                    if name in cache:
+                        activations[name] = cache[name][0].cpu()
+                internals = CapturedInternals(
+                    activations=activations,
+                    activation_names=list(activations.keys()),
+                )
 
             if choice == "short_term":
                 choice_prob, alt_prob = probs[0], probs[1]
