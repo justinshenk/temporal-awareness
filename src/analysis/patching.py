@@ -31,6 +31,8 @@ class PatchingMetric:
     """Metric for activation/attribution patching.
 
     Stores token IDs and positions for computing logit differences.
+    When clean and corrupted samples use different label formats,
+    recovery is measured in both formats and the max is taken.
     """
 
     clean_short_id: int
@@ -42,21 +44,61 @@ class PatchingMetric:
     clean_val: float
     corr_val: float
     diff: float
+    # Baseline logit-diff at corr_pos using clean-format tokens
+    # (only differs from corr_val when label formats differ)
+    corr_val_clean_format: float = 0.0
+
+    @property
+    def same_labels(self) -> bool:
+        return (self.clean_short_id == self.corr_short_id
+                and self.clean_long_id == self.corr_long_id)
 
     def __call__(self, logits: torch.Tensor) -> float:
-        """Compute normalized recovery (0=corrupted, 1=clean)."""
-        raw = (
+        """Compute normalized recovery (0=corrupted, 1=clean).
+
+        When labels differ between clean and corrupted, checks both
+        label formats and returns the max recovery.
+        """
+        if abs(self.diff) < 1e-8:
+            return 0.0
+
+        # Recovery measured with corrupted-format tokens
+        raw_corr = (
             logits[0, self.corr_pos, self.corr_short_id]
             - logits[0, self.corr_pos, self.corr_long_id]
         ).item()
-        return (raw - self.corr_val) / self.diff if abs(self.diff) > 1e-8 else 0.0
+        recovery_corr = (raw_corr - self.corr_val) / self.diff
+
+        if self.same_labels:
+            return recovery_corr
+
+        # Recovery measured with clean-format tokens
+        raw_clean = (
+            logits[0, self.corr_pos, self.clean_short_id]
+            - logits[0, self.corr_pos, self.clean_long_id]
+        ).item()
+        recovery_clean = (raw_clean - self.corr_val_clean_format) / self.diff
+
+        return max(recovery_corr, recovery_clean)
 
     def compute_raw(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute raw logit difference as a tensor (for gradients)."""
-        return (
+        """Compute raw logit difference as a tensor (for gradients).
+
+        When labels differ between clean and corrupted, returns the max
+        of both format's logit differences so gradients flow through
+        whichever format the model is using more strongly.
+        """
+        raw_corr = (
             logits[0, self.corr_pos, self.corr_short_id]
             - logits[0, self.corr_pos, self.corr_long_id]
         )
+        if self.same_labels:
+            return raw_corr
+        raw_clean = (
+            logits[0, self.corr_pos, self.clean_short_id]
+            - logits[0, self.corr_pos, self.clean_long_id]
+        )
+        return torch.max(raw_corr, raw_clean)
 
 
 def build_position_mapping(
@@ -187,6 +229,13 @@ def create_metric(
         - corr_logits[0, corr_pos, corr_long_id]
     ).item()
 
+    # Baseline corrupted logit-diff using clean-format tokens
+    # (matters when label formats differ between clean and corrupted)
+    corr_val_clean_format = (
+        corr_logits[0, corr_pos, clean_short_id]
+        - corr_logits[0, corr_pos, clean_long_id]
+    ).item()
+
     return PatchingMetric(
         clean_short_id=clean_short_id,
         clean_long_id=clean_long_id,
@@ -197,4 +246,5 @@ def create_metric(
         clean_val=clean_val,
         corr_val=corr_val,
         diff=clean_val - corr_val,
+        corr_val_clean_format=corr_val_clean_format,
     )

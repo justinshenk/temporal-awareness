@@ -185,6 +185,7 @@ def build_prompt_pairs(
     pref_data: PreferenceData,
     max_pairs: int,
     include_response: bool = True,
+    same_labels: bool = True,
 ) -> list[tuple[str, str, PreferenceItem, PreferenceItem]]:
     """Build clean/corrupted text pairs from short_term and long_term samples.
 
@@ -195,11 +196,43 @@ def build_prompt_pairs(
         pref_data: PreferenceData with preferences
         max_pairs: Maximum number of pairs to generate
         include_response: Whether to include model response in text
+        same_labels: If True (default), only pair samples that share the
+            same short_term_label and long_term_label strings so the
+            label token IDs match between clean and corrupted.
 
     Returns:
         List of (clean_text, corrupted_text, clean_sample, corrupted_sample)
     """
     short_term, long_term = pref_data.split_by_choice()
+
+    if same_labels:
+        # Group by (short_term_label, long_term_label) and pair within groups
+        from collections import defaultdict
+        short_by_labels = defaultdict(list)
+        long_by_labels = defaultdict(list)
+        for s in short_term:
+            short_by_labels[(s.short_term_label, s.long_term_label)].append(s)
+        for l in long_term:
+            long_by_labels[(l.short_term_label, l.long_term_label)].append(l)
+
+        pairs = []
+        for key in short_by_labels:
+            if key not in long_by_labels:
+                continue
+            s_list = short_by_labels[key]
+            l_list = long_by_labels[key]
+            n = min(len(s_list), len(l_list))
+            for i in range(n):
+                clean_text = get_full_text(s_list[i], include_response)
+                corrupted_text = get_full_text(l_list[i], include_response)
+                if clean_text and corrupted_text:
+                    pairs.append((clean_text, corrupted_text, s_list[i], l_list[i]))
+                if len(pairs) >= max_pairs:
+                    break
+            if len(pairs) >= max_pairs:
+                break
+        return pairs[:max_pairs]
+
     n = min(len(short_term), len(long_term), max_pairs)
 
     pairs = []

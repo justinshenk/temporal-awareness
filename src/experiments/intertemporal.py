@@ -27,6 +27,7 @@ from ..common.token_positions import build_position_labels
 from ..data import (
     generate_preference_data,
     load_pref_data_with_prompts,
+    build_prompt_pairs,
     PreferenceData,
 )
 from ..models import ModelRunner
@@ -199,7 +200,7 @@ def step_activation_patching(ctx: ExperimentContext) -> PatchingResult:
     act_token_positions = config.get("act_patch_token_positions", None)
 
     with P("activation_patching"):
-        pos_sweep, full_sweeps, filtered_pos, token_labels, section_markers = (
+        pos_sweep, full_sweeps, filtered_pos, token_labels, section_markers, pair_metadata = (
             run_activation_patching(
                 ctx.runner,
                 ctx.pref_data,
@@ -250,6 +251,41 @@ def step_activation_patching(ctx: ExperimentContext) -> PatchingResult:
     print(f"Best position: {best_pos_idx} ({best_token})")
     print(f"Best layer: {best_layer}")
 
+    # Compute label probabilities for each pair
+    choice_prefix = "I select:"
+    pairs = build_prompt_pairs(ctx.pref_data, max_pairs=max_pairs, include_response=False)
+    for pm, pair in zip(pair_metadata, pairs):
+        clean_text, corrupted_text, clean_sample, corrupted_sample = pair
+        clean_labels = (clean_sample.short_term_label, clean_sample.long_term_label)
+        corr_labels = (corrupted_sample.short_term_label, corrupted_sample.long_term_label)
+
+        # Get probs for clean prompt with its own labels
+        clean_probs = ctx.runner.get_label_probs(clean_text, choice_prefix, clean_labels)
+        pm["clean_label_probs"] = {
+            clean_labels[0]: float(clean_probs[0]),
+            clean_labels[1]: float(clean_probs[1]),
+        }
+
+        # Get probs for corrupted prompt with its own labels
+        corr_probs = ctx.runner.get_label_probs(corrupted_text, choice_prefix, corr_labels)
+        pm["corrupted_label_probs"] = {
+            corr_labels[0]: float(corr_probs[0]),
+            corr_labels[1]: float(corr_probs[1]),
+        }
+
+        # If clean and corrupted use different label formats, also get cross-format probs
+        if clean_labels != corr_labels:
+            clean_with_corr = ctx.runner.get_label_probs(clean_text, choice_prefix, corr_labels)
+            pm["clean_label_probs_alt_format"] = {
+                corr_labels[0]: float(clean_with_corr[0]),
+                corr_labels[1]: float(clean_with_corr[1]),
+            }
+            corr_with_clean = ctx.runner.get_label_probs(corrupted_text, choice_prefix, clean_labels)
+            pm["corrupted_label_probs_alt_format"] = {
+                clean_labels[0]: float(corr_with_clean[0]),
+                clean_labels[1]: float(corr_with_clean[1]),
+            }
+
     # Save results
     np.save(ctx.data_dir / "position_sweep.npy", pos_sweep)
     for comp, sweep in full_sweeps.items():
@@ -260,12 +296,21 @@ def step_activation_patching(ctx: ExperimentContext) -> PatchingResult:
             "layer_indices": layer_indices,
             "token_labels": token_labels,
             "section_markers": section_markers,
+            "position_sweep": [float(v) for v in pos_sweep],
             "position_sweep_max": float(pos_sweep.max()),
             "position_sweep_argmax": best_pos_idx,
             "position_sweep_component": act_pos_sweep_component,
             "full_sweep_components": act_full_sweep_components,
+            "full_sweep": {
+                comp: [[float(v) for v in row] for row in sweep]
+                for comp, sweep in full_sweeps.items()
+            },
             "n_layers_sample": act_n_layers,
             "position_step": act_pos_step,
+            "best_position": best_pos_idx,
+            "best_position_token": best_token,
+            "best_layer": best_layer,
+            "pairs": pair_metadata,
         },
         ctx.data_dir / "activation_patching.json",
     )

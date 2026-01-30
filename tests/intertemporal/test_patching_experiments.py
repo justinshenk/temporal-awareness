@@ -97,7 +97,7 @@ class TestActivationPatching:
 
     def test_returns_expected_shapes(self, runner, synthetic_pref_data):
         """Activation patching returns arrays with expected shapes."""
-        pos_sweep, full_sweeps, filtered_pos, labels, markers = run_activation_patching(
+        pos_sweep, full_sweeps, filtered_pos, labels, markers, pair_meta = run_activation_patching(
             runner,
             synthetic_pref_data,
             max_pairs=1,
@@ -112,13 +112,16 @@ class TestActivationPatching:
             assert sweep.ndim == 2
         assert len(filtered_pos) > 0
         assert isinstance(markers, dict)
+        assert len(pair_meta) == 1
+        assert "metric" in pair_meta[0]
+        assert "position_sweep" in pair_meta[0]
 
     def test_produces_visualization(self, runner, synthetic_pref_data, tmp_path):
         """Activation patching can produce visualization outputs."""
         output_dir = tmp_path / "patching"
         ensure_dir(output_dir)
 
-        pos_sweep, full_sweeps, filtered_pos, labels, markers = run_activation_patching(
+        pos_sweep, full_sweeps, filtered_pos, labels, markers, pair_meta = run_activation_patching(
             runner,
             synthetic_pref_data,
             max_pairs=1,

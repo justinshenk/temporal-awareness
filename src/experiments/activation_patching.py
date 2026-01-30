@@ -127,7 +127,7 @@ def run_activation_patching(
     n_layers_sample: int = 12,
     position_step: int = 1,
     token_positions: Optional[list] = None,
-) -> tuple[np.ndarray, dict[str, np.ndarray], list[int], list[str], dict[str, int]]:
+) -> tuple[np.ndarray, dict[str, np.ndarray], list[int], list[str], dict[str, int], list[dict]]:
     """Run activation patching to identify important positions.
 
     Results are averaged across multiple clean/corrupted pairs for robustness.
@@ -150,8 +150,10 @@ def run_activation_patching(
             threshold-filtered positions from Phase 1.
 
     Returns:
-        Tuple of (position_sweep, all_full_sweeps, filtered_positions, token_labels, section_markers)
+        Tuple of (position_sweep, all_full_sweeps, filtered_positions, token_labels,
+                  section_markers, pair_metadata)
         all_full_sweeps is a dict mapping component name -> [n_sampled_layers, n_filtered_positions]
+        pair_metadata is a list of dicts with per-pair experiment details
     """
     pairs = build_prompt_pairs(pref_data, max_pairs=max_pairs, include_response=True)
     if not pairs:
@@ -166,6 +168,7 @@ def run_activation_patching(
     # === Phase 1: Position sweep across all pairs ===
     # Each pair produces a [seq_len] array; we pad to max length and average.
     position_sweeps = []  # list of (sweep_array, clean_cache, clean_len, pos_mapping, metric)
+    pair_metadata = []  # per-pair experiment details
     token_labels = None
     section_markers = None
 
@@ -176,6 +179,33 @@ def run_activation_patching(
             position_sweep_component, all_hook_names, position_step,
         )
         position_sweeps.append((sweep, clean_cache, clean_len, pos_mapping, metric, corrupted_text))
+
+        # Collect per-pair metadata
+        pair_metadata.append({
+            "pair_index": i,
+            "clean_sample_id": clean_sample.sample_id,
+            "corrupted_sample_id": corrupted_sample.sample_id,
+            "clean_choice": clean_sample.choice,
+            "corrupted_choice": corrupted_sample.choice,
+            "clean_labels": {
+                "short_term": clean_sample.short_term_label,
+                "long_term": clean_sample.long_term_label,
+            },
+            "corrupted_labels": {
+                "short_term": corrupted_sample.short_term_label,
+                "long_term": corrupted_sample.long_term_label,
+            },
+            "metric": {
+                "clean_val": metric.clean_val,
+                "corr_val": metric.corr_val,
+                "corr_val_clean_format": metric.corr_val_clean_format,
+                "diff": metric.diff,
+                "clean_pos": metric.clean_pos,
+                "corr_pos": metric.corr_pos,
+                "same_labels": metric.same_labels,
+            },
+            "position_sweep": [float(v) for v in sweep],
+        })
 
         # Capture token labels and section markers from the first pair only
         if token_labels is None:
@@ -231,12 +261,18 @@ def run_activation_patching(
 
     # Run full sweep for each pair using cached activations, then average
     all_pair_sweeps = []  # list of dict[component -> ndarray]
-    for sweep, clean_cache, clean_len, pos_mapping, metric, corrupted_text in position_sweeps:
+    for pair_idx, (sweep, clean_cache, clean_len, pos_mapping, metric, corrupted_text) in enumerate(position_sweeps):
         pair_sweeps = _run_pair_full_sweep(
             runner, corrupted_text, clean_cache, pos_mapping, metric,
             filtered_positions, layer_indices, full_sweep_components,
         )
         all_pair_sweeps.append(pair_sweeps)
+
+        # Store per-pair full sweep values at filtered positions
+        pair_metadata[pair_idx]["full_sweep"] = {
+            comp: [[float(v) for v in row] for row in arr]
+            for comp, arr in pair_sweeps.items()
+        }
 
     # Average full sweep results across pairs
     all_full_sweeps = {}
@@ -244,4 +280,4 @@ def run_activation_patching(
         component_arrays = [ps[component] for ps in all_pair_sweeps]
         all_full_sweeps[component] = np.mean(component_arrays, axis=0)
 
-    return position_sweep, all_full_sweeps, filtered_positions, token_labels or [], section_markers or {}
+    return position_sweep, all_full_sweeps, filtered_positions, token_labels or [], section_markers or {}, pair_metadata
