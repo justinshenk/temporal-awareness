@@ -7,7 +7,7 @@ Trains TWO probes:
 2. Time horizon probe: predicts prompt's time horizon (<1yr vs >1yr)
 
 Usage:
-    # Default: uses 200 samples for fast iteration
+    # Default: uses 20 samples for fast iteration
     uv run python scripts/probes/train_probe_intertemporal.py
 
     # Use all samples (slower but more accurate)
@@ -30,8 +30,9 @@ import numpy as np
 # Bootstrap path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.common.io import ensure_dir, load_json, parse_file_path, save_json, get_timestamp
+from src.common.io import ensure_dir, save_json, get_timestamp
 from src.common.token_positions import build_position_labels, ResolvedPositionInfo
+from src.experiments import run_probe_training
 from src.profiler import P
 from src.data import (
     load_pref_data_with_prompts,
@@ -39,11 +40,23 @@ from src.data import (
     get_preference_data_id,
 )
 from src.models import ModelRunner
-from src.probes import LinearProbe, ProbeResult, prepare_samples, extract_activations
+from src.probes import ProbeResult
 from src.viz import plot_layer_position_heatmap
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-SCRIPTS_DIR = Path(__file__).parent
+
+DEFAULT_CONFIG = {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "max_samples": 20,  # Small but meaningful for testing
+    "layers": [],  # Empty = auto-select 5 evenly-spaced layers
+    "token_positions": [
+        "option_one",
+        "option_two",
+        {"relative_to": "end", "offset": -1},
+    ],
+    "test_split": 0.2,
+    "random_seed": 42,
+}
 
 
 @dataclass
@@ -56,75 +69,6 @@ class ProbeConfig:
     test_split: float
     random_seed: int
     output_dir: Path
-    regularization_C: float = 1.0
-    n_cv_folds: int = 0
-
-
-def load_config(args: argparse.Namespace) -> tuple[dict, ProbeConfig]:
-    config_path = parse_file_path(
-        args.config,
-        default_dir_path=str(SCRIPTS_DIR / "configs"),
-        default_ext=".json",
-    )
-    raw = load_json(config_path)
-    print(f"Config: {config_path}")
-
-    output_dir = Path(args.output or raw.get("output_dir", "out/probes"))
-    if not output_dir.is_absolute():
-        output_dir = PROJECT_ROOT / output_dir
-
-    return raw, ProbeConfig(
-        preference_data_id=raw.get("preference_data_id"),
-        model=raw.get("model", "Qwen/Qwen2.5-1.5B-Instruct"),
-        layers=raw.get("layers", []),
-        token_positions=raw.get("token_positions", []),
-        test_split=raw.get("test_split", 0.2),
-        random_seed=raw.get("random_seed", 42),
-        output_dir=output_dir,
-    )
-
-
-def _train_single_probe(args):
-    """Train a single probe."""
-    layer, pos_idx, X_train, X_test, y_train, y_test, C, n_cv, seed = args
-    probe = LinearProbe(C, random_state=seed)
-    cv_mean, cv_std, train_acc = probe.train(X_train, y_train, n_cv)
-    test_acc, test_prec, test_rec, test_f1 = probe.evaluate(X_test, y_test)
-    result = ProbeResult(
-        layer=layer, token_position=pos_idx,
-        cv_accuracy_mean=cv_mean, cv_accuracy_std=cv_std, train_accuracy=train_acc,
-        test_accuracy=test_acc, test_precision=test_prec, test_recall=test_rec,
-        test_f1=test_f1, n_train=len(y_train), n_test=len(y_test), n_features=X_train.shape[1],
-    )
-    return (layer, pos_idx), result, probe
-
-
-def train_probes_for_labels(
-    X: dict, y: np.ndarray, config: ProbeConfig
-) -> tuple[list[ProbeResult], dict]:
-    """Train probes for all layer/position combinations."""
-    from sklearn.model_selection import train_test_split
-
-    train_idx, test_idx = train_test_split(
-        np.arange(len(y)), test_size=config.test_split,
-        stratify=y, random_state=config.random_seed,
-    )
-
-    tasks = []
-    for (layer, pos_idx), X_lp in sorted(X.items()):
-        X_train, X_test = X_lp[train_idx], X_lp[test_idx]
-        y_train, y_test = y[train_idx], y[test_idx]
-        tasks.append((layer, pos_idx, X_train, X_test, y_train, y_test,
-                      config.regularization_C, config.n_cv_folds, config.random_seed))
-
-    results, probes = [], {}
-    for task in tasks:
-        key, result, probe = _train_single_probe(task)
-        results.append(result)
-        probes[key] = probe
-
-    results.sort(key=lambda r: (r.layer, r.token_position))
-    return results, probes
 
 
 def save_probe_outputs(
@@ -193,7 +137,7 @@ def save_probe_outputs(
     )
 
     # Intervention (steering vector)
-    best_probe = probes.get((best.layer, best.token_position))
+    best_probe = probes.get((probe_type, best.layer, best.token_position))
     if best_probe:
         save_json({
             "type": "steering_vector",
@@ -212,14 +156,32 @@ def save_probe_outputs(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Train linear probes")
-    parser.add_argument("--config", default="default", help="Config name or path")
     parser.add_argument("--output", type=Path, default=None, help="Output directory")
     parser.add_argument("--preference-data", type=str, help="Preference data ID or path")
-    parser.add_argument("--max-samples", type=int, default=500, help="Limit samples (default=500, use 0 for all)")
+    parser.add_argument("--max-samples", type=int, default=None, help="Limit samples (default from config, use 0 for all)")
     args = parser.parse_args()
 
     with P("total"):
-        raw_config, config = load_config(args)
+        # Build config from defaults + CLI overrides
+        max_samples = args.max_samples if args.max_samples is not None else DEFAULT_CONFIG["max_samples"]
+        layers = list(DEFAULT_CONFIG["layers"])
+        token_positions = list(DEFAULT_CONFIG["token_positions"])
+        test_split = DEFAULT_CONFIG["test_split"]
+        random_seed = DEFAULT_CONFIG["random_seed"]
+
+        output_dir = Path(args.output) if args.output else PROJECT_ROOT / "out" / "probes"
+        if not output_dir.is_absolute():
+            output_dir = PROJECT_ROOT / output_dir
+
+        config = ProbeConfig(
+            preference_data_id=getattr(args, "preference_data", None),
+            model=DEFAULT_CONFIG["model"],
+            layers=layers,
+            token_positions=token_positions,
+            test_split=test_split,
+            random_seed=random_seed,
+            output_dir=output_dir,
+        )
 
         preference_dir = PROJECT_ROOT / "out" / "preference_data"
         datasets_dir = PROJECT_ROOT / "out" / "datasets"
@@ -246,94 +208,71 @@ def main() -> int:
             print(f"\nLoading model: {pref_data.model}")
             runner = ModelRunner(pref_data.model)
 
-        # Default layers
+        # Resolve layers: if empty, auto-select 5 evenly-spaced
         if not config.layers:
             n = runner.n_layers
             config.layers = sorted(set([0, n // 4, n // 2, 3 * n // 4, n - 1]))
 
-        # Default positions (including last token)
-        if not config.token_positions:
-            config.token_positions = [
-                "situation", "task", "option_one", "option_two",
-                "consider", "action", "choice_prefix",
-                {"relative_to": "end", "offset": -1},  # Last token
-            ]
-
-        # Prepare samples for BOTH probe types
-        with P("prepare_samples"):
-            choice_samples, choice_labels = prepare_samples(
-                pref_data, "choice", "choice", config.random_seed
-            )
-            horizon_samples, horizon_labels = prepare_samples(
-                pref_data, "time_horizon", "time_horizon", config.random_seed
+        # Run probe training via shared module
+        print(f"\nTraining probes ({len(config.layers)} layers x {len(config.token_positions)} positions)...")
+        with P("run_probe_training"):
+            results, probes = run_probe_training(
+                runner, pref_data, config.layers, config.token_positions,
+                test_split=config.test_split,
+                random_seed=config.random_seed,
+                max_samples=max_samples,
             )
 
-        # Subsample if needed (use same indices for both)
-        if args.max_samples > 0:
-            from sklearn.model_selection import train_test_split
-            n_samples = min(len(choice_samples), len(horizon_samples))
-            if n_samples > args.max_samples:
-                # Use choice labels for stratification (both should be similar size)
-                _, choice_samples, _, choice_labels = train_test_split(
-                    choice_samples, choice_labels, test_size=args.max_samples,
-                    stratify=choice_labels, random_state=config.random_seed
-                )
-                _, horizon_samples, _, horizon_labels = train_test_split(
-                    horizon_samples, horizon_labels, test_size=args.max_samples,
-                    stratify=horizon_labels, random_state=config.random_seed
-                )
-                choice_samples, horizon_samples = list(choice_samples), list(horizon_samples)
-                print(f"Subsampled to {args.max_samples} samples each")
+        if not results:
+            print("Error: Probe training returned no results.")
+            return 1
 
-        print(f"Choice samples: {len(choice_samples)} (0: {np.sum(choice_labels == 0)}, 1: {np.sum(choice_labels == 1)})")
-        print(f"Horizon samples: {len(horizon_samples)} (0: {np.sum(horizon_labels == 0)}, 1: {np.sum(horizon_labels == 1)})")
-
-        # Extract activations (use choice_samples, they have same prompts)
-        print(f"\nExtracting activations ({len(config.layers)} layers x {len(config.token_positions)} positions)...")
-        with P("extract_activations"):
-            extraction = extract_activations(runner, choice_samples, config.layers, config.token_positions)
-
-        resolved_layers = sorted(set(layer for layer, _ in extraction.X.keys()))
+        meta = results["_meta"]
+        resolved_layers = meta["layers"]
 
         # Create output directory
         ts = get_timestamp()
         run_dir = config.output_dir / ts
         ensure_dir(run_dir)
 
-        # Train and save BOTH probes
-        print("\n=== Training Choice Probe ===")
-        with P("train_choice"):
-            choice_results, choice_probes = train_probes_for_labels(extraction.X, choice_labels, config)
-        save_probe_outputs("choice", choice_results, choice_probes, config, pref_data,
-                          extraction.position_info, resolved_layers, run_dir)
+        # Save outputs for each probe type
+        for probe_type in ["choice", "time_horizon"]:
+            probe_results = results.get(probe_type, [])
+            if not probe_results:
+                print(f"  Skipping {probe_type} (no results)")
+                continue
 
-        print("\n=== Training Time Horizon Probe ===")
-        with P("train_horizon"):
-            # Need to extract activations for horizon samples too (different sample order)
-            horizon_extraction = extract_activations(runner, horizon_samples, config.layers, config.token_positions)
-            horizon_results, horizon_probes = train_probes_for_labels(horizon_extraction.X, horizon_labels, config)
-        save_probe_outputs("time_horizon", horizon_results, horizon_probes, config, pref_data,
-                          horizon_extraction.position_info, resolved_layers, run_dir)
+            position_info_key = f"{probe_type}_position_info" if probe_type == "time_horizon" else "choice_position_info"
+            position_info = meta.get(position_info_key) or meta["choice_position_info"]
+
+            save_probe_outputs(
+                probe_type, probe_results, probes, config, pref_data,
+                position_info, resolved_layers, run_dir,
+            )
 
         # Save combined summary
-        save_json({
+        choice_results = results.get("choice", [])
+        horizon_results = results.get("time_horizon", [])
+
+        summary = {
             "timestamp": ts,
             "model": pref_data.model,
             "dataset_id": pref_data.dataset_id,
-            "n_choice_samples": len(choice_samples),
-            "n_horizon_samples": len(horizon_samples),
             "layers": resolved_layers,
             "token_positions": config.token_positions,
-            "choice_best": {
+        }
+        if choice_results:
+            summary["choice_best"] = {
                 "layer": max(choice_results, key=lambda r: r.test_accuracy).layer,
                 "accuracy": max(r.test_accuracy for r in choice_results),
-            },
-            "time_horizon_best": {
+            }
+        if horizon_results:
+            summary["time_horizon_best"] = {
                 "layer": max(horizon_results, key=lambda r: r.test_accuracy).layer,
                 "accuracy": max(r.test_accuracy for r in horizon_results),
-            },
-        }, run_dir / "summary.json")
+            }
 
+        save_json(summary, run_dir / "summary.json")
         print(f"\nResults saved to {run_dir}")
 
     P.report()

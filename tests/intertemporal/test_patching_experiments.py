@@ -97,7 +97,7 @@ class TestActivationPatching:
 
     def test_returns_expected_shapes(self, runner, synthetic_pref_data):
         """Activation patching returns arrays with expected shapes."""
-        pos_sweep, full_sweep, filtered_pos, labels, markers = run_activation_patching(
+        pos_sweep, full_sweeps, filtered_pos, labels, markers = run_activation_patching(
             runner,
             synthetic_pref_data,
             max_pairs=1,
@@ -106,7 +106,10 @@ class TestActivationPatching:
 
         assert pos_sweep.ndim == 1
         assert len(pos_sweep) > 0
-        assert full_sweep.ndim == 2
+        assert isinstance(full_sweeps, dict)
+        assert len(full_sweeps) > 0
+        for comp, sweep in full_sweeps.items():
+            assert sweep.ndim == 2
         assert len(filtered_pos) > 0
         assert isinstance(markers, dict)
 
@@ -115,7 +118,7 @@ class TestActivationPatching:
         output_dir = tmp_path / "patching"
         ensure_dir(output_dir)
 
-        pos_sweep, full_sweep, filtered_pos, labels, markers = run_activation_patching(
+        pos_sweep, full_sweeps, filtered_pos, labels, markers = run_activation_patching(
             runner,
             synthetic_pref_data,
             max_pairs=1,
@@ -130,7 +133,9 @@ class TestActivationPatching:
         }
         save_json(metadata, output_dir / "metadata.json")
 
-        # Plot heatmap
+        # Plot heatmap for first component
+        first_comp = list(full_sweeps.keys())[0]
+        full_sweep = full_sweeps[first_comp]
         plot_layer_position_heatmap(
             full_sweep,
             list(range(full_sweep.shape[0])),

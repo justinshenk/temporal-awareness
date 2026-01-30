@@ -19,7 +19,32 @@ SCRIPTS_DIR = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.common.io import ensure_dir, parse_file_path, save_json
-from src.models import QueryRunner, QueryOutput
+from src.models import QueryRunner, QueryConfig, QueryOutput
+
+
+DEFAULT_CONFIG = {
+    "models": ["Qwen/Qwen2.5-1.5B-Instruct"],
+    "datasets": [],  # Auto-detect from out/datasets/
+    "internals": None,
+    "subsample": 1.0,
+    "batch_size": 4,
+    "skip_generation": True,  # Fast: infer choice from probs only
+}
+
+
+def find_recent_dataset(datasets_dir: Path) -> str:
+    """Find most recent dataset ID from datasets directory."""
+    json_files = sorted(
+        datasets_dir.glob("*.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if not json_files:
+        raise FileNotFoundError(f"No datasets found in {datasets_dir}")
+    import json
+
+    data = json.loads(json_files[0].read_text())
+    return data["dataset_id"]
 
 
 def get_args():
@@ -31,8 +56,9 @@ def get_args():
         "--config",
         type=str,
         nargs="*",
-        default=["default"],
-        help="Query config file path (or config name from configs/)",
+        default=None,
+        help="Query config file path (or config name from configs/). "
+        "If not provided, uses built-in DEFAULT_CONFIG.",
     )
     parser.add_argument(
         "--output",
@@ -49,18 +75,37 @@ def parse_args(args):
     datasets_dir = PROJECT_ROOT / "out" / "datasets"
 
     runs = []
-    for filename in args.config:
-        filepath = parse_file_path(
-            filename,
-            default_dir_path=str(SCRIPTS_DIR / "configs"),
-            default_ext=".json",
-        )
-        if not filepath.exists():
-            raise FileNotFoundError(f"Query config not found: {filepath}")
 
-        config = QueryRunner.load_config(filepath)
-        print(f"Loaded config: {filename}")
+    if args.config is None:
+        # Use built-in default config
+        datasets = DEFAULT_CONFIG["datasets"]
+        if not datasets:
+            recent_id = find_recent_dataset(datasets_dir)
+            datasets = [recent_id]
+            print(f"Auto-detected dataset: {recent_id}")
+
+        config = QueryConfig(
+            models=DEFAULT_CONFIG["models"],
+            datasets=datasets,
+            internals=DEFAULT_CONFIG["internals"],
+            subsample=DEFAULT_CONFIG["subsample"],
+            skip_generation=DEFAULT_CONFIG["skip_generation"],
+        )
+        print("Using built-in DEFAULT_CONFIG")
         runs.append((config, output_dir, datasets_dir))
+    else:
+        for filename in args.config:
+            filepath = parse_file_path(
+                filename,
+                default_dir_path=str(SCRIPTS_DIR / "configs"),
+                default_ext=".json",
+            )
+            if not filepath.exists():
+                raise FileNotFoundError(f"Query config not found: {filepath}")
+
+            config = QueryRunner.load_config(filepath)
+            print(f"Loaded config: {filename}")
+            runs.append((config, output_dir, datasets_dir))
 
     return runs
 

@@ -1,10 +1,10 @@
 # Standard prompt format keywords for position references
 # These are used by token_positions.py for resolving position specs
+# Keys are shorthand names; values are literal strings searched in tokenized prompts.
+# Must match text actually present in the rendered prompt (see DefaultPromptFormat).
 PROMPT_KEYWORDS = {
     "situation": "SITUATION:",
     "task": "TASK:",
-    "option_one": "OPTION_ONE:",
-    "option_two": "OPTION_TWO:",
     "consider": "CONSIDER:",
     "action": "ACTION:",
     "format": "FORMAT:",

@@ -292,7 +292,9 @@ class DatasetGenerator:
         """
         ctx = self.dataset_config.context
         pf = self.dataset_config.prompt_format
-        prompt = pf.question_template
+
+        # Assemble question template (conditionally includes time-horizon spec)
+        prompt = pf.question_template(time_horizon)
 
         # Use provided time strings or default to str(time)
         left_time = left_time_str if left_time_str else str(left_option.time)
@@ -324,17 +326,8 @@ class DatasetGenerator:
             "reasoning_ask": ctx.reasoning_ask,
         }
 
-        # Handle time_horizon_spec specially - expand it first if time_horizon exists
-        const_keywords = dict(pf.const_keywords)
-        if time_horizon is not None:
-            time_horizon_spec = const_keywords.get("time_horizon_spec", "")
-            time_horizon_spec = time_horizon_spec.replace("[time_horizon]", horizon_str)
-            const_keywords["time_horizon_spec"] = time_horizon_spec
-        else:
-            const_keywords["time_horizon_spec"] = ""
-
-        # Replace const_keywords
-        for key, value in const_keywords.items():
+        # Replace const_keywords (markers like SITUATION:, TASK:, etc.)
+        for key, value in pf.const_keywords.items():
             prompt = prompt.replace(f"[{key}]", value)
 
         # Replace keywords from context

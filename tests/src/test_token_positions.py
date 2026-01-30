@@ -78,6 +78,21 @@ class TestResolvePositionTextSearch:
         result = resolve_position("TASK", SAMPLE_TOKENS)
         assert result.found is True
 
+    def test_text_last_occurrence(self):
+        """{"text": ..., "last": True} finds last occurrence."""
+        # ":" appears multiple times in SAMPLE_TOKENS (positions 2, 7, 17, 24)
+        first = resolve_position({"text": ":"}, SAMPLE_TOKENS)
+        last = resolve_position({"text": ":", "last": True}, SAMPLE_TOKENS)
+        assert first.found is True
+        assert last.found is True
+        assert last.index > first.index
+
+    def test_text_last_single_occurrence(self):
+        """{"text": ..., "last": True} works when only one occurrence exists."""
+        result = resolve_position({"text": "housing", "last": True}, SAMPLE_TOKENS)
+        assert result.found is True
+        assert "housing" in SAMPLE_TOKENS[result.index].lower()
+
 
 class TestResolvePositionRelative:
     """Test relative position resolution."""
@@ -208,8 +223,76 @@ class TestPromptKeywords:
         assert "task" in PROMPT_KEYWORDS
         assert "consider" in PROMPT_KEYWORDS
         assert "action" in PROMPT_KEYWORDS
+        assert "format" in PROMPT_KEYWORDS
         assert "choice_prefix" in PROMPT_KEYWORDS
+        assert "reasoning_prefix" in PROMPT_KEYWORDS
 
     def test_keyword_values(self):
-        assert "SITUATION:" in PROMPT_KEYWORDS["situation"]
-        assert "I select:" in PROMPT_KEYWORDS["choice_prefix"]
+        assert PROMPT_KEYWORDS["situation"] == "SITUATION:"
+        assert PROMPT_KEYWORDS["task"] == "TASK:"
+        assert PROMPT_KEYWORDS["consider"] == "CONSIDER:"
+        assert PROMPT_KEYWORDS["action"] == "ACTION:"
+        assert PROMPT_KEYWORDS["choice_prefix"] == "I select:"
+        assert PROMPT_KEYWORDS["reasoning_prefix"] == "My reasoning:"
+
+    def test_no_stale_keywords(self):
+        """Ensure removed keywords are not present."""
+        assert "option_one" not in PROMPT_KEYWORDS
+        assert "option_two" not in PROMPT_KEYWORDS
+
+
+class TestGetInterestingPositions:
+    """Test DefaultPromptFormat.get_interesting_positions()."""
+
+    def test_returns_list_of_dicts(self):
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        positions = fmt.get_interesting_positions()
+        assert isinstance(positions, list)
+        assert len(positions) > 0
+        assert all(isinstance(p, dict) for p in positions)
+
+    def test_contains_prompt_markers(self):
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        positions = fmt.get_interesting_positions()
+        texts = [p["text"] for p in positions]
+        assert "SITUATION:" in texts
+        assert "TASK:" in texts
+        assert "CONSIDER:" in texts
+        assert "ACTION:" in texts
+
+    def test_response_markers_use_last(self):
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        positions = fmt.get_interesting_positions()
+        last_positions = [p for p in positions if p.get("last", False)]
+        assert len(last_positions) > 0
+        # Response markers search for "I select:" and "My reasoning:"
+        last_texts = [p["text"] for p in last_positions]
+        assert "I select:" in last_texts
+        assert "My reasoning:" in last_texts
+
+    def test_positions_resolve_against_tokens(self):
+        """Interesting positions can resolve against sample tokens."""
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        positions = fmt.get_interesting_positions()
+        # Use a token list that mimics a rendered prompt with response
+        tokens = [
+            "SITUATION", ":", " Choose", ".",
+            " TASK", ":", " You",
+            " CONSIDER", ":", " Think",
+            " ACTION", ":", " Select",
+            " FORMAT", ":", " Respond",
+            " I", " select", ":",  # FORMAT section occurrence
+            " A", ".",
+            " I", " select", ":",  # Response occurrence
+            " B", ".",
+            " My", " reasoning", ":",  # Response occurrence
+            " Because",
+        ]
+        for pos_spec in positions:
+            result = resolve_position(pos_spec, tokens)
+            # All markers should be found in this token list
+            assert result.found, f"Position {pos_spec} not found in tokens"

@@ -70,7 +70,8 @@ def resolve_position(
     Spec formats:
         - int: Absolute position
         - str: Keyword to search for (or PROMPT_KEYWORDS key)
-        - {"text": "..."}: Search for text in tokens
+        - {"text": "..."}: Search for text in tokens (first occurrence)
+        - {"text": "...", "last": True}: Search for text (last occurrence)
         - {"relative_to": "end", "offset": -1}: Relative to end
         - {"relative_to": "prompt_end", "offset": 0}: Relative to prompt end
         - {"keyword": "consider"}: Use PROMPT_KEYWORDS mapping
@@ -111,9 +112,9 @@ def resolve_position(
                 return _search_text(tokens, PROMPT_KEYWORDS[keyword], last=use_last)
             return ResolvedPosition(index=-1, label=f'"{keyword}"', found=False)
 
-        # Text search
+        # Text search (supports optional "last": True for last-occurrence matching)
         if "text" in spec:
-            return _search_text(tokens, spec["text"])
+            return _search_text(tokens, spec["text"], last=spec.get("last", False))
 
         # Relative position
         if "relative_to" in spec:

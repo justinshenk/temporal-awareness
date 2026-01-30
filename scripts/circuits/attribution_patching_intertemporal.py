@@ -2,15 +2,15 @@
 """
 Attribution patching for intertemporal preference analysis.
 
-Methods:
-- Attribution Patching: (clean - corrupted) · grad
-- EAP (Edge Attribution Patching): edges between components
-- EAP-IG: EAP with Integrated Gradients for accuracy
+Core computation uses run_attribution_patching from src/experiments.
+This script adds standalone CLI, positions.json output, and detailed summary.
 
 Usage:
+    # Quick test with defaults
     python scripts/circuits/attribution_patching_intertemporal.py
-    python scripts/circuits/attribution_patching_intertemporal.py --max-pairs 5
-    python scripts/circuits/attribution_patching_intertemporal.py --ig-steps 20
+
+    # Full run
+    python scripts/circuits/attribution_patching_intertemporal.py --max-pairs 5 --ig-steps 20
 """
 
 from __future__ import annotations
@@ -31,21 +31,21 @@ from src.data import (
     get_preference_data_id,
 )
 from src.common.io import ensure_dir, save_json, get_timestamp
-from src.analysis import (
-    build_position_mapping,
-    create_metric,
-    find_section_markers,
-    get_token_labels,
-    run_all_attribution_methods,
-    aggregate_attribution_results,
-    find_top_attributions,
-)
+from src.analysis import find_top_attributions
 from src.common.positions_schema import PositionsFile, PositionSpec
 from src.profiler import P
 from src.viz import plot_layer_position_heatmap
+from src.experiments import run_attribution_patching
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "out" / "attribution_patching"
+
+# Default config for standalone runs (small but meaningful)
+DEFAULT_CONFIG = {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "max_pairs": 1,
+    "ig_steps": 3,
+    "positions_threshold": 0.1,  # Attribution score threshold for positions.json
+}
 
 # Method metadata for display and grouping
 METHOD_INFO = {
@@ -59,84 +59,46 @@ METHOD_INFO = {
 }
 
 
-def run_attribution_on_pairs(
-    runner: ModelRunner,
-    pairs: list[tuple],
-    max_pairs: int,
-    ig_steps: int = 10,
-) -> tuple[list[dict], list[str], dict[str, int]]:
-    """Run attribution methods on multiple pairs, return per-pair results."""
-    all_results = []
-    token_labels = None
-    section_markers = None
-
-    for i, (clean_text, corr_text, clean_sample, corr_sample) in enumerate(pairs[:max_pairs]):
-        print(f"  Pair {i + 1}/{min(len(pairs), max_pairs)}")
-
-        clean_labels = [clean_sample.short_term_label, clean_sample.long_term_label]
-        corr_labels = [corr_sample.short_term_label, corr_sample.long_term_label]
-
-        with P("build_mapping"):
-            pos_mapping, _, _ = build_position_mapping(
-                runner, clean_text, corr_text, clean_labels, corr_labels
-            )
-
-        with P("create_metric"):
-            metric = create_metric(runner, clean_sample, corr_sample, clean_text, corr_text)
-
-        print(f"    logit_diff: clean={metric.clean_val:.3f}, corr={metric.corr_val:.3f}, delta={metric.diff:.3f}")
-
-        with P("run_methods"):
-            results = run_all_attribution_methods(
-                runner, clean_text, corr_text, metric, pos_mapping, ig_steps
-            )
-
-        # Normalize by metric difference
-        if abs(metric.diff) > 1e-8:
-            results = {k: v / abs(metric.diff) for k, v in results.items()}
-
-        all_results.append(results)
-
-        # Get labels from first pair
-        if token_labels is None:
-            token_labels = get_token_labels(runner, clean_text)
-            section_markers = find_section_markers(
-                runner, clean_text, clean_sample.short_term_label, clean_sample.long_term_label
-            )
-
-    return all_results, token_labels or [], section_markers or {}
-
-
-def save_heatmap(
-    scores: np.ndarray,
+def save_positions_json(
+    aggregated: dict[str, np.ndarray],
     layers: list[int],
     token_labels: list[str],
-    save_path: Path,
-    method_key: str,
-    model_name: str,
-    n_pairs: int,
     section_markers: dict[str, int],
+    model: str,
+    dataset_id: str,
+    threshold: float,
+    output_dir: Path,
 ) -> None:
-    """Save heatmap with consistent formatting."""
-    info = METHOD_INFO.get(method_key, {"name": method_key, "group": "other"})
-    name = info["name"]
+    """Save standardized positions.json from attribution results."""
+    if "resid" not in aggregated:
+        return
 
-    # Stats for subtitle
-    abs_max = np.abs(scores).max()
-    max_val = scores.max()
-    min_val = scores.min()
+    scores = aggregated["resid"]
+    positions = []
+    for layer_idx, layer in enumerate(layers):
+        for pos in range(scores.shape[1]):
+            score = float(scores[layer_idx, pos])
+            if abs(score) > threshold:
+                section = None
+                for sec_name, sec_pos in section_markers.items():
+                    if pos >= sec_pos:
+                        section = sec_name.replace("before_", "")
+                positions.append(PositionSpec(
+                    position=pos,
+                    token=token_labels[pos] if pos < len(token_labels) else f"pos{pos}",
+                    score=score,
+                    layer=layer,
+                    section=section,
+                ))
 
-    plot_layer_position_heatmap(
-        scores,
-        layers,
-        token_labels,
-        save_path,
-        title=f"{name}",
-        subtitle=f"{model_name} | n={n_pairs} | range=[{min_val:.3f}, {max_val:.3f}]",
-        cbar_label="Attribution (normalized)",
-        cmap="RdBu_r",
-        section_markers=section_markers,
-    )
+    PositionsFile(
+        model=model,
+        method="attribution_patching",
+        positions=sorted(positions, key=lambda p: abs(p.score), reverse=True),
+        dataset_id=dataset_id,
+        threshold=threshold,
+        component="resid_post",
+    ).save(output_dir / "positions.json")
 
 
 def print_summary(
@@ -160,7 +122,6 @@ def print_summary(
             scores = aggregated[key]
             info = METHOD_INFO[key]
 
-            # Find top attribution
             top = find_top_attributions(scores, layers, n_top=1)
             if top:
                 layer, pos, score = top[0]
@@ -182,17 +143,11 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Attribution patching analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Methods computed:
-  Standard:  resid, attn, mlp - (clean - corrupted) · grad
-  EAP:       eap_attn, eap_mlp - Edge attribution to residual stream
-  EAP-IG:    eap_ig_attn, eap_ig_mlp - EAP with integrated gradients
-        """,
     )
     parser.add_argument("--preference-data", type=str, help="Preference data ID")
-    parser.add_argument("--max-pairs", type=int, default=3, help="Number of pairs to process (default: 3)")
-    parser.add_argument("--ig-steps", type=int, default=10, help="Integrated gradients steps (default: 10)")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR, help="Output directory")
+    parser.add_argument("--max-pairs", type=int, default=DEFAULT_CONFIG["max_pairs"])
+    parser.add_argument("--ig-steps", type=int, default=DEFAULT_CONFIG["ig_steps"])
+    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "out" / "attribution_patching")
     return parser.parse_args()
 
 
@@ -231,16 +186,14 @@ def main():
 
         print(f"Layers: {runner.n_layers}, IG steps: {args.ig_steps}")
 
-        # Run attribution
+        # Run attribution using src/ function (no duplication)
         print(f"\n=== Running Attribution Patching ({args.max_pairs} pairs) ===")
         with P("attribution"):
-            all_results, token_labels, section_markers = run_attribution_on_pairs(
-                runner, pairs, args.max_pairs, args.ig_steps
+            aggregated, token_labels, section_markers = run_attribution_patching(
+                runner, pref_data,
+                max_pairs=args.max_pairs,
+                ig_steps=args.ig_steps,
             )
-
-        # Aggregate results
-        with P("aggregate"):
-            aggregated = aggregate_attribution_results(all_results, runner.n_layers)
 
         # Create output directory
         run_dir = args.output / get_timestamp()
@@ -252,48 +205,28 @@ def main():
         n_pairs = min(len(pairs), args.max_pairs)
 
         print("\n=== Saving Heatmaps ===")
-        with P("save_heatmaps"):
-            for key, scores in aggregated.items():
-                save_heatmap(
-                    scores, layers, token_labels,
-                    run_dir / f"heatmap_{key}.png",
-                    key, model_name, n_pairs, section_markers,
-                )
-                np.save(run_dir / f"{key}.npy", scores)
+        for key, scores in aggregated.items():
+            info = METHOD_INFO.get(key, {"name": key})
+            plot_layer_position_heatmap(
+                scores, layers, token_labels,
+                run_dir / f"heatmap_{key}.png",
+                title=info["name"],
+                subtitle=f"{model_name} | n={n_pairs} | range=[{scores.min():.3f}, {scores.max():.3f}]",
+                cbar_label="Attribution (normalized)",
+                cmap="RdBu_r",
+                section_markers=section_markers,
+            )
+            np.save(run_dir / f"{key}.npy", scores)
 
         # Print summary
         summary = print_summary(aggregated, layers, token_labels)
 
-        # Save standardized positions.json (using resid as primary method)
-        if "resid" in aggregated:
-            scores = aggregated["resid"]
-            threshold = 0.1  # Attribution score threshold
-            positions = []
-            for layer_idx, layer in enumerate(layers):
-                for pos in range(scores.shape[1]):
-                    score = float(scores[layer_idx, pos])
-                    if abs(score) > threshold:
-                        section = None
-                        for sec_name, sec_pos in section_markers.items():
-                            if pos >= sec_pos:
-                                section = sec_name.replace("before_", "")
-                        positions.append(PositionSpec(
-                            position=pos,
-                            token=token_labels[pos] if pos < len(token_labels) else f"pos{pos}",
-                            score=score,
-                            layer=layer,
-                            section=section,
-                        ))
-
-            positions_file = PositionsFile(
-                model=pref_data.model,
-                method="attribution_patching",
-                positions=sorted(positions, key=lambda p: abs(p.score), reverse=True),
-                dataset_id=pref_data.dataset_id,
-                threshold=threshold,
-                component="resid_post",
-            )
-            positions_file.save(run_dir / "positions.json")
+        # Save positions.json
+        save_positions_json(
+            aggregated, layers, token_labels, section_markers,
+            pref_data.model, pref_data.dataset_id,
+            DEFAULT_CONFIG["positions_threshold"], run_dir,
+        )
 
         # Save metadata
         save_json({
@@ -305,7 +238,7 @@ def main():
             "n_layers": runner.n_layers,
             "n_positions": len(token_labels),
             "section_markers": section_markers,
-            "methods": list(METHOD_INFO.keys()),
+            "methods": list(aggregated.keys()),
             "summary": summary,
         }, run_dir / "metadata.json")
 
