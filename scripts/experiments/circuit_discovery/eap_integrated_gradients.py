@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 import torch
@@ -16,6 +17,9 @@ import wandb
 import yaml
 from dotenv import load_dotenv
 from tqdm import tqdm
+
+warnings.filterwarnings("ignore")
+
 
 load_dotenv()
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
@@ -142,6 +146,11 @@ def main() -> None:
     input_file_path = data_loc / data_file
     save_loc.mkdir(parents=True, exist_ok=True)
     ensure_mech_interp_toolkit_installed()
+
+    # Clear stdout and print success message
+    sys.stdout.write("\033[2J\033[H")  # Clear screen and move cursor to top
+    sys.stdout.flush()
+    print("mech_interp_toolkit installed successfully")
 
     from mech_interp_toolkit.activation_utils import concat_activations, expand_mask
     from mech_interp_toolkit.gradient_based_attribution import (
