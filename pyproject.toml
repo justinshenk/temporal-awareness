@@ -29,4 +29,12 @@ dependencies = [
 dev = ["pytest", "black", "ruff"]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "slow: mark test as slow (multi-architecture or benchmark)"
+]

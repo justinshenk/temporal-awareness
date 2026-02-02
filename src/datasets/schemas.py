@@ -1,10 +1,15 @@
 """Config schemas for dataset generation."""
 
-from dataclasses import dataclass, asdict
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict, field
 from enum import Enum
+from typing import Optional, TYPE_CHECKING
 
 from ..common.schema_utils import SchemaClass
-from ..common.types import TimeValue
+
+if TYPE_CHECKING:
+    from ..common.types import TimeValue
 
 
 SCHEMA_VERSION = "1.0"
@@ -19,14 +24,37 @@ class StepType(Enum):
 
 @dataclass(kw_only=True)
 class PromptFormatConfig(SchemaClass):
-    """Prompt formatting configuration."""
+    """Prompt formatting configuration.
+
+    Subclasses define templates for each prompt section and provide
+    ``question_template()`` to assemble them into a full prompt string.
+    """
 
     name: str
-    question_template: str
     response_template: str
     const_keywords: dict
+    response_const_keywords: dict = field(default_factory=dict)
     keywords: list
     var_keywords: list
+
+    # --- methods subclasses may override ---
+
+    def question_template(self, time_horizon: Optional[TimeValue] = None) -> str:  # type: ignore[name-defined]
+        """Return the assembled question template string.
+
+        Args:
+            time_horizon: If provided, include time-horizon spec section.
+        """
+        raise NotImplementedError("Subclasses must implement question_template()")
+
+    def get_interesting_positions(self) -> list[dict]:
+        """Return token position specs for semantically interesting positions.
+
+        Returns a list of dicts compatible with ``resolve_position`` in
+        ``token_positions.py``.  Prompt markers use first-occurrence search;
+        response markers use last-occurrence search.
+        """
+        return []
 
 
 @dataclass

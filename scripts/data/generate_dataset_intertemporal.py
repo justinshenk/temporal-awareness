@@ -27,6 +27,34 @@ from src.common.io import (
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 SCRIPTS_DIR = Path(__file__).parent
 
+DEFAULT_CONFIG = {
+    "name": "test_minimal",
+    "context": {
+        "reward_unit": "dollars",
+        "role": "you",
+        "situation": "Choose between options.",
+        "labels": ["a)", "b)"],
+        "method": "grid",
+        "seed": 42,
+    },
+    "options": {
+        "short_term": {
+            "reward_range": [400, 600],
+            "time_range": [[1, "months"], [1, "year"]],
+            "reward_steps": [0, "linear"],
+            "time_steps": [0, "linear"],
+        },
+        "long_term": {
+            "reward_range": [700, 900],
+            "time_range": [[10, "years"], [20, "years"]],
+            "reward_steps": [0, "linear"],
+            "time_steps": [0, "linear"],
+        },
+    },
+    "time_horizons": [{"value": 6, "unit": "months"}],
+    "add_formatting_variations": False,
+}
+
 
 def save_dataset_as_json(samples, cfg: DatasetConfig, output_filepath: Path):
     from dataclasses import asdict
@@ -69,8 +97,9 @@ def get_args():
         "--config",
         type=str,
         nargs="*",
-        default=["default"],
-        help="Dataset config file path (or config file name from PROJECT_ROOT/scripts/data/configs/)",
+        default=None,
+        help="Dataset config file path (or config file name from PROJECT_ROOT/scripts/data/configs/). "
+        "If not provided, uses built-in DEFAULT_CONFIG.",
     )
     parser.add_argument(
         "--output",
@@ -89,23 +118,33 @@ def parse_args(args):
         output_dirpath = PROJECT_ROOT / "out" / "datasets"
 
     runs = []
-    for filename in args.config:
-        # Get full json file path
-        filepath = parse_file_path(
-            filename, default_dir_path=str(SCRIPTS_DIR / "configs"), default_ext=".json"
-        )
-        if not filepath.exists():
-            raise FileNotFoundError(f"Dataset config not found: {filepath}")
 
-        # Load dataset config
-        config = DatasetGenerator.load_dataset_config(filepath)
-        print(f"Loaded config: {config.name}")
+    if args.config is None:
+        # Use built-in default config
+        config = DatasetGenerator.load_dataset_config_from_dict(DEFAULT_CONFIG)
+        print(f"Using built-in DEFAULT_CONFIG: {config.name}")
 
-        # Specify output filepath per dataset config
         output_filename = f"{config.name}_{config.get_id()}.json"
         output_filepath = output_dirpath / output_filename
-
         runs.append((config, Path(output_filepath)))
+    else:
+        for filename in args.config:
+            # Get full json file path
+            filepath = parse_file_path(
+                filename, default_dir_path=str(SCRIPTS_DIR / "configs"), default_ext=".json"
+            )
+            if not filepath.exists():
+                raise FileNotFoundError(f"Dataset config not found: {filepath}")
+
+            # Load dataset config
+            config = DatasetGenerator.load_dataset_config(filepath)
+            print(f"Loaded config: {config.name}")
+
+            # Specify output filepath per dataset config
+            output_filename = f"{config.name}_{config.get_id()}.json"
+            output_filepath = output_dirpath / output_filename
+
+            runs.append((config, Path(output_filepath)))
 
     return runs
 
