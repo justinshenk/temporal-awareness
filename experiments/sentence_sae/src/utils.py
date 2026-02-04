@@ -15,7 +15,7 @@ PROJECT_ROOT = ROOT.parent.parent  # temporal-awareness/
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-SCENARIOS_DIR = ROOT / "configs" / "scenarios"
+SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 
 
 def get_default_output_dir() -> Path:
