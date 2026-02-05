@@ -9,6 +9,7 @@ from src.common.token_positions import (
     resolve_positions,
     get_position_label,
     PROMPT_KEYWORDS,
+    LAST_OCCURRENCE_KEYWORDS,
 )
 
 
@@ -239,6 +240,24 @@ class TestPromptKeywords:
         """Ensure removed keywords are not present."""
         assert "option_one" not in PROMPT_KEYWORDS
         assert "option_two" not in PROMPT_KEYWORDS
+
+    def test_derived_from_default_prompt_format(self):
+        """PROMPT_KEYWORDS values come from DefaultPromptFormat helper methods."""
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        keyword_map = fmt.get_keyword_map()
+        assert PROMPT_KEYWORDS == keyword_map
+        assert PROMPT_KEYWORDS["situation"] == fmt.const_keywords["situation_marker"]
+        assert PROMPT_KEYWORDS["choice_prefix"] == fmt.const_keywords["format_choice_prefix"]
+
+    def test_last_occurrence_keywords(self):
+        """LAST_OCCURRENCE_KEYWORDS matches DefaultPromptFormat helper."""
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
+        assert LAST_OCCURRENCE_KEYWORDS == fmt.get_last_occurrence_keyword_names()
+        assert "choice_prefix" in LAST_OCCURRENCE_KEYWORDS
+        assert "reasoning_prefix" in LAST_OCCURRENCE_KEYWORDS
+        assert "situation" not in LAST_OCCURRENCE_KEYWORDS
 
 
 class TestGetInterestingPositions:

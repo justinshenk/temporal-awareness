@@ -16,7 +16,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union
 
-from .prompt_keywords import PROMPT_KEYWORDS, LAST_OCCURRENCE_KEYWORDS
+# Keyword mappings are derived lazily from DefaultPromptFormat to avoid
+# circular imports (token_positions ↔ formatting.configs ↔ datasets.schemas ↔ common).
+PROMPT_KEYWORDS: dict[str, str] = {}
+LAST_OCCURRENCE_KEYWORDS: set[str] = set()
+_KEYWORDS_INITIALIZED = False
+
+
+def _init_keywords() -> None:
+    """Lazily populate PROMPT_KEYWORDS and LAST_OCCURRENCE_KEYWORDS."""
+    global _KEYWORDS_INITIALIZED
+    if _KEYWORDS_INITIALIZED:
+        return
+    from ..formatting.configs import DefaultPromptFormat
+
+    fmt = DefaultPromptFormat()
+    PROMPT_KEYWORDS.update(fmt.get_keyword_map())
+    LAST_OCCURRENCE_KEYWORDS.update(fmt.get_last_occurrence_keyword_names())
+    _KEYWORDS_INITIALIZED = True
 
 
 @dataclass
@@ -76,6 +93,8 @@ def resolve_position(
         - {"relative_to": "prompt_end", "offset": 0}: Relative to prompt end
         - {"keyword": "consider"}: Use PROMPT_KEYWORDS mapping
     """
+    _init_keywords()
+
     if isinstance(spec, TokenPositionSpec):
         spec = spec.spec
 

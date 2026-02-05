@@ -141,15 +141,14 @@ def compute_training_metrics(
 
 
 def train_single_sae(
+    sae: SAE,
     X: np.ndarray,
-    n_clusters: int,
-    topk: int,
     activation_mean: np.ndarray,
+    lr: float = 0.001,
     device: str = "mps",
     max_epochs: int = 500,
     patience: int = 20,
     log_interval: int = 50,
-    resume_from: Path = None,
     tb_writer=None,
     tb_tag: str = "",
     tb_global_step: int = 0,
@@ -161,15 +160,8 @@ def train_single_sae(
     """
     X_tensor = torch.from_numpy(X).float().to(device)
     n_samples, d_in = X.shape
+    sae.activation_mean.copy_(torch.from_numpy(activation_mean).float())
 
-    if resume_from and resume_from.exists():
-        sae = SAE.load_checkpoint(resume_from, device)
-        sae.activation_mean.copy_(torch.from_numpy(activation_mean).float())
-    else:
-        sae = SAE(d_in, n_clusters, k=topk).to(device)
-        sae.activation_mean.copy_(torch.from_numpy(activation_mean).float())
-
-    lr = DEFAULT_LR_BASE / (n_clusters / DEFAULT_LR_SCALE_FACTOR) ** 0.5
     optimizer = torch.optim.Adam(sae.parameters(), lr=lr)
 
     X_centered_sq_sum = ((X_tensor - X_tensor.mean(dim=0, keepdim=True)) ** 2).sum()
@@ -178,7 +170,7 @@ def train_single_sae(
     patience_counter = 0
     best_state = None
     training_history = []
-    latent_activation_counts = np.zeros(n_clusters, dtype=np.int64)
+    latent_activation_counts = np.zeros(sae.num_latents, dtype=np.int64)
 
     for epoch in range(max_epochs):
         sae.train()
@@ -208,9 +200,7 @@ def train_single_sae(
             training_history.append(metrics.to_dict())
 
             if tb_writer is not None:
-                tb_writer.add_scalar(
-                    f"{tb_tag}/l0_sparsity", metrics.l0_sparsity, step
-                )
+                tb_writer.add_scalar(f"{tb_tag}/l0_sparsity", metrics.l0_sparsity, step)
                 tb_writer.add_scalar(
                     f"{tb_tag}/dead_latent_ratio", metrics.dead_latent_ratio, step
                 )
@@ -286,6 +276,9 @@ def load_sae_models(state, sae_dir: str) -> list[SAE]:
                     models.append(sae)
                 else:
                     # No checkpoint yet, create a spec for fresh training
+                    print(
+                        f"\n\nload_sae_models cannot find {path}. Creating fresh. \n\n"
+                    )
                     models.append(SAESpec(layer=layer, num_latents=n_clusters, k=topk))
     print(f"  Loaded {len(models)} SAE models/specs")
     return models
@@ -329,7 +322,9 @@ def save_running_mean(sae_dir: str, layer: int, mean: np.ndarray, n: int) -> Non
 
 
 def update_running_mean(
-    sae_dir: str, layer: int, x_new: np.ndarray,
+    sae_dir: str,
+    layer: int,
+    x_new: np.ndarray,
 ) -> np.ndarray:
     """Update the running mean for *layer* with new raw activation vectors.
 
@@ -433,40 +428,32 @@ def train_sae(
     topk = sae.k
     name = sae_name(layer, n_clusters, topk)
 
-    resume_from = None
-    if isinstance(sae, SAE):
-        # Save to temp location for resume_from
-        import tempfile
+    # initialize sae if needed
+    if isinstance(sae, SAESpec):
+        d_in = X_norm.shape[1]
+        sae = SAE(d_in, n_clusters, k=topk).to(device)
 
-        tmp = Path(tempfile.mktemp(suffix=".pt"))
-        sae.save_checkpoint(tmp, activation_mean, {"layer": layer})
-        resume_from = tmp
+    lr = DEFAULT_LR_BASE / (n_clusters / DEFAULT_LR_SCALE_FACTOR) ** 0.5
 
     print(f"    Training {name}...", end=" ", flush=True)
-
     trained, loss, history = train_single_sae(
+        sae,
         X_norm,
-        n_clusters,
-        topk,
         activation_mean,
+        lr=lr,
         device=device,
         max_epochs=max_epochs,
         patience=patience,
-        resume_from=resume_from,
         tb_writer=tb_writer,
         tb_tag=f"{tb_prefix}{name}",
         tb_global_step=tb_global_step,
     )
     trained.layer = layer
 
-    # Clean up temp file
-    if resume_from and resume_from.exists():
-        resume_from.unlink()
-
-    final = history[-1] if history else {}
-    dead_pct = final.get("dead_latent_ratio", 0) * 100
+    final_metric = history[-1] if history else {}
+    dead_pct = final_metric.get("dead_latent_ratio", 0) * 100
     print(
-        f"loss={loss:.4f}, L0={final.get('l0_sparsity', 0):.2f}, dead={dead_pct:.1f}%"
+        f"loss={loss:.4f}, L0={final_metric.get('l0_sparsity', 0):.2f}, dead={dead_pct:.1f}%"
     )
 
     results = {

@@ -37,6 +37,8 @@ from .evaluate import (
 from torch.utils.tensorboard import SummaryWriter
 import copy
 
+from src.profiler import P
+
 # ── Path Helpers ─────────────────────────────
 
 
@@ -72,7 +74,7 @@ def get_analysis_dirpath(state: PipelineState) -> str:
 
 
 def filter_sentence(sentence: Sentence) -> bool:
-    return sentence.source == "response" and sentence.section == "choice"
+    return sentence.source == "response"
 
 
 # ── Data Helpers ─────────────────────────────
@@ -188,19 +190,22 @@ def _generate_dataset(state: PipelineState) -> list:
 
     print(f"  Generating {config.samples_per_iter} samples (seed={iter_seed})...")
 
-    samples = generate_samples(config.samples_per_iter, iter_seed)
+    with P("generate_samples"):
+        samples = generate_samples(config.samples_per_iter, iter_seed)
 
     print(f"  Generated {len(samples)} samples")
 
-    update_samples(state, samples)
-    update_state(state, PipelineStage.DATASET_GENERATED)
+    with P("save_samples"):
+        update_samples(state, samples)
+        update_state(state, PipelineStage.DATASET_GENERATED)
 
     return samples
 
 
 def _load_samples(state: PipelineState) -> list:
     """Loads generation (and maybe inference) results for the current iteration."""
-    samples = load_samples(state)
+    with P("load_samples"):
+        samples = load_samples(state)
     return samples
 
 
@@ -213,21 +218,24 @@ def _run_inference(
 ) -> tuple[list, list]:
     """Run inference for the current iteration."""
 
-    updated_samples, activations = generate_and_extract(
-        samples=samples,
-        model_name=state.config.model,
-        max_new_tokens=state.config.max_new_tokens,
-    )
+    with P("generate_and_extract"):
+        updated_samples, activations = generate_and_extract(
+            samples=samples,
+            model_name=state.config.model,
+            max_new_tokens=state.config.max_new_tokens,
+        )
 
-    update_samples(state, updated_samples, activations)
-    update_state(state, PipelineStage.INFERENCE_DONE)
+    with P("save_inference"):
+        update_samples(state, updated_samples, activations)
+        update_state(state, PipelineStage.INFERENCE_DONE)
 
     return updated_samples, activations
 
 
 def _load_activations(state: PipelineState, samples: list) -> list:
     """Loads inference result for the current iteration."""
-    activations = load_activations(samples)
+    with P("load_activations"):
+        activations = load_activations(samples)
     return activations
 
 
@@ -248,33 +256,33 @@ def _train_saes(
             without updating it (for full-retrain iterations on accumulated data).
     """
     sae_dir = get_sae_dirpath(state)
-    if from_scratch:
-        sae_models = initialize_sae_models(state)
-    elif state.iteration:
-        sae_models = load_sae_models(state, sae_dir)
-    else:
-        sae_models = initialize_sae_models(state)
+    with P("load_or_init_saes"):
+        if not from_scratch and state.iteration:
+            sae_models = load_sae_models(state, sae_dir)
+        else:
+            sae_models = initialize_sae_models(state)
 
     # Build raw training data per layer once.
     raw_by_layer: dict[int, np.ndarray] = {}
     running_mean_by_layer: dict[int, np.ndarray] = {}
-    for layer in state.config.layers:
-        x = form_training_datasets(
-            state,
-            samples,
-            activations,
-            layer,
-            filter_sentence=filter_sentence,
-        )
-        raw_by_layer[layer] = x
-        if from_scratch:
-            # Use existing running mean — don't update (data already counted).
-            mean, _ = load_running_mean(sae_dir, layer)
-            if mean is None:
-                mean = x.mean(axis=0)
-            running_mean_by_layer[layer] = mean
-        else:
-            running_mean_by_layer[layer] = update_running_mean(sae_dir, layer, x)
+    with P("form_training_datasets"):
+        for layer in state.config.layers:
+            x = form_training_datasets(
+                state,
+                samples,
+                activations,
+                layer,
+                filter_sentence=filter_sentence,
+            )
+            raw_by_layer[layer] = x
+            if from_scratch:
+                # Use existing running mean — don't update (data already counted).
+                mean, _ = load_running_mean(sae_dir, layer)
+                if mean is None:
+                    mean = x.mean(axis=0)
+                running_mean_by_layer[layer] = mean
+            else:
+                running_mean_by_layer[layer] = update_running_mean(sae_dir, layer, x)
 
     # Use iteration as global step so TB loss curves are continuous across
     # iterations (each iteration = 1 gradient step in online-SGD mode).
@@ -283,17 +291,18 @@ def _train_saes(
     all_sae = []
     all_results = []
     for sae in sae_models:
-        trained_sae, training_results = train_sae(
-            x=raw_by_layer[sae.layer],
-            sae=sae,
-            batch_size=state.config.batch_size,
-            max_epochs=state.config.max_epochs,
-            patience=state.config.patience,
-            activation_mean=running_mean_by_layer[sae.layer],
-            tb_writer=tb_writer,
-            tb_prefix="",
-            tb_global_step=global_step,
-        )
+        with P("train_single_sae"):
+            trained_sae, training_results = train_sae(
+                x=raw_by_layer[sae.layer],
+                sae=sae,
+                batch_size=state.config.batch_size,
+                max_epochs=state.config.max_epochs,
+                patience=state.config.patience,
+                activation_mean=running_mean_by_layer[sae.layer],
+                tb_writer=tb_writer,
+                tb_prefix="",
+                tb_global_step=global_step,
+            )
         all_sae.append(trained_sae)
         all_results.append(training_results)
 
@@ -311,31 +320,65 @@ def _train_saes(
 def _analyze_sae(sae_model: SAE, sentences: list[dict], analysis_dir: str) -> dict:
     result = {}
 
-    sentence_features, filtered = get_sae_features_for_sentences(
-        sae_model,
-        sentences,
-        filter_sentence=filter_sentence,
-    )
+    with P("get_sae_features"):
+        sentence_features, filtered = get_sae_features_for_sentences(
+            sae_model,
+            sentences,
+            filter_sentence=filter_sentence,
+        )
 
     # SAE cluster analysis
-    result["cluster"] = cluster_analysis(filtered, sentence_features, analysis_dir)
-
-    # Baseline clustering comparison
-    activation_mean = sae_model.activation_mean.cpu().numpy()
-    X_norm, baseline_filtered = get_normalized_vectors_for_sentences(
-        layer=sae_model.layer,
-        activation_mean=activation_mean,
-        sentences=sentences,
-        filter_sentence=filter_sentence,
-    )
-    result["cluster_baseline"] = baseline_cluster_analysis(
-        X_norm,
-        baseline_filtered,
-        sae_model.num_latents,
-        analysis_dir,
-    )
+    with P("cluster_analysis"):
+        result["cluster"] = cluster_analysis(filtered, sentence_features, analysis_dir)
 
     return result
+
+
+def _run_baseline_analysis(
+    sae_models: list[SAE],
+    sentences: list[dict],
+    analysis_dir: str,
+) -> dict:
+    """Run baseline clustering once per unique (layer, n_clusters) pair.
+
+    Saves results to analysis_dir/cluster_baseline/{layer}_{n_clusters}/.
+    Returns a dict keyed by "L{layer}_k{n_clusters}" with baseline metrics.
+    """
+    baseline_dir = os.path.join(analysis_dir, "cluster_baseline")
+
+    # Collect unique (layer, n_clusters) pairs
+    seen = set()
+    unique_configs = []
+    for sae_model in sae_models:
+        key = (sae_model.layer, sae_model.num_latents)
+        if key not in seen:
+            seen.add(key)
+            unique_configs.append(sae_model)
+
+    all_baseline_results = {}
+    for sae_model in unique_configs:
+        layer = sae_model.layer
+        n_clusters = sae_model.num_latents
+        config_key = f"L{layer}_k{n_clusters}"
+
+        activation_mean = sae_model.activation_mean.cpu().numpy()
+        X_norm, baseline_filtered = get_normalized_vectors_for_sentences(
+            layer=layer,
+            activation_mean=activation_mean,
+            sentences=sentences,
+            filter_sentence=filter_sentence,
+        )
+
+        config_dir = os.path.join(baseline_dir, config_key)
+        with P("baseline_cluster_analysis"):
+            all_baseline_results[config_key] = baseline_cluster_analysis(
+                X_norm,
+                baseline_filtered,
+                n_clusters,
+                config_dir,
+            )
+
+    return all_baseline_results
 
 
 def _analyze_results(
@@ -353,6 +396,14 @@ def _analyze_results(
         sae_analysis_dir = os.path.join(analysis_dir, name)
         result = _analyze_sae(sae_model, sentences, sae_analysis_dir)
         all_results.append(result)
+
+    # Run baseline clustering once per unique (layer, n_clusters) — not per SAE
+    baseline_results = _run_baseline_analysis(sae_models, sentences, analysis_dir)
+
+    # Attach the relevant baseline to each SAE result
+    for sae_model, result in zip(sae_models, all_results):
+        config_key = f"L{sae_model.layer}_k{sae_model.num_latents}"
+        result["cluster_baseline"] = baseline_results.get(config_key, {})
 
     state.analysis_results = all_results
     update_state(state, PipelineStage.EVALUATED)
@@ -385,7 +436,9 @@ def _run_special_iter(state: PipelineState):
     tb_log_dir = state.filepath_cfg.tensorboard_dir / state.pipeline_id
     tb_writer = SummaryWriter(log_dir=str(tb_log_dir))
 
-    print(f"\n  === Special iteration: retraining from scratch (iter {state.iteration}) ===")
+    print(
+        f"\n  === Special iteration: retraining from scratch (iter {state.iteration}) ==="
+    )
 
     try:
         # Load ALL data from all completed iterations (from the main data dir,
@@ -400,8 +453,11 @@ def _run_special_iter(state: PipelineState):
             shutil.copy2(mean_file, special_sae_dir)
 
         sae_models = _train_saes(
-            state, samples, activations,
-            tb_writer=tb_writer, from_scratch=True,
+            state,
+            samples,
+            activations,
+            tb_writer=tb_writer,
+            from_scratch=True,
         )
         _analyze_results(state, samples, activations, sae_models)
     finally:
@@ -468,10 +524,8 @@ def _print_last_iter(state: PipelineState):
 # ── Main entry point ─────────────────────────────────────────────────────────
 
 
-def run_pipeline(state: PipelineState):
+def run_pipeline(state: PipelineState, retrain_every_n_iter: int = 10):
     """Run the iterative pipeline from current state."""
-
-    RETRAIN_EVERY_N = 50
 
     tb_log_dir = state.filepath_cfg.tensorboard_dir / state.pipeline_id
     writer = SummaryWriter(log_dir=str(tb_log_dir))
@@ -485,10 +539,11 @@ def run_pipeline(state: PipelineState):
             state.stage = PipelineStage.INIT
 
             # Every N iterations, retrain SAEs from scratch on all data.
-            if i > 0 and i % RETRAIN_EVERY_N == 0:
+            if i > 0 and i % retrain_every_n_iter == 0:
                 _run_special_iter(state)
     finally:
         writer.close()
+        P.report()
 
 
 # ── Test iteration ────────────────────────────────────────────────────────────

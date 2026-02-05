@@ -28,6 +28,58 @@ def plot_cluster_distribution(cluster_dist: list[int], title: str, output_path: 
     plt.close()
 
 
+def plot_gradient_embedding(
+    embeddings_2d: np.ndarray,
+    values: list[float | None],
+    title: str,
+    output_path: Path,
+):
+    """Scatter plot of 2D embeddings colored by log-scaled continuous gradient.
+
+    Points with value == -1 or None are excluded entirely.
+
+    Args:
+        embeddings_2d: (n, 2) array of 2D coordinates
+        values: list of numeric values, one per point (-1 or None = excluded)
+        title: plot title
+        output_path: where to save the PNG
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+    from matplotlib.ticker import FuncFormatter
+
+    values_arr = np.array([v if v is not None else -1.0 for v in values], dtype=float)
+    valid = values_arr > 0  # exclude -1, None, and 0 (invalid for log)
+
+    if not valid.any():
+        return
+
+    coords = embeddings_2d[valid]
+    v = values_arr[valid]
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    norm = LogNorm(vmin=v.min(), vmax=v.max())
+    sc = ax.scatter(
+        coords[:, 0],
+        coords[:, 1],
+        c=v,
+        cmap="Spectral_r",
+        norm=norm,
+        s=15,
+        alpha=0.7,
+    )
+    fig.colorbar(sc, ax=ax, shrink=0.8, pad=0.02)
+
+    ax.set_title(title, fontsize=11)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
 def plot_embedding(
     embeddings_2d: np.ndarray,
     labels: list[str],

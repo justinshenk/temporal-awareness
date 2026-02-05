@@ -48,6 +48,17 @@ def compute_cluster_balance(cluster_dist: list[int]) -> float:
 # ── Pipeline analysis helpers ────────────────────────────────────────────────
 
 
+def get_choice_time(sample):
+    llm_choice = sample.get("llm_choice", -1)
+    short_term_time_months = sample.get("short_term_time_months", -1)
+    long_term_time_months = sample.get("long_term_time_months", -1)
+    if llm_choice == 0:
+        return short_term_time_months
+    if llm_choice == 1:
+        return long_term_time_months
+    return -1
+
+
 def get_sentences(
     samples: list[dict],
     activations: list[dict],
@@ -76,6 +87,7 @@ def get_sentences(
                     "time_horizon_bucket": sample.get("time_horizon_bucket", -1),
                     "time_horizon_months": sample.get("time_horizon_months"),
                     "llm_choice": sample.get("llm_choice", -1),
+                    "llm_choice_time_months": get_choice_time(sample),
                     "activations": sample_acts[sentence_idx],
                 }
             )
@@ -250,6 +262,17 @@ def _build_colorings(
     }
 
 
+def _build_gradient_colorings(
+    sentences: list[dict],
+    cluster_labels: np.ndarray,
+) -> dict[str, list[str]]:
+    """Build label arrays for each coloring variant."""
+    return {
+        "choice_time_months": [s["llm_choice_time_months"] for s in sentences],
+        "time_horizon_months": [s["time_horizon_months"] for s in sentences],
+    }
+
+
 def cluster_analysis(
     sentences: list[dict],
     sentence_features: torch.Tensor,
@@ -260,7 +283,7 @@ def cluster_analysis(
     Computes NMI, ARI, purity for horizon and choice labels.
     Generates UMAP, t-SNE, and PaCMAP plots with multiple colorings.
     """
-    from .plots import plot_cluster_distribution, plot_embedding
+    from .plots import plot_cluster_distribution, plot_embedding, plot_gradient_embedding
 
     analysis_path = Path(analysis_dir)
     analysis_path.mkdir(parents=True, exist_ok=True)
@@ -348,6 +371,25 @@ def cluster_analysis(
     except Exception as e:
         print(f"    Warning: Embedding plots failed: {e}")
 
+    # Gradient Embedding plots: {coloring}/{method}.png
+    try:
+        features_np = sentence_features.cpu().numpy()
+        embeddings = _compute_embeddings(features_np)
+        colorings = _build_gradient_colorings(sentences, cluster_labels)
+
+        for coloring_name, values in colorings.items():
+            coloring_dir = analysis_path / coloring_name
+            coloring_dir.mkdir(parents=True, exist_ok=True)
+            for method, coords in embeddings.items():
+                title = f"{method.upper()} — {coloring_name}"
+                path = coloring_dir / f"{method}.png"
+                try:
+                    plot_gradient_embedding(coords, values, title, path)
+                except Exception as e:
+                    print(f"    Warning: {coloring_name}/{method} plot failed: {e}")
+    except Exception as e:
+        print(f"    Warning: Embedding plots failed: {e}")
+
     print(
         f"    Horizon NMI: {horizon_nmi:.4f}, Choice NMI: {choice_nmi:.4f}, "
         f"Active: {active_clusters}/{n_clusters}"
@@ -395,7 +437,9 @@ BASELINE_METHODS = {
 }
 
 
-def _run_spherical_kmeans(X: np.ndarray, n_clusters: int) -> tuple[np.ndarray, np.ndarray]:
+def _run_spherical_kmeans(
+    X: np.ndarray, n_clusters: int
+) -> tuple[np.ndarray, np.ndarray]:
     """L2-normalize then KMeans."""
     norms = np.linalg.norm(X, axis=1, keepdims=True)
     X_unit = X / (norms + 1e-8)
@@ -459,7 +503,9 @@ def _compute_clustering_metrics(
         horizon_ari = adjusted_rand_score(
             horizon_labels[valid_h], cluster_labels[valid_h]
         )
-        horizon_purity = compute_purity(cluster_labels[valid_h], horizon_labels[valid_h])
+        horizon_purity = compute_purity(
+            cluster_labels[valid_h], horizon_labels[valid_h]
+        )
     else:
         horizon_nmi = horizon_ari = horizon_purity = 0.0
 
@@ -504,7 +550,7 @@ def baseline_cluster_analysis(
     """
     from .plots import plot_cluster_distribution, plot_embedding
 
-    base_path = Path(analysis_dir) / "cluster_baseline"
+    base_path = Path(analysis_dir)
     base_path.mkdir(parents=True, exist_ok=True)
 
     all_methods_results = {}
@@ -555,11 +601,15 @@ def baseline_cluster_analysis(
                     title = f"{emb_method.upper()} — {method_label} — {coloring_name}"
                     try:
                         plot_embedding(
-                            coords, color_labels, title,
+                            coords,
+                            color_labels,
+                            title,
                             coloring_dir / f"{emb_method}.png",
                         )
                     except Exception as e:
-                        print(f"      Warning: {coloring_name}/{emb_method} failed: {e}")
+                        print(
+                            f"      Warning: {coloring_name}/{emb_method} failed: {e}"
+                        )
         except Exception as e:
             print(f"      Warning: embedding plots failed: {e}")
 

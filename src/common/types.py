@@ -34,6 +34,8 @@ class TimeValue(SchemaClass):
             return self.value
         elif self.unit in ("year", "years"):
             return self.value * 12
+        elif self.unit in ("week", "weeks"):
+            return self.value / 4.345
         elif self.unit in ("day", "days"):
             return self.value / 30
         else:

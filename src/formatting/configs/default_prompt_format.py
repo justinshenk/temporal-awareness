@@ -79,6 +79,57 @@ class DefaultPromptFormat(PromptFormatConfig):
         ]
     )
 
+    def get_keyword_map(self) -> dict[str, str]:
+        """Return mapping of short keyword names to their search text.
+
+        Used by token_positions for resolving keyword-based position specs.
+        Maps e.g. "situation" -> "SITUATION:", "choice_prefix" -> "I select:".
+        """
+        return {
+            "situation": self.const_keywords["situation_marker"],
+            "task": self.const_keywords["task_marker"],
+            "consider": self.const_keywords["consider_marker"],
+            "action": self.const_keywords["action_marker"],
+            "format": self.const_keywords["format_marker"],
+            "choice_prefix": self.const_keywords["format_choice_prefix"],
+            "reasoning_prefix": self.const_keywords["format_reasoning_prefix"],
+        }
+
+    def get_last_occurrence_keyword_names(self) -> set[str]:
+        """Return keyword names that should match LAST occurrence.
+
+        These keywords appear in both the FORMAT section (first) and the
+        actual response (last).  Position resolution should find the last
+        occurrence to target the response instance.
+        """
+        response_texts = set(self.response_const_keywords.values())
+        keyword_map = self.get_keyword_map()
+        return {k for k, v in keyword_map.items() if v in response_texts}
+
+    def get_prompt_section_markers(self) -> dict[str, str]:
+        """Return mapping of prompt section names to their marker text.
+
+        Only includes prompt-structure markers (not response markers).
+        Used for splitting prompt text into sections.
+        """
+        return {
+            "situation": self.const_keywords["situation_marker"],
+            "task": self.const_keywords["task_marker"],
+            "consider": self.const_keywords["consider_marker"],
+            "action": self.const_keywords["action_marker"],
+            "format": self.const_keywords["format_marker"],
+        }
+
+    def get_response_markers(self) -> dict[str, str]:
+        """Return mapping of response section names to their marker text.
+
+        Used for splitting response text into choice/reasoning sections.
+        """
+        return {
+            "choice_prefix": self.response_const_keywords["response_choice_prefix"],
+            "reasoning_prefix": self.response_const_keywords["response_reasoning_prefix"],
+        }
+
     def get_interesting_positions(self) -> list[dict]:
         """Return token position specs for all prompt and response markers.
 

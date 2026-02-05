@@ -22,7 +22,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.state import PipelineConfig, PipelineState, find_latest_state, show_status
+from src.state import (
+    PipelineConfig,
+    PipelineState,
+    find_state,
+    find_latest_state,
+    show_status,
+)
 from src.pipeline import run_pipeline, run_test_iteration
 
 
@@ -30,14 +36,15 @@ def get_args():
     parser = argparse.ArgumentParser(description="Temporal SAE Training Pipeline")
     parser.add_argument(
         "--resume",
-        action="store_true",
-        default=True,
-        help="Resume from last checkpoint (default)",
+        type=str,
+        dest="pipeline_id",
+        default="",
+        help="Resume from checkpoint by pipeline_id",
     )
     parser.add_argument(
         "--new",
         action="store_false",
-        dest="resume",
+        dest="start_new_pipeline",
         help="Start a new pipeline instead of resuming",
     )
     parser.add_argument(
@@ -60,18 +67,26 @@ def main():
     # Load config from JSON
     with open(args.config) as f:
         cfg = json.load(f)
-
-    latest_state = find_latest_state()
-    show_status(latest_state)
-
     config = PipelineConfig.from_dict(cfg)
 
-    if not args.resume or latest_state is None:
+    # Load prev pipeline
+    if args.pipeline_id:
+        latest_state = find_state(args.pipeline_id)
+        if not latest_state:
+            print(f"\n\n\nCannot load pipeline_id: {args.pipeline_id}\n\n\n")
+            return 0
+    else:
+        latest_state = find_latest_state()
+
+    if args.start_new_pipeline or latest_state is None:
         current_state = PipelineState.create_new(config)
-        print(f"Created new pipeline: {current_state.pipeline_id}")
+        print(
+            f"\n\n\nCreated new pipeline with pipeline_id: {current_state.pipeline_id}\n\n\n"
+        )
     else:
         current_state = latest_state
         current_state.update_config(config)
+    show_status(current_state)
 
     if args.test_iter:
         run_test_iteration(current_state)

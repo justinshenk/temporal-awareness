@@ -155,6 +155,15 @@ class PipelineState:
         self.config = config
 
 
+def find_state(pipeline_id: str) -> Optional[PipelineState]:
+    """Load a specific pipeline state by its pipeline_id."""
+    data_dir = FilepathConfig().data_dir
+    state_file = data_dir / f"state_{pipeline_id}.json"
+    if not state_file.exists():
+        return None
+    return PipelineState.load(state_file)
+
+
 def find_latest_state() -> Optional[PipelineState]:
     data_dir = FilepathConfig().data_dir
     data_dir.mkdir(parents=True, exist_ok=True)

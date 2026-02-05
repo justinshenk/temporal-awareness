@@ -48,9 +48,9 @@ def _horizon_bucket(time_horizon) -> int:
     if time_horizon is None:
         return HORIZON_NONE
     months = time_horizon.to_months()
-    if months <= 24:
+    if months <= 12:
         return HORIZON_SHORT
-    elif months <= 60:
+    elif months <= (12 * 5):
         return HORIZON_MEDIUM
     return HORIZON_LONG
 
@@ -65,6 +65,8 @@ def sample_to_dict(sample) -> dict:
         "time_horizon_months": th.to_months() if th else None,
         "short_term_label": sample.prompt.preference_pair.short_term.label,
         "long_term_label": sample.prompt.preference_pair.long_term.label,
+        "short_term_time_months": sample.prompt.preference_pair.short_term.time.to_months(),
+        "long_term_time_months": sample.prompt.preference_pair.long_term.time.to_months(),
     }
 
 
