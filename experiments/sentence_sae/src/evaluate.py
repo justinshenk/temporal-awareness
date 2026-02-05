@@ -9,9 +9,13 @@ from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
-from .sae import SAE
-from .data import Sentence
-from .inference import normalize_activations_raw
+import pacmap
+import pacmap.pacmap as _pm
+import umap
+from sklearn.manifold import TSNE
+from sklearn.neighbors import NearestNeighbors
+
+from .plots import plot_cluster_distribution, plot_embedding, plot_gradient_embedding
 from .utils import get_device
 
 
@@ -45,95 +49,6 @@ def compute_cluster_balance(cluster_dist: list[int]) -> float:
     return entropy / max_entropy if max_entropy > 0 else 0.0
 
 
-# ── Pipeline analysis helpers ────────────────────────────────────────────────
-
-
-def get_choice_time(sample):
-    llm_choice = sample.get("llm_choice", -1)
-    short_term_time_months = sample.get("short_term_time_months", -1)
-    long_term_time_months = sample.get("long_term_time_months", -1)
-    if llm_choice == 0:
-        return short_term_time_months
-    if llm_choice == 1:
-        return long_term_time_months
-    return -1
-
-
-def get_sentences(
-    samples: list[dict],
-    activations: list[dict],
-) -> list[dict]:
-    """Flatten samples + activations into a list of sentence dicts.
-
-    Each dict has: sentence (Sentence metadata), sample_id,
-    time_horizon_bucket, llm_choice, activations ({layer_key: ndarray}).
-    """
-    result = []
-    for sample_idx, sample in enumerate(samples):
-        raw_sentences = sample.get("sentences", [])
-        if sample_idx >= len(activations) or not activations[sample_idx]:
-            continue
-        sample_acts = activations[sample_idx]
-        for sentence_idx, raw in enumerate(raw_sentences):
-            if sentence_idx not in sample_acts:
-                continue
-            sentence = Sentence.from_dict(raw)
-            result.append(
-                {
-                    "text": sentence.text,
-                    "source": sentence.source,
-                    "section": sentence.section,
-                    "sample_id": sample.get("sample_id"),
-                    "time_horizon_bucket": sample.get("time_horizon_bucket", -1),
-                    "time_horizon_months": sample.get("time_horizon_months"),
-                    "llm_choice": sample.get("llm_choice", -1),
-                    "llm_choice_time_months": get_choice_time(sample),
-                    "activations": sample_acts[sentence_idx],
-                }
-            )
-    return result
-
-
-def get_sae_features_for_sentences(
-    sae_model: SAE,
-    sentences: list[dict],
-    filter_sentence=None,
-) -> tuple[torch.Tensor, list[dict]]:
-    """Extract SAE feature activations for a list of sentence dicts.
-
-    Uses the SAE's stored activation_mean for normalization.
-    Returns (features_tensor, filtered_sentences) — only sentences that
-    matched the filter and had activations for the SAE's layer.
-    """
-    layer_key = f"layer_{sae_model.layer}"
-
-    vectors = []
-    kept = []
-    for s in sentences:
-        if filter_sentence is not None and not filter_sentence(Sentence.from_dict(s)):
-            continue
-        act = s["activations"].get(layer_key)
-        if act is not None:
-            vectors.append(act)
-            kept.append(s)
-
-    if not vectors:
-        raise ValueError(f"No activations found for layer {sae_model.layer}")
-
-    X_raw = np.stack(vectors, axis=0)
-    activation_mean = sae_model.activation_mean.cpu().numpy()
-    X_norm = normalize_activations_raw(X_raw, activation_mean)
-
-    device = get_device()
-    X_tensor = torch.from_numpy(X_norm).float().to(device)
-    sae_model = sae_model.to(device)
-
-    with torch.no_grad():
-        features = sae_model.get_all_activations(X_tensor)
-
-    return features, kept
-
-
 CHOICE_NAMES = {-1: "unknown", 0: "short-term", 1: "long-term"}
 
 
@@ -160,9 +75,6 @@ def _patch_pacmap_annoy():
 
     Annoy is broken on Apple Silicon (get_nns_by_item returns empty).
     """
-    import pacmap.pacmap as _pm
-    from sklearn.neighbors import NearestNeighbors
-
     _original_generate_pair = _pm.generate_pair
 
     def _patched_generate_pair(
@@ -211,10 +123,6 @@ _patch_pacmap_annoy()
 
 def _compute_embeddings(features_np: np.ndarray) -> dict[str, np.ndarray]:
     """Compute 2D embeddings via UMAP, t-SNE, and PaCMAP."""
-    from sklearn.manifold import TSNE
-    import umap
-    import pacmap
-
     n = len(features_np)
     embeddings = {}
 
@@ -283,8 +191,6 @@ def cluster_analysis(
     Computes NMI, ARI, purity for horizon and choice labels.
     Generates UMAP, t-SNE, and PaCMAP plots with multiple colorings.
     """
-    from .plots import plot_cluster_distribution, plot_embedding, plot_gradient_embedding
-
     analysis_path = Path(analysis_dir)
     analysis_path.mkdir(parents=True, exist_ok=True)
 
@@ -399,35 +305,6 @@ def cluster_analysis(
 
 
 # ── Baseline clustering ──────────────────────────────────────────────────────
-
-
-def get_normalized_vectors_for_sentences(
-    layer: int,
-    activation_mean: np.ndarray,
-    sentences: list[dict],
-    filter_sentence=None,
-) -> tuple[np.ndarray, list[dict]]:
-    """Extract normalized activation vectors for a layer from sentence dicts.
-
-    Returns (X_norm, filtered_sentences).
-    """
-    layer_key = f"layer_{layer}"
-    vectors = []
-    kept = []
-    for s in sentences:
-        if filter_sentence is not None and not filter_sentence(Sentence.from_dict(s)):
-            continue
-        act = s["activations"].get(layer_key)
-        if act is not None:
-            vectors.append(act)
-            kept.append(s)
-
-    if not vectors:
-        raise ValueError(f"No activations found for layer {layer}")
-
-    X_raw = np.stack(vectors, axis=0)
-    X_norm = normalize_activations_raw(X_raw, activation_mean)
-    return X_norm, kept
 
 
 BASELINE_METHODS = {
@@ -548,8 +425,6 @@ def baseline_cluster_analysis(
 
     Returns a dict mapping method name to its metrics dict.
     """
-    from .plots import plot_cluster_distribution, plot_embedding
-
     base_path = Path(analysis_dir)
     base_path.mkdir(parents=True, exist_ok=True)
 

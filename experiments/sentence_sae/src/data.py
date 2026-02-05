@@ -1,73 +1,12 @@
-"""Data structures and scenario-based sample generation."""
+"""Scenario-based sample generation."""
 
 import random
-from dataclasses import dataclass, fields
 from pathlib import Path
 
+from src.datasets.generator import DatasetGenerator
 
 from .utils import SCENARIOS_DIR
-
-# ── Constants ───────────────────────────────────────────────────────────────
-
-HORIZON_NONE = 0  # No time horizon specified
-HORIZON_SHORT = 1  # <= 2 years
-HORIZON_MEDIUM = 2  # 2-5 years
-HORIZON_LONG = 3  # > 5 years
-
-CHOICE_SHORT_TERM = 0
-CHOICE_LONG_TERM = 1
-CHOICE_UNKNOWN = -1
-
-
-# ── Dataclasses ─────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Sentence:
-    """A sentence with metadata about its origin in the prompt/response."""
-
-    text: str
-    source: str  # "prompt" or "response"
-    section: str  # prompt: "situation","task","consider","action","format"
-    # response: "choice","reasoning"
-
-    def to_dict(self) -> dict:
-        return {"text": self.text, "source": self.source, "section": self.section}
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "Sentence":
-        field_names = {f.name for f in fields(cls)}
-        return cls(**{k: v for k, v in d.items() if k in field_names})
-
-
-# ── Sample conversion ───────────────────────────────────────────────────────
-
-
-def _horizon_bucket(time_horizon) -> int:
-    """Convert a TimeValue to a horizon bucket."""
-    if time_horizon is None:
-        return HORIZON_NONE
-    months = time_horizon.to_months()
-    if months <= 12:
-        return HORIZON_SHORT
-    elif months <= (12 * 5):
-        return HORIZON_MEDIUM
-    return HORIZON_LONG
-
-
-def sample_to_dict(sample) -> dict:
-    """Convert a DatasetSample object to a JSON-serializable dict."""
-    th = sample.prompt.time_horizon
-    return {
-        "sample_id": sample.sample_id,
-        "prompt_text": sample.prompt.text,
-        "time_horizon_bucket": _horizon_bucket(th),
-        "time_horizon_months": th.to_months() if th else None,
-        "short_term_label": sample.prompt.preference_pair.short_term.label,
-        "long_term_label": sample.prompt.preference_pair.long_term.label,
-        "short_term_time_months": sample.prompt.preference_pair.short_term.time.to_months(),
-        "long_term_time_months": sample.prompt.preference_pair.long_term.time.to_months(),
-    }
+from .activations import sample_to_dict
 
 
 # ── Scenario loading & sample generation ────────────────────────────────────
@@ -77,8 +16,6 @@ def load_all_scenario_configs(
     scenarios_dir: Path = SCENARIOS_DIR,
 ) -> list[tuple[Path, object]]:
     """Load all scenario configs from the scenarios directory."""
-    from src.datasets.generator import DatasetGenerator
-
     if not scenarios_dir.exists():
         raise FileNotFoundError(f"Scenarios directory not found: {scenarios_dir}")
 
@@ -105,7 +42,6 @@ def generate_samples(n_samples: int, seed: int) -> list[dict]:
     then shuffles for mixing.
     """
     random.seed(seed)
-    from src.datasets.generator import DatasetGenerator
 
     scenario_configs = load_all_scenario_configs()
     n_scenarios = len(scenario_configs)

@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from .utils import get_device
-from .data import Sentence
+from .activations import Sentence
 # ── Constants ───────────────────────────────────────────────────────────────
 
 DECODER_NORM_EPS = 1e-5
@@ -17,6 +17,19 @@ DEFAULT_LR_SCALE_FACTOR = 2**14
 
 
 # ── SAE Model ──────────────────────────────────────────────────────────────
+
+
+@dataclass
+class SAESpec:
+    """Lightweight SAE specification before d_in is known."""
+
+    layer: int
+    num_latents: int
+    k: int
+
+    def get_name(self) -> str:
+        """Canonical name for this SAE config, used for file/dir naming."""
+        return f"L{self.layer}_k{self.num_latents}_t{self.k}"
 
 
 class SAE(nn.Module):
@@ -66,13 +79,15 @@ class SAE(nn.Module):
         with torch.no_grad():
             return self.encoder(x - self.b_dec).argmax(dim=1)
 
+    def get_name(self) -> str:
+        """Canonical name for this SAE config, used for file/dir naming."""
+        return f"L{self.layer}_k{self.num_latents}_t{self.k}"
+
     def get_all_activations(self, x: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             return self.encoder(x - self.b_dec)
 
-    def save_checkpoint(
-        self, path: Path, activation_mean: np.ndarray, metadata: dict = None
-    ):
+    def save_checkpoint(self, path: Path, metadata: dict = None):
         checkpoint = {
             "d_in": self.d_in,
             "num_latents": self.num_latents,
@@ -81,7 +96,6 @@ class SAE(nn.Module):
             "encoder_bias": self.encoder.bias.data.cpu(),
             "W_dec": self.W_dec.data.cpu(),
             "b_dec": self.b_dec.data.cpu(),
-            "activation_mean": torch.from_numpy(activation_mean).float(),
         }
         if metadata:
             checkpoint.update(metadata)
@@ -95,8 +109,6 @@ class SAE(nn.Module):
         sae.encoder.bias.data = checkpoint["encoder_bias"]
         sae.W_dec.data = checkpoint["W_dec"]
         sae.b_dec.data = checkpoint["b_dec"]
-        if "activation_mean" in checkpoint:
-            sae.activation_mean.copy_(checkpoint["activation_mean"])
         return sae.to(device)
 
 
@@ -143,7 +155,6 @@ def compute_training_metrics(
 def train_single_sae(
     sae: SAE,
     X: np.ndarray,
-    activation_mean: np.ndarray,
     lr: float = 0.001,
     device: str = "mps",
     max_epochs: int = 500,
@@ -160,8 +171,6 @@ def train_single_sae(
     """
     X_tensor = torch.from_numpy(X).float().to(device)
     n_samples, d_in = X.shape
-    sae.activation_mean.copy_(torch.from_numpy(activation_mean).float())
-
     optimizer = torch.optim.Adam(sae.parameters(), lr=lr)
 
     X_centered_sq_sum = ((X_tensor - X_tensor.mean(dim=0, keepdim=True)) ** 2).sum()
@@ -228,20 +237,6 @@ def train_single_sae(
     return sae, best_loss, training_history
 
 
-@dataclass
-class SAESpec:
-    """Lightweight SAE specification before d_in is known."""
-
-    layer: int
-    num_latents: int
-    k: int
-
-
-def sae_name(layer: int, n_clusters: int, topk: int) -> str:
-    """Canonical name for an SAE config, used for file/dir naming."""
-    return f"L{layer}_k{n_clusters}_t{topk}"
-
-
 # ── Pipeline helpers ─────────────────────────────────────────────────────────
 
 
@@ -268,8 +263,8 @@ def load_sae_models(state, sae_dir: str) -> list[SAE]:
             for topk in state.config.topk_values:
                 if n_clusters <= topk:
                     continue
-                name = sae_name(layer, n_clusters, topk)
-                path = sae_path / f"{name}.pt"
+                spec = SAESpec(layer=layer, num_latents=n_clusters, k=topk)
+                path = sae_path / f"{spec.get_name()}.pt"
                 if path.exists():
                     sae = SAE.load_checkpoint(path, device)
                     sae.layer = layer
@@ -279,7 +274,7 @@ def load_sae_models(state, sae_dir: str) -> list[SAE]:
                     print(
                         f"\n\nload_sae_models cannot find {path}. Creating fresh. \n\n"
                     )
-                    models.append(SAESpec(layer=layer, num_latents=n_clusters, k=topk))
+                    models.append(spec)
     print(f"  Loaded {len(models)} SAE models/specs")
     return models
 
@@ -288,149 +283,43 @@ def save_sae_model(sae_dir: str, sae: SAE) -> None:
     """Save an SAE checkpoint to sae_dir."""
     sae_path = Path(sae_dir)
     sae_path.mkdir(parents=True, exist_ok=True)
-    name = sae_name(sae.layer, sae.num_latents, sae.k)
+    name = sae.get_name()
     path = sae_path / f"{name}.pt"
-    activation_mean = sae.activation_mean.cpu().numpy()
-    sae.save_checkpoint(path, activation_mean, {"layer": sae.layer})
+    sae.save_checkpoint(path, {"layer": sae.layer})
     print(f"    Saved {name} -> {path}")
 
 
-# ── Running activation mean ─────────────────────────────────────────────────
-
-
-def _running_mean_path(sae_dir: str, layer: int) -> Path:
-    return Path(sae_dir) / f"running_mean_L{layer}.npz"
-
-
-def load_running_mean(sae_dir: str, layer: int) -> tuple[np.ndarray | None, int]:
-    """Load the running activation mean and sample count for a layer.
-
-    Returns (mean, n_total).  If no file exists returns (None, 0).
-    """
-    path = _running_mean_path(sae_dir, layer)
-    if not path.exists():
-        return None, 0
-    data = np.load(path)
-    return data["mean"], int(data["n"])
-
-
-def save_running_mean(sae_dir: str, layer: int, mean: np.ndarray, n: int) -> None:
-    """Persist the running activation mean and sample count for a layer."""
-    path = _running_mean_path(sae_dir, layer)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(path, mean=mean, n=np.array(n))
-
-
-def update_running_mean(
-    sae_dir: str,
-    layer: int,
-    x_new: np.ndarray,
-) -> np.ndarray:
-    """Update the running mean for *layer* with new raw activation vectors.
-
-    Uses the parallel/batch form of Welford's online mean:
-        combined_mean = old_mean + (new_mean - old_mean) * (n_new / n_total)
-
-    Returns the updated mean (also saved to disk).
-    """
-    old_mean, n_old = load_running_mean(sae_dir, layer)
-    new_mean = x_new.mean(axis=0)
-    n_new = x_new.shape[0]
-
-    if old_mean is None:
-        combined_mean = new_mean
-    else:
-        n_total = n_old + n_new
-        combined_mean = old_mean + (new_mean - old_mean) * (n_new / n_total)
-
-    save_running_mean(sae_dir, layer, combined_mean, n_old + n_new)
-    print(
-        f"    Layer {layer}: running mean updated "
-        f"({n_old} + {n_new} = {n_old + n_new} vectors)"
-    )
-    return combined_mean
-
-
-def form_training_datasets(
-    state,
-    samples: list[dict],
-    activations: list[dict],
-    layer: int,
-    filter_sentence=None,
-) -> np.ndarray:
-    """Build raw training matrix for a specific layer from all samples/sentences.
-
-    Args:
-        filter_sentence: Optional predicate on sentence dicts (from sample["sentences"]).
-            Only sentences where filter_sentence(sentence_dict) is True are included.
-
-    Returns stacked raw activation vectors (not normalized).
-    """
-    layer_key = f"layer_{layer}"
-    vectors = []
-    for sample_idx in range(len(samples)):
-        if sample_idx >= len(activations):
-            continue
-        sample_acts = activations[sample_idx]
-        raw_sentences = samples[sample_idx].get("sentences", [])
-        for sentence_idx in sorted(sample_acts.keys(), key=int):
-            if filter_sentence is not None:
-                if sentence_idx < len(raw_sentences):
-                    if not filter_sentence(
-                        Sentence.from_dict(raw_sentences[sentence_idx])
-                    ):
-                        continue
-            sentence_acts = sample_acts[sentence_idx]
-            if layer_key in sentence_acts:
-                vectors.append(sentence_acts[layer_key])
-
-    if not vectors:
-        raise ValueError(f"No activations found for layer {layer}")
-
-    X = np.stack(vectors, axis=0)
-    print(f"    Layer {layer}: {X.shape[0]} sentence vectors, d={X.shape[1]}")
-    return X
-
-
 def train_sae(
-    x: np.ndarray,
+    x_norm: np.ndarray,
     sae: SAE | SAESpec,
     batch_size: int,
     max_epochs: int,
     patience: int,
-    activation_mean: np.ndarray | None = None,
     tb_writer=None,
     tb_prefix: str = "",
     tb_global_step: int = 0,
 ) -> tuple[SAE, dict]:
-    """Train a single SAE on raw activation data.
+    """Train a single SAE on section-centered activation data.
 
-    Handles normalization internally. Accepts either an existing SAE model
-    (for continued training) or an SAESpec (for fresh training).
+    Accepts either an existing SAE model (for continued training) or an
+    SAESpec (for fresh training).
 
     Args:
-        activation_mean: Pre-computed running mean across all iterations.
-            If None, falls back to computing the mean from *x* alone.
+        x_norm: Activation matrix already centered by section means.
         tb_global_step: Global step offset for TensorBoard logging so that
             online-SGD iterations produce a continuous loss curve.
 
     Returns (trained_sae, training_results_dict).
     """
-    from .inference import normalize_activations_raw
-
-    if activation_mean is None:
-        activation_mean = x.mean(axis=0)
-    X_norm = normalize_activations_raw(x, activation_mean)
-
     device = get_device()
     layer = sae.layer
     n_clusters = sae.num_latents
     topk = sae.k
-    name = sae_name(layer, n_clusters, topk)
+    name = sae.get_name()
 
     # initialize sae if needed
     if isinstance(sae, SAESpec):
-        d_in = X_norm.shape[1]
+        d_in = x_norm.shape[1]
         sae = SAE(d_in, n_clusters, k=topk).to(device)
 
     lr = DEFAULT_LR_BASE / (n_clusters / DEFAULT_LR_SCALE_FACTOR) ** 0.5
@@ -438,8 +327,7 @@ def train_sae(
     print(f"    Training {name}...", end=" ", flush=True)
     trained, loss, history = train_single_sae(
         sae,
-        X_norm,
-        activation_mean,
+        x_norm,
         lr=lr,
         device=device,
         max_epochs=max_epochs,
@@ -465,3 +353,44 @@ def train_sae(
         "history": history,
     }
     return trained, results
+
+
+# ── Feature extraction ─────────────────────────────────────────────────────
+
+
+def get_sae_features_for_sentences(
+    sae_model: SAE,
+    sentences: list[dict],
+    filter_sentence=None,
+) -> tuple[torch.Tensor, list[dict]]:
+    """Extract SAE feature activations for a list of sentence dicts.
+
+    Assumes activations are already centered by section means.
+    Returns (features_tensor, filtered_sentences) — only sentences that
+    matched the filter and had activations for the SAE's layer.
+    """
+    layer_key = f"layer_{sae_model.layer}"
+
+    vectors = []
+    kept = []
+    for s in sentences:
+        if filter_sentence is not None and not filter_sentence(Sentence.from_dict(s)):
+            continue
+        act = s["activations"].get(layer_key)
+        if act is None:
+            continue
+        vectors.append(act)
+        kept.append(s)
+
+    if not vectors:
+        raise ValueError(f"No activations found for layer {sae_model.layer}")
+
+    X_norm = np.stack(vectors, axis=0)
+
+    device = get_device()
+    X_tensor = torch.from_numpy(X_norm).float().to(device)
+    sae_model = sae_model.to(device)
+    with torch.no_grad():
+        features = sae_model.get_all_activations(X_tensor)
+
+    return features, kept
