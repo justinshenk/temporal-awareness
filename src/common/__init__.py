@@ -8,8 +8,7 @@ from .token_positions import (
     resolve_position,
     resolve_positions,
     get_position_label,
-    PROMPT_KEYWORDS,
-    LAST_OCCURRENCE_KEYWORDS,
+    _get_prompt_keywords,
 )
 from .positions_schema import PositionSpec, PositionsFile
 
@@ -24,8 +23,7 @@ __all__ = [
     "resolve_position",
     "resolve_positions",
     "get_position_label",
-    "PROMPT_KEYWORDS",
-    "LAST_OCCURRENCE_KEYWORDS",
+    "_get_prompt_keywords",
     "PositionSpec",
     "PositionsFile",
 ]

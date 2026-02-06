@@ -14,26 +14,22 @@ Display label convention:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Optional, Union
 
-# Keyword mappings are derived lazily from DefaultPromptFormat to avoid
-# circular imports (token_positions ↔ formatting.configs ↔ datasets.schemas ↔ common).
-PROMPT_KEYWORDS: dict[str, str] = {}
-LAST_OCCURRENCE_KEYWORDS: set[str] = set()
-_KEYWORDS_INITIALIZED = False
 
+@lru_cache(maxsize=1)
+def _get_prompt_keywords() -> tuple[dict[str, str], frozenset[str]]:
+    """Get keyword mappings from DefaultPromptFormat (cached).
 
-def _init_keywords() -> None:
-    """Lazily populate PROMPT_KEYWORDS and LAST_OCCURRENCE_KEYWORDS."""
-    global _KEYWORDS_INITIALIZED
-    if _KEYWORDS_INITIALIZED:
-        return
+    Returns tuple of (keyword_map, last_occurrence_keywords).
+    Uses lru_cache to avoid re-computing on every call while avoiding
+    mutable global state.
+    """
     from ..formatting.configs import DefaultPromptFormat
 
     fmt = DefaultPromptFormat()
-    PROMPT_KEYWORDS.update(fmt.get_keyword_map())
-    LAST_OCCURRENCE_KEYWORDS.update(fmt.get_last_occurrence_keyword_names())
-    _KEYWORDS_INITIALIZED = True
+    return fmt.get_keyword_map(), frozenset(fmt.get_last_occurrence_keyword_names())
 
 
 @dataclass
@@ -86,14 +82,14 @@ def resolve_position(
 
     Spec formats:
         - int: Absolute position
-        - str: Keyword to search for (or PROMPT_KEYWORDS key)
+        - str: Keyword to search for (or keyword_map key)
         - {"text": "..."}: Search for text in tokens (first occurrence)
         - {"text": "...", "last": True}: Search for text (last occurrence)
         - {"relative_to": "end", "offset": -1}: Relative to end
         - {"relative_to": "prompt_end", "offset": 0}: Relative to prompt end
-        - {"keyword": "consider"}: Use PROMPT_KEYWORDS mapping
+        - {"keyword": "consider"}: Use keyword_map mapping
     """
-    _init_keywords()
+    keyword_map, last_occurrence_keywords = _get_prompt_keywords()
 
     if isinstance(spec, TokenPositionSpec):
         spec = spec.spec
@@ -112,10 +108,10 @@ def resolve_position(
     if isinstance(spec, str):
         # Check if it's a keyword reference
         keyword = spec.lower()
-        if keyword in PROMPT_KEYWORDS:
-            search_text = PROMPT_KEYWORDS[keyword]
+        if keyword in keyword_map:
+            search_text = keyword_map[keyword]
             # Use last occurrence for keywords like choice_prefix (in response, not FORMAT)
-            use_last = keyword in LAST_OCCURRENCE_KEYWORDS
+            use_last = keyword in last_occurrence_keywords
         else:
             search_text = spec
             use_last = False
@@ -126,9 +122,9 @@ def resolve_position(
         # Keyword reference
         if "keyword" in spec:
             keyword = spec["keyword"].lower()
-            if keyword in PROMPT_KEYWORDS:
-                use_last = keyword in LAST_OCCURRENCE_KEYWORDS
-                return _search_text(tokens, PROMPT_KEYWORDS[keyword], last=use_last)
+            if keyword in keyword_map:
+                use_last = keyword in last_occurrence_keywords
+                return _search_text(tokens, keyword_map[keyword], last=use_last)
             return ResolvedPosition(index=-1, label=f'"{keyword}"', found=False)
 
         # Text search (supports optional "last": True for last-occurrence matching)

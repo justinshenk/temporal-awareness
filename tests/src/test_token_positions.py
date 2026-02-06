@@ -8,8 +8,7 @@ from src.common.token_positions import (
     resolve_position,
     resolve_positions,
     get_position_label,
-    PROMPT_KEYWORDS,
-    LAST_OCCURRENCE_KEYWORDS,
+    _get_prompt_keywords,
 )
 
 
@@ -141,7 +140,7 @@ class TestResolvePositionKeyword:
         assert result.found is True
 
     def test_keyword_string_shorthand(self):
-        # String that matches a keyword name uses PROMPT_KEYWORDS
+        # String that matches a keyword name uses keyword_map
         result = resolve_position("consider", SAMPLE_TOKENS)
         # Should search for "CONSIDER:" not just "consider"
         assert result.found is True
@@ -217,47 +216,52 @@ class TestGetPositionLabel:
 
 
 class TestPromptKeywords:
-    """Test PROMPT_KEYWORDS mapping."""
+    """Test prompt keywords from _get_prompt_keywords()."""
 
     def test_keywords_defined(self):
-        assert "situation" in PROMPT_KEYWORDS
-        assert "task" in PROMPT_KEYWORDS
-        assert "consider" in PROMPT_KEYWORDS
-        assert "action" in PROMPT_KEYWORDS
-        assert "format" in PROMPT_KEYWORDS
-        assert "choice_prefix" in PROMPT_KEYWORDS
-        assert "reasoning_prefix" in PROMPT_KEYWORDS
+        keyword_map, _ = _get_prompt_keywords()
+        assert "situation" in keyword_map
+        assert "task" in keyword_map
+        assert "consider" in keyword_map
+        assert "action" in keyword_map
+        assert "format" in keyword_map
+        assert "choice_prefix" in keyword_map
+        assert "reasoning_prefix" in keyword_map
 
     def test_keyword_values(self):
-        assert PROMPT_KEYWORDS["situation"] == "SITUATION:"
-        assert PROMPT_KEYWORDS["task"] == "TASK:"
-        assert PROMPT_KEYWORDS["consider"] == "CONSIDER:"
-        assert PROMPT_KEYWORDS["action"] == "ACTION:"
-        assert PROMPT_KEYWORDS["choice_prefix"] == "I select:"
-        assert PROMPT_KEYWORDS["reasoning_prefix"] == "My reasoning:"
+        keyword_map, _ = _get_prompt_keywords()
+        assert keyword_map["situation"] == "SITUATION:"
+        assert keyword_map["task"] == "TASK:"
+        assert keyword_map["consider"] == "CONSIDER:"
+        assert keyword_map["action"] == "ACTION:"
+        assert keyword_map["choice_prefix"] == "I select:"
+        assert keyword_map["reasoning_prefix"] == "My reasoning:"
 
     def test_no_stale_keywords(self):
         """Ensure removed keywords are not present."""
-        assert "option_one" not in PROMPT_KEYWORDS
-        assert "option_two" not in PROMPT_KEYWORDS
+        keyword_map, _ = _get_prompt_keywords()
+        assert "option_one" not in keyword_map
+        assert "option_two" not in keyword_map
 
     def test_derived_from_default_prompt_format(self):
-        """PROMPT_KEYWORDS values come from DefaultPromptFormat helper methods."""
+        """keyword_map values come from DefaultPromptFormat helper methods."""
         from src.formatting.configs.default_prompt_format import DefaultPromptFormat
         fmt = DefaultPromptFormat()
-        keyword_map = fmt.get_keyword_map()
-        assert PROMPT_KEYWORDS == keyword_map
-        assert PROMPT_KEYWORDS["situation"] == fmt.const_keywords["situation_marker"]
-        assert PROMPT_KEYWORDS["choice_prefix"] == fmt.const_keywords["format_choice_prefix"]
+        expected_map = fmt.get_keyword_map()
+        keyword_map, _ = _get_prompt_keywords()
+        assert keyword_map == expected_map
+        assert keyword_map["situation"] == fmt.const_keywords["situation_marker"]
+        assert keyword_map["choice_prefix"] == fmt.const_keywords["format_choice_prefix"]
 
     def test_last_occurrence_keywords(self):
-        """LAST_OCCURRENCE_KEYWORDS matches DefaultPromptFormat helper."""
+        """last_occurrence_keywords matches DefaultPromptFormat helper."""
         from src.formatting.configs.default_prompt_format import DefaultPromptFormat
         fmt = DefaultPromptFormat()
-        assert LAST_OCCURRENCE_KEYWORDS == fmt.get_last_occurrence_keyword_names()
-        assert "choice_prefix" in LAST_OCCURRENCE_KEYWORDS
-        assert "reasoning_prefix" in LAST_OCCURRENCE_KEYWORDS
-        assert "situation" not in LAST_OCCURRENCE_KEYWORDS
+        _, last_occurrence_keywords = _get_prompt_keywords()
+        assert last_occurrence_keywords == frozenset(fmt.get_last_occurrence_keyword_names())
+        assert "choice_prefix" in last_occurrence_keywords
+        assert "reasoning_prefix" in last_occurrence_keywords
+        assert "situation" not in last_occurrence_keywords
 
 
 class TestGetInterestingPositions:
