@@ -77,6 +77,15 @@ class Patching:
         print(f"Clean logit diff: {self.clean_baseline:.4f}")
         print(f"Corrupted logit diff: {self.corrupted_baseline:.4f}")
 
+    def append_ticks(self, patch_metrics, prompt_number, is_clean=True):
+        assert(prompt_number < len(self.clean_tokens))
+        if is_clean:
+            ticks = self.clean_tokens[prompt_number].cpu()
+        else:
+            ticks = self.corrupted_tokens[prompt_number].cpu()
+        prompt_as_ticks = [f"{i}, {self.model.to_single_str_token(int(t))}" for i, t in enumerate(ticks)]
+        df = pd.DataFrame(patch_metrics.cpu(), columns=prompt_as_ticks)
+        return df
 
 class ActivationPatching(Patching):
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
@@ -117,6 +126,7 @@ class ActivationPatching(Patching):
                 self.clean_baseline - self.corrupted_baseline
             )
 
+        # for batch..
         every_block_act_patch_result = layer_specific_algorithm(
             self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
 
@@ -131,6 +141,9 @@ class ActivationPatching(Patching):
 
     def patch_attn_out(self):
         return self.__patch__(patching.get_act_patch_attn_out)
+
+    def patch_mlp_out(self):
+        return self.__patch__(patching.get_act_patch_mlp_out)
 
 class AttributionPatching(Patching):
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
@@ -262,3 +275,6 @@ class AttributionPatching(Patching):
             )
             return head_out_attr, labels
         return self.__patch__(attn_out_algorithm)
+
+    def patch_mlp_out(self):
+        raise NotImplementedError()
