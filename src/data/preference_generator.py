@@ -168,7 +168,7 @@ def generate_preference_data(
             pref.prompt_text = prompts_by_id.get(pref.sample_id, "")
 
         if verbose:
-            n_with_internals = sum(1 for p in preferences if p.internals is not None)
+            n_with_internals = sum(1 for p in pref_data.preferences if p.internals is not None)
             msg = f"  Created {len(pref_data.preferences)} preferences with prompt text"
             if n_with_internals:
                 msg += f" ({n_with_internals} with internals)"
