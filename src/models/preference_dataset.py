@@ -80,6 +80,12 @@ class PreferenceDataset:
             return f"{prefix}_{self.prompt_dataset_name}.json"
         return f"{prefix}.json"
 
+    def get_internals_filename(self, sample_idx: int) -> str | None:
+        """Get filename for internals .pt file at given index."""
+        if len(self.preferences) <= sample_idx:
+            return None
+        return f"{self.get_prefix()}_sample_{self.preferences[sample_idx].sample_id}.pt"
+
     def split_by_choice(
         self,
     ) -> tuple[list[PreferenceSample], list[PreferenceSample]]:
