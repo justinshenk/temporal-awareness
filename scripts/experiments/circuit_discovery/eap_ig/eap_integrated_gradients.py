@@ -120,10 +120,11 @@ def main() -> None:
 
     config = load_config(args.config)
 
-    model_name: str = config["model"]
-    seed: int = config["seed"]
-    wandb_project: str = config["wandb_project"]
-    batch_size: int = config["batch_size"]
+    model_name: str = config["setup"]["model"]
+    seed: int = config["setup"]["seed"]
+    batch_size: int = config["setup"]["batch_size"]
+
+    dtype = config["setup"].get("dtype", None)
 
     data_loc: Path = Path(config["paths"]["data_loc"])
     save_loc: Path = Path(config["paths"]["save_loc"])
@@ -132,6 +133,9 @@ def main() -> None:
     template = config["input"]["template"]
     option_keys: list[str] = config["input"]["option_keys"]
     prompt_suffix: str = config["input"]["prompt_suffix"]
+
+    wandb_project: str = config["output"]["wandb_project"]
+    filename: str = config["output"]["filename"]
 
     system_prompt: str = config["parameters"]["system_prompt"]
     metric_type: str = config["parameters"]["metric_type"]
@@ -170,6 +174,7 @@ def main() -> None:
         suffix=prompt_suffix,
         system_prompt=system_prompt,
         attn_type="sdpa",
+        dtype=dtype,
     )
 
     system_prompt_length = len(
@@ -205,7 +210,7 @@ def main() -> None:
 
     with wandb.init(project=wandb_project, config=config) as run:
         run_id = run.id
-        output_file = save_loc / f"{wandb_project}_{run_id}.json"
+        output_file = save_loc / f"{wandb_project}_{filename}_{run_id}.json"
         output_dict = config.copy()
         output_dict["steps"] = {}
 
