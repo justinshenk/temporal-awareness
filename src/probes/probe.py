@@ -55,6 +55,10 @@ class LinearProbe:
         self.model: Optional[LogisticRegression] = None
         self._is_fitted = False
 
+    def _ensure_fitted(self) -> None:
+        """Raise if probe hasn't been trained."""
+        self._ensure_fitted()
+
     def train(
         self,
         X: np.ndarray,
@@ -104,8 +108,7 @@ class LinearProbe:
         Returns:
             Predicted labels, shape (n_samples,)
         """
-        if not self._is_fitted:
-            raise ValueError("Probe not fitted. Call train() first.")
+        self._ensure_fitted()
         return self.model.predict(X)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -117,8 +120,7 @@ class LinearProbe:
         Returns:
             Class probabilities, shape (n_samples, 2)
         """
-        if not self._is_fitted:
-            raise ValueError("Probe not fitted. Call train() first.")
+        self._ensure_fitted()
         return self.model.predict_proba(X)
 
     def evaluate(
@@ -154,8 +156,7 @@ class LinearProbe:
         Returns:
             Weight vector, shape (n_features,)
         """
-        if not self._is_fitted:
-            raise ValueError("Probe not fitted. Call train() first.")
+        self._ensure_fitted()
 
         weights = self.model.coef_[0]  # Shape: (n_features,)
 
@@ -168,8 +169,7 @@ class LinearProbe:
 
     def get_bias(self) -> float:
         """Get the probe's bias term."""
-        if not self._is_fitted:
-            raise ValueError("Probe not fitted. Call train() first.")
+        self._ensure_fitted()
         return self.model.intercept_[0]
 
     @property

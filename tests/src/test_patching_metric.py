@@ -471,10 +471,10 @@ class TestPairBuilding:
 
 
 def _make_pref_item(sample_id, short_label, long_label, choice, prompt="prompt"):
-    """Shorthand for creating a PreferenceItem for pair-building tests."""
-    from src.data import PreferenceItem
+    """Shorthand for creating a PreferenceSample for pair-building tests."""
+    from src.data import PreferenceSample
     response = f"I select: {short_label if choice == 'short_term' else long_label}"
-    return PreferenceItem(
+    return PreferenceSample(
         sample_id=sample_id,
         time_horizon=None,
         short_term_label=short_label,
@@ -488,9 +488,9 @@ def _make_pref_item(sample_id, short_label, long_label, choice, prompt="prompt")
 
 
 def _make_pref_data(items):
-    from src.data import PreferenceData
-    return PreferenceData(
-        dataset_id="test", model="test", preferences=items
+    from src.data import PreferenceDataset
+    return PreferenceDataset(
+        prompt_dataset_id="test", model="test", preferences=items
     )
 
 

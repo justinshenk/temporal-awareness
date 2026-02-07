@@ -11,6 +11,7 @@ import pytest
 import torch
 
 from src.models.query_runner import (
+    ActivationSpec,
     parse_choice,
     QueryRunner,
     QueryConfig,
@@ -174,13 +175,35 @@ class MockModelRunner:
 
 
 @pytest.fixture
-def sample_dataset():
-    """Create minimal dataset for testing."""
+def sample_dataset_dict():
+    """Create minimal dataset dict for testing."""
     return {
+        "dataset_id": "001",
         "config": {
-            "prompt_format": {
-                "const_keywords": {"choice_prefix": "I select:"}
-            }
+            "prompt_format": "default_prompt_format",
+            "name": "test",
+            "context": {
+                "reward_unit": "dollars",
+                "role": "a person",
+                "situation": "Test situation",
+                "labels": ["a)", "b)"],
+                "method": "grid",
+            },
+            "options": {
+                "short_term": {
+                    "reward_range": [100, 100],
+                    "time_range": [[1, "months"], [1, "months"]],
+                    "reward_steps": [1, "linear"],
+                    "time_steps": [1, "linear"],
+                },
+                "long_term": {
+                    "reward_range": [200, 200],
+                    "time_range": [[12, "months"], [12, "months"]],
+                    "reward_steps": [1, "linear"],
+                    "time_steps": [1, "linear"],
+                },
+            },
+            "time_horizons": [None],
         },
         "samples": [
             {
@@ -188,8 +211,16 @@ def sample_dataset():
                 "prompt": {
                     "text": "Choose between options:",
                     "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
+                        "short_term": {
+                            "label": "a)",
+                            "time": {"value": 1, "unit": "months"},
+                            "reward": {"value": 100, "unit": "dollars"},
+                        },
+                        "long_term": {
+                            "label": "b)",
+                            "time": {"value": 12, "unit": "months"},
+                            "reward": {"value": 200, "unit": "dollars"},
+                        },
                     },
                     "time_horizon": {"value": 6, "unit": "months"},
                 }
@@ -199,9 +230,18 @@ def sample_dataset():
                 "prompt": {
                     "text": "Another choice:",
                     "preference_pair": {
-                        "short_term": {"label": "X"},
-                        "long_term": {"label": "Y"},
+                        "short_term": {
+                            "label": "X",
+                            "time": {"value": 1, "unit": "months"},
+                            "reward": {"value": 100, "unit": "dollars"},
+                        },
+                        "long_term": {
+                            "label": "Y",
+                            "time": {"value": 12, "unit": "months"},
+                            "reward": {"value": 200, "unit": "dollars"},
+                        },
                     },
+                    "time_horizon": None,
                 }
             },
         ],
@@ -209,59 +249,59 @@ def sample_dataset():
 
 
 @pytest.fixture
-def temp_dataset_dir(sample_dataset):
-    """Create temp directory with dataset file."""
+def sample_prompt_dataset(sample_dataset_dict):
+    """Create a PromptDataset for testing."""
+    from src.prompt_datasets import PromptDataset
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir) / "test_dataset_001.json"
         with open(path, "w") as f:
-            json.dump(sample_dataset, f)
-        yield Path(tmpdir)
+            json.dump(sample_dataset_dict, f)
+        yield PromptDataset.load_from_json(path)
 
 
 class TestQueryDataset:
-    def test_loads_dataset_and_queries_all_samples(self, temp_dataset_dir):
+    def test_loads_dataset_and_queries_all_samples(self, sample_prompt_dataset):
         """query_dataset processes all samples in dataset."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend({"generate": "I select: a)"})
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         assert output.dataset_id == "001"
         assert output.model == "test"
         assert len(output.preferences) == 2
 
-    def test_extracts_choice_correctly(self, temp_dataset_dir):
+    def test_extracts_choice_correctly(self, sample_prompt_dataset):
         """Choices are parsed from model responses."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # Both should be short_term since mock returns "I select: a)"
         assert output.preferences[0].choice == "short_term"
 
-    def test_captures_internals_with_names_filter(self, temp_dataset_dir):
+    def test_captures_internals_with_names_filter(self, sample_prompt_dataset):
         """Activations are captured using names_filter."""
         internals = InternalsConfig(
-            activations={"resid_post": {"layers": [8, 14]}},
-            token_positions=[],
+            activations=[ActivationSpec(component="resid_post", layers=[8, 14])],
         )
-        config = QueryConfig(models=["test"], datasets=["001"], internals=internals)
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=internals)
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # Check that run_with_cache was called with a names_filter
         rwc_calls = [c for c in backend.calls if c[0] == "run_with_cache"]
@@ -273,133 +313,133 @@ class TestQueryDataset:
             assert names_filter("blocks.14.hook_resid_post")
             assert not names_filter("blocks.0.hook_resid_post")
 
-    def test_subsample_reduces_samples(self, temp_dataset_dir):
+    def test_subsample_reduces_samples(self, sample_prompt_dataset):
         """subsample < 1.0 processes fewer samples."""
-        config = QueryConfig(models=["test"], datasets=["001"], subsample=0.5)
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(subsample=0.5, internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # With 2 samples and 0.5 subsample, should get 1
         assert len(output.preferences) == 1
 
-    def test_uses_choice_prefix_from_dataset(self, temp_dataset_dir, sample_dataset):
+    def test_uses_choice_prefix_from_dataset(self, sample_prompt_dataset):
         """Choice prefix is extracted from dataset config."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         # Response has correct label but wrong prefix - should be unknown
         backend = MockBackend({"generate": "My choice: a)"})
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # Should be unknown since "My choice:" != "I select:"
         assert output.preferences[0].choice == "unknown"
 
-    def test_long_term_choice_extracted(self, temp_dataset_dir):
+    def test_long_term_choice_extracted(self, sample_prompt_dataset):
         """Long term choices are correctly identified."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend({"generate": "I select: b)"})
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         assert output.preferences[0].choice == "long_term"
 
-    def test_probabilities_captured(self, temp_dataset_dir):
+    def test_probabilities_captured(self, sample_prompt_dataset):
         """Choice probabilities are stored in output."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         pref = output.preferences[0]
         # MockModelRunner.get_label_probs returns (0.6, 0.4)
         assert pref.choice_prob == 0.6
         assert pref.alt_prob == 0.4
 
-    def test_response_stored(self, temp_dataset_dir):
+    def test_response_stored(self, sample_prompt_dataset):
         """Raw response is stored in preference item."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend({"generate": "I select: a) for good reasons"})
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         assert output.preferences[0].response == "I select: a) for good reasons"
 
-    def test_time_horizon_extracted(self, temp_dataset_dir):
+    def test_time_horizon_extracted(self, sample_prompt_dataset):
         """Time horizon from sample is preserved."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # First sample has time_horizon
         assert output.preferences[0].time_horizon == {"value": 6, "unit": "months"}
         # Second sample has no time_horizon
         assert output.preferences[1].time_horizon is None
 
-    def test_labels_stored(self, temp_dataset_dir):
+    def test_labels_stored(self, sample_prompt_dataset):
         """Short and long term labels are stored."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         pref = output.preferences[0]
         assert pref.short_term_label == "a)"
         assert pref.long_term_label == "b)"
 
-    def test_sample_id_preserved(self, temp_dataset_dir):
+    def test_sample_id_preserved(self, sample_prompt_dataset):
         """Sample IDs from dataset are preserved."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         assert output.preferences[0].sample_id == 1
         assert output.preferences[1].sample_id == 2
 
-    def test_unknown_choice_probability_handling(self, temp_dataset_dir):
+    def test_unknown_choice_probability_handling(self, sample_prompt_dataset):
         """Unknown choices use max/min of probabilities."""
-        config = QueryConfig(models=["test"], datasets=["001"])
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         # Response that won't match any label
         backend = MockBackend({"generate": "I cannot decide"})
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         pref = output.preferences[0]
         assert pref.choice == "unknown"
@@ -407,16 +447,16 @@ class TestQueryDataset:
         assert pref.choice_prob == 0.6
         assert pref.alt_prob == 0.4
 
-    def test_skip_generation_infers_choice_from_probs(self, temp_dataset_dir):
+    def test_skip_generation_infers_choice_from_probs(self, sample_prompt_dataset):
         """skip_generation=True skips generate() and infers choice from probs."""
-        config = QueryConfig(models=["test"], datasets=["001"], skip_generation=True)
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(skip_generation=True, internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         # generate should NOT have been called
         gen_calls = [c for c in backend.calls if c[0] == "generate"]
@@ -427,10 +467,10 @@ class TestQueryDataset:
         assert pref.choice == "short_term"
         assert pref.response == ""  # No response when skipping generation
 
-    def test_skip_generation_long_term_when_higher_prob(self, temp_dataset_dir):
+    def test_skip_generation_long_term_when_higher_prob(self, sample_prompt_dataset):
         """skip_generation correctly picks long_term when it has higher prob."""
-        config = QueryConfig(models=["test"], datasets=["001"], skip_generation=True)
-        runner = QueryRunner(config, temp_dataset_dir)
+        config = QueryConfig(skip_generation=True, internals=InternalsConfig.empty())
+        runner = QueryRunner(config)
 
         # Mock returns (0.3, 0.7) - long_term has higher prob
         class LongTermBackend(MockBackend):
@@ -444,7 +484,7 @@ class TestQueryDataset:
         runner._model = LongTermMockRunner(backend)
         runner._model_name = "test"
 
-        output = runner.query_dataset("001", "test")
+        output = runner.query_dataset(sample_prompt_dataset, "test")
 
         pref = output.preferences[0]
         assert pref.choice == "long_term"
@@ -462,8 +502,6 @@ class TestQueryConfig:
         """Config loads correctly from JSON file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump({
-                "models": ["model1", "model2"],
-                "datasets": ["ds1"],
                 "max_new_tokens": 128,
                 "temperature": 0.5,
                 "subsample": 0.8,
@@ -471,10 +509,8 @@ class TestQueryConfig:
             }, f)
             f.flush()
 
-            config = QueryRunner.load_config(Path(f.name))
+            config = QueryConfig.from_json(Path(f.name))
 
-            assert config.models == ["model1", "model2"]
-            assert config.datasets == ["ds1"]
             assert config.max_new_tokens == 128
             assert config.temperature == 0.5
             assert config.subsample == 0.8
@@ -483,15 +519,15 @@ class TestQueryConfig:
     def test_activation_names_from_config(self):
         """_get_activation_names builds correct hook names."""
         internals = InternalsConfig(
-            activations={"resid_post": {"layers": [0, 5, -1]}},
-            token_positions=[],
+            activations=[ActivationSpec(component="resid_post", layers=[0, 5, -1])],
         )
-        config = QueryConfig(models=[], datasets=[], internals=internals)
+        config = QueryConfig(internals=internals)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            runner = QueryRunner(config, Path(tmpdir))
-            names = runner._get_activation_names()
+        runner = QueryRunner(config)
+        # Create a mock model runner for the test
+        mock_runner = MockModelRunner(MockBackend())
+        names = runner._get_activation_names(mock_runner)
 
-            assert "blocks.0.hook_resid_post" in names
-            assert "blocks.5.hook_resid_post" in names
-            assert "blocks.-1.hook_resid_post" in names
+        assert "blocks.0.hook_resid_post" in names
+        assert "blocks.5.hook_resid_post" in names
+        assert "blocks.-1.hook_resid_post" in names

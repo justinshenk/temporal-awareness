@@ -2,175 +2,139 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
-from ..common.io import load_json
-from ..common.schema_utils import SchemaClass
-
-
-@dataclass
-class PreferenceItem(SchemaClass):
-    """Single preference record from query output."""
-
-    sample_id: int
-    time_horizon: Optional[dict]
-    short_term_label: str
-    long_term_label: str
-    choice: str
-    choice_prob: float
-    alt_prob: float
-    response: str
-    internals: Optional[dict] = None
-    prompt_text: str = ""  # Merged from dataset
+from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
+from ..models.preference_dataset import (
+    PreferenceSample,
+    PreferenceDataset,
+)
+from ..prompt_datasets import PromptDataset
 
 
-@dataclass
-class PreferenceData(SchemaClass):
-    """Loaded preference data with metadata."""
-
-    dataset_id: str
-    model: str
-    preferences: list[PreferenceItem] = field(default_factory=list)
-
-    def split_by_choice(self) -> tuple[list[PreferenceItem], list[PreferenceItem]]:
-        """Split preferences into short_term and long_term lists."""
-        short_term = [p for p in self.preferences if p.choice == "short_term"]
-        long_term = [p for p in self.preferences if p.choice == "long_term"]
-        return short_term, long_term
-
-    def filter_valid(self) -> list[PreferenceItem]:
-        """Return preferences with known choice."""
-        return [p for p in self.preferences if p.choice in ("short_term", "long_term")]
-
-
-def load_preference_data(
-    path_or_id: str | Path,
-    preference_dir: Optional[Path] = None,
-) -> PreferenceData:
-    """
-    Load preference data from JSON file.
+def find_preference_files(prefix: str, directory: Optional[Path] = None) -> list[Path]:
+    """Find all preference data files matching a prefix.
 
     Args:
-        path_or_id: Full path to JSON file, or a prefix to match against filenames
-        preference_dir: Directory to search if path_or_id is a prefix
+        prefix: Prefix to match (e.g., "{dataset_id}_{model_name}")
+        directory: Directory to search in (default: get_pref_dataset_dir())
 
     Returns:
-        PreferenceData with loaded preferences
+        List of matching file paths, sorted by modification time (newest first)
     """
-    path = Path(path_or_id)
+    if directory is None:
+        directory = get_pref_dataset_dir()
+    directory = Path(directory)
+    matches = list(directory.glob(f"{prefix}*.json"))
+    # Sort by modification time, newest first
+    matches.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return matches
 
-    # If not a direct path, search for matching file
-    if not path.exists() and preference_dir is not None:
-        matches = [f for f in preference_dir.glob("*.json") if str(path_or_id) in f.name]
-        if not matches:
-            raise FileNotFoundError(f"No preference data matching: {path_or_id}")
-        path = matches[0]
 
-    if not path.exists():
-        raise FileNotFoundError(f"Preference data not found: {path}")
+def find_preference_data(name: str, directory: Optional[Path] = None) -> Optional[Path]:
+    """Find preference data file by name or prefix.
 
-    data = load_json(path)
+    First tries exact match, then falls back to glob pattern for backwards
+    compatibility with new naming convention.
 
-    preferences = []
-    for p in data.get("preferences", []):
-        preferences.append(
-            PreferenceItem(
-                sample_id=p["sample_id"],
-                time_horizon=p.get("time_horizon"),
-                short_term_label=p["short_term_label"],
-                long_term_label=p["long_term_label"],
-                choice=p["choice"],
-                choice_prob=p["choice_prob"],
-                alt_prob=p["alt_prob"],
-                response=p["response"],
-                internals=p.get("internals"),
-            )
-        )
+    Args:
+        name: Preference dataset name (e.g., "{dataset_id}_{model_name}")
+        directory: Directory to search in (default: get_pref_dataset_dir())
 
-    return PreferenceData(
-        dataset_id=data["dataset_id"],
-        model=data["model"],
-        preferences=preferences,
+    Returns:
+        Path to the preference file if found, None otherwise
+    """
+    if directory is None:
+        directory = get_pref_dataset_dir()
+    directory = Path(directory)
+
+    # Try exact match first
+    exact_path = directory / f"{name}.json"
+    if exact_path.exists():
+        return exact_path
+
+    # Fall back to glob pattern (finds files with prompt_dataset_name suffix)
+    matches = find_preference_files(name, directory)
+    if matches:
+        return matches[0]  # Return newest match
+
+    return None
+
+
+def load_and_merge_preference_data(
+    prefix: str, directory: Optional[Path] = None
+) -> Optional[PreferenceDataset]:
+    """Load all preference files matching a prefix and merge them.
+
+    Args:
+        prefix: Prefix to match (e.g., "{dataset_id}_{model_name}")
+        directory: Directory to search in (default: get_pref_dataset_dir())
+
+    Returns:
+        Merged PreferenceDataset, or None if no files found
+    """
+    files = find_preference_files(prefix, directory)
+    if not files:
+        return None
+
+    datasets = [PreferenceDataset.load_from_json(f) for f in files]
+    if len(datasets) == 1:
+        return datasets[0]
+
+    print("\n\n")
+    print(
+        "WARNING: load_and_merge_preference_data found more than 1 match!. Merging matches."
     )
+    print("\n\n")
+
+    return PreferenceDataset.merge_all(datasets)
 
 
-def load_dataset(
-    dataset_id: str,
-    datasets_dir: Path,
-) -> dict:
-    """
-    Load dataset by ID.
-
-    Args:
-        dataset_id: Dataset ID to search for
-        datasets_dir: Directory containing dataset JSON files
-
-    Returns:
-        Dataset dictionary with samples
-    """
-    matches = list(datasets_dir.glob(f"*{dataset_id}*.json"))
-    if not matches:
-        raise FileNotFoundError(f"Dataset not found: {dataset_id}")
-    return load_json(matches[0])
-
-
-def get_prompt_text(sample: dict) -> str:
-    """Extract prompt text from dataset sample."""
-    prompt = sample.get("prompt", {})
-    if isinstance(prompt, dict):
-        text = prompt.get("text", "")
-        return "\n".join(text) if isinstance(text, list) else text
-    return "\n".join(prompt) if isinstance(prompt, list) else str(prompt)
-
-
-def merge_prompt_text(
-    pref_data: PreferenceData,
-    dataset: dict,
-) -> None:
-    """
-    Merge prompt text from dataset into preference items.
-
-    Modifies pref_data.preferences in place.
-    """
-    samples = dataset.get("samples", [])
-    prompts_by_id = {s["sample_id"]: get_prompt_text(s) for s in samples}
-
-    for pref in pref_data.preferences:
-        pref.prompt_text = prompts_by_id.get(pref.sample_id, "")
-
-
-def load_pref_data_with_prompts(
-    preference_id: str,
-    preference_dir: Path,
-    datasets_dir: Path,
-) -> PreferenceData:
-    """
-    Load preference data and merge prompt text from dataset.
-
-    Convenience function that combines load_preference_data, load_dataset,
-    and merge_prompt_text.
+def fill_missing_prompt_text(
+    pref_data: PreferenceDataset, prompt_dir: Optional[Path] = None
+) -> int:
+    """Fill empty prompt_text fields from the source PromptDataset.
 
     Args:
-        preference_id: Preference data ID or path
-        preference_dir: Directory containing preference JSON files
-        datasets_dir: Directory containing dataset JSON files
+        pref_data: PreferenceDataset to update (modified in place)
+        prompt_dir: Directory containing prompt datasets (default: get_prompt_dataset_dir())
 
     Returns:
-        PreferenceData with prompt_text populated
+        Count of preferences that were updated
     """
-    pref_data = load_preference_data(preference_id, preference_dir)
-    dataset = load_dataset(pref_data.dataset_id, datasets_dir)
-    merge_prompt_text(pref_data, dataset)
-    return pref_data
+    if prompt_dir is None:
+        prompt_dir = get_prompt_dataset_dir()
+
+    # Find preferences that need prompt_text filled
+    needs_fill = [p for p in pref_data.preferences if not p.prompt_text]
+    if not needs_fill:
+        return 0
+
+    # Load the prompt dataset
+    try:
+        prompt_dataset = PromptDataset.load_from_id(pref_data.dataset_id, prompt_dir)
+    except FileNotFoundError:
+        return 0
+
+    prompts_by_id = prompt_dataset.get_prompts_by_id()
+
+    # Fill missing prompt_text
+    count = 0
+    for pref in needs_fill:
+        if pref.sample_id in prompts_by_id:
+            pref.prompt_text = prompts_by_id[pref.sample_id]
+            count += 1
+
+    return count
 
 
-def get_full_text(pref: PreferenceItem, include_response: bool = True) -> str:
+def get_full_text(pref: PreferenceSample, include_response: bool = True) -> str:
     """Get full text for a preference item.
 
     Args:
-        pref: PreferenceItem with prompt_text and response
+        pref: PreferenceSample with prompt_text and response
         include_response: Whether to include the model response
 
     Returns:
@@ -182,18 +146,18 @@ def get_full_text(pref: PreferenceItem, include_response: bool = True) -> str:
 
 
 def build_prompt_pairs(
-    pref_data: PreferenceData,
+    pref_data: PreferenceDataset,
     max_pairs: int,
     include_response: bool = True,
     same_labels: bool = True,
-) -> list[tuple[str, str, PreferenceItem, PreferenceItem]]:
+) -> list[tuple[str, str, PreferenceSample, PreferenceSample]]:
     """Build clean/corrupted text pairs from short_term and long_term samples.
 
     For activation patching, we need pairs of prompts where one leads to
     short_term choice and the other to long_term choice.
 
     Args:
-        pref_data: PreferenceData with preferences
+        pref_data: PreferenceDataset with preferences
         max_pairs: Maximum number of pairs to generate
         include_response: Whether to include model response in text
         same_labels: If True (default), only pair samples that share the
@@ -207,7 +171,6 @@ def build_prompt_pairs(
 
     if same_labels:
         # Group by (short_term_label, long_term_label) and pair within groups
-        from collections import defaultdict
         short_by_labels = defaultdict(list)
         long_by_labels = defaultdict(list)
         for s in short_term:
@@ -246,43 +209,3 @@ def build_prompt_pairs(
             pairs.append((clean_text, corrupted_text, clean, corrupted))
 
     return pairs
-
-
-def find_preference_data(
-    preference_dir: Path,
-    preference_id: Optional[str] = None,
-) -> Optional[Path]:
-    """
-    Find preference data file.
-
-    Args:
-        preference_dir: Directory containing preference JSON files
-        preference_id: Optional ID to search for. If None, returns most recent.
-
-    Returns:
-        Path to preference data file, or None if not found
-    """
-    if not preference_dir.exists():
-        return None
-
-    files = list(preference_dir.glob("*.json"))
-    if not files:
-        return None
-
-    if preference_id:
-        # Search for matching ID
-        matches = [f for f in files if preference_id in f.name]
-        return matches[0] if matches else None
-
-    # Return most recent by modification time
-    files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-    return files[0]
-
-
-def get_preference_data_id(path: Path) -> str:
-    """Extract preference data ID from file path."""
-    # Filename format: <dataset_id>_<model>.json
-    # The ID is the first segment (hash)
-    return path.stem.split("_")[0]
-
-

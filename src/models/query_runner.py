@@ -3,139 +3,83 @@
 from __future__ import annotations
 
 import random
-import re
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
-from ..common.io import load_json
-from ..common.schema_utils import SchemaClass
-from .model_runner import ModelRunner
+from .intervention_loader import load_intervention_from_dict
 from .interventions import Intervention
+from .model_runner import ModelRunner
+from .preference_dataset import (
+    CapturedInternals,
+    PreferenceDataset,
+    PreferenceSample,
+)
+from .response_parsing import parse_choice
+from dataclasses import asdict
 
 
 @dataclass
-class InternalsConfig(SchemaClass):
-    """Configuration for capturing model internals."""
+class ActivationSpec:
+    """Specification for which activations to capture."""
 
-    activations: dict = field(default_factory=dict)
-    token_positions: list = field(default_factory=list)
+    component: str  # e.g., "resid_pre", "resid_post", "attn_out", "mlp_out"
+    layers: list[int] = field(default_factory=list)
 
 
 @dataclass
-class QueryConfig(SchemaClass):
+class InternalsConfig:
+    """Configuration for capturing model internals.
+
+    If None is passed to QueryConfig.internals, ALL activations are captured.
+    Use InternalsConfig.empty() to capture no activations.
+    """
+
+    activations: list[ActivationSpec] = field(default_factory=list)
+
+    @classmethod
+    def empty(cls) -> "InternalsConfig":
+        """Create an empty config that captures no activations."""
+        return cls(activations=[])
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "InternalsConfig":
+        """Create config from dict format.
+
+        Dict format: {"component_name": {"layers": [0, 1, 2]}, ...}
+        Example: {"resid_post": {"layers": [8, 14]}}
+        """
+        specs = [
+            ActivationSpec(component=comp, layers=spec.get("layers", []))
+            for comp, spec in data.items()
+        ]
+        return cls(activations=specs)
+
+    def is_empty(self) -> bool:
+        """Return True if this config captures no activations."""
+        return len(self.activations) == 0
+
+
+@dataclass
+class QueryConfig:
     """Query configuration."""
 
-    models: list[str]
-    datasets: list[str]
     internals: Optional[InternalsConfig] = None
     max_new_tokens: int = 256
     temperature: float = 0.0
     subsample: float = 1.0
     intervention: Optional[dict] = None  # Raw intervention config (loaded per-model)
-    skip_generation: bool = False  # If True, infer choice from probs only (~100x faster)
-
-
-@dataclass
-class CapturedInternals:
-    """Captured activations from a forward pass."""
-
-    activations: dict  # name -> tensor
-    activation_names: list[str]
-
-
-@dataclass
-class PreferenceItem(SchemaClass):
-    """Single preference result."""
-
-    sample_id: int
-    time_horizon: Optional[dict]
-    short_term_label: str
-    long_term_label: str
-    choice: str
-    choice_prob: float
-    alt_prob: float
-    response: str
-    internals: Optional[CapturedInternals] = None
-
-
-@dataclass
-class QueryOutput(SchemaClass):
-    """Query output."""
-
-    dataset_id: str
-    model: str
-    preferences: list[PreferenceItem]
-
-    def print_summary(self) -> None:
-        """Print summary of query results."""
-        counts = {"short_term": 0, "long_term": 0, "unknown": 0}
-        for p in self.preferences:
-            counts[p.choice] += 1
-        print(
-            f"\nResults: short={counts['short_term']}, long={counts['long_term']}, unknown={counts['unknown']}"
-        )
-
-
-def parse_choice(
-    response: str,
-    short_label: str,
-    long_label: str,
-    choice_prefix: str,
-) -> str:
-    """
-    Parse choice from model response.
-
-    Looks for pattern: "<choice_prefix> <label>"
-    Returns: "short_term", "long_term", or "unknown"
-    """
-    response_lower = response.lower().strip()
-    prefix_lower = choice_prefix.lower()
-
-    labels = [short_label, long_label]
-    labels_stripped = [l.rstrip(".)") for l in labels]
-    all_variants = set(l.lower() for l in labels + labels_stripped)
-    labels_pattern = "|".join(
-        re.escape(l) for l in sorted(all_variants, key=len, reverse=True)
+    skip_generation: bool = (
+        False  # If True, infer choice from probs only (~100x faster)
     )
 
-    pattern = rf"{re.escape(prefix_lower)}\s*({labels_pattern})"
-    match = re.search(pattern, response_lower)
-
-    if match:
-        matched = match.group(1)
-        if matched in (short_label.lower(), short_label.rstrip(".)").lower()):
-            return "short_term"
-        elif matched in (long_label.lower(), long_label.rstrip(".)").lower()):
-            return "long_term"
-
-    return "unknown"
-
-
-class QueryRunner:
-    """Query runner for preference datasets."""
-
-    def __init__(self, config: QueryConfig, datasets_dir: Path):
-        self.config = config
-        self.datasets_dir = datasets_dir
-        self._model: Optional[ModelRunner] = None
-        self._model_name: Optional[str] = None
-
     @classmethod
-    def load_config(cls, path: Path) -> QueryConfig:
-        """Load query configuration from JSON file."""
-        data = load_json(path)
-
+    def from_dict(cls, data: dict) -> "QueryConfig":
+        """Create config from dict."""
         internals = None
         if data.get("internals"):
-            internals = InternalsConfig(
-                activations=data["internals"],
-                token_positions=data.get("token_positions", []),
-            )
+            internals = InternalsConfig.from_dict(data["internals"])
 
-        return QueryConfig(
-            models=data.get("models", []),
-            datasets=data.get("datasets", []),
+        return cls(
             internals=internals,
             max_new_tokens=data.get("max_new_tokens", 256),
             temperature=data.get("temperature", 0.0),
@@ -143,6 +87,23 @@ class QueryRunner:
             intervention=data.get("intervention"),
             skip_generation=data.get("skip_generation", False),
         )
+
+    @classmethod
+    def from_json(cls, path: "Path") -> "QueryConfig":
+        """Load query config from JSON file."""
+        from ..common.io import load_json
+
+        data = load_json(path)
+        return cls.from_dict(data)
+
+
+class QueryRunner:
+    """Query runner for preference datasets."""
+
+    def __init__(self, config: QueryConfig):
+        self.config = config
+        self._model: Optional[ModelRunner] = None
+        self._model_name: Optional[str] = None
 
     def _load_model(self, name: str) -> ModelRunner:
         if self._model is not None and self._model_name == name:
@@ -152,48 +113,62 @@ class QueryRunner:
         self._intervention = None  # Reset intervention for new model
         return self._model
 
-    def _load_intervention(
-        self, model_runner: ModelRunner
-    ) -> Optional[Intervention]:
+    def _load_intervention(self, model_runner: ModelRunner) -> Optional[Intervention]:
         """Load intervention config for the current model."""
         if self.config.intervention is None:
             return None
 
-        from .intervention_loader import load_intervention_from_dict
-
         return load_intervention_from_dict(self.config.intervention, model_runner)
 
-    def load_dataset(self, dataset_id: str) -> dict:
-        """Load dataset by ID."""
-        matches = list(self.datasets_dir.glob(f"*_{dataset_id}.json"))
-        if matches:
-            return load_json(matches[0])
-        raise FileNotFoundError(f"Dataset not found: {dataset_id}")
+    def _get_activation_names(self, model_runner: ModelRunner) -> list[str]:
+        """Get hook names for activation capture.
 
-    def _get_activation_names(self) -> list[str]:
-        """Get hook names for activation capture."""
-        if not self.config.internals:
+        If internals is None, captures all activations at all layers.
+        If internals.is_empty(), captures nothing.
+        Otherwise, uses the specific config.
+        """
+        internals = self.config.internals
+
+        # Empty config means no activations
+        if internals is not None and internals.is_empty():
             return []
 
+        # None means capture all activations
+        if internals is None:
+            n_layers = model_runner.model.cfg.n_layers
+            components = ["resid_pre", "resid_post", "attn_out", "mlp_out"]
+            return [
+                f"blocks.{layer}.hook_{comp}"
+                for layer in range(n_layers)
+                for comp in components
+            ]
+
+        # Use specific config
         names = []
-        for act_type, spec in self.config.internals.activations.items():
-            layers = spec.get("layers", [])
-            for layer in layers:
-                # if layer < 0:
-                #     layer = n_layers + layer
-                names.append(f"blocks.{layer}.hook_{act_type}")
+        for spec in internals.activations:
+            for layer in spec.layers:
+                names.append(f"blocks.{layer}.hook_{spec.component}")
         return names
 
-    def query_dataset(self, dataset_id: str, model_name: str) -> QueryOutput:
+    def query_dataset(
+        self, prompt_dataset: PromptDataset, model_name: str
+    ) -> PreferenceDataset:
         """Query a single dataset with a model. Returns results in memory."""
-        dataset = self.load_dataset(dataset_id)
+        dataset = asdict(prompt_dataset)
         samples = dataset.get("samples", [])
 
+        # Get choice_prefix from dataset config, fall back to DefaultPromptFormat
+        from ..formatting.configs import DefaultPromptFormat
+
+        default_format = DefaultPromptFormat()
         choice_prefix = (
             dataset.get("config", {})
             .get("prompt_format", {})
             .get("const_keywords", {})
-            .get("choice_prefix", "I select:")
+            .get(
+                "format_choice_prefix",
+                default_format.const_keywords["format_choice_prefix"],
+            )
         )
 
         if self.config.subsample < 1.0:
@@ -201,12 +176,14 @@ class QueryRunner:
             samples = random.sample(samples, n)
 
         model_runner = self._load_model(model_name)
-        activation_names = self._get_activation_names()
+        activation_names = self._get_activation_names(model_runner)
         intervention = self._load_intervention(model_runner)
         preferences = []
 
         if intervention is not None:
-            print(f"Using intervention: mode={intervention.mode} at layer {intervention.layer}")
+            print(
+                f"Using intervention: mode={intervention.mode} at layer {intervention.layer}"
+            )
 
         print(f"Querying LLM for {len(samples)} samples...")
         for i, sample in enumerate(samples):
@@ -263,7 +240,7 @@ class QueryRunner:
                 )
 
             preferences.append(
-                PreferenceItem(
+                PreferenceSample(
                     sample_id=sample["sample_id"],
                     time_horizon=sample["prompt"].get("time_horizon"),
                     short_term_label=short_label,
@@ -273,11 +250,12 @@ class QueryRunner:
                     alt_prob=alt_prob,
                     response=response,
                     internals=internals,
+                    prompt_text=prompt,
                 )
             )
 
-        return QueryOutput(
-            dataset_id=dataset_id,
+        return PreferenceDataset(
+            prompt_dataset_id=prompt_dataset.dataset_id,
             model=model_name,
             preferences=preferences,
         )

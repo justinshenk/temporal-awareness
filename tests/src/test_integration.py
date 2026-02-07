@@ -46,7 +46,6 @@ CROSS_ARCH_MODELS = [
     ("roneneldan/TinyStories-33M", "33M", "gpt2"),
 ]
 
-# Legacy dict format for backwards compatibility
 TEST_MODELS = {
     "gpt2": {"name": "gpt2", "arch": "gpt2", "params": "124M", "is_instruct": False},
     "pythia-70m": {
@@ -1132,43 +1131,53 @@ class TestRealTokenizerEdgeCases:
 # =============================================================================
 
 
+from dataclasses import dataclass, field
+
+
+@dataclass
+class MockPromptDataset:
+    """Mock PromptDataset for testing - simplified structure that works with query_dataset."""
+    dataset_id: str
+    config: dict
+    samples: list = field(default_factory=list)
+
+
+def make_test_prompt_dataset(dataset_id: str, samples: list, choice_prefix: str = "I choose:") -> MockPromptDataset:
+    """Create a mock PromptDataset for testing."""
+    return MockPromptDataset(
+        dataset_id=dataset_id,
+        config={"prompt_format": {"const_keywords": {"format_choice_prefix": choice_prefix}}},
+        samples=samples,
+    )
+
+
 class TestQueryDatasetIntegration:
     """Integration tests for query_dataset with real model."""
 
     def test_query_dataset_real_model(self, transformerlens_runner, tmp_path):
         """Full query_dataset flow with real model."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        # Create a test dataset
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "I choose:"}}
-            },
-            "samples": [
-                {
-                    "sample_id": 1,
-                    "prompt": {
-                        "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
                 },
-            ],
-        }
+            },
+        ]
+        prompt_dataset = make_test_prompt_dataset("001", samples)
 
-        dataset_path = tmp_path / "test_dataset_001.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        config = QueryConfig(models=[TEST_MODEL], datasets=["001"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("001", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 1
         assert output.preferences[0].choice in ["short_term", "long_term", "unknown"]
@@ -1176,42 +1185,32 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_captures_internals(self, transformerlens_runner, tmp_path):
         """Internals are captured with correct shapes."""
-        import json
-        from src.models.query_runner import QueryRunner, QueryConfig, InternalsConfig
+        from src.models.query_runner import QueryRunner, QueryConfig, InternalsConfig, ActivationSpec
 
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "I choose:"}}
-            },
-            "samples": [
-                {
-                    "sample_id": 1,
-                    "prompt": {
-                        "text": "Choose: a) now or b) later? I choose:",
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Choose: a) now or b) later? I choose:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
                 },
-            ],
-        }
-
-        dataset_path = tmp_path / "test_dataset_002.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
+            },
+        ]
+        prompt_dataset = make_test_prompt_dataset("002", samples)
 
         # Configure internals capture
         internals = InternalsConfig(
-            activations={"resid_post": {"layers": [0, 5]}},
-            token_positions=[],
+            activations=[ActivationSpec(component="resid_post", layers=[0, 5])],
         )
-        config = QueryConfig(models=[TEST_MODEL], datasets=["002"], internals=internals)
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig(internals=internals)
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("002", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
         pref = output.preferences[0]
         assert pref.internals is not None
@@ -1225,37 +1224,28 @@ class TestQueryDatasetIntegration:
         self, transformerlens_runner, tmp_path
     ):
         """Captured probabilities are in valid range."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "I choose:"}}
-            },
-            "samples": [
-                {
-                    "sample_id": 1,
-                    "prompt": {
-                        "text": "Pick: a) apple or b) banana? I choose:",
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Pick: a) apple or b) banana? I choose:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
                 },
-            ],
-        }
+            },
+        ]
+        prompt_dataset = make_test_prompt_dataset("003", samples)
 
-        dataset_path = tmp_path / "test_dataset_003.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        config = QueryConfig(models=[TEST_MODEL], datasets=["003"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("003", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
         pref = output.preferences[0]
         # Probabilities should be in [0, 1]
@@ -1266,38 +1256,29 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_multiple_samples(self, transformerlens_runner, tmp_path):
         """Multiple samples are all processed."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "Answer:"}}
-            },
-            "samples": [
-                {
-                    "sample_id": i,
-                    "prompt": {
-                        "text": f"Question {i}: a) yes or b) no? Answer:",
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": i,
+                "prompt": {
+                    "text": f"Question {i}: a) yes or b) no? Answer:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
-                }
-                for i in range(5)
-            ],
-        }
+                },
+            }
+            for i in range(5)
+        ]
+        prompt_dataset = make_test_prompt_dataset("004", samples, choice_prefix="Answer:")
 
-        dataset_path = tmp_path / "test_dataset_004.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        config = QueryConfig(models=[TEST_MODEL], datasets=["004"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("004", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 5
         # Each should have unique sample_id
@@ -1306,41 +1287,33 @@ class TestQueryDatasetIntegration:
 
     def test_model_caching_across_datasets(self, transformerlens_runner, tmp_path):
         """Model is reused for same model name."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        for ds_id in ["005", "006"]:
-            dataset = {
-                "config": {
-                    "prompt_format": {"const_keywords": {"choice_prefix": "I pick:"}}
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Choose a) or b)? I pick:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
+                    },
                 },
-                "samples": [
-                    {
-                        "sample_id": 1,
-                        "prompt": {
-                            "text": "Choose a) or b)? I pick:",
-                            "preference_pair": {
-                                "short_term": {"label": "a)"},
-                                "long_term": {"label": "b)"},
-                            },
-                        },
-                    }
-                ],
             }
-            path = tmp_path / f"test_dataset_{ds_id}.json"
-            with open(path, "w") as f:
-                json.dump(dataset, f)
+        ]
+        prompt_dataset1 = make_test_prompt_dataset("005", samples, choice_prefix="I pick:")
+        prompt_dataset2 = make_test_prompt_dataset("006", samples, choice_prefix="I pick:")
 
-        config = QueryConfig(models=[TEST_MODEL], datasets=["005", "006"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
         # Query both datasets
-        out1 = runner.query_dataset("005", TEST_MODEL)
+        out1 = runner.query_dataset(prompt_dataset1, TEST_MODEL)
         model_after_first = runner._model
 
-        out2 = runner.query_dataset("006", TEST_MODEL)
+        out2 = runner.query_dataset(prompt_dataset2, TEST_MODEL)
         model_after_second = runner._model
 
         # Same model object should be used
@@ -1356,73 +1329,57 @@ class TestQueryErrorHandling:
     """Test error handling in query flow."""
 
     def test_dataset_not_found(self, transformerlens_runner, tmp_path):
-        """Raises error for missing dataset."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        """Raises error for missing dataset when loading by ID."""
+        from src.prompt_datasets import PromptDataset
 
-        config = QueryConfig(models=[TEST_MODEL], datasets=["nonexistent"])
-        runner = QueryRunner(config, tmp_path)
-        runner._model = transformerlens_runner
-        runner._model_name = TEST_MODEL
-
+        # Test that PromptDataset.load_from_id raises FileNotFoundError
         with pytest.raises(FileNotFoundError):
-            runner.query_dataset("nonexistent", TEST_MODEL)
+            PromptDataset.load_from_id("nonexistent", tmp_path)
 
     def test_empty_samples_list(self, transformerlens_runner, tmp_path):
         """Handles empty samples list gracefully."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "Choose:"}}
-            },
-            "samples": [],
-        }
+        prompt_dataset = make_test_prompt_dataset("empty", [], choice_prefix="Choose:")
 
-        dataset_path = tmp_path / "test_dataset_empty.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        config = QueryConfig(models=[TEST_MODEL], datasets=["empty"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("empty", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 0
 
     def test_missing_choice_prefix_uses_default(self, transformerlens_runner, tmp_path):
         """Missing choice_prefix falls back to default."""
-        import json
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        dataset = {
-            "config": {},  # No prompt_format
-            "samples": [
-                {
-                    "sample_id": 1,
-                    "prompt": {
-                        "text": "Pick a) or b)? I select:",  # Uses default prefix
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Pick a) or b)? I select:",  # Uses default prefix
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
-                }
-            ],
-        }
+                },
+            }
+        ]
+        # Create dataset with empty config (no prompt_format)
+        prompt_dataset = MockPromptDataset(
+            dataset_id="noprefix",
+            config={},  # No prompt_format
+            samples=samples,
+        )
 
-        dataset_path = tmp_path / "test_dataset_noprefix.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        config = QueryConfig(models=[TEST_MODEL], datasets=["noprefix"])
-        runner = QueryRunner(config, tmp_path)
+        config = QueryConfig()
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
         # Should not crash - uses default "I select:"
-        output = runner.query_dataset("noprefix", TEST_MODEL)
+        output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 1
 
 
@@ -1431,24 +1388,18 @@ class TestQueryErrorHandling:
 # =============================================================================
 
 
-class TestSaveOutput:
-    """Test save_output function from query_llm.py."""
+class TestPreferenceDatasetSave:
+    """Test PreferenceDataset.save_as_json method."""
 
-    def test_save_output_creates_json(self, tmp_path):
+    def test_save_as_json_creates_json(self, tmp_path):
         """JSON file is created with correct structure."""
-        import sys
+        from src.models.preference_dataset import PreferenceDataset, PreferenceSample
 
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent / "scripts" / "extraction")
-        )
-        from query_llm_intertemporal import save_output
-        from src.models.query_runner import QueryOutput, PreferenceItem
-
-        output = QueryOutput(
-            dataset_id="test_ds",
+        pref_dataset = PreferenceDataset(
+            prompt_dataset_id="test_ds",
             model="test/model-name",
             preferences=[
-                PreferenceItem(
+                PreferenceSample(
                     sample_id=1,
                     time_horizon={"value": 6, "unit": "months"},
                     short_term_label="a)",
@@ -1462,9 +1413,9 @@ class TestSaveOutput:
             ],
         )
 
-        save_output(output, tmp_path)
-
         json_path = tmp_path / "test_ds_model-name.json"
+        pref_dataset.save_as_json(json_path)
+
         assert json_path.exists()
 
         import json
@@ -1477,17 +1428,11 @@ class TestSaveOutput:
         assert len(data["preferences"]) == 1
         assert data["preferences"][0]["choice"] == "short_term"
 
-    def test_save_output_creates_internals_file(self, tmp_path):
+    def test_save_as_json_creates_internals_file(self, tmp_path):
         """Internals are saved to .pt file."""
-        import sys
-
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent / "scripts" / "extraction")
-        )
-        from query_llm_intertemporal import save_output
-        from src.models.query_runner import (
-            QueryOutput,
-            PreferenceItem,
+        from src.models.preference_dataset import (
+            PreferenceDataset,
+            PreferenceSample,
             CapturedInternals,
         )
 
@@ -1497,11 +1442,11 @@ class TestSaveOutput:
             activation_names=list(activations.keys()),
         )
 
-        output = QueryOutput(
-            dataset_id="test_ds",
+        pref_dataset = PreferenceDataset(
+            prompt_dataset_id="test_ds",
             model="test-model",
             preferences=[
-                PreferenceItem(
+                PreferenceSample(
                     sample_id=42,
                     time_horizon=None,
                     short_term_label="a)",
@@ -1515,7 +1460,8 @@ class TestSaveOutput:
             ],
         )
 
-        save_output(output, tmp_path)
+        json_path = tmp_path / "test_ds_test-model.json"
+        pref_dataset.save_as_json(json_path)
 
         # Check internals dir and file
         internals_dir = tmp_path / "internals"
@@ -1632,29 +1578,19 @@ class TestQueryRunnerIntervention:
         """Create a sample dataset for testing."""
         import json
 
-        dataset = {
-            "config": {
-                "prompt_format": {"const_keywords": {"choice_prefix": "I choose:"}}
-            },
-            "samples": [
-                {
-                    "sample_id": 1,
-                    "prompt": {
-                        "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
-                        "preference_pair": {
-                            "short_term": {"label": "a)"},
-                            "long_term": {"label": "b)"},
-                        },
+        samples = [
+            {
+                "sample_id": 1,
+                "prompt": {
+                    "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
+                    "preference_pair": {
+                        "short_term": {"label": "a)"},
+                        "long_term": {"label": "b)"},
                     },
                 },
-            ],
-        }
-
-        dataset_path = tmp_path / "test_dataset_interv.json"
-        with open(dataset_path, "w") as f:
-            json.dump(dataset, f)
-
-        return tmp_path
+            },
+        ]
+        return make_test_prompt_dataset("interv", samples)
 
     def test_query_config_with_intervention_loads(self):
         """QueryConfig accepts intervention field."""
@@ -1667,11 +1603,7 @@ class TestQueryRunnerIntervention:
             "values": "random",
         }
 
-        config = QueryConfig(
-            models=["gpt2"],
-            datasets=["test"],
-            intervention=intervention,
-        )
+        config = QueryConfig(intervention=intervention)
 
         assert config.intervention is not None
         assert config.intervention["mode"] == "add"
@@ -1689,13 +1621,9 @@ class TestQueryRunnerIntervention:
             "values": "random",
         }
 
-        config = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-            intervention=intervention,
-        )
+        config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config, sample_dataset)
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
@@ -1716,17 +1644,13 @@ class TestQueryRunnerIntervention:
             "values": "random",
         }
 
-        config = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-            intervention=intervention,
-        )
+        config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config, sample_dataset)
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("interv", TEST_MODEL)
+        output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 1
         assert output.preferences[0].response is not None
@@ -1737,15 +1661,12 @@ class TestQueryRunnerIntervention:
         import numpy as np
 
         # Run without intervention
-        config_base = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-        )
+        config_base = QueryConfig()
 
-        runner_base = QueryRunner(config_base, sample_dataset)
+        runner_base = QueryRunner(config_base)
         runner_base._model = transformerlens_runner
         runner_base._model_name = TEST_MODEL
-        output_base = runner_base.query_dataset("interv", TEST_MODEL)
+        output_base = runner_base.query_dataset(sample_dataset, TEST_MODEL)
 
         # Run with strong intervention
         # Use fixed direction for reproducibility
@@ -1760,16 +1681,12 @@ class TestQueryRunnerIntervention:
             "values": direction,
         }
 
-        config_interv = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-            intervention=intervention,
-        )
+        config_interv = QueryConfig(intervention=intervention)
 
-        runner_interv = QueryRunner(config_interv, sample_dataset)
+        runner_interv = QueryRunner(config_interv)
         runner_interv._model = transformerlens_runner
         runner_interv._model_name = TEST_MODEL
-        output_interv = runner_interv.query_dataset("interv", TEST_MODEL)
+        output_interv = runner_interv.query_dataset(sample_dataset, TEST_MODEL)
 
         # Responses should differ (strong steering should change output)
         base_response = output_base.preferences[0].response
@@ -1791,17 +1708,13 @@ class TestQueryRunnerIntervention:
             "values": 0,
         }
 
-        config = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-            intervention=intervention,
-        )
+        config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config, sample_dataset)
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("interv", TEST_MODEL)
+        output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 1
 
@@ -1816,16 +1729,12 @@ class TestQueryRunnerIntervention:
         sample_config = load_intervention_json("steer_all")
 
         # Use it in QueryConfig
-        config = QueryConfig(
-            models=[TEST_MODEL],
-            datasets=["interv"],
-            intervention=sample_config,
-        )
+        config = QueryConfig(intervention=sample_config)
 
-        runner = QueryRunner(config, sample_dataset)
+        runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        output = runner.query_dataset("interv", TEST_MODEL)
+        output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 1
