@@ -25,6 +25,10 @@ def get_pref_dataset_dir() -> Path:
     return get_output_dir() / "preference_datasets"
 
 
+def get_internals_dir(pref_dataset_dir: Path = get_pref_dataset_dir()) -> Path:
+    return pref_dataset_dir / "internals"
+
+
 def get_prompt_dataset_dir() -> Path:
     """Return the datasets output directory."""
     return get_output_dir() / "prompt_datasets"

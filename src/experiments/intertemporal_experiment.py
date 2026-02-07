@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Optional
-
+import sys
 import numpy as np
 
 from ..common.device import get_device
@@ -157,16 +157,23 @@ class ExperimentContext:
         return data_dir
 
     @property
-    def viz_dir(self) -> Path:
-        viz_dir = self.output_dir / "viz"
-        ensure_dir(viz_dir)
-        return viz_dir
-
-    @property
     def run_dir(self) -> Path:
         run_dir = self.output_dir / self.ts
         ensure_dir(run_dir)
         return run_dir
+
+
+# ---------------------------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------------------------
+
+
+def xlog(*args, **kwargs):
+    caller = sys._getframe(1)
+    func = caller.f_code.co_name
+    print("\n\n")
+    print(f"[{func}]: ", *args, **kwargs)
+    print("\n\n")
 
 
 # ---------------------------------------------------------------------------
@@ -185,21 +192,28 @@ def step_preference_data(config: ExperimentConfig) -> PreferenceDataset:
     # Check if preference data already exists
     pref_dataset_prefix = config.get_preference_dataset_prefix()
 
-    if pref_data := load_and_merge_preference_data(pref_dataset_prefix, get_pref_dataset_dir()):
+    if pref_data := load_and_merge_preference_data(
+        pref_dataset_prefix, get_pref_dataset_dir()
+    ):
+        xlog("Loaded preference data!")
         pass  # Loaded and merged existing data
     else:
-        with P("generate_data"):
-            pref_data = generate_preference_data(
-                model=config.model,
-                dataset_config=config.dataset_config,
-                internals=config.internals,
-                max_samples=config.max_samples,
-            )
+        pref_data = generate_preference_data(
+            model=config.model,
+            dataset_config=config.dataset_config,
+            internals=config.internals,
+            max_samples=config.max_samples,
+        )
+        xlog("Generated preference data!")
 
-    pref_data.save_as_json(get_experiment_dir() / "preference_data.json")
+    # This is copy, just for ease
+    pref_data.save_as_json(
+        get_experiment_dir() / "preference_data.json", with_internals=False
+    )
 
-    print(f"Model: {pref_data.model}")
-    print(f"Samples: {len(pref_data.preferences)}")
+    xlog(f"Model: {pref_data.model}")
+    xlog(f"Samples: {len(pref_data.preferences)}")
+
     return pref_data
 
 
@@ -637,6 +651,8 @@ def run_experiment(config: ExperimentConfig) -> None:
 
     # Step 2: Get Preference Dataset (Prompt Dataset + Model's responses)
     pref_data = step_preference_data(config)
+
+    xlog("\n" + pref_data.to_string())
 
     return 0
 

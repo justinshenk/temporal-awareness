@@ -10,6 +10,9 @@ import torch
 
 from ..common.io import load_json, save_json, ensure_dir
 from ..common.schema_utils import SchemaClass
+from ..common.paths import get_internals_dir
+
+import json
 
 
 @dataclass
@@ -33,11 +36,12 @@ class PreferenceSample(SchemaClass):
     alt_prob: float
     response: str
     internals: Optional[CapturedInternals] = None
+    internals_paths: Optional[dict] = None
     prompt_text: str = ""  # Merged from dataset
 
 
 @dataclass
-class PreferenceDataset:
+class PreferenceDataset(SchemaClass):
     """Preference dataset with metadata."""
 
     prompt_dataset_id: str
@@ -98,19 +102,7 @@ class PreferenceDataset:
         """Return preferences with known choice."""
         return [p for p in self.preferences if p.choice in ("short_term", "long_term")]
 
-    def save_as_json(self, path: Path) -> None:
-        """Save the full preference dataset to JSON.
-
-        If preferences have CapturedInternals with tensors, they are saved
-        to separate .pt files and replaced with file path references.
-
-        Args:
-            path: Output path for the JSON file
-        """
-        path = Path(path)
-        ensure_dir(path.parent)
-        internals_dir = path.parent / "internals"
-
+    def _to_dict(self) -> dict:
         preferences_data = []
         for pref in self.preferences:
             pref_dict = {
@@ -123,24 +115,9 @@ class PreferenceDataset:
                 "alt_prob": pref.alt_prob,
                 "response": pref.response,
                 "prompt_text": pref.prompt_text,
+                "internals_paths": pref.internals_paths,
                 "internals": None,
             }
-
-            # Handle internals - either CapturedInternals or dict reference
-            if pref.internals is not None:
-                if isinstance(pref.internals, CapturedInternals):
-                    # Save tensors to .pt file
-                    ensure_dir(internals_dir)
-                    filename = f"{self.get_prefix()}_sample_{pref.sample_id}.pt"
-                    file_path = internals_dir / filename
-                    torch.save(pref.internals.activations, file_path)
-                    pref_dict["internals"] = {
-                        "file_path": str(file_path),
-                        "activations": pref.internals.activation_names,
-                    }
-                else:
-                    # Already a dict reference (from loading)
-                    pref_dict["internals"] = pref.internals
 
             preferences_data.append(pref_dict)
 
@@ -150,10 +127,52 @@ class PreferenceDataset:
             "prompt_dataset_name": self.prompt_dataset_name,
             "preferences": preferences_data,
         }
+        return data
+
+    def to_string(self, without_internals: bool = True) -> str:
+        d = self._to_dict()
+        if without_internals:
+            for p in d["preferences"]:
+                p.pop("internals", None)
+                p.pop("internals_paths", None)
+        return json.dumps(d, indent=4)
+
+    def save_as_json(self, path: Path, with_internals: bool = True) -> None:
+        """Save the full preference dataset to JSON.
+
+        If preferences have CapturedInternals with tensors, they are saved
+        to separate .pt files and replaced with file path references.
+
+        Args:
+            path: Output path for the JSON file
+        """
+        path = Path(path)
+        ensure_dir(path.parent)
+        internals_dir = get_internals_dir(path.parent)
+        ensure_dir(internals_dir)
+
+        data = self._to_dict()
+
+        if with_internals:
+            for sample_id, pref in enumerate(self.preferences):
+                if pref.internals:
+                    file_path = internals_dir / self.get_internals_filename(
+                        pref.sample_id
+                    )
+                    ip = {
+                        "file_path": str(file_path),
+                        "activations": pref.internals.activation_names,
+                    }
+                    pref.internals_paths = ip
+                    data["preferences"][sample_id]["internals_paths"] = ip
+                    torch.save(pref.internals.activations, file_path)
+
         save_json(data, path)
 
     @classmethod
-    def load_from_json(cls, path: str) -> PreferenceDataset:
+    def load_from_json(
+        cls, path: str, with_internals: bool = True
+    ) -> PreferenceDataset:
         """Load preference dataset from JSON file.
 
         Args:
@@ -177,10 +196,17 @@ class PreferenceDataset:
                     choice_prob=p["choice_prob"],
                     alt_prob=p["alt_prob"],
                     response=p["response"],
-                    internals=p.get("internals"),
+                    internals_paths=p.get("internals_paths", {}),
                     prompt_text=p.get("prompt_text", ""),
                 )
             )
+
+        if with_internals:
+            for p in preferences:
+                if p.internals_paths:
+                    # TODO(claude, implement load_internals)
+                    break  # Remove after load_internals is implemented
+                    p.internals = load_internals(p.internals_paths)
 
         return cls(
             prompt_dataset_id=data["dataset_id"],

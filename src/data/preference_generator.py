@@ -17,6 +17,7 @@ from ..models.preference_dataset import PreferenceDataset
 from ..models.query_runner import InternalsConfig
 from ..prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
 from .default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
+from ..profiler import P
 
 
 def generate_preference_data(
@@ -31,12 +32,13 @@ def generate_preference_data(
     pref_datasets_dir: Optional[Path] = None,
 ) -> PreferenceDataset:
     """Generate preference data on-the-fly by querying a model."""
+
     model = model or DEFAULT_MODEL
     config_dict = dataset_config or DEFAULT_PROMPT_DATASET_CONFIG
 
-    # Generate prompt dataset
-    dataset_cfg = PromptDatasetConfig.load_from_dict(config_dict)
-    prompt_dataset = PromptDatasetGenerator(dataset_cfg).generate()
+    with P("generate_prompt_dataset"):
+        prompt_dataset_cfg = PromptDatasetConfig.load_from_dict(config_dict)
+        prompt_dataset = PromptDatasetGenerator(prompt_dataset_cfg).generate()
 
     # Build query config
     subsample = 1.0
@@ -51,16 +53,19 @@ def generate_preference_data(
     )
 
     # Query model
-    pref_data = QueryRunner(query_config).query_dataset(prompt_dataset, model)
-    pref_data.prompt_dataset_name = dataset_cfg.name
+    with P("generate_preference_dataset"):
+        pref_data = QueryRunner(query_config).query_dataset(prompt_dataset, model)
 
     # Save data (save_as_json handles internals .pt files automatically)
     if save_data:
-        prompt_datasets_dir = prompt_datasets_dir or get_prompt_dataset_dir()
-        pref_datasets_dir = pref_datasets_dir or get_pref_dataset_dir()
-        ensure_dir(prompt_datasets_dir)
-        ensure_dir(pref_datasets_dir)
-        prompt_dataset.save_as_json(prompt_datasets_dir / prompt_dataset.config.get_filename())
-        pref_data.save_as_json(pref_datasets_dir / pref_data.get_filename())
+        with P("saving_preference_dataset"):
+            prompt_datasets_dir = prompt_datasets_dir or get_prompt_dataset_dir()
+            pref_datasets_dir = pref_datasets_dir or get_pref_dataset_dir()
+            ensure_dir(prompt_datasets_dir)
+            ensure_dir(pref_datasets_dir)
+            prompt_dataset.save_as_json(
+                prompt_datasets_dir / prompt_dataset.config.get_filename()
+            )
+            pref_data.save_as_json(pref_datasets_dir / pref_data.get_filename())
 
     return pref_data

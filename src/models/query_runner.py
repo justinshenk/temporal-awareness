@@ -258,4 +258,5 @@ class QueryRunner:
             prompt_dataset_id=prompt_dataset.dataset_id,
             model=model_name,
             preferences=preferences,
+            prompt_dataset_name=prompt_dataset.config.name,
         )
