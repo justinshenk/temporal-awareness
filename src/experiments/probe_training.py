@@ -5,15 +5,18 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
+from sklearn.model_selection import train_test_split
 
-from ..data import PreferenceData
+from ..data import PreferenceDataset
+from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..models import ModelRunner
+from ..probes import LinearProbe, ProbeResult, prepare_samples, extract_activations
 from ..profiler import P
 
 
 def run_probe_training(
     runner: ModelRunner,
-    pref_data: PreferenceData,
+    pref_data: PreferenceDataset,
     layers: list[int],
     token_positions: Optional[list] = None,
     test_split: float = 0.2,
@@ -42,10 +45,7 @@ def run_probe_training(
         - probes_dict maps (probe_type, layer, pos_idx) to trained LinearProbe
     """
     if token_positions is None:
-        from ..formatting.configs.default_prompt_format import DefaultPromptFormat
         token_positions = DefaultPromptFormat().get_interesting_positions()
-    from sklearn.model_selection import train_test_split
-    from ..probes import LinearProbe, ProbeResult, prepare_samples, extract_activations
 
     # Resolve negative layer indices (e.g. -1 -> last layer)
     resolved_layers = []

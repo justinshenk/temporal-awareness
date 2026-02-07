@@ -77,8 +77,8 @@ class PreferenceDataset:
         """
         prefix = self.get_prefix()
         if self.prompt_dataset_name:
-            return f"{prefix}_{self.prompt_dataset_name}"
-        return prefix
+            return f"{prefix}_{self.prompt_dataset_name}.json"
+        return f"{prefix}.json"
 
     def split_by_choice(
         self,

@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import numpy as np
+import torch
 
-from ..data import PreferenceData
+from ..data import PreferenceDataset
 from ..models import ModelRunner
 from ..models.intervention_utils import steering
+from ..probes import prepare_samples
 
 
 def compute_steering_vector(
     runner: ModelRunner,
-    pref_data: PreferenceData,
+    pref_data: PreferenceDataset,
     layer: int,
     position: int,
     max_samples: int = 500,
@@ -28,9 +30,6 @@ def compute_steering_vector(
     Returns:
         Tuple of (direction vector, stats dict)
     """
-    import torch
-    from ..probes import prepare_samples
-
     # Prepare binary-labeled samples (class 0 vs class 1 based on choice)
     samples, labels = prepare_samples(pref_data, "choice", "choice", random_seed=42)
     # labels: ndarray of shape [n_samples] with values 0 or 1

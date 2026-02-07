@@ -229,13 +229,15 @@ class TestPromptKeywords:
         assert "reasoning_prefix" in keyword_map
 
     def test_keyword_values(self):
+        from src.formatting.configs.default_prompt_format import DefaultPromptFormat
+        fmt = DefaultPromptFormat()
         keyword_map, _ = _get_prompt_keywords()
-        assert keyword_map["situation"] == "SITUATION:"
-        assert keyword_map["task"] == "TASK:"
-        assert keyword_map["consider"] == "CONSIDER:"
-        assert keyword_map["action"] == "ACTION:"
-        assert keyword_map["choice_prefix"] == "I select:"
-        assert keyword_map["reasoning_prefix"] == "My reasoning:"
+        assert keyword_map["situation"] == fmt.const_keywords["situation_marker"]
+        assert keyword_map["task"] == fmt.const_keywords["task_marker"]
+        assert keyword_map["consider"] == fmt.const_keywords["consider_marker"]
+        assert keyword_map["action"] == fmt.const_keywords["action_marker"]
+        assert keyword_map["choice_prefix"] == fmt.const_keywords["format_choice_prefix"]
+        assert keyword_map["reasoning_prefix"] == fmt.const_keywords["format_reasoning_prefix"]
 
     def test_no_stale_keywords(self):
         """Ensure removed keywords are not present."""
@@ -280,10 +282,10 @@ class TestGetInterestingPositions:
         fmt = DefaultPromptFormat()
         positions = fmt.get_interesting_positions()
         texts = [p["text"] for p in positions]
-        assert "SITUATION:" in texts
-        assert "TASK:" in texts
-        assert "CONSIDER:" in texts
-        assert "ACTION:" in texts
+        assert fmt.const_keywords["situation_marker"] in texts
+        assert fmt.const_keywords["task_marker"] in texts
+        assert fmt.const_keywords["consider_marker"] in texts
+        assert fmt.const_keywords["action_marker"] in texts
 
     def test_response_markers_use_last(self):
         from src.formatting.configs.default_prompt_format import DefaultPromptFormat
@@ -291,10 +293,10 @@ class TestGetInterestingPositions:
         positions = fmt.get_interesting_positions()
         last_positions = [p for p in positions if p.get("last", False)]
         assert len(last_positions) > 0
-        # Response markers search for "I select:" and "My reasoning:"
+        # Response markers use last occurrence
         last_texts = [p["text"] for p in last_positions]
-        assert "I select:" in last_texts
-        assert "My reasoning:" in last_texts
+        assert fmt.response_const_keywords["response_choice_prefix"] in last_texts
+        assert fmt.response_const_keywords["response_reasoning_prefix"] in last_texts
 
     def test_positions_resolve_against_tokens(self):
         """Interesting positions can resolve against sample tokens."""

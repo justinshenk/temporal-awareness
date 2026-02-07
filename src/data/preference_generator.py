@@ -14,6 +14,7 @@ from typing import Optional
 import torch
 
 from ..common.io import ensure_dir
+from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from ..prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
 from ..models import QueryRunner, QueryConfig
 from ..models.query_runner import InternalsConfig
@@ -29,8 +30,8 @@ def generate_preference_data(
     max_samples: Optional[int] = None,
     internals: Optional[dict] = None,
     save_data: bool = True,
-    datasets_dir: Optional[Path] = None,
-    pref_dir: Optional[Path] = None,
+    prompt_datasets_dir: Optional[Path] = None,
+    pref_datasets_dir: Optional[Path] = None,
     verbose: bool = True,
 ) -> PreferenceDataset:
     """
@@ -62,43 +63,33 @@ def generate_preference_data(
         print(f"  Model: {model}")
         print(f"  Dataset config: {config_dict.get('name', 'default')}")
 
-    # Use provided directories for saving, or a temporary directory if not saving
-    use_tmpdir = not save_data or datasets_dir is None
-    tmpdir_ctx = tempfile.TemporaryDirectory() if use_tmpdir else None
-    working_datasets_dir = Path(tmpdir_ctx.name) if tmpdir_ctx else datasets_dir
+    if not prompt_datasets_dir:
+        prompt_datasets_dir = get_prompt_dataset_dir()
+    if not pref_datasets_dir:
+        pref_datasets_dir = get_pref_dataset_dir()
 
-    try:
-        if save_data:
-            if datasets_dir is not None:
-                ensure_dir(datasets_dir)
-            if pref_dir is not None:
-                ensure_dir(pref_dir)
+    if save_data:
+        ensure_dir(prompt_datasets_dir)
+        ensure_dir(pref_datasets_dir)
 
-        # Step 1: Generate dataset
-        if verbose:
-            print("\nStep 1: Generating dataset...")
-        dataset_cfg = PromptDatasetConfig.load_from_dict(config_dict)
-        generator = PromptDatasetGenerator(dataset_cfg)
-        prompt_dataset = generator.generate()
-        if verbose:
-            print(f"  Generated {len(prompt_dataset.samples)} samples")
+    # Step 1: Generate dataset
+    if verbose:
+        print("\nStep 1: Generating dataset...")
+    dataset_cfg = PromptDatasetConfig.load_from_dict(config_dict)
+    generator = PromptDatasetGenerator(dataset_cfg)
+    prompt_dataset = generator.generate()
+    if verbose:
+        print(f"  Generated {len(prompt_dataset.samples)} samples")
 
-        dataset_id = prompt_dataset.dataset_id
-        dataset_filename = prompt_dataset.config.get_filename()
+    dataset_id = prompt_dataset.dataset_id
+    dataset_filename = prompt_dataset.config.get_filename()
 
-        # Always save dataset to working dir (QueryRunner needs it on disk)
-        dataset_path = working_datasets_dir / dataset_filename
+    # Save prompt dataset
+    if save_data:
+        dataset_path = prompt_datasets_dir / dataset_filename
         prompt_dataset.save_as_json(dataset_path)
-
-        # Also save to the real datasets_dir if it's different from working dir
-        if (
-            save_data
-            and datasets_dir is not None
-            and working_datasets_dir != datasets_dir
-        ):
-            prompt_dataset.save_as_json(datasets_dir / dataset_filename)
-            if verbose:
-                print(f"  Saved dataset to {datasets_dir}")
+        if verbose:
+            print(f"  Saved dataset to {dataset_path}")
 
         # Step 2: Query model
         if verbose:
@@ -125,64 +116,62 @@ def generate_preference_data(
         if verbose:
             print("\nStep 3: Converting to PreferenceDataset...")
 
-        pref_data = PreferenceDataset(
-            prompt_dataset_id=dataset_id,
-            model=model,
-            preferences=[],
-            prompt_dataset_name=dataset_cfg.name,
+    pref_data = PreferenceDataset(
+        prompt_dataset_id=dataset_id,
+        model=model,
+        preferences=[],
+        prompt_dataset_name=dataset_cfg.name,
+    )
+
+    internals_dir = pref_datasets_dir / "internals" if save_data else None
+    has_internals = any(p.internals is not None for p in output.preferences)
+    if has_internals and internals_dir:
+        ensure_dir(internals_dir)
+
+    for p in output.preferences:
+        internals_dict = None
+        if p.internals is not None and internals_dir:
+            filename = f"{pref_data.get_prefix()}_sample_{p.sample_id}.pt"
+            file_path = internals_dir / filename
+            torch.save(p.internals.activations, file_path)
+            internals_dict = {
+                "file_path": str(file_path),
+                "activations": p.internals.activation_names,
+            }
+
+        pref_data.preferences.append(
+            PreferenceSample(
+                sample_id=p.sample_id,
+                time_horizon=p.time_horizon,
+                short_term_label=p.short_term_label,
+                long_term_label=p.long_term_label,
+                choice=p.choice,
+                choice_prob=p.choice_prob,
+                alt_prob=p.alt_prob,
+                response=p.response,
+                internals=internals_dict,
+            )
         )
 
-        internals_dir = pref_dir / "internals" if pref_dir else None
-        has_internals = any(p.internals is not None for p in output.preferences)
-        if has_internals and save_data and internals_dir:
-            ensure_dir(internals_dir)
+    # Merge prompt text
+    prompts_by_id = prompt_dataset.get_prompts_by_id()
+    for pref in pref_data.preferences:
+        pref.prompt_text = prompts_by_id.get(pref.sample_id, "")
 
-        for p in output.preferences:
-            internals_dict = None
-            if p.internals is not None and save_data and internals_dir:
-                filename = f"{pref_data.get_prefix()}_sample_{p.sample_id}.pt"
-                file_path = internals_dir / filename
-                torch.save(p.internals.activations, file_path)
-                internals_dict = {
-                    "file_path": str(file_path),
-                    "activations": p.internals.activation_names,
-                }
+    if verbose:
+        n_with_internals = sum(
+            1 for p in pref_data.preferences if p.internals is not None
+        )
+        msg = f"  Created {len(pref_data.preferences)} preferences with prompt text"
+        if n_with_internals:
+            msg += f" ({n_with_internals} with internals)"
+        print(msg)
 
-            pref_data.preferences.append(
-                PreferenceSample(
-                    sample_id=p.sample_id,
-                    time_horizon=p.time_horizon,
-                    short_term_label=p.short_term_label,
-                    long_term_label=p.long_term_label,
-                    choice=p.choice,
-                    choice_prob=p.choice_prob,
-                    alt_prob=p.alt_prob,
-                    response=p.response,
-                    internals=internals_dict,
-                )
-            )
-
-        # Merge prompt text
-        prompts_by_id = prompt_dataset.get_prompts_by_id()
-        for pref in pref_data.preferences:
-            pref.prompt_text = prompts_by_id.get(pref.sample_id, "")
-
+    # Save preference data
+    if save_data:
+        pref_path = pref_datasets_dir / pref_data.get_filename()
+        pref_data.save_as_json(pref_path)
         if verbose:
-            n_with_internals = sum(1 for p in pref_data.preferences if p.internals is not None)
-            msg = f"  Created {len(pref_data.preferences)} preferences with prompt text"
-            if n_with_internals:
-                msg += f" ({n_with_internals} with internals)"
-            print(msg)
-
-        # Save preference data
-        if save_data and pref_dir is not None:
-            pref_path = pref_dir / f"{pref_data.get_filename()}.json"
-            pref_data.save_as_json(pref_path)
-            if verbose:
-                print(f"  Saved preferences to {pref_path}")
-
-    finally:
-        if tmpdir_ctx is not None:
-            tmpdir_ctx.cleanup()
+            print(f"  Saved preferences to {pref_path}")
 
     return pref_data

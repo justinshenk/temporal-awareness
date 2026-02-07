@@ -6,7 +6,7 @@ Computes steering vectors as mean activation difference between choice classes
 at positions identified by activation patching.
 
 Usage:
-    uv run python scripts/analysis/contrastive_intertemporal.py \
+    uv run python scripts/intertemporal/contrastive.py \
         --positions out/activation_patching/<timestamp>/positions_resid_post.json
 """
 

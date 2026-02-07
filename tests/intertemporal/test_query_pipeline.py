@@ -4,18 +4,13 @@ These tests verify QueryRunner works end-to-end with Qwen2.5-1.5B.
 Marked slow because they require model loading.
 """
 
-from dataclasses import asdict
-from pathlib import Path
-
 import pytest
 
-from src.datasets import DatasetGenerator
+from src.prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
 from src.models import QueryRunner, QueryConfig
-from src.common.io import save_json, get_timestamp
+from src.common.paths import get_prompt_dataset_configs_dir
 
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 TEST_MODEL = "Qwen/Qwen2.5-1.5B"
 
 
@@ -26,24 +21,18 @@ class TestQueryPipeline:
     @pytest.fixture
     def setup_dataset(self, tmp_path):
         """Generate a minimal dataset for testing."""
-        config_path = SCRIPTS_DIR / "data" / "configs" / "test_minimal.json"
-        cfg = DatasetGenerator.load_dataset_config(config_path)
+        config_path = get_prompt_dataset_configs_dir() / "test_minimal.json"
+        cfg = PromptDatasetConfig.load_from_json(config_path)
 
-        generator = DatasetGenerator(cfg)
-        samples = generator.generate()
+        generator = PromptDatasetGenerator(cfg)
+        dataset = generator.generate()
 
         # Save dataset
         datasets_dir = tmp_path / "datasets"
         datasets_dir.mkdir()
 
         output_path = datasets_dir / f"{cfg.name}_{cfg.get_id()}.json"
-        data = {
-            "dataset_id": cfg.get_id(),
-            "timestamp": get_timestamp(),
-            "config": cfg.to_dict(),
-            "samples": [asdict(s) for s in samples],
-        }
-        save_json(data, output_path)
+        dataset.save_as_json(output_path)
 
         return datasets_dir, cfg.get_id()
 

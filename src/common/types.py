@@ -210,12 +210,12 @@ class Response(SchemaClass):
 
 
 @dataclass
-class DatasetSample(SchemaClass):
+class PromptSample(SchemaClass):
     """
-    A complete dataset sample (internal representation).
+    A complete prompt sample (internal representation).
 
     Attributes:
-        id: Unique sample identifier
+        sample_id: Unique sample identifier
         prompt: The full prompt object
         response: Model response (populated after inference)
     """

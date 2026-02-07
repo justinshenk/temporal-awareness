@@ -3,23 +3,28 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
-from ...datasets.schemas import PromptFormatConfig
 
 if TYPE_CHECKING:
     from ...common.types import TimeValue
 
 
 @dataclass
-class DefaultPromptFormat(PromptFormatConfig):
+class DefaultPromptFormat:
     name: str = "default_prompt_format"
 
     situation_template: str = "[situation_marker] [situation] [extra_situation]"
     task_template: str = """[task_marker] You, [role], are tasked to [task_in_question]:
 [left_term_label] [left_term_reward] [reward_units] in [left_term_time]
 [right_term_label] [right_term_reward] [reward_units] in [right_term_time]"""
-    consider_template: str = "[consider_marker] Think deeply about which option is preferable."
-    time_horizon_spec_template: str = "You are primarily concerned about outcome in [time_horizon]."
-    action_template: str = "[action_marker] Select one of the two options, and [reasoning_ask]"
+    consider_template: str = (
+        "[consider_marker] Think deeply about which option is preferable."
+    )
+    time_horizon_spec_template: str = (
+        "You are primarily concerned about outcome in [time_horizon]."
+    )
+    action_template: str = (
+        "[action_marker] Select one of the two options, and [reasoning_ask]"
+    )
 
     response_template: str = """[format_marker] Respond in this format:
 [format_choice_prefix] <[left_term_label] or [right_term_label]>.
@@ -127,7 +132,9 @@ class DefaultPromptFormat(PromptFormatConfig):
         """
         return {
             "choice_prefix": self.response_const_keywords["response_choice_prefix"],
-            "reasoning_prefix": self.response_const_keywords["response_reasoning_prefix"],
+            "reasoning_prefix": self.response_const_keywords[
+                "response_reasoning_prefix"
+            ],
         }
 
     def get_interesting_positions(self) -> list[dict]:

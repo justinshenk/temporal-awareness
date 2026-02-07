@@ -7,8 +7,15 @@ Usage:
         work()
 
     P.report()
+
+    # Or use the profile_fn decorator
+    from src.profiler import profile_fn
+
+    @profile_fn("LOAD DATA")
+    def load_data():
+        return load()
 """
 
-from .timer import P, Profiler, TimingEntry
+from ..common.auto_export import auto_export
 
-__all__ = ["P", "Profiler", "TimingEntry"]
+__all__ = auto_export(__file__, __name__, globals())

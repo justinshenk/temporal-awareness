@@ -20,9 +20,10 @@ SECTION_COLORS = {
     "before_choice_output": "lime",
 }
 
-# Get choice_prefix from format config (not hardcoded)
+# Get markers from format config (not hardcoded)
 _DEFAULT_FORMAT = DefaultPromptFormat()
-CHOICE_PREFIX = _DEFAULT_FORMAT.const_keywords.get("choice_prefix", "I select:")
+CHOICE_PREFIX = _DEFAULT_FORMAT.const_keywords["format_choice_prefix"]
+CONSIDER_MARKER = _DEFAULT_FORMAT.const_keywords["consider_marker"]
 
 
 def find_section_markers(
@@ -69,7 +70,7 @@ def find_section_markers(
         markers["before_choices"] = text_pos_to_token_pos(first_label_pos)
 
     # Find CONSIDER section (contains time_horizon)
-    consider_pos = text.find("CONSIDER:")
+    consider_pos = text.find(CONSIDER_MARKER)
     if consider_pos >= 0:
         markers["before_time_horizon"] = text_pos_to_token_pos(consider_pos)
 

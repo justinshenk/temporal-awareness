@@ -13,7 +13,7 @@ from .markers import find_section_markers, get_token_labels, SECTION_COLORS
 
 if TYPE_CHECKING:
     from ..models import ModelRunner
-    from ..data import PreferenceItem
+    from ..data import PreferenceSample
 
 # Re-export for convenience
 __all__ = [
@@ -167,8 +167,8 @@ def build_position_mapping(
 
 def create_metric(
     runner: "ModelRunner",
-    clean_sample: "PreferenceItem",
-    corrupted_sample: "PreferenceItem",
+    clean_sample: "PreferenceSample",
+    corrupted_sample: "PreferenceSample",
     clean_text: str,
     corrupted_text: str,
 ) -> PatchingMetric:

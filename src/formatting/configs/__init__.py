@@ -1,3 +1,5 @@
-from .default_prompt_format import DefaultPromptFormat
+"""Prompt format configurations."""
 
-__all__ = ["DefaultPromptFormat"]
+from ...common.auto_export import auto_export
+
+__all__ = auto_export(__file__, __name__, globals())

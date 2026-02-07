@@ -7,10 +7,10 @@ This script adds standalone CLI, positions.json output, and detailed summary.
 
 Usage:
     # Quick test with defaults
-    python scripts/circuits/attribution_patching_intertemporal.py
+    python scripts/intertemporal/attribution_patching.py
 
     # Full run
-    python scripts/circuits/attribution_patching_intertemporal.py --max-pairs 5 --ig-steps 20
+    python scripts/intertemporal/attribution_patching.py --max-pairs 5 --ig-steps 20
 """
 
 from __future__ import annotations

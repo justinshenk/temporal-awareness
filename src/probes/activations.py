@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from ..common.token_positions import ResolvedPositionInfo
+from ..common.token_positions import ResolvedPositionInfo, resolve_positions_with_info
 from ..profiler import P
 
 if TYPE_CHECKING:
     from ..models import ModelRunner
-    from ..data import PreferenceItem
+    from ..data import PreferenceSample
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ExtractionResult:
 
 def extract_activations(
     runner: "ModelRunner",
-    samples: list["PreferenceItem"],
+    samples: list["PreferenceSample"],
     layers: list[int],
     token_positions: list,
     batch_size: int = 8,
@@ -34,7 +34,7 @@ def extract_activations(
 
     Args:
         runner: ModelRunner instance
-        samples: List of PreferenceItem with prompt_text
+        samples: List of PreferenceSample with prompt_text
         layers: Layer indices to extract from (negative indices count from end)
         token_positions: Position specs (int, keyword dict, or relative dict)
         batch_size: Number of samples to process per batch
@@ -42,8 +42,6 @@ def extract_activations(
     Returns:
         ExtractionResult with activations dict and position info for labels
     """
-    from ..common.token_positions import resolve_positions_with_info
-
     # Resolve negative layer indices
     resolved_layers = []
     for l in layers:

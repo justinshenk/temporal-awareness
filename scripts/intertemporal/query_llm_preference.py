@@ -123,7 +123,7 @@ def main() -> int:
             prompt_dataset = PromptDataset.load_from_id(dataset_id)
             pref_dataset = runner.query_dataset(prompt_dataset, model_name)
 
-            output_path = output_dir / f"{pref_dataset.get_filename()}.json"
+            output_path = output_dir / pref_dataset.get_filename()
             pref_dataset.save_as_json(output_path)
             print_summary(pref_dataset)
 

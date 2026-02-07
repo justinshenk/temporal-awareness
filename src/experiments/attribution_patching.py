@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..data import (
-    PreferenceData,
+    PreferenceDataset,
     build_prompt_pairs,
 )
 from ..models import ModelRunner
@@ -22,7 +22,7 @@ from ..profiler import P
 
 def run_attribution_patching(
     runner: ModelRunner,
-    pref_data: PreferenceData,
+    pref_data: PreferenceDataset,
     max_pairs: int = 3,
     ig_steps: int = 10,
 ) -> tuple[dict[str, np.ndarray], list[str], dict[str, int]]:

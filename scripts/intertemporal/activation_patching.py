@@ -8,8 +8,8 @@ Workflow:
 3. Save positions.json and metadata.json
 
 Usage:
-    python scripts/circuits/activation_patching_intertemporal.py
-    python scripts/circuits/activation_patching_intertemporal.py --no-components  # Skip MLP/attention
+    python scripts/intertemporal/activation_patching.py
+    python scripts/intertemporal/activation_patching.py --no-components  # Skip MLP/attention
 """
 
 from __future__ import annotations

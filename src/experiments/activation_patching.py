@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 
+
+from ..common.token_positions import resolve_positions
 from ..data import (
-    PreferenceData,
+    PreferenceDataset,
     build_prompt_pairs,
 )
+from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..models import ModelRunner
 from ..models.intervention_utils import patch
 from ..analysis import (
@@ -19,6 +23,107 @@ from ..analysis import (
     get_token_labels,
 )
 from ..profiler import P
+
+
+@dataclass
+class PatchingResult:
+    """Results from activation patching."""
+
+    best_layer: int
+    best_position: int
+    best_token: str
+    position_sweep: np.ndarray
+    full_sweeps: dict[str, np.ndarray]  # component name -> [n_layers, n_positions]
+    filtered_positions: list[int]
+    layer_indices: list[int]
+
+
+def compute_layer_indices(n_layers_sample: int, total_layers: int) -> list[int]:
+    """Compute evenly-spaced layer indices for activation patching."""
+    actual_n = min(n_layers_sample, total_layers)
+    if actual_n > 1:
+        return [int(i * (total_layers - 1) / (actual_n - 1)) for i in range(actual_n)]
+    return [total_layers // 2]
+
+
+def find_best_position_layer(
+    pos_sweep: np.ndarray,
+    full_sweeps: dict[str, np.ndarray],
+    filtered_pos: list[int],
+    token_labels: list[str],
+    layer_indices: list[int],
+    primary_component: str,
+) -> tuple[int, int, str]:
+    """Find the best position index, layer, and token label.
+
+    Returns:
+        (best_pos_idx, best_layer, best_token)
+    """
+    primary_sweep = full_sweeps[primary_component]
+    best_pos_idx = int(np.argmax(pos_sweep))
+    if best_pos_idx in filtered_pos:
+        col_idx = filtered_pos.index(best_pos_idx)
+        best_layer_idx = int(np.argmax(primary_sweep[:, col_idx]))
+    else:
+        best_layer_idx = (
+            int(np.argmax(primary_sweep[:, 0])) if primary_sweep.size > 0 else 0
+        )
+    best_layer = layer_indices[best_layer_idx] if layer_indices else 0
+    best_token = (
+        token_labels[best_pos_idx]
+        if best_pos_idx < len(token_labels)
+        else f"pos{best_pos_idx}"
+    )
+    return best_pos_idx, best_layer, best_token
+
+
+def compute_pair_label_probs(
+    runner: ModelRunner,
+    pref_data: PreferenceDataset,
+    pair_metadata: list[dict],
+    max_pairs: int,
+) -> None:
+    """Compute label probabilities for each pair and update pair_metadata in-place."""
+    choice_prefix = DefaultPromptFormat().const_keywords["format_choice_prefix"]
+    pairs = build_prompt_pairs(pref_data, max_pairs=max_pairs, include_response=False)
+    for pm, pair in zip(pair_metadata, pairs):
+        clean_text, corrupted_text, clean_sample, corrupted_sample = pair
+        clean_labels = (clean_sample.short_term_label, clean_sample.long_term_label)
+        corr_labels = (
+            corrupted_sample.short_term_label,
+            corrupted_sample.long_term_label,
+        )
+
+        # Get probs for clean prompt with its own labels
+        clean_probs = runner.get_label_probs(clean_text, choice_prefix, clean_labels)
+        pm["clean_label_probs"] = {
+            clean_labels[0]: float(clean_probs[0]),
+            clean_labels[1]: float(clean_probs[1]),
+        }
+
+        # Get probs for corrupted prompt with its own labels
+        corr_probs = runner.get_label_probs(corrupted_text, choice_prefix, corr_labels)
+        pm["corrupted_label_probs"] = {
+            corr_labels[0]: float(corr_probs[0]),
+            corr_labels[1]: float(corr_probs[1]),
+        }
+
+        # If clean and corrupted use different label formats, also get cross-format probs
+        if clean_labels != corr_labels:
+            clean_with_corr = runner.get_label_probs(
+                clean_text, choice_prefix, corr_labels
+            )
+            pm["clean_label_probs_alt_format"] = {
+                corr_labels[0]: float(clean_with_corr[0]),
+                corr_labels[1]: float(clean_with_corr[1]),
+            }
+            corr_with_clean = runner.get_label_probs(
+                corrupted_text, choice_prefix, clean_labels
+            )
+            pm["corrupted_label_probs_alt_format"] = {
+                clean_labels[0]: float(corr_with_clean[0]),
+                clean_labels[1]: float(corr_with_clean[1]),
+            }
 
 
 def _run_pair_position_sweep(
@@ -119,7 +224,7 @@ def _run_pair_full_sweep(
 
 def run_activation_patching(
     runner: ModelRunner,
-    pref_data: PreferenceData,
+    pref_data: PreferenceDataset,
     max_pairs: int = 3,
     threshold: float = 0.05,
     position_sweep_component: str = "resid_post",
@@ -237,10 +342,8 @@ def run_activation_patching(
 
     # Merge in semantically interesting positions from the prompt format
     if token_positions is None:
-        from ..formatting.configs.default_prompt_format import DefaultPromptFormat
         token_positions = DefaultPromptFormat().get_interesting_positions()
     if token_positions:
-        from ..common.token_positions import resolve_positions
         # Resolve against first pair's tokenization
         first_clean_text = pairs[0][0]
         token_ids = runner.tokenize(first_clean_text)

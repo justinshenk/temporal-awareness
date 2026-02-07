@@ -24,6 +24,7 @@ Example:
 
 from __future__ import annotations
 
+import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -31,6 +32,7 @@ from typing import Any, Optional, Union
 
 import torch
 
+from ..common.device import get_device
 from .interventions import Intervention, create_intervention_hook
 
 
@@ -62,12 +64,7 @@ class ModelRunner:
         self.backend = backend
 
         if device is None:
-            if torch.backends.mps.is_available():
-                device = "mps"
-            elif torch.cuda.is_available():
-                device = "cuda"
-            else:
-                device = "cpu"
+            device = get_device()
         self.device = device
 
         if dtype is None:
@@ -369,7 +366,9 @@ class ModelRunner:
         # If prepend_bos=True, position 0 is BOS, position 1 is first real token
         input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
         # Normalize to list for uniform handling
-        interventions = [intervention] if isinstance(intervention, Intervention) else intervention
+        interventions = (
+            [intervention] if isinstance(intervention, Intervention) else intervention
+        )
         return self._backend.forward_with_intervention(input_ids, interventions)
 
     def forward_with_intervention_and_cache(
@@ -398,7 +397,9 @@ class ModelRunner:
         """
         formatted = self._apply_chat_template(prompt)
         input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
-        interventions = [intervention] if isinstance(intervention, Intervention) else intervention
+        interventions = (
+            [intervention] if isinstance(intervention, Intervention) else intervention
+        )
         return self._backend.forward_with_intervention_and_cache(
             input_ids, interventions, names_filter
         )
@@ -561,8 +562,6 @@ class _TransformerLensBackend(_BackendBase):
         past_kv_cache: Any,
     ) -> str:
         """Generate using frozen kv_cache - only pass new tokens each step."""
-        import copy
-
         eos_token_id = self.get_tokenizer().eos_token_id
         generated_ids = []
 
@@ -662,6 +661,7 @@ class _TransformerLensBackend(_BackendBase):
             def hook_fn(act, hook=None):
                 cache[hook_name] = act
                 return act
+
             return hook_fn
 
         fwd_hooks = [(name, make_hook(name)) for _, _, name in hooks_to_capture]
@@ -679,8 +679,6 @@ class _TransformerLensBackend(_BackendBase):
         temperature: float,
     ) -> str:
         """Generate using prefill logits and frozen kv_cache."""
-        import copy
-
         eos_token_id = self.get_tokenizer().eos_token_id
         generated_ids = []
 
@@ -775,11 +773,14 @@ class _TransformerLensBackend(_BackendBase):
             for component in ["resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
+
                     def make_hook(hook_name):
                         def hook_fn(act, hook=None):
                             cache[hook_name] = act
                             return act
+
                         return hook_fn
+
                     cache_hooks.append((name, make_hook(name)))
 
         # Combine all hooks (intervention hooks run first, then cache hooks)
@@ -859,7 +860,11 @@ class _NNsightBackend(_BackendBase):
         # (creating tensors inside trace can cause issues with NNsight's graph building)
         steering_direction = None
         steering_layer_idx = None
-        if intervention is not None and isinstance(intervention, Intervention) and intervention.mode == "add":
+        if (
+            intervention is not None
+            and isinstance(intervention, Intervention)
+            and intervention.mode == "add"
+        ):
             steering_layer_idx = intervention.layer
             steering_direction = torch.tensor(
                 intervention.scaled_values,
@@ -901,7 +906,9 @@ class _NNsightBackend(_BackendBase):
                 next_token = torch.multinomial(probs, 1).unsqueeze(0)
             else:
                 # Greedy decoding - take argmax
-                next_token = logits[0, -1, :].detach().argmax(dim=-1, keepdim=True).unsqueeze(0)
+                next_token = (
+                    logits[0, -1, :].detach().argmax(dim=-1, keepdim=True).unsqueeze(0)
+                )
             generated = torch.cat([generated, next_token], dim=1)
 
         # Return only newly generated tokens (exclude prompt)
@@ -1133,7 +1140,9 @@ class _NNsightBackend(_BackendBase):
                     intervention = intervention_lookup.get(key)
 
                     # Only access module if we have intervention OR need to cache
-                    should_cache = (layer_idx in layers_to_capture and component == "resid_post")
+                    should_cache = (
+                        layer_idx in layers_to_capture and component == "resid_post"
+                    )
 
                     if intervention is None and not should_cache:
                         continue
@@ -1308,7 +1317,9 @@ class _PyveneBackend(_BackendBase):
             elif hasattr(layer, "self_attn"):
                 return layer.self_attn
             else:
-                raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
+                raise ValueError(
+                    f"Cannot find attention module in layer: {type(layer)}"
+                )
         elif component == "mlp_out":
             return layer.mlp
         else:
@@ -1325,7 +1336,11 @@ class _PyveneBackend(_BackendBase):
         input_ids = self.tokenize(prompt)
         prompt_len = input_ids.shape[1]
 
-        if intervention is not None and isinstance(intervention, Intervention) and intervention.mode == "add":
+        if (
+            intervention is not None
+            and isinstance(intervention, Intervention)
+            and intervention.mode == "add"
+        ):
             # Use direct PyTorch hooks for steering (pyvene's subspace projection
             # doesn't work well for direct addition to hidden states)
             direction = torch.tensor(
@@ -1364,14 +1379,19 @@ class _PyveneBackend(_BackendBase):
                     probs = torch.softmax(logits[0, -1, :] / temperature, dim=-1)
                     next_token = torch.multinomial(probs, 1).unsqueeze(0)
                 else:
-                    next_token = logits[0, -1, :].argmax(dim=-1, keepdim=True).unsqueeze(0)
+                    next_token = (
+                        logits[0, -1, :].argmax(dim=-1, keepdim=True).unsqueeze(0)
+                    )
                 generated = torch.cat([generated, next_token], dim=1)
 
                 if next_token.item() == eos_id:
                     break
         else:
             # No intervention - use standard HF generate
-            gen_kwargs = {"max_new_tokens": max_new_tokens, "do_sample": temperature > 0}
+            gen_kwargs = {
+                "max_new_tokens": max_new_tokens,
+                "do_sample": temperature > 0,
+            }
             if temperature > 0:
                 gen_kwargs["temperature"] = temperature
 
@@ -1439,6 +1459,7 @@ class _PyveneBackend(_BackendBase):
                         cache[hook_name] = out[0].detach()
                     else:
                         cache[hook_name] = out.detach()
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_hook(name)))
@@ -1479,6 +1500,7 @@ class _PyveneBackend(_BackendBase):
                         cache[hook_name] = out[0]
                     else:
                         cache[hook_name] = out
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_hook(name)))
@@ -1532,6 +1554,7 @@ class _PyveneBackend(_BackendBase):
 
     def init_kv_cache(self):
         """Initialize a KV cache wrapper for HF models."""
+
         # Return a simple wrapper that stores past_key_values
         class HFKVCache:
             def __init__(self):
@@ -1565,7 +1588,9 @@ class _PyveneBackend(_BackendBase):
             )
             target = intervention.target
             mode = intervention.mode
-            module = self._get_component_module(intervention.layer, intervention.component)
+            module = self._get_component_module(
+                intervention.layer, intervention.component
+            )
 
             # Create closure to capture intervention-specific values
             def make_hook(values, target, mode):
@@ -1595,6 +1620,7 @@ class _PyveneBackend(_BackendBase):
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
                     return hidden
+
                 return intervention_hook
 
             hook = module.register_forward_hook(make_hook(values, target, mode))
@@ -1641,6 +1667,7 @@ class _PyveneBackend(_BackendBase):
                         cache[hook_name] = out[0]  # Don't detach
                     else:
                         cache[hook_name] = out  # Don't detach
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_cache_hook(name)))
@@ -1654,7 +1681,9 @@ class _PyveneBackend(_BackendBase):
             )
             target = intervention.target
             mode = intervention.mode
-            module = self._get_component_module(intervention.layer, intervention.component)
+            module = self._get_component_module(
+                intervention.layer, intervention.component
+            )
 
             def make_intervention_hook(values, target, mode):
                 def intervention_hook(mod, input, output):
@@ -1687,9 +1716,12 @@ class _PyveneBackend(_BackendBase):
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
                     return hidden
+
                 return intervention_hook
 
-            hook = module.register_forward_hook(make_intervention_hook(values, target, mode))
+            hook = module.register_forward_hook(
+                make_intervention_hook(values, target, mode)
+            )
             hooks.append(hook)
 
         try:

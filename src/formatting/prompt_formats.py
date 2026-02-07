@@ -12,10 +12,10 @@ Update FORMATTING_BOUNDARY_MARKERS when formatting configs change.
 
 from __future__ import annotations
 
+from .configs import DefaultPromptFormat
+
 
 def find_prompt_format_config(prompt_format_config_name: str):
-    from .configs import DefaultPromptFormat
-
     for cfg_ctor in [DefaultPromptFormat]:
         cfg = cfg_ctor()
         if cfg.name == prompt_format_config_name:

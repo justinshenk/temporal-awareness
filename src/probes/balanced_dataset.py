@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 
 if TYPE_CHECKING:
-    from ..data import PreferenceData
+    from ..data import PreferenceDataset
 
 
 def get_time_horizon_months(time_horizon: Optional[dict]) -> Optional[float]:
@@ -67,7 +67,7 @@ def balance_by_time_horizon(
 
 
 def prepare_samples(
-    pref_data: "PreferenceData",
+    pref_data: "PreferenceDataset",
     probe_type: str = "choice",
     balance_by: str = "choice",
     random_seed: int = 42,
@@ -77,7 +77,7 @@ def prepare_samples(
     Uses ALL valid samples from the dataset after balancing.
 
     Args:
-        pref_data: PreferenceData with preferences
+        pref_data: PreferenceDataset with preferences
         probe_type: "choice" (short_term vs long_term) or "time_horizon" (<=1yr vs >1yr)
         balance_by: "choice", "time_horizon", or "none"
         random_seed: Random seed for reproducibility

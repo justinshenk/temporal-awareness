@@ -15,8 +15,8 @@ import numpy as np
 
 from ..common.device import get_device
 from ..common.io import ensure_dir, save_json, get_timestamp
+from ..common.paths import get_pref_dataset_dir, get_experiment_dir
 from ..common.token_positions import build_position_labels
-from ..common.paths import get_output_dir, get_pref_dataset_dir, get_prompt_dataset_dir
 from ..data import (
     generate_preference_data,
     PreferenceDataset,
@@ -135,7 +135,7 @@ class ExperimentContext:
     runner: ModelRunner
 
     # Output
-    output_dir: Path = get_output_dir() / "experiments"
+    output_dir: Path = get_experiment_dir()
     timestamp: Optional[str] = None
 
     @property
@@ -182,30 +182,24 @@ def step_load_model(config: ExperimentConfig) -> ModelRunner:
 
 @profile_fn("step_preference_data")
 def step_preference_data(config: ExperimentConfig) -> PreferenceDataset:
-    pref_dir = get_pref_dataset_dir()
-    datasets_dir = get_prompt_dataset_dir()
-
     # Check if preference data already exists
     pref_dataset_prefix = config.get_preference_dataset_prefix()
 
-    if pref_data := load_and_merge_preference_data(pref_dataset_prefix, pref_dir):
+    if pref_data := load_and_merge_preference_data(pref_dataset_prefix, get_pref_dataset_dir()):
         pass  # Loaded and merged existing data
     else:
         with P("generate_data"):
             pref_data = generate_preference_data(
                 model=config.model,
                 dataset_config=config.dataset_config,
-                pref_dir=pref_dir,
-                datasets_dir=datasets_dir,
                 internals=config.internals,
                 max_samples=config.max_samples,
             )
 
+    pref_data.save_as_json(get_experiment_dir() / "preference_data.json")
+
     print(f"Model: {pref_data.model}")
     print(f"Samples: {len(pref_data.preferences)}")
-
-    data_dir = get_output_dir() / "experiments" / "data"
-    pref_data.save_as_json(data_dir / "preference_data.json")
     return pref_data
 
 
