@@ -230,6 +230,7 @@ def main() -> None:
                     corrupted_inputs,
                     metric_fn,
                     num_steps,
+                    include_block_outputs=True,
                 )
                 eap_ig_scores.attention_mask = expand_mask(
                     eap_ig_scores.attention_mask, system_prompt_length
