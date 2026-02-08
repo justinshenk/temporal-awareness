@@ -34,23 +34,26 @@ def get_prompt_dataset_dir() -> Path:
     return get_output_dir() / "prompt_datasets"
 
 
+def get_intertemporal_configs_dir() -> Path:
+    """Return the prompt dataset configs directory."""
+    return get_project_root() / "scripts" / "intertemporal" / "configs"
+
+
 def get_prompt_dataset_configs_dir() -> Path:
     """Return the prompt dataset configs directory."""
-    return (
-        get_project_root() / "scripts" / "intertemporal" / "configs" / "prompt_datasets"
-    )
+    return get_intertemporal_configs_dir() / "prompt_datasets"
 
 
 def get_query_configs_dir() -> Path:
     """Return the query configs directory."""
-    return get_project_root() / "scripts" / "intertemporal" / "configs" / "query"
+    return get_intertemporal_configs_dir() / "query"
 
 
 def get_circuits_configs_dir() -> Path:
     """Return the circuits configs directory."""
-    return get_project_root() / "scripts" / "intertemporal" / "configs" / "circuits"
+    return get_intertemporal_configs_dir() / "circuits"
 
 
 def get_probes_configs_dir() -> Path:
     """Return the probes configs directory."""
-    return get_project_root() / "scripts" / "intertemporal" / "configs" / "probes"
+    return get_intertemporal_configs_dir() / "probes"

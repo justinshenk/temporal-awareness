@@ -36,8 +36,9 @@ def generate_preference_data(
     model = model or DEFAULT_MODEL
     config_dict = dataset_config or DEFAULT_PROMPT_DATASET_CONFIG
 
+    # Generate prompt dataset
     with P("generate_prompt_dataset"):
-        prompt_dataset_cfg = PromptDatasetConfig.load_from_dict(config_dict)
+        prompt_dataset_cfg = PromptDatasetConfig.from_dict(config_dict)
         prompt_dataset = PromptDatasetGenerator(prompt_dataset_cfg).generate()
 
     # Build query config
@@ -56,7 +57,7 @@ def generate_preference_data(
     with P("generate_preference_dataset"):
         pref_data = QueryRunner(query_config).query_dataset(prompt_dataset, model)
 
-    # Save data (save_as_json handles internals .pt files automatically)
+    # Save data
     if save_data:
         with P("saving_preference_dataset"):
             prompt_datasets_dir = prompt_datasets_dir or get_prompt_dataset_dir()
@@ -66,6 +67,8 @@ def generate_preference_data(
             prompt_dataset.save_as_json(
                 prompt_datasets_dir / prompt_dataset.config.get_filename()
             )
-            pref_data.save_as_json(pref_datasets_dir / pref_data.get_filename())
+            pref_data.save_as_json(
+                pref_datasets_dir / pref_data.get_filename(), with_internals=True
+            )
 
     return pref_data

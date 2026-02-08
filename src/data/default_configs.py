@@ -17,26 +17,26 @@ DEFAULT_PROMPT_DATASET_CONFIG = {
     "options": {
         "short_term": {
             "reward_range": [1000, 4000],
-            "time_range": [[2, "months"], [1, "years"]],
+            "time_range": [{"value": 2, "unit": "months"}, {"value": 1, "unit": "years"}],
             "reward_steps": [3, "linear"],
             "time_steps": [3, "linear"],
         },
         "long_term": {
             "reward_range": [10000, 150000],
-            "time_range": [[10, "years"], [30, "years"]],
+            "time_range": [{"value": 10, "unit": "years"}, {"value": 30, "unit": "years"}],
             "reward_steps": [3, "logarithmic"],
             "time_steps": [3, "logarithmic"],
         },
     },
     "time_horizons": [
         None,
-        [1, "months"],
-        [6, "months"],
-        [2, "years"],
-        [5, "years"],
-        [10, "years"],
-        [30, "years"],
-        [50, "years"],
+        {"value": 1, "unit": "months"},
+        {"value": 6, "unit": "months"},
+        {"value": 2, "unit": "years"},
+        {"value": 5, "unit": "years"},
+        {"value": 10, "unit": "years"},
+        {"value": 30, "unit": "years"},
+        {"value": 50, "unit": "years"},
     ],
     "add_formatting_variations": True,
 }
@@ -72,51 +72,43 @@ DEFAULT_EXPERIMENT_CONFIG = {
     "probe_max_samples": 200,
 }
 
+TEST_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+
 # Test prompt dataset config
 TEST_PROMPT_DATASET_CONFIG = {
     "name": "default_test",
     "context": {
-        "reward_unit": "dollars",
-        "role": "you",
-        "situation": "Choose between options.",
-        "labels": ["a)", "b)"],
-        "seed": 42,
+        "reward_unit": "housing units",
+        "role": "the city administration",
+        "situation": "Plan for housing development in the city.",
+        "domain": "housing",
     },
     "options": {
         "short_term": {
-            "reward_range": [400, 600],
-            "time_range": [[1, "months"], [1, "year"]],
+            "reward_range": [1000, 4000],
+            "time_range": [{"value": 2, "unit": "months"}, {"value": 1, "unit": "years"}],
             "reward_steps": [0, "linear"],
             "time_steps": [0, "linear"],
         },
         "long_term": {
-            "reward_range": [700, 900],
-            "time_range": [[10, "years"], [20, "years"]],
-            "reward_steps": [0, "linear"],
-            "time_steps": [0, "linear"],
+            "reward_range": [10000, 150000],
+            "time_range": [{"value": 10, "unit": "years"}, {"value": 30, "unit": "years"}],
+            "reward_steps": [0, "logarithmic"],
+            "time_steps": [0, "logarithmic"],
         },
     },
     "time_horizons": [
-        {"value": 6, "unit": "months"},
-    ],  # No time horizon = no time_horizon probe
+        None,
+        {"value": 1, "unit": "months"},
+        {"value": 50, "unit": "years"},
+    ],
     "add_formatting_variations": False,
 }
-
-
-# Default query config for querying models
-DEFAULT_QUERY_CONFIG = {
-    "models": [DEFAULT_MODEL],
-    "internals": None,
-    "subsample": 1.0,
-    "batch_size": 4,
-    "skip_generation": True,  # Fast: infer choice from probs only
-}
-
 
 # Small config for testing
 TEST_EXPERIMENT_CONFIG = {
     # Model
-    "model": DEFAULT_MODEL,
+    "model": TEST_MODEL,
     # Dataset generation config
     "dataset_config": TEST_PROMPT_DATASET_CONFIG,
     # Data sampling

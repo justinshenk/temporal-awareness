@@ -14,7 +14,7 @@ import math
 import random
 import re
 from typing import Optional
-
+from itertools import product
 from ..formatting.formatting_variation import FormattingVariation, apply_time_variation
 from .prompt_dataset_config import PromptDatasetConfig, StepType
 from .prompt_dataset import PromptDataset
@@ -189,7 +189,7 @@ class PromptDatasetGenerator:
             Formatted prompt text
         """
         ctx = self.dataset_config.context
-        pf = self.dataset_config.prompt_format
+        pf = self.dataset_config.prompt_format_config
 
         # Assemble question template (conditionally includes time-horizon spec)
         prompt = pf.question_template(time_horizon)
@@ -269,11 +269,23 @@ class PromptDatasetGenerator:
                 f"Text snippet: {text[:200]}..."
             )
 
-    def _get_formatting_variation(self) -> FormattingVariation:
-        """Get a formatting variation (random if enabled, default otherwise)."""
-        if self.dataset_config.add_formatting_variations:
-            return FormattingVariation.random(allow_all=True)
-        return FormattingVariation.default()
+    def get_default_formatting(self):
+        default_var = FormattingVariation.default()
+        default_var.labels = self.dataset_config.context.labels
+        return default_var
+
+    def _process_formatting_variation(
+        self, variation: Optional[FormattingVariation]
+    ) -> FormattingVariation:
+        need_to_reformat = (
+            self.dataset_config.add_formatting_variations
+            and not self.dataset_config.do_variation_grid
+        )
+        if need_to_reformat:
+            return FormattingVariation.random()
+        if not variation:
+            return self.get_default_formatting()
+        return variation
 
     def create_sample(
         self,
@@ -281,6 +293,7 @@ class PromptDatasetGenerator:
         short_term_data: tuple[float, TimeValue],
         long_term_data: tuple[float, TimeValue],
         time_horizon: Optional[TimeValue],
+        variation: Optional[FormattingVariation] = None,
     ) -> PromptSample:
         """
         Create a dataset sample from option data.
@@ -299,21 +312,14 @@ class PromptDatasetGenerator:
         """
         ctx = self.dataset_config.context
 
-        # Get formatting variation (random if enabled, default otherwise)
-        variation = self._get_formatting_variation()
-
-        # Use variation labels if enabled, otherwise use config labels
-        if self.dataset_config.add_formatting_variations:
-            labels = variation.labels
-        else:
-            labels = ctx.labels
+        variation = self._process_formatting_variation(variation)
+        labels = variation.labels
 
         # Randomly assign short_term to left (index 0) or right (index 1)
         # The variation.flip_order adds another layer of randomization
         short_on_left = random.choice([True, False])
         if variation.flip_order:
             short_on_left = not short_on_left
-
         if short_on_left:
             left_label, right_label = labels[0], labels[1]
             short_term_label, long_term_label = left_label, right_label
@@ -361,8 +367,8 @@ class PromptDatasetGenerator:
         )
 
         # Format response_template with labels and const_keywords
-        pf = self.dataset_config.prompt_format
-        response_format = self.dataset_config.prompt_format.response_template
+        pf = self.dataset_config.prompt_format_config
+        response_format = pf.response_template
 
         # Replace const_keywords
         for key, value in pf.const_keywords.items():
@@ -385,7 +391,22 @@ class PromptDatasetGenerator:
             prompt=prompt,
         )
 
-    def generate_grid(self) -> list[PromptSample]:
+    def generate_formatting_variation_grid(self):
+        if self.dataset_config.do_variation_grid:
+            formatting_variations = FormattingVariation.get_grid()
+        return [self.get_default_formatting()]
+
+    def generate_grid(self):
+        short_term_grid = self.generate_option_grid("short_term")
+        long_term_grid = self.generate_option_grid("long_term")
+        time_horizons_grid = self.dataset_config.time_horizons
+        var_grid = self.generate_formatting_variation_grid()
+        full_grid = product(
+            short_term_grid, long_term_grid, time_horizons_grid, var_grid
+        )
+        return full_grid
+
+    def generate_samples(self) -> list[PromptSample]:
         """
         Generate samples using grid method.
 
@@ -397,21 +418,12 @@ class PromptDatasetGenerator:
         Returns:
             List of PromptSample objects
         """
-        short_term_grid = self.generate_option_grid("short_term")
-        long_term_grid = self.generate_option_grid("long_term")
-        time_horizons = self.dataset_config.time_horizons
 
         samples = []
-        sample_id = 0
-
-        for time_horizon in time_horizons:
-            for short_data in short_term_grid:
-                for long_data in long_term_grid:
-                    sample = self.create_sample(
-                        sample_id, short_data, long_data, time_horizon
-                    )
-                    samples.append(sample)
-                    sample_id += 1
+        grid = self.generate_grid()
+        for i, params in enumerate(grid):
+            sample = self.create_sample(i, *params)
+            samples.append(sample)
 
         return samples
 
@@ -422,7 +434,7 @@ class PromptDatasetGenerator:
         Returns:
             PromptDataset with generated samples
         """
-        samples = self.generate_grid()
+        samples = self.generate_samples()
         return PromptDataset(
             dataset_id=self.dataset_config.get_id(),
             config=self.dataset_config,

@@ -4,40 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import torch
 
 from ..common.io import load_json, save_json, ensure_dir
-from ..common.schema_utils import SchemaClass
+from ..common.types import SchemaClass
 from ..common.paths import get_internals_dir
+from ..common.types import PreferenceSample
 
 import json
-
-
-@dataclass
-class CapturedInternals:
-    """Captured activations from a forward pass."""
-
-    activations: dict  # name -> tensor
-    activation_names: list[str]
-
-
-@dataclass
-class PreferenceSample(SchemaClass):
-    """Single preference result."""
-
-    sample_id: int
-    time_horizon: Optional[dict]
-    short_term_label: str
-    long_term_label: str
-    choice: str
-    choice_prob: float
-    alt_prob: float
-    response: str
-    internals: Optional[CapturedInternals] = None
-    internals_paths: Optional[dict] = None
-    prompt_text: str = ""  # Merged from dataset
 
 
 @dataclass
@@ -105,20 +80,8 @@ class PreferenceDataset(SchemaClass):
     def _to_dict(self) -> dict:
         preferences_data = []
         for pref in self.preferences:
-            pref_dict = {
-                "sample_id": pref.sample_id,
-                "time_horizon": pref.time_horizon,
-                "short_term_label": pref.short_term_label,
-                "long_term_label": pref.long_term_label,
-                "choice": pref.choice,
-                "choice_prob": pref.choice_prob,
-                "alt_prob": pref.alt_prob,
-                "response": pref.response,
-                "prompt_text": pref.prompt_text,
-                "internals_paths": pref.internals_paths,
-                "internals": None,
-            }
-
+            pref_dict = pref.to_dict()
+            pref_dict["internals"] = None
             preferences_data.append(pref_dict)
 
         data = {
@@ -129,12 +92,17 @@ class PreferenceDataset(SchemaClass):
         }
         return data
 
-    def to_string(self, without_internals: bool = True) -> str:
+    def to_string(
+        self, without_internals: bool = True, without_texts: bool = False
+    ) -> str:
         d = self._to_dict()
-        if without_internals:
-            for p in d["preferences"]:
+        for p in d["preferences"]:
+            if without_internals:
                 p.pop("internals", None)
                 p.pop("internals_paths", None)
+            if without_texts:
+                p.pop("promot_text", None)
+                p.pop("response_text", None)
         return json.dumps(d, indent=4)
 
     def save_as_json(self, path: Path, with_internals: bool = True) -> None:
@@ -154,17 +122,15 @@ class PreferenceDataset(SchemaClass):
         data = self._to_dict()
 
         if with_internals:
-            for sample_id, pref in enumerate(self.preferences):
+            for idx, pref in enumerate(self.preferences):
                 if pref.internals:
-                    file_path = internals_dir / self.get_internals_filename(
-                        pref.sample_id
-                    )
+                    file_path = internals_dir / self.get_internals_filename(idx)
                     ip = {
                         "file_path": str(file_path),
                         "activations": pref.internals.activation_names,
                     }
                     pref.internals_paths = ip
-                    data["preferences"][sample_id]["internals_paths"] = ip
+                    data["preferences"][idx]["internals_paths"] = ip
                     torch.save(pref.internals.activations, file_path)
 
         save_json(data, path)
@@ -186,20 +152,7 @@ class PreferenceDataset(SchemaClass):
 
         preferences = []
         for p in data.get("preferences", []):
-            preferences.append(
-                PreferenceSample(
-                    sample_id=p["sample_id"],
-                    time_horizon=p.get("time_horizon"),
-                    short_term_label=p["short_term_label"],
-                    long_term_label=p["long_term_label"],
-                    choice=p["choice"],
-                    choice_prob=p["choice_prob"],
-                    alt_prob=p["alt_prob"],
-                    response=p["response"],
-                    internals_paths=p.get("internals_paths", {}),
-                    prompt_text=p.get("prompt_text", ""),
-                )
-            )
+            preferences.append(PreferenceSample(**p))
 
         if with_internals:
             for p in preferences:

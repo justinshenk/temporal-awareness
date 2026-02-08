@@ -215,9 +215,9 @@ def process_sample(sample: dict) -> dict:
     prompt = sample["prompt"]
     pair = prompt["preference_pair"]
     th_raw = prompt["time_horizon"]
-    th = TimeValue.parse_time_value(th_raw) if th_raw else None
-    st_time = TimeValue.parse_time_value(pair["short_term"]["time"])
-    lt_time = TimeValue.parse_time_value(pair["long_term"]["time"])
+    th = TimeValue.parse(th_raw) if th_raw else None
+    st_time = TimeValue.parse(pair["short_term"]["time"])
+    lt_time = TimeValue.parse(pair["long_term"]["time"])
     return {
         "sample_id": sample["sample_id"],
         "prompt_text": prompt["text"],

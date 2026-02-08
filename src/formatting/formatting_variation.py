@@ -13,8 +13,8 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from typing import Optional
-
-from ..common.types import TimeValue
+from itertools import product
+from ..common.types import TimeValue, TIME_UNIT_TO_YEARS, TIME_UNITS
 
 
 # =============================================================================
@@ -22,7 +22,7 @@ from ..common.types import TimeValue
 # =============================================================================
 
 # Different label pair styles
-LABEL_STYLES: list[tuple[str, str]] = [
+SELECT_LABEL_STYLES: list[tuple[str, str]] = [
     ("a)", "b)"),
     ("A)", "B)"),
     ("a.", "b."),
@@ -43,13 +43,40 @@ LABEL_STYLES: list[tuple[str, str]] = [
     ("Choice 1:", "Choice 2:"),
     ("OPTION_ONE:", "OPTION_TWO:"),
     ("FIRST:", "SECOND:"),
-    # Note: Same-label styles like ("-", "-") removed - they make parsing impossible
 ]
+MORE_LABEL_STYLES: list[tuple[str, str]] = [
+    ("a)", "b)"),
+    ("A)", "B)"),
+    ("a.", "b."),
+    ("A.", "B."),
+    ("x)", "y)"),
+    ("X)", "Y)"),
+    ("[a]", "[b]"),
+    ("[A]", "[B]"),
+    ("[i]", "[ii]"),
+    ("[I]", "[II]"),
+    ("[1]", "[2]"),
+    ("(1)", "(2)"),
+    ("(a)", "(b)"),
+    ("(A)", "(B)"),
+    ("Option A:", "Option B:"),
+    ("Option 1:", "Option 2:"),
+    ("Choice A:", "Choice B:"),
+    ("Choice 1:", "Choice 2:"),
+    ("OPTION_ONE:", "OPTION_TWO:"),
+    ("FIRST:", "SECOND:"),
+]
+LABEL_STYLES: list[tuple[str, str]] = SELECT_LABEL_STYLES + MORE_LABEL_STYLES
 
 
 def get_random_labels() -> tuple[str, str]:
     """Get a random label pair."""
     return random.choice(LABEL_STYLES)
+
+
+def get_select_label_styles() -> list[tuple[str, str]]:
+    """Get all available label styles."""
+    return SELECT_LABEL_STYLES.copy()
 
 
 def get_all_label_styles() -> list[tuple[str, str]]:
@@ -60,25 +87,6 @@ def get_all_label_styles() -> list[tuple[str, str]]:
 # =============================================================================
 # Time Unit Conversions
 # =============================================================================
-
-# Conversion factors to years
-TIME_UNIT_TO_YEARS = {
-    "years": 1.0,
-    "year": 1.0,
-    "months": 1.0 / 12.0,
-    "month": 1.0 / 12.0,
-    "weeks": 1.0 / 52.1429,
-    "week": 1.0 / 52.1429,
-    "days": 1.0 / 365.25,
-    "day": 1.0 / 365.25,
-    "hours": 1.0 / (365.25 * 24),
-    "hour": 1.0 / (365.25 * 24),
-    "decades": 10.0,
-    "decade": 10.0,
-}
-
-# Available time units for variation
-TIME_UNITS = ["years", "months", "weeks", "days", "hours", "decades"]
 
 
 def convert_time_value(tv: TimeValue, target_unit: str) -> TimeValue:
@@ -319,36 +327,33 @@ class FormattingVariation:
     spell_numbers: bool  # Whether to spell out numbers
 
     @classmethod
-    def random(cls, allow_all: bool = True) -> "FormattingVariation":
-        """
-        Create a random formatting variation.
-
-        Args:
-            allow_all: If True, all variations are possible. If False, uses defaults.
-
-        Returns:
-            Random FormattingVariation
-        """
-        if not allow_all:
-            return cls(
-                labels=("a)", "b)"),
-                flip_order=False,
-                time_unit_variation=False,
-                spell_numbers=False,
-            )
-
+    def random(cls) -> "FormattingVariation":
         return cls(
             labels=get_random_labels(),
             flip_order=random.choice([True, False]),
             time_unit_variation=random.choice([True, False]),
-            spell_numbers=random.choice([True, False, False]),  # Less likely to spell
+            spell_numbers=random.choice(
+                [True, False, False, False]
+            ),  # Less likely to spell
         )
+
+    @classmethod
+    def get_grid(cls) -> list["FormattingVariation"]:
+        labels_grid = get_select_label_styles()
+        flip_grid = [True, False]
+
+        # Not variations on these yet
+        random_unit_grid = [False]
+        spell_grid = [False]
+
+        full_grid = product(labels_grid, flip_grid, random_unit_grid, spell_grid)
+        return [cls(*p) for p in full_grid]
 
     @classmethod
     def default(cls) -> "FormattingVariation":
         """Create default (no variation) formatting."""
         return cls(
-            labels=("a)", "b)"),
+            labels=get_all_label_styles()[0],
             flip_order=False,
             time_unit_variation=False,
             spell_numbers=False,

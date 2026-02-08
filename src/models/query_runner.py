@@ -6,16 +6,14 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
+from dataclasses import asdict
+
+from ..common.types import CapturedInternals, PreferenceSample, TimeValue
 from .intervention_loader import load_intervention_from_dict
 from .interventions import Intervention
 from .model_runner import ModelRunner
-from .preference_dataset import (
-    CapturedInternals,
-    PreferenceDataset,
-    PreferenceSample,
-)
+from .preference_dataset import PreferenceDataset
 from .response_parsing import parse_choice
-from dataclasses import asdict
 
 
 @dataclass
@@ -157,19 +155,20 @@ class QueryRunner:
         dataset = asdict(prompt_dataset)
         samples = dataset.get("samples", [])
 
-        # Get choice_prefix from dataset config, fall back to DefaultPromptFormat
+        # Get choice_prefix from dataset config
         from ..formatting.configs import DefaultPromptFormat
 
-        default_format = DefaultPromptFormat()
-        choice_prefix = (
-            dataset.get("config", {})
-            .get("prompt_format", {})
-            .get("const_keywords", {})
-            .get(
-                "format_choice_prefix",
-                default_format.const_keywords["format_choice_prefix"],
+        config = prompt_dataset.config
+        if hasattr(config, "prompt_format_config"):
+            choice_prefix = config.prompt_format_config.const_keywords["format_choice_prefix"]
+        elif isinstance(config, dict):
+            choice_prefix = (
+                config.get("prompt_format", {})
+                .get("const_keywords", {})
+                .get("format_choice_prefix", DefaultPromptFormat().const_keywords["format_choice_prefix"])
             )
-        )
+        else:
+            choice_prefix = DefaultPromptFormat().const_keywords["format_choice_prefix"]
 
         if self.config.subsample < 1.0:
             n = max(1, int(len(samples) * self.config.subsample))
@@ -190,34 +189,44 @@ class QueryRunner:
             if (i + 1) % 10 == 0:
                 print(f"  {i + 1}/{len(samples)}")
 
-            prompt = sample["prompt"]["text"]
+            sample_id = sample["sample_id"]
+            prompt_text = sample["prompt"]["text"]
             pair = sample["prompt"]["preference_pair"]
-            short_label = pair["short_term"]["label"]
-            long_label = pair["long_term"]["label"]
+            short_op = pair["short_term"]
+            long_op = pair["long_term"]
+            short_label = short_op["label"]
+            long_label = long_op["label"]
+            short_time = TimeValue.parse(short_op["time"]).to_months()
+            long_time = TimeValue.parse(long_op["time"]).to_months()
+            short_reward = short_op["reward"]["value"]
+            long_reward = long_op["reward"]["value"]
+            time_horizon = sample["prompt"].get("time_horizon", None)
 
             # Step 1: Get choice probabilities
             probs = model_runner.get_label_probs(
-                prompt, choice_prefix, (short_label, long_label)
+                prompt_text, choice_prefix, (short_label, long_label)
             )
 
             # Step 2: Generate response (or skip if skip_generation=True)
             if self.config.skip_generation:
-                response = ""
+                response_text = ""
                 choice = "short_term" if probs[0] > probs[1] else "long_term"
             else:
-                response = model_runner.generate(
-                    prompt,
+                response_text = model_runner.generate(
+                    prompt_text,
                     max_new_tokens=self.config.max_new_tokens,
                     temperature=self.config.temperature,
                     intervention=intervention,
                 )
-                choice = parse_choice(response, short_label, long_label, choice_prefix)
+                choice = parse_choice(
+                    response_text, short_label, long_label, choice_prefix
+                )
 
             # Step 3: Capture internals (only if requested)
             internals = None
             if activation_names:
                 _, cache = model_runner.run_with_cache(
-                    prompt + response,
+                    prompt_text + response_text,
                     names_filter=lambda name: name in activation_names,
                 )
                 activations = {}
@@ -241,22 +250,31 @@ class QueryRunner:
 
             preferences.append(
                 PreferenceSample(
-                    sample_id=sample["sample_id"],
-                    time_horizon=sample["prompt"].get("time_horizon"),
-                    short_term_label=short_label,
-                    long_term_label=long_label,
+                    sample_id=sample_id,
                     choice=choice,
                     choice_prob=choice_prob,
                     alt_prob=alt_prob,
-                    response=response,
+                    short_term_label=short_label,
+                    long_term_label=long_label,
+                    short_term_time=short_time,
+                    long_term_time=long_time,
+                    short_term_reward=short_reward,
+                    long_term_reward=long_reward,
+                    time_horizon=time_horizon,
+                    prompt_text=prompt_text,
+                    response_text=response_text,
                     internals=internals,
-                    prompt_text=prompt,
+                    internals_paths=None,
                 )
             )
+
+        # Get config name (handle both PromptDatasetConfig and dict)
+        config = prompt_dataset.config
+        config_name = config.name if hasattr(config, "name") else config.get("name", "")
 
         return PreferenceDataset(
             prompt_dataset_id=prompt_dataset.dataset_id,
             model=model_name,
             preferences=preferences,
-            prompt_dataset_name=prompt_dataset.config.name,
+            prompt_dataset_name=config_name,
         )

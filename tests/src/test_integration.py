@@ -1393,7 +1393,8 @@ class TestPreferenceDatasetSave:
 
     def test_save_as_json_creates_json(self, tmp_path):
         """JSON file is created with correct structure."""
-        from src.models.preference_dataset import PreferenceDataset, PreferenceSample
+        from src.models.preference_dataset import PreferenceDataset
+        from src.common.types import PreferenceSample
 
         pref_dataset = PreferenceDataset(
             prompt_dataset_id="test_ds",
@@ -1404,10 +1405,14 @@ class TestPreferenceDatasetSave:
                     time_horizon={"value": 6, "unit": "months"},
                     short_term_label="a)",
                     long_term_label="b)",
+                    short_term_reward=100.0,
+                    long_term_reward=200.0,
+                    short_term_time=1.0,
+                    long_term_time=12.0,
                     choice="short_term",
                     choice_prob=0.7,
                     alt_prob=0.3,
-                    response="I choose a)",
+                    response_text="I choose a)",
                     internals=None,
                 ),
             ],
@@ -1430,11 +1435,8 @@ class TestPreferenceDatasetSave:
 
     def test_save_as_json_creates_internals_file(self, tmp_path):
         """Internals are saved to .pt file."""
-        from src.models.preference_dataset import (
-            PreferenceDataset,
-            PreferenceSample,
-            CapturedInternals,
-        )
+        from src.models.preference_dataset import PreferenceDataset
+        from src.common.types import PreferenceSample, CapturedInternals
 
         activations = {"blocks.5.hook_resid_post": torch.randn(10, 768)}
         internals = CapturedInternals(
@@ -1451,10 +1453,14 @@ class TestPreferenceDatasetSave:
                     time_horizon=None,
                     short_term_label="a)",
                     long_term_label="b)",
+                    short_term_reward=100.0,
+                    long_term_reward=200.0,
+                    short_term_time=1.0,
+                    long_term_time=12.0,
                     choice="long_term",
                     choice_prob=0.6,
                     alt_prob=0.4,
-                    response="I choose b)",
+                    response_text="I choose b)",
                     internals=internals,
                 ),
             ],

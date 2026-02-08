@@ -6,7 +6,8 @@ using Qwen2.5-1.5B. Marked slow because they require model loading.
 
 import pytest
 
-from src.data import PreferenceDataset, PreferenceSample, build_prompt_pairs
+from src.data import PreferenceDataset, build_prompt_pairs
+from src.common.types import PreferenceSample
 from src.models import ModelRunner
 from src.experiments import run_activation_patching, run_attribution_patching, compute_steering_vector
 from src.viz import plot_layer_position_heatmap
@@ -28,10 +29,14 @@ def synthetic_pref_data():
                 time_horizon=None,
                 short_term_label="A",
                 long_term_label="B",
+                short_term_reward=100.0,
+                long_term_reward=500.0,
+                short_term_time=0.0,
+                long_term_time=12.0,
                 choice="short_term",
                 choice_prob=0.8,
                 alt_prob=0.2,
-                response="I select: A.",
+                response_text="I select: A.",
                 prompt_text="SITUATION: Choose.\nOPTION A: $100 now\nOPTION B: $500 later\nI select:",
             )
         )
@@ -42,10 +47,14 @@ def synthetic_pref_data():
                 time_horizon=None,
                 short_term_label="A",
                 long_term_label="B",
+                short_term_reward=100.0,
+                long_term_reward=500.0,
+                short_term_time=0.0,
+                long_term_time=12.0,
                 choice="long_term",
                 choice_prob=0.8,
                 alt_prob=0.2,
-                response="I select: B.",
+                response_text="I select: B.",
                 prompt_text="SITUATION: Choose.\nOPTION A: $100 now\nOPTION B: $500 later\nI select:",
             )
         )

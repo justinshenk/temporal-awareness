@@ -69,7 +69,7 @@ class PromptDataset:
         path = Path(path)
         data = load_json(path)
 
-        config = PromptDatasetConfig.load_from_dict(data["config"])
+        config = PromptDatasetConfig.from_dict(data["config"])
 
         samples = []
         for s in data.get("samples", []):
@@ -79,7 +79,7 @@ class PromptDataset:
 
             short_term = IntertemporalOption(
                 label=pair_data["short_term"]["label"],
-                time=TimeValue.parse_time_value(pair_data["short_term"]["time"]),
+                time=TimeValue.parse(pair_data["short_term"]["time"]),
                 reward=RewardValue(
                     value=pair_data["short_term"]["reward"]["value"],
                     unit=pair_data["short_term"]["reward"]["unit"],
@@ -87,7 +87,7 @@ class PromptDataset:
             )
             long_term = IntertemporalOption(
                 label=pair_data["long_term"]["label"],
-                time=TimeValue.parse_time_value(pair_data["long_term"]["time"]),
+                time=TimeValue.parse(pair_data["long_term"]["time"]),
                 reward=RewardValue(
                     value=pair_data["long_term"]["reward"]["value"],
                     unit=pair_data["long_term"]["reward"]["unit"],
@@ -96,7 +96,7 @@ class PromptDataset:
 
             time_horizon = None
             if prompt_data.get("time_horizon"):
-                time_horizon = TimeValue.parse_time_value(prompt_data["time_horizon"])
+                time_horizon = TimeValue.parse(prompt_data["time_horizon"])
 
             prompt = Prompt(
                 preference_pair=PreferencePair(

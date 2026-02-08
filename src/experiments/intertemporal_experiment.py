@@ -102,7 +102,7 @@ class ExperimentConfig:
 
     def get_preference_dataset_prefix(self) -> str:
         """Get the prefix for preference dataset files: {dataset_id}_{model_name}."""
-        dataset_cfg = PromptDatasetConfig.load_from_dict(self.dataset_config)
+        dataset_cfg = PromptDatasetConfig.from_dict(self.dataset_config)
         return PreferenceDataset.make_prefix(dataset_cfg.get_id(), self.model)
 
 
@@ -652,7 +652,7 @@ def run_experiment(config: ExperimentConfig) -> None:
     # Step 2: Get Preference Dataset (Prompt Dataset + Model's responses)
     pref_data = step_preference_data(config)
 
-    xlog("\n" + pref_data.to_string())
+    xlog("\n" + pref_data.to_string(without_texts=True))
 
     return 0
 

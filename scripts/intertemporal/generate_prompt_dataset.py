@@ -73,7 +73,7 @@ def parse_args(args):
     runs = []
     if not args.config:
         # Use built-in default config
-        config = PromptDatasetConfig.load_from_dict(TEST_PROMPT_DATASET_CONFIG)
+        config = PromptDatasetConfig.from_dict(TEST_PROMPT_DATASET_CONFIG)
         runs.append(config)
         print(f"Using built-in TEST_PROMPT_DATASET_CONFIG: {config.name}")
     else:

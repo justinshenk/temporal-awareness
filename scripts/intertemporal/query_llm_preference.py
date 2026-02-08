@@ -20,13 +20,23 @@ from src.common.paths import (
     get_pref_dataset_dir,
     get_query_configs_dir,
 )
-from src.data.default_configs import DEFAULT_QUERY_CONFIG, TEST_PROMPT_DATASET_CONFIG
+from src.data.default_configs import DEFAULT_MODEL, TEST_PROMPT_DATASET_CONFIG
 from src.models import QueryRunner, QueryConfig
 from src.prompt_datasets import (
     PromptDatasetConfig,
     PromptDatasetGenerator,
     PromptDataset,
 )
+
+
+# Default query config for querying models
+DEFAULT_QUERY_CONFIG = {
+    "models": [DEFAULT_MODEL],
+    "internals": None,
+    "subsample": 1.0,
+    "batch_size": 4,
+    "skip_generation": True,  # Fast: infer choice from probs only
+}
 
 
 def get_args():
