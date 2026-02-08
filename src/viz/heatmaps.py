@@ -10,13 +10,6 @@ import numpy as np
 
 from ..analysis.markers import SECTION_COLORS
 
-# Pastel background colors for section labels
-SECTION_BG_COLORS = {
-    "before_choices": "#FF8C00",       # Dark orange
-    "before_time_horizon": "#00CED1",  # Dark cyan
-    "before_choice_output": "#32CD32",  # Lime green
-}
-
 
 def plot_layer_position_heatmap(
     matrix: np.ndarray,

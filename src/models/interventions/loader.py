@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
@@ -12,8 +11,6 @@ from .utils import compute_mean_activations, get_activations, random_direction
 
 if TYPE_CHECKING:
     from ..model_runner import ModelRunner
-
-SAMPLE_DIR = Path(__file__).parent.parent.parent / "data" / "interventions"
 
 
 def load_intervention_from_dict(
