@@ -8,7 +8,7 @@ import tempfile
 import pytest
 import torch
 
-from src.preference.querier import (
+from src.preference.preference_querier import (
     ActivationSpec,
     PreferenceQuerier,
     QueryConfig,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
-from .base import PromptFormatConfig
+from .prompt_format_config import PromptFormatConfig
 
 if TYPE_CHECKING:
     from ...common.types import TimeValue

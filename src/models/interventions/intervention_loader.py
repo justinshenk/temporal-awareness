@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
-from .core import Intervention, Target
+from .intervention import Intervention, Target
 from .utils import compute_mean_activations, get_activations, random_direction
 
 if TYPE_CHECKING:

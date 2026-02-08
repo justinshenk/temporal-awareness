@@ -12,8 +12,8 @@ from typing import Optional
 
 from ..common.io import ensure_dir
 from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
-from .querier import PreferenceQuerier, QueryConfig, InternalsConfig
-from .dataset import PreferenceDataset
+from .preference_querier import PreferenceQuerier, QueryConfig, InternalsConfig
+from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
 from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
 from ..common.profiler import P

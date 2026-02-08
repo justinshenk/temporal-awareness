@@ -8,7 +8,7 @@ from typing import Optional
 
 from ..common.paths import get_pref_dataset_dir
 from ..common.types import PreferenceSample
-from .dataset import PreferenceDataset
+from .preference_dataset import PreferenceDataset
 
 
 def find_preference_files(prefix: str, directory: Optional[Path] = None) -> list[Path]:

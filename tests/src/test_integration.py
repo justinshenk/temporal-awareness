@@ -1192,7 +1192,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_real_model(self, transformerlens_runner, tmp_path):
         """Full query_dataset flow with real model."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
@@ -1213,7 +1213,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_captures_internals(self, transformerlens_runner, tmp_path):
         """Internals are captured with correct shapes."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig, InternalsConfig, ActivationSpec
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig, InternalsConfig, ActivationSpec
 
         samples = [
             make_sample(1, "Choose: a) now or b) later? I choose:"),
@@ -1244,7 +1244,7 @@ class TestQueryDatasetIntegration:
         self, transformerlens_runner, tmp_path
     ):
         """Captured probabilities are in valid range."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Pick: a) apple or b) banana? I choose:"),
@@ -1268,7 +1268,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_multiple_samples(self, transformerlens_runner, tmp_path):
         """Multiple samples are all processed."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(i, f"Question {i}: a) yes or b) no? I select:")
@@ -1291,7 +1291,7 @@ class TestQueryDatasetIntegration:
 
     def test_model_caching_across_datasets(self, transformerlens_runner, tmp_path):
         """Model is reused for same model name."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Choose a) or b)? I select:"),
@@ -1334,7 +1334,7 @@ class TestQueryErrorHandling:
 
     def test_empty_samples_list(self, transformerlens_runner, tmp_path):
         """Handles empty samples list gracefully."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         prompt_dataset = make_test_prompt_dataset("empty", [])
 
@@ -1349,7 +1349,7 @@ class TestQueryErrorHandling:
 
     def test_default_choice_prefix(self, transformerlens_runner, tmp_path):
         """Default prompt_format uses 'I select:' as choice prefix."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Pick a) or b)? I select:"),
@@ -1573,7 +1573,7 @@ class TestPreferenceQuerierIntervention:
 
     def test_query_config_with_intervention_loads(self):
         """QueryConfig accepts intervention field."""
-        from src.preference.querier import QueryConfig
+        from src.preference.preference_querier import QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1591,7 +1591,7 @@ class TestPreferenceQuerierIntervention:
         self, transformerlens_runner, sample_dataset
     ):
         """PreferenceQuerier loads intervention for model."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1615,7 +1615,7 @@ class TestPreferenceQuerierIntervention:
 
     def test_query_with_intervention_runs(self, transformerlens_runner, sample_dataset):
         """Query with intervention completes without error."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1638,7 +1638,7 @@ class TestPreferenceQuerierIntervention:
 
     def test_intervention_changes_output(self, transformerlens_runner, sample_dataset):
         """Intervention produces different output than baseline."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
         import numpy as np
 
         # Run without intervention
@@ -1683,7 +1683,7 @@ class TestPreferenceQuerierIntervention:
         self, transformerlens_runner, sample_dataset
     ):
         """Ablation intervention works in query flow."""
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 3,
@@ -1708,7 +1708,7 @@ class TestPreferenceQuerierIntervention:
         """Intervention config matches sample_interventions JSON format."""
         import json
         from pathlib import Path
-        from src.preference.querier import PreferenceQuerier, QueryConfig
+        from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         # Load an existing sample intervention
         sample_dir = Path(__file__).parent.parent.parent / "src" / "data" / "interventions"

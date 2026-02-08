@@ -11,7 +11,7 @@ from ..common.types import CapturedInternals, PreferenceSample
 from ..models.interventions import load_intervention_from_dict, Intervention
 from ..models.model_runner import ModelRunner
 from ..models.binary_choice_runner import BinaryChoiceRunner
-from .dataset import PreferenceDataset
+from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDataset
 from ..parsing import parse_choice
 

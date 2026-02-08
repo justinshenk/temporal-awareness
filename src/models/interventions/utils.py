@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import numpy as np
 import torch
 
-from .core import Intervention, Target
+from .intervention import Intervention, Target
 
 if TYPE_CHECKING:
     from ..model_runner import ModelRunner
