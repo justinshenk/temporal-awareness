@@ -4,14 +4,19 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from ..common.io import load_json, save_json, ensure_dir, get_timestamp
 from ..common.paths import get_prompt_dataset_dir
-
-if TYPE_CHECKING:
-    from .prompt_dataset_config import PromptDatasetConfig
-    from ..common.types import PromptSample
+from ..common.types import (
+    IntertemporalOption,
+    PreferencePair,
+    Prompt,
+    PromptSample,
+    RewardValue,
+    TimeValue,
+)
+from .prompt_dataset_config import PromptDatasetConfig
 
 
 @dataclass
@@ -52,16 +57,6 @@ class PromptDataset:
         Returns:
             PromptDataset with loaded samples
         """
-        from .prompt_dataset_config import PromptDatasetConfig
-        from ..common.types import (
-            PromptSample,
-            Prompt,
-            PreferencePair,
-            IntertemporalOption,
-            RewardValue,
-            TimeValue,
-        )
-
         path = Path(path)
         data = load_json(path)
 

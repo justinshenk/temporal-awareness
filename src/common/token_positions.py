@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Optional, Union
 
+from ..formatting.configs import DefaultPromptFormat
+
 
 @lru_cache(maxsize=1)
 def _get_prompt_keywords() -> tuple[dict[str, str], frozenset[str]]:
@@ -26,8 +28,6 @@ def _get_prompt_keywords() -> tuple[dict[str, str], frozenset[str]]:
     Uses lru_cache to avoid re-computing on every call while avoiding
     mutable global state.
     """
-    from ..formatting.configs import DefaultPromptFormat
-
     fmt = DefaultPromptFormat()
     return fmt.get_keyword_map(), frozenset(fmt.get_last_occurrence_keyword_names())
 

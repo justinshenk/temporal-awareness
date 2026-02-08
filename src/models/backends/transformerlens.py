@@ -6,6 +6,7 @@ import copy
 from typing import Any, Optional
 
 import torch
+from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
 
 from .base import Backend
 from ..interventions import Intervention, create_intervention_hook
@@ -214,10 +215,6 @@ class TransformerLensBackend(Backend):
         return self.decode(torch.tensor(generated_ids))
 
     def init_kv_cache(self):
-        from transformer_lens.past_key_value_caching import (
-            HookedTransformerKeyValueCache,
-        )
-
         return HookedTransformerKeyValueCache.init_cache(
             self.runner.model.cfg,
             device=self.runner.device,
