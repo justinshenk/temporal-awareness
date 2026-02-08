@@ -22,6 +22,11 @@ class PromptFormatConfig(ABC):
         ...
 
     @abstractmethod
+    def get_exact_prefix_before_choice(self) -> str:
+        """Return the EXACT prefix (including) right before  choice"""
+        ...
+
+    @abstractmethod
     def question_template(self, time_horizon: Optional[TimeValue] = None) -> str:
         """Assemble the question template.
 

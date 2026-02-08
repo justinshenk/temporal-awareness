@@ -78,8 +78,7 @@ class SchemaClass:
         return deterministic_id_from_dataclass(self)
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        return d
+        return _canon(self)
 
     # For logging ease
     def __str__(self) -> str:
@@ -135,14 +134,18 @@ class SchemaClass:
             item_types = get_args(field_type)
             if item_types:
                 return tuple(
-                    cls._convert_value(item, item_types[i] if i < len(item_types) else item_types[-1])
+                    cls._convert_value(
+                        item, item_types[i] if i < len(item_types) else item_types[-1]
+                    )
                     for i, item in enumerate(val)
                 )
             return tuple(val)
 
         # Handle dict[K, V]
         if get_origin(field_type) is dict:
-            key_type, val_type = get_args(field_type) if get_args(field_type) else (None, None)
+            key_type, val_type = (
+                get_args(field_type) if get_args(field_type) else (None, None)
+            )
             if val_type and is_dataclass(val_type):
                 return {k: cls._convert_value(v, val_type) for k, v in val.items()}
 
@@ -431,3 +434,5 @@ class PreferenceSample(SchemaClass):
 
     internals: Optional[CapturedInternals] = None
     internals_paths: Optional[dict] = None
+
+    decoding_mismatch: bool = False

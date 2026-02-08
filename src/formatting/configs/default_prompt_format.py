@@ -57,8 +57,8 @@ class DefaultPromptFormat(PromptFormatConfig):
 
     response_const_keywords: dict = field(
         default_factory=lambda: {
-            "response_choice_prefix": "I select:",
-            "response_reasoning_prefix": "My reasoning:",
+            "response_choice_prefix": "I select: ",  # note space
+            "response_reasoning_prefix": "My reasoning: ",  # note space
         }
     )
 
@@ -85,6 +85,13 @@ class DefaultPromptFormat(PromptFormatConfig):
         ]
     )
 
+    def get_exact_prefix_before_choice(self) -> str:
+        """Return the exact text prefix before the model's choice.
+
+        This is used to locate where the model's choice token appears.
+        """
+        return self.response_const_keywords["response_choice_prefix"]
+
     def get_keyword_map(self) -> dict[str, str]:
         """Return mapping of short keyword names to their search text.
 
@@ -108,9 +115,11 @@ class DefaultPromptFormat(PromptFormatConfig):
         actual response (last).  Position resolution should find the last
         occurrence to target the response instance.
         """
-        response_texts = set(self.response_const_keywords.values())
+        # Strip trailing spaces for comparison since const_keywords and
+        # response_const_keywords may differ in trailing space
+        response_texts = {v.rstrip() for v in self.response_const_keywords.values()}
         keyword_map = self.get_keyword_map()
-        return {k for k, v in keyword_map.items() if v in response_texts}
+        return {k for k, v in keyword_map.items() if v.rstrip() in response_texts}
 
     def get_prompt_section_markers(self) -> dict[str, str]:
         """Return mapping of prompt section names to their marker text.

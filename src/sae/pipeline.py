@@ -218,8 +218,10 @@ def process_sample(sample: dict) -> dict:
     th = TimeValue.parse(th_raw) if th_raw else None
     st_time = TimeValue.parse(pair["short_term"]["time"])
     lt_time = TimeValue.parse(pair["long_term"]["time"])
+    # Handle both old "sample_id" and new "sample_idx" field names for cached data
+    sample_idx = sample.get("sample_idx") or sample.get("sample_id")
     return {
-        "sample_idx": sample["sample_idx"],
+        "sample_idx": sample_idx,
         "prompt_text": prompt["text"],
         "time_horizon_bucket": _horizon_bucket(th),
         "time_horizon_months": th.to_months() if th else None,

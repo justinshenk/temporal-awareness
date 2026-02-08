@@ -136,8 +136,9 @@ class MockBackend:
 class MockModelRunner:
     """Mock ModelRunner that uses MockBackend."""
 
-    def __init__(self, backend: MockBackend):
+    def __init__(self, backend: MockBackend, label_probs: tuple[float, float] = (0.6, 0.4)):
         self._backend = backend
+        self._label_probs = label_probs
         self.device = "cpu"
         self.dtype = torch.float32
         self._is_chat_model = False
@@ -163,7 +164,11 @@ class MockModelRunner:
         return self._backend.generate(prompt, max_new_tokens, temperature, intervention, None)
 
     def get_label_probs(self, prompt, choice_prefix, labels, past_kv_cache=None):
-        return (0.6, 0.4)
+        return self._label_probs
+
+    def get_canonical_response_texts(self, prompt, choice_prefix, labels):
+        base_text = prompt + choice_prefix
+        return (base_text + labels[0], base_text + labels[1])
 
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
@@ -334,7 +339,8 @@ class TestQueryDataset:
 
         # Response has correct label but wrong prefix - should be unknown
         backend = MockBackend({"generate": "My choice: a)"})
-        runner._model = MockModelRunner(backend)
+        # Use low probabilities so parsing logic is used instead of probability-based choice
+        runner._model = MockModelRunner(backend, label_probs=(0.3, 0.2))
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -348,7 +354,8 @@ class TestQueryDataset:
         runner = QueryRunner(config)
 
         backend = MockBackend({"generate": "I select: b)"})
-        runner._model = MockModelRunner(backend)
+        # Use inverted probabilities so long_term (second label) has higher prob
+        runner._model = MockModelRunner(backend, label_probs=(0.4, 0.6))
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -395,8 +402,8 @@ class TestQueryDataset:
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
 
-        # First sample has time_horizon
-        assert output.preferences[0].time_horizon == {"value": 6, "unit": "months"}
+        # First sample has time_horizon of 6 months = 0.5 years
+        assert output.preferences[0].time_horizon == 0.5
         # Second sample has no time_horizon
         assert output.preferences[1].time_horizon is None
 
@@ -436,7 +443,8 @@ class TestQueryDataset:
 
         # Response that won't match any label
         backend = MockBackend({"generate": "I cannot decide"})
-        runner._model = MockModelRunner(backend)
+        # Use low probabilities so parsing logic is used
+        runner._model = MockModelRunner(backend, label_probs=(0.3, 0.2))
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -444,8 +452,8 @@ class TestQueryDataset:
         pref = output.preferences[0]
         assert pref.choice == "unknown"
         # For unknown, choice_prob = max, alt_prob = min
-        assert pref.choice_prob == 0.6
-        assert pref.alt_prob == 0.4
+        assert pref.choice_prob == 0.3
+        assert pref.alt_prob == 0.2
 
     def test_skip_generation_infers_choice_from_probs(self, sample_prompt_dataset):
         """skip_generation=True skips generate() and infers choice from probs."""

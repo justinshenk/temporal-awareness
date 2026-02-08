@@ -1128,46 +1128,63 @@ class TestRealTokenizerEdgeCases:
 # =============================================================================
 
 
-from dataclasses import dataclass, field
+from src.common.types import (
+    IntertemporalOption,
+    PreferencePair,
+    Prompt,
+    PromptSample,
+    RewardValue,
+    TimeValue,
+)
+from src.prompt import PromptDataset
+from src.prompt.prompt_dataset_config import PromptDatasetConfig
 
 
-@dataclass
-class MockPromptDataset:
-    """Mock PromptDataset for testing - simplified structure that works with query_dataset."""
-    dataset_id: str
-    config: dict
-    samples: list = field(default_factory=list)
-
-
-def make_test_prompt_dataset(dataset_id: str, samples: list, choice_prefix: str = "I choose:") -> MockPromptDataset:
-    """Create a mock PromptDataset for testing."""
-    return MockPromptDataset(
+def make_test_prompt_dataset(dataset_id: str, samples: list[PromptSample]) -> PromptDataset:
+    """Create a PromptDataset for testing."""
+    from src.prompt.prompt_dataset_config import ContextConfig, OptionRangeConfig
+    config = PromptDatasetConfig(
+        name="test",
+        context=ContextConfig(),
+        options={
+            "short_term": OptionRangeConfig(
+                reward_range=(100, 100),
+                time_range=(TimeValue(0, "days"), TimeValue(0, "days")),
+            ),
+            "long_term": OptionRangeConfig(
+                reward_range=(200, 200),
+                time_range=(TimeValue(12, "months"), TimeValue(12, "months")),
+            ),
+        },
+        time_horizons=[None],
+    )
+    return PromptDataset(
         dataset_id=dataset_id,
-        config={"name": "test", "prompt_format": {"const_keywords": {"format_choice_prefix": choice_prefix}}},
+        config=config,
         samples=samples,
     )
 
 
-def make_sample(sample_idx: int, text: str, short_label: str = "a)", long_label: str = "b)") -> dict:
-    """Create a sample with full preference_pair structure for testing."""
-    return {
-        "sample_idx": sample_idx,
-        "prompt": {
-            "text": text,
-            "preference_pair": {
-                "short_term": {
-                    "label": short_label,
-                    "time": {"value": 0, "unit": "days"},
-                    "reward": {"value": 100, "unit": "dollars"},
-                },
-                "long_term": {
-                    "label": long_label,
-                    "time": {"value": 12, "unit": "months"},
-                    "reward": {"value": 200, "unit": "dollars"},
-                },
-            },
-        },
-    }
+def make_sample(sample_idx: int, text: str, short_label: str = "a)", long_label: str = "b)") -> PromptSample:
+    """Create a PromptSample with full preference_pair structure for testing."""
+    return PromptSample(
+        sample_idx=sample_idx,
+        prompt=Prompt(
+            text=text,
+            preference_pair=PreferencePair(
+                short_term=IntertemporalOption(
+                    label=short_label,
+                    time=TimeValue(value=0, unit="days"),
+                    reward=RewardValue(value=100, unit="dollars"),
+                ),
+                long_term=IntertemporalOption(
+                    label=long_label,
+                    time=TimeValue(value=12, unit="months"),
+                    reward=RewardValue(value=200, unit="dollars"),
+                ),
+            ),
+        ),
+    )
 
 
 class TestQueryDatasetIntegration:
@@ -1251,10 +1268,10 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            make_sample(i, f"Question {i}: a) yes or b) no? Answer:")
+            make_sample(i, f"Question {i}: a) yes or b) no? I select:")
             for i in range(5)
         ]
-        prompt_dataset = make_test_prompt_dataset("004", samples, choice_prefix="Answer:")
+        prompt_dataset = make_test_prompt_dataset("004", samples)
 
         config = QueryConfig()
         runner = QueryRunner(config)
@@ -1273,10 +1290,10 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            make_sample(1, "Choose a) or b)? I pick:"),
+            make_sample(1, "Choose a) or b)? I select:"),
         ]
-        prompt_dataset1 = make_test_prompt_dataset("005", samples, choice_prefix="I pick:")
-        prompt_dataset2 = make_test_prompt_dataset("006", samples, choice_prefix="I pick:")
+        prompt_dataset1 = make_test_prompt_dataset("005", samples)
+        prompt_dataset2 = make_test_prompt_dataset("006", samples)
 
         config = QueryConfig()
         runner = QueryRunner(config)
@@ -1314,7 +1331,7 @@ class TestQueryErrorHandling:
         """Handles empty samples list gracefully."""
         from src.models.query_runner import QueryRunner, QueryConfig
 
-        prompt_dataset = make_test_prompt_dataset("empty", [], choice_prefix="Choose:")
+        prompt_dataset = make_test_prompt_dataset("empty", [])
 
         config = QueryConfig()
         runner = QueryRunner(config)
@@ -1324,26 +1341,21 @@ class TestQueryErrorHandling:
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 0
 
-    def test_missing_choice_prefix_uses_default(self, transformerlens_runner, tmp_path):
-        """Missing choice_prefix falls back to default."""
+    def test_default_choice_prefix(self, transformerlens_runner, tmp_path):
+        """Default prompt_format uses 'I select:' as choice prefix."""
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
             make_sample(1, "Pick a) or b)? I select:"),
         ]
-        # Create dataset with empty config (no prompt_format)
-        prompt_dataset = MockPromptDataset(
-            dataset_id="noprefix",
-            config={},  # No prompt_format
-            samples=samples,
-        )
+        # Default config uses default_prompt_format with "I select:" prefix
+        prompt_dataset = make_test_prompt_dataset("default", samples)
 
         config = QueryConfig()
         runner = QueryRunner(config)
         runner._model = transformerlens_runner
         runner._model_name = TEST_MODEL
 
-        # Should not crash - uses default "I select:"
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 1
 

@@ -69,7 +69,7 @@ def get_args():
 
 def generate_test_dataset() -> str:
     """Generate a test dataset and return its ID."""
-    prompt_dataset_cfg = PromptDatasetConfig.load_from_dict(TEST_PROMPT_DATASET_CONFIG)
+    prompt_dataset_cfg = PromptDatasetConfig.from_dict(TEST_PROMPT_DATASET_CONFIG)
     generator = PromptDatasetGenerator(prompt_dataset_cfg)
     dataset = generator.generate()
     dataset.save_as_json()
