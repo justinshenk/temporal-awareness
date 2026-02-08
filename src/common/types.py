@@ -351,12 +351,12 @@ class PromptSample(SchemaClass):
     A complete prompt sample (internal representation).
 
     Attributes:
-        sample_id: Unique sample identifier
+        sample_idx: Sample index within the dataset
         prompt: The full prompt object
         response: Model response (populated after inference)
     """
 
-    sample_id: int
+    sample_idx: int
     prompt: Prompt
     response: Optional[Response] = None
 
@@ -373,7 +373,7 @@ class CapturedInternals:
 class PreferenceSample(SchemaClass):
     """Single preference result."""
 
-    sample_id: int
+    sample_idx: int
     choice: str
     choice_prob: float
     alt_prob: float

@@ -1151,10 +1151,10 @@ def make_test_prompt_dataset(dataset_id: str, samples: list, choice_prefix: str 
     )
 
 
-def make_sample(sample_id: int, text: str, short_label: str = "a)", long_label: str = "b)") -> dict:
+def make_sample(sample_idx: int, text: str, short_label: str = "a)", long_label: str = "b)") -> dict:
     """Create a sample with full preference_pair structure for testing."""
     return {
-        "sample_id": sample_id,
+        "sample_idx": sample_idx,
         "prompt": {
             "text": text,
             "preference_pair": {
@@ -1267,8 +1267,8 @@ class TestQueryDatasetIntegration:
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 5
-        # Each should have unique sample_id
-        ids = [p.sample_id for p in output.preferences]
+        # Each should have unique sample_idx
+        ids = [p.sample_idx for p in output.preferences]
         assert len(set(ids)) == 5
 
     def test_model_caching_across_datasets(self, transformerlens_runner, tmp_path):
@@ -1369,7 +1369,7 @@ class TestPreferenceDatasetSave:
             model="test/model-name",
             preferences=[
                 PreferenceSample(
-                    sample_id=1,
+                    sample_idx=1,
                     time_horizon={"value": 6, "unit": "months"},
                     short_term_label="a)",
                     long_term_label="b)",
@@ -1417,7 +1417,7 @@ class TestPreferenceDatasetSave:
             model="test-model",
             preferences=[
                 PreferenceSample(
-                    sample_id=42,
+                    sample_idx=42,
                     time_horizon=None,
                     short_term_label="a)",
                     long_term_label="b)",

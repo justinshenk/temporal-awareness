@@ -289,7 +289,7 @@ class PromptDatasetGenerator:
 
     def create_sample(
         self,
-        sample_id: int,
+        sample_idx: int,
         short_term_data: tuple[float, TimeValue],
         long_term_data: tuple[float, TimeValue],
         time_horizon: Optional[TimeValue],
@@ -302,7 +302,7 @@ class PromptDatasetGenerator:
         Applies formatting variations if enabled in config.
 
         Args:
-            sample_id: Unique sample ID
+            sample_idx: Unique sample ID
             short_term_data: (reward, time) for short-term option
             long_term_data: (reward, time) for long-term option
             time_horizon: Decision time horizon (None = no constraint)
@@ -387,7 +387,7 @@ class PromptDatasetGenerator:
         )
 
         return PromptSample(
-            sample_id=sample_id,
+            sample_idx=sample_idx,
             prompt=prompt,
         )
 

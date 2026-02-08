@@ -189,7 +189,7 @@ class QueryRunner:
             if (i + 1) % 10 == 0:
                 print(f"  {i + 1}/{len(samples)}")
 
-            sample_id = sample["sample_id"]
+            sample_idx = sample["sample_idx"]
             prompt_text = sample["prompt"]["text"]
             pair = sample["prompt"]["preference_pair"]
             short_op = pair["short_term"]
@@ -250,7 +250,7 @@ class QueryRunner:
 
             preferences.append(
                 PreferenceSample(
-                    sample_id=sample_id,
+                    sample_idx=sample_idx,
                     choice=choice,
                     choice_prob=choice_prob,
                     alt_prob=alt_prob,

@@ -123,7 +123,7 @@ def generate_and_extract(
                 temperature=0.7,
             )
         except Exception as e:
-            print(f"  Generation failed for sample {sample['sample_id']}: {e}")
+            print(f"  Generation failed for sample {sample['sample_idx']}: {e}")
             response_text = ""
 
         choice = parse_llm_choice(
@@ -168,7 +168,7 @@ def generate_and_extract(
 
                 del cache
             except Exception as e:
-                print(f"  Extraction failed for sample {sample['sample_id']}: {e}")
+                print(f"  Extraction failed for sample {sample['sample_idx']}: {e}")
 
             gc.collect()
             clear_gpu_memory()

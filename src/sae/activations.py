@@ -87,15 +87,15 @@ def get_sentences(
 
     Activations are centered by section mean per layer.
 
-    Each dict has: sentence (Sentence metadata), sample_id,
+    Each dict has: sentence (Sentence metadata), sample_idx,
     time_horizon_bucket, llm_choice, activations ({layer_key: centered ndarray}).
     """
     result = []
-    for sample_idx, sample in enumerate(samples):
+    for sample_idxx, sample in enumerate(samples):
         raw_sentences = sample.get("sentences", [])
-        if sample_idx >= len(activations) or not activations[sample_idx]:
+        if sample_idxx >= len(activations) or not activations[sample_idxx]:
             continue
-        sample_acts = activations[sample_idx]
+        sample_acts = activations[sample_idxx]
         for sentence_idx, raw in enumerate(raw_sentences):
             if sentence_idx not in sample_acts:
                 continue
@@ -112,7 +112,7 @@ def get_sentences(
                     "text": sentence.text,
                     "source": sentence.source,
                     "section": sentence.section,
-                    "sample_id": sample.get("sample_id"),
+                    "sample_idx": sample.get("sample_idx"),
                     "time_horizon_bucket": sample.get("time_horizon_bucket", -1),
                     "time_horizon_months": sample.get("time_horizon_months"),
                     "llm_choice": sample.get("llm_choice", -1),
@@ -156,10 +156,10 @@ def calculate_activation_means_by_section(
         layer: {s: [] for s in sections} for layer in layers
     }
 
-    for sample_idx, sample in enumerate(samples):
-        if sample_idx >= len(activations):
+    for sample_idxx, sample in enumerate(samples):
+        if sample_idxx >= len(activations):
             continue
-        sample_acts = activations[sample_idx]
+        sample_acts = activations[sample_idxx]
         raw_sentences = sample.get("sentences", [])
 
         for sentence_idx in sorted(sample_acts.keys(), key=int):

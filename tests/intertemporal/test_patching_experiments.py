@@ -25,7 +25,7 @@ def synthetic_pref_data():
         # Short-term choice samples
         preferences.append(
             PreferenceSample(
-                sample_id=i,
+                sample_idx=i,
                 time_horizon=None,
                 short_term_label="A",
                 long_term_label="B",
@@ -43,7 +43,7 @@ def synthetic_pref_data():
         # Long-term choice samples
         preferences.append(
             PreferenceSample(
-                sample_id=i + 10,
+                sample_idx=i + 10,
                 time_horizon=None,
                 short_term_label="A",
                 long_term_label="B",

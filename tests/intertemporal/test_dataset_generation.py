@@ -38,7 +38,7 @@ class TestDatasetGeneration:
         dataset = generator.generate()
         sample = dataset.samples[0]
 
-        assert hasattr(sample, "sample_id")
+        assert hasattr(sample, "sample_idx")
         assert hasattr(sample, "prompt")
         # Prompt is a Prompt object, not a dict
         assert hasattr(sample.prompt, "text")

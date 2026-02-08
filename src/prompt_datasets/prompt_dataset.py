@@ -23,8 +23,8 @@ class PromptDataset:
     samples: list[PromptSample] = field(default_factory=list)
 
     def get_prompts_by_id(self) -> dict[int, str]:
-        """Build a lookup of sample_id -> prompt text."""
-        return {s.sample_id: s.prompt.text for s in self.samples}
+        """Build a lookup of sample_idx -> prompt text."""
+        return {s.sample_idx: s.prompt.text for s in self.samples}
 
     def save_as_json(self, path: Optional[Path] = None) -> None:
         """Save the prompt dataset to a JSON file.
@@ -108,7 +108,7 @@ class PromptDataset:
 
             samples.append(
                 PromptSample(
-                    sample_id=s["sample_id"],
+                    sample_idx=s["sample_idx"],
                     prompt=prompt,
                 )
             )

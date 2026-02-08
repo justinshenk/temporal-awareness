@@ -123,8 +123,8 @@ def fill_missing_prompt_text(
     # Fill missing prompt_text
     count = 0
     for pref in needs_fill:
-        if pref.sample_id in prompts_by_id:
-            pref.prompt_text = prompts_by_id[pref.sample_id]
+        if pref.sample_idx in prompts_by_id:
+            pref.prompt_text = prompts_by_id[pref.sample_idx]
             count += 1
 
     return count

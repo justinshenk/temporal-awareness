@@ -55,11 +55,11 @@ def get_samples_filepath(state: PipelineState) -> str:
 
 
 def get_activations_filepath(
-    state: PipelineState, sample_idx: int, sentence_idx: int
+    state: PipelineState, sample_idxx: int, sentence_idx: int
 ) -> str:
     return str(
         state.filepath_cfg.data_dir
-        / f"activations_{state.pipeline_id}_iter{state.iteration}_sample{sample_idx}_sentence{sentence_idx}.npz"
+        / f"activations_{state.pipeline_id}_iter{state.iteration}_sample{sample_idxx}_sentence{sentence_idx}.npz"
     )
 
 
@@ -97,11 +97,11 @@ def update_samples(
 ) -> None:
     if activations:
         print(f"  Saving activations for {len(samples)} samples")
-        for sample_idx, sample in enumerate(samples):
+        for sample_idxx, sample in enumerate(samples):
             all_activation_filepaths = []
-            for sentence_idx, sentence_activations in activations[sample_idx].items():
+            for sentence_idx, sentence_activations in activations[sample_idxx].items():
                 activations_filepath = get_activations_filepath(
-                    state, sample_idx, sentence_idx
+                    state, sample_idxx, sentence_idx
                 )
                 # sentence_activations = {layer_idx: layer}
                 np.savez(activations_filepath, **sentence_activations)
@@ -134,7 +134,7 @@ def load_activations(samples: list) -> list | None:
     if samples and samples[0].get("activation_paths"):
         print(f"  Loading activations for {len(samples)} samples")
         activations = []
-        for sample_idx, sample in enumerate(samples):
+        for sample_idxx, sample in enumerate(samples):
             sample_activations = {}
             for sentence_idx, activations_filepath in enumerate(
                 sample["activation_paths"]
@@ -219,7 +219,7 @@ def process_sample(sample: dict) -> dict:
     st_time = TimeValue.parse(pair["short_term"]["time"])
     lt_time = TimeValue.parse(pair["long_term"]["time"])
     return {
-        "sample_id": sample["sample_id"],
+        "sample_idx": sample["sample_idx"],
         "prompt_text": prompt["text"],
         "time_horizon_bucket": _horizon_bucket(th),
         "time_horizon_months": th.to_months() if th else None,

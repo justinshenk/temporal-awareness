@@ -63,7 +63,7 @@ class PreferenceDataset(SchemaClass):
         """Get filename for internals .pt file at given index."""
         if len(self.preferences) <= sample_idx:
             return None
-        return f"{self.get_prefix()}_sample_{self.preferences[sample_idx].sample_id}.pt"
+        return f"{self.get_prefix()}_sample_{self.preferences[sample_idx].sample_idx}.pt"
 
     def split_by_choice(
         self,
@@ -169,10 +169,10 @@ class PreferenceDataset(SchemaClass):
         )
 
     def merge(self, other: "PreferenceDataset") -> "PreferenceDataset":
-        """Merge another dataset into this one, deduplicating by sample_id.
+        """Merge another dataset into this one.
 
-        Keeps first occurrence when sample_ids conflict. Combines prompt_dataset_name
-        values with '+' separator.
+        Combines all samples from both datasets and re-indexes them.
+        Combines prompt_dataset_name values with '+' separator.
 
         Args:
             other: Another PreferenceDataset to merge
@@ -191,17 +191,48 @@ class PreferenceDataset(SchemaClass):
                 f"{self.model} vs {other.model}"
             )
 
-        # Deduplicate by sample_id, keeping first occurrence
-        seen_ids = set()
+        # Combine all samples and re-index
         merged_prefs = []
-        for pref in self.preferences:
-            if pref.sample_id not in seen_ids:
-                seen_ids.add(pref.sample_id)
-                merged_prefs.append(pref)
-        for pref in other.preferences:
-            if pref.sample_id not in seen_ids:
-                seen_ids.add(pref.sample_id)
-                merged_prefs.append(pref)
+        for idx, pref in enumerate(self.preferences):
+            new_pref = PreferenceSample(
+                sample_idx=idx,
+                choice=pref.choice,
+                choice_prob=pref.choice_prob,
+                alt_prob=pref.alt_prob,
+                short_term_label=pref.short_term_label,
+                long_term_label=pref.long_term_label,
+                short_term_reward=pref.short_term_reward,
+                long_term_reward=pref.long_term_reward,
+                short_term_time=pref.short_term_time,
+                long_term_time=pref.long_term_time,
+                time_horizon=pref.time_horizon,
+                response_text=pref.response_text,
+                prompt_text=pref.prompt_text,
+                internals=pref.internals,
+                internals_paths=pref.internals_paths,
+            )
+            merged_prefs.append(new_pref)
+
+        offset = len(self.preferences)
+        for idx, pref in enumerate(other.preferences):
+            new_pref = PreferenceSample(
+                sample_idx=offset + idx,
+                choice=pref.choice,
+                choice_prob=pref.choice_prob,
+                alt_prob=pref.alt_prob,
+                short_term_label=pref.short_term_label,
+                long_term_label=pref.long_term_label,
+                short_term_reward=pref.short_term_reward,
+                long_term_reward=pref.long_term_reward,
+                short_term_time=pref.short_term_time,
+                long_term_time=pref.long_term_time,
+                time_horizon=pref.time_horizon,
+                response_text=pref.response_text,
+                prompt_text=pref.prompt_text,
+                internals=pref.internals,
+                internals_paths=pref.internals_paths,
+            )
+            merged_prefs.append(new_pref)
 
         # Combine prompt_dataset_name values
         names = []

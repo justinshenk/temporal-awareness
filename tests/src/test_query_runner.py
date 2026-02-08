@@ -207,7 +207,7 @@ def sample_dataset_dict():
         },
         "samples": [
             {
-                "sample_id": 1,
+                "sample_idx": 1,
                 "prompt": {
                     "text": "Choose between options:",
                     "preference_pair": {
@@ -226,7 +226,7 @@ def sample_dataset_dict():
                 }
             },
             {
-                "sample_id": 2,
+                "sample_idx": 2,
                 "prompt": {
                     "text": "Another choice:",
                     "preference_pair": {
@@ -415,7 +415,7 @@ class TestQueryDataset:
         assert pref.short_term_label == "a)"
         assert pref.long_term_label == "b)"
 
-    def test_sample_id_preserved(self, sample_prompt_dataset):
+    def test_sample_idx_preserved(self, sample_prompt_dataset):
         """Sample IDs from dataset are preserved."""
         config = QueryConfig(internals=InternalsConfig.empty())
         runner = QueryRunner(config)
@@ -426,8 +426,8 @@ class TestQueryDataset:
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
 
-        assert output.preferences[0].sample_id == 1
-        assert output.preferences[1].sample_id == 2
+        assert output.preferences[0].sample_idx == 1
+        assert output.preferences[1].sample_idx == 2
 
     def test_unknown_choice_probability_handling(self, sample_prompt_dataset):
         """Unknown choices use max/min of probabilities."""

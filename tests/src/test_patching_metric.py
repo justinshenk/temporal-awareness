@@ -347,7 +347,7 @@ class MockPreferenceItem:
     choice: str
     response: str = ""
     prompt_text: str = ""
-    sample_id: int = 0
+    sample_idx: int = 0
     time_horizon: dict = None
     choice_prob: float = 0.8
     alt_prob: float = 0.2
@@ -470,12 +470,12 @@ class TestPairBuilding:
 # ===========================================================================
 
 
-def _make_pref_item(sample_id, short_label, long_label, choice, prompt="prompt"):
+def _make_pref_item(sample_idx, short_label, long_label, choice, prompt="prompt"):
     """Shorthand for creating a PreferenceSample for pair-building tests."""
     from src.common.types import PreferenceSample
     response = f"I select: {short_label if choice == 'short_term' else long_label}"
     return PreferenceSample(
-        sample_id=sample_id,
+        sample_idx=sample_idx,
         time_horizon=None,
         short_term_label=short_label,
         long_term_label=long_label,
