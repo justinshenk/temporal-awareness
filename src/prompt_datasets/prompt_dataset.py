@@ -106,9 +106,11 @@ class PromptDataset:
                 text=prompt_data["text"],
             )
 
+            # Backward compatibility: handle both sample_id and sample_idx
+            idx = s.get("sample_idx", s.get("sample_id"))
             samples.append(
                 PromptSample(
-                    sample_idx=s["sample_idx"],
+                    sample_idx=idx,
                     prompt=prompt,
                 )
             )

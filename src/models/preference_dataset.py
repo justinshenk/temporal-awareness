@@ -152,6 +152,9 @@ class PreferenceDataset(SchemaClass):
 
         preferences = []
         for p in data.get("preferences", []):
+            # Backward compatibility: rename sample_id -> sample_idx
+            if "sample_id" in p and "sample_idx" not in p:
+                p["sample_idx"] = p.pop("sample_id")
             preferences.append(PreferenceSample(**p))
 
         if with_internals:
