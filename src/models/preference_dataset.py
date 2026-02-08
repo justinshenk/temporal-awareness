@@ -63,7 +63,9 @@ class PreferenceDataset(SchemaClass):
         """Get filename for internals .pt file at given index."""
         if len(self.preferences) <= sample_idx:
             return None
-        return f"{self.get_prefix()}_sample_{self.preferences[sample_idx].sample_idx}.pt"
+        return (
+            f"{self.get_prefix()}_sample_{self.preferences[sample_idx].sample_idx}.pt"
+        )
 
     def split_by_choice(
         self,
