@@ -107,26 +107,6 @@ class ExperimentConfig:
 
 
 @dataclass
-class ExperimentResults:
-    """Results from a full experiment run."""
-
-    pref_data: PreferenceDataset
-    runner: ModelRunner
-    output_dir: Path
-
-    # Patching results
-    position_sweep: Optional[np.ndarray] = None
-    activation_patching: Optional[np.ndarray] = None
-    attribution_results: Optional[dict[str, np.ndarray]] = None
-
-    # Positions
-    top_positions: list[PositionSpec] = field(default_factory=list)
-
-    # Steering vectors
-    steering_vectors: dict = field(default_factory=dict)
-
-
-@dataclass
 class ExperimentContext:
     """Shared state passed between experiment steps."""
 

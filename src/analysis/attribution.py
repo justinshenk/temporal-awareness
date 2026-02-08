@@ -8,7 +8,6 @@ IMPORTANT DESIGN PRINCIPLES (do not violate):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
@@ -20,16 +19,6 @@ from ..models.interventions import patch
 if TYPE_CHECKING:
     from ..models import ModelRunner
     from .patching import PatchingMetric
-
-
-@dataclass
-class AttributionResult:
-    """Result from attribution patching."""
-
-    scores: np.ndarray  # (n_layers, seq_len) or (n_layers, n_heads, seq_len)
-    method: str
-    component: str
-    n_steps: int = 1  # For IG methods
 
 
 def _build_pos_arrays(

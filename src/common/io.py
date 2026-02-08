@@ -8,41 +8,8 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
-
-
-# =============================================================================
-# Base I/O Functions
-# =============================================================================
-
-
-def setup_project_paths(file: str, levels_to_root: int = 2) -> tuple[Path, Path]:
-    """Set up project paths and add them to sys.path.
-
-    Args:
-        file: The __file__ of the calling script
-        levels_to_root: Number of parent directories to reach project root
-
-    Returns:
-        Tuple of (project_root, script_dir)
-
-    Example:
-        # In scripts/data/generate_dataset.py
-        PROJECT_ROOT, SCRIPTS_DIR = setup_project_paths(__file__, levels_to_root=3)
-    """
-    script_dir = Path(file).parent
-    project_root = script_dir
-    for _ in range(levels_to_root):
-        project_root = project_root.parent
-
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    if str(script_dir) not in sys.path:
-        sys.path.insert(0, str(script_dir))
-
-    return project_root, script_dir
 
 
 def parse_file_path(filename, default_ext=".json", default_dir_path=""):
@@ -111,11 +78,6 @@ def is_file_path(s: str, ext: str | None = None) -> bool:
     return s.endswith(ext)
 
 
-def is_dir_path(s: str) -> bool:
-    """Check if string looks like a directory path."""
-    return s.endswith("/") or ("/" in s and "." not in s.split("/")[-1])
-
-
 def get_timestamp() -> str:
     """Get current timestamp string."""
     return datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -176,20 +138,3 @@ def load_json(path: Path) -> dict:
     s = re.sub(r",\s*([}\]])", r"\1", s)
     data = json.loads(s)
     return _restore_text_fields(data)
-
-
-def save_jsonl(items: list[dict], path: Path) -> None:
-    """Save list of dicts as JSONL."""
-    with open(path, "w") as f:
-        for item in items:
-            f.write(json.dumps(item, default=str) + "\n")
-
-
-def load_jsonl(path: Path) -> list[dict]:
-    """Load JSONL file."""
-    items = []
-    with open(path) as f:
-        for line in f:
-            if line.strip():
-                items.append(json.loads(line))
-    return items

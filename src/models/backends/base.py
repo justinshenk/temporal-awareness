@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
@@ -19,14 +18,6 @@ class ModelBackend(Enum):
     TRANSFORMERLENS = "transformerlens"
     NNSIGHT = "nnsight"
     PYVENE = "pyvene"
-
-
-@dataclass
-class LabelProbsOutput:
-    """Probabilities for two label options."""
-
-    prob1: float
-    prob2: float
 
 
 class Backend(ABC):

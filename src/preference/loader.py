@@ -90,44 +90,6 @@ def load_and_merge_preference_data(
     return PreferenceDataset.merge_all(datasets)
 
 
-def fill_missing_prompt_text(
-    pref_data: PreferenceDataset, prompt_dir: Optional[Path] = None
-) -> int:
-    """Fill empty prompt_text fields from the source PromptDataset.
-
-    Args:
-        pref_data: PreferenceDataset to update (modified in place)
-        prompt_dir: Directory containing prompt datasets (default: get_prompt_dataset_dir())
-
-    Returns:
-        Count of preferences that were updated
-    """
-    if prompt_dir is None:
-        prompt_dir = get_prompt_dataset_dir()
-
-    # Find preferences that need prompt_text filled
-    needs_fill = [p for p in pref_data.preferences if not p.prompt_text]
-    if not needs_fill:
-        return 0
-
-    # Load the prompt dataset
-    try:
-        prompt_dataset = PromptDataset.load_from_id(pref_data.dataset_id, prompt_dir)
-    except FileNotFoundError:
-        return 0
-
-    prompts_by_id = prompt_dataset.get_prompts_by_id()
-
-    # Fill missing prompt_text
-    count = 0
-    for pref in needs_fill:
-        if pref.sample_idx in prompts_by_id:
-            pref.prompt_text = prompts_by_id[pref.sample_idx]
-            count += 1
-
-    return count
-
-
 def get_full_text(pref: PreferenceSample, include_response: bool = True) -> str:
     """Get full text for a preference item.
 

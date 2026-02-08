@@ -47,13 +47,3 @@ def get_prompt_dataset_configs_dir() -> Path:
 def get_query_configs_dir() -> Path:
     """Return the query configs directory."""
     return get_intertemporal_configs_dir() / "query"
-
-
-def get_circuits_configs_dir() -> Path:
-    """Return the circuits configs directory."""
-    return get_intertemporal_configs_dir() / "circuits"
-
-
-def get_probes_configs_dir() -> Path:
-    """Return the probes configs directory."""
-    return get_intertemporal_configs_dir() / "probes"

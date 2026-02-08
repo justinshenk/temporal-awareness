@@ -32,7 +32,6 @@ from ..common.device import get_device
 from .interventions import Intervention
 from .backends import (
     ModelBackend,
-    LabelProbsOutput,
     TransformerLensBackend,
     NNsightBackend,
     PyveneBackend,
