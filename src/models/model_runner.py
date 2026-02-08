@@ -27,7 +27,7 @@ from __future__ import annotations
 from typing import Any, Optional, Union
 
 import torch
-
+from math import prod
 from ..common.device import get_device
 from .interventions import Intervention
 from .backends import (
@@ -49,16 +49,20 @@ class ModelRunner:
         backend: ModelBackend = ModelBackend.TRANSFORMERLENS,
     ):
         self.model_name = model_name
-        self.backend = backend
+        self._is_chat_model = self._detect_chat_model(model_name)
 
         if device is None:
             device = get_device()
         self.device = device
-
         if dtype is None:
             dtype = torch.float16 if device in ["mps", "cuda"] else torch.float32
         self.dtype = dtype
 
+        # IMPORTANT: self._model should never be used outside ModelRunner + Children + Backends
+        self._model = None
+
+        # IMPORTANT: self._backend should never be used outside ModelRunner + Children
+        self._backend = backend
         if backend == ModelBackend.TRANSFORMERLENS:
             self._init_transformerlens()
         elif backend == ModelBackend.NNSIGHT:
@@ -68,58 +72,12 @@ class ModelRunner:
         else:
             raise ValueError(f"Unknown backend: {backend}")
 
-        self._is_chat_model = self._detect_chat_model()
         print(f"Model loaded: {model_name} (chat={self._is_chat_model})")
         print(f"  n_layers={self.n_layers}, d_model={self.d_model}\n")
 
-    def _init_transformerlens(self) -> None:
-        from transformer_lens import HookedTransformer
-
-        print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
-        self.model = HookedTransformer.from_pretrained(
-            self.model_name, device=self.device, dtype=self.dtype
-        )
-        self.model.eval()
-        self._backend = TransformerLensBackend(self)
-
-    def _init_nnsight(self) -> None:
-        from nnsight import LanguageModel
-
-        print(f"Loading {self.model_name} on {self.device} (nnsight)...")
-        self.model = LanguageModel(
-            self.model_name, device_map=self.device, torch_dtype=self.dtype
-        )
-        self._backend = NNsightBackend(self)
-
-    def _init_pyvene(self) -> None:
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        print(f"Loading {self.model_name} on {self.device} (pyvene)...")
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype
-        ).to(self.device)
-        self.model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self._backend = PyveneBackend(self)
-
-    def _detect_chat_model(self) -> bool:
-        name = self.model_name.lower()
-        return any(x in name for x in ["instruct", "chat", "-it", "rlhf"])
-
-    def _apply_chat_template(self, prompt: str) -> str:
-        if not self._is_chat_model:
-            return prompt
-        tokenizer = self.tokenizer
-        if hasattr(tokenizer, "apply_chat_template"):
-            try:
-                return tokenizer.apply_chat_template(
-                    [{"role": "user", "content": prompt}],
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-            except Exception:
-                pass
-        return f"<|user|>\n{prompt}\n<|assistant|>\n"
+    ############################
+    ###### Low-Level API #######
+    ##########################
 
     @property
     def tokenizer(self):
@@ -174,19 +132,6 @@ class ModelRunner:
             for p in prompt
         ]
 
-    def _generate_single(
-        self,
-        prompt: str,
-        max_new_tokens: int,
-        temperature: float,
-        intervention: Optional[Intervention],
-        past_kv_cache: Any = None,
-    ) -> str:
-        formatted = self._apply_chat_template(prompt)
-        return self._backend.generate(
-            formatted, max_new_tokens, temperature, intervention, past_kv_cache
-        )
-
     def generate_from_cache(
         self,
         prefill_logits: torch.Tensor,
@@ -198,96 +143,6 @@ class ModelRunner:
         return self._backend.generate_from_cache(
             prefill_logits, frozen_kv_cache, max_new_tokens, temperature
         )
-
-    def get_label_probs(
-        self,
-        prompt: str | list[str],
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple | list[tuple]:
-        """Get probabilities for two label options."""
-        if isinstance(prompt, str):
-            return self._get_label_probs_single(
-                prompt, choice_prefix, labels, past_kv_cache
-            )
-        return [
-            self._get_label_probs_single(p, choice_prefix, labels, past_kv_cache)
-            for p in prompt
-        ]
-
-    def get_divergent_token_ids(self, label1: str, label2: str) -> tuple[int, int]:
-        """Get first divergent token IDs for two labels.
-
-        For multi-token labels like OPTION_ONE/OPTION_TWO, finds where they diverge
-        and returns the token IDs at that position.
-
-        Args:
-            label1: First label string
-            label2: Second label string
-
-        Returns:
-            Tuple of (token_id_1, token_id_2) at the first divergent position
-        """
-        tokenizer = self.tokenizer
-        ids1 = tokenizer.encode(" " + label1, add_special_tokens=False)
-        ids2 = tokenizer.encode(" " + label2, add_special_tokens=False)
-
-        diverge_pos = 0
-        for i in range(min(len(ids1), len(ids2))):
-            if ids1[i] != ids2[i]:
-                diverge_pos = i
-                break
-        else:
-            diverge_pos = min(len(ids1), len(ids2))
-
-        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else ids1[-1]
-        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else ids2[-1]
-        return tok1, tok2
-
-    def _get_label_probs_single(
-        self,
-        prompt: str,
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple:
-        """Get probabilities for two label options."""
-        tokenizer = self.tokenizer
-        label1, label2 = labels
-
-        ids1 = tokenizer.encode(" " + label1, add_special_tokens=False)
-        ids2 = tokenizer.encode(" " + label2, add_special_tokens=False)
-
-        diverge_pos = 0
-        for i in range(min(len(ids1), len(ids2))):
-            if ids1[i] != ids2[i]:
-                diverge_pos = i
-                break
-        else:
-            diverge_pos = min(len(ids1), len(ids2))
-
-        # Get the diverging tokens
-        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else None
-        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else None
-
-        # Always use full prompt context (kv_cache doesn't help when we need to extend)
-        base_text = self._apply_chat_template(prompt) + choice_prefix
-
-        # If labels diverge at first token, look at next token after choice_prefix
-        if diverge_pos == 0:
-            probs = self._backend.get_next_token_probs_by_id(
-                base_text, [tok1, tok2], past_kv_cache
-            )
-            return (probs.get(tok1, 0.0), probs.get(tok2, 0.0))
-
-        # Labels have common prefix - need to condition on it
-        common_prefix = tokenizer.decode(ids1[:diverge_pos])
-        extended_text = base_text + common_prefix
-        probs = self._backend.get_next_token_probs_by_id(
-            extended_text, [tok1, tok2], past_kv_cache
-        )
-        return (probs.get(tok1, 0.0), probs.get(tok2, 0.0))
 
     def run_with_cache(
         self,
@@ -394,3 +249,205 @@ class ModelRunner:
 
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
+
+    #######################
+    #### High-level API ###
+    #######################
+
+    def get_label_probs(
+        self,
+        prompt: str | list[str],
+        choice_prefix: str,
+        labels: tuple[str, str],
+        past_kv_cache: Any = None,
+    ) -> tuple | list[tuple]:
+        """Get probabilities for two label options."""
+        if isinstance(prompt, str):
+            return self._get_label_probs_single(
+                prompt, choice_prefix, labels, past_kv_cache
+            )
+        return [
+            self._get_label_probs_single(p, choice_prefix, labels, past_kv_cache)
+            for p in prompt
+        ]
+
+    def get_label_next_token_prob_sequences(
+        self,
+        prompt: str,
+        choice_prefix: str,
+        labels: tuple[str, str],
+        past_kv_cache: Any = None,
+    ) -> tuple[list[float], list[float]]:
+        """Get probabilities for two label options.
+
+        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
+        for all tokens from the divergence point onwards.
+        """
+
+        # Tokenize labels IN CONTEXT to get correct token IDs
+        # (tokenizers merge spaces with following chars contextually)
+        ids1, ids2 = self._get_full_choice_context_token_ids(
+            prompt, choice_prefix, labels
+        )
+
+        # Find first position where the two sequences diverge
+        diverge_pos = self._get_diverge_pos(ids1, ids2)
+
+        seq1 = self._get_next_token_prob_sequence(ids1, diverge_pos, past_kv_cache)
+        seq2 = self._get_next_token_prob_sequence(ids2, diverge_pos, past_kv_cache)
+
+        return (seq1, seq2)
+
+    def get_canonical_response_texts(
+        self, choice_prefix: str, labels: tuple[str, str]
+    ) -> tuple[str, str]:
+        return (choice_prefix + labels[0], choice_prefix + labels[1])
+
+    # Where is this function used? It is sus.
+    def get_divergent_token_ids(self, label1: str, label2: str) -> tuple[int, int]:
+        """Get first divergent token IDs for two labels.
+
+        For multi-token labels like OPTION_ONE/OPTION_TWO, finds where they diverge
+        and returns the token IDs at that position.
+
+        Args:
+            label1: First label string
+            label2: Second label string
+
+        Returns:
+            Tuple of (token_id_1, token_id_2) at the first divergent position
+        """
+        tokenizer = self.tokenizer
+        ids1 = tokenizer.encode(label1, add_special_tokens=False)
+        ids2 = tokenizer.encode(label2, add_special_tokens=False)
+
+        diverge_pos = self._get_diverge_pos(ids1, ids2)
+        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else ids1[-1]
+        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else ids2[-1]
+        return tok1, tok2
+
+    ##################
+    #### Internal ####
+    ##################
+
+    def _init_transformerlens(self) -> None:
+        from transformer_lens import HookedTransformer
+
+        print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
+        self._model = HookedTransformer.from_pretrained(
+            self.model_name, device=self.device, dtype=self.dtype
+        )
+        self._model.eval()
+        self._backend = TransformerLensBackend(self)
+
+    def _init_nnsight(self) -> None:
+        from nnsight import LanguageModel
+
+        print(f"Loading {self.model_name} on {self.device} (nnsight)...")
+        self._model = LanguageModel(
+            self.model_name, device_map=self.device, torch_dtype=self.dtype
+        )
+        self._backend = NNsightBackend(self)
+
+    def _init_pyvene(self) -> None:
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        print(f"Loading {self.model_name} on {self.device} (pyvene)...")
+        self._model = AutoModelForCausalLM.from_pretrained(
+            self.model_name, torch_dtype=self.dtype
+        ).to(self.device)
+        self._model.eval()
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self._backend = PyveneBackend(self)
+
+    def _detect_chat_model(self, model_name: str | None) -> bool:
+        if not model_name:
+            model_name = self.model_name
+        name = model_name.lower()
+        return any(x in name for x in ["instruct", "chat", "-it", "rlhf"])
+
+    def _apply_chat_template(self, prompt: str) -> str:
+        if not self._is_chat_model:
+            return prompt
+        tokenizer = self.tokenizer
+        if hasattr(tokenizer, "apply_chat_template"):
+            try:
+                return tokenizer.apply_chat_template(
+                    [{"role": "user", "content": prompt}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            except Exception:
+                pass
+        return f"<|user|>\n{prompt}\n<|assistant|>\n"
+
+    def _generate_single(
+        self,
+        prompt: str,
+        max_new_tokens: int,
+        temperature: float,
+        intervention: Optional[Intervention],
+        past_kv_cache: Any = None,
+    ) -> str:
+        formatted = self._apply_chat_template(prompt)
+        return self._backend.generate(
+            formatted, max_new_tokens, temperature, intervention, past_kv_cache
+        )
+
+    def _get_base_text(self, prompt: str, choice_prefix: str):
+        return self._apply_chat_template(prompt) + choice_prefix
+
+    def _get_full_choice_context_token_ids(
+        self, prompt: str, choice_prefix: str, labels: tuple[str, str]
+    ) -> tuple[list[int], list[int]]:
+        label1, label2 = labels
+        base_text = self._get_base_text(prompt, choice_prefix)
+        ids1 = self.tokenizer.encode(base_text + label1, add_special_tokens=False)
+        ids2 = self.tokenizer.encode(base_text + label2, add_special_tokens=False)
+        return (ids1, ids2)
+
+    def _get_diverge_pos(self, ids1: list[int], ids2: list[int]):
+        diverge_pos = 0
+        for i in range(min(len(ids1), len(ids2))):
+            if ids1[i] != ids2[i]:
+                diverge_pos = i
+                break
+        else:
+            diverge_pos = min(len(ids1), len(ids2))
+        return diverge_pos
+
+    def _get_label_probs_single(
+        self,
+        prompt: str,
+        choice_prefix: str,
+        labels: tuple[str, str],
+        past_kv_cache: Any = None,
+    ) -> tuple:
+        """Get probabilities for two label options.
+
+        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
+        for all tokens from the divergence point onwards.
+        """
+        seq1, seq2 = self.get_label_next_token_prob_sequences(
+            prompt, choice_prefix, labels, past_kv_cache
+        )
+        seq_prob1 = prod(seq1)
+        seq_prob2 = prod(seq2)
+        return (seq_prob1, seq_prob2)
+
+    def _get_next_token_prob_sequence(
+        self,
+        token_ids: list[int],
+        start_pos: int,
+        past_kv_cache: Any = None,
+    ) -> list[float]:
+        continuation_probs = []
+        for i in range(start_pos, len(token_ids)):
+            context = self.tokenizer.decode(token_ids[:i])
+            target_tok = token_ids[i]
+            all_next_token_prob = self._backend.get_next_token_probs_by_id(
+                context, [target_tok], past_kv_cache
+            )
+            next_token_prob = all_next_token_prob.get(target_tok, 0)
+            continuation_probs.append(next_token_prob)
+        return continuation_probs

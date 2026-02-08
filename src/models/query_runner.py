@@ -131,7 +131,7 @@ class QueryRunner:
 
         # None means capture all activations
         if internals is None:
-            n_layers = model_runner.model.cfg.n_layers
+            n_layers = model_runner.n_layers
             components = ["resid_pre", "resid_post", "attn_out", "mlp_out"]
             return [
                 f"blocks.{layer}.hook_{comp}"
@@ -162,10 +162,6 @@ class QueryRunner:
         choice_prefix = (
             prompt_dataset.config.prompt_format_config.get_exact_prefix_before_choice()
         )
-
-        print("\n\n choice_prefix\n")
-        print(choice_prefix)
-        print("\n\n\n")
 
         if self.config.subsample < 1.0:
             n = max(1, int(len(samples) * self.config.subsample))
@@ -203,17 +199,12 @@ class QueryRunner:
                 prompt_text, choice_prefix, (short_label, long_label)
             )
             short_response, long_response = model_runner.get_canonical_response_texts(
-                prompt_text, choice_prefix, (short_label, long_label)
+                choice_prefix, (short_label, long_label)
             )
-
-            print("\n\n LABEL PROBS\n")
-            print(short_prob)
-            print(long_prob)
-            print("\n\n\n")
 
             canonical_choice = "short_term" if short_prob > long_prob else "long_term"
             canonical_response = (
-                "short_term" if short_response > long_response else "long_term"
+                short_response if short_prob > long_prob else long_response
             )
 
             choice_prob, alt_prob = (
@@ -221,12 +212,7 @@ class QueryRunner:
                 min(short_prob, long_prob),
             )
 
-            print("\n\n CHOICE PROBS\n")
-            print(choice_prob)
-            print(alt_prob)
-            print("\n\n\n")
-
-            if self._min_choice_prob < choice_prob:
+            if choice_prob < self._min_choice_prob:
                 decoding_mismatch = True
 
             # Step 2: Generate response (or skip if skip_generation=True)

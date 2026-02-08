@@ -16,20 +16,20 @@ class TransformerLensBackend(Backend):
     """Backend using TransformerLens for model inference and interventions."""
 
     def get_tokenizer(self):
-        return self.runner.model.tokenizer
+        return self.runner._model.tokenizer
 
     def get_n_layers(self) -> int:
-        return self.runner.model.cfg.n_layers
+        return self.runner._model.cfg.n_layers
 
     def get_d_model(self) -> int:
-        return self.runner.model.cfg.d_model
+        return self.runner._model.cfg.d_model
 
     def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
         """Tokenize text into token IDs tensor."""
-        return self.runner.model.to_tokens(text, prepend_bos=prepend_bos)
+        return self.runner._model.to_tokens(text, prepend_bos=prepend_bos)
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.runner.model.to_string(token_ids)
+        return self.runner._model.to_string(token_ids)
 
     def generate(
         self,
@@ -65,12 +65,12 @@ class TransformerLensBackend(Backend):
                     device=self.runner.device,
                     tokenizer=self.get_tokenizer(),
                 )
-                with self.runner.model.hooks(
+                with self.runner._model.hooks(
                     fwd_hooks=[(intervention.hook_name, hook)]
                 ):
-                    output_ids = self.runner.model.generate(input_ids, **gen_kwargs)
+                    output_ids = self.runner._model.generate(input_ids, **gen_kwargs)
             else:
-                output_ids = self.runner.model.generate(input_ids, **gen_kwargs)
+                output_ids = self.runner._model.generate(input_ids, **gen_kwargs)
 
         return self.decode(output_ids[0, prompt_len:])
 
@@ -88,7 +88,7 @@ class TransformerLensBackend(Backend):
         kv = copy.deepcopy(past_kv_cache)
         kv.unfreeze()
 
-        logits = self.runner.model(input_ids, past_kv_cache=kv)
+        logits = self.runner._model(input_ids, past_kv_cache=kv)
         next_logits = logits[0, -1, :]
 
         with torch.no_grad():
@@ -104,7 +104,7 @@ class TransformerLensBackend(Backend):
                 if next_token.item() == eos_token_id:
                     break
 
-                step_logits = self.runner.model(
+                step_logits = self.runner._model(
                     next_token.unsqueeze(0), past_kv_cache=kv
                 )
                 next_logits = step_logits[0, -1, :]
@@ -116,7 +116,7 @@ class TransformerLensBackend(Backend):
     ) -> dict[str, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
-            logits = self.runner.model(input_ids, past_kv_cache=past_kv_cache)
+            logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)
 
         result = {}
@@ -131,7 +131,7 @@ class TransformerLensBackend(Backend):
     ) -> dict[int, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
-            logits = self.runner.model(input_ids, past_kv_cache=past_kv_cache)
+            logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)
 
         result = {}
@@ -147,7 +147,7 @@ class TransformerLensBackend(Backend):
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
         with torch.no_grad():
-            return self.runner.model.run_with_cache(
+            return self.runner._model.run_with_cache(
                 input_ids, names_filter=names_filter, past_kv_cache=past_kv_cache
             )
 
@@ -171,10 +171,11 @@ class TransformerLensBackend(Backend):
             def hook_fn(act, hook=None):
                 cache[hook_name] = act
                 return act
+
             return hook_fn
 
         fwd_hooks = [(name, make_hook(name)) for _, _, name in hooks_to_capture]
-        logits = self.runner.model.run_with_hooks(input_ids, fwd_hooks=fwd_hooks)
+        logits = self.runner._model.run_with_hooks(input_ids, fwd_hooks=fwd_hooks)
 
         return logits, cache
 
@@ -207,7 +208,7 @@ class TransformerLensBackend(Backend):
                 if next_token.item() == eos_token_id:
                     break
 
-                step_logits = self.runner.model(
+                step_logits = self.runner._model(
                     next_token.unsqueeze(0), past_kv_cache=kv
                 )
                 next_logits = step_logits[0, -1, :]
@@ -216,7 +217,7 @@ class TransformerLensBackend(Backend):
 
     def init_kv_cache(self):
         return HookedTransformerKeyValueCache.init_cache(
-            self.runner.model.cfg,
+            self.runner._model.cfg,
             device=self.runner.device,
             batch_size=1,
         )
@@ -236,7 +237,7 @@ class TransformerLensBackend(Backend):
             fwd_hooks.append((intervention.hook_name, hook_fn))
 
         with torch.no_grad():
-            logits = self.runner.model.run_with_hooks(
+            logits = self.runner._model.run_with_hooks(
                 input_ids,
                 fwd_hooks=fwd_hooks,
             )
@@ -271,11 +272,12 @@ class TransformerLensBackend(Backend):
                         def hook_fn(act, hook=None):
                             cache[hook_name] = act
                             return act
+
                         return hook_fn
 
                     cache_hooks.append((name, make_hook(name)))
 
         all_hooks = intervention_hooks + cache_hooks
-        logits = self.runner.model.run_with_hooks(input_ids, fwd_hooks=all_hooks)
+        logits = self.runner._model.run_with_hooks(input_ids, fwd_hooks=all_hooks)
 
         return logits, cache

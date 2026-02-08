@@ -15,25 +15,25 @@ class PyveneBackend(Backend):
 
     def __init__(self, runner):
         super().__init__(runner)
-        if hasattr(self.runner.model, "transformer"):
+        if hasattr(self.runner._model, "transformer"):
             self._layers_attr = "transformer.h"
-            self._layers = self.runner.model.transformer.h
+            self._layers = self.runner._model.transformer.h
             self._n_layers = len(self._layers)
-            self._d_model = self.runner.model.config.n_embd
-        elif hasattr(self.runner.model, "gpt_neox"):
+            self._d_model = self.runner._model.config.n_embd
+        elif hasattr(self.runner._model, "gpt_neox"):
             self._layers_attr = "gpt_neox.layers"
-            self._layers = self.runner.model.gpt_neox.layers
+            self._layers = self.runner._model.gpt_neox.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner.model.config.hidden_size
-        elif hasattr(self.runner.model, "model") and hasattr(
-            self.runner.model.model, "layers"
+            self._d_model = self.runner._model.config.hidden_size
+        elif hasattr(self.runner._model, "model") and hasattr(
+            self.runner._model.model, "layers"
         ):
             self._layers_attr = "model.layers"
-            self._layers = self.runner.model.model.layers
+            self._layers = self.runner._model.model.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner.model.config.hidden_size
+            self._d_model = self.runner._model.config.hidden_size
         else:
-            raise ValueError(f"Unknown model architecture: {type(self.runner.model)}")
+            raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
 
     def get_tokenizer(self):
         return self.runner._tokenizer
@@ -71,7 +71,9 @@ class PyveneBackend(Backend):
             elif hasattr(layer, "self_attn"):
                 return layer.self_attn
             else:
-                raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
+                raise ValueError(
+                    f"Cannot find attention module in layer: {type(layer)}"
+                )
         elif component == "mlp_out":
             return layer.mlp
         else:
@@ -115,7 +117,7 @@ class PyveneBackend(Backend):
                 hook = layer_module.register_forward_hook(steering_hook)
 
                 with torch.no_grad():
-                    outputs = self.runner.model(generated)
+                    outputs = self.runner._model(generated)
                     logits = outputs.logits
 
                 hook.remove()
@@ -140,7 +142,7 @@ class PyveneBackend(Backend):
                 gen_kwargs["temperature"] = temperature
 
             with torch.no_grad():
-                output_ids = self.runner.model.generate(input_ids, **gen_kwargs)
+                output_ids = self.runner._model.generate(input_ids, **gen_kwargs)
             generated = output_ids
 
         return self.decode(generated[0, prompt_len:])
@@ -150,7 +152,7 @@ class PyveneBackend(Backend):
     ) -> dict[str, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
-            outputs = self.runner.model(input_ids)
+            outputs = self.runner._model(input_ids)
             logits = outputs.logits
 
         probs = torch.softmax(logits[0, -1, :], dim=-1)
@@ -166,7 +168,7 @@ class PyveneBackend(Backend):
     ) -> dict[int, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
-            outputs = self.runner.model(input_ids)
+            outputs = self.runner._model(input_ids)
             logits = outputs.logits
 
         probs = torch.softmax(logits[0, -1, :], dim=-1)
@@ -201,13 +203,14 @@ class PyveneBackend(Backend):
                         cache[hook_name] = out[0].detach()
                     else:
                         cache[hook_name] = out.detach()
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_hook(name)))
 
         try:
             with torch.no_grad():
-                outputs = self.runner.model(input_ids)
+                outputs = self.runner._model(input_ids)
             logits = outputs.logits
         finally:
             for hook in hooks:
@@ -240,12 +243,13 @@ class PyveneBackend(Backend):
                         cache[hook_name] = out[0]
                     else:
                         cache[hook_name] = out
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_hook(name)))
 
         try:
-            outputs = self.runner.model(input_ids)
+            outputs = self.runner._model(input_ids)
             logits = outputs.logits
         finally:
             for hook in hooks:
@@ -279,7 +283,7 @@ class PyveneBackend(Backend):
                 if next_token.item() == eos_token_id:
                     break
 
-                outputs = self.runner.model(
+                outputs = self.runner._model(
                     next_token.unsqueeze(0),
                     past_key_values=frozen_kv_cache,
                     use_cache=True,
@@ -360,7 +364,7 @@ class PyveneBackend(Backend):
             hooks.append(hook)
 
         with torch.no_grad():
-            outputs = self.runner.model(input_ids)
+            outputs = self.runner._model(input_ids)
 
         for hook in hooks:
             hook.remove()
@@ -393,6 +397,7 @@ class PyveneBackend(Backend):
                         cache[hook_name] = out[0]
                     else:
                         cache[hook_name] = out
+
                 return hook_fn
 
             hooks.append(module.register_forward_hook(make_cache_hook(name)))
@@ -449,7 +454,7 @@ class PyveneBackend(Backend):
             hooks.append(hook)
 
         try:
-            outputs = self.runner.model(input_ids)
+            outputs = self.runner._model(input_ids)
             logits = outputs.logits
         finally:
             for hook in hooks:
