@@ -1146,9 +1146,31 @@ def make_test_prompt_dataset(dataset_id: str, samples: list, choice_prefix: str 
     """Create a mock PromptDataset for testing."""
     return MockPromptDataset(
         dataset_id=dataset_id,
-        config={"prompt_format": {"const_keywords": {"format_choice_prefix": choice_prefix}}},
+        config={"name": "test", "prompt_format": {"const_keywords": {"format_choice_prefix": choice_prefix}}},
         samples=samples,
     )
+
+
+def make_sample(sample_id: int, text: str, short_label: str = "a)", long_label: str = "b)") -> dict:
+    """Create a sample with full preference_pair structure for testing."""
+    return {
+        "sample_id": sample_id,
+        "prompt": {
+            "text": text,
+            "preference_pair": {
+                "short_term": {
+                    "label": short_label,
+                    "time": {"value": 0, "unit": "days"},
+                    "reward": {"value": 100, "unit": "dollars"},
+                },
+                "long_term": {
+                    "label": long_label,
+                    "time": {"value": 12, "unit": "months"},
+                    "reward": {"value": 200, "unit": "dollars"},
+                },
+            },
+        },
+    }
 
 
 class TestQueryDatasetIntegration:
@@ -1159,16 +1181,7 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            },
+            make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
         ]
         prompt_dataset = make_test_prompt_dataset("001", samples)
 
@@ -1188,16 +1201,7 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig, InternalsConfig, ActivationSpec
 
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Choose: a) now or b) later? I choose:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            },
+            make_sample(1, "Choose: a) now or b) later? I choose:"),
         ]
         prompt_dataset = make_test_prompt_dataset("002", samples)
 
@@ -1227,16 +1231,7 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Pick: a) apple or b) banana? I choose:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            },
+            make_sample(1, "Pick: a) apple or b) banana? I choose:"),
         ]
         prompt_dataset = make_test_prompt_dataset("003", samples)
 
@@ -1259,16 +1254,7 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            {
-                "sample_id": i,
-                "prompt": {
-                    "text": f"Question {i}: a) yes or b) no? Answer:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            }
+            make_sample(i, f"Question {i}: a) yes or b) no? Answer:")
             for i in range(5)
         ]
         prompt_dataset = make_test_prompt_dataset("004", samples, choice_prefix="Answer:")
@@ -1290,16 +1276,7 @@ class TestQueryDatasetIntegration:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Choose a) or b)? I pick:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            }
+            make_sample(1, "Choose a) or b)? I pick:"),
         ]
         prompt_dataset1 = make_test_prompt_dataset("005", samples, choice_prefix="I pick:")
         prompt_dataset2 = make_test_prompt_dataset("006", samples, choice_prefix="I pick:")
@@ -1355,16 +1332,7 @@ class TestQueryErrorHandling:
         from src.models.query_runner import QueryRunner, QueryConfig
 
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Pick a) or b)? I select:",  # Uses default prefix
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            }
+            make_sample(1, "Pick a) or b)? I select:"),
         ]
         # Create dataset with empty config (no prompt_format)
         prompt_dataset = MockPromptDataset(
@@ -1582,19 +1550,8 @@ class TestQueryRunnerIntervention:
     @pytest.fixture
     def sample_dataset(self, tmp_path):
         """Create a sample dataset for testing."""
-        import json
-
         samples = [
-            {
-                "sample_id": 1,
-                "prompt": {
-                    "text": "Would you prefer a) $100 now or b) $200 in a year? I choose:",
-                    "preference_pair": {
-                        "short_term": {"label": "a)"},
-                        "long_term": {"label": "b)"},
-                    },
-                },
-            },
+            make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
         ]
         return make_test_prompt_dataset("interv", samples)
 
