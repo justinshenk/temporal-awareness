@@ -21,8 +21,8 @@ import torch.nn as nn
 from transformer_lens import HookedTransformer, HookedTransformerConfig
 
 from src.models import ModelRunner
-from src.models.model_runner import ModelBackend, _TransformerLensBackend
-from src.models.intervention_utils import steering, ablation, scale, interpolate
+from src.models.backends import ModelBackend, TransformerLensBackend, NNsightBackend, PyveneBackend
+from src.models.interventions import steering, ablation, scale, interpolate
 
 
 # =============================================================================
@@ -292,7 +292,7 @@ def runner(toy_hooked_model, toy_tokenizer):
     runner.model = toy_hooked_model
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
-    runner._backend = _TransformerLensBackend(runner)
+    runner._backend = TransformerLensBackend(runner)
     return runner
 
 
@@ -300,7 +300,6 @@ def runner(toy_hooked_model, toy_tokenizer):
 def runner_nnsight(toy_pytorch_model, toy_tokenizer):
     """NNsight backend with standard PyTorch model."""
     from nnsight import NNsight
-    from src.models.model_runner import _NNsightBackend
 
     wrapped = NNsight(toy_pytorch_model)
     wrapped.tokenizer = toy_tokenizer
@@ -313,15 +312,13 @@ def runner_nnsight(toy_pytorch_model, toy_tokenizer):
     runner.model = wrapped
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
-    runner._backend = _NNsightBackend(runner)
+    runner._backend = NNsightBackend(runner)
     return runner
 
 
 @pytest.fixture(scope="module")
 def runner_pyvene(toy_pytorch_model, toy_tokenizer):
     """Pyvene backend with standard PyTorch model."""
-    from src.models.model_runner import _PyveneBackend
-
     runner = ModelRunner.__new__(ModelRunner)
     runner.model_name = "toy"
     runner.backend = ModelBackend.PYVENE
@@ -330,7 +327,7 @@ def runner_pyvene(toy_pytorch_model, toy_tokenizer):
     runner.model = toy_pytorch_model
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
-    runner._backend = _PyveneBackend(runner)
+    runner._backend = PyveneBackend(runner)
     return runner
 
 

@@ -6,7 +6,7 @@ import functools
 from typing import Callable, TypeVar
 
 from .timer import P
-from ..common.device import log_memory
+from ..device import log_memory
 
 F = TypeVar("F", bound=Callable)
 

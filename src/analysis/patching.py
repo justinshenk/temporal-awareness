@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from ..common.token_positions import find_label_positions
-from ..profiler import P
+from ..common.profiler import P
 from .markers import find_section_markers, get_token_labels, SECTION_COLORS
 
 if TYPE_CHECKING:

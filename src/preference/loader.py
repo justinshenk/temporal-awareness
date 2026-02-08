@@ -7,11 +7,9 @@ from pathlib import Path
 from typing import Optional
 
 from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
-from ..models.preference_dataset import (
-    PreferenceSample,
-    PreferenceDataset,
-)
-from ..prompt_datasets import PromptDataset
+from ..common.types import PreferenceSample
+from .dataset import PreferenceDataset
+from ..prompt import PromptDataset
 
 
 def find_preference_files(prefix: str, directory: Optional[Path] = None) -> list[Path]:

@@ -21,7 +21,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.common.io import ensure_dir, save_json, load_json, get_timestamp
-from src.common.positions_schema import PositionsFile
+from src.common.token_positions import PositionsFile
 from src.data import (
     load_pref_data_with_prompts,
     find_preference_data,
@@ -29,7 +29,7 @@ from src.data import (
 )
 from src.experiments import compute_steering_vector
 from src.models import ModelRunner
-from src.profiler import P
+from src.common.profiler import P
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 

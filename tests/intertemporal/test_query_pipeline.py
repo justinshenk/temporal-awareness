@@ -6,7 +6,7 @@ Marked slow because they require model loading.
 
 import pytest
 
-from src.prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
+from src.prompt import PromptDatasetGenerator, PromptDatasetConfig
 from src.models import QueryRunner, QueryConfig
 from src.common.paths import get_prompt_dataset_configs_dir
 

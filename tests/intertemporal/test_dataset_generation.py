@@ -4,7 +4,7 @@ These tests verify PromptDatasetGenerator and PromptDatasetConfig work correctly
 Fast tests - no model loading required.
 """
 
-from src.prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
+from src.prompt import PromptDatasetGenerator, PromptDatasetConfig
 from src.common.paths import get_prompt_dataset_configs_dir
 
 

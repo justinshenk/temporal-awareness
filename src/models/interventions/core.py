@@ -15,7 +15,7 @@ from typing import Callable, Literal, Optional, Union
 import numpy as np
 import torch
 
-from ..common.types import SchemaClass
+from ...common.types import SchemaClass
 
 Mode = Literal["add", "set", "mul", "interpolate"]
 Axis = Literal["all", "position", "neuron", "pattern"]

@@ -32,8 +32,8 @@ from src.data import (
 )
 from src.common.io import ensure_dir, save_json, get_timestamp
 from src.analysis import find_top_attributions
-from src.common.positions_schema import PositionsFile, PositionSpec
-from src.profiler import P
+from src.common.token_positions import PositionsFile, PositionSpec
+from src.common.profiler import P
 from src.viz import plot_layer_position_heatmap
 from src.experiments import run_attribution_patching
 

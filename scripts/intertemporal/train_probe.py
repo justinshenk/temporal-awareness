@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.common.io import ensure_dir, save_json, get_timestamp
 from src.common.token_positions import build_position_labels, ResolvedPositionInfo
 from src.experiments import run_probe_training
-from src.profiler import P
+from src.common.profiler import P
 from src.data import (
     load_pref_data_with_prompts,
     get_preference_data_id,

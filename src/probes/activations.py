@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 from ..common.token_positions import ResolvedPositionInfo, resolve_positions_with_info
-from ..profiler import P
+from ..common.profiler import P
 
 if TYPE_CHECKING:
     from ..models import ModelRunner

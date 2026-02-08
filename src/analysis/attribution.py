@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import torch
 
-from ..profiler import P
-from ..models.intervention_utils import patch
+from ..common.profiler import P
+from ..models.interventions import patch
 
 if TYPE_CHECKING:
     from ..models import ModelRunner

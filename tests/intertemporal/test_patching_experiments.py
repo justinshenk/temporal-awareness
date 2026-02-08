@@ -6,7 +6,7 @@ using Qwen2.5-1.5B. Marked slow because they require model loading.
 
 import pytest
 
-from src.data import PreferenceDataset, build_prompt_pairs
+from src.preference import PreferenceDataset, build_prompt_pairs
 from src.common.types import PreferenceSample
 from src.models import ModelRunner
 from src.experiments import run_activation_patching, run_attribution_patching, compute_steering_vector

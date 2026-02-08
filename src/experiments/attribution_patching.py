@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..data import (
+from ..preference import (
     PreferenceDataset,
     build_prompt_pairs,
 )
@@ -17,7 +17,7 @@ from ..analysis import (
     run_all_attribution_methods,
     aggregate_attribution_results,
 )
-from ..profiler import P
+from ..common.profiler import P
 
 
 def run_attribution_patching(

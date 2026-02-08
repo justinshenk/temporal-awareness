@@ -13,11 +13,11 @@ from typing import Optional
 from ..common.io import ensure_dir
 from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from ..models import QueryRunner, QueryConfig
-from ..models.preference_dataset import PreferenceDataset
+from .dataset import PreferenceDataset
 from ..models.query_runner import InternalsConfig
-from ..prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
-from .default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
-from ..profiler import P
+from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
+from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
+from ..common.profiler import P
 
 
 def generate_preference_data(

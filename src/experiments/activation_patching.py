@@ -9,20 +9,20 @@ import numpy as np
 
 
 from ..common.token_positions import resolve_positions
-from ..data import (
+from ..preference import (
     PreferenceDataset,
     build_prompt_pairs,
 )
 from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..models import ModelRunner
-from ..models.intervention_utils import patch
+from ..models.interventions import patch
 from ..analysis import (
     build_position_mapping,
     create_metric,
     find_section_markers,
     get_token_labels,
 )
-from ..profiler import P
+from ..common.profiler import P
 
 
 @dataclass
@@ -288,8 +288,8 @@ def run_activation_patching(
         # Collect per-pair metadata
         pair_metadata.append({
             "pair_index": i,
-            "clean_sample_id": clean_sample.sample_id,
-            "corrupted_sample_id": corrupted_sample.sample_id,
+            "clean_sample_id": clean_sample.sample_idx,
+            "corrupted_sample_id": corrupted_sample.sample_idx,
             "clean_choice": clean_sample.choice,
             "corrupted_choice": corrupted_sample.choice,
             "clean_labels": {

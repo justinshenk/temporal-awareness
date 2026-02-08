@@ -17,13 +17,19 @@ DEFAULT_PROMPT_DATASET_CONFIG = {
     "options": {
         "short_term": {
             "reward_range": [1000, 4000],
-            "time_range": [{"value": 2, "unit": "months"}, {"value": 1, "unit": "years"}],
+            "time_range": [
+                {"value": 2, "unit": "months"},
+                {"value": 1, "unit": "years"},
+            ],
             "reward_steps": [3, "linear"],
             "time_steps": [3, "linear"],
         },
         "long_term": {
             "reward_range": [10000, 150000],
-            "time_range": [{"value": 10, "unit": "years"}, {"value": 30, "unit": "years"}],
+            "time_range": [
+                {"value": 10, "unit": "years"},
+                {"value": 30, "unit": "years"},
+            ],
             "reward_steps": [3, "logarithmic"],
             "time_steps": [3, "logarithmic"],
         },
@@ -86,13 +92,19 @@ TEST_PROMPT_DATASET_CONFIG = {
     "options": {
         "short_term": {
             "reward_range": [1000, 4000],
-            "time_range": [{"value": 2, "unit": "months"}, {"value": 1, "unit": "years"}],
+            "time_range": [
+                {"value": 2, "unit": "months"},
+                {"value": 1, "unit": "years"},
+            ],
             "reward_steps": [0, "linear"],
             "time_steps": [0, "linear"],
         },
         "long_term": {
             "reward_range": [10000, 150000],
-            "time_range": [{"value": 10, "unit": "years"}, {"value": 30, "unit": "years"}],
+            "time_range": [
+                {"value": 10, "unit": "years"},
+                {"value": 30, "unit": "years"},
+            ],
             "reward_steps": [0, "logarithmic"],
             "time_steps": [0, "logarithmic"],
         },
@@ -102,7 +114,7 @@ TEST_PROMPT_DATASET_CONFIG = {
         {"value": 1, "unit": "months"},
         {"value": 50, "unit": "years"},
     ],
-    "add_formatting_variations": False,
+    "do_variation_grid": False,
 }
 
 # Small config for testing
@@ -111,8 +123,6 @@ TEST_EXPERIMENT_CONFIG = {
     "model": TEST_MODEL,
     # Dataset generation config
     "dataset_config": TEST_PROMPT_DATASET_CONFIG,
-    # Data sampling
-    "max_samples": 10,  # Number of preference samples to generate
     # Activation patching config
     # Sweep parameters control granularity of position and layer search
     "max_pairs": 1,  # Number of clean/corrupted pairs for patching

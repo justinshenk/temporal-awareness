@@ -251,7 +251,7 @@ def sample_dataset_dict():
 @pytest.fixture
 def sample_prompt_dataset(sample_dataset_dict):
     """Create a PromptDataset for testing."""
-    from src.prompt_datasets import PromptDataset
+    from src.prompt import PromptDataset
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir) / "test_dataset_001.json"
         with open(path, "w") as f:

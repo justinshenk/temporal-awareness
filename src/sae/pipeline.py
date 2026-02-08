@@ -38,7 +38,7 @@ from .evaluate import (
 from torch.utils.tensorboard import SummaryWriter
 import copy
 
-from src.profiler import P
+from src.common.profiler import P
 
 # ── Path Helpers ─────────────────────────────
 

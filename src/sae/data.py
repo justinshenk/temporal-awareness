@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from src.prompt_datasets import PromptDatasetConfig, PromptDatasetGenerator
+from src.prompt import PromptDatasetConfig, PromptDatasetGenerator
 
 from .utils import SCENARIOS_DIR
 

@@ -272,7 +272,7 @@ class TestComponentBackendEquivalence:
         self, transformerlens_runner, nnsight_runner, component
     ):
         """Both backends produce equivalent results for interventions on each component."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = "The weather today is"
         layer = 5
@@ -361,7 +361,7 @@ class TestPyveneComponentEquivalence:
         self, transformerlens_runner, pyvene_runner, component
     ):
         """Pyvene and TransformerLens produce equivalent intervention results."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = "The answer is"
         layer = pyvene_runner.n_layers // 2
@@ -446,7 +446,7 @@ class TestPyveneBackend:
 
     def test_steering_modifies_output(self, pyvene_runner):
         """Steering intervention changes model output."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = "The weather today is"
         base_out = pyvene_runner.generate(prompt, max_new_tokens=5, temperature=0.0)
@@ -507,7 +507,7 @@ class TestPyveneMultiArch:
 
     def test_pythia_pyvene_steering(self, pythia_pyvene_runner):
         """Pyvene steering works for Pythia architecture."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = "The result is"
         base_out = pythia_pyvene_runner.generate(
@@ -575,7 +575,7 @@ class TestPrimaryModelsCore:
 
     def test_steering_effective(self, primary_runner):
         """Steering is effective for all primary models."""
-        from src.models.intervention_utils import steering, random_direction
+        from src.models.interventions import steering, random_direction
 
         runner, model_name = primary_runner
         prompt = "I think that"
@@ -617,7 +617,7 @@ class TestSteeringReal:
 
     def test_steering_apply_to_position(self, transformerlens_runner):
         """Position-targeted steering works."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = "One two three four five"
         d_model = transformerlens_runner.d_model
@@ -638,8 +638,7 @@ class TestSteeringReal:
 
     def test_steering_strength_scaling(self, transformerlens_runner):
         """Higher steering strength has larger effect."""
-        from src.models.interventions import create_intervention_hook
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering, create_intervention_hook
 
         prompt = "Hello"
         d_model = transformerlens_runner.d_model
@@ -686,7 +685,7 @@ class TestAblationReal:
 
     def test_zero_ablation_apply_to_all(self, transformerlens_runner):
         """Zero ablation dramatically changes output."""
-        from src.models.intervention_utils import ablation
+        from src.models.interventions import ablation
 
         prompt = "The quick brown"
 
@@ -703,7 +702,7 @@ class TestAblationReal:
 
     def test_mean_ablation_apply_to_all(self, transformerlens_runner):
         """Mean ablation with computed means."""
-        from src.models.intervention_utils import ablation
+        from src.models.interventions import ablation
 
         prompt = "Testing mean ablation"
         layer = 4
@@ -728,7 +727,7 @@ class TestAblationReal:
 
     def test_ablation_apply_to_position(self, transformerlens_runner):
         """Position-targeted ablation works."""
-        from src.models.intervention_utils import ablation
+        from src.models.interventions import ablation
 
         prompt = "One two three four"
 
@@ -753,7 +752,7 @@ class TestActivationPatchingReal:
 
     def test_patching_apply_to_all(self, transformerlens_runner):
         """Patching replaces activations with cached values."""
-        from src.models.intervention_utils import patch
+        from src.models.interventions import patch
 
         source_prompt = "Paris is the capital of"
         target_prompt = "Berlin is the capital of"
@@ -783,7 +782,7 @@ class TestActivationPatchingReal:
 
     def test_patching_apply_to_position(self, transformerlens_runner):
         """Position-targeted patching works."""
-        from src.models.intervention_utils import patch
+        from src.models.interventions import patch
 
         source_prompt = "The cat sat on"
         target_prompt = "The dog ran on"
@@ -807,7 +806,7 @@ class TestActivationPatchingReal:
 
     def test_counterfactual_patching_real(self, transformerlens_runner):
         """Full counterfactual patching workflow."""
-        from src.models.intervention_utils import patch
+        from src.models.interventions import patch
 
         clean_prompt = "The Eiffel Tower is located in"
         corrupt_prompt = "The Eiffel Tower is located in Berlin, the capital of"
@@ -871,7 +870,7 @@ class TestBatchProcessing:
 
     def test_batch_with_intervention(self, transformerlens_runner):
         """Batch generation with intervention."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompts = ["Hello there", "Good morning"]
         d_model = transformerlens_runner.d_model
@@ -896,8 +895,7 @@ class TestPatternMatchingGeneration:
 
     def test_pattern_steering_during_generation(self, transformerlens_runner):
         """Pattern-based steering triggers during generation."""
-        from src.models.interventions import create_intervention_hook
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering, create_intervention_hook
 
         # Prompt that should generate "I think" or similar
         prompt = "When asked about the weather,"
@@ -1009,8 +1007,7 @@ class TestMultipleInterventions:
 
     def test_different_layers_steer_and_ablate(self, transformerlens_runner):
         """Can apply different interventions at different layers."""
-        from src.models.interventions import create_intervention_hook
-        from src.models.intervention_utils import steering, ablation
+        from src.models.interventions import steering, ablation, create_intervention_hook
 
         prompt = "The cat sat on"
         d_model = transformerlens_runner.d_model
@@ -1071,7 +1068,7 @@ class TestLongSequences:
 
     def test_intervention_long_sequence(self, transformerlens_runner):
         """Interventions work with longer sequences."""
-        from src.models.intervention_utils import steering
+        from src.models.interventions import steering
 
         prompt = " ".join(["token"] * 50)
         d_model = transformerlens_runner.d_model
@@ -1307,7 +1304,7 @@ class TestQueryErrorHandling:
 
     def test_dataset_not_found(self, transformerlens_runner, tmp_path):
         """Raises error for missing dataset when loading by ID."""
-        from src.prompt_datasets import PromptDataset
+        from src.prompt import PromptDataset
 
         # Test that PromptDataset.load_from_id raises FileNotFoundError
         with pytest.raises(FileNotFoundError):
@@ -1361,7 +1358,7 @@ class TestPreferenceDatasetSave:
 
     def test_save_as_json_creates_json(self, tmp_path):
         """JSON file is created with correct structure."""
-        from src.models.preference_dataset import PreferenceDataset
+        from src.preference import PreferenceDataset
         from src.common.types import PreferenceSample
 
         pref_dataset = PreferenceDataset(
@@ -1403,7 +1400,7 @@ class TestPreferenceDatasetSave:
 
     def test_save_as_json_creates_internals_file(self, tmp_path):
         """Internals are saved to .pt file."""
-        from src.models.preference_dataset import PreferenceDataset
+        from src.preference import PreferenceDataset
         from src.common.types import PreferenceSample, CapturedInternals
 
         activations = {"blocks.5.hook_resid_post": torch.randn(10, 768)}
@@ -1686,7 +1683,7 @@ class TestQueryRunnerIntervention:
     ):
         """Intervention config matches sample_interventions JSON format."""
         from src.models.query_runner import QueryRunner, QueryConfig
-        from src.models.intervention_loader import load_intervention_json
+        from src.models.interventions import load_intervention_json
 
         # Load an existing sample intervention
         sample_config = load_intervention_json("steer_all")

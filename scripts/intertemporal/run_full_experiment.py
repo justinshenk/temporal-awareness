@@ -19,7 +19,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.profiler.timer import P
+from src.common.profiler import P
 
 from src.experiments.intertemporal_experiment import (
     ExperimentConfig,

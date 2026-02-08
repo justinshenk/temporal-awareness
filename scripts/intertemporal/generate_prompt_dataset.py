@@ -15,7 +15,7 @@ from pathlib import Path
 # Bootstrap path before imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.prompt_datasets import PromptDatasetGenerator, PromptDatasetConfig
+from src.prompt import PromptDatasetGenerator, PromptDatasetConfig
 from src.common.io import parse_file_path
 from src.common.paths import get_prompt_dataset_dir, get_prompt_dataset_configs_dir
 from src.data.default_configs import TEST_PROMPT_DATASET_CONFIG

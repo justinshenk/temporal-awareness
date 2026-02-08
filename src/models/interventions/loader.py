@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 
-from .interventions import Intervention, Target
-from .intervention_utils import compute_mean_activations, get_activations, random_direction
+from .core import Intervention, Target
+from .utils import compute_mean_activations, get_activations, random_direction
 
 if TYPE_CHECKING:
-    from .model_runner import ModelRunner
+    from ..model_runner import ModelRunner
 
-SAMPLE_DIR = Path(__file__).parent / "sample_interventions"
+SAMPLE_DIR = Path(__file__).parent.parent.parent / "data" / "interventions"
 
 
 def load_intervention_json(path: Union[str, Path]) -> dict:

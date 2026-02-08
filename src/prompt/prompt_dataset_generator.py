@@ -393,7 +393,7 @@ class PromptDatasetGenerator:
 
     def generate_formatting_variation_grid(self):
         if self.dataset_config.do_variation_grid:
-            formatting_variations = FormattingVariation.get_grid()
+            return FormattingVariation.get_grid()
         return [self.get_default_formatting()]
 
     def generate_grid(self):

@@ -31,10 +31,10 @@ from src.data import (
     get_preference_data_id,
 )
 from src.common.io import ensure_dir, save_json, get_timestamp
-from src.common.positions_schema import PositionsFile, PositionSpec
+from src.common.token_positions import PositionsFile, PositionSpec
 from src.viz import plot_layer_position_heatmap
 from src.experiments import run_activation_patching
-from src.profiler import P
+from src.common.profiler import P
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "out" / "activation_patching"

@@ -7,11 +7,11 @@ from typing import Optional
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from ..data import PreferenceDataset
+from ..preference import PreferenceDataset
 from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..models import ModelRunner
 from ..probes import LinearProbe, ProbeResult, prepare_samples, extract_activations
-from ..profiler import P
+from ..common.profiler import P
 
 
 def run_probe_training(

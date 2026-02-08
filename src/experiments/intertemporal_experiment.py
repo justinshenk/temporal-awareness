@@ -17,14 +17,14 @@ from ..common.device import get_device
 from ..common.io import ensure_dir, save_json, get_timestamp
 from ..common.paths import get_pref_dataset_dir, get_experiment_dir
 from ..common.token_positions import build_position_labels
-from ..data import (
+from ..preference import (
     generate_preference_data,
     PreferenceDataset,
     load_and_merge_preference_data,
 )
 from ..models import ModelRunner
 from ..viz import plot_layer_position_heatmap, plot_position_sweep
-from ..profiler import P, profile_fn
+from ..common.profiler import P, profile_fn
 
 from .activation_patching import (
     run_activation_patching,
@@ -36,8 +36,8 @@ from .activation_patching import (
 from .attribution_patching import run_attribution_patching
 from .steering import compute_steering_vector, apply_steering
 from .probe_training import run_probe_training
-from ..common.positions_schema import PositionSpec
-from ..prompt_datasets import PromptDatasetConfig
+from ..common.token_positions import PositionSpec
+from ..prompt import PromptDatasetConfig
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ class ExperimentConfig:
     dataset_config: dict
 
     # Data generation
-    max_samples: Optional[int] = 50
+    max_samples: Optional[int] = None
 
     # Patching
     max_pairs: int = 3
@@ -652,7 +652,7 @@ def run_experiment(config: ExperimentConfig) -> None:
     # Step 2: Get Preference Dataset (Prompt Dataset + Model's responses)
     pref_data = step_preference_data(config)
 
-    xlog("\n" + pref_data.to_string(without_texts=True))
+    xlog("\n" + pref_data.to_string(without_texts=False))
 
     return 0
 

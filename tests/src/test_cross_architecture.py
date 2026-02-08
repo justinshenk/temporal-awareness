@@ -14,7 +14,7 @@ import pytest
 import torch
 
 from src.models.model_runner import ModelRunner, ModelBackend
-from src.models.intervention_utils import steering, random_direction
+from src.models.interventions import steering, random_direction
 
 
 # Models for cross-architecture sanity tests (4 models covering different architectures)

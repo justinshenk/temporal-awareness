@@ -3,13 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
+from .base import PromptFormatConfig
 
 if TYPE_CHECKING:
     from ...common.types import TimeValue
 
 
 @dataclass
-class DefaultPromptFormat:
+class DefaultPromptFormat(PromptFormatConfig):
     name: str = "default_prompt_format"
 
     situation_template: str = "[situation_marker] [situation] [extra_situation]"

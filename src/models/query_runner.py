@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
-from dataclasses import asdict
-
+from ..common.io import load_json
 from ..common.types import CapturedInternals, PreferenceSample, TimeValue
-from .intervention_loader import load_intervention_from_dict
-from .interventions import Intervention
+from ..formatting.configs import DefaultPromptFormat
+from .interventions import load_intervention_from_dict, Intervention
 from .model_runner import ModelRunner
-from .preference_dataset import PreferenceDataset
-from .response_parsing import parse_choice
+from ..preference import PreferenceDataset
+from ..parsing import parse_choice
 
 
 @dataclass
@@ -89,8 +88,6 @@ class QueryConfig:
     @classmethod
     def from_json(cls, path: "Path") -> "QueryConfig":
         """Load query config from JSON file."""
-        from ..common.io import load_json
-
         data = load_json(path)
         return cls.from_dict(data)
 
@@ -156,16 +153,19 @@ class QueryRunner:
         samples = dataset.get("samples", [])
 
         # Get choice_prefix from dataset config
-        from ..formatting.configs import DefaultPromptFormat
-
         config = prompt_dataset.config
         if hasattr(config, "prompt_format_config"):
-            choice_prefix = config.prompt_format_config.const_keywords["format_choice_prefix"]
+            choice_prefix = config.prompt_format_config.const_keywords[
+                "format_choice_prefix"
+            ]
         elif isinstance(config, dict):
             choice_prefix = (
                 config.get("prompt_format", {})
                 .get("const_keywords", {})
-                .get("format_choice_prefix", DefaultPromptFormat().const_keywords["format_choice_prefix"])
+                .get(
+                    "format_choice_prefix",
+                    DefaultPromptFormat().const_keywords["format_choice_prefix"],
+                )
             )
         else:
             choice_prefix = DefaultPromptFormat().const_keywords["format_choice_prefix"]

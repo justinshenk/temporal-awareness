@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 
 if TYPE_CHECKING:
-    from ..data import PreferenceDataset
+    from ..preference import PreferenceDataset
 
 
 def get_time_horizon_months(time_horizon: Optional[dict]) -> Optional[float]:

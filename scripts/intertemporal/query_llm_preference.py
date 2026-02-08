@@ -22,7 +22,7 @@ from src.common.paths import (
 )
 from src.data.default_configs import DEFAULT_MODEL, TEST_PROMPT_DATASET_CONFIG
 from src.models import QueryRunner, QueryConfig
-from src.prompt_datasets import (
+from src.prompt import (
     PromptDatasetConfig,
     PromptDatasetGenerator,
     PromptDataset,

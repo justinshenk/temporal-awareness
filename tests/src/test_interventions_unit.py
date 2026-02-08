@@ -11,8 +11,16 @@ import numpy as np
 import pytest
 import torch
 
-from src.models.interventions import Intervention, Target, create_intervention_hook
-from src.models.intervention_utils import steering, ablation, patch, scale, interpolate
+from src.models.interventions import (
+    Intervention,
+    Target,
+    create_intervention_hook,
+    steering,
+    ablation,
+    patch,
+    scale,
+    interpolate,
+)
 
 
 # Test constants

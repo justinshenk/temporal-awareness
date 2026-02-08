@@ -1,7 +1,7 @@
 """Simple profiling timer with singleton API.
 
 Usage:
-    from src.profiler import P
+    from src.common.profiler import P
 
     # Context manager (recommended)
     with P("load_data"):

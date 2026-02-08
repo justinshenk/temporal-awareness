@@ -14,7 +14,7 @@ import torch
 
 from src.models import ModelRunner
 from src.models.model_runner import ModelBackend
-from src.models.intervention_utils import get_activations, compute_mean_activations
+from src.models.interventions import get_activations, compute_mean_activations
 
 
 TEST_MODEL = "Qwen/Qwen2.5-0.5B"

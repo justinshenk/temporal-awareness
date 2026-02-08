@@ -492,7 +492,7 @@ def _make_pref_item(sample_idx, short_label, long_label, choice, prompt="prompt"
 
 
 def _make_pref_data(items):
-    from src.data import PreferenceDataset
+    from src.preference import PreferenceDataset
     return PreferenceDataset(
         prompt_dataset_id="test", model="test", preferences=items
     )
@@ -503,7 +503,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_same_labels_true_filters_mismatched(self):
         """same_labels=True excludes pairs with different label formats."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(0, "a)", "b)", "short_term"),
             _make_pref_item(1, "(1)", "(2)", "short_term"),
@@ -520,7 +520,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_same_labels_false_allows_mismatched(self):
         """same_labels=False pairs by position regardless of labels."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(0, "a)", "b)", "short_term"),
             _make_pref_item(10, "X:", "Y:", "long_term"),
@@ -533,7 +533,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_same_labels_multiple_groups(self):
         """Pairs are drawn from multiple label groups."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(0, "a)", "b)", "short_term"),
             _make_pref_item(1, "(1)", "(2)", "short_term"),
@@ -552,7 +552,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_same_labels_respects_max_pairs(self):
         """max_pairs caps the total even with multiple groups."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(i, "a)", "b)", "short_term") for i in range(5)
         ] + [
@@ -564,7 +564,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_same_labels_no_matching_groups(self):
         """Returns empty when no label groups have both choices."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(0, "a)", "b)", "short_term"),
             _make_pref_item(10, "X:", "Y:", "long_term"),
@@ -575,7 +575,7 @@ class TestBuildPromptPairsSameLabels:
 
     def test_default_is_same_labels_true(self):
         """Default behavior filters to same labels."""
-        from src.data import build_prompt_pairs
+        from src.preference import build_prompt_pairs
         items = [
             _make_pref_item(0, "a)", "b)", "short_term"),
             _make_pref_item(10, "X:", "Y:", "long_term"),

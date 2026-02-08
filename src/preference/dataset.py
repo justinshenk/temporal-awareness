@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import torch
 
 from ..common.io import load_json, save_json, ensure_dir
-from ..common.types import SchemaClass
 from ..common.paths import get_internals_dir
-from ..common.types import PreferenceSample
-
-import json
+from ..common.types import CapturedInternals, PreferenceSample, SchemaClass
 
 
 @dataclass
@@ -103,7 +101,7 @@ class PreferenceDataset(SchemaClass):
                 p.pop("internals", None)
                 p.pop("internals_paths", None)
             if without_texts:
-                p.pop("promot_text", None)
+                p.pop("prompt_text", None)
                 p.pop("response_text", None)
         return json.dumps(d, indent=4)
 
@@ -158,9 +156,14 @@ class PreferenceDataset(SchemaClass):
         if with_internals:
             for p in preferences:
                 if p.internals_paths:
-                    # TODO(claude, implement load_internals)
-                    break  # Remove after load_internals is implemented
-                    p.internals = load_internals(p.internals_paths)
+                    file_path = p.internals_paths.get("file_path")
+                    activation_names = p.internals_paths.get("activations", [])
+                    if file_path and Path(file_path).exists():
+                        activations = torch.load(file_path, weights_only=True)
+                        p.internals = CapturedInternals(
+                            activations=activations,
+                            activation_names=activation_names,
+                        )
 
         return cls(
             prompt_dataset_id=data["prompt_dataset_id"],

@@ -24,37 +24,18 @@ from ..common.types import TimeValue, TIME_UNIT_TO_YEARS, TIME_UNITS
 # Different label pair styles
 SELECT_LABEL_STYLES: list[tuple[str, str]] = [
     ("a)", "b)"),
-    ("A)", "B)"),
-    ("a.", "b."),
-    ("A.", "B."),
     ("x)", "y)"),
-    ("X)", "Y)"),
-    ("[a]", "[b]"),
-    ("[A]", "[B]"),
     ("[i]", "[ii]"),
     ("[I]", "[II]"),
-    ("[1]", "[2]"),
-    ("(1)", "(2)"),
-    ("(a)", "(b)"),
-    ("(A)", "(B)"),
-    ("Option A:", "Option B:"),
-    ("Option 1:", "Option 2:"),
-    ("Choice A:", "Choice B:"),
-    ("Choice 1:", "Choice 2:"),
-    ("OPTION_ONE:", "OPTION_TWO:"),
-    ("FIRST:", "SECOND:"),
+    ("first_option", "second_option"),
 ]
 MORE_LABEL_STYLES: list[tuple[str, str]] = [
-    ("a)", "b)"),
     ("A)", "B)"),
     ("a.", "b."),
     ("A.", "B."),
-    ("x)", "y)"),
     ("X)", "Y)"),
     ("[a]", "[b]"),
     ("[A]", "[B]"),
-    ("[i]", "[ii]"),
-    ("[I]", "[II]"),
     ("[1]", "[2]"),
     ("(1)", "(2)"),
     ("(a)", "(b)"),
@@ -404,7 +385,7 @@ def create_variation_for_sample(
         FormattingVariation (random if enabled, default otherwise)
     """
     if enable_variations:
-        return FormattingVariation.random(allow_all=True)
+        return FormattingVariation.random()
     return FormattingVariation.default()
 
 

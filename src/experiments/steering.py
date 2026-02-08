@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..data import PreferenceDataset
+from ..preference import PreferenceDataset
 from ..models import ModelRunner
-from ..models.intervention_utils import steering
+from ..models.interventions import steering
 from ..probes import prepare_samples
 
 

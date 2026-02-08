@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 
 from ..common.types import SchemaClass, TimeValue
 from ..formatting.prompt_formats import find_prompt_format_config
