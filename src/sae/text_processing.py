@@ -3,7 +3,7 @@
 import re
 
 from src.formatting.configs import DefaultPromptFormat
-from src.models.query_runner import parse_choice
+from src.parsing import parse_choice
 
 from .activations import CHOICE_SHORT_TERM, CHOICE_LONG_TERM, CHOICE_UNKNOWN, Sentence
 

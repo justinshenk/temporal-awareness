@@ -83,21 +83,21 @@ class TestInterventionsAllGroundTruth:
             layer=5, direction=make_direction(runner.d_model), strength=10.0
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_set_ground_truth(self, runner):
         """SET/all produces valid logits."""
         prompt = "Hello"
         intervention = ablation(layer=5, values=make_values(runner.d_model))
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_mul_ground_truth(self, runner):
         """MUL/all produces valid logits."""
         prompt = "Hello"
         intervention = scale(layer=5, factor=0.5)
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_interpolate_ground_truth(self, runner):
         """INTERPOLATE/all produces valid logits."""
@@ -108,7 +108,7 @@ class TestInterventionsAllGroundTruth:
             layer=5, source_values=source, target_values=target, alpha=0.5
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 # =============================================================================
@@ -129,7 +129,7 @@ class TestInterventionsPositionGroundTruth:
             positions=[1, 2],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_set_ground_truth(self, runner):
         """SET/position produces valid logits."""
@@ -138,14 +138,14 @@ class TestInterventionsPositionGroundTruth:
             layer=5, values=make_values(runner.d_model), positions=[1, 2]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_mul_ground_truth(self, runner):
         """MUL/position produces valid logits."""
         prompt = "The quick brown fox"
         intervention = scale(layer=5, factor=0.5, positions=[1, 2])
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_interpolate_ground_truth(self, runner):
         """INTERPOLATE/position produces valid logits."""
@@ -160,7 +160,7 @@ class TestInterventionsPositionGroundTruth:
             positions=[1, 2],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 # =============================================================================
@@ -181,7 +181,7 @@ class TestInterventionsNeuronGroundTruth:
             neurons=[0, 1, 2],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_set_ground_truth(self, runner):
         """SET/neuron produces valid logits."""
@@ -190,14 +190,14 @@ class TestInterventionsNeuronGroundTruth:
             layer=5, values=make_values(runner.d_model), neurons=[0, 1, 2]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_mul_ground_truth(self, runner):
         """MUL/neuron produces valid logits."""
         prompt = "Hello"
         intervention = scale(layer=5, factor=0.5, neurons=[0, 1, 2])
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_interpolate_ground_truth(self, runner):
         """INTERPOLATE/neuron produces valid logits."""
@@ -212,7 +212,7 @@ class TestInterventionsNeuronGroundTruth:
             neurons=[0, 1, 2],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 # =============================================================================
@@ -289,19 +289,19 @@ class TestInterventionsAllGroundTransformerlens:
             layer=5, direction=make_direction(runner.d_model), strength=10.0
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_set_ground_transformerlens(self, runner):
         prompt = "Hello"
         intervention = ablation(layer=5, values=make_values(runner.d_model))
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_mul_ground_transformerlens(self, runner):
         prompt = "Hello"
         intervention = scale(layer=5, factor=0.5)
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_all_interpolate_ground_transformerlens(self, runner):
         prompt = "Hello"
@@ -311,7 +311,7 @@ class TestInterventionsAllGroundTransformerlens:
             layer=5, source_values=source, target_values=target, alpha=0.5
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 class TestInterventionsPositionGroundTransformerlens:
@@ -326,7 +326,7 @@ class TestInterventionsPositionGroundTransformerlens:
             positions=[1],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_set_ground_transformerlens(self, runner):
         prompt = "The quick brown fox"
@@ -334,13 +334,13 @@ class TestInterventionsPositionGroundTransformerlens:
             layer=5, values=make_values(runner.d_model), positions=[1]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_mul_ground_transformerlens(self, runner):
         prompt = "The quick brown fox"
         intervention = scale(layer=5, factor=0.5, positions=[1])
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_position_interpolate_ground_transformerlens(self, runner):
         prompt = "The quick brown fox"
@@ -350,7 +350,7 @@ class TestInterventionsPositionGroundTransformerlens:
             layer=5, source_values=source, target_values=target, alpha=0.5, positions=[1]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 class TestInterventionsNeuronGroundTransformerlens:
@@ -365,7 +365,7 @@ class TestInterventionsNeuronGroundTransformerlens:
             neurons=[0, 1],
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_set_ground_transformerlens(self, runner):
         prompt = "Hello"
@@ -373,13 +373,13 @@ class TestInterventionsNeuronGroundTransformerlens:
             layer=5, values=make_values(runner.d_model), neurons=[0, 1]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_mul_ground_transformerlens(self, runner):
         prompt = "Hello"
         intervention = scale(layer=5, factor=0.5, neurons=[0, 1])
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
     def test_interventions_neuron_interpolate_ground_transformerlens(self, runner):
         prompt = "Hello"
@@ -389,7 +389,7 @@ class TestInterventionsNeuronGroundTransformerlens:
             layer=5, source_values=source, target_values=target, alpha=0.5, neurons=[0, 1]
         )
         logits = runner.forward_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == runner.model.cfg.d_vocab
+        assert logits.shape[-1] == runner._model.cfg.d_vocab
 
 
 class TestInterventionsPatternGroundTransformerlens:

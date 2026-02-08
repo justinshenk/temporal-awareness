@@ -122,6 +122,21 @@ class Backend(ABC):
         ...
 
     @abstractmethod
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run forward pass and return logits.
+
+        Args:
+            input_ids: Token IDs tensor of shape [batch, seq_len]
+
+        Returns:
+            Logits tensor of shape [batch, seq_len, vocab_size]
+        """
+        ...
+
+    @abstractmethod
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,

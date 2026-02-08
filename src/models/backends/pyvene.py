@@ -312,6 +312,15 @@ class PyveneBackend(Backend):
 
         return HFKVCache()
 
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run forward pass and return logits."""
+        with torch.no_grad():
+            outputs = self.runner._model(input_ids)
+        return outputs.logits
+
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,

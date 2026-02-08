@@ -289,7 +289,7 @@ def runner(toy_hooked_model, toy_tokenizer):
     runner.backend = ModelBackend.TRANSFORMERLENS
     runner.device = "cpu"
     runner.dtype = torch.float32
-    runner.model = toy_hooked_model
+    runner._model = toy_hooked_model
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
     runner._backend = TransformerLensBackend(runner)
@@ -309,7 +309,7 @@ def runner_nnsight(toy_pytorch_model, toy_tokenizer):
     runner.backend = ModelBackend.NNSIGHT
     runner.device = "cpu"
     runner.dtype = torch.float32
-    runner.model = wrapped
+    runner._model = wrapped
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
     runner._backend = NNsightBackend(runner)
@@ -324,7 +324,7 @@ def runner_pyvene(toy_pytorch_model, toy_tokenizer):
     runner.backend = ModelBackend.PYVENE
     runner.device = "cpu"
     runner.dtype = torch.float32
-    runner.model = toy_pytorch_model
+    runner._model = toy_pytorch_model
     runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
     runner._backend = PyveneBackend(runner)

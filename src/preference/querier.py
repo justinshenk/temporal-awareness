@@ -1,4 +1,4 @@
-"""Query runner for preference datasets."""
+"""Preference querier for datasets."""
 
 from __future__ import annotations
 
@@ -8,9 +8,10 @@ from typing import Optional
 
 from ..common.io import load_json
 from ..common.types import CapturedInternals, PreferenceSample
-from .interventions import load_intervention_from_dict, Intervention
-from .model_runner import ModelRunner
-from ..preference import PreferenceDataset
+from ..models.interventions import load_intervention_from_dict, Intervention
+from ..models.model_runner import ModelRunner
+from ..models.binary_choice_runner import BinaryChoiceRunner
+from .dataset import PreferenceDataset
 from ..prompt import PromptDataset
 from ..parsing import parse_choice
 
@@ -92,22 +93,24 @@ class QueryConfig:
         return cls.from_dict(data)
 
 
-class QueryRunner:
-    """Query runner for preference datasets."""
+class PreferenceQuerier:
+    """Preference querier for datasets."""
 
     def __init__(self, config: QueryConfig):
         self.config = config
         self._model: Optional[ModelRunner] = None
+        self._choice_runner: Optional[BinaryChoiceRunner] = None
         self._model_name: Optional[str] = None
         self._min_choice_prob = 0.5
 
-    def _load_model(self, name: str) -> ModelRunner:
+    def _load_model(self, name: str) -> tuple[ModelRunner, BinaryChoiceRunner]:
         if self._model is not None and self._model_name == name:
-            return self._model
+            return self._model, self._choice_runner
         self._model = ModelRunner(model_name=name)
+        self._choice_runner = BinaryChoiceRunner(self._model)
         self._model_name = name
         self._intervention = None  # Reset intervention for new model
-        return self._model
+        return self._model, self._choice_runner
 
     def _load_intervention(self, model_runner: ModelRunner) -> Optional[Intervention]:
         """Load intervention config for the current model."""
@@ -151,7 +154,7 @@ class QueryRunner:
     ) -> PreferenceDataset:
         """Query a single dataset with a model. Returns results in memory."""
 
-        model_runner = self._load_model(model_name)
+        model_runner, choice_runner = self._load_model(model_name)
         activation_names = self._get_activation_names(model_runner)
         intervention = self._load_intervention(model_runner)
         preferences = []
@@ -193,12 +196,12 @@ class QueryRunner:
             )
             decoding_mismatch = False
 
-            # Step 1: Get choice probabilities
+            # Step 1: Get choice probabilities (via BinaryChoiceRunner)
 
-            short_prob, long_prob = model_runner.get_label_probs(
+            short_prob, long_prob = choice_runner.get_label_probs(
                 prompt_text, choice_prefix, (short_label, long_label)
             )
-            short_response, long_response = model_runner.get_canonical_response_texts(
+            short_response, long_response = choice_runner.get_canonical_response_texts(
                 choice_prefix, (short_label, long_label)
             )
 

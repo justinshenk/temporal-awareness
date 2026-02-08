@@ -1192,7 +1192,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_real_model(self, transformerlens_runner, tmp_path):
         """Full query_dataset flow with real model."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
@@ -1200,8 +1200,9 @@ class TestQueryDatasetIntegration:
         prompt_dataset = make_test_prompt_dataset("001", samples)
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1212,7 +1213,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_captures_internals(self, transformerlens_runner, tmp_path):
         """Internals are captured with correct shapes."""
-        from src.models.query_runner import QueryRunner, QueryConfig, InternalsConfig, ActivationSpec
+        from src.preference.querier import PreferenceQuerier, QueryConfig, InternalsConfig, ActivationSpec
 
         samples = [
             make_sample(1, "Choose: a) now or b) later? I choose:"),
@@ -1224,8 +1225,9 @@ class TestQueryDatasetIntegration:
             activations=[ActivationSpec(component="resid_post", layers=[0, 5])],
         )
         config = QueryConfig(internals=internals)
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1242,7 +1244,7 @@ class TestQueryDatasetIntegration:
         self, transformerlens_runner, tmp_path
     ):
         """Captured probabilities are in valid range."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Pick: a) apple or b) banana? I choose:"),
@@ -1250,8 +1252,9 @@ class TestQueryDatasetIntegration:
         prompt_dataset = make_test_prompt_dataset("003", samples)
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1265,7 +1268,7 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_multiple_samples(self, transformerlens_runner, tmp_path):
         """Multiple samples are all processed."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(i, f"Question {i}: a) yes or b) no? I select:")
@@ -1274,8 +1277,9 @@ class TestQueryDatasetIntegration:
         prompt_dataset = make_test_prompt_dataset("004", samples)
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1287,7 +1291,7 @@ class TestQueryDatasetIntegration:
 
     def test_model_caching_across_datasets(self, transformerlens_runner, tmp_path):
         """Model is reused for same model name."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Choose a) or b)? I select:"),
@@ -1296,8 +1300,9 @@ class TestQueryDatasetIntegration:
         prompt_dataset2 = make_test_prompt_dataset("006", samples)
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         # Query both datasets
@@ -1329,13 +1334,14 @@ class TestQueryErrorHandling:
 
     def test_empty_samples_list(self, transformerlens_runner, tmp_path):
         """Handles empty samples list gracefully."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         prompt_dataset = make_test_prompt_dataset("empty", [])
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1343,7 +1349,7 @@ class TestQueryErrorHandling:
 
     def test_default_choice_prefix(self, transformerlens_runner, tmp_path):
         """Default prompt_format uses 'I select:' as choice prefix."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         samples = [
             make_sample(1, "Pick a) or b)? I select:"),
@@ -1352,8 +1358,9 @@ class TestQueryErrorHandling:
         prompt_dataset = make_test_prompt_dataset("default", samples)
 
         config = QueryConfig()
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
@@ -1547,8 +1554,8 @@ class TestGetLabelProbsIntegration:
 # =============================================================================
 
 
-class TestQueryRunnerIntervention:
-    """Test intervention support in QueryRunner.
+class TestPreferenceQuerierIntervention:
+    """Test intervention support in PreferenceQuerier.
 
     Verifies that:
     - Intervention configs load correctly from query config
@@ -1566,7 +1573,7 @@ class TestQueryRunnerIntervention:
 
     def test_query_config_with_intervention_loads(self):
         """QueryConfig accepts intervention field."""
-        from src.models.query_runner import QueryConfig
+        from src.preference.querier import QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1583,8 +1590,8 @@ class TestQueryRunnerIntervention:
     def test_intervention_loads_from_runner(
         self, transformerlens_runner, sample_dataset
     ):
-        """QueryRunner loads intervention for model."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        """PreferenceQuerier loads intervention for model."""
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1595,8 +1602,9 @@ class TestQueryRunnerIntervention:
 
         config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         loaded_intervention = runner._load_intervention(transformerlens_runner)
@@ -1607,7 +1615,7 @@ class TestQueryRunnerIntervention:
 
     def test_query_with_intervention_runs(self, transformerlens_runner, sample_dataset):
         """Query with intervention completes without error."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 5,
@@ -1618,8 +1626,9 @@ class TestQueryRunnerIntervention:
 
         config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
@@ -1629,14 +1638,15 @@ class TestQueryRunnerIntervention:
 
     def test_intervention_changes_output(self, transformerlens_runner, sample_dataset):
         """Intervention produces different output than baseline."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
         import numpy as np
 
         # Run without intervention
         config_base = QueryConfig()
 
-        runner_base = QueryRunner(config_base)
+        runner_base = PreferenceQuerier(config_base)
         runner_base._model = transformerlens_runner
+        runner_base._choice_runner = transformerlens_runner
         runner_base._model_name = TEST_MODEL
         output_base = runner_base.query_dataset(sample_dataset, TEST_MODEL)
 
@@ -1655,8 +1665,9 @@ class TestQueryRunnerIntervention:
 
         config_interv = QueryConfig(intervention=intervention)
 
-        runner_interv = QueryRunner(config_interv)
+        runner_interv = PreferenceQuerier(config_interv)
         runner_interv._model = transformerlens_runner
+        runner_interv._choice_runner = transformerlens_runner
         runner_interv._model_name = TEST_MODEL
         output_interv = runner_interv.query_dataset(sample_dataset, TEST_MODEL)
 
@@ -1672,7 +1683,7 @@ class TestQueryRunnerIntervention:
         self, transformerlens_runner, sample_dataset
     ):
         """Ablation intervention works in query flow."""
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         intervention = {
             "layer": 3,
@@ -1682,8 +1693,9 @@ class TestQueryRunnerIntervention:
 
         config = QueryConfig(intervention=intervention)
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
@@ -1696,7 +1708,7 @@ class TestQueryRunnerIntervention:
         """Intervention config matches sample_interventions JSON format."""
         import json
         from pathlib import Path
-        from src.models.query_runner import QueryRunner, QueryConfig
+        from src.preference.querier import PreferenceQuerier, QueryConfig
 
         # Load an existing sample intervention
         sample_dir = Path(__file__).parent.parent.parent / "src" / "data" / "interventions"
@@ -1706,8 +1718,9 @@ class TestQueryRunnerIntervention:
         # Use it in QueryConfig
         config = QueryConfig(intervention=sample_config)
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         runner._model = transformerlens_runner
+        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
         runner._model_name = TEST_MODEL
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)

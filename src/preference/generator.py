@@ -12,9 +12,8 @@ from typing import Optional
 
 from ..common.io import ensure_dir
 from ..common.paths import get_pref_dataset_dir, get_prompt_dataset_dir
-from ..models import QueryRunner, QueryConfig
+from .querier import PreferenceQuerier, QueryConfig, InternalsConfig
 from .dataset import PreferenceDataset
-from ..models.query_runner import InternalsConfig
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
 from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
 from ..common.profiler import P
@@ -55,7 +54,7 @@ def generate_preference_data(
 
     # Query model
     with P("generate_preference_dataset"):
-        pref_data = QueryRunner(query_config).query_dataset(prompt_dataset, model)
+        pref_data = PreferenceQuerier(query_config).query_dataset(prompt_dataset, model)
 
     # Save data
     if save_data:

@@ -15,32 +15,32 @@ class NNsightBackend(Backend):
 
     def __init__(self, runner):
         super().__init__(runner)
-        if hasattr(self.runner.model, "transformer"):
-            self._layers = self.runner.model.transformer.h
+        if hasattr(self.runner._model, "transformer"):
+            self._layers = self.runner._model.transformer.h
             self._layers_path = "transformer.h"
-        elif hasattr(self.runner.model, "model") and hasattr(
-            self.runner.model.model, "layers"
+        elif hasattr(self.runner._model, "model") and hasattr(
+            self.runner._model.model, "layers"
         ):
-            self._layers = self.runner.model.model.layers
+            self._layers = self.runner._model.model.layers
             self._layers_path = "model.layers"
         else:
-            raise ValueError(f"Unknown model architecture: {type(self.runner.model)}")
+            raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
 
     def _get_layer(self, layer_idx: int):
         """Get layer module through model path (works inside trace context)."""
         if self._layers_path == "transformer.h":
-            return self.runner.model.transformer.h[layer_idx]
+            return self.runner._model.transformer.h[layer_idx]
         else:
-            return self.runner.model.model.layers[layer_idx]
+            return self.runner._model.model.layers[layer_idx]
 
     def get_tokenizer(self):
-        return self.runner.model.tokenizer
+        return self.runner._model.tokenizer
 
     def get_n_layers(self) -> int:
-        return self.runner.model.config.num_hidden_layers
+        return self.runner._model.config.num_hidden_layers
 
     def get_d_model(self) -> int:
-        return self.runner.model.config.hidden_size
+        return self.runner._model.config.hidden_size
 
     def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
         """Tokenize text into token IDs tensor."""
@@ -84,15 +84,15 @@ class NNsightBackend(Backend):
             )
 
         for _ in range(max_new_tokens):
-            with self.runner.model.trace(generated):
+            with self.runner._model.trace(generated):
                 if steering_direction is not None:
                     layer = self._get_layer(steering_layer_idx)
                     layer.output[:, :, :] += steering_direction
 
-                if hasattr(self.runner.model, "lm_head"):
-                    logits = self.runner.model.lm_head.output.save()
+                if hasattr(self.runner._model, "lm_head"):
+                    logits = self.runner._model.lm_head.output.save()
                 else:
-                    logits = self.runner.model.output.save()
+                    logits = self.runner._model.output.save()
 
             if temperature > 0:
                 probs = torch.softmax(logits[0, -1, :].detach() / temperature, dim=-1)
@@ -109,8 +109,8 @@ class NNsightBackend(Backend):
         self, prompt: str, target_tokens: list[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
         input_ids = self.tokenize(prompt)
-        with self.runner.model.trace(input_ids):
-            logits = self.runner.model.lm_head.output.save()
+        with self.runner._model.trace(input_ids):
+            logits = self.runner._model.lm_head.output.save()
 
         probs = torch.softmax(logits[0, -1, :].detach(), dim=-1)
         result = {}
@@ -124,8 +124,8 @@ class NNsightBackend(Backend):
         self, prompt: str, token_ids: list[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
         input_ids = self.tokenize(prompt)
-        with self.runner.model.trace(input_ids):
-            logits = self.runner.model.lm_head.output.save()
+        with self.runner._model.trace(input_ids):
+            logits = self.runner._model.lm_head.output.save()
 
         probs = torch.softmax(logits[0, -1, :].detach(), dim=-1)
         result = {}
@@ -163,7 +163,7 @@ class NNsightBackend(Backend):
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.add((i, component, name))
 
-        with self.runner.model.trace(input_ids):
+        with self.runner._model.trace(input_ids):
             for layer_idx in range(len(self._layers)):
                 layer = self._get_layer(layer_idx)
 
@@ -180,7 +180,7 @@ class NNsightBackend(Backend):
                         out = module.output[0].save()
                     cache[name] = out
 
-            logits = self.runner.model.lm_head.output.save()
+            logits = self.runner._model.lm_head.output.save()
 
         result_cache = {}
         for k, v in cache.items():
@@ -212,12 +212,21 @@ class NNsightBackend(Backend):
     def init_kv_cache(self):
         pass
 
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run forward pass and return logits."""
+        with self.runner._model.trace(input_ids):
+            logits = self.runner._model.lm_head.output.save()
+        return logits.detach()
+
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,
         interventions: list[Intervention],
     ) -> torch.Tensor:
-        with self.runner.model.trace(input_ids):
+        with self.runner._model.trace(input_ids):
             for intervention in interventions:
                 layer = self._layers[intervention.layer]
                 module = self._get_component_module(layer, intervention.component)
@@ -261,7 +270,7 @@ class NNsightBackend(Backend):
                                 elif mode == "mul":
                                     out[:, pos, :] *= values
 
-            logits = self.runner.model.lm_head.output.save()
+            logits = self.runner._model.lm_head.output.save()
 
         return logits.detach()
 
@@ -285,7 +294,7 @@ class NNsightBackend(Backend):
             if names_filter is None or names_filter(name):
                 layers_to_capture.add(i)
 
-        with self.runner.model.trace(input_ids):
+        with self.runner._model.trace(input_ids):
             for layer_idx in range(len(self._layers)):
                 layer = self._get_layer(layer_idx)
 
@@ -352,7 +361,7 @@ class NNsightBackend(Backend):
                         name = f"blocks.{layer_idx}.hook_resid_post"
                         cache[name] = out.save()
 
-            logits = self.runner.model.lm_head.output.save()
+            logits = self.runner._model.lm_head.output.save()
 
         result_cache = {}
         for k, v in cache.items():

@@ -441,13 +441,38 @@ class ModelRunner:
         start_pos: int,
         past_kv_cache: Any = None,
     ) -> list[float]:
-        continuation_probs = []
-        for i in range(start_pos, len(token_ids)):
-            context = self.tokenizer.decode(token_ids[:i])
-            target_tok = token_ids[i]
-            all_next_token_prob = self._backend.get_next_token_probs_by_id(
-                context, [target_tok], past_kv_cache
-            )
-            next_token_prob = all_next_token_prob.get(target_tok, 0)
-            continuation_probs.append(next_token_prob)
-        return continuation_probs
+        """Get sequence of next-token probabilities via single forward pass.
+
+        For token_ids = [t0, t1, t2, t3] and start_pos = 1:
+        Returns [P(t1|t0), P(t2|t0,t1), P(t3|t0,t1,t2)]
+
+        Uses vectorized softmax + gather instead of a per-position loop.
+
+        Args:
+            token_ids: Full token ID sequence
+            start_pos: Position from which to compute probabilities
+            past_kv_cache: Unused, kept for API compatibility
+
+        Returns:
+            List of probabilities for each token after start_pos
+        """
+        input_ids = torch.tensor([token_ids], device=self.device)
+        logits = self._backend.forward(input_ids)  # [1, seq_len, vocab_size]
+
+        # logits[0, i, :] predicts token at position i+1
+        # So to get P(t_{start_pos}), ..., P(t_{end}), we need
+        # logits at positions [start_pos-1, ..., len-2]
+        pred_logits = logits[
+            0, start_pos - 1 : len(token_ids) - 1, :
+        ]  # [n_preds, vocab]
+
+        # The ground-truth tokens we want probabilities for
+        target_ids = torch.tensor(
+            token_ids[start_pos:], device=self.device
+        )  # [n_preds]
+
+        # Softmax over vocab, then pick out the target token at each position
+        probs = torch.softmax(pred_logits, dim=-1)  # [n_preds, vocab]
+        target_probs = probs[torch.arange(len(target_ids)), target_ids]  # [n_preds]
+
+        return target_probs.tolist()

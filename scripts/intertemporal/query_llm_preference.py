@@ -21,7 +21,7 @@ from src.common.paths import (
     get_query_configs_dir,
 )
 from src.data.default_configs import DEFAULT_MODEL, TEST_PROMPT_DATASET_CONFIG
-from src.models import QueryRunner, QueryConfig
+from src.preference import PreferenceQuerier, QueryConfig
 from src.prompt import (
     PromptDatasetConfig,
     PromptDatasetGenerator,
@@ -122,7 +122,7 @@ def main() -> int:
     config, prompt_datasets, model_names = load_config(args)
     output_dir = args.output
 
-    runner = QueryRunner(config)
+    runner = PreferenceQuerier(config)
 
     for dataset_id in prompt_datasets:
         for model_name in model_names:

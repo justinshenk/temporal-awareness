@@ -222,6 +222,14 @@ class TransformerLensBackend(Backend):
             batch_size=1,
         )
 
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run forward pass and return logits."""
+        with torch.no_grad():
+            return self.runner._model(input_ids)
+
     def forward_with_intervention(
         self,
         input_ids: torch.Tensor,

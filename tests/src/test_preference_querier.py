@@ -1,22 +1,20 @@
-"""Tests for query_runner module."""
+"""Tests for preference querier module."""
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import json
 import tempfile
 
 import pytest
 import torch
 
-from src.models.query_runner import (
+from src.preference.querier import (
     ActivationSpec,
-    parse_choice,
-    QueryRunner,
+    PreferenceQuerier,
     QueryConfig,
     InternalsConfig,
 )
+from src.parsing import parse_choice
 
 
 # =============================================================================
@@ -41,7 +39,13 @@ class TestParseChoice:
             ("I select:a)", "a)", "b)", "I select:", "short_term"),
             ("I select:   b)", "a)", "b)", "I select:", "long_term"),
             # Different labels
-            ("I select: option_one", "option_one", "option_two", "I select:", "short_term"),
+            (
+                "I select: option_one",
+                "option_one",
+                "option_two",
+                "I select:",
+                "short_term",
+            ),
             ("My choice: X", "X", "Y", "My choice:", "short_term"),
             # Unknown
             ("I'm not sure", "a)", "b)", "I select:", "unknown"),
@@ -57,7 +61,10 @@ class TestParseChoice:
         assert parse_choice("I select: a.)", "a.)", "b.)", "I select:") == "short_term"
 
     def test_longer_label_priority(self):
-        assert parse_choice("I select: option_a", "option_a", "option_b", "I select:") == "short_term"
+        assert (
+            parse_choice("I select: option_a", "option_a", "option_b", "I select:")
+            == "short_term"
+        )
 
 
 # =============================================================================
@@ -95,7 +102,9 @@ class MockBackend:
         self.responses = responses or {}
         self.calls = []
 
-    def generate(self, prompt, max_new_tokens, temperature, intervention, past_kv_cache):
+    def generate(
+        self, prompt, max_new_tokens, temperature, intervention, past_kv_cache
+    ):
         self.calls.append(("generate", prompt))
         return self.responses.get("generate", "I select: a)")
 
@@ -129,14 +138,18 @@ class MockBackend:
         cache.freeze = MagicMock()
         return cache
 
-    def generate_from_cache(self, prefill_logits, frozen_kv_cache, max_new_tokens, temperature):
+    def generate_from_cache(
+        self, prefill_logits, frozen_kv_cache, max_new_tokens, temperature
+    ):
         return self.responses.get("generate", "I select: a)")
 
 
 class MockModelRunner:
     """Mock ModelRunner that uses MockBackend."""
 
-    def __init__(self, backend: MockBackend, label_probs: tuple[float, float] = (0.6, 0.4)):
+    def __init__(
+        self, backend: MockBackend, label_probs: tuple[float, float] = (0.6, 0.4)
+    ):
         self._backend = backend
         self._label_probs = label_probs
         self.device = "cpu"
@@ -157,18 +170,23 @@ class MockModelRunner:
         input_ids = self.tokenize(prompt)
         return self._backend.run_with_cache(input_ids, names_filter, past_kv_cache)
 
-    def generate_from_cache(self, prefill_logits, frozen_kv_cache, max_new_tokens=256, temperature=0.0):
-        return self._backend.generate_from_cache(prefill_logits, frozen_kv_cache, max_new_tokens, temperature)
+    def generate_from_cache(
+        self, prefill_logits, frozen_kv_cache, max_new_tokens=256, temperature=0.0
+    ):
+        return self._backend.generate_from_cache(
+            prefill_logits, frozen_kv_cache, max_new_tokens, temperature
+        )
 
     def generate(self, prompt, max_new_tokens=256, temperature=0.0, intervention=None):
-        return self._backend.generate(prompt, max_new_tokens, temperature, intervention, None)
+        return self._backend.generate(
+            prompt, max_new_tokens, temperature, intervention, None
+        )
 
     def get_label_probs(self, prompt, choice_prefix, labels, past_kv_cache=None):
         return self._label_probs
 
-    def get_canonical_response_texts(self, prompt, choice_prefix, labels):
-        base_text = prompt + choice_prefix
-        return (base_text + labels[0], base_text + labels[1])
+    def get_canonical_response_texts(self, choice_prefix, labels):
+        return (choice_prefix + labels[0], choice_prefix + labels[1])
 
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
@@ -228,7 +246,7 @@ def sample_dataset_dict():
                         },
                     },
                     "time_horizon": {"value": 6, "unit": "months"},
-                }
+                },
             },
             {
                 "sample_idx": 2,
@@ -247,7 +265,7 @@ def sample_dataset_dict():
                         },
                     },
                     "time_horizon": None,
-                }
+                },
             },
         ],
     }
@@ -257,6 +275,7 @@ def sample_dataset_dict():
 def sample_prompt_dataset(sample_dataset_dict):
     """Create a PromptDataset for testing."""
     from src.prompt import PromptDataset
+
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir) / "test_dataset_001.json"
         with open(path, "w") as f:
@@ -268,10 +287,11 @@ class TestQueryDataset:
     def test_loads_dataset_and_queries_all_samples(self, sample_prompt_dataset):
         """query_dataset processes all samples in dataset."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend({"generate": "I select: a)"})
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -283,10 +303,11 @@ class TestQueryDataset:
     def test_extracts_choice_correctly(self, sample_prompt_dataset):
         """Choices are parsed from model responses."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -300,10 +321,11 @@ class TestQueryDataset:
             activations=[ActivationSpec(component="resid_post", layers=[8, 14])],
         )
         config = QueryConfig(internals=internals)
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -321,10 +343,11 @@ class TestQueryDataset:
     def test_subsample_reduces_samples(self, sample_prompt_dataset):
         """subsample < 1.0 processes fewer samples."""
         config = QueryConfig(subsample=0.5, internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -335,12 +358,13 @@ class TestQueryDataset:
     def test_uses_choice_prefix_from_dataset(self, sample_prompt_dataset):
         """Choice prefix is extracted from dataset config."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         # Response has correct label but wrong prefix - should be unknown
         backend = MockBackend({"generate": "My choice: a)"})
         # Use low probabilities so parsing logic is used instead of probability-based choice
         runner._model = MockModelRunner(backend, label_probs=(0.3, 0.2))
+        runner._choice_runner = runner._model
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -351,11 +375,12 @@ class TestQueryDataset:
     def test_long_term_choice_extracted(self, sample_prompt_dataset):
         """Long term choices are correctly identified."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend({"generate": "I select: b)"})
         # Use inverted probabilities so long_term (second label) has higher prob
         runner._model = MockModelRunner(backend, label_probs=(0.4, 0.6))
+        runner._choice_runner = runner._model
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -365,10 +390,11 @@ class TestQueryDataset:
     def test_probabilities_captured(self, sample_prompt_dataset):
         """Choice probabilities are stored in output."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -381,10 +407,11 @@ class TestQueryDataset:
     def test_response_stored(self, sample_prompt_dataset):
         """Raw response is stored in preference item."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend({"generate": "I select: a) for good reasons"})
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -394,10 +421,11 @@ class TestQueryDataset:
     def test_time_horizon_extracted(self, sample_prompt_dataset):
         """Time horizon from sample is preserved."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -410,10 +438,11 @@ class TestQueryDataset:
     def test_labels_stored(self, sample_prompt_dataset):
         """Short and long term labels are stored."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -425,10 +454,11 @@ class TestQueryDataset:
     def test_sample_idx_preserved(self, sample_prompt_dataset):
         """Sample IDs from dataset are preserved."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -439,12 +469,13 @@ class TestQueryDataset:
     def test_unknown_choice_probability_handling(self, sample_prompt_dataset):
         """Unknown choices use max/min of probabilities."""
         config = QueryConfig(internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         # Response that won't match any label
         backend = MockBackend({"generate": "I cannot decide"})
         # Use low probabilities so parsing logic is used
         runner._model = MockModelRunner(backend, label_probs=(0.3, 0.2))
+        runner._choice_runner = runner._model
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -458,10 +489,11 @@ class TestQueryDataset:
     def test_skip_generation_infers_choice_from_probs(self, sample_prompt_dataset):
         """skip_generation=True skips generate() and infers choice from probs."""
         config = QueryConfig(skip_generation=True, internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         backend = MockBackend()
         runner._model = MockModelRunner(backend)
+        runner._choice_runner = runner._model  # MockModelRunner implements BinaryChoiceRunner API
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -478,18 +510,21 @@ class TestQueryDataset:
     def test_skip_generation_long_term_when_higher_prob(self, sample_prompt_dataset):
         """skip_generation correctly picks long_term when it has higher prob."""
         config = QueryConfig(skip_generation=True, internals=InternalsConfig.empty())
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
 
         # Mock returns (0.3, 0.7) - long_term has higher prob
         class LongTermBackend(MockBackend):
             pass
 
         class LongTermMockRunner(MockModelRunner):
-            def get_label_probs(self, prompt, choice_prefix, labels, past_kv_cache=None):
+            def get_label_probs(
+                self, prompt, choice_prefix, labels, past_kv_cache=None
+            ):
                 return (0.3, 0.7)  # long_term wins
 
         backend = LongTermBackend()
         runner._model = LongTermMockRunner(backend)
+        runner._choice_runner = runner._model
         runner._model_name = "test"
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
@@ -501,7 +536,7 @@ class TestQueryDataset:
 
 
 # =============================================================================
-# QueryRunner Config Tests
+# PreferenceQuerier Config Tests
 # =============================================================================
 
 
@@ -509,12 +544,15 @@ class TestQueryConfig:
     def test_load_config_from_json(self):
         """Config loads correctly from JSON file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump({
-                "max_new_tokens": 128,
-                "temperature": 0.5,
-                "subsample": 0.8,
-                "internals": {"resid_post": {"layers": [8]}},
-            }, f)
+            json.dump(
+                {
+                    "max_new_tokens": 128,
+                    "temperature": 0.5,
+                    "subsample": 0.8,
+                    "internals": {"resid_post": {"layers": [8]}},
+                },
+                f,
+            )
             f.flush()
 
             config = QueryConfig.from_json(Path(f.name))
@@ -531,7 +569,7 @@ class TestQueryConfig:
         )
         config = QueryConfig(internals=internals)
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         # Create a mock model runner for the test
         mock_runner = MockModelRunner(MockBackend())
         names = runner._get_activation_names(mock_runner)

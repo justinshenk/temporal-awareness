@@ -1,13 +1,13 @@
-"""Tests for QueryRunner pipeline with production model.
+"""Tests for PreferenceQuerier pipeline with production model.
 
-These tests verify QueryRunner works end-to-end with Qwen2.5-1.5B.
+These tests verify PreferenceQuerier works end-to-end with Qwen2.5-1.5B.
 Marked slow because they require model loading.
 """
 
 import pytest
 
 from src.prompt import PromptDatasetGenerator, PromptDatasetConfig
-from src.models import QueryRunner, QueryConfig
+from src.preference import PreferenceQuerier, QueryConfig
 from src.common.paths import get_prompt_dataset_configs_dir
 
 
@@ -16,7 +16,7 @@ TEST_MODEL = "Qwen/Qwen2.5-1.5B"
 
 @pytest.mark.slow
 class TestQueryPipeline:
-    """Tests for QueryRunner with production model."""
+    """Tests for PreferenceQuerier with production model."""
 
     @pytest.fixture
     def setup_dataset(self, tmp_path):
@@ -45,7 +45,7 @@ class TestQueryPipeline:
         assert config.subsample == 1.0
 
     def test_query_runner_queries_model(self, setup_dataset):
-        """QueryRunner queries model successfully."""
+        """PreferenceQuerier queries model successfully."""
         dataset = setup_dataset
 
         config = QueryConfig(
@@ -53,7 +53,7 @@ class TestQueryPipeline:
             subsample=1.0,
         )
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         output = runner.query_dataset(dataset, TEST_MODEL)
 
         assert output.model == TEST_MODEL
@@ -69,7 +69,7 @@ class TestQueryPipeline:
             subsample=1.0,
         )
 
-        runner = QueryRunner(config)
+        runner = PreferenceQuerier(config)
         output = runner.query_dataset(dataset, TEST_MODEL)
 
         for pref in output.preferences:
