@@ -22,7 +22,7 @@ class TestQueryPipeline:
     def setup_dataset(self, tmp_path):
         """Generate a minimal dataset for testing."""
         config_path = get_prompt_dataset_configs_dir() / "test_minimal.json"
-        cfg = PromptDatasetConfig.load_from_json(config_path)
+        cfg = PromptDatasetConfig.from_json(config_path)
 
         generator = PromptDatasetGenerator(cfg)
         dataset = generator.generate()

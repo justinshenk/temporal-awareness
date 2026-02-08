@@ -256,7 +256,7 @@ def sample_prompt_dataset(sample_dataset_dict):
         path = Path(tmpdir) / "test_dataset_001.json"
         with open(path, "w") as f:
             json.dump(sample_dataset_dict, f)
-        yield PromptDataset.load_from_json(path)
+        yield PromptDataset.from_json(path)
 
 
 class TestQueryDataset:
@@ -382,7 +382,7 @@ class TestQueryDataset:
 
         output = runner.query_dataset(sample_prompt_dataset, "test")
 
-        assert output.preferences[0].response == "I select: a) for good reasons"
+        assert output.preferences[0].response_text == "I select: a) for good reasons"
 
     def test_time_horizon_extracted(self, sample_prompt_dataset):
         """Time horizon from sample is preserved."""
@@ -465,7 +465,7 @@ class TestQueryDataset:
         # Choice should be inferred from probs (0.6, 0.4) -> short_term wins
         pref = output.preferences[0]
         assert pref.choice == "short_term"
-        assert pref.response == ""  # No response when skipping generation
+        assert pref.response_text == ""  # No response when skipping generation
 
     def test_skip_generation_long_term_when_higher_prob(self, sample_prompt_dataset):
         """skip_generation correctly picks long_term when it has higher prob."""

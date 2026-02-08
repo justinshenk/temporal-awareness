@@ -117,11 +117,6 @@ class SchemaClass:
         data = load_json(path)
         return cls.from_dict(data)
 
-    @classmethod
-    def load_from_json(cls, path: Path):
-        """Alias for from_json (backwards compatibility)."""
-        return cls.from_json(path)
-
     def __setattr__(self, name, value):
         super().__setattr__(name, copy.deepcopy(value))
 
@@ -392,8 +387,3 @@ class PreferenceSample(SchemaClass):
 
     internals: Optional[CapturedInternals] = None
     internals_paths: Optional[dict] = None
-
-    @property
-    def response(self) -> str:
-        """Alias for response_text (backwards compatibility)."""
-        return self.response_text

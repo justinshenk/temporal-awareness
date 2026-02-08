@@ -66,7 +66,7 @@ def extract_activations(
         print(f"  Extracting batch {batch_start + 1}-{batch_end}/{n_samples}...")
 
         # Tokenize all samples in batch
-        batch_texts = [s.prompt_text + (s.response or "") for s in batch_samples]
+        batch_texts = [s.prompt_text + (s.response_text or "") for s in batch_samples]
         batch_tokens = []
         batch_token_strs = []
         batch_resolved = []

@@ -1194,7 +1194,7 @@ class TestQueryDatasetIntegration:
 
         assert len(output.preferences) == 1
         assert output.preferences[0].choice in ["short_term", "long_term", "unknown"]
-        assert len(output.preferences[0].response) > 0
+        assert len(output.preferences[0].response_text) > 0
 
     def test_query_dataset_captures_internals(self, transformerlens_runner, tmp_path):
         """Internals are captured with correct shapes."""
@@ -1396,7 +1396,7 @@ class TestPreferenceDatasetSave:
         with open(json_path) as f:
             data = json.load(f)
 
-        assert data["dataset_id"] == "test_ds"
+        assert data["prompt_dataset_id"] == "test_ds"
         assert data["model"] == "test/model-name"
         assert len(data["preferences"]) == 1
         assert data["preferences"][0]["choice"] == "short_term"
@@ -1616,7 +1616,7 @@ class TestQueryRunnerIntervention:
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
         assert len(output.preferences) == 1
-        assert output.preferences[0].response is not None
+        assert output.preferences[0].response_text is not None
 
     def test_intervention_changes_output(self, transformerlens_runner, sample_dataset):
         """Intervention produces different output than baseline."""
@@ -1652,8 +1652,8 @@ class TestQueryRunnerIntervention:
         output_interv = runner_interv.query_dataset(sample_dataset, TEST_MODEL)
 
         # Responses should differ (strong steering should change output)
-        base_response = output_base.preferences[0].response
-        interv_response = output_interv.preferences[0].response
+        base_response = output_base.preferences[0].response_text
+        interv_response = output_interv.preferences[0].response_text
 
         # They may occasionally be the same, so we just verify we got valid outputs
         assert len(base_response) > 0

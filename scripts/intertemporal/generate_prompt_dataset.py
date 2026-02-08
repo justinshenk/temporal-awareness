@@ -87,7 +87,7 @@ def parse_args(args):
             if not filepath.exists():
                 raise FileNotFoundError(f"Dataset config not found: {filepath}")
             # Load dataset config
-            config = PromptDatasetConfig.load_from_json(filepath)
+            config = PromptDatasetConfig.from_json(filepath)
             runs.append(config)
             print(f"Loaded config: {config.name}")
 

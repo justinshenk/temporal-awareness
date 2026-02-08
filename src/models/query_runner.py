@@ -189,8 +189,7 @@ class QueryRunner:
             if (i + 1) % 10 == 0:
                 print(f"  {i + 1}/{len(samples)}")
 
-            # Backward compatibility: handle both sample_id and sample_idx
-            sample_idx = sample.get("sample_idx", sample.get("sample_id"))
+            sample_idx = sample["sample_idx"]
             prompt_text = sample["prompt"]["text"]
             pair = sample["prompt"]["preference_pair"]
             short_op = pair["short_term"]

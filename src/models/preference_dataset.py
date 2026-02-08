@@ -26,7 +26,7 @@ class PreferenceDataset(SchemaClass):
 
     @property
     def dataset_id(self) -> str:
-        """Alias for prompt_dataset_id (for backwards compatibility)."""
+        """Alias for prompt_dataset_id."""
         return self.prompt_dataset_id
 
     @staticmethod
@@ -51,8 +51,8 @@ class PreferenceDataset(SchemaClass):
     def get_filename(self) -> str:
         """Get the filename for this preference dataset.
 
-        Returns {prefix}_{prompt_dataset_name} if prompt_dataset_name is set,
-        otherwise falls back to {prefix} for compatibility.
+        Returns {prefix}_{prompt_dataset_name}.json if prompt_dataset_name is set,
+        otherwise returns {prefix}.json.
         """
         prefix = self.get_prefix()
         if self.prompt_dataset_name:
@@ -85,7 +85,7 @@ class PreferenceDataset(SchemaClass):
             preferences_data.append(pref_dict)
 
         data = {
-            "dataset_id": self.prompt_dataset_id,
+            "prompt_dataset_id": self.prompt_dataset_id,
             "model": self.model,
             "prompt_dataset_name": self.prompt_dataset_name,
             "preferences": preferences_data,
@@ -136,13 +136,12 @@ class PreferenceDataset(SchemaClass):
         save_json(data, path)
 
     @classmethod
-    def load_from_json(
-        cls, path: str, with_internals: bool = True
-    ) -> PreferenceDataset:
+    def from_json(cls, path: str, with_internals: bool = True) -> PreferenceDataset:
         """Load preference dataset from JSON file.
 
         Args:
             path: Path to JSON file
+            with_internals: Whether to load internals from .pt files
 
         Returns:
             PreferenceDataset with loaded preferences
@@ -152,9 +151,6 @@ class PreferenceDataset(SchemaClass):
 
         preferences = []
         for p in data.get("preferences", []):
-            # Backward compatibility: rename sample_id -> sample_idx
-            if "sample_id" in p and "sample_idx" not in p:
-                p["sample_idx"] = p.pop("sample_id")
             preferences.append(PreferenceSample(**p))
 
         if with_internals:
@@ -165,7 +161,7 @@ class PreferenceDataset(SchemaClass):
                     p.internals = load_internals(p.internals_paths)
 
         return cls(
-            prompt_dataset_id=data["dataset_id"],
+            prompt_dataset_id=data["prompt_dataset_id"],
             model=data["model"],
             preferences=preferences,
             prompt_dataset_name=data.get("prompt_dataset_name", ""),

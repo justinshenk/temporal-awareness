@@ -36,8 +36,8 @@ def find_preference_files(prefix: str, directory: Optional[Path] = None) -> list
 def find_preference_data(name: str, directory: Optional[Path] = None) -> Optional[Path]:
     """Find preference data file by name or prefix.
 
-    First tries exact match, then falls back to glob pattern for backwards
-    compatibility with new naming convention.
+    First tries exact match, then falls back to glob pattern to find files
+    with prompt_dataset_name suffix.
 
     Args:
         name: Preference dataset name (e.g., "{dataset_id}_{model_name}")
@@ -79,7 +79,7 @@ def load_and_merge_preference_data(
     if not files:
         return None
 
-    datasets = [PreferenceDataset.load_from_json(f) for f in files]
+    datasets = [PreferenceDataset.from_json(f) for f in files]
     if len(datasets) == 1:
         return datasets[0]
 
@@ -140,8 +140,8 @@ def get_full_text(pref: PreferenceSample, include_response: bool = True) -> str:
     Returns:
         Combined text (prompt + optional response)
     """
-    if include_response and pref.response:
-        return pref.prompt_text + pref.response
+    if include_response and pref.response_text:
+        return pref.prompt_text + pref.response_text
     return pref.prompt_text
 
 

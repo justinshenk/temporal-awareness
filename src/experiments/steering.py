@@ -55,7 +55,7 @@ def compute_steering_vector(
     # Extract the residual stream activation at the target (layer, position) for each sample
     acts_list = []
     for sample in samples:
-        text = sample.prompt_text + (sample.response or "")
+        text = sample.prompt_text + (sample.response_text or "")
         with torch.no_grad():
             # cache[hook_name] shape: [batch, seq_len, d_model]
             _, cache = runner.run_with_cache(text, names_filter=names_filter)

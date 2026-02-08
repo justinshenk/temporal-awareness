@@ -47,7 +47,7 @@ class PromptDataset:
         save_json(data, path)
 
     @classmethod
-    def load_from_json(cls, path: str) -> "PromptDataset":
+    def from_json(cls, path: str) -> "PromptDataset":
         """Load prompt dataset from JSON file.
 
         Args:
@@ -106,11 +106,9 @@ class PromptDataset:
                 text=prompt_data["text"],
             )
 
-            # Backward compatibility: handle both sample_id and sample_idx
-            idx = s.get("sample_idx", s.get("sample_id"))
             samples.append(
                 PromptSample(
-                    sample_idx=idx,
+                    sample_idx=s["sample_idx"],
                     prompt=prompt,
                 )
             )
@@ -150,7 +148,7 @@ class PromptDataset:
         pattern = f"*_{dataset_id}.json"
         matches = list(directory.glob(pattern))
         if matches:
-            return cls.load_from_json(matches[0])
+            return cls.from_json(matches[0])
 
         raise FileNotFoundError(
             f"No prompt dataset found with ID '{dataset_id}' in {directory}"

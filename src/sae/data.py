@@ -24,7 +24,7 @@ def load_all_scenario_configs(
     configs = []
     for path in sorted(scenario_files):
         try:
-            dataset_config = PromptDatasetConfig.load_from_json(path)
+            dataset_config = PromptDatasetConfig.from_json(path)
             configs.append((path, dataset_config))
         except Exception as e:
             print(f"Warning: Failed to load scenario {path.name}: {e}")
