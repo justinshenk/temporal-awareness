@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 
 
 load_dotenv()
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+CONFIG_PATH = Path(__file__).parent / "config"
 
 
 def ensure_mech_interp_toolkit_installed() -> None:
@@ -118,7 +118,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config(CONFIG_PATH / args.config)
 
     model_name: str = config["setup"]["model"]
     seed: int = config["setup"]["seed"]
