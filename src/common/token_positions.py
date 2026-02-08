@@ -392,24 +392,6 @@ class PositionsFile:
             component=data.get("component"),
         )
 
-    def filter_by_score(self, min_score: float) -> "PositionsFile":
-        """Return new PositionsFile with positions above threshold."""
-        filtered = [p for p in self.positions if p.score >= min_score]
-        return PositionsFile(
-            model=self.model,
-            method=self.method,
-            positions=filtered,
-            dataset_id=self.dataset_id,
-            threshold=min_score,
-            component=self.component,
-        )
-
-    def get_positions(self, layer: Optional[int] = None) -> list[int]:
-        """Get position indices, optionally filtered by layer."""
-        if layer is None:
-            return [p.position for p in self.positions]
-        return [p.position for p in self.positions if p.layer is None or p.layer == layer]
-
     def get_top_n(self, n: int) -> list[PositionSpec]:
         """Get top N positions by score."""
         sorted_pos = sorted(self.positions, key=lambda p: p.score, reverse=True)

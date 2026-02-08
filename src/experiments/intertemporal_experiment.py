@@ -36,7 +36,6 @@ from .activation_patching import (
 from .attribution_patching import run_attribution_patching
 from .steering import compute_steering_vector, apply_steering
 from .probe_training import run_probe_training
-from ..common.token_positions import PositionSpec
 from ..prompt import PromptDatasetConfig
 
 

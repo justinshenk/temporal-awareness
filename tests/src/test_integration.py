@@ -1682,11 +1682,14 @@ class TestQueryRunnerIntervention:
         self, transformerlens_runner, sample_dataset
     ):
         """Intervention config matches sample_interventions JSON format."""
+        import json
+        from pathlib import Path
         from src.models.query_runner import QueryRunner, QueryConfig
-        from src.models.interventions import load_intervention_json
 
         # Load an existing sample intervention
-        sample_config = load_intervention_json("steer_all")
+        sample_dir = Path(__file__).parent.parent.parent / "src" / "data" / "interventions"
+        with open(sample_dir / "steer_all.json") as f:
+            sample_config = json.load(f)
 
         # Use it in QueryConfig
         config = QueryConfig(intervention=sample_config)

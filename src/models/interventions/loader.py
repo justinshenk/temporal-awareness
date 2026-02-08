@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
@@ -15,23 +14,6 @@ if TYPE_CHECKING:
     from ..model_runner import ModelRunner
 
 SAMPLE_DIR = Path(__file__).parent.parent.parent / "data" / "interventions"
-
-
-def load_intervention_json(path: Union[str, Path]) -> dict:
-    """Load JSON from file or sample name."""
-    if isinstance(path, str) and not path.endswith(".json"):
-        path = SAMPLE_DIR / f"{path}.json"
-    path = Path(path)
-
-    if not path.exists():
-        sample_path = SAMPLE_DIR / path.name
-        if sample_path.exists():
-            path = sample_path
-        else:
-            raise FileNotFoundError(f"Config not found: {path}")
-
-    with open(path) as f:
-        return json.load(f)
 
 
 def load_intervention_from_dict(

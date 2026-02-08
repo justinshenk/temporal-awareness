@@ -8,7 +8,7 @@ IMPORTANT DESIGN PRINCIPLES (do not violate):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -19,6 +19,11 @@ from ..models.interventions import patch
 if TYPE_CHECKING:
     from ..models import ModelRunner
     from .patching import PatchingMetric
+
+
+def _attribution_filter(n: str) -> bool:
+    """Filter for capturing resid, attn, and mlp activations."""
+    return "hook_resid_post" in n or "hook_attn_out" in n or "hook_mlp_out" in n
 
 
 def _build_pos_arrays(
@@ -162,16 +167,13 @@ def compute_eap(
     """
     n_layers = runner.n_layers
 
-    def all_filter(n):
-        return "hook_resid_post" in n or "hook_attn_out" in n or "hook_mlp_out" in n
-
     with P("eap_clean_cache"):
         with torch.no_grad():
-            _, clean_cache = runner.run_with_cache(clean_text, names_filter=all_filter)
+            _, clean_cache = runner.run_with_cache(clean_text, names_filter=_attribution_filter)
 
     with P("eap_corr_cache"):
         corr_logits, corr_cache = runner.run_with_cache_and_grad(
-            corrupted_text, names_filter=all_filter
+            corrupted_text, names_filter=_attribution_filter
         )
 
     with P("eap_grads"):
@@ -263,13 +265,10 @@ def compute_eap_ig(
     """
     n_layers = runner.n_layers
 
-    def all_filter(n):
-        return "hook_resid_post" in n or "hook_attn_out" in n or "hook_mlp_out" in n
-
     with P("eap_ig_cache"):
         with torch.no_grad():
-            _, clean_cache = runner.run_with_cache(clean_text, names_filter=all_filter)
-            _, corr_cache_base = runner.run_with_cache(corrupted_text, names_filter=all_filter)
+            _, clean_cache = runner.run_with_cache(clean_text, names_filter=_attribution_filter)
+            _, corr_cache_base = runner.run_with_cache(corrupted_text, names_filter=_attribution_filter)
 
     clean_len = clean_cache[f"blocks.0.hook_resid_post"].shape[1]
     corr_len = corr_cache_base[f"blocks.0.hook_resid_post"].shape[1]

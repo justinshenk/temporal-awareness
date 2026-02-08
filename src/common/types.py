@@ -226,12 +226,6 @@ class TimeValue(SchemaClass):
         """Convert to years."""
         return self.to_months() / 12
 
-    def to_list(self) -> list:
-        """Convert to [value, unit] list format for JSON serialization."""
-        # Use int if whole number
-        val = int(self.value) if self.value == int(self.value) else self.value
-        return [val, self.unit]
-
     def __str__(self) -> str:
         # Format value nicely (no decimal for whole numbers)
         if self.value == int(self.value):
