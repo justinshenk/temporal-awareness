@@ -1,25 +1,25 @@
 {
     "prompt_dataset_id": "63f33f5b9d70c675c0e8a9efd9c46c43",
-    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
     "prompt_dataset_name": "default_test",
     "preferences": [
         {
             "sample_idx": 0,
-            "choice": "unknown",
-            "choice_prob": 0.3037109375,
-            "alt_prob": 0.06365966796875,
+            "choice": "long_term",
+            "choice_prob": 0.42437649,
+            "alt_prob": 0.23856175,
             "short_term_label": "b)",
             "long_term_label": "a)",
             "short_term_reward": 2500,
             "long_term_reward": 38730,
-            "short_term_time": 7.0,
-            "long_term_time": 207.60000000000002,
+            "short_term_time": 0.58333333,
+            "long_term_time": 17.3,
             "time_horizon": null,
-            "response_text": "I select option a) 38,730 housing units in 17.3 years.\nMy reasoning: This option is preferable because it provides a substantial amount of housing units over a relatively short period of time. The 17.3 years is a reasonable timeframe for a city to develop a significant number of housing units, which can be beneficial for both the city's economic growth and the well-being of its residents. Additionally, the 38,730 units are a substantial increase from the current 17,000 units, indicating a significant investment in housing development. This option also aligns with the city's long-term planning goals and the need for adequate housing to support a growing population.<|im_end|>",
+            "response_text": "I select: a) 38,730 housing units in 17.3 years.\n\nMy reasoning: Option a) offers a significantly larger number of housing units over a longer period, which is crucial for addressing the housing needs of the city's growing population. The 17.3-year timeframe allows for a more gradual and sustainable development process, ensuring that the city can accommodate its residents over a longer period. Additionally, the larger number of units provides a more equitable distribution of housing, reducing the strain on the city's infrastructure and ensuring that more people have access to housing.<|im_end|>",
             "prompt_text": "SITUATION: Plan for housing development in the city. \nTASK: You, the city administration, are tasked to decide between options:\na) 38,730 housing units in 17.3 years\nb) 2,500 housing units in 7 months\nCONSIDER: Think deeply about which option is preferable.\nACTION: Select one of the two options, and Provide reasoning on why this choice was made.\nFORMAT: Respond in this format:\nI select: <a) or b)>.\nMy reasoning: <reasoning in 1-3 sentences>",
             "internals": null,
             "internals_paths": {
-                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-0.5B-Instruct_sample_0.pt",
+                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-1.5B-Instruct_sample_0.pt",
                 "activations": [
                     "blocks.0.hook_resid_pre",
                     "blocks.0.hook_resid_post",
@@ -116,30 +116,44 @@
                     "blocks.23.hook_resid_pre",
                     "blocks.23.hook_resid_post",
                     "blocks.23.hook_attn_out",
-                    "blocks.23.hook_mlp_out"
+                    "blocks.23.hook_mlp_out",
+                    "blocks.24.hook_resid_pre",
+                    "blocks.24.hook_resid_post",
+                    "blocks.24.hook_attn_out",
+                    "blocks.24.hook_mlp_out",
+                    "blocks.25.hook_resid_pre",
+                    "blocks.25.hook_resid_post",
+                    "blocks.25.hook_attn_out",
+                    "blocks.25.hook_mlp_out",
+                    "blocks.26.hook_resid_pre",
+                    "blocks.26.hook_resid_post",
+                    "blocks.26.hook_attn_out",
+                    "blocks.26.hook_mlp_out",
+                    "blocks.27.hook_resid_pre",
+                    "blocks.27.hook_resid_post",
+                    "blocks.27.hook_attn_out",
+                    "blocks.27.hook_mlp_out"
                 ]
-            }
+            },
+            "decoding_mismatch": true
         },
         {
             "sample_idx": 1,
-            "choice": "unknown",
-            "choice_prob": 0.37548828125,
-            "alt_prob": 0.0462646484375,
+            "choice": "long_term",
+            "choice_prob": 0.32830524,
+            "alt_prob": 0.23282111,
             "short_term_label": "a)",
             "long_term_label": "b)",
             "short_term_reward": 2500,
             "long_term_reward": 38730,
-            "short_term_time": 7.0,
-            "long_term_time": 207.60000000000002,
-            "time_horizon": {
-                "value": 1,
-                "unit": "months"
-            },
-            "response_text": "I select option b) 38,730 housing units in 17.3 years.\nMy reasoning: This option is preferable because it provides a significant increase in housing capacity over a much longer period. The 17.3 years allows for the development of a substantial number of housing units, which is crucial for addressing the growing demand for housing in the city. Additionally, the 38,730 units are a substantial increase from the 2,500 units in option a), making it a more realistic and achievable goal for the city administration to achieve.<|im_end|>",
+            "short_term_time": 0.58333333,
+            "long_term_time": 17.3,
+            "time_horizon": 0.08333333,
+            "response_text": "I select: b) 38,730 housing units in 17.3 years.\n\nMy reasoning: The goal is to plan for housing development in the city, and the primary concern is the outcome in 1 month. Option b offers a significantly higher number of housing units (38,730) over a longer period (17.3 years), which provides a more substantial and immediate benefit. While option a offers a larger total number of units (2,500), the time frame is much shorter (7 months), which may not provide the same level of immediate satisfaction or benefit. Therefore, option b is preferable as it offers a more substantial and immediate outcome.<|im_end|>",
             "prompt_text": "SITUATION: Plan for housing development in the city. \nTASK: You, the city administration, are tasked to decide between options:\na) 2,500 housing units in 7 months\nb) 38,730 housing units in 17.3 years\nCONSIDER: Think deeply about which option is preferable.\nYou are primarily concerned about outcome in 1 months.\nACTION: Select one of the two options, and Provide reasoning on why this choice was made.\nFORMAT: Respond in this format:\nI select: <a) or b)>.\nMy reasoning: <reasoning in 1-3 sentences>",
             "internals": null,
             "internals_paths": {
-                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-0.5B-Instruct_sample_1.pt",
+                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-1.5B-Instruct_sample_1.pt",
                 "activations": [
                     "blocks.0.hook_resid_pre",
                     "blocks.0.hook_resid_post",
@@ -236,30 +250,44 @@
                     "blocks.23.hook_resid_pre",
                     "blocks.23.hook_resid_post",
                     "blocks.23.hook_attn_out",
-                    "blocks.23.hook_mlp_out"
+                    "blocks.23.hook_mlp_out",
+                    "blocks.24.hook_resid_pre",
+                    "blocks.24.hook_resid_post",
+                    "blocks.24.hook_attn_out",
+                    "blocks.24.hook_mlp_out",
+                    "blocks.25.hook_resid_pre",
+                    "blocks.25.hook_resid_post",
+                    "blocks.25.hook_attn_out",
+                    "blocks.25.hook_mlp_out",
+                    "blocks.26.hook_resid_pre",
+                    "blocks.26.hook_resid_post",
+                    "blocks.26.hook_attn_out",
+                    "blocks.26.hook_mlp_out",
+                    "blocks.27.hook_resid_pre",
+                    "blocks.27.hook_resid_post",
+                    "blocks.27.hook_attn_out",
+                    "blocks.27.hook_mlp_out"
                 ]
-            }
+            },
+            "decoding_mismatch": true
         },
         {
             "sample_idx": 2,
-            "choice": "unknown",
-            "choice_prob": 0.3876953125,
-            "alt_prob": 0.06134033203125,
-            "short_term_label": "b)",
-            "long_term_label": "a)",
+            "choice": "long_term",
+            "choice_prob": 0.44228411,
+            "alt_prob": 0.18883276,
+            "short_term_label": "a)",
+            "long_term_label": "b)",
             "short_term_reward": 2500,
             "long_term_reward": 38730,
-            "short_term_time": 7.0,
-            "long_term_time": 207.60000000000002,
-            "time_horizon": {
-                "value": 50,
-                "unit": "years"
-            },
-            "response_text": "I select option a) 38,730 housing units in 17.3 years.\nMy reasoning: This option is preferable because it provides a substantial amount of housing units over a long period of time, which is crucial for urban development and population growth. The 17.3 years spanned by this option allows for a significant increase in the number of housing units, which can lead to a more diverse and vibrant urban environment. Additionally, the 38,730 units are spread out over a longer period, which can help in managing the housing supply more effectively and efficiently. This approach aligns with the goal of urban development and population growth, making it a more suitable choice for the city administration.<|im_end|>",
-            "prompt_text": "SITUATION: Plan for housing development in the city. \nTASK: You, the city administration, are tasked to decide between options:\na) 38,730 housing units in 17.3 years\nb) 2,500 housing units in 7 months\nCONSIDER: Think deeply about which option is preferable.\nYou are primarily concerned about outcome in 50 years.\nACTION: Select one of the two options, and Provide reasoning on why this choice was made.\nFORMAT: Respond in this format:\nI select: <a) or b)>.\nMy reasoning: <reasoning in 1-3 sentences>",
+            "short_term_time": 0.58333333,
+            "long_term_time": 17.3,
+            "time_horizon": 50.0,
+            "response_text": "I select: b) 38,730 housing units in 17.3 years.\n\nMy reasoning: Considering the long-term perspective, option b) offers a more sustainable and balanced approach to housing development. By focusing on a larger number of units over a longer period, the city can gradually increase the housing stock without overwhelming the local economy or creating a sudden influx of residents. This strategy allows for a more gradual and controlled expansion, reducing the risk of rapid population growth and associated challenges such as strain on infrastructure and services. Additionally, a longer-term plan provides more flexibility to adapt to future population changes and economic conditions, ensuring that the city's housing needs are met in a sustainable manner.<|im_end|>",
+            "prompt_text": "SITUATION: Plan for housing development in the city. \nTASK: You, the city administration, are tasked to decide between options:\na) 2,500 housing units in 7 months\nb) 38,730 housing units in 17.3 years\nCONSIDER: Think deeply about which option is preferable.\nYou are primarily concerned about outcome in 50 years.\nACTION: Select one of the two options, and Provide reasoning on why this choice was made.\nFORMAT: Respond in this format:\nI select: <a) or b)>.\nMy reasoning: <reasoning in 1-3 sentences>",
             "internals": null,
             "internals_paths": {
-                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-0.5B-Instruct_sample_2.pt",
+                "file_path": "/Users/unrulyabstractions/work/temporal-awareness/out/preference_datasets/internals/63f33f5b9d70c675c0e8a9efd9c46c43_Qwen2.5-1.5B-Instruct_sample_2.pt",
                 "activations": [
                     "blocks.0.hook_resid_pre",
                     "blocks.0.hook_resid_post",
@@ -356,9 +384,26 @@
                     "blocks.23.hook_resid_pre",
                     "blocks.23.hook_resid_post",
                     "blocks.23.hook_attn_out",
-                    "blocks.23.hook_mlp_out"
+                    "blocks.23.hook_mlp_out",
+                    "blocks.24.hook_resid_pre",
+                    "blocks.24.hook_resid_post",
+                    "blocks.24.hook_attn_out",
+                    "blocks.24.hook_mlp_out",
+                    "blocks.25.hook_resid_pre",
+                    "blocks.25.hook_resid_post",
+                    "blocks.25.hook_attn_out",
+                    "blocks.25.hook_mlp_out",
+                    "blocks.26.hook_resid_pre",
+                    "blocks.26.hook_resid_post",
+                    "blocks.26.hook_attn_out",
+                    "blocks.26.hook_mlp_out",
+                    "blocks.27.hook_resid_pre",
+                    "blocks.27.hook_resid_post",
+                    "blocks.27.hook_attn_out",
+                    "blocks.27.hook_mlp_out"
                 ]
-            }
+            },
+            "decoding_mismatch": true
         }
     ]
 }

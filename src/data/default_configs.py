@@ -79,6 +79,7 @@ DEFAULT_EXPERIMENT_CONFIG = {
 }
 
 TEST_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+TEST_MODEL = DEFAULT_MODEL
 
 # Test prompt dataset config
 TEST_PROMPT_DATASET_CONFIG = {

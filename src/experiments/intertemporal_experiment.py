@@ -15,12 +15,11 @@ import numpy as np
 
 from ..common.device import get_device
 from ..common.io import ensure_dir, save_json, get_timestamp
-from ..common.paths import get_pref_dataset_dir, get_experiment_dir
+from ..common.paths import get_experiment_dir
 from ..common.token_positions import build_position_labels
 from ..preference import (
     generate_preference_data,
     PreferenceDataset,
-    load_and_merge_preference_data,
 )
 from ..models import ModelRunner
 from ..viz import plot_layer_position_heatmap, plot_position_sweep
@@ -171,23 +170,29 @@ def step_preference_data(config: ExperimentConfig) -> PreferenceDataset:
     # Check if preference data already exists
     pref_dataset_prefix = config.get_preference_dataset_prefix()
 
-    if pref_data := load_and_merge_preference_data(
-        pref_dataset_prefix, get_pref_dataset_dir()
-    ):
-        xlog("Loaded preference data!")
-        pass  # Loaded and merged existing data
-    else:
-        pref_data = generate_preference_data(
-            model=config.model,
-            dataset_config=config.dataset_config,
-            internals=config.internals,
-            max_samples=config.max_samples,
-        )
-        xlog("Generated preference data!")
+    # if pref_data := load_and_merge_preference_data(
+    #     pref_dataset_prefix, get_pref_dataset_dir()
+    # ):
+    #     xlog("Loaded preference data!")
+    # else:
+    #     pref_data = generate_preference_data(
+    #         model=config.model,
+    #         dataset_config=config.dataset_config,
+    #         internals=config.internals,
+    #         max_samples=config.max_samples,
+    #     )
+    #     xlog("Generated preference data!")
 
-    # This is copy, just for ease
-    pref_data.save_as_json(
-        get_experiment_dir() / "preference_data.json", with_internals=False
+    # # This is copy, just for ease
+    # pref_data.save_as_json(
+    #     get_experiment_dir() / "preference_data.json", with_internals=False
+    # )
+
+    pref_data = generate_preference_data(
+        model=config.model,
+        dataset_config=config.dataset_config,
+        internals=config.internals,
+        max_samples=config.max_samples,
     )
 
     xlog(f"Model: {pref_data.model}")
