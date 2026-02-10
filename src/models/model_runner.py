@@ -27,7 +27,7 @@ from __future__ import annotations
 from typing import Any, Optional, Union
 
 import torch
-from math import prod
+
 from ..common.device import get_device
 from .interventions import Intervention
 from .backends import (
@@ -76,8 +76,8 @@ class ModelRunner:
         print(f"  n_layers={self.n_layers}, d_model={self.d_model}\n")
 
     ############################
-    ###### Low-Level API #######
-    ##########################
+    #            API           #
+    ############################
 
     @property
     def tokenizer(self):
@@ -111,38 +111,64 @@ class ModelRunner:
     def decode(self, token_ids: torch.Tensor) -> str:
         return self._backend.decode(token_ids)
 
+    # High-level API
+
     def generate(
         self,
-        prompt: str | list[str],
+        prompt: str,
         max_new_tokens: int = 256,
         temperature: float = 0.0,
         intervention: Optional[Intervention] = None,
         past_kv_cache: Any = None,
-    ) -> str | list[str]:
-        """Generate text, optionally with intervention."""
-        if isinstance(prompt, str):
-            return self._generate_single(
-                prompt, max_new_tokens, temperature, intervention, past_kv_cache
-            )
-
-        return [
-            self._generate_single(
-                p, max_new_tokens, temperature, intervention, past_kv_cache
-            )
-            for p in prompt
-        ]
-
-    def generate_from_cache(
-        self,
-        prefill_logits: torch.Tensor,
-        frozen_kv_cache: Any,
-        max_new_tokens: int = 256,
-        temperature: float = 0.0,
     ) -> str:
-        """Generate using prefill logits and frozen kv_cache."""
-        return self._backend.generate_from_cache(
-            prefill_logits, frozen_kv_cache, max_new_tokens, temperature
+        """Generate text, optionally with intervention."""
+        formatted = self._apply_chat_template(prompt)
+        return self._backend.generate(
+            formatted, max_new_tokens, temperature, intervention, past_kv_cache
         )
+
+    # Optimized inference APIs (for classes like BinaryChoiceRunner)
+
+    def get_prob_trajectory(
+        self,
+        token_ids: list[int],  # [seq_len]
+        start_pos: int = 0,
+    ) -> list[float]:
+        """Get sequence of next-token probabilities via single forward pass.
+
+        For token_ids = [t0, t1, t2, t3] and start_pos = 1:
+        Returns [P(t1|t0), P(t2|t0,t1), P(t3|t0,t1,t2)]
+
+        Uses vectorized softmax + gather instead of a per-position loop.
+
+        Args:
+            token_ids: Full token ID sequence
+            start_pos: Position from which to compute probabilities
+
+        Returns:
+            List of probabilities for each token after start_pos
+        """
+        return self.get_prob_trajectories_for_batch([token_ids], start_pos)[0]
+
+    def get_prob_trajectories_for_batch(
+        self,
+        token_ids_batch: list[list[int]],  # [batch][seq_len_i]
+        start_pos: int = 0,
+    ) -> list[list[float]]:
+        # TODO(claude): How do I fix this? Do MINIMAL LOCALIZED fix
+        input_ids_batch = torch.tensor(
+            token_ids_batch, device=self.device
+        )  # [batch, max(seq_len_i), vocab_size]
+
+        with torch.inference_mode():
+            logits_batch = self._backend.forward(
+                input_ids_batch
+            )  # [batch, seq_len, vocab_size]
+        return self._calculate_prob_trajectories_for_batch(
+            token_ids_batch, logits_batch, start_pos
+        )
+
+    # Basic Interpretability APIs
 
     def run_with_cache(
         self,
@@ -167,28 +193,7 @@ class ModelRunner:
         input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
         return self._backend.run_with_cache(input_ids, names_filter, past_kv_cache)
 
-    def run_with_cache_and_grad(
-        self,
-        prompt: str,
-        names_filter: Optional[callable] = None,
-        prepend_bos: bool = False,
-    ) -> tuple[torch.Tensor, dict]:
-        """Run forward pass with gradients enabled for attribution patching.
-
-        Args:
-            prompt: Input text
-            names_filter: Function to filter which hooks to cache
-            prepend_bos: Whether to prepend BOS token (default False)
-
-        Returns:
-            Tuple of (logits, cache) where cache values have requires_grad=True
-        """
-        formatted = self._apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
-        # Unlike run_with_cache, does NOT use torch.no_grad() - gradients flow through
-        return self._backend.run_with_cache_and_grad(input_ids, names_filter)
-
-    def forward_with_intervention(
+    def run_with_intervention(
         self,
         prompt: str,
         intervention: Union[Intervention, list[Intervention]],
@@ -202,7 +207,7 @@ class ModelRunner:
             prepend_bos: Whether to prepend BOS token (default False)
 
         Returns:
-            Logits tensor of shape [batch, seq_len, vocab_size]
+            Logits tensor of shape [1, seq_len, vocab_size]
         """
         formatted = self._apply_chat_template(prompt)
         # Note: intervention.positions are relative to tokenized input
@@ -212,9 +217,12 @@ class ModelRunner:
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
+        # TODO(claude): Update backend to match model runner naming
         return self._backend.forward_with_intervention(input_ids, interventions)
 
-    def forward_with_intervention_and_cache(
+    # Complex Interpretability APIs
+
+    def run_with_intervention_and_cache(
         self,
         prompt: str,
         intervention: Union[Intervention, list[Intervention]],
@@ -243,88 +251,127 @@ class ModelRunner:
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
+        # TODO(claude): Update backend to match model runner naming
         return self._backend.forward_with_intervention_and_cache(
             input_ids, interventions, names_filter
         )
 
+    def run_with_cache_and_grad(
+        self,
+        prompt: str,
+        names_filter: Optional[callable] = None,
+        prepend_bos: bool = False,
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward pass with gradients enabled for attribution patching.
+
+        Args:
+            prompt: Input text
+            names_filter: Function to filter which hooks to cache
+            prepend_bos: Whether to prepend BOS token (default False)
+
+        Returns:
+            Tuple of (logits, cache) where cache values have requires_grad=True
+        """
+        formatted = self._apply_chat_template(prompt)
+        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        # Unlike run_with_cache, does NOT use torch.no_grad() - gradients flow through
+        return self._backend.run_with_cache_and_grad(input_ids, names_filter)
+
+    # Complex Interpretability APIs (for classes like BinaryChoiceRunner)
+
+    def get_prob_trajectory_with_intervention(
+        self,
+        token_ids: list[int],  # [seq_len]
+        start_pos: int = 0,
+        intervention: Union[Intervention, list[Intervention]] | None = None,
+        names_filter: Optional[callable] = None,
+    ) -> list[float]:
+        input_ids = torch.tensor(
+            [token_ids], device=self.device
+        )  # [1, seq_len, vocab_size]
+
+        with torch.inference_mode():
+            logits_batch = self._backend.forward_with_intervention(
+                input_ids, interventions, names_filter
+            )  # [1, seq_len, vocab_size]
+
+        logits = logits_batch[0]  # [seq_len, vocab_size]
+
+        return self._calculate_single_prob_trajectory(
+            input_ids, logits, start_pos
+        )  # [seq_len]
+
+    def get_prob_trajectory_with_cache(
+        self,
+        token_ids: list[int],  # [seq_len]
+        start_pos: int = 0,
+        past_kv_cache: Any = None,
+    ) -> list[float]:
+        input_ids = torch.tensor(
+            [token_ids], device=self.device
+        )  # [1, seq_len, vocab_size]
+
+        with torch.inference_mode():
+            logits_batch, internals_cache = self._backend.run_with_cache(
+                input_ids, names_filter, past_kv_cache
+            )  # [1, seq_len, vocab_size]
+
+        logits = logits_batch[0]  # [seq_len, vocab_size]
+
+        return self._calculate_single_prob_trajectory(
+            input_ids, logits, start_pos
+        ), internals_cache
+
+    def get_prob_trajectory_with_intervention_and_cache(
+        self,
+        token_ids: list[int],  # [seq_len]
+        start_pos: int = 0,
+        intervention: Union[Intervention, list[Intervention]] | None = None,
+        names_filter: Optional[callable] = None,
+    ) -> tuple[torch.Tensor, dict]:
+        input_ids = torch.tensor(
+            [token_ids], device=self.device
+        )  # [1, seq_len, vocab_size]
+
+        with torch.inference_mode():
+            logits_batch, internals_cache = (
+                self._backend.forward_with_intervention_and_cache(
+                    input_ids, interventions, names_filter
+                )
+            )  # [1, seq_len, vocab_size]
+
+        logits = logits_batch[0]  # [seq_len, vocab_size]
+
+        return self._calculate_single_prob_trajectory(
+            input_ids, logits, start_pos
+        ), internals_cache
+
+    # KV Cache APIs
+
     def init_kv_cache(self):
         return self._backend.init_kv_cache()
 
-    #######################
-    #### High-level API ###
-    #######################
-
-    def get_label_probs(
+    def generate_from_kv_cache(
         self,
-        prompt: str | list[str],
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple | list[tuple]:
-        """Get probabilities for two label options."""
-        if isinstance(prompt, str):
-            return self._get_label_probs_single(
-                prompt, choice_prefix, labels, past_kv_cache
-            )
-        return [
-            self._get_label_probs_single(p, choice_prefix, labels, past_kv_cache)
-            for p in prompt
-        ]
-
-    def get_label_next_token_prob_sequences(
-        self,
-        prompt: str,
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple[list[float], list[float]]:
-        """Get probabilities for two label options.
-
-        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
-        for all tokens from the divergence point onwards.
-        """
-
-        # Tokenize labels IN CONTEXT to get correct token IDs
-        # (tokenizers merge spaces with following chars contextually)
-        ids1, ids2 = self._get_full_choice_context_token_ids(
-            prompt, choice_prefix, labels
+        prefill_logits: torch.Tensor,
+        frozen_kv_cache: Any,
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+    ) -> str:
+        """Generate using prefill logits and frozen kv_cache."""
+        # TODO(claude): Update backend to match model runner naming
+        return self._backend.generate_from_cache(
+            prefill_logits, frozen_kv_cache, max_new_tokens, temperature
         )
 
-        # Find first position where the two sequences diverge
-        diverge_pos = self._get_diverge_pos(ids1, ids2)
-
-        seq1 = self._get_next_token_prob_sequence(ids1, diverge_pos, past_kv_cache)
-        seq2 = self._get_next_token_prob_sequence(ids2, diverge_pos, past_kv_cache)
-
-        return (seq1, seq2)
-
-    def get_canonical_response_texts(
-        self, choice_prefix: str, labels: tuple[str, str]
-    ) -> tuple[str, str]:
-        return (choice_prefix + labels[0], choice_prefix + labels[1])
-
-    # Where is this function used? It is sus.
-    def get_divergent_token_ids(self, label1: str, label2: str) -> tuple[int, int]:
-        """Get first divergent token IDs for two labels.
-
-        For multi-token labels like OPTION_ONE/OPTION_TWO, finds where they diverge
-        and returns the token IDs at that position.
-
-        Args:
-            label1: First label string
-            label2: Second label string
-
-        Returns:
-            Tuple of (token_id_1, token_id_2) at the first divergent position
-        """
-        tokenizer = self.tokenizer
-        ids1 = tokenizer.encode(label1, add_special_tokens=False)
-        ids2 = tokenizer.encode(label2, add_special_tokens=False)
-
-        diverge_pos = self._get_diverge_pos(ids1, ids2)
-        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else ids1[-1]
-        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else ids2[-1]
-        return tok1, tok2
+    def get_all_names_for_internals(self):
+        n_layers = self.n_layers
+        components = ["resid_pre", "resid_post", "attn_out", "mlp_out"]
+        return [
+            f"blocks.{layer}.hook_{comp}"
+            for layer in range(self.n_layers)
+            for comp in components
+        ]
 
     ##################
     #### Internal ####
@@ -381,65 +428,11 @@ class ModelRunner:
                 pass
         return f"<|user|>\n{prompt}\n<|assistant|>\n"
 
-    def _generate_single(
+    def _calculate_single_prob_trajectory(
         self,
-        prompt: str,
-        max_new_tokens: int,
-        temperature: float,
-        intervention: Optional[Intervention],
-        past_kv_cache: Any = None,
-    ) -> str:
-        formatted = self._apply_chat_template(prompt)
-        return self._backend.generate(
-            formatted, max_new_tokens, temperature, intervention, past_kv_cache
-        )
-
-    def _get_base_text(self, prompt: str, choice_prefix: str):
-        return self._apply_chat_template(prompt) + choice_prefix
-
-    def _get_full_choice_context_token_ids(
-        self, prompt: str, choice_prefix: str, labels: tuple[str, str]
-    ) -> tuple[list[int], list[int]]:
-        label1, label2 = labels
-        base_text = self._get_base_text(prompt, choice_prefix)
-        ids1 = self.tokenizer.encode(base_text + label1, add_special_tokens=False)
-        ids2 = self.tokenizer.encode(base_text + label2, add_special_tokens=False)
-        return (ids1, ids2)
-
-    def _get_diverge_pos(self, ids1: list[int], ids2: list[int]):
-        diverge_pos = 0
-        for i in range(min(len(ids1), len(ids2))):
-            if ids1[i] != ids2[i]:
-                diverge_pos = i
-                break
-        else:
-            diverge_pos = min(len(ids1), len(ids2))
-        return diverge_pos
-
-    def _get_label_probs_single(
-        self,
-        prompt: str,
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple:
-        """Get probabilities for two label options.
-
-        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
-        for all tokens from the divergence point onwards.
-        """
-        seq1, seq2 = self.get_label_next_token_prob_sequences(
-            prompt, choice_prefix, labels, past_kv_cache
-        )
-        seq_prob1 = prod(seq1)
-        seq_prob2 = prod(seq2)
-        return (seq_prob1, seq_prob2)
-
-    def _get_next_token_prob_sequence(
-        self,
-        token_ids: list[int],
-        start_pos: int,
-        past_kv_cache: Any = None,
+        token_ids: list[int],  # [seq_len]
+        logits: nn.Tensor,  # [seq_len, vocab_size]
+        start_pos: int = 0,
     ) -> list[float]:
         """Get sequence of next-token probabilities via single forward pass.
 
@@ -447,24 +440,14 @@ class ModelRunner:
         Returns [P(t1|t0), P(t2|t0,t1), P(t3|t0,t1,t2)]
 
         Uses vectorized softmax + gather instead of a per-position loop.
-
-        Args:
-            token_ids: Full token ID sequence
-            start_pos: Position from which to compute probabilities
-            past_kv_cache: Unused, kept for API compatibility
-
-        Returns:
-            List of probabilities for each token after start_pos
         """
-        input_ids = torch.tensor([token_ids], device=self.device)
-        logits = self._backend.forward(input_ids)  # [1, seq_len, vocab_size]
 
-        # logits[0, i, :] predicts token at position i+1
-        # So to get P(t_{start_pos}), ..., P(t_{end}), we need
-        # logits at positions [start_pos-1, ..., len-2]
-        pred_logits = logits[
-            0, start_pos - 1 : len(token_ids) - 1, :
-        ]  # [n_preds, vocab]
+        # logits[i, :] predicts token at position i+1.
+        # For start_pos >= 1, we need logits[start_pos-1 : len-1].
+        # For start_pos == 0, the first token has no conditioning context,
+        # so P(t0) := 1.0; remaining probs come from logits[0 : len-1].
+        pred_start = max(start_pos - 1, 0)  # n_preds < seq_len
+        pred_logits = logits[pred_start : len(token_ids) - 1, :]  # [n_preds, vocab]
 
         # The ground-truth tokens we want probabilities for
         target_ids = torch.tensor(
@@ -475,4 +458,31 @@ class ModelRunner:
         probs = torch.softmax(pred_logits, dim=-1)  # [n_preds, vocab]
         target_probs = probs[torch.arange(len(target_ids)), target_ids]  # [n_preds]
 
-        return target_probs.tolist()
+        # When start_pos == 0, the first token has no prior context so its
+        # probability is defined as 1.0 and inserted manually below.
+        # The remaining probabilities are computed from logits as usual.
+        result = target_probs.tolist()  # len(result) == n_preds
+        if start_pos == 0:
+            result.insert(0, 1.0)  # len(result) == n_preds + 1 == seq_len
+        return result  # len(result) == len(target_ids[start_pos:])
+
+    def _calculate_prob_trajectories_for_batch(
+        self,
+        token_ids_batch: list[list[int]],  # [batch][seq_len_i]
+        logits_batch: torch.Tensor,  # [batch, max_seq_len, vocab_size]
+        start_pos: int = 0,
+    ) -> list[list[float]]:
+        """Get sequence of next-token probabilities for a batch of sequences.
+        For token_ids = [t0, t1, t2, t3] and start_pos = 1:
+        Returns [P(t1|t0), P(t2|t0,t1), P(t3|t0,t1,t2)] per sequence.
+        Uses vectorized softmax + gather instead of a per-position loop.
+        Sequences may vary in length; padding beyond each sequence's
+        actual length in logits_batch is ignored.
+        """
+        prob_trajectories = []
+        for i, token_ids in enumerate(token_ids_batch):
+            logits = logits_batch[i]  # [max_seq_len, vocab_size]
+            traj = self._calculate_single_prob_trajectory(token_ids, logits, start_pos)
+            prob_trajectories.append(traj)
+
+        return prob_trajectories  # [batch][varying lengths]

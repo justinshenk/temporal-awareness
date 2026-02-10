@@ -1,179 +1,308 @@
 """Binary choice runner for preference experiments.
 
-Provides high-level API for binary choice probability computation.
-Wraps ModelRunner for low-level model operations.
+Extends ModelRunner with specialized binary choice methods.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import math
+import re
+from dataclasses import dataclass
+from math import prod
+from typing import Any, Optional, Union
 
 import torch
-from math import prod
 
+from ..common.types import SchemaClass
+from .backends import ModelBackend
 from .model_runner import ModelRunner
 
 
-class BinaryChoiceRunner:
-    """High-level runner for binary choice preference experiments."""
+@dataclass
+class BinaryChoice(SchemaClass):
+    # Minimal
+    choice_idx: int
 
-    def __init__(self, model_runner: ModelRunner):
-        self._runner = model_runner
+    # Prob details
+    prob_trajectory: tuple[list[float], list[float]] | None = None
+    divergent_probs: tuple[float, float] | None = None
+    label_probs: tuple[float, float] | None = None
+    response_probs: tuple[float, float] | None = None
+    perplexities: tuple[float, float] | None = None
+    divergent_token_id_position: int | None = None
 
-    @property
-    def tokenizer(self):
-        return self._runner.tokenizer
 
-    @property
-    def device(self):
-        return self._runner.device
+@dataclass
+class BinaryChoiceWithData(BinaryChoice):
+    # Full Detail
+    labels: tuple[str, str] | None = None
+    response_texts: tuple[str, str] | None = None
+    response_token_ids: tuple[int, int] | None = None
 
-    def get_label_probs(
+    # Extra Data
+    intervention: Union[Intervention, list[Intervention]] | None = None
+    internals: tuple[dict] | None = None
+
+    def without_data(self) -> BinaryChoice:
+        return self.as_base()
+
+
+class BinaryChoiceRunner(ModelRunner):
+    """High-level runner for binary choice preference experiments.
+
+    Inherits all functionality from ModelRunner and adds binary choice
+    probability computation methods.
+    """
+
+    def __init__(
         self,
-        prompt: str | list[str],
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple | list[tuple]:
-        """Get probabilities for two label options."""
-        if isinstance(prompt, str):
-            return self._get_label_probs_single(
-                prompt, choice_prefix, labels, past_kv_cache
-            )
-        return [
-            self._get_label_probs_single(p, choice_prefix, labels, past_kv_cache)
-            for p in prompt
-        ]
-
-    def get_label_next_token_prob_sequences(
-        self,
-        prompt: str,
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple[list[float], list[float]]:
-        """Get probabilities for two label options.
-
-        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
-        for all tokens from the divergence point onwards.
-        """
-
-        # Tokenize labels IN CONTEXT to get correct token IDs
-        # (tokenizers merge spaces with following chars contextually)
-        ids1, ids2 = self._get_full_choice_context_token_ids(
-            prompt, choice_prefix, labels
-        )
-
-        # Find first position where the two sequences diverge
-        diverge_pos = self._get_diverge_pos(ids1, ids2)
-
-        seq1 = self._get_next_token_prob_sequence(ids1, diverge_pos, past_kv_cache)
-        seq2 = self._get_next_token_prob_sequence(ids2, diverge_pos, past_kv_cache)
-
-        return (seq1, seq2)
-
-    def get_canonical_response_texts(
-        self, choice_prefix: str, labels: tuple[str, str]
-    ) -> tuple[str, str]:
-        return (choice_prefix + labels[0], choice_prefix + labels[1])
-
-    # Where is this function used? It is sus.
-    def get_divergent_token_ids(self, label1: str, label2: str) -> tuple[int, int]:
-        """Get first divergent token IDs for two labels.
-
-        For multi-token labels like OPTION_ONE/OPTION_TWO, finds where they diverge
-        and returns the token IDs at that position.
+        model_name: str,
+        device: Optional[str] = None,
+        dtype: Optional[torch.dtype] = None,
+        backend: ModelBackend = ModelBackend.TRANSFORMERLENS,
+    ):
+        """Initialize BinaryChoiceRunner.
 
         Args:
-            label1: First label string
-            label2: Second label string
-
-        Returns:
-            Tuple of (token_id_1, token_id_2) at the first divergent position
+            model_name: HuggingFace model name
+            device: Device to run on (default: auto-detect)
+            dtype: Data type for model weights
+            backend: Which backend to use for inference
         """
-        tokenizer = self.tokenizer
-        ids1 = tokenizer.encode(label1, add_special_tokens=False)
-        ids2 = tokenizer.encode(label2, add_special_tokens=False)
+        super().__init__(model_name, device, dtype, backend)
 
-        diverge_pos = self._get_diverge_pos(ids1, ids2)
-        tok1 = ids1[diverge_pos] if diverge_pos < len(ids1) else ids1[-1]
-        tok2 = ids2[diverge_pos] if diverge_pos < len(ids2) else ids2[-1]
-        return tok1, tok2
+    ############################
+    ######### MAIN API #########
+    ############################
 
-    ##################
-    #### Internal ####
-    ##################
+    def choose(
+        self,
+        prompt: str,  # e.g. 'Task:...' := "Task:Make choice... Labels: '<a>', '<b>', Response_Format: 'I choose:[chosen_label]...' ..."
+        choice_prefix: str,  # e.g. 'I choose:'
+        labels: tuple[str, str],  # e.g. ['<a>', '(<b>']
+        # Advanced Options
+        with_cache: bool = False,
+        intervention: Optional[Union[Intervention, list[Intervention]]] = None,
+        names_filter: Optional[callable] = None,
+        past_kv_cache: Any = None,
+    ) -> BinaryChoice:
+        label_a = labels[0]  # e.g. "<a>"
+        label_b = labels[1]  # e.g. "<b>"
 
-    def _get_base_text(self, prompt: str, choice_prefix: str):
-        return self._runner._apply_chat_template(prompt) + choice_prefix
+        response_text_a = choice_prefix + labels[0]  # e.g. 'I choose:<a>'
+        response_text_b = choice_prefix + labels[0]  # e.g. 'I choose:<b>'
 
-    def _get_full_choice_context_token_ids(
-        self, prompt: str, choice_prefix: str, labels: tuple[str, str]
-    ) -> tuple[list[int], list[int]]:
-        label1, label2 = labels
-        base_text = self._get_base_text(prompt, choice_prefix)
-        ids1 = self.tokenizer.encode(base_text + label1, add_special_tokens=False)
-        ids2 = self.tokenizer.encode(base_text + label2, add_special_tokens=False)
-        return (ids1, ids2)
+        #############################
+        ######### ENCODING ##########
+        #############################
 
-    def _get_diverge_pos(self, ids1: list[int], ids2: list[int]):
-        diverge_pos = 0
-        for i in range(min(len(ids1), len(ids2))):
-            if ids1[i] != ids2[i]:
-                diverge_pos = i
-                break
+        # OPTION 1
+        formatted_prompt = self._apply_chat_template(prompt)
+        response_token_ids_a = self.tokenizer.encode(
+            formatted_prompt + response_text_a, add_special_tokens=False
+        )
+        response_token_ids_b = self.tokenizer.encode(
+            formatted_prompt + response_text_b, add_special_tokens=False
+        )
+
+        option_1 = self.tokenizer.decode(response_token_ids_a)
+
+        # OPTION 2
+        prompt_token_ids = self.tokenizer.encode(
+            self._apply_chat_template(prompt), add_special_tokens=True
+        )
+        response_token_ids_a = prompt_token_ids + self.tokenizer.encode(
+            response_text_a, add_special_tokens=False
+        )
+        response_token_ids_b = prompt_token_ids + self.tokenizer.encode(
+            response_text_b, add_special_tokens=False
+        )
+
+        option_2 = self.tokenizer.decode(response_token_ids_a)
+
+        print("\n\n\n")
+        print("ENCODING_OPTIONS")
+        print("\n")
+        print(option_1)
+        print("\n")
+        print(option_2)
+        print("\n\n\n")
+
+        # start_a, end_a = self.get_label_start_end_pos(response_token_ids_a, choice_prefix, label_a)
+        # start_b, end_b = self.get_label_start_end_pos(response_token_ids_a, choice_prefix, label_b)
+
+        div_pos = get_divergent_token_id_position(
+            response_token_ids_a, response_token_ids_a
+        )
+        start_a, end_a = div_pos, div_pos + len(choice_prefix)
+        start_b, end_b = div_pos, div_pos + len(choice_prefix)
+
+        #############################
+        ######### INFERENCE #########
+        #############################
+
+        internals_cache_a = None
+        internals_cache_b = None
+
+        if intervention and with_cache:
+            prob_trajectory_a, internals_cache_a = (
+                self.get_prob_trajectory_with_intervention_and_cache(
+                    response_token_ids_a
+                )
+            )  # [ ..., p('a' | prompt + choice_prefix), ... ] , act_cache
+            prob_trajectory_b, internals_cache_b = (
+                self.get_prob_trajectory_with_intervention_and_cache(
+                    response_token_ids_b
+                )
+            )  # [ ..., p('b' | prompt + choice_prefix), ... ] , act_cache
+        elif intervention:
+            prob_trajectory_a = self.get_prob_trajectory_with_intervention(
+                response_token_ids_a
+            )  # [ ..., p('a' | prompt + choice_prefix), ... ]
+            prob_trajectory_b = self.get_prob_trajectory_with_intervention(
+                response_token_ids_b
+            )  # [ ..., p('b' | prompt + choice_prefix), ... ]
+        elif with_cache:
+            prob_trajectory_a, internals_cache_a = self.get_prob_trajectory_with_cache(
+                response_token_ids_a
+            )  # [ ..., p('a' | prompt + choice_prefix), ... ] , act_cache
+            prob_trajectory_b, internals_cache_b = self.get_prob_trajectory_with_cache(
+                response_token_ids_b
+            )  # [ ..., p('b' | prompt + choice_prefix), ... ] , act_cache
         else:
-            diverge_pos = min(len(ids1), len(ids2))
-        return diverge_pos
+            prob_trajectory_a = self.get_prob_trajectory(
+                response_token_ids_a,
+            )  # [ ..., p('a' | prompt + choice_prefix), ... ]
+            prob_trajectory_b = self.get_prob_trajectory(
+                response_token_ids_b,
+            )  # [ ..., p('b' | prompt + choice_prefix), ... ]
 
-    def _get_label_probs_single(
-        self,
-        prompt: str,
-        choice_prefix: str,
-        labels: tuple[str, str],
-        past_kv_cache: Any = None,
-    ) -> tuple:
-        """Get probabilities for two label options.
+        if internals_cache_a and internals_cache_b:
+            internals = (internals_cache_a, internals_cache_b)
+        else:
+            internals = None
 
-        Computes P(label | prefix) = product of P(tok_i | prefix + tok_0..i-1)
-        for all tokens from the divergence point onwards.
-        """
-        seq1, seq2 = self.get_label_next_token_prob_sequences(
-            prompt, choice_prefix, labels, past_kv_cache
+        #############################
+        ######## PROB RESULTS #######
+        #############################
+
+        divergent_token_id_position = get_divergent_token_id_position(
+            response_token_ids_a, response_token_ids_b
+        )  # e.g. pos of 'x' in: (choice_prefix + '<x>') := 'I choose:<x>'
+
+        divergent_prob_a = prob_trajectory_a[
+            divergent_token_id_position
+        ]  # p('a' | prompt + choice_prefix + "<")
+        divergent_prob_b = prob_trajectory_b[
+            divergent_token_id_position
+        ]  # p('b' | prompt + choice_prefix + "<")
+
+        label_prob_a = prod(
+            prob_trajectory_a[start_a:end_a]
+        )  # p('<a>' | prompt + choice_prefix)
+        label_prob_b = prod(
+            prob_trajectory_b[start_b:end_b]
+        )  # p('<b>' | prompt + choice_prefix)
+
+        response_prob_a = prod(prob_trajectory_a)  # p(choice_prefix + '<a>' | prompt)
+        response_prob_b = prod(prob_trajectory_b)  # p(choice_prefix + '<b> | prompt)
+
+        perplexity_a = perplexity(
+            prob_trajectory_a
+        )  # p(choice_prefix + '<a>' | prompt)
+        perplexity_b = perplexity(prob_trajectory_b)  # p('I choose:<b>' | 'Task:...')
+
+        #############################
+        ########### CHOICE ##########
+        #############################
+
+        choice_idx = 0
+
+        choice = BinaryChoiceWithData(
+            # Minimal
+            choice_idx=choice_idx,
+            # Prob details
+            prob_trajectory=(prob_trajectory_a, prob_trajectory_b),
+            divergent_probs=(divergent_prob_a, divergent_prob_b),
+            label_probs=(label_prob_a, label_prob_b),
+            response_probs=(response_prob_a, response_prob_b),
+            perplexities=(perplexity_a, perplexity_b),
+            divergent_token_id_position=divergent_token_id_position,
+            # Full Detail
+            labels=labels,
+            response_texts=(response_text_a, response_text_b),
+            response_token_ids=(response_token_ids_a, response_token_ids_b),
+            # Extra Data
+            intervention=intervention,
+            internals=None,
         )
-        seq_prob1 = prod(seq1)
-        seq_prob2 = prod(seq2)
-        return (seq_prob1, seq_prob2)
 
-    def _get_next_token_prob_sequence(
-        self,
-        token_ids: list[int],
-        start_pos: int,
-        past_kv_cache: Any = None,
-    ) -> list[float]:
-        """Get sequence of next-token probabilities via single forward pass.
+        return choice
 
-        For token_ids = [t0, t1, t2, t3] and start_pos = 1:
-        Returns [P(t1|t0), P(t2|t0,t1), P(t3|t0,t1,t2)]
+    ############################
+    ######### FAST API #########
+    ############################
 
-        Args:
-            token_ids: Full token ID sequence
-            start_pos: Position from which to compute probabilities
-            past_kv_cache: Unused, kept for API compatibility
+    # TODO(me, person): Think about this much later
 
-        Returns:
-            List of probabilities for each token after start_pos
-        """
-        # Single forward pass with all tokens
-        input_ids = torch.tensor([token_ids], device=self.device)
-        logits = self._runner._backend.forward(input_ids)  # [1, seq_len, vocab_size]
+    ############################
+    ######### UTILITIES ########
+    ############################
 
-        # logits[0, i, :] predicts token at position i+1
-        # For position i in [start_pos-1, len-2], get P(token_ids[i+1])
-        continuation_probs = []
-        for i in range(start_pos - 1, len(token_ids) - 1):
-            probs = torch.softmax(logits[0, i, :], dim=-1)
-            next_tok = token_ids[i + 1]
-            continuation_probs.append(probs[next_tok].item())
 
-        return continuation_probs
+############################
+##### HELPER FUNCTIONS #####
+############################
+
+
+def perplexity(token_probs):
+    if any(p == 0 for p in token_probs):
+        return float("inf")
+    log_probs = [math.log(p) for p in token_probs]
+    return math.exp(-sum(log_probs) / len(log_probs))
+
+
+def get_divergent_token_id_position(ids_a: list[int], ids_b: list[int]):
+    divergent_token_id_position = 0
+    for i in range(min(len(ids_a), len(ids_b))):
+        if ids_a[i] != ids_b[i]:
+            divergent_token_id_position = i
+            break
+    else:
+        divergent_token_id_position = min(len(ids_a), len(ids_b))
+    return divergent_token_id_position
+
+
+def parse_choice_from_generated_response(
+    response: str,
+    short_label: str,
+    long_label: str,
+    choice_prefix: str,
+) -> str:
+    """
+    Parse choice from model response.
+
+    Looks for pattern: "<choice_prefix> <label>"
+    Returns: "short_term", "long_term", or "unknown"
+    """
+    response_lower = response.lower().strip()
+    prefix_lower = choice_prefix.lower()
+
+    labels = [short_label, long_label]
+    labels_stripped = [label.rstrip(".)") for label in labels]
+    all_variants = set(label.lower() for label in labels + labels_stripped)
+    labels_pattern = "|".join(
+        re.escape(label) for label in sorted(all_variants, key=len, reverse=True)
+    )
+
+    pattern = rf"{re.escape(prefix_lower)}\s*({labels_pattern})"
+    match = re.search(pattern, response_lower)
+
+    if match:
+        matched = match.group(1)
+        if matched in (short_label.lower(), short_label.rstrip(".)").lower()):
+            return 1
+        elif matched in (long_label.lower(), long_label.rstrip(".)").lower()):
+            return 0
+
+    return -1

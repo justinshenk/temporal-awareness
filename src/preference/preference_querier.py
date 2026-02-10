@@ -7,13 +7,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from ..common.io import load_json
-from ..common.types import CapturedInternals, PreferenceSample
+from ..common.types import PreferenceSample, CapturedInternals
 from ..models.interventions import load_intervention_from_dict, Intervention
-from ..models.model_runner import ModelRunner
-from ..models.binary_choice_runner import BinaryChoiceRunner
+from ..models.binary_choice_runner import (
+    BinaryChoiceRunner,
+    parse_choice_from_generated_response,
+)
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDataset
-from ..parsing import parse_choice
 
 
 @dataclass
@@ -98,28 +99,24 @@ class PreferenceQuerier:
 
     def __init__(self, config: QueryConfig):
         self.config = config
-        self._model: Optional[ModelRunner] = None
-        self._choice_runner: Optional[BinaryChoiceRunner] = None
-        self._model_name: Optional[str] = None
+        self._runner: Optional[BinaryChoiceRunner] = None
         self._min_choice_prob = 0.5
 
-    def _load_model(self, name: str) -> tuple[ModelRunner, BinaryChoiceRunner]:
-        if self._model is not None and self._model_name == name:
-            return self._model, self._choice_runner
-        self._model = ModelRunner(model_name=name)
-        self._choice_runner = BinaryChoiceRunner(self._model)
-        self._model_name = name
+    def _load_model(self, name: str) -> BinaryChoiceRunner:
+        if self._runner is not None and self._runner.model_name == name:
+            return self._runner
+        self._runner = BinaryChoiceRunner(model_name=name)
         self._intervention = None  # Reset intervention for new model
-        return self._model, self._choice_runner
+        return self._runner
 
-    def _load_intervention(self, model_runner: ModelRunner) -> Optional[Intervention]:
+    def _load_intervention(self, runner: BinaryChoiceRunner) -> Optional[Intervention]:
         """Load intervention config for the current model."""
         if self.config.intervention is None:
             return None
 
-        return load_intervention_from_dict(self.config.intervention, model_runner)
+        return load_intervention_from_dict(self.config.intervention, runner)
 
-    def _get_activation_names(self, model_runner: ModelRunner) -> list[str]:
+    def _get_activation_names(self, runner: BinaryChoiceRunner) -> list[str]:
         """Get hook names for activation capture.
 
         If internals is None, captures all activations at all layers.
@@ -134,13 +131,7 @@ class PreferenceQuerier:
 
         # None means capture all activations
         if internals is None:
-            n_layers = model_runner.n_layers
-            components = ["resid_pre", "resid_post", "attn_out", "mlp_out"]
-            return [
-                f"blocks.{layer}.hook_{comp}"
-                for layer in range(n_layers)
-                for comp in components
-            ]
+            return runner.get_all_names_for_internals()
 
         # Use specific config
         names = []
@@ -154,34 +145,42 @@ class PreferenceQuerier:
     ) -> PreferenceDataset:
         """Query a single dataset with a model. Returns results in memory."""
 
-        model_runner, choice_runner = self._load_model(model_name)
-        activation_names = self._get_activation_names(model_runner)
-        intervention = self._load_intervention(model_runner)
-        preferences = []
+        runner = self._load_model(model_name)
 
         samples = prompt_dataset.samples
+        if self.config.subsample < 1.0:
+            n = max(1, int(len(samples) * self.config.subsample))
+            samples = random.sample(samples, n)
+
+        activation_names = self._get_activation_names(runner)
+        intervention = self._load_intervention(runner)
+
+        if intervention:
+            print(
+                f"query_dataset: Using intervention: mode={intervention.mode} at layer {intervention.layer}"
+            )
+        if activation_names:
+            print(f"query_dataset: Capturing activations/internals {activation_names}")
 
         # Get choice_prefix from dataset config
         choice_prefix = (
             prompt_dataset.config.prompt_format_config.get_exact_prefix_before_choice()
         )
 
-        if self.config.subsample < 1.0:
-            n = max(1, int(len(samples) * self.config.subsample))
-            samples = random.sample(samples, n)
-
-        if intervention is not None:
-            print(
-                f"Using intervention: mode={intervention.mode} at layer {intervention.layer}"
-            )
-
-        print(f"Querying LLM for {len(samples)} samples...")
+        print(f"query_dataset: Querying LLM for {len(samples)} samples...")
+        preferences = []
         for i, sample in enumerate(samples):
             if (i + 1) % 10 == 0:
                 print(f"  {i + 1}/{len(samples)}")
 
             sample_idx = sample.sample_idx
+            time_horizon = (
+                sample.prompt.time_horizon.to_years()
+                if sample.prompt.time_horizon
+                else None
+            )
             prompt_text = sample.prompt.text
+
             pair = sample.prompt.preference_pair
             short_label = pair.short_term.label
             long_label = pair.long_term.label
@@ -189,100 +188,69 @@ class PreferenceQuerier:
             long_time = pair.long_term.time.to_years()
             short_reward = pair.short_term.reward.value
             long_reward = pair.long_term.reward.value
-            time_horizon = (
-                sample.prompt.time_horizon.to_years()
-                if sample.prompt.time_horizon
-                else None
-            )
+
             decoding_mismatch = False
 
-            # Step 1: Get choice probabilities (via BinaryChoiceRunner)
-
-            short_prob, long_prob = choice_runner.get_label_probs(
+            # Step 1: Query choice prob based on format
+            choice = runner.choose(
                 prompt_text, choice_prefix, (short_label, long_label)
             )
-            short_response, long_response = choice_runner.get_canonical_response_texts(
-                choice_prefix, (short_label, long_label)
-            )
-
-            canonical_choice = "short_term" if short_prob > long_prob else "long_term"
-            canonical_response = (
-                short_response if short_prob > long_prob else long_response
-            )
-
-            choice_prob, alt_prob = (
-                max(short_prob, long_prob),
-                min(short_prob, long_prob),
-            )
-
-            if choice_prob < self._min_choice_prob:
-                decoding_mismatch = True
 
             # Step 2: Generate response (or skip if skip_generation=True)
             if not self.config.skip_generation:
-                generated_response = model_runner.generate(
+                generated_response = runner.generate(
                     prompt_text,
                     max_new_tokens=self.config.max_new_tokens,
                     temperature=self.config.temperature,
                     intervention=intervention,
                 )
-                parsed_choice = parse_choice(
+                generated_choice_idx = parse_choice_from_generated_response(
                     generated_response, short_label, long_label, choice_prefix
                 )
-                functional_response = generated_response
-                if parsed_choice != canonical_choice:
+                if generated_choice_idx != choice.choice_idx:
                     decoding_mismatch = True
-                if self._min_choice_prob < choice_prob:
-                    choice = canonical_choice
-                else:
-                    choice = parsed_choice
+                functional_response = generated_response
             else:
                 generated_response = ""
-                functional_response = canonical_response
-                choice = canonical_choice
+                functional_response = choice.response_texts[choice.choice_idx]
 
             # Step 3: Capture internals (only if requested)
-            internals = None
+            captured_internals = None
             if activation_names:
-                _, cache = model_runner.run_with_cache(
+                _, cache = runner.run_with_cache(
                     prompt_text + functional_response,
                     names_filter=lambda name: name in activation_names,
                 )
-                activations = {}
-                for name in activation_names:
-                    if name in cache:
-                        activations[name] = cache[name][0].cpu()
-                internals = CapturedInternals(
-                    activations=activations,
-                    activation_names=list(activations.keys()),
+                captured_internals = CapturedInternals.from_activation_names(
+                    activation_names, cache
                 )
 
             preferences.append(
                 PreferenceSample(
+                    # Choice
+                    choice=choice.without_data(),
+                    # Sample Info
                     sample_idx=sample_idx,
-                    choice=choice,
-                    choice_prob=choice_prob,
-                    alt_prob=alt_prob,
+                    time_horizon=time_horizon,
+                    prompt_text=prompt_text,
+                    response_text=generated_response,
+                    # Other Choice Info
                     short_term_label=short_label,
                     long_term_label=long_label,
                     short_term_time=short_time,
                     long_term_time=long_time,
                     short_term_reward=short_reward,
                     long_term_reward=long_reward,
-                    time_horizon=time_horizon,
-                    prompt_text=prompt_text,
-                    response_text=generated_response,
-                    internals=internals,
+                    # Extra Info
+                    internals=captured_internals,
                     internals_paths=None,
                     decoding_mismatch=decoding_mismatch,
                 )
             )
 
-        config_name = prompt_dataset.config.name
-
         return PreferenceDataset(
             prompt_dataset_id=prompt_dataset.dataset_id,
             model=model_name,
             preferences=preferences,
-            prompt_dataset_name=config_name,
+            prompt_dataset_name=prompt_dataset.config.name,
         )

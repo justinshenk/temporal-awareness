@@ -35,8 +35,10 @@ def _qfloat(x: float, places: int = 8) -> float:
 def _canon(obj: Any, places: int = 8):
     """Canonicalize object for deterministic hashing."""
     if isinstance(obj, float):
-        if math.isnan(obj):  # avoid NaN destabilizing hashes
+        if math.isnan(obj):
             return "NaN"
+        if math.isinf(obj):
+            return "Inf" if obj > 0 else "-Inf"
         return _qfloat(obj, places)
     if isinstance(obj, Enum):
         return obj.value
@@ -85,7 +87,7 @@ class SchemaClass:
         result_dict = self.to_dict()
         return json.dumps(result_dict, indent=4)
 
-    # Each trial should have their own set of params
+    # Each SchemaClass obj should have their own set of params
     # We want to make sure schemas are unique and immutable
     def __post_init__(self):
         for f in fields(self):
@@ -172,6 +174,10 @@ class SchemaClass:
 
     def __setattr__(self, name, value):
         super().__setattr__(name, copy.deepcopy(value))
+
+    def as_base(self):
+        cls = type(self).__bases__[0]
+        return cls(**{f.name: getattr(self, f.name) for f in fields(cls)})
 
 
 # =============================================================================
@@ -410,29 +416,54 @@ class CapturedInternals:
     activations: dict  # name -> tensor
     activation_names: list[str]
 
+    @classmethod
+    def from_activation_names(cls, activation_names: list[str], internals: dict):
+        activations = {}
+        for name in activation_names:
+            if name in internals:
+                activations[name] = internals[name][0].cpu()
+        return CapturedInternals(
+            activations=activations,
+            activation_names=list(activations.keys()),
+        )
+
 
 @dataclass
 class PreferenceSample(SchemaClass):
     """Single preference result."""
 
+    # Minimal Info
     sample_idx: int
-    choice: str
-    choice_prob: float
-    alt_prob: float
+    choice: Any  # BinaryChoice type
 
-    short_term_label: str
-    long_term_label: str
-    short_term_reward: float
-    long_term_reward: float
-    short_term_time: float  # in DEFAULT_TIME_UNIT
-    long_term_time: float  # in DEFAULT_TIME_UNIT
-
+    # Sample Info
     time_horizon: Optional[dict] = None  # in DEFAULT_TIME_UNIT
+    response_text: str | None = None
+    prompt_text: str | None = None
 
-    response_text: str = ""
-    prompt_text: str = ""
+    # Choice Extra Info
+    short_term_label: str | None = None
+    long_term_label: str | None = None
+    short_term_reward: float | None = None
+    long_term_reward: float | None = None
+    short_term_time: float | None = None  # in DEFAULT_TIME_UNIT
+    long_term_time: float | None = None  # in DEFAULT_TIME_UNIT
 
-    internals: Optional[CapturedInternals] = None
-    internals_paths: Optional[dict] = None
+    # Extra Info
+    internals: Any | None = None  # CapturedInternals type
+    internals_paths: dict | None = None
+    decoding_mismatch: bool | None = None
 
-    decoding_mismatch: bool = False
+    @property
+    def choice_prob(self):
+        self.choice.divergent_probs[self.choice.choice_idx]
+
+    @property
+    def alternative_prob(self):
+        self.choice.divergent_probs[1 - self.choice.choice_idx]
+
+    def to_dict(self):
+        d = super().to_dict()
+        d["choice_prob"] = self.choice_prob
+        d["alternative_prob"] = self.alternative_prob
+        return d

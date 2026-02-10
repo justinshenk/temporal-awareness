@@ -107,22 +107,6 @@ class TestQwenRunWithCache:
 
 
 class TestQwenLabelProbs:
-    """Test get_label_probs across backends."""
-
-    def test_probs_reasonable(self, runner_tl, runner_nnsight, runner_pyvene):
-        """All backends return reasonable probabilities."""
-        prompt = "Choose A or B. I select:"
-        labels = ("A", "B")
-
-        probs_tl = runner_tl.get_label_probs(prompt, "", labels)
-        probs_nn = runner_nnsight.get_label_probs(prompt, "", labels)
-        probs_pv = runner_pyvene.get_label_probs(prompt, "", labels)
-
-        # All should return non-negative probabilities
-        assert probs_tl[0] >= 0 and probs_tl[1] >= 0
-        assert probs_nn[0] >= 0 and probs_nn[1] >= 0
-        assert probs_pv[0] >= 0 and probs_pv[1] >= 0
-
 
 class TestQwenForwardWithIntervention:
     """Test forward_with_intervention across backends."""

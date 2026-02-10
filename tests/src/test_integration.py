@@ -11,7 +11,6 @@ Skip slow: pytest tests/test_integration.py --skip-slow
 """
 
 import gc
-import time
 from pathlib import Path
 
 import numpy as np
@@ -527,7 +526,6 @@ class TestPyveneMultiArch:
         assert steered_out != base_out, "Steering had no effect on Pythia"
 
 
-
 class TestPrimaryModelsCore:
     """Core functionality tests using primary models (GPT-2, Qwen base, Qwen instruct).
 
@@ -593,18 +591,6 @@ class TestPrimaryModelsCore:
         )
 
         assert steered_out != base_out, f"{model_name}: Steering had no effect"
-
-    def test_get_label_probs_valid(self, primary_runner):
-        """get_label_probs returns valid probabilities for all primary models."""
-        runner, model_name = primary_runner
-        prompt = "I choose option"
-
-        probs = runner.get_label_probs(prompt, " ", ("A", "B"))
-
-        assert len(probs) == 2, f"{model_name}: Expected 2 probabilities"
-        assert all(0 <= p <= 1 for p in probs), (
-            f"{model_name}: Probabilities out of range"
-        )
 
 
 # =============================================================================
@@ -858,16 +844,6 @@ class TestBatchProcessing:
         assert all(isinstance(o, str) for o in outputs)
         assert all(len(o) > 0 for o in outputs)
 
-    def test_batch_get_label_probs(self, transformerlens_runner):
-        """Label probs handles list of prompts."""
-        prompts = ["Choose a) or b)", "Select a) or b)"]
-        labels = ("a)", "b)")
-
-        probs = transformerlens_runner.get_label_probs(prompts, "I select:", labels)
-
-        assert len(probs) == 2
-        assert all(isinstance(p, tuple) and len(p) == 2 for p in probs)
-
     def test_batch_with_intervention(self, transformerlens_runner):
         """Batch generation with intervention."""
         from src.models.interventions import steering
@@ -1007,7 +983,11 @@ class TestMultipleInterventions:
 
     def test_different_layers_steer_and_ablate(self, transformerlens_runner):
         """Can apply different interventions at different layers."""
-        from src.models.interventions import steering, ablation, create_intervention_hook
+        from src.models.interventions import (
+            steering,
+            ablation,
+            create_intervention_hook,
+        )
 
         prompt = "The cat sat on"
         d_model = transformerlens_runner.d_model
@@ -1140,9 +1120,12 @@ from src.prompt import PromptDataset
 from src.prompt.prompt_dataset_config import PromptDatasetConfig
 
 
-def make_test_prompt_dataset(dataset_id: str, samples: list[PromptSample]) -> PromptDataset:
+def make_test_prompt_dataset(
+    dataset_id: str, samples: list[PromptSample]
+) -> PromptDataset:
     """Create a PromptDataset for testing."""
     from src.prompt.prompt_dataset_config import ContextConfig, OptionRangeConfig
+
     config = PromptDatasetConfig(
         name="test",
         context=ContextConfig(),
@@ -1165,7 +1148,9 @@ def make_test_prompt_dataset(dataset_id: str, samples: list[PromptSample]) -> Pr
     )
 
 
-def make_sample(sample_idx: int, text: str, short_label: str = "a)", long_label: str = "b)") -> PromptSample:
+def make_sample(
+    sample_idx: int, text: str, short_label: str = "a)", long_label: str = "b)"
+) -> PromptSample:
     """Create a PromptSample with full preference_pair structure for testing."""
     return PromptSample(
         sample_idx=sample_idx,
@@ -1195,15 +1180,15 @@ class TestQueryDatasetIntegration:
         from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         samples = [
-            make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
+            make_sample(
+                1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"
+            ),
         ]
         prompt_dataset = make_test_prompt_dataset("001", samples)
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
@@ -1213,7 +1198,12 @@ class TestQueryDatasetIntegration:
 
     def test_query_dataset_captures_internals(self, transformerlens_runner, tmp_path):
         """Internals are captured with correct shapes."""
-        from src.preference.preference_querier import PreferenceQuerier, QueryConfig, InternalsConfig, ActivationSpec
+        from src.preference.preference_querier import (
+            PreferenceQuerier,
+            QueryConfig,
+            InternalsConfig,
+            ActivationSpec,
+        )
 
         samples = [
             make_sample(1, "Choose: a) now or b) later? I choose:"),
@@ -1226,9 +1216,7 @@ class TestQueryDatasetIntegration:
         )
         config = QueryConfig(internals=internals)
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
@@ -1253,9 +1241,7 @@ class TestQueryDatasetIntegration:
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
@@ -1278,9 +1264,7 @@ class TestQueryDatasetIntegration:
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
 
@@ -1301,9 +1285,7 @@ class TestQueryDatasetIntegration:
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         # Query both datasets
         out1 = runner.query_dataset(prompt_dataset1, TEST_MODEL)
@@ -1340,9 +1322,7 @@ class TestQueryErrorHandling:
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 0
@@ -1359,9 +1339,7 @@ class TestQueryErrorHandling:
 
         config = QueryConfig()
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(prompt_dataset, TEST_MODEL)
         assert len(output.preferences) == 1
@@ -1466,90 +1444,6 @@ class TestPreferenceDatasetSave:
 
 
 # =============================================================================
-# get_label_probs Tests
-# =============================================================================
-
-
-class TestGetLabelProbsIntegration:
-    """Test get_label_probs with real model.
-
-    This function is critical for extracting model preferences in the query pipeline.
-    Tests verify:
-    - Probabilities are valid and sensible
-    - Consistent across backends
-    - Works with various label formats
-    """
-
-    def test_returns_valid_probabilities(self, transformerlens_runner):
-        """Probabilities are valid floats in [0, 1]."""
-        prompt = "I choose option"
-        probs = transformerlens_runner.get_label_probs(prompt, " ", ("A", "B"))
-
-        assert len(probs) == 2
-        assert all(0 <= p <= 1 for p in probs)
-
-    def test_meaningful_probability_distribution(self, transformerlens_runner):
-        """Probabilities reflect model's knowledge."""
-        prompt = "The capital of France is"
-        probs = transformerlens_runner.get_label_probs(prompt, " ", ("Paris", "London"))
-
-        # Paris should have higher probability than London for this prompt
-        assert probs[0] > probs[1], (
-            f"Paris ({probs[0]:.4f}) should be more likely than London ({probs[1]:.4f})"
-        )
-
-    @requires_nnsight
-    def test_backends_agree_on_probabilities(
-        self, transformerlens_runner, nnsight_runner
-    ):
-        """Different backends compute same probabilities."""
-        prompt = "The answer is"
-        labels = ("yes", "no")
-
-        tl_probs = transformerlens_runner.get_label_probs(prompt, " ", labels)
-        nn_probs = nnsight_runner.get_label_probs(prompt, " ", labels)
-
-        for i, label in enumerate(labels):
-            assert abs(tl_probs[i] - nn_probs[i]) < 0.01, (
-                f"Probability mismatch for {label}"
-            )
-
-    @requires_pyvene
-    def test_pyvene_get_label_probs(self, pyvene_runner, transformerlens_runner):
-        """Pyvene computes same probabilities as TransformerLens."""
-        prompt = "The weather is"
-        labels = ("good", "bad")
-
-        pv_probs = pyvene_runner.get_label_probs(prompt, " ", labels)
-        tl_probs = transformerlens_runner.get_label_probs(prompt, " ", labels)
-
-        for i, label in enumerate(labels):
-            assert abs(pv_probs[i] - tl_probs[i]) < 0.01, (
-                f"Probability mismatch for {label}"
-            )
-
-    def test_multi_token_labels(self, transformerlens_runner):
-        """Handles multi-token labels correctly."""
-        prompt = "My favorite color is"
-        probs = transformerlens_runner.get_label_probs(
-            prompt, " ", ("bright red", "dark blue")
-        )
-
-        assert len(probs) == 2
-        assert all(0 <= p <= 1 for p in probs)
-
-    def test_choice_labels_typical_format(self, transformerlens_runner):
-        """Works with typical choice format used in preference datasets."""
-        prompt = "Would you prefer $100 now or $200 later? I choose:"
-        probs = transformerlens_runner.get_label_probs(prompt, " ", ("a)", "b)"))
-
-        assert len(probs) == 2
-        assert all(0 <= p <= 1 for p in probs)
-        # Both should have some probability mass
-        assert sum(probs) > 0, "No probability assigned to either label"
-
-
-# =============================================================================
 # Query Runner Intervention Tests
 # =============================================================================
 
@@ -1567,7 +1461,9 @@ class TestPreferenceQuerierIntervention:
     def sample_dataset(self, tmp_path):
         """Create a sample dataset for testing."""
         samples = [
-            make_sample(1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"),
+            make_sample(
+                1, "Would you prefer a) $100 now or b) $200 in a year? I choose:"
+            ),
         ]
         return make_test_prompt_dataset("interv", samples)
 
@@ -1603,9 +1499,7 @@ class TestPreferenceQuerierIntervention:
         config = QueryConfig(intervention=intervention)
 
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         loaded_intervention = runner._load_intervention(transformerlens_runner)
 
@@ -1627,9 +1521,7 @@ class TestPreferenceQuerierIntervention:
         config = QueryConfig(intervention=intervention)
 
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
@@ -1645,9 +1537,7 @@ class TestPreferenceQuerierIntervention:
         config_base = QueryConfig()
 
         runner_base = PreferenceQuerier(config_base)
-        runner_base._model = transformerlens_runner
-        runner_base._choice_runner = transformerlens_runner
-        runner_base._model_name = TEST_MODEL
+        runner_base._runner = transformerlens_runner
         output_base = runner_base.query_dataset(sample_dataset, TEST_MODEL)
 
         # Run with strong intervention
@@ -1666,9 +1556,7 @@ class TestPreferenceQuerierIntervention:
         config_interv = QueryConfig(intervention=intervention)
 
         runner_interv = PreferenceQuerier(config_interv)
-        runner_interv._model = transformerlens_runner
-        runner_interv._choice_runner = transformerlens_runner
-        runner_interv._model_name = TEST_MODEL
+        runner_interv._runner = transformerlens_runner
         output_interv = runner_interv.query_dataset(sample_dataset, TEST_MODEL)
 
         # Responses should differ (strong steering should change output)
@@ -1694,9 +1582,7 @@ class TestPreferenceQuerierIntervention:
         config = QueryConfig(intervention=intervention)
 
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
@@ -1707,11 +1593,12 @@ class TestPreferenceQuerierIntervention:
     ):
         """Intervention config matches sample_interventions JSON format."""
         import json
-        from pathlib import Path
         from src.preference.preference_querier import PreferenceQuerier, QueryConfig
 
         # Load an existing sample intervention
-        sample_dir = Path(__file__).parent.parent.parent / "src" / "data" / "interventions"
+        sample_dir = (
+            Path(__file__).parent.parent.parent / "src" / "data" / "interventions"
+        )
         with open(sample_dir / "steer_all.json") as f:
             sample_config = json.load(f)
 
@@ -1719,9 +1606,7 @@ class TestPreferenceQuerierIntervention:
         config = QueryConfig(intervention=sample_config)
 
         runner = PreferenceQuerier(config)
-        runner._model = transformerlens_runner
-        runner._choice_runner = transformerlens_runner  # ModelRunner implements BinaryChoiceRunner API
-        runner._model_name = TEST_MODEL
+        runner._runner = transformerlens_runner
 
         output = runner.query_dataset(sample_dataset, TEST_MODEL)
 
