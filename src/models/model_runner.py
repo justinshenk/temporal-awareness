@@ -155,10 +155,11 @@ class ModelRunner:
         token_ids_batch: list[list[int]],  # [batch][seq_len_i]
         start_pos: int = 0,
     ) -> list[list[float]]:
-        # TODO(claude): How do I fix this? Do MINIMAL LOCALIZED fix
-        input_ids_batch = torch.tensor(
-            token_ids_batch, device=self.device
-        )  # [batch, max(seq_len_i), vocab_size]
+        # Pad sequences to max length (torch.tensor fails on ragged lists)
+        max_len = max(len(ids) for ids in token_ids_batch)
+        pad_token = self.tokenizer.pad_token_id or 0
+        padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
+        input_ids_batch = torch.tensor(padded, device=self.device)
 
         with torch.inference_mode():
             logits_batch = self._backend.forward(
@@ -217,7 +218,6 @@ class ModelRunner:
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
-        # TODO(claude): Update backend to match model runner naming
         return self._backend.forward_with_intervention(input_ids, interventions)
 
     # Complex Interpretability APIs
@@ -251,7 +251,6 @@ class ModelRunner:
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
-        # TODO(claude): Update backend to match model runner naming
         return self._backend.forward_with_intervention_and_cache(
             input_ids, interventions, names_filter
         )
@@ -359,7 +358,6 @@ class ModelRunner:
         temperature: float = 0.0,
     ) -> str:
         """Generate using prefill logits and frozen kv_cache."""
-        # TODO(claude): Update backend to match model runner naming
         return self._backend.generate_from_cache(
             prefill_logits, frozen_kv_cache, max_new_tokens, temperature
         )

@@ -3,9 +3,11 @@
 import re
 
 from src.formatting.configs import DefaultPromptFormat
-from src.parsing import parse_choice
+from src.models.binary_choice_runner import parse_choice_from_generated_response
 
 from .activations import CHOICE_SHORT_TERM, CHOICE_LONG_TERM, CHOICE_UNKNOWN, Sentence
+
+_CHOICE_INT_TO_STR = {1: "short_term", 0: "long_term", -1: "unknown"}
 
 MIN_SENTENCE_WORDS = 3
 
@@ -133,5 +135,8 @@ def parse_llm_choice(response_text: str, short_label: str, long_label: str) -> i
     """Parse the LLM's choice from a response string."""
     response_markers = get_response_markers()
     choice_prefix = response_markers["choice_prefix"]
-    result = parse_choice(response_text, short_label, long_label, choice_prefix)
-    return _CHOICE_MAP[result]
+    int_result = parse_choice_from_generated_response(
+        response_text, short_label, long_label, choice_prefix
+    )
+    str_result = _CHOICE_INT_TO_STR[int_result]
+    return _CHOICE_MAP[str_result]
