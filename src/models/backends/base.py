@@ -18,6 +18,8 @@ class ModelBackend(Enum):
     TRANSFORMERLENS = "transformerlens"
     NNSIGHT = "nnsight"
     PYVENE = "pyvene"
+    MLX = "mlx"
+    HUGGINGFACE = "huggingface"
 
 
 class Backend(ABC):
