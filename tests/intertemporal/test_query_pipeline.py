@@ -1,0 +1,78 @@
+"""Tests for PreferenceQuerier pipeline with production model.
+
+These tests verify PreferenceQuerier works end-to-end with Qwen2.5-1.5B.
+Marked slow because they require model loading.
+"""
+
+import pytest
+
+from src.intertemporal.prompt import PromptDatasetGenerator, PromptDatasetConfig
+from src.intertemporal.preference import PreferenceQuerier, QueryConfig
+from src.intertemporal.common.project_paths import get_prompt_dataset_configs_dir
+
+
+TEST_MODEL = "Qwen/Qwen2.5-1.5B"
+
+
+@pytest.mark.slow
+class TestQueryPipeline:
+    """Tests for PreferenceQuerier with production model."""
+
+    @pytest.fixture
+    def setup_dataset(self, tmp_path):
+        """Generate a minimal dataset for testing."""
+        config_path = get_prompt_dataset_configs_dir() / "test_minimal.json"
+        cfg = PromptDatasetConfig.from_json(config_path)
+
+        generator = PromptDatasetGenerator(cfg)
+        dataset = generator.generate()
+
+        # Save dataset
+        datasets_dir = tmp_path / "datasets"
+        datasets_dir.mkdir()
+
+        output_path = datasets_dir / f"{cfg.name}_{cfg.get_id()}.json"
+        dataset.save_as_json(output_path)
+
+        return dataset
+
+    def test_query_config_loads(self):
+        """QueryConfig loads correctly."""
+        config = QueryConfig(
+            internals=None,
+            subsample=1.0,
+        )
+        assert config.subsample == 1.0
+
+    def test_query_runner_queries_model(self, setup_dataset):
+        """PreferenceQuerier queries model successfully."""
+        dataset = setup_dataset
+
+        config = QueryConfig(
+            internals=None,
+            subsample=1.0,
+        )
+
+        runner = PreferenceQuerier(config)
+        output = runner.query_dataset(dataset, TEST_MODEL)
+
+        assert output.model == TEST_MODEL
+        assert output.dataset_id == dataset.config.get_id()
+        assert len(output.preferences) > 0
+
+    def test_preferences_have_choices(self, setup_dataset):
+        """Query output preferences have choice field."""
+        dataset = setup_dataset
+
+        config = QueryConfig(
+            internals=None,
+            subsample=1.0,
+        )
+
+        runner = PreferenceQuerier(config)
+        output = runner.query_dataset(dataset, TEST_MODEL)
+
+        for pref in output.preferences:
+            assert pref.choice in ("short_term", "long_term", "unknown")
+            assert isinstance(pref.choice_prob, float)
+            assert isinstance(pref.alt_prob, float)

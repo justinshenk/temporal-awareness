@@ -1,0 +1,84 @@
+
+============================================================
+Benchmarking TRANSFORMERLENS
+============================================================
+Set backend to TRANSFORMERLENS
+  Run 1/4... OK - 24417ms, 8.07GB
+  Run 2/4... OK - 22936ms, 8.06GB
+  Run 3/4... OK - 23414ms, 8.06GB
+  Run 4/4... OK - 22593ms, 8.06GB
+
+============================================================
+Benchmarking HUGGINGFACE
+============================================================
+Set backend to HUGGINGFACE
+  Run 1/4... OK - 15091ms, 6.74GB
+  Run 2/4... OK - 13884ms, 6.74GB
+  Run 3/4... OK - 13663ms, 6.74GB
+  Run 4/4... OK - 13590ms, 6.74GB
+
+============================================================
+Benchmarking PYVENE
+============================================================
+Set backend to PYVENE
+  Run 1/4... OK - 13850ms, 6.83GB
+  Run 2/4... OK - 13818ms, 6.84GB
+  Run 3/4... OK - 13529ms, 6.84GB
+  Run 4/4... OK - 16133ms, 6.84GB
+
+============================================================
+Benchmarking NNSIGHT
+============================================================
+Set backend to NNSIGHT
+  Run 1/4... OK - 83955ms, 4.44GB
+  Run 2/4... OK - 96729ms, 4.44GB
+  Run 3/4... OK - 86215ms, 4.44GB
+  Run 4/4... OK - 86125ms, 4.44GB
+
+============================================================
+Benchmarking MLX
+============================================================
+Set backend to MLX
+  Run 1/4... OK - 6137ms, 0.96GB
+  Run 2/4... OK - 6334ms, 0.96GB
+  Run 3/4... OK - 6397ms, 0.96GB
+  Run 4/4... OK - 6246ms, 0.98GB
+Set backend to TRANSFORMERLENS
+
+================================================================================
+BENCHMARK SUMMARY
+================================================================================
+Backend         Status   Runs  Avg Time     Std        Avg Mem   
+--------------------------------------------------------------------------------
+TRANSFORMERLENS OK       4        23340ms    793.1ms     8.06GB
+HUGGINGFACE     OK       4        14057ms    700.6ms     6.74GB
+PYVENE          OK       4        14333ms   1208.9ms     6.84GB
+NNSIGHT         OK       4        88256ms   5744.5ms     4.44GB
+MLX             OK       4         6278ms    112.8ms     0.96GB
+
+Fastest: MLX (6278ms avg)
+
+Relative Performance:
+  MLX: baseline
+  HUGGINGFACE: +123.9%
+  PYVENE: +128.3%
+  TRANSFORMERLENS: +271.7%
+  NNSIGHT: +1305.7%
+
+================================================================================
+OUTPUT COMPARISON
+================================================================================
+Backend         Choice Label    Choice Prob     Alt Prob       
+--------------------------------------------------------------------------------
+TRANSFORMERLENS a)              0.9200          0.6263         
+HUGGINGFACE     a)              0.9221          0.6263         
+PYVENE          a)              0.9267          0.6424         
+NNSIGHT         a)              0.9267          0.6424         
+MLX             a)              0.9292          0.6624         
+
+Response previews (first 80 chars):
+  TRANSFORMERLENS: I select: b) 38,730 housing units in 17.3 years.\n\nMy reasoning: Option b) offe
+  HUGGINGFACE: I select: Option b) 2,500 housing units in 7 months.\n\nMy reasoning: The goal o
+  PYVENE: I select: Option b) 2,500 housing units in 7 months.\n\nMy reasoning: The goal o
+  NNSIGHT: I select: a) 38,730 housing units in 17.3 years.\n\nMy reasoning: Option a) offe
+  MLX: I select: a) 38,730 housing units in 17.3 years.\n\nMy reasoning: Option a) offe

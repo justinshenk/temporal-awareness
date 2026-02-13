@@ -1,0 +1,34 @@
+{
+  "name": "cityhousing",
+  "context": {
+    "reward_unit": "housing units",
+    "role": "the city administration",
+    "situation": "Plan for housing development in the city.",
+    "domain": "housing"
+  },
+  "options": {
+    "short_term": {
+      "reward_range": [1000, 4000],
+      "time_range": [{"value": 2, "unit": "months"}, {"value": 1, "unit": "years"}],
+      "reward_steps": [3, "linear"],
+      "time_steps": [3, "linear"]
+    },
+    "long_term": {
+      "reward_range": [10000, 150000],
+      "time_range": [{"value": 10, "unit": "years"}, {"value": 30, "unit": "years"}],
+      "reward_steps": [3, "logarithmic"],
+      "time_steps": [3, "logarithmic"]
+    }
+  },
+  "time_horizons": [
+    null,
+    {"value": 1, "unit": "months"},
+    {"value": 6, "unit": "months"},
+    {"value": 2, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 10, "unit": "years"},
+    {"value": 30, "unit": "years"},
+    {"value": 50, "unit": "years"}
+  ],
+  "add_formatting_variations": true
+}
