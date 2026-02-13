@@ -1,0 +1,24 @@
+setup:
+  model: "Qwen/Qwen3-0.6B"  # Start small, faster iteration
+  seed: 42
+  batch_size: 16
+  dtype: "float32"  # Your notes say precision matters - start with float32
+
+paths:
+  data_loc: "./data/raw/temporal_scope/"
+  save_loc: "./results/eap_integrated_gradients/temporal_scope"
+
+input:
+  data_file: "temporal_scope_caa.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: ["(A)", "(B)"]
+  prompt_suffix: "Answer: ("
+
+output:
+  wandb_project: "temporal-scope-circuit-discovery"
+  filename: "Qwen3-0.6B_f32_initial"
+
+parameters:
+  system_prompt: "You are a strategic planning assistant that follows user instructions carefully"
+  steps: [20]  # Start with one step count
+  metric_type: "logit-diff"
