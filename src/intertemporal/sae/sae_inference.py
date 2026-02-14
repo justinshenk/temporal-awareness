@@ -20,18 +20,9 @@ from .text_processing import split_into_sentences, parse_llm_choice
 from ...common.device_utils import get_device, clear_gpu_memory
 
 
-def _get_hf_tokenizer(tokenizer):
-    """Get underlying HuggingFace tokenizer from any wrapper."""
-    # Handle MLX TokenizerWrapper
-    if hasattr(tokenizer, '_tokenizer'):
-        return tokenizer._tokenizer
-    return tokenizer
-
-
 def _build_char_to_token_map(text: str, tokenizer) -> dict[int, int]:
     """Build mapping from character position to token index."""
-    hf_tokenizer = _get_hf_tokenizer(tokenizer)
-    encoding = hf_tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
+    encoding = tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
     offsets = encoding.get("offset_mapping", [])
 
     char_to_token = {}

@@ -26,7 +26,12 @@ class MLXBackend(Backend):
     """Backend using MLX for Apple Silicon inference."""
 
     def get_tokenizer(self):
-        return self.runner._tokenizer
+        tokenizer = self.runner._tokenizer
+        # MLX wraps HuggingFace tokenizer; return underlying one for full API compatibility
+        # (e.g., return_offsets_mapping support)
+        if hasattr(tokenizer, '_tokenizer'):
+            return tokenizer._tokenizer
+        return tokenizer
 
     def get_n_layers(self) -> int:
         return len(self.runner._model.layers)
