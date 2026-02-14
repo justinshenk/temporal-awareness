@@ -11,7 +11,7 @@ from ...inference import CapturedInternals
 from ..common.preference_types import PreferenceSample
 from ...inference.interventions import load_intervention_from_dict, Intervention
 from ...binary_choice.binary_choice_runner import BinaryChoiceRunner
-from ...binary_choice.choice_utils import parse_choice_from_generated_response
+from ...binary_choice.choice_utils import verify_greedy_generation
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDataset
 
@@ -203,11 +203,15 @@ class PreferenceQuerier:
                     temperature=self.config.temperature,
                     intervention=intervention,
                 )
-                generated_choice_idx = parse_choice_from_generated_response(
-                    generated_response, short_label, long_label, choice_prefix
+                decoding_mismatch = verify_greedy_generation(
+                    choice,
+                    generated_response,
+                    short_label,
+                    long_label,
+                    choice_prefix,
+                    runner=runner,
+                    prompt=prompt_text,
                 )
-                if generated_choice_idx != choice.choice_idx:
-                    decoding_mismatch = True
                 functional_response = generated_response
             else:
                 generated_response = ""

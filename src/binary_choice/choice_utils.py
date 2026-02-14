@@ -56,12 +56,11 @@ def parse_choice_from_generated_response(
     short_label: str,
     long_label: str,
     choice_prefix: str,
-) -> str:
-    """
-    Parse choice from model response.
+) -> int:
+    """Parse choice from model response.
 
     Looks for pattern: "<choice_prefix> <label>"
-    Returns: 0, 1 or -1
+    Returns: 0 (short_label), 1 (long_label), or -1 (not found)
     """
     response_lower = response.lower().strip()
     prefix_lower = choice_prefix.lower()
@@ -85,6 +84,63 @@ def parse_choice_from_generated_response(
             return 1
 
     return -1
+
+
+def verify_greedy_generation(
+    choice: Any,
+    generated_response: str,
+    short_label: str,
+    long_label: str,
+    choice_prefix: str,
+    runner: Any = None,
+    prompt: str = None,
+) -> bool:
+    """Verify that greedy generation matches probability-based choice.
+
+    Returns True if there's a mismatch (decoding_mismatch=True).
+
+    Checks:
+    1. Label parsed from generated text matches choice.choice_idx
+    2. If runner and prompt provided: token at divergent position matches
+
+    Args:
+        choice: SimpleBinaryChoice or LabeledSimpleBinaryChoice
+        generated_response: The freely generated response text
+        short_label: Label for option 0 (e.g., "a)")
+        long_label: Label for option 1 (e.g., "b)")
+        choice_prefix: Prefix before label (e.g., "I select:")
+        runner: Optional ModelRunner for token-level comparison
+        prompt: Optional prompt text for token-level comparison
+    """
+    # Check 1: Label-level comparison
+    generated_choice_idx = parse_choice_from_generated_response(
+        generated_response, short_label, long_label, choice_prefix
+    )
+
+    if generated_choice_idx != choice.choice_idx:
+        return True  # Mismatch
+
+    # Check 2: Token-level comparison at divergent position
+    if runner is not None and prompt is not None:
+        div_pos = getattr(choice, "divergent_position", None)
+        chosen_traj = getattr(choice, "chosen_traj", None)
+
+        if div_pos is not None and chosen_traj is not None:
+            # Get expected token at divergent position
+            expected_token_id = chosen_traj.token_ids[div_pos]
+
+            # Tokenize the generated response
+            generated_ids = encode_into_trajectory_ids(
+                runner, prompt, generated_response
+            )
+
+            # Check if token at divergent position matches
+            if div_pos < len(generated_ids):
+                actual_token_id = generated_ids[div_pos]
+                if actual_token_id != expected_token_id:
+                    return True  # Token mismatch
+
+    return False  # No mismatch
 
 
 def get_label_start_end_pos(
