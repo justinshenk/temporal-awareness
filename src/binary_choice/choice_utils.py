@@ -112,13 +112,26 @@ def verify_greedy_generation(
         runner: Optional ModelRunner for token-level comparison
         prompt: Optional prompt text for token-level comparison
     """
+    labels = (short_label, long_label)
+
     # Check 1: Label-level comparison
     generated_choice_idx = parse_choice_from_generated_response(
         generated_response, short_label, long_label, choice_prefix
     )
 
     if generated_choice_idx != choice.choice_idx:
-        return True  # Mismatch
+        expected_label = labels[choice.choice_idx] if choice.choice_idx >= 0 else "?"
+        actual_label = labels[generated_choice_idx] if generated_choice_idx >= 0 else "?"
+        print(
+            f"\n{'='*60}\n"
+            f"DECODING MISMATCH: Label mismatch\n"
+            f"{'='*60}\n"
+            f"  Probability-based choice: {choice.choice_idx} ({expected_label})\n"
+            f"  Generated text choice:    {generated_choice_idx} ({actual_label})\n"
+            f"  Response preview: {generated_response[:100]}...\n"
+            f"{'='*60}\n"
+        )
+        return True
 
     # Check 2: Token-level comparison at divergent position
     if runner is not None and prompt is not None:
@@ -138,7 +151,20 @@ def verify_greedy_generation(
             if div_pos < len(generated_ids):
                 actual_token_id = generated_ids[div_pos]
                 if actual_token_id != expected_token_id:
-                    return True  # Token mismatch
+                    expected_token = runner.decode([expected_token_id])
+                    actual_token = runner.decode([actual_token_id])
+                    print(
+                        f"\n{'='*60}\n"
+                        f"DECODING MISMATCH: Token mismatch at divergent position\n"
+                        f"{'='*60}\n"
+                        f"  Divergent position: {div_pos}\n"
+                        f"  Expected token: {expected_token_id} ({expected_token!r})\n"
+                        f"  Actual token:   {actual_token_id} ({actual_token!r})\n"
+                        f"  Choice idx: {choice.choice_idx} ({labels[choice.choice_idx]})\n"
+                        f"  Response preview: {generated_response[:100]}...\n"
+                        f"{'='*60}\n"
+                    )
+                    return True
 
     return False  # No mismatch
 
