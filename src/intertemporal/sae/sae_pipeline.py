@@ -6,8 +6,8 @@ from dataclasses import asdict
 
 import numpy as np
 from src.common import TimeValue
+from src.common.device_utils import clear_gpu_memory
 from .sae_paths import (
-    clear_gpu_memory,
     ensure_dirs,
     reset_and_get_test_filepath_cfg,
     reset_and_get_special_filepath_cfg,

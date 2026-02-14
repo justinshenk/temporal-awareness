@@ -24,14 +24,14 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.intertemporal.sae.state import (
+from src.intertemporal.sae.pipeline_state import (
     PipelineConfig,
     PipelineState,
     find_state,
     find_latest_state,
     show_status,
 )
-from src.intertemporal.sae.pipeline import run_pipeline, run_test_iteration
+from src.intertemporal.sae.sae_pipeline import run_pipeline, run_test_iteration
 
 # Default config location
 DEFAULT_CONFIG = PROJECT_ROOT / "src" / "intertemporal" / "sae" / "experiment_cfg.json"
