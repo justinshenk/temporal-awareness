@@ -1,18 +1,25 @@
-"""Shared helper functions for math operations."""
+"""Shared helper functions for math operations.
+
+Provides:
+- argmin, argmax: index of min/max value
+- logprob_to_prob, prob_to_logprob: scalar conversions
+- normalize, normalize_pair: normalization utilities
+"""
 
 from __future__ import annotations
 
 import math
+from typing import Sequence
 
-_EPS = 1e-12
+from .entropy_diversity.core import _EPS
 
 
-def argmin(xs: list[float]) -> int:
+def argmin(xs: Sequence[float]) -> int:
     """Index of the minimum value, or 0 for an empty list."""
     return min(range(len(xs)), key=lambda i: xs[i]) if xs else 0
 
 
-def argmax(xs: list[float]) -> int:
+def argmax(xs: Sequence[float]) -> int:
     """Index of the maximum value, or 0 for an empty list."""
     return max(range(len(xs)), key=lambda i: xs[i]) if xs else 0
 
@@ -29,7 +36,7 @@ def prob_to_logprob(prob: float) -> float:
     return math.log(prob)
 
 
-def normalize(values: tuple[float, ...] | list[float]) -> list[float]:
+def normalize(values: Sequence[float]) -> list[float]:
     """Normalise non-negative values to sum to 1 using log-sum-exp."""
     if not values:
         return []

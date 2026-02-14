@@ -1,5 +1,9 @@
 """Experiment orchestration for intertemporal preference analysis.
 
+DO NOT add explicit __all__ lists here - use auto_export instead.
+See src/common/auto_export.py for documentation on how this works.
+
+
 This package provides unified functions for running the full analysis pipeline:
 - Data generation
 - Activation patching

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, Sequence, TYPE_CHECKING
 
 import torch
 
@@ -80,14 +80,14 @@ class Backend(ABC):
 
     @abstractmethod
     def get_next_token_probs(
-        self, prompt: str, target_tokens: list[str], past_kv_cache: Any = None
+        self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
         """Get next token probabilities for target tokens."""
         ...
 
     @abstractmethod
     def get_next_token_probs_by_id(
-        self, prompt: str, token_ids: list[int], past_kv_cache: Any = None
+        self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
         """Get next token probabilities by token ID."""
         ...
@@ -146,7 +146,7 @@ class Backend(ABC):
     def run_with_intervention(
         self,
         input_ids: torch.Tensor,
-        interventions: list[Intervention],
+        interventions: Sequence[Intervention],
     ) -> torch.Tensor:
         """Run forward pass with interventions, returning logits."""
         ...
@@ -155,7 +155,7 @@ class Backend(ABC):
     def run_with_intervention_and_cache(
         self,
         input_ids: torch.Tensor,
-        interventions: list[Intervention],
+        interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
         """Run forward with interventions AND capture activations with gradients."""

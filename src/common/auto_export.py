@@ -152,14 +152,18 @@ def _export_module_contents(
     module: Any,
     into: dict[str, Any],
 ) -> list[str]:
-    """Export public names from a module into a dict."""
+    """Export public names from a module into a dict.
+
+    If a name is already in the dict (e.g., from `from .xxx import *`),
+    it will still be included in the returned list for __all__.
+    """
     exported = []
     for name in _get_public_names(module):
-        if name not in into:
-            obj = getattr(module, name)
-            if _should_export(name, obj):
+        obj = getattr(module, name)
+        if _should_export(name, obj):
+            if name not in into:
                 into[name] = obj
-                exported.append(name)
+            exported.append(name)
     return exported
 
 
@@ -223,12 +227,16 @@ def auto_export(
             exported = _export_module_contents(module, globals_dict)
             all_names.extend(exported)
 
-    # 2. Export subpackages as attributes
+    # 2. Import subpackages and re-export their public contents
     for pkg_name in _find_packages(directory):
-        if pkg_name not in globals_dict:
-            pkg = _import_safe(pkg_name, package_name)
-            if pkg is not None:
+        pkg = _import_safe(pkg_name, package_name)
+        if pkg is not None:
+            # Make subpackage available as attribute
+            if pkg_name not in globals_dict:
                 globals_dict[pkg_name] = pkg
                 all_names.append(pkg_name)
+            # Re-export subpackage contents for flat access
+            exported = _export_module_contents(pkg, globals_dict)
+            all_names.extend(exported)
 
     return all_names

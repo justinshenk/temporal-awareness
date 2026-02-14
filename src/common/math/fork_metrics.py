@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import math
 
-from .math_primitives import _EPS, normalize_pair
+from .math_primitives import normalize_pair
 from .entropy_diversity import (
+    _EPS,
     probs_to_logprobs,
     q_diversity,
     q_concentration,

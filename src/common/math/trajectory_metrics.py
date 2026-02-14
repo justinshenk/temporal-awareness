@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from .math_primitives import _EPS, argmin, argmax
-from .entropy_diversity import surprise, rarity, q_abundance
+from .math_primitives import argmin, argmax
+from .entropy_diversity import _EPS, surprise, rarity, power_mean_from_logprobs
 
 
 # ── Pointwise (per-token) metrics ────────────────────────────────────────────
@@ -31,57 +31,57 @@ def rarity_trajectory(logprobs: Sequence[float]) -> list[float]:
     return [rarity(lp) for lp in logprobs]
 
 
-# ── Generalized trajectory metrics (order q) — most general ──────────────────
+# ── Generalized trajectory metrics (order α) — most general ──────────────────
 
 
-def q_inv_perplexity(logprobs: Sequence[float], q: float) -> float:
-    """Generalized inverse-perplexity of order q.
+def alpha_inv_perplexity(logprobs: Sequence[float], alpha: float) -> float:
+    """Generalized inverse-perplexity of order α.
 
-    Wraps q_abundance from entropy_diversity.
+    Wraps power_mean_from_logprobs: M_α(p) where p = exp(logprobs).
 
-    Defined as the power mean of order (q−1) of the token probabilities:
-        q → −∞: max pᵢ  (best-case token)
-        q = 0:  harmonic mean (pessimistic — emphasizes hard tokens)
-        q = 1:  geometric mean (standard inv-perplexity)
-        q = 2:  arithmetic mean (optimistic — tolerates hard tokens)
-        q → +∞: min pᵢ  (worst-case token)
+    Power mean of order α applied to token probabilities:
+        α → −∞: min pᵢ  (worst-case token)
+        α = -1: harmonic mean (pessimistic — emphasizes hard tokens)
+        α = 0:  geometric mean (standard inv-perplexity)
+        α = 1:  arithmetic mean (optimistic — tolerates hard tokens)
+        α → +∞: max pᵢ  (best-case token)
 
-    Range: (0, 1]. Higher = better.
+    Range: (0, 1]. Higher = better. Monotonic in α.
     """
-    return q_abundance(logprobs, q)
+    return power_mean_from_logprobs(logprobs, alpha)
 
 
-def q_perplexity(logprobs: Sequence[float], q: float) -> float:
-    """Generalized perplexity of order q. PP_q = 1 / q_inv_perplexity.
+def alpha_perplexity(logprobs: Sequence[float], alpha: float) -> float:
+    """Generalized perplexity of order α. PP_α = 1 / M_α(p).
 
     Range: [1, ∞). Lower = better.
     """
-    inv = q_inv_perplexity(logprobs, q)
+    inv = alpha_inv_perplexity(logprobs, alpha)
     return 1.0 / inv if inv > _EPS else float("inf")
 
 
-# ── Standard metrics (q=1 special cases) ─────────────────────────────────────
+# ── Standard metrics (α=0 special cases, geometric mean) ─────────────────────
 
 
 def inv_perplexity(logprobs: Sequence[float]) -> float:
-    """Geometric mean token probability (= 1/PP = q_inv_perplexity with q=1).
+    """Geometric mean token probability (= alpha_inv_perplexity with α=0).
 
-    PP⁻¹ = exp(−H) = (∏ pᵢ)^{1/m}
+    PP⁻¹ = exp(mean(logprobs)) = (∏ pᵢ)^{1/m}
 
     Range: (0, 1]. Higher = better.
     """
-    return q_inv_perplexity(logprobs, q=1.0)
+    return alpha_inv_perplexity(logprobs, alpha=0.0)
 
 
 def perplexity(logprobs: Sequence[float]) -> float:
-    """Effective vocabulary size per token (= q_perplexity with q=1).
+    """Effective vocabulary size per token (= alpha_perplexity with α=0).
 
-    PP = exp(H) = (∏ pᵢ)^{−1/m}
+    PP = exp(-mean(logprobs)) = (∏ pᵢ)^{−1/m}
 
     Range: [1, ∞). Lower = better.
     Interpretation: "model is as uncertain as choosing uniformly among PP tokens."
     """
-    return q_perplexity(logprobs, q=1.0)
+    return alpha_perplexity(logprobs, alpha=0.0)
 
 
 def empirical_cross_entropy(logprobs: Sequence[float]) -> float:
@@ -117,9 +117,6 @@ def partial_logprob(logprobs: Sequence[float], start: int, end: int) -> float:
     return sum(logprobs[start:end])
 
 
-# ── Extreme token metrics (q → ±∞) ───────────────────────────────────────────
-
-
 def worst_token_logprob(logprobs: Sequence[float]) -> float:
     """Log-prob of the hardest token. min(ℓᵢ). Higher = better."""
     return min(logprobs) if logprobs else 0.0
@@ -130,14 +127,6 @@ def worst_token_position(logprobs: Sequence[float]) -> int:
     return argmin(list(logprobs))
 
 
-def worst_token_perplexity(logprobs: Sequence[float]) -> float:
-    """Perplexity at the single hardest token (= q_perplexity with q→∞).
-
-    Range: [1, ∞). Lower = better.
-    """
-    return q_perplexity(logprobs, q=float("inf"))
-
-
 def best_token_logprob(logprobs: Sequence[float]) -> float:
     """Log-prob of the easiest token. max(ℓᵢ)."""
     return max(logprobs) if logprobs else 0.0
@@ -146,11 +135,3 @@ def best_token_logprob(logprobs: Sequence[float]) -> float:
 def best_token_position(logprobs: Sequence[float]) -> int:
     """Position of the easiest token. argmax(ℓᵢ)."""
     return argmax(list(logprobs))
-
-
-def best_token_perplexity(logprobs: Sequence[float]) -> float:
-    """Perplexity at the single easiest token (= q_perplexity with q→−∞).
-
-    Range: [1, ∞). Lower = better.
-    """
-    return q_perplexity(logprobs, q=float("-inf"))

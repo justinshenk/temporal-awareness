@@ -6,7 +6,7 @@ Extends ModelRunner with specialized binary choice methods.
 from __future__ import annotations
 import bisect
 import re
-from typing import Any
+from typing import Any, Sequence
 
 
 def encode_into_trajectory_ids(
@@ -88,7 +88,7 @@ def parse_choice_from_generated_response(
 
 def get_label_start_end_pos(
     runner: Any,
-    token_ids: list[int],
+    token_ids: Sequence[int],
     choice_prefix: str,
     label: str,
 ) -> tuple[int, int]:
@@ -123,7 +123,7 @@ def get_label_start_end_pos(
     return start, end
 
 
-def get_divergent_token_id_position(ids1: list[int], ids2: list[int]) -> int:
+def get_divergent_token_id_position(ids1: Sequence[int], ids2: Sequence[int]) -> int:
     """Find first position where two token ID lists diverge."""
     for i, (a, b) in enumerate(zip(ids1, ids2)):
         if a != b:

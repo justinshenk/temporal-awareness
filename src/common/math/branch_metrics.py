@@ -15,8 +15,8 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 
+from .num_types import Num, Nums
 from .entropy_diversity import (
-    Nums,
     probs_to_logprobs,
     q_diversity,
     q_concentration,
@@ -28,7 +28,7 @@ from .entropy_diversity import (
 # ── Generalized branch metrics (order q) — most general ──────────────────────
 
 
-def q_branch_diversity(probs: Nums, q: float) -> float | torch.Tensor:
+def q_branch_diversity(probs: Nums, q: float) -> Num:
     """Effective number of alternatives at this branch (Hill number D_q).
 
     This is the central branch metric: how many "real" choices exist?
@@ -53,7 +53,7 @@ def q_branch_diversity(probs: Nums, q: float) -> float | torch.Tensor:
     return q_diversity(logprobs, q)
 
 
-def q_branch_entropy(probs: Nums, q: float) -> float | torch.Tensor:
+def q_branch_entropy(probs: Nums, q: float) -> Num:
     """Rényi entropy at this branch (H_q).
 
     The "uncertainty" interpretation of diversity.
@@ -65,7 +65,7 @@ def q_branch_entropy(probs: Nums, q: float) -> float | torch.Tensor:
     return renyi_entropy(logprobs, q)
 
 
-def q_branch_concentration(probs: Nums, q: float) -> float | torch.Tensor:
+def q_branch_concentration(probs: Nums, q: float) -> Num:
     """How concentrated is this branch? (1/D_q).
 
     Range: [1/n, 1]. Higher = more concentrated on few options.

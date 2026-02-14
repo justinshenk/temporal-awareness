@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 
 
 @dataclass
@@ -13,7 +14,7 @@ class CapturedInternals:
     activation_names: list[str]
 
     @classmethod
-    def from_activation_names(cls, activation_names: list[str], internals: dict):
+    def from_activation_names(cls, activation_names: Sequence[str], internals: dict):
         activations = {}
         for name in activation_names:
             if name in internals:
@@ -26,8 +27,8 @@ class CapturedInternals:
     @classmethod
     def from_activation_names_in_trajectories(
         cls,
-        activation_names: list[str],
-        trajectories: list,
+        activation_names: Sequence[str],
+        trajectories: Sequence,
     ) -> list["CapturedInternals"]:
         """Extract CapturedInternals from trajectories that have internals."""
         results = []

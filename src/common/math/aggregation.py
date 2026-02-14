@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Sequence
 
 
 class AggregationMethod(Enum):
@@ -15,15 +16,15 @@ class AggregationMethod(Enum):
     MIN = "min"
 
 
-def aggregate(values: list[float], method: AggregationMethod) -> float:
-    """Aggregate a list of values using the specified method.
+def aggregate(values: Sequence[float], method: AggregationMethod) -> float:
+    """Aggregate a sequence of values using the specified method.
 
     Args:
-        values: List of float values to aggregate
+        values: Sequence of float values to aggregate
         method: Aggregation method to use
 
     Returns:
-        Aggregated value, or -inf for empty lists
+        Aggregated value, or -inf for empty sequences
     """
     if not values:
         return float("-inf")

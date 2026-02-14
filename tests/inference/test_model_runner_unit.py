@@ -56,14 +56,17 @@ class TestModelRunnerConfiguration:
         # The device would be set to "cpu" when both CUDA and MPS are unavailable
         # This is tested implicitly in test_model_runner_qwen.py
 
-    def test_default_backend_is_transformerlens(self):
-        """Default backend is TransformerLens."""
-        # Can't test without loading, but verify the default in the signature
+    def test_default_backend_is_recommended(self):
+        """Default backend is the recommended backend for inference."""
+        from src.inference.backends import get_recommended_backend_inference
+
         import inspect
 
         sig = inspect.signature(ModelRunner.__init__)
         backend_param = sig.parameters["backend"]
-        assert backend_param.default == ModelBackend.TRANSFORMERLENS
+        # Default uses get_recommended_backend_inference() which varies by platform
+        # Just verify it's callable (the default is evaluated at import time)
+        assert backend_param.default == get_recommended_backend_inference()
 
 
 # =============================================================================

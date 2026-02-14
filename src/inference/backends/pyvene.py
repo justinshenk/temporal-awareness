@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 import torch
 
@@ -151,7 +151,7 @@ class PyveneBackend(Backend):
         return self.decode(generated[0, prompt_len:])
 
     def get_next_token_probs(
-        self, prompt: str, target_tokens: list[str], past_kv_cache: Any = None
+        self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
@@ -167,7 +167,7 @@ class PyveneBackend(Backend):
         return result
 
     def get_next_token_probs_by_id(
-        self, prompt: str, token_ids: list[int], past_kv_cache: Any = None
+        self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
         input_ids = self.tokenize(prompt)
         with torch.no_grad():
@@ -327,7 +327,7 @@ class PyveneBackend(Backend):
     def run_with_intervention(
         self,
         input_ids: torch.Tensor,
-        interventions: list[Intervention],
+        interventions: Sequence[Intervention],
     ) -> torch.Tensor:
         hooks = []
         for intervention in interventions:
@@ -386,7 +386,7 @@ class PyveneBackend(Backend):
     def run_with_intervention_and_cache(
         self,
         input_ids: torch.Tensor,
-        interventions: list[Intervention],
+        interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
         """Run forward with interventions AND capture activations with gradients."""

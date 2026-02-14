@@ -65,7 +65,18 @@ def _canon(
             return f"{obj[:max_string_length]}...[{len(obj)} chars]"
         return obj
     if is_dataclass(obj):
-        return _canon(asdict(obj), places, max_list_length, max_string_length)
+        # Manually iterate fields to properly handle nested dataclasses with _to_dict_hook
+        # (asdict() would convert them to dicts before we can call their hooks)
+        result = {}
+        for f in fields(obj):
+            if f.name.startswith("_"):
+                continue
+            val = getattr(obj, f.name)
+            result[f.name] = _canon(val, places, max_list_length, max_string_length)
+        # Apply _to_dict_hook if available (for prob/odds expansion, etc.)
+        if hasattr(obj, "_to_dict_hook"):
+            result = obj._to_dict_hook(result)
+        return result
     if isinstance(obj, dict):
         # Filter out private fields (starting with _) during serialization
         return {

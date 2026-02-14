@@ -10,7 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ..analysis import analyze_token_tree
+from ..analysis.trajectory_branch_node_analysis import (
+    StructureSystemAnalysis,
+    analyze_token_tree,
+)
 from ..token_tree import TokenTrajectory, TokenTree
 from .binary_choice import BinaryChoice, LabeledBinaryChoice
 
@@ -38,10 +41,23 @@ class SimpleBinaryChoice(BinaryChoice):
         traj_b: TokenTrajectory,
         **kwargs: Any,
     ) -> SimpleBinaryChoice:
-        """Build a SimpleBinaryChoice (or subclass) from two trajectories."""
-        tree = TokenTree.from_trajectories((traj_a, traj_b))
-        analyze_token_tree(tree)
+        """Build a SimpleBinaryChoice (or subclass) from two trajectories.
+
+        Each trajectory represents a different label/choice, so they are
+        placed in separate groups for cross-group fork creation.
+        """
+        tree = TokenTree.from_trajectories(
+            [traj_a, traj_b], groups_per_traj=[[0], [1]], fork_arms=[(0, 1)]
+        )
+        analyze_token_tree(tree)  # Sets tree.analysis
         return cls(tree=tree, **kwargs)
+
+    # ── Analysis accessor ───────────────────────────────────────────────
+
+    @property
+    def structure_analysis(self) -> StructureSystemAnalysis | None:
+        """Access tree's structure analysis (for backwards compatibility)."""
+        return self.tree.analysis
 
     # ── Decision ─────────────────────────────────────────────────────────
 
@@ -126,7 +142,9 @@ class LabeledSimpleBinaryChoice(SimpleBinaryChoice, LabeledBinaryChoice):
     """
 
     labels: tuple[str, str] | None = None  # e.g. ("a)", "b)")
-    response_texts: tuple[str, str] | None = None  # e.g. ("I choose: a)", "I choose: b)")
+    response_texts: tuple[str, str] | None = (
+        None  # e.g. ("I choose: a)", "I choose: b)")
+    )
 
     def without_labels(self) -> SimpleBinaryChoice:
         """Strip labels, returning a plain SimpleBinaryChoice."""

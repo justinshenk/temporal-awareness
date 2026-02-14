@@ -17,7 +17,7 @@ from ...inference.model_runner import ModelRunner
 
 from .sae_activations import Sentence
 from .text_processing import split_into_sentences, parse_llm_choice
-from .sae_paths import get_device, clear_gpu_memory
+from ...common.device_utils import get_device, clear_gpu_memory
 
 
 def _char_to_token_map(text: str, tokenizer) -> dict[int, int]:

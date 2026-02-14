@@ -16,7 +16,7 @@ from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 
 from .sae_plots import plot_cluster_distribution, plot_embedding, plot_gradient_embedding
-from .sae_paths import get_device
+from ...common.device_utils import get_device
 
 
 def compute_purity(cluster_labels: np.ndarray, true_labels: np.ndarray) -> float:

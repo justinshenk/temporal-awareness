@@ -112,18 +112,6 @@ class GeneratedTrajectory(TokenTrajectory):
         )
 
 
-def calculate_trajectory_from_logits(
-    token_ids: list[int],
-    logits: torch.Tensor,
-    device: str = "cpu",
-) -> GeneratedTrajectory:
-    """Build a GeneratedTrajectory from a forward pass.
-
-    DEPRECATED: Use GeneratedTrajectory.from_inference() instead.
-    """
-    return GeneratedTrajectory.from_inference(token_ids, logits, device)
-
-
 def calculate_trajectories_for_batch(
     token_ids_batch: list[list[int]],
     logits_batch: torch.Tensor,

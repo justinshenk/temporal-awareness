@@ -5,7 +5,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ...common.device_utils import get_device, clear_gpu_memory
 
 
 # temporal-awareness/ root
@@ -106,5 +105,3 @@ def ensure_dirs(file_cfg: FilepathConfig | None = None):
         d.mkdir(parents=True, exist_ok=True)
 
 
-# Re-export device utilities for backward compatibility
-__all__ = ["get_device", "clear_gpu_memory", "FilepathConfig", "ensure_dirs"]

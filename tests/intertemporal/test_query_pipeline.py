@@ -73,6 +73,7 @@ class TestQueryPipeline:
         output = runner.query_dataset(dataset, TEST_MODEL)
 
         for pref in output.preferences:
-            assert pref.choice in ("short_term", "long_term", "unknown")
+            # choice is now a LabeledSimpleBinaryChoice, use choice_term property
+            assert pref.choice_term in ("short_term", "long_term", None)
             assert isinstance(pref.choice_prob, float)
-            assert isinstance(pref.alt_prob, float)
+            assert isinstance(pref.alternative_prob, float)

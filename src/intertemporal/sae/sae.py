@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .sae_paths import get_device
+from ...common.device_utils import get_device
 from .sae_activations import Sentence
 # ── Constants ───────────────────────────────────────────────────────────────
 
