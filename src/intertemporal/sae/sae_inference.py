@@ -20,9 +20,20 @@ from .text_processing import split_into_sentences, parse_llm_choice
 from ...common.device_utils import get_device, clear_gpu_memory
 
 
-def _char_to_token_map(text: str, tokenizer) -> dict[int, int]:
-    encoding = tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
+def _get_hf_tokenizer(tokenizer):
+    """Get underlying HuggingFace tokenizer from any wrapper."""
+    # Handle MLX TokenizerWrapper
+    if hasattr(tokenizer, '_tokenizer'):
+        return tokenizer._tokenizer
+    return tokenizer
+
+
+def _build_char_to_token_map(text: str, tokenizer) -> dict[int, int]:
+    """Build mapping from character position to token index."""
+    hf_tokenizer = _get_hf_tokenizer(tokenizer)
+    encoding = hf_tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
     offsets = encoding.get("offset_mapping", [])
+
     char_to_token = {}
     for token_idx, (start, end) in enumerate(offsets):
         for char_pos in range(start, end + 1):
@@ -31,54 +42,89 @@ def _char_to_token_map(text: str, tokenizer) -> dict[int, int]:
     return char_to_token
 
 
-# ── Sentence activation extraction from cache ───────────────────────────────
+def _get_token_span_for_sentence(
+    sentence: Sentence,
+    full_text: str,
+    char_to_token: dict[int, int],
+    max_token_idx: int,
+) -> tuple[int, int] | None:
+    """Get (start_token, end_token) for a sentence, or None if not found."""
+    text_pos = full_text.find(sentence.text)
+    if text_pos < 0:
+        return None
+
+    token_start = char_to_token.get(text_pos)
+    token_end = char_to_token.get(text_pos + len(sentence.text) - 1)
+
+    if token_start is None or token_end is None or token_start >= token_end:
+        return None
+
+    # Clamp to valid range
+    token_end = min(token_end, max_token_idx)
+    return (token_start, token_end)
 
 
-def _extract_sentence_activations_single_layer(
+def _extract_all_layer_activations(
     cache: dict,
     full_text: str,
     sentences: list[Sentence],
-    layer: int,
-    tokenizer,
+    layers: list[int],
     char_to_token: dict[int, int],
-) -> dict[int, np.ndarray]:
-    """Extract per-sentence activations from a single-layer cache.
+) -> dict[int, dict[str, np.ndarray]]:
+    """Extract mean-pooled activations for all sentences across all layers.
 
-    Returns {sentence_idx: mean_pooled_activation}.
+    Returns: {sentence_idx: {layer_key: activation_array}}
     """
-    hook_name = f"blocks.{layer}.hook_resid_post"
-    if hook_name not in cache:
-        return {}
+    result: dict[int, dict[str, np.ndarray]] = {}
 
-    layer_acts = cache[hook_name].detach().cpu().float()
-    if layer_acts.dim() == 3:
-        layer_acts = layer_acts.squeeze(0)
+    # Pre-compute token spans for all sentences (layer-independent)
+    # Get max token idx from first available layer
+    max_token_idx = 0
+    for layer in layers:
+        hook_name = f"blocks.{layer}.hook_resid_post"
+        if hook_name in cache:
+            layer_acts = cache[hook_name]
+            if layer_acts.dim() == 3:
+                max_token_idx = layer_acts.shape[1] - 1
+            else:
+                max_token_idx = layer_acts.shape[0] - 1
+            break
 
-    result: dict[int, np.ndarray] = {}
+    sentence_spans = {}
     for sentence_idx, sentence in enumerate(sentences):
-        text_pos = full_text.find(sentence.text)
-        if text_pos < 0:
-            continue
-        token_start = char_to_token.get(text_pos)
-        token_end = char_to_token.get(text_pos + len(sentence.text) - 1)
-        if token_start is None or token_end is None or token_start >= token_end:
+        span = _get_token_span_for_sentence(sentence, full_text, char_to_token, max_token_idx)
+        if span is not None:
+            sentence_spans[sentence_idx] = span
+
+    if not sentence_spans:
+        return result
+
+    # Extract activations for each layer
+    for layer in layers:
+        hook_name = f"blocks.{layer}.hook_resid_post"
+        if hook_name not in cache:
             continue
 
-        clamped_end = min(token_end, layer_acts.shape[0] - 1)
-        segment = layer_acts[token_start : clamped_end + 1]
-        if segment.shape[0] == 0:
-            continue
+        layer_acts = cache[hook_name].detach().cpu().float()
+        if layer_acts.dim() == 3:
+            layer_acts = layer_acts.squeeze(0)
 
-        act = segment.mean(dim=0).numpy()
-        if not np.isfinite(act).all():
-            continue
+        layer_key = f"layer_{layer}"
 
-        result[sentence_idx] = act
+        for sentence_idx, (token_start, token_end) in sentence_spans.items():
+            segment = layer_acts[token_start : token_end + 1]
+            if segment.shape[0] == 0:
+                continue
+
+            act = segment.mean(dim=0).numpy()
+            if not np.isfinite(act).all():
+                continue
+
+            if sentence_idx not in result:
+                result[sentence_idx] = {}
+            result[sentence_idx][layer_key] = act
 
     return result
-
-
-# ── Main combined function ──────────────────────────────────────────────────
 
 
 def generate_and_extract(
@@ -112,10 +158,10 @@ def generate_and_extract(
 
     print(f"Processing {len(samples)} samples ({len(layers)} layers each)...")
 
-    for idx, sample in enumerate(tqdm(samples, desc="Samples")):
+    for sample in tqdm(samples, desc="Samples"):
         prompt_text = sample["prompt_text"]
 
-        # Generate response via ModelRunner API
+        # Generate response
         try:
             response_text = runner.generate(
                 prompt_text,
@@ -139,32 +185,21 @@ def generate_and_extract(
         updated["sentences"] = [s.to_dict() for s in sentences]
         updated_samples.append(updated)
 
-        # Extract activations — all layers in one forward pass
+        # Extract activations for all layers
         sample_activations = {}
 
         if sentences:
             full_text = prompt_text + response_text
-            # Build char_to_token on formatted text (matches run_with_cache)
             formatted_text = runner._apply_chat_template(full_text)
-            char_to_token = _char_to_token_map(formatted_text, tokenizer)
+            char_to_token = _build_char_to_token_map(formatted_text, tokenizer)
 
             try:
                 names_filter = lambda name: "hook_resid_post" in name
                 _, cache = runner.run_with_cache(full_text, names_filter=names_filter)
 
-                for layer in layers:
-                    layer_acts = _extract_sentence_activations_single_layer(
-                        cache,
-                        formatted_text,
-                        sentences,
-                        layer,
-                        tokenizer,
-                        char_to_token,
-                    )
-                    for sentence_idx, act in layer_acts.items():
-                        if sentence_idx not in sample_activations:
-                            sample_activations[sentence_idx] = {}
-                        sample_activations[sentence_idx][f"layer_{layer}"] = act
+                sample_activations = _extract_all_layer_activations(
+                    cache, formatted_text, sentences, layers, char_to_token
+                )
 
                 del cache
             except Exception as e:

@@ -6,7 +6,7 @@ from dataclasses import asdict
 
 import numpy as np
 from src.common import TimeValue
-from src.common.device_utils import clear_gpu_memory
+from src.common.device_utils import clear_gpu_memory, log_memory, check_memory_trend
 from .sae_paths import (
     ensure_dirs,
     reset_and_get_test_filepath_cfg,
@@ -129,10 +129,11 @@ def load_samples(state: PipelineState) -> list:
     return samples
 
 
-def load_activations(samples: list) -> list | None:
+def load_activations(samples: list, verbose: bool = False) -> list | None:
     activations = None
     if samples and samples[0].get("activation_paths"):
-        print(f"  Loading activations for {len(samples)} samples")
+        if verbose:
+            print(f"  Loading activations for {len(samples)} samples", flush=True)
         activations = []
         for sample_idxx, sample in enumerate(samples):
             sample_activations = {}
@@ -144,7 +145,8 @@ def load_activations(samples: list) -> list | None:
                     sentence_activations = {key: data[key] for key in data.files}
                 sample_activations[sentence_idx] = sentence_activations
             activations.append(sample_activations)
-        print(f"  Loaded activations for {len(samples)} samples")
+        if verbose:
+            print(f"  Loaded activations for {len(samples)} samples", flush=True)
 
     return activations
 
@@ -194,16 +196,105 @@ def _load_samples(state: PipelineState) -> list:
 def _load_activations(state: PipelineState, samples: list) -> list:
     """Loads inference result for the current iteration."""
     with P("load_activations"):
-        activations = load_activations(samples)
+        activations = load_activations(samples, verbose=True)
     return activations
 
 
+def _calculate_section_activation_means_streaming(state: PipelineState):
+    """Compute activation means by streaming through iteration files one at a time.
+
+    This avoids loading all data into memory at once, which can cause OOM crashes
+    with large datasets (e.g., 250+ iterations × 128 samples = 62GB of activations).
+    """
+    from .sae_activations import Sentence
+
+    sections = Sentence.get_sections()
+    layers = state.config.layers
+
+    # Running sums and counts for each (layer, section)
+    sums: dict[int, dict[str, np.ndarray | None]] = {
+        layer: {s: None for s in sections} for layer in layers
+    }
+    counts: dict[int, dict[str, int]] = {
+        layer: {s: 0 for s in sections} for layer in layers
+    }
+
+    data_dir = state.filepath_cfg.data_dir
+    pattern = f"samples_{state.pipeline_id}_iter*.json"
+    sample_files = sorted(data_dir.glob(pattern))
+
+    n_iters = len(sample_files)
+    print(f"  Computing means from {n_iters} iteration files (streaming)...", flush=True)
+
+    for sf in sample_files:
+        # Load one iteration at a time
+        with open(sf) as f:
+            data = json.load(f)
+        samples = data["samples"]
+        activations = load_activations(samples)
+        if activations is None:
+            continue
+
+        # Accumulate sums for this iteration
+        for sample_idx, sample in enumerate(samples):
+            if sample_idx >= len(activations):
+                continue
+            sample_acts = activations[sample_idx]
+            raw_sentences = sample.get("sentences", [])
+
+            for sentence_idx in sorted(sample_acts.keys(), key=int):
+                if sentence_idx >= len(raw_sentences):
+                    continue
+                section = raw_sentences[sentence_idx].get("section")
+                if section not in sections:
+                    continue
+                sentence_acts = sample_acts[sentence_idx]
+
+                for layer in layers:
+                    layer_key = f"layer_{layer}"
+                    if layer_key in sentence_acts:
+                        vec = sentence_acts[layer_key]
+                        if sums[layer][section] is None:
+                            sums[layer][section] = vec.copy()
+                        else:
+                            sums[layer][section] += vec
+                        counts[layer][section] += 1
+
+        # Free memory for this iteration
+        del samples, activations
+
+    # Compute final means
+    d_in = None
+    for layer in layers:
+        for s in sections:
+            if sums[layer][s] is not None:
+                d_in = sums[layer][s].shape[0]
+                break
+        if d_in is not None:
+            break
+
+    if d_in is None:
+        raise ValueError("No activation vectors found in any layer/section")
+
+    result: dict[int, dict[str, np.ndarray]] = {}
+    total_samples = sum(counts[layers[0]][s] for s in sections)
+    print(f"  Computed means from {total_samples} vectors", flush=True)
+
+    for layer in layers:
+        result[layer] = {}
+        for s in sections:
+            if sums[layer][s] is not None and counts[layer][s] > 0:
+                result[layer][s] = sums[layer][s] / counts[layer][s]
+            else:
+                result[layer][s] = np.zeros(d_in)
+
+    return result
+
+
 def _calculate_section_activation_means(state: PipelineState):
+    """Compute section activation means using memory-efficient streaming."""
     with P("calculate_section_activation_means"):
-        samples, activations = _load_all_data(state)
-        activation_means = calculate_activation_means_by_section(
-            samples, activations, state.config.layers
-        )
+        activation_means = _calculate_section_activation_means_streaming(state)
     return activation_means
 
 
@@ -519,22 +610,38 @@ def _run_iteration(state: PipelineState, tb_writer=None, skip_analysis: bool = F
 
     ensure_dirs(state.filepath_cfg)
     iteration = state.iteration
+    log_memory("iter_start", iteration)
 
     # Stage 1: Dataset
     samples = None
     if state.stage < PipelineStage.DATASET_GENERATED:
         print(f"\n  iter:{iteration}, Stage 1: Dataset Generation")
         _generate_dataset(state)
+        log_memory("after_dataset", iteration)
 
     # Stage 2: Inference
     if state.stage < PipelineStage.INFERENCE_DONE:
-        print(f"\n  iter:{iteration}, Stage 2: Running Inference")
+        print(f"\n  iter:{iteration}, Stage 2: Running Inference", flush=True)
         _run_inference(state)
+        log_memory("after_inference", iteration)
 
+    print(f"  Loading samples...", flush=True)
     samples = _load_samples(state)
+    print(f"  Loaded {len(samples)} samples", flush=True)
+
+    print(f"  Loading activations...", flush=True)
     activations = _load_activations(state, samples)
+    print(f"  Loaded activations for {len(activations) if activations else 0} samples", flush=True)
+
+    print(f"  Calculating activation means...", flush=True)
     activation_means = _calculate_section_activation_means(state)
+    print(f"  Calculated means for {len(activation_means)} sections", flush=True)
+
+    print(f"  Loading SAE models...", flush=True)
     sae_models = _get_sae_models(state)
+    print(f"  Loaded {len(sae_models)} SAE models", flush=True)
+
+    log_memory("after_load_data", iteration)
 
     # Stage 3: SAE Training
     if state.stage < PipelineStage.SAE_TRAINED:
@@ -547,15 +654,18 @@ def _run_iteration(state: PipelineState, tb_writer=None, skip_analysis: bool = F
             activation_means,
             tb_writer=tb_writer,
         )
+        log_memory("after_training", iteration)
 
     if not skip_analysis:
         # Stage 4: Analysis
         if state.stage < PipelineStage.EVALUATED:
             print(f"\n  iter:{iteration}, Stage 4: Analysis")
             _analyze_results(state, samples, activations, sae_models, activation_means)
+            log_memory("after_analysis", iteration)
 
     del activations
     clear_gpu_memory()
+    log_memory("iter_end", iteration)
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
@@ -569,16 +679,25 @@ def run_pipeline(state: PipelineState, retrain_every_n_iter: int = 50):
 
     try:
         for i in range(state.iteration, state.config.max_iterations):
+            print(f"\n{'='*60}")
+            print(f"STARTING ITERATION {i} / {state.config.max_iterations}")
+            print(f"{'='*60}\n", flush=True)
             state.iteration = i
             _run_iteration(state, tb_writer=writer, skip_analysis=True)
             state.stage = PipelineStage.INIT
+            print(f"\n[OK] Iteration {i} completed successfully\n", flush=True)
             P.report()
+
+            # Check memory trend every 10 iterations
+            if i > 0 and i % 10 == 0:
+                check_memory_trend()
 
             # Every N iterations, retrain SAEs from scratch on all data.
             if i > 0 and i % retrain_every_n_iter == 0:
                 _run_special_iter(state)
     finally:
         writer.close()
+        check_memory_trend()
         P.report()
 
 

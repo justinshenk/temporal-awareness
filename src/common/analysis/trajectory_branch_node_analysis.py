@@ -142,6 +142,8 @@ class ForkMetrics(DistributionalAnalysis):
 
     probability_ratio: float  # p_A / p_B at divergent pos       — >1 means A wins
     log_odds: float  # log(p_A / p_B)                   — >0 means A wins
+    logit_diff: float  # logit_A - logit_B = lp_A - lp_B — >0 means A wins
+    reciprocal_rank_a: float  # 1/rank_A in binary comparison — 1.0 if A wins, 0.5 if B wins
 
 
 @dataclass
@@ -289,6 +291,8 @@ def _build_fork_analysis(fork_idx: int, fork: BinaryFork) -> ForkAnalysis:
             fork_concentration=q_fork_concentration(p_a, p_b, q=1.0),
             probability_ratio=probability_ratio(p_a, p_b),
             log_odds=log_odds(p_a, p_b),
+            logit_diff=lp_a - lp_b,
+            reciprocal_rank_a=1.0 if lp_a >= lp_b else 0.5,
         ),
     )
 

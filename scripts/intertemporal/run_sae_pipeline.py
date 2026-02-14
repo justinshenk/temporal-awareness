@@ -16,9 +16,14 @@ Usage:
 """
 
 import argparse
+import faulthandler
 import json
 import sys
+import traceback
 from pathlib import Path
+
+# Enable faulthandler to get tracebacks on segfaults/crashes
+faulthandler.enable()
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -101,4 +106,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("\n" + "=" * 60)
+        print("PIPELINE CRASHED WITH EXCEPTION:")
+        print("=" * 60)
+        traceback.print_exc()
+        print("=" * 60)
+        sys.exit(1)

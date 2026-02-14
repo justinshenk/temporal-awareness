@@ -78,10 +78,11 @@ def parse_choice_from_generated_response(
 
     if match:
         matched = match.group(1)
+        # short_label is labels[0], long_label is labels[1]
         if matched in (short_label.lower(), short_label.rstrip(".)").lower()):
-            return 1
-        elif matched in (long_label.lower(), long_label.rstrip(".)").lower()):
             return 0
+        elif matched in (long_label.lower(), long_label.rstrip(".)").lower()):
+            return 1
 
     return -1
 
