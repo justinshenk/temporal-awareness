@@ -210,7 +210,14 @@ class TrajectoryMetrics(DistributionalAnalysis):
         end: int | None = None,
         top_p: int = 100,
     ) -> TrajectoryMetrics:
-        """Build metrics from a trajectory, using full_logits if available."""
+        """Build metrics from a trajectory, using full_logits if available.
+
+        Args:
+            traj: The trajectory to analyze
+            start: Start position (use to skip prompt tokens)
+            end: End position (None = end of trajectory)
+            top_p: Number of top tokens for normalized metrics
+        """
         end_pos = end if end is not None else traj.length
         logprobs = traj.logprobs[start:end_pos]
         token_ids = traj.token_ids[start:end_pos]
@@ -219,11 +226,11 @@ class TrajectoryMetrics(DistributionalAnalysis):
         metrics = cls.from_logprobs(logprobs)
 
         # Rank-based metrics (if full_logits available)
-        if traj.full_logits is not None:
+        if traj.full_logits is not None and start < traj.full_logits.shape[0]:
             full_logits_slice = traj.full_logits[start:end_pos]
             ranks = token_ranks_from_logits(token_ids, full_logits_slice)
             metrics.worst_token_rank = worst_token_rank(ranks)
-            metrics.worst_rank_position = worst_rank_position(ranks)
+            metrics.worst_rank_position = worst_rank_position(ranks) + start  # Adjust to absolute position
 
             # Top-p normalized metrics
             norm_logprobs = top_p_normalized_logprobs(
@@ -236,7 +243,7 @@ class TrajectoryMetrics(DistributionalAnalysis):
                     p=top_p,
                     total_logprob=total_logprob(finite_norm_lps),
                     worst_token_logprob=worst_token_logprob(finite_norm_lps),
-                    worst_token_position=worst_token_position(norm_logprobs),
+                    worst_token_position=worst_token_position(norm_logprobs) + start,
                 )
 
         return metrics
@@ -317,9 +324,21 @@ def analyze_token_tree(tree: TokenTree) -> StructureSystemAnalysis | None:
 
 
 def _analyze_trajectories_basic(tree: TokenTree) -> None:
-    """First pass: compute basic trajectory metrics."""
+    """First pass: compute basic trajectory metrics.
+
+    For rank-based metrics (worst_token_rank, top_p_normalized), we start
+    from the first divergent position to skip prompt tokens which would
+    have artificially high ranks since they're forced.
+    """
+    # Find the first divergent position (where choices differ)
+    start_pos = 0
+    if tree.nodes:
+        start_pos = tree.nodes[0].branching_token_position
+
     for i, traj in enumerate(tree.trajs):
-        traj.analysis = TrajectoryAnalysis.from_trajectory(traj_idx=i, traj=traj)
+        traj.analysis = TrajectoryAnalysis.from_trajectory(
+            traj_idx=i, traj=traj, start=start_pos
+        )
 
 
 def _analyze_forks(tree: TokenTree) -> None:

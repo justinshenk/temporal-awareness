@@ -99,9 +99,9 @@ def verify_greedy_generation(
 
     Returns True if there's a mismatch (decoding_mismatch=True).
 
-    Checks:
-    1. Label parsed from generated text matches choice.choice_idx
-    2. If runner and prompt provided: token at divergent position matches
+    Checks (in order):
+    1. Token IDs: Compare all encoded tokens between generated and chosen trajectory
+    2. Label: Parse label from generated text and compare to choice.choice_idx
 
     Args:
         choice: SimpleBinaryChoice or LabeledSimpleBinaryChoice
@@ -113,8 +113,56 @@ def verify_greedy_generation(
         prompt: Optional prompt text for token-level comparison
     """
     labels = (short_label, long_label)
+    chosen_traj = getattr(choice, "chosen_traj", None)
 
-    # Check 1: Label-level comparison
+    # Check 1: Token ID comparison (primary check)
+    # Compare generated tokens to chosen trajectory tokens (up to trajectory length)
+    if runner is not None and prompt is not None and chosen_traj is not None:
+        # Encode generated response
+        generated_ids = encode_into_trajectory_ids(
+            runner, prompt, generated_response
+        )
+        expected_ids = chosen_traj.token_ids
+
+        # Only compare up to the length of the chosen trajectory
+        # (generated response may be longer with additional reasoning)
+        compare_len = len(expected_ids)
+
+        # Find first divergence within the comparable region
+        first_diff_pos = get_divergent_token_id_position(
+            generated_ids[:compare_len], expected_ids
+        )
+
+        if first_diff_pos < compare_len and first_diff_pos < len(generated_ids):
+            expected_token_id = expected_ids[first_diff_pos]
+            actual_token_id = generated_ids[first_diff_pos]
+            expected_token = runner.decode([expected_token_id])
+            actual_token = runner.decode([actual_token_id])
+
+            # Show context around divergence
+            context_start = max(0, first_diff_pos - 3)
+            context_end = min(compare_len, first_diff_pos + 3)
+            expected_context = runner.decode(expected_ids[context_start:context_end])
+            actual_context = runner.decode(generated_ids[context_start:context_end])
+
+            print(
+                f"\n{'='*60}\n"
+                f"DECODING MISMATCH: Token IDs differ\n"
+                f"{'='*60}\n"
+                f"  First divergence at position: {first_diff_pos}\n"
+                f"  Expected token: {expected_token_id} ({expected_token!r})\n"
+                f"  Actual token:   {actual_token_id} ({actual_token!r})\n"
+                f"\n"
+                f"  Expected context: {expected_context!r}\n"
+                f"  Actual context:   {actual_context!r}\n"
+                f"\n"
+                f"  Choice idx: {choice.choice_idx} ({labels[choice.choice_idx]})\n"
+                f"  Generated len: {len(generated_ids)}, Expected len: {len(expected_ids)}\n"
+                f"{'='*60}\n"
+            )
+            return True
+
+    # Check 2: Label-level comparison (fallback if no runner/prompt)
     generated_choice_idx = parse_choice_from_generated_response(
         generated_response, short_label, long_label, choice_prefix
     )
@@ -132,39 +180,6 @@ def verify_greedy_generation(
             f"{'='*60}\n"
         )
         return True
-
-    # Check 2: Token-level comparison at divergent position
-    if runner is not None and prompt is not None:
-        div_pos = getattr(choice, "divergent_position", None)
-        chosen_traj = getattr(choice, "chosen_traj", None)
-
-        if div_pos is not None and chosen_traj is not None:
-            # Get expected token at divergent position
-            expected_token_id = chosen_traj.token_ids[div_pos]
-
-            # Tokenize the generated response
-            generated_ids = encode_into_trajectory_ids(
-                runner, prompt, generated_response
-            )
-
-            # Check if token at divergent position matches
-            if div_pos < len(generated_ids):
-                actual_token_id = generated_ids[div_pos]
-                if actual_token_id != expected_token_id:
-                    expected_token = runner.decode([expected_token_id])
-                    actual_token = runner.decode([actual_token_id])
-                    print(
-                        f"\n{'='*60}\n"
-                        f"DECODING MISMATCH: Token mismatch at divergent position\n"
-                        f"{'='*60}\n"
-                        f"  Divergent position: {div_pos}\n"
-                        f"  Expected token: {expected_token_id} ({expected_token!r})\n"
-                        f"  Actual token:   {actual_token_id} ({actual_token!r})\n"
-                        f"  Choice idx: {choice.choice_idx} ({labels[choice.choice_idx]})\n"
-                        f"  Response preview: {generated_response[:100]}...\n"
-                        f"{'='*60}\n"
-                    )
-                    return True
 
     return False  # No mismatch
 
