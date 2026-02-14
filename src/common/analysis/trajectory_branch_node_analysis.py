@@ -28,10 +28,14 @@ from ..math import (
     q_fork_concentration,
     q_fork_diversity,
     q_fork_entropy,
+    token_ranks_from_logits,
+    top_p_normalized_logprobs,
     total_logprob,
     vocab_entropy_from_logits,
+    worst_rank_position,
     worst_token_logprob,
     worst_token_position,
+    worst_token_rank,
 )
 from .tree_as_structures_system import (
     StructureSystemAnalysis,
@@ -156,6 +160,16 @@ class NodeMetrics(DistributionalAnalysis):
 
 
 @dataclass
+class TopPNormalizedMetrics(DistributionalAnalysis):
+    """Metrics computed with top-p normalized probabilities."""
+
+    p: int  # number of top tokens considered
+    total_logprob: float  # Σ normalized logprobs
+    worst_token_logprob: float  # min(normalized logprobs)
+    worst_token_position: int  # argmin(normalized logprobs)
+
+
+@dataclass
 class TrajectoryMetrics(DistributionalAnalysis):
     """Metrics computed over a trajectory's logprob sequence."""
 
@@ -169,6 +183,13 @@ class TrajectoryMetrics(DistributionalAnalysis):
     worst_token_logprob: float  # min(logprobs)                 — higher = better
     worst_token_position: int  # argmin(logprobs) — where the hardest token is
 
+    # Rank-based metrics (only when full_logits available)
+    worst_token_rank: int | None = None  # rank of worst token (1=greedy)
+    worst_rank_position: int | None = None  # position of worst-ranked token
+
+    # Top-p normalized metrics (only when full_logits available)
+    top_p_normalized: TopPNormalizedMetrics | None = None
+
     @classmethod
     def from_logprobs(cls, logprobs: list[float]) -> TrajectoryMetrics:
         return cls(
@@ -180,6 +201,45 @@ class TrajectoryMetrics(DistributionalAnalysis):
             worst_token_logprob=worst_token_logprob(logprobs),
             worst_token_position=worst_token_position(logprobs),
         )
+
+    @classmethod
+    def from_trajectory(
+        cls,
+        traj: TokenTrajectory,
+        start: int = 0,
+        end: int | None = None,
+        top_p: int = 100,
+    ) -> TrajectoryMetrics:
+        """Build metrics from a trajectory, using full_logits if available."""
+        end_pos = end if end is not None else traj.length
+        logprobs = traj.logprobs[start:end_pos]
+        token_ids = traj.token_ids[start:end_pos]
+
+        # Basic metrics
+        metrics = cls.from_logprobs(logprobs)
+
+        # Rank-based metrics (if full_logits available)
+        if traj.full_logits is not None:
+            full_logits_slice = traj.full_logits[start:end_pos]
+            ranks = token_ranks_from_logits(token_ids, full_logits_slice)
+            metrics.worst_token_rank = worst_token_rank(ranks)
+            metrics.worst_rank_position = worst_rank_position(ranks)
+
+            # Top-p normalized metrics
+            norm_logprobs = top_p_normalized_logprobs(
+                token_ids, full_logits_slice, p=top_p
+            )
+            # Filter out -inf values for metrics
+            finite_norm_lps = [lp for lp in norm_logprobs if math.isfinite(lp)]
+            if finite_norm_lps:
+                metrics.top_p_normalized = TopPNormalizedMetrics(
+                    p=top_p,
+                    total_logprob=total_logprob(finite_norm_lps),
+                    worst_token_logprob=worst_token_logprob(finite_norm_lps),
+                    worst_token_position=worst_token_position(norm_logprobs),
+                )
+
+        return metrics
 
 
 # ─── Analysis Data Classes ───────────────────────────────────────────────────
@@ -215,9 +275,12 @@ class TrajectoryAnalysis(BaseSchema):
         traj: TokenTrajectory,
         start: int = 0,
         end: int | None = None,
+        top_p: int = 100,
     ) -> TrajectoryAnalysis:
-        logprobs = traj.logprobs[start : (end if end is not None else traj.length)]
-        return cls.from_logprobs(traj_idx, logprobs)
+        return cls(
+            traj_idx=traj_idx,
+            metrics=TrajectoryMetrics.from_trajectory(traj, start, end, top_p),
+        )
 
     @classmethod
     def from_logprobs(cls, traj_idx: int, logprobs: list[float]) -> TrajectoryAnalysis:

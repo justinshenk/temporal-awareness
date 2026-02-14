@@ -135,3 +135,111 @@ def best_token_logprob(logprobs: Sequence[float]) -> float:
 def best_token_position(logprobs: Sequence[float]) -> int:
     """Position of the easiest token. argmax(ℓᵢ)."""
     return argmax(list(logprobs))
+
+
+# ── Rank-based metrics (require full logits) ─────────────────────────────────
+
+
+def token_ranks_from_logits(
+    token_ids: Sequence[int],
+    full_logits,  # torch.Tensor [n_sequence, vocab_size]
+) -> list[int]:
+    """Compute rank of each chosen token in the vocab distribution.
+
+    Rank 1 = highest probability token (greedy choice).
+    Higher rank = more surprising choice.
+
+    Args:
+        token_ids: [n_sequence] chosen token IDs
+        full_logits: [n_sequence, vocab_size] logits at each position
+
+    Returns:
+        [n_sequence] ranks (1-indexed, where 1 = top token)
+    """
+    import torch
+
+    if full_logits is None:
+        return [1] * len(token_ids)
+
+    ranks = []
+    for pos, token_id in enumerate(token_ids):
+        if pos >= full_logits.shape[0]:
+            ranks.append(1)
+            continue
+
+        logits_at_pos = full_logits[pos]
+        # Count how many tokens have higher logits than the chosen one
+        chosen_logit = logits_at_pos[token_id].item()
+        rank = (logits_at_pos > chosen_logit).sum().item() + 1
+        ranks.append(int(rank))
+
+    return ranks
+
+
+def worst_token_rank(ranks: Sequence[int]) -> int:
+    """Rank of the worst-ranked token. Higher = more surprising choice somewhere."""
+    return max(ranks) if ranks else 1
+
+
+def worst_rank_position(ranks: Sequence[int]) -> int:
+    """Position of the worst-ranked token."""
+    return argmax(list(ranks))
+
+
+# ── Top-p normalized metrics ─────────────────────────────────────────────────
+
+
+def top_p_normalized_logprobs(
+    token_ids: Sequence[int],
+    full_logits,  # torch.Tensor [n_sequence, vocab_size]
+    p: int = 100,
+) -> list[float]:
+    """Compute logprobs normalized to top-p tokens at each position.
+
+    For each position:
+    1. Take top-p tokens by probability
+    2. Renormalize their probabilities to sum to 1
+    3. Return the normalized logprob of the chosen token
+
+    This gives higher probabilities since we're only considering
+    plausible alternatives, not the entire vocabulary.
+
+    Args:
+        token_ids: [n_sequence] chosen token IDs
+        full_logits: [n_sequence, vocab_size] logits at each position
+        p: Number of top tokens to consider (default 100)
+
+    Returns:
+        [n_sequence] normalized logprobs
+    """
+    import torch
+    import torch.nn.functional as F
+
+    if full_logits is None:
+        return [0.0] * len(token_ids)
+
+    normalized_logprobs = []
+    for pos, token_id in enumerate(token_ids):
+        if pos >= full_logits.shape[0]:
+            normalized_logprobs.append(0.0)
+            continue
+
+        logits_at_pos = full_logits[pos]
+
+        # Get top-p logits and indices
+        top_logits, top_indices = torch.topk(logits_at_pos, min(p, logits_at_pos.shape[0]))
+
+        # Check if chosen token is in top-p
+        token_in_top_p = (top_indices == token_id).any()
+
+        if token_in_top_p:
+            # Normalize top-p to get probabilities
+            top_probs = F.softmax(top_logits, dim=0)
+            # Find position of chosen token in top-p
+            token_pos_in_top = (top_indices == token_id).nonzero(as_tuple=True)[0].item()
+            normalized_logprobs.append(torch.log(top_probs[token_pos_in_top]).item())
+        else:
+            # Token not in top-p, assign very low probability
+            normalized_logprobs.append(float("-inf"))
+
+    return normalized_logprobs
