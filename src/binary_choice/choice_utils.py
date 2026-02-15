@@ -116,7 +116,7 @@ def verify_greedy_generation(
     chosen_traj = getattr(choice, "chosen_traj", None)
 
     # Check 1: Token ID comparison (primary check)
-    # Compare generated tokens to chosen trajectory tokens (up to trajectory length)
+    # Compare generated tokens to chosen trajectory tokens
     if runner is not None and prompt is not None and chosen_traj is not None:
         # Encode generated response
         generated_ids = encode_into_trajectory_ids(
@@ -124,40 +124,53 @@ def verify_greedy_generation(
         )
         expected_ids = chosen_traj.token_ids
 
-        # Only compare up to the length of the chosen trajectory
-        # (generated response may be longer with additional reasoning)
-        compare_len = len(expected_ids)
+        # Find divergent position from the choice (where A vs B differs)
+        div_pos = getattr(choice, "divergent_position", None)
 
-        # Find first divergence within the comparable region
-        first_diff_pos = get_divergent_token_id_position(
-            generated_ids[:compare_len], expected_ids
-        )
+        # Find first difference in token sequences
+        first_diff_pos = get_divergent_token_id_position(generated_ids, expected_ids)
+        min_len = min(len(generated_ids), len(expected_ids))
 
-        if first_diff_pos < compare_len and first_diff_pos < len(generated_ids):
+        if first_diff_pos < min_len:
             expected_token_id = expected_ids[first_diff_pos]
             actual_token_id = generated_ids[first_diff_pos]
             expected_token = runner.decode([expected_token_id])
             actual_token = runner.decode([actual_token_id])
 
+            # Check if this is whitespace insertion (common with greedy gen)
+            actual_is_whitespace = actual_token.strip() == ""
+
+            # Determine mismatch type
+            if div_pos is not None and first_diff_pos < div_pos:
+                # Divergence BEFORE the choice point (e.g., inserted \n)
+                mismatch_type = "Pre-choice token insertion"
+                if actual_is_whitespace:
+                    mismatch_type = f"Whitespace insertion ({actual_token!r})"
+            elif div_pos is not None and first_diff_pos == div_pos:
+                mismatch_type = "Choice token mismatch"
+            else:
+                mismatch_type = "Post-choice token mismatch"
+
             # Show context around divergence
             context_start = max(0, first_diff_pos - 3)
-            context_end = min(compare_len, first_diff_pos + 3)
+            context_end = min(min_len, first_diff_pos + 4)
             expected_context = runner.decode(expected_ids[context_start:context_end])
             actual_context = runner.decode(generated_ids[context_start:context_end])
 
             print(
                 f"\n{'='*60}\n"
-                f"DECODING MISMATCH: Token IDs differ\n"
+                f"DECODING MISMATCH: {mismatch_type}\n"
                 f"{'='*60}\n"
-                f"  First divergence at position: {first_diff_pos}\n"
+                f"  Divergence position: {first_diff_pos}"
+                + (f" (choice at {div_pos})" if div_pos else "") + "\n"
                 f"  Expected token: {expected_token_id} ({expected_token!r})\n"
                 f"  Actual token:   {actual_token_id} ({actual_token!r})\n"
                 f"\n"
-                f"  Expected context: {expected_context!r}\n"
-                f"  Actual context:   {actual_context!r}\n"
+                f"  Expected: {expected_context!r}\n"
+                f"  Actual:   {actual_context!r}\n"
                 f"\n"
                 f"  Choice idx: {choice.choice_idx} ({labels[choice.choice_idx]})\n"
-                f"  Generated len: {len(generated_ids)}, Expected len: {len(expected_ids)}\n"
+                f"  Sequence lengths: generated={len(generated_ids)}, expected={len(expected_ids)}\n"
                 f"{'='*60}\n"
             )
             return True
