@@ -131,7 +131,7 @@ def main() -> None:
         clean_inputs = tokenizer(chunk)
         device = next(model.parameters()).device
         clean_inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in clean_inputs.items()}
-        batch_logits = model(**clean_inputs)  # type: ignore
+        batch_logits = model(**clean_inputs).logits  # type: ignore (batch, seq_len, vocab)
 
         for j, all_pos_logits in enumerate(batch_logits):
             logits = all_pos_logits[-1, :]  # (d_vocab,)
