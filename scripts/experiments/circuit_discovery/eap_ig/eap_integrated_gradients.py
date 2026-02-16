@@ -58,11 +58,16 @@ def load_and_merge_pairs(
 
     # The regex is robust for cases where one option might be a substring of another.
     for pair in pairs:
-        prompt = template.format(
-            pair.get("question", ""),
-            pair.get("immediate", ""),
-            pair.get("long_term", ""),
-        )
+        if isinstance(pair, str):
+            prompt = pair
+        elif isinstance(pair, dict):
+            prompt = template.format(
+                pair.get("question", ""),
+                pair.get("immediate", ""),
+                pair.get("long_term", ""),
+            )
+        else:
+            raise RuntimeError("Incorrect type for pairs")
         clean_prompts.append(prompt)
 
         swapped_prompt = re.sub(
