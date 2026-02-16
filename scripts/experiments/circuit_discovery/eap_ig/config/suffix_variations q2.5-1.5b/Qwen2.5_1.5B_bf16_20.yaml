@@ -1,0 +1,26 @@
+# Incomplete edits 
+setup:
+  model: "Qwen/Qwen2.5-1.5B"
+  seed: 0
+  batch_size: 32
+  dtype: "bfloat16"
+
+paths:
+  data_loc: "./data/raw/"
+  save_loc: "./results/eap_integrated_gradients/stability"
+
+input:
+  data_file: "temporal_scope_explicit_expanded.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(A)", "(B)" ]
+  prompt_suffix: "Answer: ("
+  horizon: [ "short-term", "long-term" ]
+
+output:
+  wandb_project: ""
+  filename: "Qwen2.5-1.5B_bf16_20.json"
+
+parameters:
+  system_prompt: "You are a strategic planning assistant that follows user instructions carefully"
+  steps: [ 20 ]
+  metric_type: "logit-diff"
