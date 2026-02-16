@@ -129,6 +129,8 @@ def main() -> None:
 
     for i, chunk in enumerate(tqdm(chunks)):
         clean_inputs = tokenizer(chunk)
+        device = next(model.parameters()).device
+        clean_inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in clean_inputs.items()}
         batch_logits = model(**clean_inputs)  # type: ignore
 
         for j, all_pos_logits in enumerate(batch_logits):
