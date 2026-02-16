@@ -90,7 +90,7 @@ def main() -> None:
     system_prompt: str = config["parameters"]["system_prompt"]
 
     input_file_path = data_loc / data_file
-    save_loc = data_loc.parent / "stratified_dataset"
+    save_loc = data_loc.parent.parent / "stratified_dataset"
 
     torch.set_grad_enabled(False)
 
@@ -130,7 +130,10 @@ def main() -> None:
     for i, chunk in enumerate(tqdm(chunks)):
         clean_inputs = tokenizer(chunk)
         device = next(model.parameters()).device
-        clean_inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in clean_inputs.items()}
+        clean_inputs = {
+            k: v.to(device) if isinstance(v, torch.Tensor) else v
+            for k, v in clean_inputs.items()
+        }
         batch_logits = model(**clean_inputs).logits  # type: ignore (batch, seq_len, vocab)
 
         for j, all_pos_logits in enumerate(batch_logits):
