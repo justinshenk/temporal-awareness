@@ -1,3 +1,43 @@
+"""
+Generate formatting variations for temporal scope datasets.
+
+This script creates variations of temporal scope datasets with different
+option key formats (e.g., (A)/(B), (1)/(2), [A]/[B]) to test whether
+model circuits respond to semantic content vs token format.
+
+Usage:
+------
+    python scripts/data/generate_variation.py <input_file> --imm <label> --lt <label> [--randomize true/false]
+
+Examples:
+---------
+    # Standard (A)/(B) format, no randomization
+    python scripts/data/generate_variation.py data/raw/temporal_scope/temporal_scope_explicit_expanded_500.json --imm "(A)" --lt "(B)" --randomize false
+
+    # Numeric format (1)/(2), no randomization
+    python scripts/data/generate_variation.py \\
+        data/raw/temporal_scope/temporal_scope_explicit_expanded_500.json \\
+        --imm "(1)" --lt "(2)" --randomize false
+
+    # Randomized (A)/(B) - labels flip on even indices
+    python scripts/data/generate_variation.py \\
+        data/raw/temporal_scope/temporal_scope_explicit_expanded_500.json \\
+        --imm "(A)" --lt "(B)" --randomize true
+
+Output:
+-------
+    Creates a new JSON file in data/raw/temporal_scope_variation/ with naming format:
+    <original_name>+format_<imm_label>_randomized_<true/false>.json
+
+    Example: temporal_scope_explicit_expanded_500+format_(1)_randomized_false.json
+
+Notes:
+------
+    - The script automatically strips existing labels from the data before applying new ones
+    - Randomization is useful for testing if circuits respond to position vs content
+    - Output directory is created automatically if it doesn't exist
+"""
+
 import argparse
 import json
 import re

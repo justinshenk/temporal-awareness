@@ -1,0 +1,24 @@
+setup:
+  model: "Qwen/Qwen3-1.7B"
+  seed: 0
+  batch_size: 16
+  dtype: "bfloat16"
+
+paths:
+  data_loc: "./data/raw/temporal_scope_variation/"
+  save_loc: "./results/eap_integrated_gradients/stability"
+
+input:
+  data_file: "temporal_scope_explicit_expanded_500+format_(1)_randomized_false"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(1)", "(2)" ]
+  prompt_suffix: "Answer: ("
+
+output:
+  wandb_project: "stability_analysis(Qwen3-1.7B)"
+  filename: "Qwen3-1.7B_bf16_2_30_1_2.json"
+
+parameters:
+  system_prompt: "You are a strategic planning assistant that follows user instructions carefully"
+  steps: [ 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 ]
+  metric_type: "logit-diff"
