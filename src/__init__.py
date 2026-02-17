@@ -1,12 +1,9 @@
-"""Temporal awareness research framework."""
+"""Temporal awareness research framework.
 
-from .common.io import ensure_dir, get_timestamp, load_json, save_json
-from .datasets.schemas import SCHEMA_VERSION
+DO NOT add explicit __all__ lists here - use auto_export instead.
+See src/common/auto_export.py for documentation on how this works.
+"""
 
-__all__ = [
-    "ensure_dir",
-    "get_timestamp",
-    "load_json",
-    "save_json",
-    "SCHEMA_VERSION",
-]
+from src.common.auto_export import auto_export
+
+__all__ = auto_export(__file__, __name__, globals())
