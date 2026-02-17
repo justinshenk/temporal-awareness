@@ -73,7 +73,7 @@ class Patching:
         print(f"Corrupted logit TOP-3: {self.model.to_string(torch.stack(self.corrupted_logits_top_3))}")
         print()
         print()
-
+        
         print(f"Clean logit diff: {self.clean_baseline:.4f}")
         print(f"Corrupted logit diff: {self.corrupted_baseline:.4f}")
 
@@ -126,6 +126,7 @@ class ActivationPatching(Patching):
                 self.clean_baseline - self.corrupted_baseline
             )
 
+        # for batch..
         every_block_act_patch_result = layer_specific_algorithm(
             self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
 
@@ -157,7 +158,7 @@ class AttributionPatching(Patching):
                 lambda name: "_input" not in name and "mlp_in" not in name and "attn_in" not in name
         else:
             filter_layers = \
-                lambda name: "_input" not in name and "mlp_in" not in name
+                lambda name: "_input" not in name and "mlp_in" not in name            
 
         self.model.reset_hooks()
 
@@ -276,15 +277,4 @@ class AttributionPatching(Patching):
         return self.__patch__(attn_out_algorithm)
 
     def patch_mlp_out(self):
-        def mlp_out_algorithm(clean_cache, corrupted_cache, corrupted_grad_cache):
-            labels = [i for i in range(0, self.model.cfg.n_layers)]
-            clean_mlp_out = clean_cache.stack_activation("mlp_out")
-            corrupted_mlp_out = corrupted_cache.stack_activation("mlp_out")
-            corrupted_grad_mlp_out = corrupted_grad_cache.stack_activation("mlp_out")
-            mlp_out_attr = einops.reduce(
-                corrupted_grad_mlp_out * (clean_mlp_out - corrupted_mlp_out),
-                "layer batch pos d_model -> layer pos",
-                "sum",
-            )
-            return mlp_out_attr, labels
-        return self.__patch__(mlp_out_algorithm)
+        raise NotImplementedError()
