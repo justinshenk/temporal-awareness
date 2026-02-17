@@ -16,30 +16,34 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 load_dotenv()
-CONFIG_PATH = Path(__file__).parent / "config"
+CONFIG_PATH = Path(__file__).parent / "circuit_discovery" / "eap_ig" / "config"
 
 
-def load_clean_prompts(input_file: Path, template: str) -> list[str]:
-    """Load pairs from ``input_file`` and return formatted clean prompts.
+def load_pairs_and_prompts(
+    input_file: Path, template: str
+) -> tuple[list[dict], list[str]]:
+    """Load pairs from ``input_file`` and return both raw pairs and formatted prompts.
 
     Args:
         input_file: Path to JSON file containing question pairs
         template: Template string for formatting prompts
 
     Returns:
-        List of formatted prompt strings
+        Tuple of (original pair dicts, formatted prompt strings)
     """
     with input_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
-    return [
+    pairs = data.get("pairs", [])
+    prompts = [
         template.format(
             pair.get("question", ""),
             pair.get("immediate", ""),
             pair.get("long_term", ""),
         )
-        for pair in data.get("pairs", [])
+        for pair in pairs
     ]
+    return pairs, prompts
 
 
 def load_config(config_path: Path) -> dict:
@@ -55,10 +59,10 @@ def extract_alnum(s: str) -> str:
     raise ValueError(f"No alphanumeric character found in option string {s!r}")
 
 
-def save_split(prompts: list[str], path: Path, metadata: dict) -> None:
+def save_split(pairs: list[dict], path: Path, metadata: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
-        json.dump({"metadata": metadata, "pairs": prompts}, f, indent=2)
+        json.dump({"metadata": metadata, "pairs": pairs}, f, indent=2)
 
 
 def main() -> None:
@@ -116,18 +120,20 @@ def main() -> None:
         clear_preference = torch.any((topk == token_a) | (topk == token_b)).item()
         return logit_a_preferred, clear_preference  # type: ignore
 
-    all_clean_prompts = load_clean_prompts(input_file_path, template=template)
+    all_pairs, all_clean_prompts = load_pairs_and_prompts(
+        input_file_path, template=template
+    )
 
-    chunks = [
+    prompt_chunks = [
         all_clean_prompts[i : i + batch_size]
         for i in range(0, len(all_clean_prompts), batch_size)
     ]
 
-    a_preferred = []
-    b_preferred = []
-    ambiguous = []
+    a_preferred: list[dict] = []
+    b_preferred: list[dict] = []
+    ambiguous: list[dict] = []
 
-    for i, chunk in enumerate(tqdm(chunks)):
+    for i, chunk in enumerate(tqdm(prompt_chunks)):
         clean_inputs = tokenizer(chunk)
         device = next(model.parameters()).device
         clean_inputs = {
@@ -140,11 +146,11 @@ def main() -> None:
             logits = all_pos_logits[-1, :]  # (d_vocab,)
             logit_a_preferred, clear_preference = extract_preference(logits)
 
-            prompt = all_clean_prompts[i * batch_size + j]
+            pair = all_pairs[i * batch_size + j]
             if clear_preference:
-                (a_preferred if logit_a_preferred else b_preferred).append(prompt)
+                (a_preferred if logit_a_preferred else b_preferred).append(pair)
             else:
-                ambiguous.append(prompt)
+                ambiguous.append(pair)
 
     base_metadata = {
         "model": model_name,
