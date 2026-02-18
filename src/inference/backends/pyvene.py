@@ -353,7 +353,14 @@ class PyveneBackend(Backend):
                         if mode == "add":
                             hidden = hidden + values
                         elif mode == "set":
-                            hidden = values.expand_as(hidden)
+                            # Handle sequence length mismatch for 2D values
+                            if values.ndim == 2:
+                                seq_len = min(hidden.shape[1], values.shape[0])
+                                new_hidden = hidden.clone()
+                                new_hidden[:, :seq_len, :] = values[:seq_len].unsqueeze(0).expand(hidden.shape[0], -1, -1)
+                                hidden = new_hidden
+                            else:
+                                hidden = values.expand_as(hidden)
                         elif mode == "mul":
                             hidden = hidden * values
                     elif target.axis == "position":
@@ -424,11 +431,19 @@ class PyveneBackend(Backend):
             )
             target = intervention.target
             mode = intervention.mode
+            alpha = getattr(intervention, 'alpha', 1.0)
+            target_values = None
+            if hasattr(intervention, 'target_values') and intervention.target_values is not None:
+                target_values = torch.tensor(
+                    intervention.target_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
             module = self._get_component_module(
                 intervention.layer, intervention.component
             )
 
-            def make_intervention_hook(values, target, mode):
+            def make_intervention_hook(values, target, mode, alpha, target_values):
                 def intervention_hook(mod, input, output):
                     if isinstance(output, tuple):
                         hidden = output[0]
@@ -439,11 +454,39 @@ class PyveneBackend(Backend):
                         if mode == "add":
                             hidden = hidden + values
                         elif mode == "set":
-                            hidden = values.expand_as(hidden)
+                            # Handle sequence length mismatch for 2D values
+                            if values.ndim == 2:
+                                seq_len = min(hidden.shape[1], values.shape[0])
+                                new_hidden = hidden.clone()
+                                new_hidden[:, :seq_len, :] = values[:seq_len].unsqueeze(0).expand(hidden.shape[0], -1, -1)
+                                hidden = new_hidden
+                            else:
+                                hidden = values.expand_as(hidden)
                         elif mode == "mul":
                             hidden = hidden * values
                         elif mode == "interpolate":
-                            hidden = values.expand_as(hidden)
+                            # Interpolation: hidden + alpha * (target - hidden)
+                            if target_values is not None:
+                                if target_values.ndim == 2:
+                                    seq_len = min(hidden.shape[1], target_values.shape[0])
+                                    new_hidden = hidden.clone()
+                                    tgt = target_values[:seq_len].unsqueeze(0).expand(hidden.shape[0], -1, -1)
+                                    new_hidden[:, :seq_len, :] = hidden[:, :seq_len, :] + alpha * (tgt - hidden[:, :seq_len, :])
+                                    hidden = new_hidden
+                                else:
+                                    tgt = target_values.expand_as(hidden)
+                                    hidden = hidden + alpha * (tgt - hidden)
+                            else:
+                                # Fallback: treat values as target
+                                if values.ndim == 2:
+                                    seq_len = min(hidden.shape[1], values.shape[0])
+                                    new_hidden = hidden.clone()
+                                    tgt = values[:seq_len].unsqueeze(0).expand(hidden.shape[0], -1, -1)
+                                    new_hidden[:, :seq_len, :] = hidden[:, :seq_len, :] + alpha * (tgt - hidden[:, :seq_len, :])
+                                    hidden = new_hidden
+                                else:
+                                    tgt = values.expand_as(hidden)
+                                    hidden = hidden + alpha * (tgt - hidden)
                     elif target.axis == "position":
                         for i, pos in enumerate(target.positions):
                             if pos < hidden.shape[1]:
@@ -456,7 +499,12 @@ class PyveneBackend(Backend):
                                 elif mode == "mul":
                                     hidden[:, pos, :] = hidden[:, pos, :] * pos_values
                                 elif mode == "interpolate":
-                                    hidden[:, pos, :] = values
+                                    # Get target values for this position
+                                    if target_values is not None:
+                                        tgt_val = target_values[i] if target_values.ndim > 1 and i < len(target_values) else target_values
+                                    else:
+                                        tgt_val = pos_values
+                                    hidden[:, pos, :] = hidden[:, pos, :] + alpha * (tgt_val - hidden[:, pos, :])
 
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
@@ -465,7 +513,7 @@ class PyveneBackend(Backend):
                 return intervention_hook
 
             hook = module.register_forward_hook(
-                make_intervention_hook(values, target, mode)
+                make_intervention_hook(values, target, mode, alpha, target_values)
             )
             hooks.append(hook)
 

@@ -7,7 +7,7 @@ Main entry points:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import numpy as np
 
@@ -19,9 +19,9 @@ from .attribution_results import (
 )
 from .attribution_algorithms import run_all_attribution_methods
 
-if TYPE_CHECKING:
-    from ..binary_choice import BinaryChoiceRunner
-    from ..common.contrastive_pair import ContrastivePair
+
+from ..binary_choice import BinaryChoiceRunner
+from ..common.contrastive_pair import ContrastivePair
 
 
 def _parse_result_key(key: str) -> tuple[Literal["standard", "eap", "eap_ig"], str]:
@@ -52,7 +52,9 @@ def _build_results(
 
     for key, scores in raw_results.items():
         if filter_layers:
-            layer_indices = [all_layers.index(l) for l in requested_layers if l in all_layers]
+            layer_indices = [
+                all_layers.index(l) for l in requested_layers if l in all_layers
+            ]
             scores = scores[layer_indices, :]
             layers = requested_layers
         else:

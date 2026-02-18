@@ -152,6 +152,7 @@ class ContrastivePair(BaseSchema):
         target: InterventionTarget,
         layer: int,
         component: str = "resid_post",
+        alpha: float = 1.0,
     ) -> Intervention:
         """Create intervention to replace long activations with short ones.
 
@@ -162,6 +163,8 @@ class ContrastivePair(BaseSchema):
             target: Which positions/neurons to patch
             layer: Which layer to patch
             component: Which component (resid_pre, resid_post, etc.)
+            alpha: Interpolation factor (0=keep source, 1=full replacement)
+                   Values < 1 use interpolation mode for gentler patching
 
         Returns:
             Intervention that patches short values into long positions
@@ -175,6 +178,9 @@ class ContrastivePair(BaseSchema):
         if long_acts is None:
             raise ValueError(f"No long activations found for {hook_name}")
 
+        # Determine mode based on alpha
+        use_interpolate = alpha < 1.0
+
         if target.axis == "position" and target.positions:
             # For noising: target.positions are LONG positions (base text)
             # Reverse map LONG -> SHORT to get corresponding SHORT positions
@@ -187,24 +193,43 @@ class ContrastivePair(BaseSchema):
 
             short_at_pos = short_acts[short_positions]
             long_at_pos = long_acts[long_positions]
-            values = short_at_pos - long_at_pos
-            # Patch at LONG positions (the base text positions)
             patch_target = InterventionTarget.at_positions(long_positions)
+
+            if use_interpolate:
+                values = long_at_pos  # Source (will be modified)
+                target_values = short_at_pos  # Target (inject these)
+                mode = "interpolate"
+            else:
+                values = short_at_pos
+                target_values = None
+                mode = "set"
         elif target.axis == "all":
             min_len = min(len(long_acts), len(short_acts))
-            diff = short_acts[:min_len] - long_acts[:min_len]
-            values = diff.mean(axis=0)
             patch_target = InterventionTarget.all()
+
+            if use_interpolate:
+                values = long_acts[:min_len]  # Source
+                target_values = short_acts[:min_len]  # Target
+                mode = "interpolate"
+            else:
+                values = short_acts[:min_len]
+                target_values = None
+                mode = "set"
         else:
+            # For other axes, use difference with add mode (steering)
             values = short_acts - long_acts
+            target_values = None
             patch_target = target
+            mode = "add"
 
         return Intervention(
             layer=layer,
-            mode="add",
+            mode=mode,
             values=values,
             target=patch_target,
             component=component,
+            target_values=target_values,
+            alpha=alpha,
         )
 
     def get_denoising_intervention(
@@ -212,6 +237,7 @@ class ContrastivePair(BaseSchema):
         target: InterventionTarget,
         layer: int,
         component: str = "resid_post",
+        alpha: float = 1.0,
     ) -> Intervention:
         """Create intervention to replace short activations with long ones.
 
@@ -222,6 +248,8 @@ class ContrastivePair(BaseSchema):
             target: Which positions/neurons to patch
             layer: Which layer to patch
             component: Which component (resid_pre, resid_post, etc.)
+            alpha: Interpolation factor (0=keep source, 1=full replacement)
+                   Values < 1 use interpolation mode for gentler patching
 
         Returns:
             Intervention that patches long values into short positions
@@ -235,6 +263,9 @@ class ContrastivePair(BaseSchema):
         if short_acts is None:
             raise ValueError(f"No short activations found for {hook_name}")
 
+        # Determine mode based on alpha
+        use_interpolate = alpha < 1.0
+
         if target.axis == "position" and target.positions:
             # For denoising: target.positions are SHORT positions (base text)
             # Map SHORT -> LONG to get corresponding LONG positions
@@ -247,24 +278,44 @@ class ContrastivePair(BaseSchema):
 
             long_at_pos = long_acts[long_positions]
             short_at_pos = short_acts[short_positions]
-            values = long_at_pos - short_at_pos
-            # Patch at SHORT positions (the base text positions)
             patch_target = InterventionTarget.at_positions(short_positions)
+
+            if use_interpolate:
+                # Interpolation: source + alpha * (target - source)
+                values = short_at_pos  # Source values
+                target_values = long_at_pos  # Target values
+                mode = "interpolate"
+            else:
+                values = long_at_pos
+                target_values = None
+                mode = "set"
         elif target.axis == "all":
             min_len = min(len(long_acts), len(short_acts))
-            diff = long_acts[:min_len] - short_acts[:min_len]
-            values = diff.mean(axis=0)
             patch_target = InterventionTarget.all()
+
+            if use_interpolate:
+                values = short_acts[:min_len]  # Source
+                target_values = long_acts[:min_len]  # Target
+                mode = "interpolate"
+            else:
+                values = long_acts[:min_len]
+                target_values = None
+                mode = "set"
         else:
+            # For other axes, use difference with add mode (steering)
             values = long_acts - short_acts
+            target_values = None
             patch_target = target
+            mode = "add"
 
         return Intervention(
             layer=layer,
-            mode="add",
+            mode=mode,
             values=values,
             target=patch_target,
             component=component,
+            target_values=target_values,
+            alpha=alpha,
         )
 
     def get_intervention(
@@ -273,6 +324,7 @@ class ContrastivePair(BaseSchema):
         layer: int,
         component: str = "resid_post",
         mode: str = "denoising",
+        alpha: float = 1.0,
     ) -> Intervention:
         """Get intervention for the specified mode.
 
@@ -281,13 +333,14 @@ class ContrastivePair(BaseSchema):
             layer: Which layer to patch
             component: Which component (resid_pre, resid_post, etc.)
             mode: "denoising" or "noising"
+            alpha: Interpolation factor (0=keep source, 1=full replacement)
 
         Returns:
             Intervention configured for the specified mode
         """
         if mode == "denoising":
-            return self.get_denoising_intervention(target, layer, component)
-        return self.get_noising_intervention(target, layer, component)
+            return self.get_denoising_intervention(target, layer, component, alpha)
+        return self.get_noising_intervention(target, layer, component, alpha)
 
     def get_interventions(
         self,
@@ -295,6 +348,7 @@ class ContrastivePair(BaseSchema):
         layers: list[int],
         component: str = "resid_post",
         mode: str = "denoising",
+        alpha: float = 1.0,
     ) -> list[Intervention]:
         """Get interventions across multiple layers for a single target.
 
@@ -304,7 +358,7 @@ class ContrastivePair(BaseSchema):
         for layer in layers:
             try:
                 interventions.append(
-                    self.get_intervention(target, layer, component, mode)
+                    self.get_intervention(target, layer, component, mode, alpha)
                 )
             except ValueError:
                 continue

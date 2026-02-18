@@ -15,6 +15,7 @@ def patch_activation_for_choice(
     contrastive_pair: ContrastivePair,
     target: ActivationPatchingTarget | None = None,
     mode: Literal["noising", "denoising"] = "denoising",
+    alpha: float = 1.0,
 ) -> ActivationPatchingResult:
     """Run patching experiments and measure effects on binary choice."""
     if target is None:
@@ -54,7 +55,7 @@ def patch_activation_for_choice(
         # Patch all layers together for each target
         for intervention_target in targets:
             interventions = contrastive_pair.get_interventions(
-                intervention_target, layers, target.component, mode
+                intervention_target, layers, target.component, mode, alpha
             )
             if not interventions:
                 continue
@@ -74,7 +75,7 @@ def patch_activation_for_choice(
         for layer in layers:
             for intervention_target in targets:
                 intervention = contrastive_pair.get_intervention(
-                    intervention_target, layer, target.component, mode
+                    intervention_target, layer, target.component, mode, alpha
                 )
                 results.append(
                     IntervenedChoice(

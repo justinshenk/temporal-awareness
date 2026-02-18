@@ -1,8 +1,11 @@
-"""Activation patching experiment for identifying important layers and positions.
+"""Activation patching experiment for intertemporal preference analysis.
 
 This module provides the high-level experiment interface for running activation
-patching on intertemporal preference choices, measuring which layers and positions
-are most important for the model's time-horizon-dependent decisions.
+patching on intertemporal preference choices.
+
+Submodules:
+- sweeps.py: Layer and position sweep utilities
+- verification.py: Greedy generation verification
 """
 
 from __future__ import annotations
@@ -18,14 +21,17 @@ from ...activation_patching import (
     AggregatedActivationPatchingResult,
     patch_activation_for_choice,
 )
-from ..common.contrastive_preferences import (
-    get_contrastive_preferences,
-)
-from ...common.contrastive_pair import ContrastivePair
-
+from ..common.contrastive_preferences import get_contrastive_preferences
 from ...binary_choice import BinaryChoiceRunner
-from ...binary_choice.choice_utils import verify_greedy_generation
 from ..preference import PreferenceDataset
+
+from .verification import verify_flipped_choices
+from .sweeps import SweepResults, run_layer_sweep, run_progressive_position_patching, run_full_sweep
+
+
+# ============================================================================
+# Result types
+# ============================================================================
 
 
 @dataclass
@@ -42,32 +48,58 @@ class DualModeActivationPatchingResult(BaseSchema):
         print("=" * 60)
 
         if self.denoising:
-            print("\n[DENOISING] (corrupt → clean activations)")
-            print(f"  Mean recovery: {self.denoising.mean_recovery:.3f}")
-            print(f"  Flip rate: {self.denoising.flip_rate:.1%}")
-            best_layer, best_recovery = self.denoising.get_best_layer()
-            if best_layer is not None:
-                print(f"  Best layer: L{best_layer} (recovery={best_recovery:.3f})")
+            self._print_mode_summary("DENOISING", "inject long acts -> short prompt", self.denoising)
 
         if self.noising:
-            print("\n[NOISING] (clean → corrupt activations)")
-            print(f"  Mean recovery: {self.noising.mean_recovery:.3f}")
-            print(f"  Flip rate: {self.noising.flip_rate:.1%}")
-            best_layer, best_recovery = self.noising.get_best_layer()
-            if best_layer is not None:
-                print(f"  Best layer: L{best_layer} (recovery={best_recovery:.3f})")
+            self._print_mode_summary("NOISING", "inject short acts -> long prompt", self.noising)
 
         if self.denoising and self.noising:
-            print("\n[COMPARISON]")
-            recovery_diff = self.denoising.mean_recovery - self.noising.mean_recovery
-            if abs(recovery_diff) < 0.05:
-                print(f"  Similar recovery (diff={recovery_diff:+.3f})")
-            elif recovery_diff > 0:
-                print(f"  Denoising more effective (+{recovery_diff:.3f})")
-            else:
-                print(f"  Noising more effective ({recovery_diff:.3f})")
+            self._print_comparison()
 
         print("=" * 60)
+
+    def _print_mode_summary(self, name: str, desc: str, result: AggregatedActivationPatchingResult) -> None:
+        print(f"\n[{name}] ({desc})")
+        print(f"  Mean recovery: {result.mean_recovery:.3f}")
+        print(f"  Flip rate: {result.flip_rate:.1%}")
+
+        best_layer, best_recovery = result.get_best_layer()
+        if best_layer is not None:
+            print(f"  Best layer: L{best_layer} (recovery={best_recovery:.3f})")
+
+        self._print_raw_diffs(result)
+
+    def _print_raw_diffs(self, result: AggregatedActivationPatchingResult) -> None:
+        if not result.results:
+            return
+        print("  Raw logprob diffs:")
+        for i, pr in enumerate(result.results):
+            if not pr.results:
+                continue
+            r = pr.results[0]
+            orig = r.original._divergent_logprobs
+            intv = r.intervened._divergent_logprobs
+            print(
+                f"    Pair {i+1}: baseline=[{orig[0]:.2f}, {orig[1]:.2f}] "
+                f"diff={r.original_logprob_diff:.2f} -> "
+                f"patched=[{intv[0]:.2f}, {intv[1]:.2f}] "
+                f"diff={r.consistent_logprob_diff:.2f}"
+            )
+
+    def _print_comparison(self) -> None:
+        print("\n[COMPARISON]")
+        diff = self.denoising.mean_recovery - self.noising.mean_recovery
+        if abs(diff) < 0.05:
+            print(f"  Recovery symmetric (diff={diff:+.3f})")
+        elif diff > 0:
+            print(f"  Denoising stronger (+{diff:.3f})")
+        else:
+            print(f"  Noising stronger ({diff:.3f})")
+
+
+# ============================================================================
+# Configuration
+# ============================================================================
 
 
 @dataclass
@@ -77,20 +109,20 @@ class IntertemporalActivationPatchingConfig(BaseSchema):
     Attributes:
         n_pairs: Number of contrastive pairs to process
         target: Patching target specification (positions, layers, component)
-        mode: "denoising", "noising", or "both" (runs both and compares)
-        verify_with_greedy: If True, verify flipped choices with greedy generation
-        max_new_tokens: Max tokens to generate during verification
-        temperature: Temperature for verification generation (0.0 = greedy)
+        mode: "denoising", "noising", or "both"
+        verify_with_greedy: Verify flipped choices with generation
+        max_new_tokens: Max tokens for verification generation
+        temperature: Temperature for verification (0.0 = greedy)
+        alpha: Interpolation factor (0=source, 1=full replacement)
     """
 
     n_pairs: int = 1
-    target: ActivationPatchingTarget | dict = field(
-        default_factory=ActivationPatchingTarget
-    )
+    target: ActivationPatchingTarget | dict = field(default_factory=ActivationPatchingTarget)
     mode: Literal["noising", "denoising", "both"] = "both"
     verify_with_greedy: bool = True
     max_new_tokens: int = 10
     temperature: float = 0.0
+    alpha: float = 1.0
 
     def __post_init__(self):
         if isinstance(self.target, dict):
@@ -98,7 +130,6 @@ class IntertemporalActivationPatchingConfig(BaseSchema):
 
     @property
     def modes_to_run(self) -> list[Literal["noising", "denoising"]]:
-        """Get list of modes to actually run."""
         if self.mode == "both":
             return ["denoising", "noising"]
         return [self.mode]
@@ -106,262 +137,155 @@ class IntertemporalActivationPatchingConfig(BaseSchema):
     def print_summary(self) -> None:
         print("Activation patching config:")
         print(f"  mode={self.mode}")
-        print(
-            f"  position_mode={self.target.position_mode}, layers={self.target.layers}"
-        )
+        print(f"  position_mode={self.target.position_mode}, layers={self.target.layers}")
         print(f"  component={self.target.component}, n_pairs={self.n_pairs}")
         if self.verify_with_greedy:
             print(f"  verify_with_greedy=True (max_tokens={self.max_new_tokens})")
+
+
+# ============================================================================
+# Main experiment runner
+# ============================================================================
 
 
 def run_activation_patching(
     pref_dataset: PreferenceDataset,
     cfg: IntertemporalActivationPatchingConfig | None = None,
 ) -> AggregatedActivationPatchingResult | DualModeActivationPatchingResult:
-    """Run full activation patching experiment on preference dataset.
+    """Run activation patching experiment on preference dataset.
 
     This function:
-    1. Finds contrastive pairs (samples with different time horizons and choices)
-    2. For each pair, captures activations and builds ContrastivePair
-    3. Runs patching experiments across specified layers and positions
-    4. Optionally verifies flipped choices with greedy generation
-    5. Aggregates results across all pairs
+    1. Finds contrastive pairs (samples with different time horizons)
+    2. Captures activations and builds ContrastivePairs
+    3. Runs patching across specified layers and positions
+    4. Optionally verifies flipped choices with generation
+    5. Aggregates results
 
     Args:
-        pref_dataset: PreferenceDataset with samples to analyze
-        cfg: Configuration for the experiment
+        pref_dataset: PreferenceDataset with samples
+        cfg: Experiment configuration
 
     Returns:
         AggregatedActivationPatchingResult (single mode) or
-        DualModeActivationPatchingResult (when mode="both")
+        DualModeActivationPatchingResult (mode="both")
     """
     if cfg is None:
         cfg = IntertemporalActivationPatchingConfig()
 
-    all_pairs = get_contrastive_preferences(pref_dataset)
-    if not all_pairs:
-        print("No contrastive pairs found!")
-        return None
-    pairs_to_process = all_pairs[: cfg.n_pairs]
-    print(f"Found {len(all_pairs)} pairs, processing {len(pairs_to_process)}")
-
-    cfg.print_summary()
-    backend = get_recommended_backend_internals()
-    runner = BinaryChoiceRunner(
-        pref_dataset.model, device=get_device(), backend=backend
-    )
-
-    # Get anchor texts from prompt format config for position alignment
-    prompt_format = pref_dataset.prompt_format_config
-    anchor_texts = prompt_format.get_anchor_texts()
-
-    # Build contrastive pairs once (reused for both modes)
-    contrastive_pairs = []
-    for i, contrastive_pref in enumerate(pairs_to_process):
-        contrastive_pair = contrastive_pref.get_contrastive_pair(
-            runner, anchor_texts=anchor_texts
-        )
-        if contrastive_pair is None:
-            print(f"  Skipping pair {i + 1}: invalid sample data")
-            continue
-        contrastive_pairs.append(contrastive_pair)
-
+    # Setup
+    contrastive_pairs = _build_contrastive_pairs(pref_dataset, cfg)
     if not contrastive_pairs:
-        print("No valid contrastive pairs!")
         return None
+
+    runner = _create_runner(pref_dataset)
 
     # Run for each mode
-    modes_to_run = cfg.modes_to_run
-    mode_results: dict[str, AggregatedActivationPatchingResult] = {}
-
-    for mode in modes_to_run:
-        print(f"\n{'=' * 40}")
-        print(f"Running {mode.upper()} mode")
-        print("=" * 40)
-
-        pair_results: list[ActivationPatchingResult] = []
-        for i, contrastive_pair in enumerate(contrastive_pairs):
-            print(f"\nPair {i + 1}/{len(contrastive_pairs)}")
-            contrastive_pair.print_summary()
-
-            result = patch_activation_for_choice(
-                runner=runner,
-                contrastive_pair=contrastive_pair,
-                target=cfg.target,
-                mode=mode,
-            )
-
-            # Verify flipped choices if enabled
-            if cfg.verify_with_greedy:
-                _verify_flipped_choices(result, runner, contrastive_pair, cfg, mode)
-
-            pair_results.append(result)
-            result.print_summary()
-
-        aggregated = AggregatedActivationPatchingResult.from_results(pair_results)
-        mode_results[mode] = aggregated
-
-        print(f"\n{mode.upper()} complete:")
-        aggregated.print_summary()
+    mode_results = {}
+    for mode in cfg.modes_to_run:
+        result = _run_single_mode(runner, contrastive_pairs, cfg, mode)
+        mode_results[mode] = result
 
     # Return appropriate result type
     if cfg.mode == "both":
-        dual_result = DualModeActivationPatchingResult(
+        dual = DualModeActivationPatchingResult(
             denoising=mode_results.get("denoising"),
             noising=mode_results.get("noising"),
         )
-        dual_result.print_summary()
-        return dual_result
-    else:
-        return mode_results[cfg.mode]
+        dual.print_summary()
+        return dual
+
+    return mode_results[cfg.mode]
 
 
-def _verify_flipped_choices(
-    result: ActivationPatchingResult,
-    runner: BinaryChoiceRunner,
-    contrastive_pair: ContrastivePair,
-    cfg: IntertemporalActivationPatchingConfig,
-    mode: Literal["noising", "denoising"] | None = None,
-) -> None:
-    """Verify flipped choices with greedy generation to detect degeneration.
+# ============================================================================
+# Internal helpers
+# ============================================================================
 
-    Mutates result.results in place, setting decoding_mismatch on each IntervenedChoice.
-    """
-    # Use provided mode or fall back to cfg.mode (for backwards compat)
-    effective_mode = mode if mode else cfg.mode
-    if effective_mode == "both":
-        effective_mode = "denoising"  # Shouldn't happen, but default
 
-    # Get base text and labels
-    if effective_mode == "denoising":
-        prompt_text = contrastive_pair.short_text
-    else:
-        prompt_text = contrastive_pair.long_text
+def _build_contrastive_pairs(pref_dataset: PreferenceDataset, cfg):
+    """Build contrastive pairs from preference dataset."""
+    all_pairs = get_contrastive_preferences(pref_dataset)
+    if not all_pairs:
+        print("No contrastive pairs found!")
+        return []
 
-    short_label = contrastive_pair.short_label or ""
-    long_label = contrastive_pair.long_label or ""
-    choice_prefix = contrastive_pair.choice_prefix
+    pairs_to_process = all_pairs[: cfg.n_pairs]
+    print(f"Found {len(all_pairs)} pairs, processing {len(pairs_to_process)}")
+    cfg.print_summary()
 
-    n_flipped = sum(1 for r in result.results if r.choice_flipped)
-    if n_flipped == 0:
-        return
+    # Get anchor texts for position alignment
+    prompt_format = pref_dataset.prompt_format_config
+    anchor_texts = prompt_format.get_anchor_texts()
 
-    print(f"  Verifying {n_flipped} flipped choices...")
+    # Create runner for building pairs
+    runner = _create_runner(pref_dataset)
 
-    for ic in result.results:
-        if not ic.choice_flipped:
-            # Not flipped, no verification needed
-            ic.decoding_mismatch = None
+    contrastive_pairs = []
+    for i, contrastive_pref in enumerate(pairs_to_process):
+        pair = contrastive_pref.get_contrastive_pair(runner, anchor_texts=anchor_texts)
+        if pair is None:
+            print(f"  Skipping pair {i + 1}: invalid sample data")
             continue
+        contrastive_pairs.append(pair)
 
-        # Reconstruct intervention for this result
-        if ic.layer is None:
-            # All layers patched together
-            layers = contrastive_pair.available_layers
-            intervention = contrastive_pair.get_interventions(
-                ic.target, layers, ic.component, effective_mode
-            )
-        else:
-            intervention = contrastive_pair.get_intervention(
-                ic.target, ic.layer, ic.component, effective_mode
-            )
+    if not contrastive_pairs:
+        print("No valid contrastive pairs!")
 
-        # Generate with intervention
-        generated_response = runner.generate(
-            prompt_text,
-            max_new_tokens=cfg.max_new_tokens,
-            temperature=cfg.temperature,
-            intervention=intervention,
-        )
+    return contrastive_pairs
 
-        # Verify generation matches probability-based choice
-        mismatch = verify_greedy_generation(
-            ic.intervened,
-            generated_response,
-            short_label,
-            long_label,
-            choice_prefix,
+
+def _create_runner(pref_dataset: PreferenceDataset) -> BinaryChoiceRunner:
+    """Create BinaryChoiceRunner for the dataset's model."""
+    backend = get_recommended_backend_internals()
+    return BinaryChoiceRunner(
+        pref_dataset.model, device=get_device(), backend=backend
+    )
+
+
+def _run_single_mode(runner, contrastive_pairs, cfg, mode) -> AggregatedActivationPatchingResult:
+    """Run patching for a single mode (denoising or noising)."""
+    print(f"\n{'=' * 40}")
+    print(f"Running {mode.upper()} mode")
+    print("=" * 40)
+
+    pair_results = []
+    for i, pair in enumerate(contrastive_pairs):
+        print(f"\nPair {i + 1}/{len(contrastive_pairs)}")
+        pair.print_summary()
+
+        result = patch_activation_for_choice(
             runner=runner,
-            prompt=prompt_text,
+            contrastive_pair=pair,
+            target=cfg.target,
+            mode=mode,
+            alpha=cfg.alpha,
         )
-        ic.decoding_mismatch = mismatch
 
-    n_mismatches = sum(1 for r in result.results if r.decoding_mismatch is True)
-    if n_mismatches > 0:
-        print(f"  WARNING: {n_mismatches}/{n_flipped} flips had decoding mismatches")
+        if cfg.verify_with_greedy:
+            verify_flipped_choices(result, runner, pair, cfg, mode)
 
+        pair_results.append(result)
+        result.print_summary()
 
-def run_layer_sweep(
-    pref_dataset: "PreferenceDataset",
-    n_pairs: int = 5,
-    component: str = "resid_post",
-    mode: Literal["noising", "denoising"] = "denoising",
-) -> dict[int, float]:
-    """Sweep to find most important layers by patching each layer separately.
+    aggregated = AggregatedActivationPatchingResult.from_results(pair_results)
 
-    Args:
-        pref_dataset: PreferenceDataset with samples
-        n_pairs: Number of contrastive pairs to use
-        component: Component to patch
-        mode: Patching mode
+    print(f"\n{mode.upper()} complete:")
+    aggregated.print_summary()
 
-    Returns:
-        Dict mapping layer index to mean recovery
-    """
-    cfg = IntertemporalActivationPatchingConfig(
-        n_pairs=n_pairs,
-        target=ActivationPatchingTarget(
-            position_mode="all",
-            layers="each",
-            component=component,
-        ),
-        mode=mode,
-    )
-
-    result = run_activation_patching(pref_dataset, cfg)
-    return result.get_recovery_by_layer()
+    return aggregated
 
 
-def run_position_sweep(
-    pref_dataset: "PreferenceDataset",
-    layer: int,
-    n_pairs: int = 5,
-    component: str = "resid_post",
-    mode: Literal["noising", "denoising"] = "denoising",
-) -> dict[int, float]:
-    """Sweep to find most important positions at a specific layer.
+# ============================================================================
+# Re-exports for backwards compatibility
+# ============================================================================
 
-    Args:
-        pref_dataset: PreferenceDataset with samples
-        layer: Layer to patch
-        n_pairs: Number of contrastive pairs to use
-        component: Component to patch
-        mode: Patching mode
-
-    Returns:
-        Dict mapping position index to mean recovery
-    """
-    cfg = IntertemporalActivationPatchingConfig(
-        n_pairs=n_pairs,
-        target=ActivationPatchingTarget(
-            position_mode="each",
-            layers=[layer],
-            component=component,
-        ),
-        mode=mode,
-    )
-
-    result = run_activation_patching(pref_dataset, cfg)
-
-    position_recoveries: dict[int, list[float]] = {}
-    for pr in result.results:
-        by_pos = pr.get_results_by_position()
-        for pos, results in by_pos.items():
-            if pos not in position_recoveries:
-                position_recoveries[pos] = []
-            position_recoveries[pos].extend(r.recovery for r in results)
-
-    return {
-        pos: sum(recoveries) / len(recoveries)
-        for pos, recoveries in position_recoveries.items()
-    }
+# Export sweep functions from sweeps module
+__all__ = [
+    "run_activation_patching",
+    "IntertemporalActivationPatchingConfig",
+    "DualModeActivationPatchingResult",
+    "SweepResults",
+    "run_layer_sweep",
+    "run_progressive_position_patching",
+    "run_full_sweep",
+]

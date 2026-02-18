@@ -32,6 +32,7 @@ class IntervenedChoice(BaseSchema):
     intervened: LabeledSimpleBinaryChoice
     mode: Literal["noising", "denoising"]
     decoding_mismatch: bool | None = None
+    generation_degenerate: bool = False  # True if generated output is degenerate (neither label found)
 
     @property
     def original_logprob_diff(self) -> float:
@@ -64,12 +65,15 @@ class IntervenedChoice(BaseSchema):
     def recovery(self) -> float:
         """Compute normalized recovery from logprob diffs.
 
-        For denoising: measures progress toward flipping the choice.
-        - 0 = no change from original
-        - 1 = fully recovered (logprob diff matches target behavior)
-        - >0 = moved in right direction
+        Recovery measures how much the intervention moved the logprob diff
+        toward flipping the choice. Both modes use the same formula:
 
-        Uses consistent sign convention to handle choice flips correctly.
+        - 0.0 = no change from original
+        - 0.5 = logprob diff reduced to zero (decision boundary)
+        - 1.0 = fully flipped (logprob diff reversed to same magnitude)
+        - >1.0 = overshot (stronger than full flip)
+
+        Formula: recovery = (orig_diff - intv_diff) / (2 * |orig_diff|)
         """
         orig_diff = self.original_logprob_diff  # Always positive (chose what it chose)
         intv_diff = self.consistent_logprob_diff  # Uses original's sign convention
@@ -77,19 +81,13 @@ class IntervenedChoice(BaseSchema):
         if orig_diff == 0:
             return 0.0
 
-        if self.mode == "denoising":
-            # For denoising, we want to flip: orig_diff positive -> negative
-            # Recovery = how much we moved toward negative / how far we need to go
-            # If orig_diff = 2 and intv_diff = -2, recovery = 1.0 (fully flipped)
-            # If orig_diff = 2 and intv_diff = 0, recovery = 0.5 (halfway)
-            # If orig_diff = 2 and intv_diff = 2, recovery = 0.0 (no change)
-            change = orig_diff - intv_diff  # Positive when moving toward flip
-            recovery = change / (2 * abs(orig_diff))  # Normalize to [0, 1] for full flip
-            return max(0.0, min(1.0, recovery))
-        else:  # noising
-            # For noising, we want to damage: should reduce confidence
-            change = orig_diff - intv_diff
-            return change / abs(orig_diff)
+        # Same formula for both modes:
+        # - orig_diff = 2, intv_diff = 2  -> recovery = 0.0 (no change)
+        # - orig_diff = 2, intv_diff = 0  -> recovery = 0.5 (at boundary)
+        # - orig_diff = 2, intv_diff = -2 -> recovery = 1.0 (full flip)
+        # - orig_diff = 2, intv_diff = -4 -> recovery = 1.5 (overshot)
+        change = orig_diff - intv_diff
+        return change / (2 * abs(orig_diff))
 
     @property
     def choice_flipped(self) -> bool:

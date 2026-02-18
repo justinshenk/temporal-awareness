@@ -52,7 +52,9 @@ class TransformerLensBackend(Backend):
             "do_sample": temperature > 0,
             "stop_at_eos": True,
             "verbose": False,
-            "use_past_kv_cache": True,
+            # Disable KV cache when intervention is active so each generation step
+            # processes the full sequence and interventions apply to all positions
+            "use_past_kv_cache": intervention is None,
         }
         if temperature > 0:
             gen_kwargs["temperature"] = temperature

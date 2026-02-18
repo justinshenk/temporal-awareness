@@ -163,11 +163,24 @@ def create_intervention_hook(
         positions = target.positions
 
         def hook(act, hook=None):
-            for pos in positions:
+            for i, pos in enumerate(positions):
                 if pos < act.shape[1]:
-                    act[:, pos] = _apply_slice(
-                        act[:, pos], values, mode, target_values, alpha
-                    )
+                    # Get the correct value for this position index
+                    if values.dim() > 1 and i < values.shape[0]:
+                        v = values[i]
+                    else:
+                        # Fallback: use last value or scalar
+                        v = values[-1] if values.dim() > 1 else values
+
+                    # Handle target_values for interpolate mode
+                    tv = None
+                    if target_values is not None:
+                        if target_values.dim() > 1 and i < target_values.shape[0]:
+                            tv = target_values[i]
+                        else:
+                            tv = target_values[-1] if target_values.dim() > 1 else target_values
+
+                    act[:, pos] = _apply_slice(act[:, pos], v, mode, tv, alpha)
             return act
 
         return hook, None
