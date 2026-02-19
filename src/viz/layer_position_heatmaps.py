@@ -9,6 +9,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .plot_helpers import finalize_plot as _finalize_plot
+
 
 # Section colors for prompt markers
 SECTION_COLORS = {
@@ -100,6 +102,7 @@ def plot_position_sweep(
     save_path: Path | None = None,
     config: HeatmapConfig | None = None,
     section_markers: dict[str, int] | None = None,
+    tick_colors: list[str] | None = None,
 ) -> None:
     """Plot position sweep as single-row heatmap.
 
@@ -109,6 +112,7 @@ def plot_position_sweep(
         save_path: If provided, save to file; otherwise show on screen
         config: HeatmapConfig with styling options
         section_markers: Dict of {section_name: position} for vertical markers
+        tick_colors: List of colors for each tick label
     """
     if config is None:
         config = HeatmapConfig(vmin=0.0, vmax=1.0)
@@ -127,7 +131,7 @@ def plot_position_sweep(
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
     cbar.set_label(config.cbar_label, fontsize=9)
 
-    _setup_position_axis(ax, position_labels, config.max_labels)
+    _setup_position_axis(ax, position_labels, config.max_labels, tick_colors)
     ax.set_yticks([0])
     ax.set_yticklabels(["All Layers"], fontsize=9)
 
@@ -241,6 +245,7 @@ def _setup_position_axis(
     ax: plt.Axes,
     position_labels: list[str],
     max_labels: int,
+    tick_colors: list[str] | None = None,
 ) -> None:
     """Setup x-axis with position labels, subsampling if needed."""
     n_positions = len(position_labels)
@@ -249,6 +254,8 @@ def _setup_position_axis(
         step = (n_positions + max_labels - 1) // max_labels
         tick_positions = list(range(0, n_positions, step))
         tick_labels = [position_labels[i] for i in tick_positions]
+        if tick_colors:
+            tick_colors = [tick_colors[i] for i in tick_positions]
     else:
         tick_positions = list(range(n_positions))
         tick_labels = position_labels
@@ -256,6 +263,11 @@ def _setup_position_axis(
     ax.set_xticks(tick_positions)
     x_fontsize = max(6, min(10, 400 // len(tick_labels)))
     ax.set_xticklabels(tick_labels, rotation=45, ha="right", fontsize=x_fontsize)
+
+    # Apply tick colors if provided
+    if tick_colors:
+        for tick_label, color in zip(ax.get_xticklabels(), tick_colors):
+            tick_label.set_color(color)
 
 
 def _set_title(ax: plt.Axes, title: str, subtitle: str | None) -> None:
@@ -326,15 +338,4 @@ def _annotate_cells(
                 )
 
 
-def _finalize_plot(save_path: Path | None) -> None:
-    """Finalize plot: save or show."""
-    plt.tight_layout()
-
-    if save_path:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-        plt.close()
-        print(f"Saved: {save_path}")
-    else:
-        plt.show()
+# _finalize_plot is imported from plot_helpers

@@ -18,6 +18,7 @@ from ...common.contrastive_pair import ContrastivePair
 class CoarseActPatchResults(BaseSchema):
     """Results from coarse activation patching on single pair."""
 
+    sample_id: int = 0
     sanity_result: ActPatchTargetResult | None = None
     layer_results: dict[int, ActPatchTargetResult] = field(default_factory=dict)
     position_results: dict[int, ActPatchTargetResult] = field(default_factory=dict)
@@ -61,13 +62,93 @@ class CoarseActPatchResults(BaseSchema):
         )
 
 
+@dataclass
+class CoarseActPatchAggregatedResults(BaseSchema):
+    """Aggregated coarse patching results across multiple pairs."""
+
+    by_sample: dict[int, CoarseActPatchResults] = field(default_factory=dict)
+
+    def add(self, result: CoarseActPatchResults) -> None:
+        """Add a result to the aggregation."""
+        self.by_sample[result.sample_id] = result
+
+    @property
+    def n_samples(self) -> int:
+        return len(self.by_sample)
+
+    def mean_sanity_score(self) -> float:
+        """Mean sanity check score across samples."""
+        scores = [
+            r.sanity_result.score() for r in self.by_sample.values() if r.sanity_result
+        ]
+        return sum(scores) / len(scores) if scores else 0.0
+
+    def get_mean_layer_scores(self) -> dict[int, float]:
+        """Mean recovery per layer across all samples."""
+        by_layer: dict[int, list[float]] = {}
+        for result in self.by_sample.values():
+            for layer, target_result in result.layer_results.items():
+                by_layer.setdefault(layer, []).append(target_result.score())
+        return {l: sum(s) / len(s) for l, s in by_layer.items()}
+
+    def get_mean_position_scores(self) -> dict[int, float]:
+        """Mean recovery per position across all samples."""
+        by_pos: dict[int, list[float]] = {}
+        for result in self.by_sample.values():
+            for pos, target_result in result.position_results.items():
+                by_pos.setdefault(pos, []).append(target_result.score())
+        return {p: sum(s) / len(s) for p, s in by_pos.items()}
+
+    def best_layers(self, n_top: int = 3) -> list[int]:
+        """Top n layers by mean score."""
+        layer_scores = self.get_mean_layer_scores()
+        sorted_layers = sorted(layer_scores.items(), key=lambda x: x[1], reverse=True)
+        return [layer for layer, _ in sorted_layers[:n_top]]
+
+    def get_union_target(
+        self,
+        n_top_layers: int = 3,
+        position_threshold: float = 0.8,
+        component: str = "resid_post",
+    ) -> InterventionTarget:
+        """Get target combining best layers and positions across all samples."""
+        layers = self.best_layers(n_top=n_top_layers)
+
+        # Find min position where mean score > threshold
+        pos_scores = self.get_mean_position_scores()
+        n_pos = 0
+        for pos in sorted(pos_scores.keys()):
+            if pos_scores[pos] > position_threshold:
+                n_pos = pos
+                break
+        if n_pos == 0 and pos_scores:
+            n_pos = max(pos_scores.keys())
+
+        positions = list(range(n_pos)) if n_pos else None
+        return InterventionTarget.at(
+            positions=positions,
+            layers=layers if layers else None,
+            component=component,
+        )
+
+    def print_summary(self) -> None:
+        """Print summary of aggregated results."""
+        print(f"Coarse patching: {self.n_samples} samples")
+        print(f"  Mean sanity score: {self.mean_sanity_score():.3f}")
+        best = self.best_layers(n_top=3)
+        if best:
+            layer_scores = self.get_mean_layer_scores()
+            scores_str = [f"{layer_scores[l]:.3f}" for l in best]
+            print(f"  Best layers: {best} (scores: {scores_str})")
+
+
 def run_coarse_act_patching(
     runner: BinaryChoiceRunner,
     pair: ContrastivePair,
     component: str = "resid_post",
     min_layer_depth: float = 0.01,
     max_layer_depth: float = 0.99,
-    layer_step: int = 3,
+    layer_step: int = 8,
     pos_step: int = 10,
 ) -> CoarseActPatchResults:
     """Run sanity check, layer sweep, and position sweep on single pair."""
@@ -88,7 +169,7 @@ def run_coarse_act_patching(
     layers_of_interest = pair.available_layers[start_layer:end_layer]
     layer_results = {}
     print(
-        f"[coarse] Starting layer sweep from {layers_of_interest[0]} to {layers_of_interest[-1]} with {layer_step} step..."
+        f"[coarse] Starting layer sweep from {layers_of_interest[0]} to {layers_of_interest[-1]} with {layer_step} step-size..."
     )
     for i in range(0, len(layers_of_interest), layer_step):
         layer_range = layers_of_interest[i : i + layer_step]
@@ -101,18 +182,15 @@ def run_coarse_act_patching(
     # Pos
     position_results = {}
     start_pos = pair.position_mapping.first_interesting_pos
-    end_pos = (pair.prompt_token_count + pair.max_length) // 2
+    end_pos = min(pair.choice_divergent_positions)
     print(
-        f"[coarse] Starting position sweep from {start_pos} to {end_pos} with {pos_step} step..."
+        f"[coarse] Starting position sweep from {start_pos} to {end_pos} with {pos_step} step-size..."
     )
     for pos in range(start_pos, end_pos, pos_step):
         pos_range = list(range(pos, min(pos + pos_step, end_pos)))
         target = InterventionTarget.at_positions(pos_range, component=component)
         position_results[pos] = patch_target(runner, pair, target)
-        after_prompt = pair.prompt_token_count < pos_range[-1]
-        print(
-            f"[coarse  pos={pos} after_prompt={after_prompt} recovery={position_results[pos].score():.3f}"
-        )
+        print(f"[coarse  pos={pos} recovery={position_results[pos].score():.3f}")
 
     clear_gpu_memory()
     print("[coarse] Done.")

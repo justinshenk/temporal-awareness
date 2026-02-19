@@ -11,7 +11,6 @@ fast importance scores that can guide more expensive activation patching.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
 
 from ...common import BaseSchema, get_device
 from ...inference.backends import get_recommended_backend_internals
@@ -21,7 +20,6 @@ from ...attribution_patching import (
     attribute_for_choice,
 )
 from ..common.contrastive_preferences import get_contrastive_preferences
-from ...common.contrastive_pair import ContrastivePair
 
 from ...binary_choice import BinaryChoiceRunner
 from ..preference import PreferenceDataset
@@ -55,6 +53,7 @@ class IntertemporalAttributionConfig(BaseSchema):
             print(f"  ig_steps={self.target.ig_steps}")
 
 
+# TODO(claude): Look at activation patching pipeline. We should do attribute_pait in step_attribution_patching
 def run_attribution_patching(
     pref_dataset: PreferenceDataset,
     cfg: IntertemporalAttributionConfig | None = None,

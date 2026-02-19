@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ..activation_patching import ActPatchAggregatedResult, ActPatchPairResult
-from .layer_position_heatmaps import HeatmapConfig, _finalize_plot
+from .layer_position_heatmaps import HeatmapConfig
+from .plot_helpers import finalize_plot as _finalize_plot
 
 
 def visualize_activation_patching(

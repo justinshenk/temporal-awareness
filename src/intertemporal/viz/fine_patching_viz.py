@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ...activation_patching import ActPatchAggregatedResult
-from ...viz.layer_position_heatmaps import _finalize_plot
+from ...viz.plot_helpers import finalize_plot as _finalize_plot
 from ...viz.patching_heatmaps import (
     PatchingHeatmapConfig,
     plot_patching_heatmap,

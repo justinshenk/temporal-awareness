@@ -13,7 +13,11 @@ from ...inference import (
     COMPONENTS,
 )
 from ...binary_choice import BinaryChoiceRunner
-from ...activation_patching import patch_pair, ActPatchAggregatedResult
+from ...activation_patching import (
+    patch_pair,
+    ActPatchAggregatedResult,
+    ActPatchPairResult,
+)
 
 from ..common import get_experiment_dir, get_pref_dataset_dir
 from ..common.contrastive_preferences import get_contrastive_preferences
@@ -28,9 +32,13 @@ from ..viz import (
     visualize_coarse_patching,
     visualize_fine_patching,
     visualize_tokenization,
-    visualize_logit_lens,
 )
-from .coarse_activation_patching import CoarseActPatchResults, run_coarse_act_patching
+from ...viz.token_coloring import get_token_coloring_for_pair
+from .coarse_activation_patching import (
+    CoarseActPatchResults,
+    CoarseActPatchAggregatedResults,
+    run_coarse_act_patching,
+)
 from .attribution_patching import run_attribution_patching
 
 
@@ -59,13 +67,20 @@ class ExperimentContext:
 
     cfg: ExperimentConfig
     pref_data: PreferenceDataset | None = None
-    coarse_patching: CoarseActPatchResults | None = None
-    fine_patching: ActPatchAggregatedResult | None = None
-    att_patching: object | None = None
+
     output_dir: Path = field(default_factory=get_experiment_dir)
     timestamp: str = field(default_factory=get_timestamp)
+
     _pairs: list | None = field(default=None, init=False)
     _runner: BinaryChoiceRunner | None = field(default=None, init=False)
+
+    coarse_patching: dict[int, CoarseActPatchResults] = field(default_factory=dict)
+    fine_patching: dict[int, ActPatchPairResult] = field(default_factory=dict)
+    att_patching: dict[int, object] = field(default_factory=dict)
+
+    coarse_agg: CoarseActPatchAggregatedResults | None = None
+    fine_agg: ActPatchAggregatedResult | None = None
+    att_agg: object | None = None
 
     @property
     def runner(self) -> BinaryChoiceRunner:
@@ -111,16 +126,16 @@ class ExperimentContext:
         return d
 
     def get_union_target(self, component: str = "resid_post") -> InterventionTarget:
-        """Get union target from attribution or coarse patching."""
+        """Get union target from attribution or coarse patching aggregates."""
         # Use attribution patching results if available
-        if self.att_patching:
-            target = self.att_patching.get_union_target()
+        if self.att_agg:
+            target = self.att_agg.get_consensus_target()
             if target:
                 return target
 
-        # Fall back to coarse patching results
-        if self.coarse_patching:
-            return self.coarse_patching.get_union_target(component=component)
+        # Fall back to coarse patching aggregated results
+        if self.coarse_agg:
+            return self.coarse_agg.get_union_target(component=component)
 
         return InterventionTarget.all(component=component)
 
@@ -160,58 +175,84 @@ def step_preference_data(
 
 @profile("step_coarse_activation_patching")
 def step_coarse_activation_patching(ctx: ExperimentContext) -> None:
-    """Run layer and position sweeps on best contrastive pair."""
-    pair = ctx.best_contrastive_pair
-    ctx.coarse_patching = run_coarse_act_patching(ctx.runner, pair)
-    best_layers = ctx.coarse_patching.best_layers()
-    best_pos = ctx.coarse_patching.best_n_positions()
-    # Find best position by recovery
-    pos_results = ctx.coarse_patching.position_results
-    if pos_results:
-        best_pos_by_score = max(
-            pos_results.keys(), key=lambda p: pos_results[p].score()
-        )
-        best_pos_recovery = pos_results[best_pos_by_score].score()
-        print(f"Best layers: {best_layers}")
-        print(
-            f"Best position range: {best_pos_by_score} (recovery={best_pos_recovery:.3f})"
-        )
-    else:
-        print(f"Best layers: {best_layers}")
+    """Run layer and position sweeps on each contrastive pair."""
+    ctx.coarse_agg = CoarseActPatchAggregatedResults()
+
+    for pair_idx, pair in enumerate(ctx.pairs):
+        print(f"\n[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}")
+        result = run_coarse_act_patching(ctx.runner, pair)
+        result.sample_id = pair_idx
+        ctx.coarse_patching[pair_idx] = result
+        ctx.coarse_agg.add(result)
+
+    ctx.coarse_agg.print_summary()
 
 
 @profile("step_fine_activation_patching")
 def step_fine_activation_patching(ctx: ExperimentContext) -> None:
     """Run targeted activation patching on decomposed targets for each component."""
-    return
-    result = ActPatchAggregatedResult()
+    ctx.fine_agg = ActPatchAggregatedResult()
 
     for component in COMPONENTS:
         target = ctx.get_union_target(component=component)
         targets = target.decompose()
 
-        for pair in ctx.pairs:
+        for pair_idx, pair in enumerate(ctx.pairs):
+            print(
+                f"\n[fine] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+            )
             pair_result = patch_pair(ctx.runner, pair, targets)
-            result.add(pair_result)
+            pair_result.sample_id = pair_idx
+            ctx.fine_patching[pair_idx] = pair_result
+            ctx.fine_agg.add(pair_result)
 
-    ctx.fine_patching = result
-    result.print_summary()
+    ctx.fine_agg.print_summary()
 
 
 @profile("step_attribution_patching")
 def step_attribution_patching(ctx: ExperimentContext) -> None:
     """Run attribution patching."""
-    ctx.att_patching = run_attribution_patching(ctx.pref_data)
+    ctx.att_agg = run_attribution_patching(ctx.pref_data)
 
 
 @profile("step_visualize_results")
 def step_visualize_results(ctx: ExperimentContext) -> None:
     """Visualize all patching results."""
-    visualize_att_patching(ctx.att_patching, ctx.viz_dir)
-    visualize_coarse_patching(ctx.coarse_patching, ctx.viz_dir)
-    visualize_fine_patching(ctx.fine_patching, ctx.viz_dir)
-    visualize_tokenization(ctx.pairs, ctx.runner, ctx.viz_dir)
-    visualize_logit_lens(ctx.pairs, ctx.runner, ctx.viz_dir)
+
+    for pair_idx, pair in enumerate(ctx.pairs):
+        pair_out_dir = ctx.viz_dir / f"pair_{pair_idx}"
+        coloring = get_token_coloring_for_pair(pair, ctx.runner)
+        position_labels = coloring.get_position_labels("short")
+        section_markers = coloring.get_section_markers("short")
+
+        # Tokenization visualization (single pair as list)
+        visualize_tokenization([pair], ctx.runner, pair_out_dir, max_pairs=1)
+
+        # Per-pair patching visualizations
+        if pair_idx in ctx.att_patching:
+            visualize_att_patching(
+                ctx.att_patching[pair_idx],
+                pair_out_dir,
+                position_labels,
+                section_markers,
+            )
+        if pair_idx in ctx.coarse_patching:
+            visualize_coarse_patching(
+                ctx.coarse_patching[pair_idx], pair_out_dir, coloring
+            )
+        if pair_idx in ctx.fine_patching:
+            visualize_fine_patching(
+                ctx.fine_patching[pair_idx],
+                pair_out_dir,
+                position_labels,
+                section_markers,
+            )
+
+    # Aggregated visualizations
+    agg_out_dir = ctx.viz_dir / "agg"
+    visualize_att_patching(ctx.att_agg, agg_out_dir)
+    visualize_coarse_patching(ctx.coarse_agg, agg_out_dir)
+    visualize_fine_patching(ctx.fine_agg, agg_out_dir)
 
 
 @profile("run_experiment")
@@ -225,7 +266,7 @@ def run_experiment(cfg: ExperimentConfig) -> ExperimentContext:
         return
 
     # step_attribution_patching(ctx)
-    # step_coarse_activation_patching(ctx)
+    step_coarse_activation_patching(ctx)
     # step_fine_activation_patching(ctx)
     step_visualize_results(ctx)
     return ctx

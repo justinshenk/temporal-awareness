@@ -32,9 +32,9 @@ class ContrastivePair(BaseSchema):
     labels: tuple[str, str] | None = None
     choice_prefix: str = ""
     sample_id: int = 0
-    prompt_token_counts: tuple[int] | None = None
+    prompt_token_counts: tuple[int, int] | None = None
     # Position where A vs B tokens diverge in each trajectory's original binary choice
-    choice_divergent_positions: tuple[int | None, int | None] | None = None
+    choice_divergent_positions: tuple[int, int] | None = None
 
     @property
     def short_text(self) -> str:

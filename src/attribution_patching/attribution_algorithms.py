@@ -500,7 +500,6 @@ def run_all_attribution_methods(
     if "standard" in methods:
         with P("standard_attribution"):
             for comp in ["resid_post", "attn_out", "mlp_out"]:
-                key = comp.replace("_post", "").replace("_out", "")
                 results[key] = compute_attribution(
                     runner, clean_text, corrupted_text, metric, pos_mapping, comp
                 )
