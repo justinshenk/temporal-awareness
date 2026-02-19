@@ -116,8 +116,15 @@ def _plot_sweep_results(
 
     # Add value annotations
     for i, val in enumerate(recoveries):
-        ax1.text(0, i, f"{val:.3f}", ha="center", va="center", fontsize=8,
-                 color="white" if abs(val) > vmax * 0.6 else "black")
+        ax1.text(
+            0,
+            i,
+            f"{val:.3f}",
+            ha="center",
+            va="center",
+            fontsize=8,
+            color="white" if abs(val) > vmax * 0.6 else "black",
+        )
 
     plt.colorbar(im1, ax=ax1, label="Recovery", shrink=0.8)
 
@@ -133,7 +140,9 @@ def _plot_sweep_results(
 
     # Position labels
     if tokens and len(tokens) >= len(positions):
-        pos_labels = [f"{tokens[p]}_{p}" if p < len(tokens) else str(p) for p in positions]
+        pos_labels = [
+            f"{tokens[p]}_{p}" if p < len(tokens) else str(p) for p in positions
+        ]
     else:
         pos_labels = [str(p) for p in positions]
 
@@ -143,7 +152,9 @@ def _plot_sweep_results(
     ax2.set_yticklabels(["Recovery"], fontsize=10)
     ax2.set_title("Position Sweep", fontsize=12, fontweight="bold")
 
-    plt.colorbar(im2, ax=ax2, label="Recovery", shrink=0.8, orientation="horizontal", pad=0.15)
+    plt.colorbar(
+        im2, ax=ax2, label="Recovery", shrink=0.8, orientation="horizontal", pad=0.15
+    )
 
     plt.suptitle(title, fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
@@ -233,8 +244,13 @@ def plot_attribution_vs_activation_scatter(
         n_layers = max(layers) + 1
         colors = plt.cm.viridis(np.array(layers) / n_layers)
         scatter = ax.scatter(
-            activation_values, attribution_values,
-            c=colors, s=80, alpha=0.7, edgecolors="white", linewidths=0.5
+            activation_values,
+            attribution_values,
+            c=colors,
+            s=80,
+            alpha=0.7,
+            edgecolors="white",
+            linewidths=0.5,
         )
         # Add colorbar
         sm = plt.cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(0, n_layers))
@@ -242,8 +258,13 @@ def plot_attribution_vs_activation_scatter(
         cbar = plt.colorbar(sm, ax=ax, label="Layer")
     else:
         ax.scatter(
-            activation_values, attribution_values,
-            c="steelblue", s=80, alpha=0.7, edgecolors="white", linewidths=0.5
+            activation_values,
+            attribution_values,
+            c="steelblue",
+            s=80,
+            alpha=0.7,
+            edgecolors="white",
+            linewidths=0.5,
         )
 
     # Diagonal line (perfect correlation)
@@ -268,9 +289,13 @@ def plot_attribution_vs_activation_scatter(
     if len(activation_values) > 1:
         corr = np.corrcoef(activation_values, attribution_values)[0, 1]
         ax.text(
-            0.05, 0.95, f"r = {corr:.3f}",
-            transform=ax.transAxes, fontsize=11, verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8)
+            0.05,
+            0.95,
+            f"r = {corr:.3f}",
+            transform=ax.transAxes,
+            fontsize=11,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
         )
 
     plt.tight_layout()
@@ -300,7 +325,9 @@ def plot_component_position_heatmap(
     fig, ax = plt.subplots(figsize=figsize)
 
     components = list(data.keys())
-    all_positions = sorted(set(p for comp_data in data.values() for p in comp_data.keys()))
+    all_positions = sorted(
+        set(p for comp_data in data.values() for p in comp_data.keys())
+    )
 
     # Build matrix
     matrix = np.zeros((len(components), len(all_positions)))
@@ -315,7 +342,9 @@ def plot_component_position_heatmap(
 
     # Labels
     if tokens and len(tokens) >= len(all_positions):
-        pos_labels = [f"{tokens[p]}_{p}" if p < len(tokens) else str(p) for p in all_positions]
+        pos_labels = [
+            f"{tokens[p]}_{p}" if p < len(tokens) else str(p) for p in all_positions
+        ]
     else:
         pos_labels = [str(p) for p in all_positions]
 
@@ -363,7 +392,9 @@ def plot_sweep_summary(
     ax1 = fig.add_subplot(gs[0, 0])
     layers = sorted([l for l in sweep_results.layer_recovery.keys() if l is not None])
     recoveries = [sweep_results.layer_recovery[l] for l in layers]
-    colors = ["forestgreen" if l in sweep_results.best_layers else "steelblue" for l in layers]
+    colors = [
+        "forestgreen" if l in sweep_results.best_layers else "steelblue" for l in layers
+    ]
     ax1.bar(layers, recoveries, color=colors, alpha=0.8)
     ax1.set_xlabel("Layer", fontsize=10)
     ax1.set_ylabel("Recovery", fontsize=10)
@@ -374,11 +405,16 @@ def plot_sweep_summary(
     ax2 = fig.add_subplot(gs[0, 1])
     positions = sorted(sweep_results.position_recovery.keys())
     pos_recoveries = [sweep_results.position_recovery[p] for p in positions]
-    colors2 = ["forestgreen" if p in sweep_results.best_positions else "coral" for p in positions]
+    colors2 = [
+        "forestgreen" if p in sweep_results.best_positions else "coral"
+        for p in positions
+    ]
     ax2.bar(range(len(positions)), pos_recoveries, color=colors2, alpha=0.8)
 
     if tokens and len(tokens) >= len(positions):
-        pos_labels = [f"{tokens[p][:4]}_{p}" if p < len(tokens) else str(p) for p in positions]
+        pos_labels = [
+            f"{tokens[p][:4]}_{p}" if p < len(tokens) else str(p) for p in positions
+        ]
     else:
         pos_labels = [str(p) for p in positions]
     ax2.set_xticks(range(len(positions)))
@@ -421,10 +457,14 @@ def plot_sweep_summary(
     )
 
     ax4.text(
-        0.1, 0.9, summary,
-        transform=ax4.transAxes, fontsize=11, verticalalignment="top",
+        0.1,
+        0.9,
+        summary,
+        transform=ax4.transAxes,
+        fontsize=11,
+        verticalalignment="top",
         family="monospace",
-        bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.8)
+        bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.8),
     )
 
     plt.suptitle(title, fontsize=14, fontweight="bold", y=0.98)

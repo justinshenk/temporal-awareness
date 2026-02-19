@@ -9,7 +9,18 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..intertemporal.analysis.section_markers import SECTION_COLORS
+
+# Section colors for prompt markers
+SECTION_COLORS = {
+    "situation": "#2196F3",  # Blue
+    "task": "#4CAF50",  # Green
+    "consider": "#FF9800",  # Orange
+    "action": "#9C27B0",  # Purple
+    "format": "#607D8B",  # Blue-gray
+    "response": "#E91E63",  # Pink
+    "choice": "#F44336",  # Red
+    "reasoning": "#795548",  # Brown
+}
 
 
 @dataclass
@@ -53,7 +64,9 @@ def plot_layer_position_heatmap(
     # Auto-disable annotation for large matrices
     annotate = config.annotate and (n_layers * n_positions <= 100)
 
-    fig, ax = plt.subplots(figsize=_compute_figsize(config.figsize, n_layers, n_positions))
+    fig, ax = plt.subplots(
+        figsize=_compute_figsize(config.figsize, n_layers, n_positions)
+    )
 
     vmin, vmax = _compute_range(matrix, config.vmin, config.vmax, config.cmap)
     im = _draw_heatmap(ax, matrix, config.cmap, vmin, vmax)
@@ -215,8 +228,12 @@ def _draw_heatmap(
     cmap_obj = plt.get_cmap(cmap).copy()
     cmap_obj.set_bad(color="lightgray")
     return ax.imshow(
-        masked_matrix, aspect="auto", cmap=cmap_obj,
-        vmin=vmin, vmax=vmax, origin="lower"
+        masked_matrix,
+        aspect="auto",
+        cmap=cmap_obj,
+        vmin=vmin,
+        vmax=vmax,
+        origin="lower",
     )
 
 
@@ -264,12 +281,19 @@ def _draw_section_markers(
 
             label = name.replace("before_", "").replace("_", " ")
             ax.annotate(
-                label, xy=(x_pos, -0.5), xytext=(x_pos, y_offset),
-                fontsize=7, color="white", ha="center", va="top",
+                label,
+                xy=(x_pos, -0.5),
+                xytext=(x_pos, y_offset),
+                fontsize=7,
+                color="white",
+                ha="center",
+                va="top",
                 fontweight="bold",
                 bbox=dict(
-                    boxstyle="round,pad=0.2", facecolor=color,
-                    edgecolor="none", alpha=0.95
+                    boxstyle="round,pad=0.2",
+                    facecolor=color,
+                    edgecolor="none",
+                    alpha=0.95,
                 ),
                 annotation_clip=False,
             )
@@ -291,8 +315,14 @@ def _annotate_cells(
             if not np.isnan(val):
                 text_color = "white" if val < midpoint else "black"
                 ax.text(
-                    j, i, f"{val:.2f}", ha="center", va="center",
-                    color=text_color, fontsize=7, fontweight="bold"
+                    j,
+                    i,
+                    f"{val:.2f}",
+                    ha="center",
+                    va="center",
+                    color=text_color,
+                    fontsize=7,
+                    fontweight="bold",
                 )
 
 

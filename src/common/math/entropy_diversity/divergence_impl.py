@@ -124,9 +124,7 @@ def _renyi_divergence_native(
     return math.log(total) / (alpha - 1)
 
 
-def _renyi_divergence_numpy(
-    p: np.ndarray, q: np.ndarray, alpha: float
-) -> np.floating:
+def _renyi_divergence_numpy(p: np.ndarray, q: np.ndarray, alpha: float) -> np.floating:
     """Rényi divergence of order α (NumPy).
 
     Assumes p and q are already normalized probability distributions.

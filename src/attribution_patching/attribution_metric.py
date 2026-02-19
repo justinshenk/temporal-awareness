@@ -8,15 +8,12 @@ logit difference between the two options.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import torch
 
+from ..binary_choice import BinaryChoiceRunner
 from ..common.base_schema import BaseSchema
-
-if TYPE_CHECKING:
-    from ..binary_choice import BinaryChoiceRunner
-    from ..common.contrastive_pair import ContrastivePair
+from ..common.contrastive_pair import ContrastivePair
 
 
 @dataclass
@@ -61,9 +58,7 @@ class AttributionMetric(BaseSchema):
         chosen_id, alt_id = self.target_token_ids
         return last_logits[chosen_id] - last_logits[alt_id]
 
-    def compute_at_position(
-        self, logits: torch.Tensor, position: int
-    ) -> torch.Tensor:
+    def compute_at_position(self, logits: torch.Tensor, position: int) -> torch.Tensor:
         """Compute metric at a specific position.
 
         Args:
@@ -97,14 +92,12 @@ class AttributionMetric(BaseSchema):
         Returns:
             AttributionMetric configured for this pair
         """
-        tokenizer = runner.tokenizer
-
         # Get first token IDs for the choice labels
         short_label = contrastive_pair.short_label or ""
         long_label = contrastive_pair.long_label or ""
 
-        short_ids = tokenizer.encode(short_label, add_special_tokens=False)
-        long_ids = tokenizer.encode(long_label, add_special_tokens=False)
+        short_ids = runner.encode_ids(short_label, add_special_tokens=False)
+        long_ids = runner.encode_ids(long_label, add_special_tokens=False)
 
         if not short_ids or not long_ids:
             raise ValueError(

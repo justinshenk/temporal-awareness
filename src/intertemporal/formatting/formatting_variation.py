@@ -49,6 +49,7 @@ MORE_LABEL_STYLES: list[tuple[str, str]] = [
 ]
 LABEL_STYLES: list[tuple[str, str]] = SELECT_LABEL_STYLES + MORE_LABEL_STYLES
 
+
 def get_formatting_id(label_a: str, label_b: str) -> int:
     """
     Get a formatting ID from label pair.
@@ -75,6 +76,7 @@ def get_formatting_id(label_a: str, label_b: str) -> int:
     base_id = hash(canonical) & 0x7FFFFFFF  # Ensure positive by masking sign bit
 
     return sign * base_id
+
 
 def get_random_labels() -> tuple[str, str]:
     """Get a random label pair."""

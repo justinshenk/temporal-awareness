@@ -58,7 +58,7 @@ class BinaryChoiceRunner(ModelRunner):
         """
 
         prompt = self.apply_chat_template(prompt)
-        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=True)
+        prompt_ids = self.encode_ids(prompt, add_special_tokens=True)
 
         # Auto-prepend skip thinking prefix for reasoning models
         effective_prefix = self.skip_thinking_prefix + choice_prefix
@@ -153,7 +153,7 @@ class BinaryChoiceRunner(ModelRunner):
         # ── Compute trunk (prompt_ids) per prompt ────────────────────────
 
         prompt_ids_list = [
-            self.tokenizer.encode(self.apply_chat_template(p), add_special_tokens=True)
+            self.encode_ids(self.apply_chat_template(p), add_special_tokens=True)
             for p in prompts
         ]
 
@@ -238,7 +238,7 @@ class BinaryChoiceRunner(ModelRunner):
             raise ValueError("labels must contain at least one label pair")
 
         prompt = self.apply_chat_template(prompt)
-        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=True)
+        prompt_ids = self.encode_ids(prompt, add_special_tokens=True)
 
         # Auto-prepend skip thinking prefix for reasoning models
         effective_prefix = self.skip_thinking_prefix + choice_prefix

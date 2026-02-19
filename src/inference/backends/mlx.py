@@ -6,32 +6,43 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention
 
 
 def _get_mx():
     """Lazy import of mlx.core."""
     import mlx.core as mx
+
     return mx
 
 
 def _get_generate():
     """Lazy import of mlx_lm generate."""
     from mlx_lm import generate
+
     return generate
 
 
 class MLXBackend(Backend):
     """Backend using MLX for Apple Silicon inference."""
 
+    def __init__(self, runner: Any, tokenizer: Any):
+        """Initialize MLX backend.
+
+        Args:
+            runner: ModelRunner instance
+            tokenizer: Tokenizer loaded from mlx_lm
+        """
+        super().__init__(runner)
+        # MLX wraps HuggingFace tokenizer; store underlying one for full API compatibility
+        if hasattr(tokenizer, "_tokenizer"):
+            self._tokenizer = tokenizer._tokenizer
+        else:
+            self._tokenizer = tokenizer
+
     def get_tokenizer(self):
-        tokenizer = self.runner._tokenizer
-        # MLX wraps HuggingFace tokenizer; return underlying one for full API compatibility
-        # (e.g., return_offsets_mapping support)
-        if hasattr(tokenizer, '_tokenizer'):
-            return tokenizer._tokenizer
-        return tokenizer
+        return self._tokenizer
 
     def get_n_layers(self) -> int:
         return len(self.runner._model.layers)
@@ -39,23 +50,25 @@ class MLXBackend(Backend):
     def get_d_model(self) -> int:
         args = self.runner._model.args
         # Try common attribute names for hidden dimension
-        if hasattr(args, 'hidden_size'):
+        if hasattr(args, "hidden_size"):
             return args.hidden_size
-        if hasattr(args, 'dim'):
+        if hasattr(args, "dim"):
             return args.dim
-        if hasattr(args, 'd_model'):
+        if hasattr(args, "d_model"):
             return args.d_model
         # Some models (e.g., Gemma 3n) nest config in text_config
-        if hasattr(args, 'text_config'):
+        if hasattr(args, "text_config"):
             text_cfg = args.text_config
             if isinstance(text_cfg, dict):
-                return text_cfg.get('hidden_size') or text_cfg.get('dim')
-            elif hasattr(text_cfg, 'hidden_size'):
+                return text_cfg.get("hidden_size") or text_cfg.get("dim")
+            elif hasattr(text_cfg, "hidden_size"):
                 return text_cfg.hidden_size
         raise AttributeError(f"Cannot find hidden size in model args: {args}")
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        tokens = self.runner._tokenizer.encode(text)
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        tokens = self.runner._tokenizer.encode(text, add_special_tokens=add_special_tokens)
         if prepend_bos and self.runner._tokenizer.bos_token_id is not None:
             tokens = [self.runner._tokenizer.bos_token_id] + tokens
         return torch.tensor([tokens])
@@ -63,7 +76,11 @@ class MLXBackend(Backend):
     def decode(self, token_ids: torch.Tensor) -> str:
         if isinstance(token_ids, torch.Tensor):
             token_ids = token_ids.tolist()
-        if isinstance(token_ids, list) and len(token_ids) > 0 and isinstance(token_ids[0], list):
+        if (
+            isinstance(token_ids, list)
+            and len(token_ids) > 0
+            and isinstance(token_ids[0], list)
+        ):
             token_ids = token_ids[0]
         return self.runner._tokenizer.decode(token_ids)
 
@@ -83,6 +100,7 @@ class MLXBackend(Backend):
 
             if temperature > 0:
                 from mlx_lm.sample_utils import make_sampler
+
                 sampler = make_sampler(temp=temperature)
             else:
                 sampler = None
@@ -96,12 +114,14 @@ class MLXBackend(Backend):
             )
 
         # Slow path: token-by-token with intervention
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
         # Keep everything on CPU for MLX compatibility
         generated = input_ids.cpu()
 
-        interventions = [intervention] if isinstance(intervention, Intervention) else intervention
+        interventions = (
+            [intervention] if isinstance(intervention, Intervention) else intervention
+        )
 
         for _ in range(max_new_tokens):
             # Run forward with intervention (returns tensor on runner.device)
@@ -113,7 +133,9 @@ class MLXBackend(Backend):
                 probs = torch.softmax(logits_cpu[0, -1, :] / temperature, dim=-1)
                 next_token = torch.multinomial(probs, 1).unsqueeze(0)
             else:
-                next_token = logits_cpu[0, -1, :].argmax(dim=-1, keepdim=True).unsqueeze(0)
+                next_token = (
+                    logits_cpu[0, -1, :].argmax(dim=-1, keepdim=True).unsqueeze(0)
+                )
 
             generated = torch.cat([generated, next_token], dim=1)
 
@@ -174,6 +196,7 @@ class MLXBackend(Backend):
         class's __call__ method to capture residual stream activations.
         """
         import numpy as np
+
         mx = _get_mx()
 
         if isinstance(input_ids, torch.Tensor):
@@ -264,11 +287,12 @@ class MLXBackend(Backend):
 
         # Use mlx_lm.generate to continue from first token
         generate = _get_generate()
-        first_token_text = self.runner._tokenizer.decode([next_token])
+        first_token_text = self.runner.decode_ids([next_token])
 
         # Create sampler based on temperature
         if temperature > 0:
             from mlx_lm.sample_utils import make_sampler
+
             sampler = make_sampler(temp=temperature)
         else:
             sampler = None
@@ -292,6 +316,7 @@ class MLXBackend(Backend):
     ) -> torch.Tensor:
         """Run forward pass and return logits as PyTorch tensor."""
         import numpy as np
+
         mx = _get_mx()
 
         if isinstance(input_ids, torch.Tensor):
@@ -316,6 +341,7 @@ class MLXBackend(Backend):
         Supports 'add' mode for steering on resid_post component.
         """
         import numpy as np
+
         mx = _get_mx()
 
         if isinstance(input_ids, torch.Tensor):
@@ -360,7 +386,7 @@ class MLXBackend(Backend):
 
                 # Apply steering based on target type
                 # result shape: [batch, seq, hidden_size]
-                if interv.target.axis == "position" and interv.target.positions:
+                if not interv.target.is_all_positions and interv.target.positions:
                     # Position-specific: steering shape [n_positions, hidden_size]
                     # Only add to specified positions, clamped to sequence length
                     seq_len = result.shape[1]
@@ -394,6 +420,7 @@ class MLXBackend(Backend):
     ) -> tuple[torch.Tensor, dict]:
         """Run forward with interventions AND capture activations."""
         import numpy as np
+
         mx = _get_mx()
 
         if isinstance(input_ids, torch.Tensor):

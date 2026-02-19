@@ -2,12 +2,12 @@
 
 Tests all combinations of:
 - Modes: add, set, mul, interpolate
-- Axes: all, position, neuron, pattern
+- Targets: all, position
 - Backends: TransformerLens (default), NNsight, Pyvene
 
-Ground truth tests: 4 modes × 4 axes = 16 tests
-Backend comparison tests: 4 modes × 4 axes × 3 backends = 48 tests
-Total: 64 systematic tests
+Ground truth tests: 4 modes × 2 targets = 8 tests
+Backend comparison tests: 4 modes × 2 targets × 3 backends = 24 tests
+Total: 32 systematic tests
 
 TransformerLens uses HookedTransformer.
 NNsight/Pyvene use a standard PyTorch model with equivalent weights.
@@ -356,13 +356,13 @@ def make_2d_values(seq_len=5, seed=42):
 
 
 # =============================================================================
-# Ground Truth Tests (16 tests)
+# Ground Truth Tests (8 tests)
 # =============================================================================
 # These test mathematical correctness using TransformerLens default backend
 
 
 class TestInterventionsAllGroundTruth:
-    """Ground truth tests for axis='all' interventions."""
+    """Ground truth tests for all-positions interventions."""
 
     def test_interventions_all_add_ground_truth(self, runner):
         """ADD mode adds direction to ALL positions."""
@@ -400,7 +400,7 @@ class TestInterventionsAllGroundTruth:
 
 
 class TestInterventionsPositionGroundTruth:
-    """Ground truth tests for axis='position' interventions."""
+    """Ground truth tests for position-targeted interventions."""
 
     def test_interventions_position_add_ground_truth(self, runner):
         """ADD mode adds direction at specific positions."""
@@ -437,98 +437,14 @@ class TestInterventionsPositionGroundTruth:
         assert logits.shape[-1] == D_VOCAB
 
 
-class TestInterventionsNeuronGroundTruth:
-    """Ground truth tests for axis='neuron' interventions."""
-
-    def test_interventions_neuron_add_ground_truth(self, runner):
-        """ADD mode adds to specific neurons."""
-        prompt = "Hello"
-        direction = make_direction()
-        intervention = steering(layer=0, direction=direction, strength=5.0, neurons=[0, 1])
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_set_ground_truth(self, runner):
-        """SET mode replaces specific neurons."""
-        prompt = "Hello"
-        values = make_values()
-        intervention = ablation(layer=0, values=values, neurons=[0, 1])
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_mul_ground_truth(self, runner):
-        """MUL mode scales specific neurons."""
-        prompt = "Hello"
-        intervention = scale(layer=0, factor=2.0, neurons=[0, 1])
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_interpolate_ground_truth(self, runner):
-        """INTERPOLATE mode blends specific neurons."""
-        prompt = "Hello"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, neurons=[0, 1]
-        )
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-
-class TestInterventionsPatternGroundTruth:
-    """Ground truth tests for axis='pattern' interventions (generation only)."""
-
-    def test_interventions_pattern_add_ground_truth(self, runner):
-        """ADD mode with pattern trigger during generation."""
-        prompt = "Hi"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, pattern="H"
-        )
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_set_ground_truth(self, runner):
-        """SET mode with pattern trigger during generation."""
-        prompt = "Hi"
-        intervention = ablation(layer=0, values=make_values(), pattern="H")
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_mul_ground_truth(self, runner):
-        """MUL mode with pattern trigger during generation."""
-        prompt = "Hi"
-        intervention = scale(layer=0, factor=2.0, pattern="H")
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_interpolate_ground_truth(self, runner):
-        """INTERPOLATE mode with pattern trigger during generation."""
-        prompt = "Hi"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, pattern="H"
-        )
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-
 # =============================================================================
-# Backend Comparison Tests - TransformerLens (16 tests)
+# Backend Comparison Tests - TransformerLens (8 tests)
 # =============================================================================
 # TransformerLens is default, so these verify it matches itself (sanity check)
 
 
 class TestInterventionsAllGroundTransformerlens:
-    """TransformerLens backend tests for axis='all'."""
+    """TransformerLens backend tests for all positions."""
 
     def test_interventions_all_add_ground_transformerlens(self, runner):
         prompt = "Hi"
@@ -560,7 +476,7 @@ class TestInterventionsAllGroundTransformerlens:
 
 
 class TestInterventionsPositionGroundTransformerlens:
-    """TransformerLens backend tests for axis='position'."""
+    """TransformerLens backend tests for position targeting."""
 
     def test_interventions_position_add_ground_transformerlens(self, runner):
         prompt = "Hello"
@@ -593,84 +509,8 @@ class TestInterventionsPositionGroundTransformerlens:
         assert logits.shape[-1] == D_VOCAB
 
 
-class TestInterventionsNeuronGroundTransformerlens:
-    """TransformerLens backend tests for axis='neuron'."""
-
-    def test_interventions_neuron_add_ground_transformerlens(self, runner):
-        prompt = "Hello"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, neurons=[0, 1]
-        )
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_set_ground_transformerlens(self, runner):
-        prompt = "Hello"
-        intervention = ablation(layer=0, values=make_values(), neurons=[0, 1])
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_mul_ground_transformerlens(self, runner):
-        prompt = "Hello"
-        intervention = scale(layer=0, factor=2.0, neurons=[0, 1])
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_interpolate_ground_transformerlens(self, runner):
-        prompt = "Hello"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, neurons=[0, 1]
-        )
-        logits = runner.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-
-class TestInterventionsPatternGroundTransformerlens:
-    """TransformerLens backend tests for axis='pattern'."""
-
-    def test_interventions_pattern_add_ground_transformerlens(self, runner):
-        prompt = "Hi"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, pattern="H"
-        )
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_set_ground_transformerlens(self, runner):
-        prompt = "Hi"
-        intervention = ablation(layer=0, values=make_values(), pattern="H")
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_mul_ground_transformerlens(self, runner):
-        prompt = "Hi"
-        intervention = scale(layer=0, factor=2.0, pattern="H")
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_interpolate_ground_transformerlens(self, runner):
-        prompt = "Hi"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, pattern="H"
-        )
-        output = runner.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-
 # =============================================================================
-# Backend Comparison Tests - NNsight (16 tests)
+# Backend Comparison Tests - NNsight (8 tests)
 # =============================================================================
 # Note: NNsight uses a standard PyTorch model with equivalent weights
 # These tests verify NNsight produces valid outputs (not necessarily identical
@@ -678,7 +518,7 @@ class TestInterventionsPatternGroundTransformerlens:
 
 
 class TestInterventionsAllGroundNnsight:
-    """NNsight backend tests for axis='all'."""
+    """NNsight backend tests for all positions."""
 
     def test_interventions_all_add_ground_nnsight(self, runner_nnsight):
         prompt = "Hi"
@@ -710,7 +550,7 @@ class TestInterventionsAllGroundNnsight:
 
 
 class TestInterventionsPositionGroundNnsight:
-    """NNsight backend tests for axis='position'."""
+    """NNsight backend tests for position targeting."""
 
     def test_interventions_position_add_ground_nnsight(self, runner_nnsight):
         prompt = "Hello"
@@ -743,91 +583,14 @@ class TestInterventionsPositionGroundNnsight:
         assert logits.shape[-1] == D_VOCAB
 
 
-class TestInterventionsNeuronGroundNnsight:
-    """NNsight backend tests for axis='neuron'."""
-
-    def test_interventions_neuron_add_ground_nnsight(self, runner_nnsight):
-        prompt = "Hello"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, neurons=[0, 1]
-        )
-        logits = runner_nnsight.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_set_ground_nnsight(self, runner_nnsight):
-        prompt = "Hello"
-        intervention = ablation(layer=0, values=make_values(), neurons=[0, 1])
-        logits = runner_nnsight.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_mul_ground_nnsight(self, runner_nnsight):
-        prompt = "Hello"
-        intervention = scale(layer=0, factor=2.0, neurons=[0, 1])
-        logits = runner_nnsight.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_interpolate_ground_nnsight(self, runner_nnsight):
-        prompt = "Hello"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, neurons=[0, 1]
-        )
-        logits = runner_nnsight.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-
-@pytest.mark.xfail(reason="NNsight pattern intervention during generate has tensor dimension issues")
-class TestInterventionsPatternGroundNnsight:
-    """NNsight backend tests for axis='pattern'."""
-
-    def test_interventions_pattern_add_ground_nnsight(self, runner_nnsight):
-        prompt = "Hi"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, pattern="H"
-        )
-        output = runner_nnsight.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_set_ground_nnsight(self, runner_nnsight):
-        prompt = "Hi"
-        intervention = ablation(layer=0, values=make_values(), pattern="H")
-        output = runner_nnsight.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_mul_ground_nnsight(self, runner_nnsight):
-        prompt = "Hi"
-        intervention = scale(layer=0, factor=2.0, pattern="H")
-        output = runner_nnsight.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_interpolate_ground_nnsight(self, runner_nnsight):
-        prompt = "Hi"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, pattern="H"
-        )
-        output = runner_nnsight.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-
 # =============================================================================
-# Backend Comparison Tests - Pyvene (16 tests)
+# Backend Comparison Tests - Pyvene (8 tests)
 # =============================================================================
 # Note: Pyvene uses a standard PyTorch model with equivalent weights
 
 
 class TestInterventionsAllGroundPyvene:
-    """Pyvene backend tests for axis='all'."""
+    """Pyvene backend tests for all positions."""
 
     def test_interventions_all_add_ground_pyvene(self, runner_pyvene):
         prompt = "Hi"
@@ -859,7 +622,7 @@ class TestInterventionsAllGroundPyvene:
 
 
 class TestInterventionsPositionGroundPyvene:
-    """Pyvene backend tests for axis='position'."""
+    """Pyvene backend tests for position targeting."""
 
     def test_interventions_position_add_ground_pyvene(self, runner_pyvene):
         prompt = "Hello"
@@ -890,79 +653,3 @@ class TestInterventionsPositionGroundPyvene:
         )
         logits = runner_pyvene.run_with_intervention(prompt, intervention)
         assert logits.shape[-1] == D_VOCAB
-
-
-class TestInterventionsNeuronGroundPyvene:
-    """Pyvene backend tests for axis='neuron'."""
-
-    def test_interventions_neuron_add_ground_pyvene(self, runner_pyvene):
-        prompt = "Hello"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, neurons=[0, 1]
-        )
-        logits = runner_pyvene.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_set_ground_pyvene(self, runner_pyvene):
-        prompt = "Hello"
-        intervention = ablation(layer=0, values=make_values(), neurons=[0, 1])
-        logits = runner_pyvene.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_mul_ground_pyvene(self, runner_pyvene):
-        prompt = "Hello"
-        intervention = scale(layer=0, factor=2.0, neurons=[0, 1])
-        logits = runner_pyvene.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-    def test_interventions_neuron_interpolate_ground_pyvene(self, runner_pyvene):
-        prompt = "Hello"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, neurons=[0, 1]
-        )
-        logits = runner_pyvene.run_with_intervention(prompt, intervention)
-        assert logits.shape[-1] == D_VOCAB
-
-
-class TestInterventionsPatternGroundPyvene:
-    """Pyvene backend tests for axis='pattern'."""
-
-    def test_interventions_pattern_add_ground_pyvene(self, runner_pyvene):
-        prompt = "Hi"
-        intervention = steering(
-            layer=0, direction=make_direction(), strength=5.0, pattern="H"
-        )
-        output = runner_pyvene.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_set_ground_pyvene(self, runner_pyvene):
-        prompt = "Hi"
-        intervention = ablation(layer=0, values=make_values(), pattern="H")
-        output = runner_pyvene.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_mul_ground_pyvene(self, runner_pyvene):
-        prompt = "Hi"
-        intervention = scale(layer=0, factor=2.0, pattern="H")
-        output = runner_pyvene.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)
-
-    def test_interventions_pattern_interpolate_ground_pyvene(self, runner_pyvene):
-        prompt = "Hi"
-        source = make_values(seed=1)
-        target = make_values(seed=2)
-        intervention = interpolate(
-            layer=0, source_values=source, target_values=target, alpha=0.5, pattern="H"
-        )
-        output = runner_pyvene.generate(
-            prompt, max_new_tokens=3, temperature=0.0, intervention=intervention
-        )
-        assert isinstance(output, str)

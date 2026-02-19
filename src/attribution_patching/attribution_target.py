@@ -42,12 +42,8 @@ class AttributionTarget(BaseSchema):
 
     position_mode: PositionMode = "all"
     layers: str | list[int] = "all"
-    components: list[Component] = field(
-        default_factory=lambda: ["resid_post"]
-    )
-    methods: list[Method] = field(
-        default_factory=lambda: ["standard", "eap"]
-    )
+    components: list[Component] = field(default_factory=lambda: ["resid_post"])
+    methods: list[Method] = field(default_factory=lambda: ["standard", "eap"])
     ig_steps: int = 10
 
     # ── Factory Methods ─────────────────────────────────────────────────────

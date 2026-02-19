@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
+
+from src.common import TimeValue
 
 from .prompt_format_config import PromptFormatConfig
-
-if TYPE_CHECKING:
-    from src.common import TimeValue
 
 
 @dataclass
@@ -85,14 +84,7 @@ class DefaultPromptFormat(PromptFormatConfig):
         ]
     )
 
-    def get_exact_prefix_before_choice(self) -> str:
-        """Return the exact text prefix before the model's choice.
-
-        This is used to locate where the model's choice token appears.
-        """
-        return self.response_const_keywords["response_choice_prefix"]
-
-    def get_prompt_section_markers(self) -> dict[str, str]:
+    def get_prompt_markers(self) -> dict[str, str]:
         """Return mapping of prompt section names to their marker text.
 
         Only includes prompt-structure markers (not response markers).
@@ -118,24 +110,6 @@ class DefaultPromptFormat(PromptFormatConfig):
             ],
         }
 
-    def get_interesting_positions(self) -> list[dict]:
-        """Return token position specs for all prompt and response markers.
-
-        Prompt prompt_const_keywords are searched as first-occurrence (they appear in
-        the prompt/FORMAT section).  Response prompt_const_keywords are searched as
-        last-occurrence (they appear in the model's actual response, after the
-        FORMAT instructions that contain the same text).
-        """
-        positions: list[dict] = []
-        # Prompt markers — first occurrence
-        for _key, value in self.prompt_const_keywords.items():
-            positions.append({"text": value, "section": "prompt"})
-        # Response markers — last occurrence (same text appears in FORMAT
-        # section AND in the response; we want the response occurrence)
-        for _key, value in self.response_const_keywords.items():
-            positions.append({"text": value, "section": "response"})
-        return positions
-
     def get_anchor_texts(self) -> list[str]:
         """Return text anchors for position alignment between sequences.
 
@@ -143,4 +117,20 @@ class DefaultPromptFormat(PromptFormatConfig):
         These are structural markers that appear at corresponding positions
         across different prompts, useful for aligning token positions.
         """
-        return [pos["text"] for pos in self.get_interesting_positions()]
+        return list(self.prompt_const_keywords.values()) + list(
+            self.response_const_keywords.values()
+        )
+
+    def get_prompt_marker_before_time_horizon(self) -> str:
+        """Return the exact text prefix before the model's choice.
+
+        This is used to locate where the model's choice token appears.
+        """
+        return self.prompt_const_keywords["consider_marker"]
+
+    def get_response_prefix_before_choice(self) -> str:
+        """Return the exact text prefix before the model's choice.
+
+        This is used to locate where the model's choice token appears.
+        """
+        return self.response_const_keywords["response_choice_prefix"]

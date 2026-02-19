@@ -140,15 +140,15 @@ def run_attribution_for_activation_targets(
         n_targets: Number of top targets to return
 
     Returns:
-        List of ActivationPatchingTarget for top scoring positions
+        InterventionTarget for top scoring positions
     """
     cfg = IntertemporalAttributionConfig(
         n_pairs=n_pairs,
-        target=AttributionTarget.standard_only(),  # Fast mode
+        target=AttributionTarget.standard_only(),
     )
 
     result = run_attribution_patching(pref_dataset, cfg)
-    return result.get_consensus_targets(n=n_targets, min_methods=1)
+    return result.get_consensus_target(n=n_targets, min_methods=1)
 
 
 def compare_attribution_methods(

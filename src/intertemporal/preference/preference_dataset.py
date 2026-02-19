@@ -96,8 +96,10 @@ class PreferenceDataset(BaseSchema):
 
     def print_summary(self) -> None:
         short, long = self.split_by_choice()
+        print("\n\n")
         print(f"PreferenceDataset: {self.model_name}, {len(self.preferences)} samples")
         print(f"  short_term: {len(short)}, long_term: {len(long)}")
+        print("\n\n")
 
     def pop_heavy(self) -> None:
         """Remove heavy data from all samples to reduce memory."""

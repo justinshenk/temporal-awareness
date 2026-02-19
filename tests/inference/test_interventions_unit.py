@@ -43,38 +43,44 @@ class TestInterventionTarget:
 
     def test_all(self):
         t = InterventionTarget.all()
-        assert t.axis == "all"
+        assert t.is_all_positions
+        assert t.is_all_layers
+        assert t.positions is None
+        assert t.layers is None
 
     def test_at_positions_single(self):
         t = InterventionTarget.at_positions(3)
-        assert t.axis == "position"
-        assert t.positions == [3]
+        assert not t.is_all_positions
+        assert t.positions == (3,)
 
     def test_at_positions_multiple(self):
         t = InterventionTarget.at_positions([1, 3, 5])
-        assert t.positions == [1, 3, 5]
+        assert t.positions == (1, 3, 5)
 
-    def test_at_neurons(self):
-        t = InterventionTarget.at_neurons([0, 2])
-        assert t.axis == "neuron"
-        assert t.neurons == [0, 2]
+    def test_at_layers_single(self):
+        t = InterventionTarget.at_layers(5)
+        assert not t.is_all_layers
+        assert t.layers == (5,)
 
-    def test_on_pattern(self):
-        t = InterventionTarget.on_pattern("I select:")
-        assert t.axis == "pattern"
-        assert t.pattern == "I select:"
+    def test_at_layers_multiple(self):
+        t = InterventionTarget.at_layers([0, 2, 4])
+        assert t.layers == (0, 2, 4)
 
-    def test_validation_position_requires_positions(self):
-        with pytest.raises(ValueError):
-            InterventionTarget(axis="position")
+    def test_at_combined(self):
+        t = InterventionTarget.at(positions=[1, 2], layers=[3, 4])
+        assert t.positions == (1, 2)
+        assert t.layers == (3, 4)
 
-    def test_validation_neuron_requires_neurons(self):
-        with pytest.raises(ValueError):
-            InterventionTarget(axis="neuron")
+    def test_resolve_layers(self):
+        t = InterventionTarget.at_layers([1, 3, 5])
+        available = [0, 1, 2, 3, 4]
+        resolved = t.resolve_layers(available)
+        assert resolved == [1, 3]  # 5 not in available
 
-    def test_validation_pattern_requires_pattern(self):
-        with pytest.raises(ValueError):
-            InterventionTarget(axis="pattern")
+    def test_resolve_positions(self):
+        t = InterventionTarget.at_positions([0, 2, 10])
+        resolved = t.resolve_positions(seq_len=5)
+        assert resolved == [0, 2]  # 10 out of bounds
 
 
 # =============================================================================
@@ -154,18 +160,8 @@ class TestSteering:
 
     def test_position_targeting(self):
         i = steering(layer=5, direction=make_direction(), positions=[1, 3])
-        assert i.target.axis == "position"
-        assert i.target.positions == [1, 3]
-
-    def test_neuron_targeting(self):
-        i = steering(layer=5, direction=make_direction(), neurons=[0, 2])
-        assert i.target.axis == "neuron"
-        assert i.target.neurons == [0, 2]
-
-    def test_pattern_targeting(self):
-        i = steering(layer=5, direction=make_direction(), pattern="test")
-        assert i.target.axis == "pattern"
-        assert i.target.pattern == "test"
+        assert not i.target.is_all_positions
+        assert i.target.positions == (1, 3)
 
     def test_component_selection(self):
         i = steering(layer=5, direction=make_direction(), component="attn_out")
@@ -200,8 +196,8 @@ class TestAblation:
 
     def test_position_targeting(self):
         i = ablation(layer=3, positions=[2])
-        assert i.target.axis == "position"
-        assert i.target.positions == [2]
+        assert not i.target.is_all_positions
+        assert i.target.positions == (2,)
 
 
 # =============================================================================
@@ -225,8 +221,8 @@ class TestPatch:
     def test_position_targeting(self):
         values = np.random.randn(768)
         i = patch(layer=4, values=values, positions=[0])
-        assert i.target.axis == "position"
-        assert i.target.positions == [0]
+        assert not i.target.is_all_positions
+        assert i.target.positions == (0,)
 
 
 # =============================================================================
@@ -247,8 +243,8 @@ class TestScale:
 
     def test_position_targeting(self):
         i = scale(layer=5, factor=2.0, positions=[1, 2])
-        assert i.target.axis == "position"
-        assert i.target.positions == [1, 2]
+        assert not i.target.is_all_positions
+        assert i.target.positions == (1, 2)
 
 
 # =============================================================================

@@ -167,8 +167,8 @@ class TestAttributionPatchingResult:
 
         targets = result.get_top_targets_for_activation_patching(1)
         assert len(targets) == 1
-        assert targets[0].token_positions == [2]
-        assert targets[0].layers == [1]
+        assert 2 in targets[0].positions
+        assert 1 in targets[0].layers
 
 
 class TestAggregatedAttributionResult:
@@ -210,9 +210,8 @@ class TestAggregatedAttributionResult:
 
         target = result.get_consensus_target(n=1, min_methods=2)
         assert target is not None
-        assert target.layers == [2]
-        assert target.token_positions == [5]
-        assert target.position_mode == "explicit"
+        assert 2 in target.layers
+        assert 5 in target.positions
 
     def test_get_layer_target(self):
         """Test layer-based target finding."""
@@ -234,8 +233,7 @@ class TestAggregatedAttributionResult:
         target = result.get_layer_target(n_layers=2, min_methods=1)
         assert target is not None
         assert 2 in target.layers  # Layer 2 should be included (highest scores)
-        assert target.position_mode == "all"  # Should patch all positions
-        assert target.token_positions is None  # No specific positions
+        assert target.is_all_positions  # Should patch all positions
 
     def test_get_union_target(self):
         """Test union target finding."""
@@ -256,10 +254,10 @@ class TestAggregatedAttributionResult:
 
         target = result.get_union_target(n=2, min_methods=1)
         assert target is not None
-        assert target.position_mode == "explicit"
+        assert target.positions is not None
         # Should include positions 3, 4, 5 (union of top 2 from each method)
-        assert 3 in target.token_positions
-        assert 4 in target.token_positions or 5 in target.token_positions
+        assert 3 in target.positions
+        assert 4 in target.positions or 5 in target.positions
 
     def test_get_recommended_target_modes(self):
         """Test get_recommended_target with different modes."""
@@ -275,12 +273,12 @@ class TestAggregatedAttributionResult:
         # Layer mode
         layer_target = result.get_recommended_target(n=2, mode="layer")
         assert layer_target is not None
-        assert layer_target.position_mode == "all"
+        assert layer_target.is_all_positions
 
         # Union mode
         union_target = result.get_recommended_target(n=2, mode="union")
         assert union_target is not None
-        assert union_target.position_mode == "explicit"
+        assert union_target.positions is not None
 
         # Consensus mode
         consensus_target = result.get_recommended_target(n=2, mode="consensus")

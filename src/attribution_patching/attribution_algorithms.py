@@ -12,17 +12,13 @@ IMPORTANT DESIGN PRINCIPLES:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import numpy as np
 import torch
 
 from ..common.profiler import P
+from ..inference import ModelRunner
 from ..inference.interventions import patch
-
-if TYPE_CHECKING:
-    from ..inference import ModelRunner
-    from .attribution_metric import AttributionMetric
+from .attribution_metric import AttributionMetric
 
 
 # =============================================================================
@@ -130,10 +126,10 @@ def compute_attribution_vectorized(
 
 
 def compute_attribution(
-    runner: "ModelRunner",
+    runner: ModelRunner,
     clean_text: str,
     corrupted_text: str,
-    metric: "AttributionMetric",
+    metric: AttributionMetric,
     pos_mapping: dict[int, int],
     component: str = "resid_post",
 ) -> np.ndarray:
@@ -220,10 +216,10 @@ def compute_attribution(
 
 
 def compute_eap(
-    runner: "ModelRunner",
+    runner: ModelRunner,
     clean_text: str,
     corrupted_text: str,
-    metric: "AttributionMetric",
+    metric: AttributionMetric,
     pos_mapping: dict[int, int],
 ) -> dict[str, np.ndarray]:
     """Edge Attribution Patching: attribute to edges between components.
@@ -319,10 +315,10 @@ def compute_eap(
 
 
 def compute_eap_ig(
-    runner: "ModelRunner",
+    runner: ModelRunner,
     clean_text: str,
     corrupted_text: str,
-    metric: "AttributionMetric",
+    metric: AttributionMetric,
     pos_mapping: dict[int, int],
     n_steps: int = 10,
 ) -> dict[str, np.ndarray]:
@@ -358,9 +354,7 @@ def compute_eap_ig(
     first_hook = "blocks.0.hook_resid_post"
     clean_len = clean_cache[first_hook].shape[1]
     corr_len = corr_cache_base[first_hook].shape[1]
-    clean_pos, corr_pos, valid = build_position_arrays(
-        pos_mapping, clean_len, corr_len
-    )
+    clean_pos, corr_pos, valid = build_position_arrays(pos_mapping, clean_len, corr_len)
 
     attn_grads_sum = np.zeros((n_layers, clean_len))
     mlp_grads_sum = np.zeros((n_layers, clean_len))
@@ -476,10 +470,10 @@ def compute_eap_ig(
 
 
 def run_all_attribution_methods(
-    runner: "ModelRunner",
+    runner: ModelRunner,
     clean_text: str,
     corrupted_text: str,
-    metric: "AttributionMetric",
+    metric: AttributionMetric,
     pos_mapping: dict[int, int],
     ig_steps: int = 10,
     methods: list[str] | None = None,
@@ -513,9 +507,7 @@ def run_all_attribution_methods(
 
     if "eap" in methods:
         with P("eap"):
-            eap = compute_eap(
-                runner, clean_text, corrupted_text, metric, pos_mapping
-            )
+            eap = compute_eap(runner, clean_text, corrupted_text, metric, pos_mapping)
             results["eap_attn"] = eap["attn"]
             results["eap_mlp"] = eap["mlp"]
 

@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -20,9 +21,16 @@ def plot_cluster_distribution(cluster_dist: list[int], title: str, output_path: 
 
     active = sum(1 for c in cluster_dist if c > 0)
     total = sum(cluster_dist)
-    ax.text(0.98, 0.98, f"Active: {active}/{len(cluster_dist)}\nSamples: {total}",
-            transform=ax.transAxes, ha="right", va="top", fontsize=9,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
+    ax.text(
+        0.98,
+        0.98,
+        f"Active: {active}/{len(cluster_dist)}\nSamples: {total}",
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=9,
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -94,7 +102,9 @@ def plot_embedding(
     categories = sorted(set(labels))
     # Use tab10 for <=10 categories, tab20 for more
     cmap = plt.cm.tab10 if len(categories) <= 10 else plt.cm.tab20
-    color_map = {cat: cmap(i / max(len(categories) - 1, 1)) for i, cat in enumerate(categories)}
+    color_map = {
+        cat: cmap(i / max(len(categories) - 1, 1)) for i, cat in enumerate(categories)
+    }
 
     fig, ax = plt.subplots(figsize=(8, 6))
 

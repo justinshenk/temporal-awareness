@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 
 import numpy as np
 
-from ..common.base_schema import BaseSchema
+from ..common import BaseSchema
 
-if TYPE_CHECKING:
-    from ..activation_patching import ActivationPatchingTarget
+
+from ..inference import InterventionTarget
 
 
 @dataclass
@@ -170,25 +170,24 @@ class AttributionPatchingResult(BaseSchema):
 
     def get_top_targets_for_activation_patching(
         self, n: int = 5
-    ) -> list["ActivationPatchingTarget"]:
+    ) -> list[InterventionTarget]:
         """Convert top attributions to activation patching targets.
 
         Args:
             n: Number of targets to return
 
         Returns:
-            List of ActivationPatchingTarget for top scoring positions
+            List of InterventionTarget for top scoring positions
         """
-        from ..activation_patching import ActivationPatchingTarget
+        from ..inference.interventions.intervention_target import InterventionTarget
 
         top_scores = self.get_top_scores(n)
         targets = []
         for score in top_scores:
             # Create target with both position and layer specified
             targets.append(
-                ActivationPatchingTarget(
-                    position_mode="explicit",
-                    token_positions=[score.position],
+                InterventionTarget.at(
+                    positions=[score.position],
                     layers=[score.layer],
                     component=score.component,
                 )
@@ -247,11 +246,11 @@ class AggregatedAttributionResult(BaseSchema):
 
     def get_consensus_target(
         self, n: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
+    ) -> "InterventionTarget | None":
         """Get single target combining top consensus positions.
 
         Finds (layer, position) pairs where methods agree and returns
-        a single ActivationPatchingTarget that patches all of them together.
+        a single InterventionTarget that patches all of them together.
 
         NOTE: For most effective activation patching, prefer get_layer_target()
         which patches ALL positions at high-attribution layers. This is because
@@ -263,9 +262,9 @@ class AggregatedAttributionResult(BaseSchema):
             min_methods: Minimum methods that must agree
 
         Returns:
-            Single ActivationPatchingTarget or None if no consensus
+            Single InterventionTarget or None if no consensus
         """
-        from ..activation_patching import ActivationPatchingTarget
+        from ..inference.interventions.intervention_target import InterventionTarget
         from collections import Counter
 
         # Count how many methods rank each (layer, position) in top 2n
@@ -276,7 +275,8 @@ class AggregatedAttributionResult(BaseSchema):
 
         # Filter to positions with enough agreement
         consensus = [
-            (layer, pos) for (layer, pos), count in position_counts.most_common()
+            (layer, pos)
+            for (layer, pos), count in position_counts.most_common()
             if count >= min_methods
         ][:n]
 
@@ -287,15 +287,11 @@ class AggregatedAttributionResult(BaseSchema):
         layers = sorted(set(layer for layer, _ in consensus))
         positions = sorted(set(pos for _, pos in consensus))
 
-        return ActivationPatchingTarget(
-            position_mode="explicit",
-            token_positions=positions,
-            layers=layers,
-        )
+        return InterventionTarget.at(positions=positions, layers=layers)
 
     def get_union_target(
         self, n: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
+    ) -> "InterventionTarget | None":
         """Get target with UNION of top positions across all methods.
 
         Unlike get_consensus_target which requires positions to appear in
@@ -307,9 +303,9 @@ class AggregatedAttributionResult(BaseSchema):
             min_methods: Minimum methods a position must appear in (1=union, 2+=intersection)
 
         Returns:
-            ActivationPatchingTarget with all unique positions and layers
+            InterventionTarget with all unique positions and layers
         """
-        from ..activation_patching import ActivationPatchingTarget
+        from ..inference.interventions.intervention_target import InterventionTarget
         from collections import Counter
 
         # Count occurrences of each (layer, position) across methods
@@ -320,7 +316,8 @@ class AggregatedAttributionResult(BaseSchema):
 
         # Filter by min_methods threshold
         selected = [
-            (layer, pos) for (layer, pos), count in position_counts.items()
+            (layer, pos)
+            for (layer, pos), count in position_counts.items()
             if count >= min_methods
         ]
 
@@ -331,15 +328,11 @@ class AggregatedAttributionResult(BaseSchema):
         layers = sorted(set(layer for layer, _ in selected))
         positions = sorted(set(pos for _, pos in selected))
 
-        return ActivationPatchingTarget(
-            position_mode="explicit",
-            token_positions=positions,
-            layers=layers,
-        )
+        return InterventionTarget.at(positions=positions, layers=layers)
 
     def get_layer_target(
         self, n_layers: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
+    ) -> "InterventionTarget | None":
         """Get target that patches ALL positions at top attributed layers.
 
         Attribution identifies WHERE differences are encoded, but causal effects
@@ -351,9 +344,9 @@ class AggregatedAttributionResult(BaseSchema):
             min_methods: Minimum methods that must rank a layer highly
 
         Returns:
-            ActivationPatchingTarget with position_mode="all" and top layers
+            InterventionTarget with position_mode="all" and top layers
         """
-        from ..activation_patching import ActivationPatchingTarget
+        from ..inference.interventions.intervention_target import InterventionTarget
         from collections import Counter
 
         # Count how many times each layer appears in top N scores across methods
@@ -364,23 +357,19 @@ class AggregatedAttributionResult(BaseSchema):
 
         # Get layers with enough agreement
         top_layers = [
-            layer for layer, count in layer_counts.most_common()
-            if count >= min_methods
+            layer for layer, count in layer_counts.most_common() if count >= min_methods
         ][:n_layers]
 
         if not top_layers:
             return None
 
-        return ActivationPatchingTarget(
-            position_mode="all",
-            layers=sorted(top_layers),
-        )
+        return InterventionTarget.at_layers(sorted(top_layers))
 
     def get_recommended_target(
         self,
         n: int = 10,
         mode: str = "layer",
-    ) -> "ActivationPatchingTarget | None":
+    ) -> "InterventionTarget | None":
         """Get recommended target for activation patching.
 
         The default "layer" mode patches ALL positions at top N attributed layers.
@@ -400,7 +389,7 @@ class AggregatedAttributionResult(BaseSchema):
                 - "consensus": Positions in multiple methods (~0.01-0.05 recovery)
 
         Returns:
-            ActivationPatchingTarget configured for the specified mode
+            InterventionTarget configured for the specified mode
         """
         if mode == "layer":
             return self.get_layer_target(n_layers=n)
@@ -409,7 +398,9 @@ class AggregatedAttributionResult(BaseSchema):
         elif mode == "consensus":
             return self.get_consensus_target(n=n, min_methods=2)
         else:
-            raise ValueError(f"Unknown mode: {mode}. Use 'layer', 'union', or 'consensus'")
+            raise ValueError(
+                f"Unknown mode: {mode}. Use 'layer', 'union', or 'consensus'"
+            )
 
     @classmethod
     def aggregate(
@@ -459,7 +450,7 @@ class AggregatedAttributionResult(BaseSchema):
             for a in arrays:
                 if a.shape[1] < max_len:
                     p = np.zeros((a.shape[0], max_len))
-                    p[:, :a.shape[1]] = a
+                    p[:, : a.shape[1]] = a
                     padded.append(p)
                 else:
                     padded.append(a)

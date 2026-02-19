@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, Optional, Union
 import numpy as np
 import torch
 
-from .intervention import Intervention, InterventionTarget
+from .intervention import Intervention
+from .intervention_target import InterventionTarget
 
 if TYPE_CHECKING:
     from ..model_runner import ModelRunner
@@ -24,8 +25,6 @@ def steering(
     direction: Union[np.ndarray, list],
     strength: float = 1.0,
     positions: Optional[Union[int, list[int]]] = None,
-    neurons: Optional[Union[int, list[int]]] = None,
-    pattern: Optional[str] = None,
     component: str = "resid_post",
     normalize: bool = True,
 ) -> Intervention:
@@ -40,7 +39,7 @@ def steering(
         layer=layer,
         mode="add",
         values=direction,
-        target=_target(positions, neurons, pattern),
+        target=_target(positions),
         component=component,
         strength=strength,
     )
@@ -50,8 +49,6 @@ def ablation(
     layer: int,
     values: Optional[Union[np.ndarray, list, float]] = None,
     positions: Optional[Union[int, list[int]]] = None,
-    neurons: Optional[Union[int, list[int]]] = None,
-    pattern: Optional[str] = None,
     component: str = "resid_post",
 ) -> Intervention:
     """Set activations to fixed values (mode=set). Default: zero."""
@@ -66,7 +63,7 @@ def ablation(
         layer=layer,
         mode="set",
         values=values,
-        target=_target(positions, neurons, pattern),
+        target=_target(positions),
         component=component,
         strength=1.0,
     )
@@ -76,8 +73,6 @@ def patch(
     layer: int,
     values: Union[np.ndarray, list],
     positions: Optional[Union[int, list[int]]] = None,
-    neurons: Optional[Union[int, list[int]]] = None,
-    pattern: Optional[str] = None,
     component: str = "resid_post",
 ) -> Intervention:
     """Replace activations with cached values (mode=set)."""
@@ -85,7 +80,7 @@ def patch(
         layer=layer,
         mode="set",
         values=np.array(values, dtype=np.float32),
-        target=_target(positions, neurons, pattern),
+        target=_target(positions),
         component=component,
         strength=1.0,
     )
@@ -95,8 +90,6 @@ def scale(
     layer: int,
     factor: float,
     positions: Optional[Union[int, list[int]]] = None,
-    neurons: Optional[Union[int, list[int]]] = None,
-    pattern: Optional[str] = None,
     component: str = "resid_post",
 ) -> Intervention:
     """Multiply activations by factor (mode=mul)."""
@@ -104,7 +97,7 @@ def scale(
         layer=layer,
         mode="mul",
         values=np.array([factor], dtype=np.float32),
-        target=_target(positions, neurons, pattern),
+        target=_target(positions),
         component=component,
         strength=1.0,
     )
@@ -116,8 +109,6 @@ def interpolate(
     target_values: Union[np.ndarray, list],
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
-    neurons: Optional[Union[int, list[int]]] = None,
-    pattern: Optional[str] = None,
     component: str = "resid_post",
 ) -> Intervention:
     """Interpolate between source and target activations (mode=interpolate).
@@ -129,11 +120,9 @@ def interpolate(
     Args:
         layer: Layer to intervene on
         source_values: Source activations (e.g., corrupted)
-        target_values: InterventionTarget activations (e.g., clean)
+        target_values: Target activations (e.g., clean)
         alpha: Interpolation factor [0, 1]
         positions: Optional positions to target
-        neurons: Optional neurons to target
-        pattern: Optional pattern to trigger on
         component: Component to intervene on
 
     Returns:
@@ -145,19 +134,15 @@ def interpolate(
         values=np.array(source_values, dtype=np.float32),
         target_values=np.array(target_values, dtype=np.float32),
         alpha=alpha,
-        target=_target(positions, neurons, pattern),
+        target=_target(positions),
         component=component,
         strength=1.0,
     )
 
 
-def _target(positions=None, neurons=None, pattern=None) -> InterventionTarget:
-    if pattern is not None:
-        return InterventionTarget.on_pattern(pattern)
+def _target(positions=None) -> InterventionTarget:
     if positions is not None:
         return InterventionTarget.at_positions(positions)
-    if neurons is not None:
-        return InterventionTarget.at_neurons(neurons)
     return InterventionTarget.all()
 
 

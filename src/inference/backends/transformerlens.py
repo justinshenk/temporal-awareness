@@ -8,7 +8,7 @@ from typing import Any, Optional, Sequence
 import torch
 from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention, create_intervention_hook
 
 
@@ -24,8 +24,14 @@ class TransformerLensBackend(Backend):
     def get_d_model(self) -> int:
         return self.runner._model.cfg.d_model
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor.
+
+        Note: TransformerLens uses prepend_bos instead of add_special_tokens.
+        """
+        # TransformerLens handles BOS via prepend_bos, add_special_tokens is ignored
         return self.runner._model.to_tokens(text, prepend_bos=prepend_bos)
 
     def decode(self, token_ids: torch.Tensor) -> str:
@@ -39,7 +45,7 @@ class TransformerLensBackend(Backend):
         intervention: Optional[Intervention],
         past_kv_cache: Any = None,
     ) -> str:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         if past_kv_cache is not None:
@@ -65,7 +71,6 @@ class TransformerLensBackend(Backend):
                     intervention,
                     dtype=self.runner.dtype,
                     device=self.runner.device,
-                    tokenizer=self.get_tokenizer(),
                 )
                 with self.runner._model.hooks(
                     fwd_hooks=[(intervention.hook_name, hook)]
@@ -116,7 +121,7 @@ class TransformerLensBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)
@@ -131,7 +136,7 @@ class TransformerLensBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)

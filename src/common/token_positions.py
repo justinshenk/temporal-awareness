@@ -20,6 +20,8 @@ class PositionMapping:
     src_len: int = 0
     dst_len: int = 0
     anchors: list[tuple[int, int]] = field(default_factory=list)
+    anchor_texts: list[str] = field(default_factory=list)
+    first_interesting_marker: str | None = None
 
     @classmethod
     def from_lengths(cls, src_len: int, dst_len: int) -> "PositionMapping":
@@ -67,6 +69,21 @@ class PositionMapping:
         """Length of the longer sequence."""
         return max(self.src_len, self.dst_len)
 
+    @property
+    def min_len(self) -> int:
+        """Length of the longer sequence."""
+        return min(self.src_len, self.dst_len)
+
+    @property
+    def first_interesting_pos(self) -> int:
+        if self.first_interesting_marker is None:
+            return 0  # All positions are interesting
+        if self.first_interesting_marker not in self.anchor_texts:
+            return 0  # All positions are interesting
+        idx = self.anchor_texts.index(self.first_interesting_marker)
+        src_pos, dst_pos = self.anchors[idx]
+        return min(src_pos, dst_pos)
+
 
 @dataclass
 class ResolvedPositionInfo:
@@ -98,7 +115,7 @@ def search_text(tokens: list[str], text: str, last: bool = False) -> ResolvedPos
     """
     text_lower = text.lower().strip()
     text_base = text_lower.rstrip(":,.")
-    label = f'"{text[:15]}..."' if len(text) > 15 else f'"{text}"'
+    label = f'"{text}"'
 
     matches = []
 
@@ -170,12 +187,16 @@ def find_anchor_points(
     dst_positions = find_label_positions(dst_tokens, unique_texts)
 
     result = []
+    result_texts = []
     for text in unique_texts:
         if text in src_positions and text in dst_positions:
             result.append((src_positions[text], dst_positions[text]))
+            result_texts.append(text)
 
-    result.sort(key=lambda x: x[0])
-    return result
+    combined = sorted(zip(result, result_texts), key=lambda x: x[0][0])
+    result = [r for r, t in combined]
+    result_texts = [t for r, t in combined]
+    return result, result_texts
 
 
 def interpolate_positions(
@@ -353,7 +374,9 @@ def build_position_mapping(
     src_tokens = decode_token_ids(tokenizer, src_traj.token_ids)
     dst_tokens = decode_token_ids(tokenizer, dst_traj.token_ids)
 
-    anchor_points = find_anchor_points(src_tokens, dst_tokens, anchor_texts)
+    anchor_points, anchor_markers = find_anchor_points(
+        src_tokens, dst_tokens, anchor_texts
+    )
     mapping = interpolate_positions(
         anchor_points, src_traj.n_sequence, dst_traj.n_sequence
     )
@@ -363,4 +386,5 @@ def build_position_mapping(
         src_len=src_traj.n_sequence,
         dst_len=dst_traj.n_sequence,
         anchors=anchor_points,
+        anchor_texts=anchor_markers,
     )

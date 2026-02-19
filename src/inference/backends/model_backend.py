@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Optional, Sequence
 
 import torch
 
-if TYPE_CHECKING:
-    from ..interventions import Intervention
+from ..interventions import Intervention
 
 
 class ModelBackend(Enum):
@@ -57,8 +56,10 @@ class Backend(ABC):
         ...
 
     @abstractmethod
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor."""
         ...
 
     @abstractmethod

@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Union
 
-from ..common.io import load_json
-from ..common.schema_utils import SchemaClass
+from ..common.file_io import load_json
+from ..common.base_schema import BaseSchema
 
 
 @dataclass
-class PreferenceItem(SchemaClass):
+class PreferenceItem(BaseSchema):
     """Single preference record from query output."""
 
     sample_id: int
@@ -27,7 +27,7 @@ class PreferenceItem(SchemaClass):
 
 
 @dataclass
-class PreferenceData(SchemaClass):
+class PreferenceData(BaseSchema):
     """Loaded preference data with metadata."""
 
     dataset_id: str
@@ -63,7 +63,9 @@ def load_preference_data(
 
     # If not a direct path, search for matching file
     if not path.exists() and preference_dir is not None:
-        matches = [f for f in preference_dir.glob("*.json") if str(path_or_id) in f.name]
+        matches = [
+            f for f in preference_dir.glob("*.json") if str(path_or_id) in f.name
+        ]
         if not matches:
             raise FileNotFoundError(f"No preference data matching: {path_or_id}")
         path = matches[0]
@@ -208,6 +210,7 @@ def build_prompt_pairs(
     if same_labels:
         # Group by (short_term_label, long_term_label) and pair within groups
         from collections import defaultdict
+
         short_by_labels = defaultdict(list)
         long_by_labels = defaultdict(list)
         for s in short_term:
@@ -284,5 +287,3 @@ def get_preference_data_id(path: Path) -> str:
     # Filename format: <dataset_id>_<model>.json
     # The ID is the first segment (hash)
     return path.stem.split("_")[0]
-
-
