@@ -14,7 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ...activation_patching import IntervenedChoiceMetrics
+from ...activation_patching import IntervenedChoiceMetrics, ActPatchTargetResult
 from ...viz.plot_helpers import finalize_plot as _finalize_plot
 from ...viz.palettes import LINE_COLORS, BAR_COLORS, TOKEN_COLORS
 from ...activation_patching.coarse_activation_patching import (
@@ -84,7 +84,7 @@ def visualize_coarse_patching(
 
 
 def _plot_layer_sweep_combined(
-    layer_data: dict[int, "ActPatchTargetResult"],
+    layer_data: dict[int, ActPatchTargetResult],
     output_dir: Path,
     step_size: int,
 ) -> None:
@@ -95,8 +95,6 @@ def _plot_layer_sweep_combined(
     - Bottom row: Noising
     Each row has: Logit diff & logprobs | Probabilities & recovery | Ranks & diversity
     """
-    from ..activation_patching import ActPatchTargetResult  # noqa: F811
-
     layers = sorted(layer_data.keys())
     if not layers:
         return
@@ -210,7 +208,7 @@ def _plot_layer_sweep_combined(
 
 
 def _plot_position_sweep_combined(
-    position_data: dict[int, "ActPatchTargetResult"],
+    position_data: dict[int, ActPatchTargetResult],
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
     step_size: int = 10,
@@ -224,8 +222,6 @@ def _plot_position_sweep_combined(
 
     X-axis tick labels are colored by token type.
     """
-    from ..activation_patching import ActPatchTargetResult  # noqa: F811
-
     positions = sorted(position_data.keys())
     if not positions:
         return
@@ -542,15 +538,13 @@ def _add_token_type_legend(fig: plt.Figure) -> None:
 
 
 def _plot_denoising_vs_noising_comparison(
-    layer_data: dict[int, "ActPatchTargetResult"],
-    position_data: dict[int, "ActPatchTargetResult"],
+    layer_data: dict[int, ActPatchTargetResult],
+    position_data: dict[int, ActPatchTargetResult],
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
     step_size: int = 8,
 ) -> None:
     """Plot denoising vs noising comparison scatter plots."""
-    from ..activation_patching import ActPatchTargetResult  # noqa: F811
-
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     fig.suptitle(f"Denoising vs Noising Comparison (step={step_size})", fontsize=14, fontweight="bold")
 

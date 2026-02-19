@@ -8,8 +8,6 @@ from ..common.base_schema import BaseSchema
 from ..common.device_utils import clear_gpu_memory
 from ..inference.interventions.intervention_target import InterventionTarget
 from . import patch_target, ActPatchTargetResult
-
-
 from ..binary_choice import BinaryChoiceRunner
 from ..common.contrastive_pair import ContrastivePair
 
@@ -243,9 +241,8 @@ def run_coarse_act_patching(
     if pos_step_sizes is None:
         pos_step_sizes = [10]
 
-    # Sanity
+    # Sanity check: patch all positions
     print("[coarse] Starting sanity check (all layers, all positions)...")
-    sanity_target = InterventionTarget.all(component=component)
     sanity_target = InterventionTarget.at_positions(
         range(len(pair.long_traj.token_ids)), component=component
     )
