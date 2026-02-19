@@ -24,8 +24,12 @@ class CoarseActPatchResults(BaseSchema):
     sample_id: int = 0
     sanity_result: ActPatchTargetResult | None = None
     # Outer key: step_size, inner key: layer/position start
-    layer_results: dict[int, dict[int, ActPatchTargetResult]] = field(default_factory=dict)
-    position_results: dict[int, dict[int, ActPatchTargetResult]] = field(default_factory=dict)
+    layer_results: dict[int, dict[int, ActPatchTargetResult]] = field(
+        default_factory=dict
+    )
+    position_results: dict[int, dict[int, ActPatchTargetResult]] = field(
+        default_factory=dict
+    )
 
     @property
     def layer_step_sizes(self) -> list[int]:
@@ -37,15 +41,21 @@ class CoarseActPatchResults(BaseSchema):
         """Available position step sizes."""
         return sorted(self.position_results.keys())
 
-    def get_layer_results_for_step(self, step_size: int) -> dict[int, ActPatchTargetResult]:
+    def get_layer_results_for_step(
+        self, step_size: int
+    ) -> dict[int, ActPatchTargetResult]:
         """Get layer results for a specific step size."""
         return self.layer_results.get(step_size, {})
 
-    def get_position_results_for_step(self, step_size: int) -> dict[int, ActPatchTargetResult]:
+    def get_position_results_for_step(
+        self, step_size: int
+    ) -> dict[int, ActPatchTargetResult]:
         """Get position results for a specific step size."""
         return self.position_results.get(step_size, {})
 
-    def get_result_for_layer(self, layer: int, step_size: int | None = None) -> ActPatchTargetResult | None:
+    def get_result_for_layer(
+        self, layer: int, step_size: int | None = None
+    ) -> ActPatchTargetResult | None:
         """Get result for a layer. If step_size not specified, uses first available."""
         if step_size is None:
             step_size = self.layer_step_sizes[0] if self.layer_step_sizes else None
@@ -53,10 +63,14 @@ class CoarseActPatchResults(BaseSchema):
             return None
         return self.layer_results.get(step_size, {}).get(layer)
 
-    def get_result_for_pos(self, n_positions: int, step_size: int | None = None) -> ActPatchTargetResult | None:
+    def get_result_for_pos(
+        self, n_positions: int, step_size: int | None = None
+    ) -> ActPatchTargetResult | None:
         """Get result for a position. If step_size not specified, uses first available."""
         if step_size is None:
-            step_size = self.position_step_sizes[0] if self.position_step_sizes else None
+            step_size = (
+                self.position_step_sizes[0] if self.position_step_sizes else None
+            )
         if step_size is None:
             return None
         return self.position_results.get(step_size, {}).get(n_positions)
@@ -75,10 +89,14 @@ class CoarseActPatchResults(BaseSchema):
         )
         return [layer for layer, _ in sorted_layers[:n_top]]
 
-    def best_n_positions(self, threshold: float = 0.8, step_size: int | None = None) -> int:
+    def best_n_positions(
+        self, threshold: float = 0.8, step_size: int | None = None
+    ) -> int:
         """Min positions for recovery > threshold."""
         if step_size is None:
-            step_size = self.position_step_sizes[0] if self.position_step_sizes else None
+            step_size = (
+                self.position_step_sizes[0] if self.position_step_sizes else None
+            )
         if step_size is None:
             return 0
         results = self.position_results.get(step_size, {})
@@ -97,7 +115,9 @@ class CoarseActPatchResults(BaseSchema):
     ) -> InterventionTarget:
         """Get target combining best layers and positions."""
         layers = self.best_layers(n_top=n_top_layers, step_size=layer_step_size)
-        n_pos = self.best_n_positions(threshold=position_threshold, step_size=position_step_size)
+        n_pos = self.best_n_positions(
+            threshold=position_threshold, step_size=position_step_size
+        )
         positions = list(range(n_pos)) if n_pos else None
         return InterventionTarget.at(
             positions=positions,
@@ -151,19 +171,27 @@ class CoarseActPatchAggregatedResults(BaseSchema):
             return {}
         by_layer: dict[int, list[float]] = {}
         for result in self.by_sample.values():
-            for layer, target_result in result.get_layer_results_for_step(step_size).items():
+            for layer, target_result in result.get_layer_results_for_step(
+                step_size
+            ).items():
                 by_layer.setdefault(layer, []).append(target_result.score())
         return {l: sum(s) / len(s) for l, s in by_layer.items()}
 
-    def get_mean_position_scores(self, step_size: int | None = None) -> dict[int, float]:
+    def get_mean_position_scores(
+        self, step_size: int | None = None
+    ) -> dict[int, float]:
         """Mean recovery per position across all samples for a given step size."""
         if step_size is None:
-            step_size = self.position_step_sizes[0] if self.position_step_sizes else None
+            step_size = (
+                self.position_step_sizes[0] if self.position_step_sizes else None
+            )
         if step_size is None:
             return {}
         by_pos: dict[int, list[float]] = {}
         for result in self.by_sample.values():
-            for pos, target_result in result.get_position_results_for_step(step_size).items():
+            for pos, target_result in result.get_position_results_for_step(
+                step_size
+            ).items():
                 by_pos.setdefault(pos, []).append(target_result.score())
         return {p: sum(s) / len(s) for p, s in by_pos.items()}
 
@@ -210,7 +238,9 @@ class CoarseActPatchAggregatedResults(BaseSchema):
             if best:
                 layer_scores = self.get_mean_layer_scores(step_size=step_size)
                 scores_str = [f"{layer_scores[l]:.3f}" for l in best]
-                print(f"  [step={step_size}] Best layers: {best} (scores: {scores_str})")
+                print(
+                    f"  [step={step_size}] Best layers: {best} (scores: {scores_str})"
+                )
 
 
 def run_coarse_act_patching(
@@ -237,15 +267,13 @@ def run_coarse_act_patching(
         CoarseActPatchResults with results organized by step size
     """
     if layer_step_sizes is None:
-        layer_step_sizes = [8]
+        layer_step_sizes = [1, 3, 9, 16]
     if pos_step_sizes is None:
-        pos_step_sizes = [10]
+        pos_step_sizes = [1, 3, 9, 16]
 
     # Sanity check: patch all positions
     print("[coarse] Starting sanity check (all layers, all positions)...")
-    sanity_target = InterventionTarget.at_positions(
-        range(len(pair.long_traj.token_ids)), component=component
-    )
+    sanity_target = InterventionTarget.all(component)
     sanity_result = patch_target(runner, pair, sanity_target)
     print(f"[coarse] Sanity check done: recovery={sanity_result.score():.3f}")
 
@@ -264,10 +292,14 @@ def run_coarse_act_patching(
         for i in range(0, len(layers_of_interest), layer_step):
             layer_range = layers_of_interest[i : i + layer_step]
             target = InterventionTarget.at_layers(layer_range, component=component)
-            layer_results[layer_step][layer_range[0]] = patch_target(runner, pair, target)
+            layer_results[layer_step][layer_range[0]] = patch_target(
+                runner, pair, target
+            )
             print(
                 f"[coarse] Layers:{layer_range} recovery={layer_results[layer_step][layer_range[0]].score():.3f}, {i // layer_step + 1}/{-(-len(layers_of_interest) // layer_step)}"
             )
+        # Clear memory after each step size sweep
+        clear_gpu_memory()
 
     # Position sweeps for each step size
     start_pos = pair.position_mapping.first_interesting_pos
@@ -279,11 +311,20 @@ def run_coarse_act_patching(
         print(
             f"[coarse] Position sweep (step={pos_step}) from {start_pos} to {end_pos}..."
         )
+        iter_count = 0
         for pos in range(start_pos, end_pos, pos_step):
             pos_range = list(range(pos, min(pos + pos_step, end_pos)))
             target = InterventionTarget.at_positions(pos_range, component=component)
             position_results[pos_step][pos] = patch_target(runner, pair, target)
-            print(f"[coarse] pos={pos} recovery={position_results[pos_step][pos].score():.3f}")
+            print(
+                f"[coarse] pos={pos} recovery={position_results[pos_step][pos].score():.3f}"
+            )
+            # Clear memory periodically during position sweep
+            iter_count += 1
+            if iter_count % 10 == 0:
+                clear_gpu_memory()
+        # Clear memory after each step size sweep
+        clear_gpu_memory()
 
     clear_gpu_memory()
     print("[coarse] Done.")

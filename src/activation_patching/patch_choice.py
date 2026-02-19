@@ -39,6 +39,10 @@ def patch_for_choice(
         text, pair.choice_prefix, pair.labels, intervention=intervention
     )
 
+    # Strip heavy tensors to save memory (we only need metrics)
+    original.pop_heavy()
+    intervened.pop_heavy()
+
     return IntervenedChoice(original=original, intervened=intervened, mode=mode)
 
 
