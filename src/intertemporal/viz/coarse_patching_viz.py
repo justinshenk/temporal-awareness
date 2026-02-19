@@ -57,17 +57,24 @@ def visualize_coarse_patching(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Layer sweep visualization - combined denoising and noising
-    if result.layer_results:
-        _plot_layer_sweep_combined(result, output_dir)
+    # Layer sweep visualization - one file per step size
+    for step_size in result.layer_step_sizes:
+        layer_data = result.get_layer_results_for_step(step_size)
+        if layer_data:
+            _plot_layer_sweep_combined(layer_data, output_dir, step_size)
 
-    # Position sweep visualization - combined denoising and noising
-    if result.position_results:
-        _plot_position_sweep_combined(result, output_dir, coloring)
+    # Position sweep visualization - one file per step size
+    for step_size in result.position_step_sizes:
+        pos_data = result.get_position_results_for_step(step_size)
+        if pos_data:
+            _plot_position_sweep_combined(pos_data, output_dir, coloring, step_size)
 
-    # Denoising vs Noising comparison plots
-    if result.layer_results or result.position_results:
-        _plot_denoising_vs_noising_comparison(result, output_dir, coloring)
+    # Denoising vs Noising comparison plots - one file per step size
+    for step_size in result.layer_step_sizes:
+        layer_data = result.get_layer_results_for_step(step_size)
+        pos_data = result.get_position_results_for_step(step_size) if step_size in result.position_step_sizes else {}
+        if layer_data or pos_data:
+            _plot_denoising_vs_noising_comparison(layer_data, pos_data, output_dir, coloring, step_size)
 
     # Sanity check visualization
     if result.sanity_result:
@@ -77,8 +84,9 @@ def visualize_coarse_patching(
 
 
 def _plot_layer_sweep_combined(
-    result: CoarseActPatchResults,
+    layer_data: dict[int, "ActPatchTargetResult"],
     output_dir: Path,
+    step_size: int,
 ) -> None:
     """Plot layer sweep with denoising on top and noising on bottom.
 
@@ -87,19 +95,21 @@ def _plot_layer_sweep_combined(
     - Bottom row: Noising
     Each row has: Logit diff & logprobs | Probabilities & recovery | Ranks & diversity
     """
-    layers = sorted(result.layer_results.keys())
+    from ..activation_patching import ActPatchTargetResult  # noqa: F811
+
+    layers = sorted(layer_data.keys())
     if not layers:
         return
 
     # Create figure with 2x3 subplots
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle("Coarse Layer Sweep", fontsize=16, fontweight="bold")
+    fig.suptitle(f"Coarse Layer Sweep (step={step_size})", fontsize=16, fontweight="bold")
 
     for row_idx, mode in enumerate(["denoising", "noising"]):
         # Extract metrics for each layer
         all_metrics = []
         for layer in layers:
-            target_result = result.layer_results[layer]
+            target_result = layer_data[layer]
             choice = (
                 target_result.denoising if mode == "denoising" else target_result.noising
             )
@@ -196,13 +206,14 @@ def _plot_layer_sweep_combined(
                        loc="upper left", bbox_to_anchor=(0, -0.15), fontsize=8, ncol=4, frameon=False)
 
     plt.tight_layout(rect=[0, 0.06, 1, 0.95])
-    _finalize_plot(output_dir / "coarse_layer_sweep.png")
+    _finalize_plot(output_dir / f"coarse_layer_sweep_{step_size}.png")
 
 
 def _plot_position_sweep_combined(
-    result: CoarseActPatchResults,
+    position_data: dict[int, "ActPatchTargetResult"],
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
+    step_size: int = 10,
 ) -> None:
     """Plot position sweep with denoising on top and noising on bottom.
 
@@ -213,7 +224,9 @@ def _plot_position_sweep_combined(
 
     X-axis tick labels are colored by token type.
     """
-    positions = sorted(result.position_results.keys())
+    from ..activation_patching import ActPatchTargetResult  # noqa: F811
+
+    positions = sorted(position_data.keys())
     if not positions:
         return
 
@@ -229,7 +242,7 @@ def _plot_position_sweep_combined(
 
     # Create figure with 2x3 subplots
     fig, axes = plt.subplots(2, 3, figsize=(20, 12))
-    fig.suptitle("Coarse Position Sweep", fontsize=16, fontweight="bold")
+    fig.suptitle(f"Coarse Position Sweep (step={step_size})", fontsize=16, fontweight="bold")
 
     all_axes = []  # Collect all axes for tick coloring
 
@@ -237,7 +250,7 @@ def _plot_position_sweep_combined(
         # Extract metrics for each position
         all_metrics = []
         for pos in positions:
-            target_result = result.position_results[pos]
+            target_result = position_data[pos]
             choice = (
                 target_result.denoising if mode == "denoising" else target_result.noising
             )
@@ -360,7 +373,7 @@ def _plot_position_sweep_combined(
         all_axes,
         positions,
         coloring,
-        output_dir / "coarse_position_sweep.png",
+        output_dir / f"coarse_position_sweep_{step_size}.png",
     )
 
 
@@ -529,22 +542,26 @@ def _add_token_type_legend(fig: plt.Figure) -> None:
 
 
 def _plot_denoising_vs_noising_comparison(
-    result: CoarseActPatchResults,
+    layer_data: dict[int, "ActPatchTargetResult"],
+    position_data: dict[int, "ActPatchTargetResult"],
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
+    step_size: int = 8,
 ) -> None:
     """Plot denoising vs noising comparison scatter plots."""
+    from ..activation_patching import ActPatchTargetResult  # noqa: F811
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    fig.suptitle("Denoising vs Noising Comparison", fontsize=14, fontweight="bold")
+    fig.suptitle(f"Denoising vs Noising Comparison (step={step_size})", fontsize=14, fontweight="bold")
 
     # Layer comparison
     ax1 = axes[0]
-    if result.layer_results:
-        layers = sorted(result.layer_results.keys())
+    if layer_data:
+        layers = sorted(layer_data.keys())
         d_recoveries = []
         n_recoveries = []
         for layer in layers:
-            lr = result.layer_results[layer]
+            lr = layer_data[layer]
             d_recoveries.append(lr.denoising.recovery if lr.denoising else 0)
             n_recoveries.append(lr.noising.recovery if lr.noising else 0)
 
@@ -579,14 +596,14 @@ def _plot_denoising_vs_noising_comparison(
 
     # Position comparison
     ax2 = axes[1]
-    if result.position_results:
-        positions = sorted(result.position_results.keys())
+    if position_data:
+        positions = sorted(position_data.keys())
         d_recoveries = []
         n_recoveries = []
         point_colors = []
 
         for pos in positions:
-            pr = result.position_results[pos]
+            pr = position_data[pos]
             d_recoveries.append(pr.denoising.recovery if pr.denoising else 0)
             n_recoveries.append(pr.noising.recovery if pr.noising else 0)
             point_colors.append(_get_tick_color(pos, coloring))
@@ -625,7 +642,7 @@ def _plot_denoising_vs_noising_comparison(
         ax2.axis("off")
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
-    _finalize_plot(output_dir / "denoising_vs_noising.png")
+    _finalize_plot(output_dir / f"denoising_vs_noising_{step_size}.png")
 
 
 def _plot_sanity_check(
@@ -901,49 +918,62 @@ def _visualize_aggregated_coarse(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    layer_scores = result.get_mean_layer_scores()
-    pos_scores = result.get_mean_position_scores()
+    # Generate a plot for each step size combination
+    all_step_sizes = set(result.layer_step_sizes) | set(result.position_step_sizes)
 
-    # Create combined figure
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    fig.suptitle(
-        f"Aggregated Coarse Patching ({result.n_samples} samples)",
-        fontsize=14,
-        fontweight="bold",
-    )
+    for step_size in sorted(all_step_sizes):
+        layer_scores = result.get_mean_layer_scores(step_size=step_size)
+        pos_scores = result.get_mean_position_scores(step_size=step_size)
 
-    # Layer sweep
-    ax1 = axes[0]
-    if layer_scores:
-        layers = sorted(layer_scores.keys())
-        recoveries = [layer_scores[l] for l in layers]
+        if not layer_scores and not pos_scores:
+            continue
 
-        ax1.plot(layers, recoveries, "b-", linewidth=2, marker="o", markersize=6)
-        ax1.set_xlabel("Layer", fontsize=11)
-        ax1.set_ylabel("Mean Recovery", fontsize=11)
-        ax1.set_title("Layer Sweep", fontsize=11)
-        ax1.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
-        ax1.set_ylim(-0.1, 1.1)
-        ax1.grid(True, alpha=0.3)
+        # Create combined figure
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig.suptitle(
+            f"Aggregated Coarse Patching (step={step_size}, {result.n_samples} samples)",
+            fontsize=14,
+            fontweight="bold",
+        )
 
-    # Position sweep
-    ax2 = axes[1]
-    if pos_scores:
-        positions = sorted(pos_scores.keys())
-        recoveries = [pos_scores[p] for p in positions]
+        # Layer sweep
+        ax1 = axes[0]
+        if layer_scores:
+            layers = sorted(layer_scores.keys())
+            recoveries = [layer_scores[l] for l in layers]
 
-        ax2.plot(positions, recoveries, "b-", linewidth=2, marker="o", markersize=6)
-        ax2.set_xlabel("Position", fontsize=11)
-        ax2.set_ylabel("Mean Recovery", fontsize=11)
-        ax2.set_title("Position Sweep", fontsize=11)
-        ax2.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
-        ax2.set_ylim(-0.1, 1.1)
-        ax2.grid(True, alpha=0.3)
+            ax1.plot(layers, recoveries, "b-", linewidth=2, marker="o", markersize=6)
+            ax1.set_xlabel("Layer", fontsize=11)
+            ax1.set_ylabel("Mean Recovery", fontsize=11)
+            ax1.set_title("Layer Sweep", fontsize=11)
+            ax1.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
+            ax1.set_ylim(-0.1, 1.1)
+            ax1.grid(True, alpha=0.3)
+        else:
+            ax1.text(0.5, 0.5, "No layer results", ha="center", va="center")
+            ax1.axis("off")
 
-        # Color x-axis tick labels
-        _color_xaxis_ticks(ax2, positions, coloring)
+        # Position sweep
+        ax2 = axes[1]
+        if pos_scores:
+            positions = sorted(pos_scores.keys())
+            recoveries = [pos_scores[p] for p in positions]
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-    _finalize_plot(output_dir / "coarse_patching_agg.png")
+            ax2.plot(positions, recoveries, "b-", linewidth=2, marker="o", markersize=6)
+            ax2.set_xlabel("Position", fontsize=11)
+            ax2.set_ylabel("Mean Recovery", fontsize=11)
+            ax2.set_title("Position Sweep", fontsize=11)
+            ax2.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
+            ax2.set_ylim(-0.1, 1.1)
+            ax2.grid(True, alpha=0.3)
+
+            # Color x-axis tick labels
+            _color_xaxis_ticks(ax2, positions, coloring)
+        else:
+            ax2.text(0.5, 0.5, "No position results", ha="center", va="center")
+            ax2.axis("off")
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        _finalize_plot(output_dir / f"coarse_patching_agg_{step_size}.png")
 
     print(f"[viz] Aggregated coarse patching plots saved to {output_dir}")
