@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ...common.base_schema import BaseSchema
-from ...common.device_utils import clear_gpu_memory
-from ...inference.interventions.intervention_target import InterventionTarget
-from ...activation_patching import patch_target, ActPatchTargetResult
+from ..common.base_schema import BaseSchema
+from ..common.device_utils import clear_gpu_memory
+from ..inference.interventions.intervention_target import InterventionTarget
+from . import patch_target, ActPatchTargetResult
 
 
-from ...binary_choice import BinaryChoiceRunner
-from ...common.contrastive_pair import ContrastivePair
+from ..binary_choice import BinaryChoiceRunner
+from ..common.contrastive_pair import ContrastivePair
 
 
 @dataclass

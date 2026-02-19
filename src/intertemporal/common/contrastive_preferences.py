@@ -144,7 +144,9 @@ class ContrastivePreferences(BaseSchema):
 
 
 def get_contrastive_preferences(
-    dataset: PreferenceDataset, require_same_labels: bool = True
+    dataset: PreferenceDataset,
+    require_same_labels: bool = True,
+    debug_by_using_single_sample: bool = False,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples that differ primarily by time_horizon with different choices.
 
@@ -213,5 +215,13 @@ def get_contrastive_preferences(
     # Sort by minimum choice probability (highest confidence pairs first)
     # This prioritizes pairs where both samples were confident in their choices
     pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
+
+    if debug_by_using_single_sample:
+        return [
+            ContrastivePreferences(
+                short_term=pairs[0].short_term,
+                long_term=pairs[0].short_term,
+            )
+        ]
 
     return pairs

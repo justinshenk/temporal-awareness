@@ -34,7 +34,7 @@ from ..viz import (
     visualize_tokenization,
 )
 from ...viz.token_coloring import get_token_coloring_for_pair
-from .coarse_activation_patching import (
+from ...activation_patching.coarse_activation_patching import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
     run_coarse_act_patching,
@@ -238,7 +238,7 @@ def step_visualize_results(ctx: ExperimentContext) -> None:
             )
         if pair_idx in ctx.coarse_patching:
             visualize_coarse_patching(
-                ctx.coarse_patching[pair_idx], pair_out_dir, coloring
+                ctx.coarse_patching[pair_idx], pair_out_dir, coloring, pair=pair
             )
         if pair_idx in ctx.fine_patching:
             visualize_fine_patching(

@@ -17,17 +17,19 @@ import numpy as np
 from ...activation_patching import IntervenedChoiceMetrics
 from ...viz.plot_helpers import finalize_plot as _finalize_plot
 from ...viz.palettes import LINE_COLORS, BAR_COLORS, TOKEN_COLORS
-from ..experiments.coarse_activation_patching import (
+from ...activation_patching.coarse_activation_patching import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
 )
 from ...viz.token_coloring import PairTokenColoring
+from ...common.contrastive_pair import ContrastivePair
 
 
 def visualize_coarse_patching(
     result: CoarseActPatchResults | CoarseActPatchAggregatedResults | None,
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
+    pair: ContrastivePair | None = None,
 ) -> None:
     """Visualize coarse activation patching results.
 
@@ -69,7 +71,7 @@ def visualize_coarse_patching(
 
     # Sanity check visualization
     if result.sanity_result:
-        _plot_sanity_check(result, output_dir, coloring)
+        _plot_sanity_check(result, output_dir, coloring, pair)
 
     print(f"[viz] Coarse patching plots saved to {output_dir}")
 
@@ -176,6 +178,11 @@ def _plot_layer_sweep_combined(
                   linewidth=2, marker="h", markersize=5, label="vocab_entropy")
         ax3b.set_ylabel("Entropy", fontsize=10, color=LINE_COLORS["vocab_entropy"])
         ax3b.tick_params(axis="y", labelcolor=LINE_COLORS["vocab_entropy"])
+        # Prevent misleading y-axis when values are essentially constant
+        ent_range = max(vocab_entropies) - min(vocab_entropies) if vocab_entropies else 0
+        if ent_range < 1e-6:
+            ent_mean = np.mean(vocab_entropies) if vocab_entropies else 0
+            ax3b.set_ylim(ent_mean - 0.5, ent_mean + 0.5)
 
         ax3.set_xlabel("Layer", fontsize=10)
         ax3.set_ylabel("Rank / Diversity", fontsize=10)
@@ -320,6 +327,11 @@ def _plot_position_sweep_combined(
                   linewidth=2, marker="h", markersize=5, label="vocab_entropy")
         ax3b.set_ylabel("Entropy", fontsize=10, color=LINE_COLORS["vocab_entropy"])
         ax3b.tick_params(axis="y", labelcolor=LINE_COLORS["vocab_entropy"])
+        # Prevent misleading y-axis when values are essentially constant
+        ent_range = max(vocab_entropies) - min(vocab_entropies) if vocab_entropies else 0
+        if ent_range < 1e-6:
+            ent_mean = np.mean(vocab_entropies) if vocab_entropies else 0
+            ax3b.set_ylim(ent_mean - 0.5, ent_mean + 0.5)
 
         ax3.set_xlabel("Position", fontsize=10)
         ax3.set_ylabel("Rank / Diversity", fontsize=10)
@@ -620,6 +632,7 @@ def _plot_sanity_check(
     result: CoarseActPatchResults,
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
+    pair: ContrastivePair | None = None,
 ) -> None:
     """Plot sanity check results ONLY.
 
@@ -800,42 +813,56 @@ def _plot_sanity_check(
         ax2.text(0.5, 0.5, "No sanity data", ha="center", va="center")
         ax2.axis("off")
 
-    # ─── Panel 3: Logit diff comparison (sanity only) ───
+    # ─── Panel 3: Per-position logprob difference (short vs long traj) ───
     ax3 = axes[1, 0]
-    if d_metrics or n_metrics:
-        labels = ["Denoising", "Noising"]
-        logit_diffs = [
-            d_metrics.logit_diff if d_metrics else 0,
-            n_metrics.logit_diff if n_metrics else 0,
-        ]
-        colors_bars = ["steelblue", "coral"]
 
-        bars = ax3.bar(labels, logit_diffs, color=colors_bars, width=0.5)
-        ax3.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-        ax3.set_ylabel("logit_diff (short - long)", fontsize=11)
-        ax3.set_title("Sanity Check: Logit Diff", fontsize=12, fontweight="bold")
-        ax3.grid(True, alpha=0.3, axis="y")
+    if pair is not None:
+        # Get logprobs from both trajectories
+        short_logprobs = pair.short_traj.logprobs
+        long_logprobs = pair.long_traj.logprobs
+        position_mapping = pair.position_mapping
 
-        # Add value labels on bars
-        for bar, val in zip(bars, logit_diffs):
-            ypos = val + (2 if val >= 0 else -2)
+        # Compute per-position difference using position mapping
+        positions = []
+        logprob_diffs = []
+
+        for src_pos in range(len(short_logprobs)):
+            dst_pos = position_mapping.get(src_pos, src_pos)
+            if dst_pos is not None and dst_pos < len(long_logprobs):
+                positions.append(src_pos)
+                diff = short_logprobs[src_pos] - long_logprobs[dst_pos]
+                logprob_diffs.append(diff)
+
+        if positions:
+            ax3.plot(positions, logprob_diffs, "b-", linewidth=1.5, alpha=0.8)
+            ax3.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
+            ax3.set_xlabel("Position", fontsize=11)
+            ax3.set_ylabel("logprob(short) - logprob(long)", fontsize=11)
+            ax3.set_title("Per-Position Logprob Diff (short - long traj)", fontsize=12, fontweight="bold")
+            ax3.grid(True, alpha=0.3)
+
+            # Add summary stats
+            mean_diff = np.mean(logprob_diffs)
+            max_diff = np.max(np.abs(logprob_diffs))
             ax3.text(
-                bar.get_x() + bar.get_width() / 2,
-                ypos,
-                f"{val:+.2f}",
-                ha="center",
-                va="bottom" if val >= 0 else "top",
-                fontsize=11,
-                fontweight="bold",
+                0.02, 0.98,
+                f"mean={mean_diff:.4f}\nmax|diff|={max_diff:.4f}",
+                transform=ax3.transAxes,
+                fontsize=9,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
             )
+        else:
+            ax3.text(0.5, 0.5, "No position data", ha="center", va="center")
+            ax3.axis("off")
     else:
-        ax3.text(0.5, 0.5, "No sanity data", ha="center", va="center")
+        ax3.text(0.5, 0.5, "No pair data for per-position plot", ha="center", va="center")
         ax3.axis("off")
 
     # ─── Panel 4: Reciprocal rank comparison (sanity only) ───
     ax4 = axes[1, 1]
     if d_metrics or n_metrics:
-        labels = ["rr(short)", "rr(long)"]
+        labels = ["recip_rank(short)", "recip_rank(long)"]
         x = np.arange(len(labels))
         width = 0.35
 
