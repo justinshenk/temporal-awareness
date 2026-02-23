@@ -1,0 +1,77 @@
+{
+  "experiment": "causal_blocking",
+  "description": "Testing whether temporal encoding tracks interact or are independent",
+  "results": [
+    {
+      "experiment": "ablate_immediate_track_test_LT",
+      "ablated_layers": [
+        1
+      ],
+      "target_direction": "longterm",
+      "accuracy": 0.96,
+      "baseline_accuracy": 1.0,
+      "accuracy_drop": 0.040000000000000036,
+      "n_samples": 50,
+      "details": {
+        "immediate_track_layer": 1
+      }
+    },
+    {
+      "experiment": "ablate_longterm_track_test_IM",
+      "ablated_layers": [
+        6
+      ],
+      "target_direction": "immediate",
+      "accuracy": 1.0,
+      "baseline_accuracy": 0.88,
+      "accuracy_drop": -0.12,
+      "n_samples": 50,
+      "details": {
+        "longterm_track_layer": 6
+      }
+    },
+    {
+      "experiment": "double_ablation_test_LT",
+      "ablated_layers": [
+        1,
+        6
+      ],
+      "target_direction": "longterm",
+      "accuracy": 0.04,
+      "baseline_accuracy": 1.0,
+      "accuracy_drop": 0.96,
+      "n_samples": 50,
+      "details": null
+    },
+    {
+      "experiment": "double_ablation_test_IM",
+      "ablated_layers": [
+        1,
+        6
+      ],
+      "target_direction": "immediate",
+      "accuracy": 1.0,
+      "baseline_accuracy": 0.88,
+      "accuracy_drop": -0.12,
+      "n_samples": 50,
+      "details": null
+    },
+    {
+      "experiment": "conflicting_patches",
+      "ablated_layers": [
+        1,
+        6
+      ],
+      "target_direction": "conflict",
+      "accuracy": 1.0,
+      "baseline_accuracy": 0.5,
+      "accuracy_drop": -0.5,
+      "n_samples": 50,
+      "details": {
+        "lt_wins": 50,
+        "im_wins": 0,
+        "interpretation": "LT track dominates"
+      }
+    }
+  ]
+}
