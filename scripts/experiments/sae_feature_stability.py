@@ -66,6 +66,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+# Optional W&B integration
+try:
+    import wandb
+    HAS_WANDB = True
+except ImportError:
+    HAS_WANDB = False
+
 # transformer_lens + sae_lens for Gemma Scope SAEs
 from transformer_lens import HookedTransformer
 from sae_lens import SAE as SaeLensSAE
@@ -635,6 +642,87 @@ def compute_feature_stability(
 # Main experiment pipeline
 # ---------------------------------------------------------------------------
 
+def _wandb_active() -> bool:
+    """Check if W&B is available and a run is active."""
+    return HAS_WANDB and wandb.run is not None
+
+
+def _log_layer_metrics(layer: int, in_dist: dict, shift_results: dict):
+    """Log all metrics for a single layer to W&B."""
+    if not _wandb_active():
+        return
+
+    # In-distribution metrics
+    for probe_type in ("sae_probe", "act_probe"):
+        m = in_dist[probe_type]
+        prefix = f"layer_{layer}/in_dist/{probe_type}"
+        wandb.log({
+            f"{prefix}/accuracy": m.accuracy,
+            f"{prefix}/precision": m.precision,
+            f"{prefix}/recall": m.recall,
+            f"{prefix}/f1": m.f1,
+            f"{prefix}/log_loss": m.log_loss_value,
+            f"{prefix}/ece": m.ece,
+            f"{prefix}/mean_confidence": m.mean_confidence,
+        })
+
+    # Shift condition metrics
+    for cond_name, cond_data in shift_results.items():
+        for probe_type in ("sae_probe", "act_probe"):
+            m = cond_data[probe_type]
+            prefix = f"layer_{layer}/{cond_name}/{probe_type}"
+            wandb.log({
+                f"{prefix}/accuracy": m.accuracy,
+                f"{prefix}/f1": m.f1,
+                f"{prefix}/log_loss": m.log_loss_value,
+                f"{prefix}/ece": m.ece,
+                f"{prefix}/mean_confidence": m.mean_confidence,
+            })
+
+            # Also log accuracy drop from in-distribution
+            in_acc = in_dist[probe_type].accuracy
+            wandb.log({
+                f"{prefix}/accuracy_drop": in_acc - m.accuracy,
+            })
+
+        # Feature stability
+        if "feature_stability" in cond_data:
+            fs = cond_data["feature_stability"]
+            prefix = f"layer_{layer}/{cond_name}/feature_stability"
+            wandb.log({
+                f"{prefix}/jaccard": fs.jaccard_similarity,
+                f"{prefix}/top_k_overlap": fs.top_k_overlap,
+                f"{prefix}/cosine_sim": fs.cosine_similarity,
+                f"{prefix}/magnitude_ratio": fs.activation_magnitude_ratio,
+            })
+
+    # Summary table row for this layer
+    table_data = []
+    for cond_name, cond_data in shift_results.items():
+        row = {
+            "layer": layer,
+            "condition": cond_name,
+            "sae_accuracy": cond_data["sae_probe"].accuracy,
+            "act_accuracy": cond_data["act_probe"].accuracy,
+            "sae_accuracy_drop": in_dist["sae_probe"].accuracy - cond_data["sae_probe"].accuracy,
+            "act_accuracy_drop": in_dist["act_probe"].accuracy - cond_data["act_probe"].accuracy,
+        }
+        if "feature_stability" in cond_data:
+            fs = cond_data["feature_stability"]
+            row.update({
+                "top_k_overlap": fs.top_k_overlap,
+                "cosine_sim": fs.cosine_similarity,
+            })
+        table_data.append(row)
+
+    wandb.log({
+        f"layer_{layer}/summary": wandb.Table(
+            columns=list(table_data[0].keys()),
+            data=[list(r.values()) for r in table_data],
+        )
+    })
+
+
 def run_single_layer(
     model: HookedTransformer,
     sae: SaeLensSAE,
@@ -716,8 +804,9 @@ def run_single_layer(
         print(f"    SAE acc: {sae_metrics.accuracy:.3f}  |  Act acc: {act_metrics.accuracy:.3f}")
         print(f"    Feature overlap: {stability.top_k_overlap:.3f}  |  Cosine sim: {stability.cosine_similarity:.3f}")
 
-    # 4. Compile results
+    # 4. Compile results & log to W&B
     print("[4/4] Compiling results...")
+    _log_layer_metrics(layer, in_dist, shift_results)
 
     return LayerResult(
         layer=layer,
@@ -732,6 +821,9 @@ def run_experiment(
     device: str = "cpu",
     batch_size: int = 16,
     output_dir: Optional[Path] = None,
+    wandb_project: Optional[str] = None,
+    wandb_entity: Optional[str] = None,
+    wandb_run_name: Optional[str] = None,
 ) -> list[LayerResult]:
     """Run the full SAE feature stability experiment."""
 
@@ -740,6 +832,28 @@ def run_experiment(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Initialize W&B
+    if HAS_WANDB and wandb_project:
+        wandb.init(
+            project=wandb_project,
+            entity=wandb_entity,
+            name=wandb_run_name or f"sae-stability-{timestamp}",
+            config={
+                "model": MODEL_NAME,
+                "sae_release": SAE_RELEASE,
+                "top_k_latents": TOP_K_LATENTS,
+                "layers": layers,
+                "device": device,
+                "batch_size": batch_size,
+            },
+            tags=["sae-feature-stability", "probe-degradation"],
+        )
+        print(f"W&B run: {wandb.run.url}")
+    elif HAS_WANDB and wandb_project is None:
+        print("W&B available but no --wandb-project specified. Logging disabled.")
+    else:
+        print("W&B not installed. Logging disabled.")
 
     print("=" * 70)
     print("SAE FEATURE STABILITY EXPERIMENT")
@@ -796,6 +910,27 @@ def run_experiment(
     # Save results
     save_results(all_results, shift_conditions, output_dir, timestamp)
     plot_degradation_curves(all_results, output_dir, timestamp)
+
+    # Upload plots and results to W&B
+    if _wandb_active():
+        # Log plots as images
+        for plot_name in ("accuracy_degradation", "feature_stability", "accuracy_vs_stability"):
+            plot_path = output_dir / f"{plot_name}_{timestamp}.png"
+            if plot_path.exists():
+                wandb.log({f"plots/{plot_name}": wandb.Image(str(plot_path))})
+
+        # Log results JSON as artifact
+        artifact = wandb.Artifact(
+            f"stability-results-{timestamp}",
+            type="experiment-results",
+            description="SAE feature stability experiment results",
+        )
+        results_path = output_dir / f"stability_results_{timestamp}.json"
+        if results_path.exists():
+            artifact.add_file(str(results_path))
+        wandb.log_artifact(artifact)
+
+        wandb.finish()
 
     return all_results
 
@@ -998,6 +1133,12 @@ def main():
                         help="Batch size for activation extraction")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Output directory for results")
+    parser.add_argument("--wandb-project", type=str, default=None,
+                        help="W&B project name (enables logging)")
+    parser.add_argument("--wandb-entity", type=str, default=None,
+                        help="W&B entity/team (default: your default entity)")
+    parser.add_argument("--wandb-run-name", type=str, default=None,
+                        help="W&B run name (default: auto-generated)")
 
     args = parser.parse_args()
 
@@ -1017,6 +1158,9 @@ def main():
         device=args.device,
         batch_size=batch_size,
         output_dir=output_dir,
+        wandb_project=args.wandb_project,
+        wandb_entity=args.wandb_entity,
+        wandb_run_name=args.wandb_run_name,
     )
 
     # Final summary

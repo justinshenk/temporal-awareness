@@ -26,17 +26,22 @@ echo "GPU:  $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || e
 echo "Started: $(date)"
 echo "=========================================="
 
-# W&B setup (uncomment and set your project name to enable logging)
-# export WANDB_PROJECT="temporal-awareness-sae-stability"
-# export WANDB_RUN_NAME="sae-stability-${MODE}-$(date +%Y%m%d)"
+# W&B config — logs to temporal-awareness team workspace
+WANDB_PROJECT="sae-feature-stability"
+WANDB_ENTITY="temporal-awareness"
+WANDB_RUN_NAME="sae-stability-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
 srun python3 scripts/experiments/sae_feature_stability.py \
     --device cuda \
     --batch-size 32 \
     --output-dir "$RESULTS_DIR" \
+    --wandb-project "$WANDB_PROJECT" \
+    --wandb-entity "$WANDB_ENTITY" \
+    --wandb-run-name "$WANDB_RUN_NAME" \
     $EXTRA_ARGS
 
 echo "=========================================="
 echo "Finished: $(date)"
 echo "Results: $RESULTS_DIR"
+echo "W&B: https://wandb.ai/${WANDB_ENTITY}/${WANDB_PROJECT}"
 echo "=========================================="
