@@ -12,8 +12,8 @@ module load python/3.12.1
 MODE="${1:-full}"
 EXTRA_ARGS="${2:-}"
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$PROJECT_ROOT"
+# Use SLURM_SUBMIT_DIR (where sbatch was called from) instead of script location
+cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 
 RESULTS_DIR="results/sae_feature_stability"
 mkdir -p "$RESULTS_DIR"
@@ -21,6 +21,7 @@ mkdir -p "$RESULTS_DIR"
 echo "=========================================="
 echo "SAE Feature Stability Experiment"
 echo "Mode: $MODE"
+echo "PWD: $(pwd)"
 echo "Node: $(hostname)"
 echo "GPU:  $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'none')"
 echo "Started: $(date)"

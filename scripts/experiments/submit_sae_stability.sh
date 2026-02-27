@@ -20,5 +20,10 @@ fi
 OUT_FILE="${JOB_NAME}.%j.out"
 ERR_FILE="${JOB_NAME}.%j.err"
 
+# Submit from project root so SLURM_SUBMIT_DIR is set correctly
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 sbatch -J "${JOB_NAME}" -o "${OUT_FILE}" -e "${ERR_FILE}" \
+    --time="${TIME}" \
     scripts/experiments/train_sae_stability.sh "$MODE" "$EXTRA_ARGS"
