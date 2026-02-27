@@ -26,9 +26,9 @@ echo "GPU:  $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || e
 echo "Started: $(date)"
 echo "=========================================="
 
-# W&B config — logs to temporal-awareness team workspace
+# W&B config — logs to justinshenk-time team workspace
 WANDB_PROJECT="sae-feature-stability"
-WANDB_ENTITY="temporal-awareness"
+WANDB_ENTITY="justinshenk-time"
 WANDB_RUN_NAME="sae-stability-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
 srun python3 scripts/experiments/sae_feature_stability.py \
