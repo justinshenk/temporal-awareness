@@ -1,0 +1,24 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 16
+  dtype: "bfloat16"
+
+paths:
+  data_loc: "./data/raw/"
+  save_loc: "./results/eap_integrated_gradients/model_exploration"
+
+input:
+  data_file: "temporal_scope_explicit_expanded.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(A)", "(B)" ]
+  prompt_suffix: "Answer: ("
+
+output:
+  wandb_project: "model_exploration"
+  filename: "Qwen3-4B-Instruct-2507"
+
+parameters:
+  system_prompt: "You are a strategic planning assistant that follows user instructions carefully"
+  steps: [ 20 ]
+  metric_type: "logit-diff"
