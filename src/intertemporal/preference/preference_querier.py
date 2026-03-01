@@ -9,7 +9,11 @@ from typing import Optional
 from ...common.file_io import load_json
 from ...inference import InternalsConfig, CapturedInternals
 from ..common.preference_types import PreferenceSample
-from ...inference.interventions import Intervention
+from ...inference.interventions import (
+    Intervention,
+    InterventionTarget,
+    random_direction,
+)
 from ...binary_choice.binary_choice_runner import BinaryChoiceRunner
 from ...binary_choice.choice_utils import verify_greedy_generation
 from .preference_dataset import PreferenceDataset
@@ -71,7 +75,33 @@ class PreferenceQuerier:
         if self.config.intervention is None:
             return None
 
-        return Intervention.from_dict(self.config.intervention)
+        cfg = self.config.intervention
+
+        # Handle "random" values
+        values = cfg.get("values", 0)
+        if values == "random":
+            values = random_direction(runner.d_model)
+
+        # Parse target
+        target_data = cfg.get("target", "all")
+        if target_data == "all" or target_data is None:
+            target = InterventionTarget.all()
+        elif isinstance(target_data, dict):
+            target = InterventionTarget.at(
+                positions=target_data.get("positions"),
+                layers=target_data.get("layers"),
+            )
+        else:
+            target = InterventionTarget.all()
+
+        return Intervention(
+            layer=cfg.get("layer", 0),
+            mode=cfg.get("mode", "add"),
+            values=values,
+            target=target,
+            component=cfg.get("component", "resid_post"),
+            strength=cfg.get("strength", 1.0),
+        )
 
     def _get_activation_names(self, runner: BinaryChoiceRunner) -> list[str]:
         """Get hook names for activation capture."""
@@ -110,9 +140,7 @@ class PreferenceQuerier:
             print(f"query_dataset: Capturing activations/internals {activation_names}")
 
         # Get choice_prefix from dataset config
-        choice_prefix = (
-            prompt_dataset.config.prompt_format_config.get_exact_prefix_before_choice()
-        )
+        choice_prefix = prompt_dataset.config.prompt_format_config.get_response_prefix_before_choice()
 
         print(f"query_dataset: Querying LLM for {len(samples)} samples...")
         preferences = []

@@ -6,7 +6,7 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention
 
 
@@ -61,10 +61,14 @@ class NNsightBackend(Backend):
         else:
             raise ValueError(f"Cannot find lm_head for model: {type(model)}")
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor."""
         tokenizer = self.get_tokenizer()
-        ids = tokenizer(text, return_tensors="pt").input_ids
+        ids = tokenizer(
+            text, return_tensors="pt", add_special_tokens=add_special_tokens
+        ).input_ids
         if prepend_bos:
             bos_id = tokenizer.bos_token_id
             if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
@@ -73,7 +77,7 @@ class NNsightBackend(Backend):
         return ids.to(self.runner.device)
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.get_tokenizer().decode(token_ids, skip_special_tokens=True)
+        return self.get_tokenizer().decode(token_ids, skip_special_tokens=False)
 
     def generate(
         self,
@@ -84,7 +88,7 @@ class NNsightBackend(Backend):
         past_kv_cache: Any = None,
     ) -> str:
         """Generate text with optional interventions using native NNsight generate."""
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         # Build generation kwargs
@@ -128,7 +132,7 @@ class NNsightBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with self.runner._model.trace(input_ids):
             logits = self._get_lm_head().output.save()
 
@@ -143,7 +147,7 @@ class NNsightBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with self.runner._model.trace(input_ids):
             logits = self._get_lm_head().output.save()
 
@@ -267,14 +271,14 @@ class NNsightBackend(Backend):
                 else:
                     out = module.output[0]
 
-                if target.axis == "all":
+                if target.is_all_positions:
                     if mode == "add":
                         out[:, :] += values
                     elif mode == "set":
                         out[:, :] = values
                     elif mode == "mul":
                         out[:, :] *= values
-                elif target.axis == "position":
+                else:
                     seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
                     for pos in target.positions:
                         if pos < seq_len:
@@ -348,7 +352,7 @@ class NNsightBackend(Backend):
                         target = intervention.target
                         mode = intervention.mode
 
-                        if target.axis == "all":
+                        if target.is_all_positions:
                             if mode == "add":
                                 out[:, :] += values
                             elif mode == "set":
@@ -357,7 +361,7 @@ class NNsightBackend(Backend):
                                 out[:, :] *= values
                             elif mode == "interpolate":
                                 out[:, :] = values
-                        elif target.axis == "position":
+                        else:
                             seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
                             for pos in target.positions:
                                 if pos < seq_len:

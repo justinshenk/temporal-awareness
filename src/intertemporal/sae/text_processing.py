@@ -5,7 +5,12 @@ import re
 from ..formatting.configs import DefaultPromptFormat
 from ...binary_choice.choice_utils import parse_choice_from_generated_response
 
-from .sae_activations import CHOICE_SHORT_TERM, CHOICE_LONG_TERM, CHOICE_UNKNOWN, Sentence
+from .sae_activations import (
+    CHOICE_SHORT_TERM,
+    CHOICE_LONG_TERM,
+    CHOICE_UNKNOWN,
+    Sentence,
+)
 
 _CHOICE_INT_TO_STR = {1: "short_term", 0: "long_term", -1: "unknown"}
 
@@ -15,7 +20,7 @@ MIN_SENTENCE_WORDS = 3
 def get_prompt_markers() -> dict[str, str]:
     """Return prompt section markers from DefaultPromptFormat."""
     fmt = DefaultPromptFormat()
-    return fmt.get_prompt_section_markers()
+    return fmt.get_prompt_markers()
 
 
 def get_response_markers() -> dict[str, str]:

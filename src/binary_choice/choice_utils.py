@@ -21,8 +21,8 @@ def encode_into_trajectory_ids(
     full_text = prompt + response_text
 
     # Encode with and without special tokens to detect BOS handling
-    trajectory_token_ids = runner.tokenizer.encode(full_text, add_special_tokens=True)
-    ids_without = runner.tokenizer.encode(full_text, add_special_tokens=False)
+    trajectory_token_ids = runner.encode_ids(full_text, add_special_tokens=True)
+    ids_without = runner.encode_ids(full_text, add_special_tokens=False)
 
     encoding_matches = trajectory_token_ids == ids_without
 
@@ -41,8 +41,7 @@ def encode_into_trajectory_ids(
     # Encodings differ — template may have already embedded BOS.
     # If so, use ids_without to avoid double-BOS.
     template_already_has_bos = (
-        runner.tokenizer.bos_token_id is not None
-        and ids_without[0] == runner.tokenizer.bos_token_id
+        runner.bos_token_id is not None and ids_without[0] == runner.bos_token_id
     )
     if template_already_has_bos:
         return ids_without
@@ -114,16 +113,18 @@ def verify_greedy_generation(
     labels = (short_label, long_label)
     chosen_traj = getattr(choice, "chosen_traj", None)
 
-    effective_prefix = runner.skip_thinking_prefix + choice_prefix
+    # Only skip_thinking_prefix is used as prefilling in generate()
+    # The model must generate choice_prefix itself as part of following the format
+    prefilling = runner.skip_thinking_prefix if runner else ""
 
     # Check 1: Token ID comparison (primary check)
     # Compare generated tokens to chosen trajectory tokens
     if runner and prompt and chosen_traj:
         # Apply chat template to match how choose() encodes the trajectory
         templated_prompt = runner.apply_chat_template(prompt)
-        # Prepend effective_prefix to match how choose() builds expected trajectory
-        # (generate() with prefilling returns only the continuation)
-        full_response = effective_prefix + generated_response
+        # Prepend only what was actually prefilled (skip_thinking_prefix)
+        # The model should have generated choice_prefix + label naturally
+        full_response = prefilling + generated_response
         # Encode generated response
         generated_ids = encode_into_trajectory_ids(
             runner, templated_prompt, full_response
@@ -146,8 +147,8 @@ def verify_greedy_generation(
         ):
             expected_token_id = expected_ids[first_diff_pos]
             actual_token_id = generated_ids[first_diff_pos]
-            expected_token = runner.decode([expected_token_id])
-            actual_token = runner.decode([actual_token_id])
+            expected_token = runner.decode_ids([expected_token_id])
+            actual_token = runner.decode_ids([actual_token_id])
 
             # Determine mismatch type
             if first_diff_pos < div_pos:
@@ -189,8 +190,9 @@ def verify_greedy_generation(
         return False
 
     # Check 2: Label-level comparison (fallback if no runner/prompt/chosen_traj)
+    # Look for choice_prefix + label in the generated text
     generated_choice_idx = parse_choice_from_generated_response(
-        generated_response, short_label, long_label, effective_prefix
+        generated_response, short_label, long_label, choice_prefix
     )
 
     # If probability-based choice was tied (-1), don't flag as mismatch if
@@ -277,12 +279,8 @@ def encode_debug(
     identify whether the issue is BOS duplication or boundary token merging.
     """
     # --- Encode prompt and response separately for comparison ---
-    isolated_prompt_ids = runner.tokenizer.encode(
-        formatted_prompt, add_special_tokens=True
-    )
-    isolated_response_ids = runner.tokenizer.encode(
-        response_text, add_special_tokens=False
-    )
+    isolated_prompt_ids = runner.encode_ids(formatted_prompt, add_special_tokens=True)
+    isolated_response_ids = runner.encode_ids(response_text, add_special_tokens=False)
     ids_isolated = isolated_prompt_ids + isolated_response_ids
 
     # --- Equality checks ---
@@ -291,8 +289,8 @@ def encode_debug(
     is_without_isolated_equal = ids_without == ids_isolated
 
     # --- BOS token inspection ---
-    bos_id = runner.tokenizer.bos_token_id
-    bos_token = runner.tokenizer.bos_token
+    bos_id = runner.bos_token_id
+    bos_token = runner.bos_token
     has_bos = bos_id is not None
 
     with_starts_with_bos = (
@@ -320,9 +318,9 @@ def encode_debug(
     has_boundary_merge_issue = not is_without_isolated_equal
 
     # --- Decoded text for visual inspection ---
-    text_with = runner.tokenizer.decode(response_text_token_ids)
-    text_without = runner.tokenizer.decode(ids_without)
-    text_isolated = runner.tokenizer.decode(ids_isolated)
+    text_with = runner.decode_ids(response_text_token_ids)
+    text_without = runner.decode_ids(ids_without)
+    text_isolated = runner.decode_ids(ids_isolated)
 
     # --- Length comparison ---
     len_with = len(response_text_token_ids)
@@ -336,9 +334,7 @@ def encode_debug(
 
     print("\n--- Model/Tokenizer ---")
     print(f"  BOS token: {bos_token!r} (id={bos_id})")
-    print(
-        f"  EOS token: {runner.tokenizer.eos_token!r} (id={runner.tokenizer.eos_token_id})"
-    )
+    print(f"  EOS token: {runner.eos_token!r} (id={runner.eos_token_id})")
 
     print("\n--- Input ---")
     print(f"  formatted_prompt length: {len(formatted_prompt)} chars")
@@ -363,11 +359,11 @@ def encode_debug(
         print(f"  First divergence at position: {div}")
         if div < len(ids_without):
             print(
-                f"    joint:    id={ids_without[div]} -> {runner.tokenizer.decode([ids_without[div]])!r}"
+                f"    joint:    id={ids_without[div]} -> {runner.decode_ids([ids_without[div]])!r}"
             )
         if div < len(ids_isolated):
             print(
-                f"    isolated: id={ids_isolated[div]} -> {runner.tokenizer.decode([ids_isolated[div]])!r}"
+                f"    isolated: id={ids_isolated[div]} -> {runner.decode_ids([ids_isolated[div]])!r}"
             )
 
     print("\n--- Token counts ---")

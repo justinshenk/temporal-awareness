@@ -263,7 +263,9 @@ def _power_mean_from_logprobs_numpy(logprobs: np.ndarray, alpha: float) -> np.fl
     return np.exp((log_sum - np.log(n)) / alpha)
 
 
-def _power_mean_from_logprobs_torch(logprobs: torch.Tensor, alpha: float) -> torch.Tensor:
+def _power_mean_from_logprobs_torch(
+    logprobs: torch.Tensor, alpha: float
+) -> torch.Tensor:
     """Power mean M_α of probabilities, computed from logprobs (PyTorch)."""
     if logprobs.numel() == 0:
         return torch.tensor(0.0, device=logprobs.device)

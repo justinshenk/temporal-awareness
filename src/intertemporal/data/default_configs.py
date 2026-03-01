@@ -61,9 +61,6 @@ MINIMAL_EXPERIMENT_CONFIG = {
         "mode": "both",  # Run both noising and denoising for comparison
         "verify_with_greedy": True,
     },
-    # NOTE: Attribution patching identifies high-gradient layers, but causal effects
-    # are often distributed across MORE layers. Using only top-N attribution layers
-    # may not achieve choice flips. Set use_attribution_targets=False for full effect.
     "use_attribution_targets": False,
     "n_attribution_targets": 10,  # Only used if use_attribution_targets=True
 }

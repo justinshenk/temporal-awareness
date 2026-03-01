@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
-from ...binary_choice.choice_utils import encode_into_trajectory_ids
 from ...inference import GeneratedTrajectory
 from ...common.token_positions import build_position_mapping
 from ..preference import PreferenceDataset
@@ -31,6 +30,7 @@ class ContrastivePreferences(BaseSchema):
         runner: BinaryChoiceRunner,
         names_filter: callable | None = None,
         anchor_texts: list[str] | None = None,
+        first_interesting_marker: str | None = None,
     ) -> ContrastivePair | None:
         """Build a ContrastivePair using cached activations when available.
 
@@ -46,15 +46,16 @@ class ContrastivePreferences(BaseSchema):
 
         # Require same formatting - swapped labels cause semantic mismatch in patching
         if not self.same_formatting:
-            print(f"  Skipping pair: different label formatting")
+            print("  Skipping pair: different label formatting")
             return None
 
         long_traj = self._get_trajectory(self.long_term, runner, names_filter)
         short_traj = self._get_trajectory(self.short_term, runner, names_filter)
 
         position_mapping = build_position_mapping(
-            runner.tokenizer, short_traj, long_traj, anchor_texts
+            runner._tokenizer, short_traj, long_traj, anchor_texts
         )
+        position_mapping.first_interesting_marker = first_interesting_marker
 
         return ContrastivePair(
             short_traj=short_traj,
@@ -65,7 +66,15 @@ class ContrastivePreferences(BaseSchema):
                 self.short_term.short_term_label,
                 self.short_term.long_term_label,
             ),
-            choice_prefix=self.short_term.choice_prefix or "",
+            choice_prefix=self.short_term.choice_prefix,
+            prompt_token_counts=(
+                self.short_term.prompt_token_count,
+                self.long_term.prompt_token_count,
+            ),
+            choice_divergent_positions=(
+                self.short_term.divergent_position,
+                self.long_term.divergent_position,
+            ),
         )
 
     def _get_trajectory(
@@ -82,22 +91,18 @@ class ContrastivePreferences(BaseSchema):
         3. Run model forward pass
         """
         traj = sample.chosen_traj
+        assert traj is not None
 
-        if traj is not None and traj.has_internals():
-            if traj.has_internals_for(names_filter):
-                return traj
+        if traj.has_internals_for(names_filter):
+            return traj
 
         # Try loading from disk
         sample.load_internals_from_disk()
-        if traj is not None and traj.has_internals():
-            if traj.has_internals_for(names_filter):
-                return traj
+        if traj.has_internals_for(names_filter):
+            return traj
 
         # Run forward pass
-        token_ids = encode_into_trajectory_ids(
-            runner, sample.prompt_text, sample.response_text
-        )
-        return runner.generate_trajectory_with_cache(token_ids, names_filter)
+        return runner.generate_trajectory_with_cache(traj.token_ids, names_filter)
 
     @property
     def same_formatting(self) -> bool:
@@ -140,6 +145,8 @@ class ContrastivePreferences(BaseSchema):
 
 def get_contrastive_preferences(
     dataset: PreferenceDataset,
+    require_same_labels: bool = True,
+    debug_by_using_single_sample: bool = False,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples that differ primarily by time_horizon with different choices.
 
@@ -192,8 +199,10 @@ def get_contrastive_preferences(
                     continue
 
                 # Verify same label formatting (swapped labels cause semantic mismatch)
-                if (short_sample.short_term_label != long_sample.short_term_label or
-                    short_sample.long_term_label != long_sample.long_term_label):
+                if require_same_labels and (
+                    short_sample.short_term_label != long_sample.short_term_label
+                    or short_sample.long_term_label != long_sample.long_term_label
+                ):
                     continue
 
                 pairs.append(
@@ -206,5 +215,13 @@ def get_contrastive_preferences(
     # Sort by minimum choice probability (highest confidence pairs first)
     # This prioritizes pairs where both samples were confident in their choices
     pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
+
+    if debug_by_using_single_sample:
+        return [
+            ContrastivePreferences(
+                short_term=pairs[0].short_term,
+                long_term=pairs[0].short_term,
+            )
+        ]
 
     return pairs

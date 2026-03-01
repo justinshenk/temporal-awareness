@@ -12,9 +12,10 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-from ..common.io import ensure_dir, save_json
+from ..common.file_io import ensure_dir, save_json
 from .preference_loader import PreferenceData, PreferenceItem
-
+from ..datasets import DatasetGenerator
+from ..models import QueryRunner, QueryConfig
 
 # Default dataset configuration for quick experiments
 DEFAULT_DATASET_CONFIG = {
@@ -87,8 +88,6 @@ def generate_preference_data(
         >>> short_term, long_term = pref_data.split_by_choice()
         >>> print(f"Short-term: {len(short_term)}, Long-term: {len(long_term)}")
     """
-    from ..datasets import DatasetGenerator
-    from ..models import QueryRunner, QueryConfig
 
     model = model or DEFAULT_MODEL
     config_dict = dataset_config or DEFAULT_DATASET_CONFIG
@@ -132,7 +131,11 @@ def generate_preference_data(
         save_json(dataset_data, dataset_path)
 
         # Also save to the real datasets_dir if it's different from working dir
-        if save_data and datasets_dir is not None and working_datasets_dir != datasets_dir:
+        if (
+            save_data
+            and datasets_dir is not None
+            and working_datasets_dir != datasets_dir
+        ):
             save_json(dataset_data, datasets_dir / f"dataset_{dataset_id}.json")
             if verbose:
                 print(f"  Saved dataset to {datasets_dir}")
@@ -147,6 +150,7 @@ def generate_preference_data(
         internals_config = None
         if internals:
             from ..models.query_runner import InternalsConfig
+
             internals_config = InternalsConfig(**internals)
         query_config = QueryConfig(
             models=[model],
@@ -175,6 +179,7 @@ def generate_preference_data(
             internals_dict = None
             if p.internals is not None and save_data and internals_dir:
                 import torch
+
                 filename = f"{dataset_id}_{model_name}_sample_{p.sample_id}.pt"
                 file_path = internals_dir / filename
                 torch.save(p.internals.activations, file_path)
@@ -205,8 +210,7 @@ def generate_preference_data(
 
         # Merge prompt text
         prompts_by_id = {
-            s["sample_id"]: s["prompt"]["text"]
-            for s in dataset_data["samples"]
+            s["sample_id"]: s["prompt"]["text"] for s in dataset_data["samples"]
         }
         for pref in pref_data.preferences:
             pref.prompt_text = prompts_by_id.get(pref.sample_id, "")

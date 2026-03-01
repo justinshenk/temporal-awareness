@@ -272,6 +272,15 @@ class PreferenceSample(BaseSchema):
             return self.choice.tree.trunk_length
         return None
 
+    @property
+    def divergent_position(self) -> int | None:
+        """Get the position where A vs B tokens first diverge in the choice."""
+        if self.choice is None:
+            return None
+        if hasattr(self.choice, "divergent_position"):
+            return self.choice.divergent_position
+        return None
+
     def load_internals_from_disk(self) -> None:
         """Load internals from disk into the trajectory."""
         if self.choice is not None and hasattr(self.choice, "load_internals_from_disk"):

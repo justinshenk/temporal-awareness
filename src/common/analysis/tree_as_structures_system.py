@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
 from ..base_schema import BaseSchema
 from ..math import (
@@ -27,9 +27,7 @@ from ..math import (
     expected_deviance,
     orientation,
 )
-
-if TYPE_CHECKING:
-    from ..token_tree import BinaryFork, TokenTrajectory, TokenTree
+from ..token_tree import BinaryFork, TokenTrajectory, TokenTree
 
 
 def _traj_probability(traj: TokenTrajectory) -> float:
@@ -59,7 +57,9 @@ def _excess_compliance_inf(compliance: Sequence[float], core: Sequence[float]) -
     return max_ratio if max_ratio > 0 else 1.0
 
 
-def _deficit_compliance_inf(compliance: Sequence[float], core: Sequence[float]) -> float:
+def _deficit_compliance_inf(
+    compliance: Sequence[float], core: Sequence[float]
+) -> float:
     """∂⁻_∞(y) = max_i (core_norm_i / Λ_norm_i) - largest deficit of compliance."""
     c_norm = _normalize_probs(compliance)
     core_norm = _normalize_probs(core)
@@ -323,7 +323,9 @@ class StructureSystemAnalysis(BaseSchema):
                 """Convert orientation to dict with per-trajectory metrics."""
                 # Compute deviance statistics
                 active = [d for d in orient.traj_deviances if d is not None]
-                std_dev = math.sqrt(orient.var_deviance) if orient.var_deviance > 0 else 0.0
+                std_dev = (
+                    math.sqrt(orient.var_deviance) if orient.var_deviance > 0 else 0.0
+                )
                 median_dev = 0.0
                 if active:
                     sorted_dev = sorted(active)
@@ -335,7 +337,8 @@ class StructureSystemAnalysis(BaseSchema):
 
                 return {
                     "traj_deviances": [
-                        r(dv) if dv is not None else None for dv in orient.traj_deviances
+                        r(dv) if dv is not None else None
+                        for dv in orient.traj_deviances
                     ],
                     "expected_deviance": r(orient.expected_deviance),
                     "min_deviance": r(orient.min_deviance),

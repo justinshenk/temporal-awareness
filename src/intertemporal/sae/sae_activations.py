@@ -9,9 +9,9 @@ import numpy as np
 # =============================================================================
 
 HORIZON_NONE = 0
-HORIZON_SHORT = 1   # <= 1 year
+HORIZON_SHORT = 1  # <= 1 year
 HORIZON_MEDIUM = 2  # 1-5 years
-HORIZON_LONG = 3    # > 5 years
+HORIZON_LONG = 3  # > 5 years
 
 CHOICE_SHORT_TERM = 0
 CHOICE_LONG_TERM = 1
@@ -28,8 +28,10 @@ class Sentence:
     """A sentence with metadata about its origin."""
 
     text: str
-    source: str   # "prompt" or "response"
-    section: str  # prompt: situation/task/consider/action/format; response: choice/reasoning
+    source: str  # "prompt" or "response"
+    section: (
+        str  # prompt: situation/task/consider/action/format; response: choice/reasoning
+    )
 
     def to_dict(self) -> dict:
         return {"text": self.text, "source": self.source, "section": self.section}
@@ -41,7 +43,15 @@ class Sentence:
 
     @staticmethod
     def get_sections() -> list[str]:
-        return ["situation", "task", "consider", "action", "format", "choice", "reasoning"]
+        return [
+            "situation",
+            "task",
+            "consider",
+            "action",
+            "format",
+            "choice",
+            "reasoning",
+        ]
 
 
 # =============================================================================
@@ -102,20 +112,22 @@ def get_sentences(
                 if layer in section_means:
                     centered[layer_key] = act - section_means[layer][sentence.section]
 
-            result.append({
-                "text": sentence.text,
-                "source": sentence.source,
-                "section": sentence.section,
-                "sample_idx": sample.get("sample_idx"),
-                "time_horizon_bucket": sample.get("time_horizon_bucket", -1),
-                "time_horizon_months": sample.get("time_horizon_months"),
-                "llm_choice": sample.get("llm_choice", -1),
-                "llm_choice_time_months": get_choice_time(sample),
-                "formatting_id": sample.get("formatting_id"),
-                "matches_rational": sample.get("matches_rational"),
-                "matches_associated": sample.get("matches_associated"),
-                "activations": centered,
-            })
+            result.append(
+                {
+                    "text": sentence.text,
+                    "source": sentence.source,
+                    "section": sentence.section,
+                    "sample_idx": sample.get("sample_idx"),
+                    "time_horizon_bucket": sample.get("time_horizon_bucket", -1),
+                    "time_horizon_months": sample.get("time_horizon_months"),
+                    "llm_choice": sample.get("llm_choice", -1),
+                    "llm_choice_time_months": get_choice_time(sample),
+                    "formatting_id": sample.get("formatting_id"),
+                    "matches_rational": sample.get("matches_rational"),
+                    "matches_associated": sample.get("matches_associated"),
+                    "activations": centered,
+                }
+            )
 
     return result
 

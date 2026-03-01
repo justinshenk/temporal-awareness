@@ -34,15 +34,15 @@ def profile(
     If no identifier is provided, uses the function's name.
     """
 
-    def make_wrapper(func: F, name: str) -> F:
+    def make_wrapper(func: F, name: str, use_verbose: bool) -> F:
         profile_name = name.lower().replace(" ", "_")
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Print step header
-            if verbose:
+            if use_verbose:
                 print(f"\n{'=' * 60}")
-                print(f"{name}")
+                print(f"PROFILE: {name}")
                 print("=" * 60)
 
             # Run with profiling
@@ -50,7 +50,7 @@ def profile(
                 result = func(*args, **kwargs)
 
             # Log memory
-            log_memory(f"after_{profile_name}", verbose)
+            log_memory(f"after_{profile_name}", use_verbose)
 
             return result
 
@@ -58,13 +58,13 @@ def profile(
 
     # Called as @profile (no parens) - func_or_identifier is the function
     if callable(func_or_identifier):
-        return make_wrapper(func_or_identifier, func_or_identifier.__name__)
+        return make_wrapper(func_or_identifier, func_or_identifier.__name__, verbose)
 
     # Called as @profile() or @profile("name") - func_or_identifier is str or None
     identifier = func_or_identifier or ""
 
     def decorator(func: F) -> F:
         name = identifier if identifier else func.__name__
-        return make_wrapper(func, name)
+        return make_wrapper(func, name, verbose)
 
     return decorator

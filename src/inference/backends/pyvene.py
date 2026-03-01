@@ -6,15 +6,16 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention
 
 
 class PyveneBackend(Backend):
     """Backend using pyvene for interventions."""
 
-    def __init__(self, runner):
+    def __init__(self, runner: Any, tokenizer: Any):
         super().__init__(runner)
+        self._tokenizer = tokenizer
         if hasattr(self.runner._model, "transformer"):
             self._layers_attr = "transformer.h"
             self._layers = self.runner._model.transformer.h
@@ -36,7 +37,7 @@ class PyveneBackend(Backend):
             raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
 
     def get_tokenizer(self):
-        return self.runner._tokenizer
+        return self._tokenizer
 
     def get_n_layers(self) -> int:
         return self._n_layers
@@ -44,10 +45,14 @@ class PyveneBackend(Backend):
     def get_d_model(self) -> int:
         return self._d_model
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor."""
         tokenizer = self.get_tokenizer()
-        ids = tokenizer(text, return_tensors="pt").input_ids
+        ids = tokenizer(
+            text, return_tensors="pt", add_special_tokens=add_special_tokens
+        ).input_ids
         if prepend_bos:
             bos_id = tokenizer.bos_token_id
             if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
@@ -56,7 +61,7 @@ class PyveneBackend(Backend):
         return ids.to(self.runner.device)
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.get_tokenizer().decode(token_ids, skip_special_tokens=True)
+        return self.get_tokenizer().decode(token_ids, skip_special_tokens=False)
 
     def _get_component_module(self, layer_idx: int, component: str):
         """Get the module for a specific component within a layer."""
@@ -87,7 +92,7 @@ class PyveneBackend(Backend):
         intervention: Optional[Intervention],
         past_kv_cache: Any = None,
     ) -> str:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         if (
@@ -153,7 +158,7 @@ class PyveneBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             outputs = self.runner._model(input_ids)
             logits = outputs.logits
@@ -169,7 +174,7 @@ class PyveneBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             outputs = self.runner._model(input_ids)
             logits = outputs.logits
@@ -349,18 +354,33 @@ class PyveneBackend(Backend):
                     else:
                         hidden = output
 
-                    if target.axis == "all":
+                    if target.is_all_positions:
                         if mode == "add":
                             hidden = hidden + values
                         elif mode == "set":
-                            hidden = values.expand_as(hidden)
+                            # Handle sequence length mismatch for 2D values
+                            if values.ndim == 2:
+                                seq_len = min(hidden.shape[1], values.shape[0])
+                                new_hidden = hidden.clone()
+                                new_hidden[:, :seq_len, :] = (
+                                    values[:seq_len]
+                                    .unsqueeze(0)
+                                    .expand(hidden.shape[0], -1, -1)
+                                )
+                                hidden = new_hidden
+                            else:
+                                hidden = values.expand_as(hidden)
                         elif mode == "mul":
                             hidden = hidden * values
-                    elif target.axis == "position":
+                    else:
                         for i, pos in enumerate(target.positions):
                             if pos < hidden.shape[1]:
                                 # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = values[i] if values.ndim > 1 and i < len(values) else values
+                                pos_values = (
+                                    values[i]
+                                    if values.ndim > 1 and i < len(values)
+                                    else values
+                                )
                                 if mode == "add":
                                     hidden[:, pos, :] = hidden[:, pos, :] + pos_values
                                 elif mode == "set":
@@ -424,31 +444,92 @@ class PyveneBackend(Backend):
             )
             target = intervention.target
             mode = intervention.mode
+            alpha = getattr(intervention, "alpha", 1.0)
+            target_values = None
+            if (
+                hasattr(intervention, "target_values")
+                and intervention.target_values is not None
+            ):
+                target_values = torch.tensor(
+                    intervention.target_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
             module = self._get_component_module(
                 intervention.layer, intervention.component
             )
 
-            def make_intervention_hook(values, target, mode):
+            def make_intervention_hook(values, target, mode, alpha, target_values):
                 def intervention_hook(mod, input, output):
                     if isinstance(output, tuple):
                         hidden = output[0]
                     else:
                         hidden = output
 
-                    if target.axis == "all":
+                    if target.is_all_positions:
                         if mode == "add":
                             hidden = hidden + values
                         elif mode == "set":
-                            hidden = values.expand_as(hidden)
+                            # Handle sequence length mismatch for 2D values
+                            if values.ndim == 2:
+                                seq_len = min(hidden.shape[1], values.shape[0])
+                                new_hidden = hidden.clone()
+                                new_hidden[:, :seq_len, :] = (
+                                    values[:seq_len]
+                                    .unsqueeze(0)
+                                    .expand(hidden.shape[0], -1, -1)
+                                )
+                                hidden = new_hidden
+                            else:
+                                hidden = values.expand_as(hidden)
                         elif mode == "mul":
                             hidden = hidden * values
                         elif mode == "interpolate":
-                            hidden = values.expand_as(hidden)
-                    elif target.axis == "position":
+                            # Interpolation: hidden + alpha * (target - hidden)
+                            if target_values is not None:
+                                if target_values.ndim == 2:
+                                    seq_len = min(
+                                        hidden.shape[1], target_values.shape[0]
+                                    )
+                                    new_hidden = hidden.clone()
+                                    tgt = (
+                                        target_values[:seq_len]
+                                        .unsqueeze(0)
+                                        .expand(hidden.shape[0], -1, -1)
+                                    )
+                                    new_hidden[:, :seq_len, :] = hidden[
+                                        :, :seq_len, :
+                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
+                                    hidden = new_hidden
+                                else:
+                                    tgt = target_values.expand_as(hidden)
+                                    hidden = hidden + alpha * (tgt - hidden)
+                            else:
+                                # Fallback: treat values as target
+                                if values.ndim == 2:
+                                    seq_len = min(hidden.shape[1], values.shape[0])
+                                    new_hidden = hidden.clone()
+                                    tgt = (
+                                        values[:seq_len]
+                                        .unsqueeze(0)
+                                        .expand(hidden.shape[0], -1, -1)
+                                    )
+                                    new_hidden[:, :seq_len, :] = hidden[
+                                        :, :seq_len, :
+                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
+                                    hidden = new_hidden
+                                else:
+                                    tgt = values.expand_as(hidden)
+                                    hidden = hidden + alpha * (tgt - hidden)
+                    else:
                         for i, pos in enumerate(target.positions):
                             if pos < hidden.shape[1]:
                                 # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = values[i] if values.ndim > 1 and i < len(values) else values
+                                pos_values = (
+                                    values[i]
+                                    if values.ndim > 1 and i < len(values)
+                                    else values
+                                )
                                 if mode == "add":
                                     hidden[:, pos, :] = hidden[:, pos, :] + pos_values
                                 elif mode == "set":
@@ -456,7 +537,19 @@ class PyveneBackend(Backend):
                                 elif mode == "mul":
                                     hidden[:, pos, :] = hidden[:, pos, :] * pos_values
                                 elif mode == "interpolate":
-                                    hidden[:, pos, :] = values
+                                    # Get target values for this position
+                                    if target_values is not None:
+                                        tgt_val = (
+                                            target_values[i]
+                                            if target_values.ndim > 1
+                                            and i < len(target_values)
+                                            else target_values
+                                        )
+                                    else:
+                                        tgt_val = pos_values
+                                    hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
+                                        tgt_val - hidden[:, pos, :]
+                                    )
 
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
@@ -465,7 +558,7 @@ class PyveneBackend(Backend):
                 return intervention_hook
 
             hook = module.register_forward_hook(
-                make_intervention_hook(values, target, mode)
+                make_intervention_hook(values, target, mode, alpha, target_values)
             )
             hooks.append(hook)
 

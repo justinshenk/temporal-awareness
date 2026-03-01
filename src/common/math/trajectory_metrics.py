@@ -227,7 +227,9 @@ def top_p_normalized_logprobs(
         logits_at_pos = full_logits[pos]
 
         # Get top-p logits and indices
-        top_logits, top_indices = torch.topk(logits_at_pos, min(p, logits_at_pos.shape[0]))
+        top_logits, top_indices = torch.topk(
+            logits_at_pos, min(p, logits_at_pos.shape[0])
+        )
 
         # Check if chosen token is in top-p
         token_in_top_p = (top_indices == token_id).any()
@@ -236,7 +238,9 @@ def top_p_normalized_logprobs(
             # Normalize top-p to get probabilities
             top_probs = F.softmax(top_logits, dim=0)
             # Find position of chosen token in top-p
-            token_pos_in_top = (top_indices == token_id).nonzero(as_tuple=True)[0].item()
+            token_pos_in_top = (
+                (top_indices == token_id).nonzero(as_tuple=True)[0].item()
+            )
             normalized_logprobs.append(torch.log(top_probs[token_pos_in_top]).item())
         else:
             # Token not in top-p, assign very low probability

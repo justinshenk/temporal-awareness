@@ -14,11 +14,28 @@ from src.common.device_utils import clear_gpu_memory, log_memory, check_memory_t
 from src.common.profiler import P
 
 from .pipeline_state import PipelineStage, PipelineState
-from .sae_paths import ensure_dirs, reset_and_get_test_filepath_cfg, reset_and_get_special_filepath_cfg
+from .sae_paths import (
+    ensure_dirs,
+    reset_and_get_test_filepath_cfg,
+    reset_and_get_special_filepath_cfg,
+)
 from .scenario_generator import generate_samples
-from .sae_activations import Sentence, horizon_bucket, get_sentences, form_training_datasets, get_normalized_vectors_for_sentences
+from .sae_activations import (
+    Sentence,
+    horizon_bucket,
+    get_sentences,
+    form_training_datasets,
+    get_normalized_vectors_for_sentences,
+)
 from .sae_inference import generate_and_extract
-from .sae import SAE, initialize_sae_models, load_sae_models, save_sae_model, train_sae, get_sae_features_for_sentences
+from .sae import (
+    SAE,
+    initialize_sae_models,
+    load_sae_models,
+    save_sae_model,
+    train_sae,
+    get_sae_features_for_sentences,
+)
 from .sae_evaluation import cluster_analysis, baseline_cluster_analysis
 
 
@@ -32,11 +49,19 @@ def get_state_filepath(state: PipelineState) -> str:
 
 
 def get_samples_filepath(state: PipelineState) -> str:
-    return str(state.filepath_cfg.data_dir / f"samples_{state.pipeline_id}_iter{state.iteration}.json")
+    return str(
+        state.filepath_cfg.data_dir
+        / f"samples_{state.pipeline_id}_iter{state.iteration}.json"
+    )
 
 
-def get_activations_filepath(state: PipelineState, sample_idx: int, sentence_idx: int) -> str:
-    return str(state.filepath_cfg.data_dir / f"activations_{state.pipeline_id}_iter{state.iteration}_sample{sample_idx}_sentence{sentence_idx}.npz")
+def get_activations_filepath(
+    state: PipelineState, sample_idx: int, sentence_idx: int
+) -> str:
+    return str(
+        state.filepath_cfg.data_dir
+        / f"activations_{state.pipeline_id}_iter{state.iteration}_sample{sample_idx}_sentence{sentence_idx}.npz"
+    )
 
 
 def get_sae_dirpath(state: PipelineState) -> str:
@@ -44,7 +69,10 @@ def get_sae_dirpath(state: PipelineState) -> str:
 
 
 def get_analysis_dirpath(state: PipelineState) -> str:
-    return str(state.filepath_cfg.analysis_dir / f"state_{state.pipeline_id}_iter{state.iteration}")
+    return str(
+        state.filepath_cfg.analysis_dir
+        / f"state_{state.pipeline_id}_iter{state.iteration}"
+    )
 
 
 def get_section_means_filepath(state: PipelineState) -> str:
@@ -71,7 +99,9 @@ def save_state(state: PipelineState, stage: PipelineStage | None) -> None:
     state.save(get_state_filepath(state))
 
 
-def save_samples(state: PipelineState, samples: list, activations: list | None = None) -> None:
+def save_samples(
+    state: PipelineState, samples: list, activations: list | None = None
+) -> None:
     if activations:
         for sample_idx, sample in enumerate(samples):
             paths = []
@@ -113,12 +143,16 @@ def load_activations(samples: list) -> list | None:
 # =============================================================================
 
 
-def compute_section_means_streaming(state: PipelineState) -> dict[int, dict[str, np.ndarray]]:
+def compute_section_means_streaming(
+    state: PipelineState,
+) -> dict[int, dict[str, np.ndarray]]:
     """Compute activation means by streaming through files to avoid OOM."""
     sections = Sentence.get_sections()
     layers = state.config.layers
 
-    sums: dict[int, dict[str, np.ndarray | None]] = {l: {s: None for s in sections} for l in layers}
+    sums: dict[int, dict[str, np.ndarray | None]] = {
+        l: {s: None for s in sections} for l in layers
+    }
     counts: dict[int, dict[str, int]] = {l: {s: 0 for s in sections} for l in layers}
 
     pattern = f"samples_{state.pipeline_id}_iter*.json"
@@ -156,8 +190,13 @@ def compute_section_means_streaming(state: PipelineState) -> dict[int, dict[str,
 
     # Find d_in from first available vector
     d_in = next(
-        (sums[l][s].shape[0] for l in layers for s in sections if sums[l][s] is not None),
-        None
+        (
+            sums[l][s].shape[0]
+            for l in layers
+            for s in sections
+            if sums[l][s] is not None
+        ),
+        None,
     )
     if d_in is None:
         raise ValueError("No activation vectors found")
@@ -174,9 +213,13 @@ def compute_section_means_streaming(state: PipelineState) -> dict[int, dict[str,
     return result
 
 
-def save_section_means(state: PipelineState, means: dict[int, dict[str, np.ndarray]]) -> None:
+def save_section_means(
+    state: PipelineState, means: dict[int, dict[str, np.ndarray]]
+) -> None:
     path = get_section_means_filepath(state)
-    arrays = {f"layer_{l}_{s}": arr for l, sects in means.items() for s, arr in sects.items()}
+    arrays = {
+        f"layer_{l}_{s}": arr for l, sects in means.items() for s, arr in sects.items()
+    }
     np.savez(path, **arrays)
     state.section_means_path = path
 
@@ -224,8 +267,12 @@ def enrich_sample(sample: dict) -> dict:
     sample["time_horizon_months"] = th.to_months() if th else None
     sample["short_term_label"] = pair["short_term"]["label"]
     sample["long_term_label"] = pair["long_term"]["label"]
-    sample["short_term_time_months"] = TimeValue.parse(pair["short_term"]["time"]).to_months()
-    sample["long_term_time_months"] = TimeValue.parse(pair["long_term"]["time"]).to_months()
+    sample["short_term_time_months"] = TimeValue.parse(
+        pair["short_term"]["time"]
+    ).to_months()
+    sample["long_term_time_months"] = TimeValue.parse(
+        pair["long_term"]["time"]
+    ).to_months()
     sample["prompt_text"] = prompt["text"]
     return sample
 
@@ -290,7 +337,9 @@ def stage_train_saes(
 
     with P("form_training_datasets"):
         x_by_layer = {
-            layer: form_training_datasets(samples, activations, layer, section_means, filter_sentence)
+            layer: form_training_datasets(
+                samples, activations, layer, section_means, filter_sentence
+            )
             for layer in state.config.layers
         }
 
@@ -332,7 +381,9 @@ def stage_analyze(
     for sae in sae_models:
         sae_dir = os.path.join(analysis_dir, sae.get_name())
         with P("get_sae_features"):
-            features, filtered = get_sae_features_for_sentences(sae, sentences, filter_sentence)
+            features, filtered = get_sae_features_for_sentences(
+                sae, sentences, filter_sentence
+            )
         with P("cluster_analysis"):
             result = {"cluster": cluster_analysis(filtered, features, sae_dir)}
         results.append(result)
@@ -346,13 +397,19 @@ def stage_analyze(
         if key in seen:
             continue
         seen.add(key)
-        X, filtered = get_normalized_vectors_for_sentences(sae.layer, sentences, filter_sentence)
+        X, filtered = get_normalized_vectors_for_sentences(
+            sae.layer, sentences, filter_sentence
+        )
         config_key = f"L{sae.layer}_k{sae.num_latents}"
         with P("baseline_cluster_analysis"):
-            baselines[config_key] = baseline_cluster_analysis(X, filtered, sae.num_latents, os.path.join(baseline_dir, config_key))
+            baselines[config_key] = baseline_cluster_analysis(
+                X, filtered, sae.num_latents, os.path.join(baseline_dir, config_key)
+            )
 
     for sae, result in zip(sae_models, results):
-        result["cluster_baseline"] = baselines.get(f"L{sae.layer}_k{sae.num_latents}", {})
+        result["cluster_baseline"] = baselines.get(
+            f"L{sae.layer}_k{sae.num_latents}", {}
+        )
 
     state.analysis_results = results
     save_state(state, PipelineStage.EVALUATED)
@@ -363,7 +420,9 @@ def stage_analyze(
 # =============================================================================
 
 
-def run_iteration(state: PipelineState, tb_writer=None, skip_analysis: bool = False) -> None:
+def run_iteration(
+    state: PipelineState, tb_writer=None, skip_analysis: bool = False
+) -> None:
     """Run one complete iteration."""
     ensure_dirs(state.filepath_cfg)
     log_memory("iter_start", state.iteration)
@@ -382,12 +441,15 @@ def run_iteration(state: PipelineState, tb_writer=None, skip_analysis: bool = Fa
 
     sae_models = (
         load_sae_models(state, get_sae_dirpath(state))
-        if state.iteration else initialize_sae_models(state)
+        if state.iteration
+        else initialize_sae_models(state)
     )
     log_memory("after_load", state.iteration)
 
     if state.stage < PipelineStage.SAE_TRAINED:
-        sae_models = stage_train_saes(state, samples, activations, sae_models, section_means, tb_writer)
+        sae_models = stage_train_saes(
+            state, samples, activations, sae_models, section_means, tb_writer
+        )
         log_memory("after_train", state.iteration)
 
     if not skip_analysis and state.stage < PipelineStage.EVALUATED:
@@ -403,7 +465,9 @@ def run_iteration(state: PipelineState, tb_writer=None, skip_analysis: bool = Fa
 # =============================================================================
 
 
-def load_subsampled_data(state: PipelineState, max_samples: int = 4096) -> tuple[list, list]:
+def load_subsampled_data(
+    state: PipelineState, max_samples: int = 4096
+) -> tuple[list, list]:
     """Load random subsample of accumulated data."""
     pattern = f"samples_{state.pipeline_id}_iter*.json"
     sample_files = sorted(state.filepath_cfg.data_dir.glob(pattern))
@@ -442,11 +506,15 @@ def run_special_iteration(main_state: PipelineState) -> None:
     state.config.max_epochs = 300
     state.config.patience = 10
 
-    tb_writer = SummaryWriter(log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id))
+    tb_writer = SummaryWriter(
+        log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id)
+    )
     try:
         samples, activations = load_subsampled_data(state)
         sae_models = initialize_sae_models(state)
-        sae_models = stage_train_saes(state, samples, activations, sae_models, means, tb_writer)
+        sae_models = stage_train_saes(
+            state, samples, activations, sae_models, means, tb_writer
+        )
         stage_analyze(state, samples, activations, sae_models, means)
     finally:
         tb_writer.close()
@@ -460,11 +528,15 @@ def run_special_iteration(main_state: PipelineState) -> None:
 
 def run_pipeline(state: PipelineState, retrain_every_n_iter: int = 50) -> None:
     """Run the iterative pipeline."""
-    writer = SummaryWriter(log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id))
+    writer = SummaryWriter(
+        log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id)
+    )
 
     try:
         for i in range(state.iteration, state.config.max_iterations):
-            print(f"\n{'='*60}\nITERATION {i}/{state.config.max_iterations}\n{'='*60}")
+            print(
+                f"\n{'=' * 60}\nITERATION {i}/{state.config.max_iterations}\n{'=' * 60}"
+            )
             state.iteration = i
             run_iteration(state, tb_writer=writer, skip_analysis=True)
             state.stage = PipelineStage.INIT
@@ -491,7 +563,9 @@ def run_test_iteration(state: PipelineState) -> None:
     state.iteration += 1
     state.stage = PipelineStage.INIT
 
-    writer = SummaryWriter(log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id))
+    writer = SummaryWriter(
+        log_dir=str(state.filepath_cfg.tensorboard_dir / state.pipeline_id)
+    )
     try:
         run_iteration(state, tb_writer=writer)
     finally:

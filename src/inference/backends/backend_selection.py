@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import torch
 
-from .backend import ModelBackend
+from .model_backend import ModelBackend
 
 
 def _is_apple_silicon() -> bool:

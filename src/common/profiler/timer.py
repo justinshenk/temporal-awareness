@@ -33,6 +33,7 @@ from typing import Optional
 @dataclass
 class TimingEntry:
     """Single timing entry."""
+
     name: str
     total: float = 0.0
     count: int = 0
@@ -131,7 +132,9 @@ class Profiler:
             prefix = "  " * indent
             avg_ms = entry.avg * 1000
             if entry.count > 1:
-                print(f"{prefix}{entry.name}: {ms:.1f}ms ({entry.count}x, avg {avg_ms:.1f}ms)")
+                print(
+                    f"{prefix}{entry.name}: {ms:.1f}ms ({entry.count}x, avg {avg_ms:.1f}ms)"
+                )
             else:
                 print(f"{prefix}{entry.name}: {ms:.1f}ms")
 

@@ -4,92 +4,75 @@ from __future__ import annotations
 
 from typing import Literal
 
+from ..inference.interventions.intervention_target import InterventionTarget
+from .act_patch_results import (
+    IntervenedChoice,
+    ActPatchTargetResult,
+    ActPatchPairResult,
+)
+
+
 from ..binary_choice import BinaryChoiceRunner
 from ..common.contrastive_pair import ContrastivePair
-from .patching_results import IntervenedChoice, ActivationPatchingResult
-from .patching_target import ActivationPatchingTarget
 
 
-def patch_activation_for_choice(
+def patch_for_choice(
     runner: BinaryChoiceRunner,
-    contrastive_pair: ContrastivePair,
-    target: ActivationPatchingTarget | None = None,
-    mode: Literal["noising", "denoising"] = "denoising",
-) -> ActivationPatchingResult:
-    """Run patching experiments and measure effects on binary choice."""
-    if target is None:
-        target = ActivationPatchingTarget.all()
-
-    # Get base text based on mode
+    pair: ContrastivePair,
+    target: InterventionTarget,
+    mode: Literal["noising", "denoising"],
+    alpha: float = 1.0,
+) -> IntervenedChoice:
+    """Run single patching experiment."""
+    # Get base text and intervention
     if mode == "denoising":
-        base_text = contrastive_pair.short_text
-        seq_len = contrastive_pair.short_length
+        text = pair.short_text
     else:
-        base_text = contrastive_pair.long_text
-        seq_len = contrastive_pair.long_length
+        text = pair.long_text
 
-    # Resolve target to intervention targets and layers
-    targets, layers, patch_together = target.to_intervention_targets(
-        seq_len=seq_len,
-        available_layers=contrastive_pair.available_layers,
+    layers = target.resolve_layers(pair.available_layers)
+    intervention = pair.get_interventions(target, layers, target.component, mode, alpha)
+
+    # Get baseline and intervened choices
+    original = runner.choose(text, pair.choice_prefix, pair.labels, intervention=None)
+    intervened = runner.choose(
+        text, pair.choice_prefix, pair.labels, intervention=intervention
     )
 
-    if not layers:
-        raise ValueError("No cached activations available for patching")
+    # Strip heavy tensors to save memory (we only need metrics)
+    original.pop_heavy()
+    intervened.pop_heavy()
 
-    # Helper to run choice with intervention
-    def choose(intervention):
-        return runner.choose(
-            base_text,
-            contrastive_pair.choice_prefix,
-            contrastive_pair.labels,
-            intervention=intervention,
-        )
+    return IntervenedChoice(original=original, intervened=intervened, mode=mode)
 
-    # Get baseline
-    original = choose(None)
-    results: list[IntervenedChoice] = []
 
-    if patch_together:
-        # Patch all layers together for each target
-        for intervention_target in targets:
-            interventions = contrastive_pair.get_interventions(
-                intervention_target, layers, target.component, mode
-            )
-            if not interventions:
-                continue
+def patch_target(
+    runner: BinaryChoiceRunner,
+    pair: ContrastivePair,
+    target: InterventionTarget,
+) -> ActPatchTargetResult:
+    result = ActPatchTargetResult(target=target)
+    result.denoising = patch_for_choice(runner, pair, target, "denoising")
+    result.noising = patch_for_choice(runner, pair, target, "noising")
+    return result
 
-            results.append(
-                IntervenedChoice(
-                    target=intervention_target,
-                    layer=None,
-                    component=target.component,
-                    original=original,
-                    intervened=choose(interventions),
-                    mode=mode,
-                )
-            )
-    else:
-        # Patch each layer separately
-        for layer in layers:
-            for intervention_target in targets:
-                intervention = contrastive_pair.get_intervention(
-                    intervention_target, layer, target.component, mode
-                )
-                results.append(
-                    IntervenedChoice(
-                        target=intervention_target,
-                        layer=layer,
-                        component=target.component,
-                        original=original,
-                        intervened=choose(intervention),
-                        mode=mode,
-                    )
-                )
 
-    return ActivationPatchingResult(
-        results=results,
-        mode=mode,
-        patched_layers=layers,
-        position_mode=target.position_mode,
-    )
+def patch_pair(
+    runner: BinaryChoiceRunner,
+    pair: ContrastivePair,
+    targets: list[InterventionTarget],
+    modes: tuple[Literal["noising", "denoising"]] = None,
+    alpha: float = 1.0,
+) -> ActPatchPairResult:
+    """Run patching for all targets and modes on a pair."""
+    if modes is None:
+        modes = ("denoising", "noising")
+
+    result = ActPatchPairResult(sample_id=pair.sample_id)
+
+    for target in targets:
+        for mode in modes:
+            choice = patch_for_choice(runner, pair, target, mode, alpha)
+            result.add(target, mode, choice)
+
+    return result

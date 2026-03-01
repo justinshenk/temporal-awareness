@@ -67,45 +67,203 @@ from typing import Any
 # Exclusion Configuration
 # =============================================================================
 
-STDLIB_MODULES = frozenset({
-    "abc", "ast", "asyncio", "base64", "binascii", "builtins", "bz2",
-    "calendar", "cmath", "codecs", "collections", "configparser", "contextlib",
-    "copy", "copyreg", "csv", "ctypes", "dataclasses", "datetime", "decimal",
-    "difflib", "dis", "email", "enum", "errno", "fcntl", "filecmp", "fileinput",
-    "fnmatch", "fractions", "functools", "gc", "getopt", "getpass", "glob",
-    "grp", "gzip", "hashlib", "heapq", "hmac", "html", "http", "imaplib",
-    "importlib", "inspect", "io", "ipaddress", "itertools", "json", "keyword",
-    "linecache", "locale", "logging", "lzma", "mailbox", "math", "mimetypes",
-    "mmap", "multiprocessing", "netrc", "numbers", "operator", "os", "pathlib",
-    "pickle", "platform", "plistlib", "poplib", "posix", "posixpath", "pprint",
-    "profile", "pwd", "py_compile", "pyclbr", "pydoc", "queue", "quopri",
-    "random", "re", "readline", "reprlib", "resource", "rlcompleter", "runpy",
-    "sched", "secrets", "select", "selectors", "shelve", "shlex", "shutil",
-    "signal", "smtplib", "socket", "socketserver", "sqlite3", "ssl", "stat",
-    "statistics", "string", "stringprep", "struct", "subprocess", "sys",
-    "sysconfig", "syslog", "tarfile", "telnetlib", "tempfile", "termios",
-    "textwrap", "threading", "time", "timeit", "token", "tokenize", "trace",
-    "traceback", "tracemalloc", "tty", "turtle", "types", "typing", "unicodedata",
-    "unittest", "urllib", "uu", "uuid", "venv", "warnings", "wave", "weakref",
-    "webbrowser", "winreg", "winsound", "wsgiref", "xdrlib", "xml", "xmlrpc",
-    "zipfile", "zipimport", "zlib",
-})
+STDLIB_MODULES = frozenset(
+    {
+        "abc",
+        "ast",
+        "asyncio",
+        "base64",
+        "binascii",
+        "builtins",
+        "bz2",
+        "calendar",
+        "cmath",
+        "codecs",
+        "collections",
+        "configparser",
+        "contextlib",
+        "copy",
+        "copyreg",
+        "csv",
+        "ctypes",
+        "dataclasses",
+        "datetime",
+        "decimal",
+        "difflib",
+        "dis",
+        "email",
+        "enum",
+        "errno",
+        "fcntl",
+        "filecmp",
+        "fileinput",
+        "fnmatch",
+        "fractions",
+        "functools",
+        "gc",
+        "getopt",
+        "getpass",
+        "glob",
+        "grp",
+        "gzip",
+        "hashlib",
+        "heapq",
+        "hmac",
+        "html",
+        "http",
+        "imaplib",
+        "importlib",
+        "inspect",
+        "io",
+        "ipaddress",
+        "itertools",
+        "json",
+        "keyword",
+        "linecache",
+        "locale",
+        "logging",
+        "lzma",
+        "mailbox",
+        "math",
+        "mimetypes",
+        "mmap",
+        "multiprocessing",
+        "netrc",
+        "numbers",
+        "operator",
+        "os",
+        "pathlib",
+        "pickle",
+        "platform",
+        "plistlib",
+        "poplib",
+        "posix",
+        "posixpath",
+        "pprint",
+        "profile",
+        "pwd",
+        "py_compile",
+        "pyclbr",
+        "pydoc",
+        "queue",
+        "quopri",
+        "random",
+        "re",
+        "readline",
+        "reprlib",
+        "resource",
+        "rlcompleter",
+        "runpy",
+        "sched",
+        "secrets",
+        "select",
+        "selectors",
+        "shelve",
+        "shlex",
+        "shutil",
+        "signal",
+        "smtplib",
+        "socket",
+        "socketserver",
+        "sqlite3",
+        "ssl",
+        "stat",
+        "statistics",
+        "string",
+        "stringprep",
+        "struct",
+        "subprocess",
+        "sys",
+        "sysconfig",
+        "syslog",
+        "tarfile",
+        "telnetlib",
+        "tempfile",
+        "termios",
+        "textwrap",
+        "threading",
+        "time",
+        "timeit",
+        "token",
+        "tokenize",
+        "trace",
+        "traceback",
+        "tracemalloc",
+        "tty",
+        "turtle",
+        "types",
+        "typing",
+        "unicodedata",
+        "unittest",
+        "urllib",
+        "uu",
+        "uuid",
+        "venv",
+        "warnings",
+        "wave",
+        "weakref",
+        "webbrowser",
+        "winreg",
+        "winsound",
+        "wsgiref",
+        "xdrlib",
+        "xml",
+        "xmlrpc",
+        "zipfile",
+        "zipimport",
+        "zlib",
+    }
+)
 
-THIRDPARTY_MODULES = frozenset({
-    "numpy", "np", "torch", "pytest", "pandas", "pd", "sklearn", "matplotlib",
-    "tqdm", "transformers", "datasets", "scipy", "PIL", "cv2",
-})
+THIRDPARTY_MODULES = frozenset(
+    {
+        "numpy",
+        "np",
+        "torch",
+        "pytest",
+        "pandas",
+        "pd",
+        "sklearn",
+        "matplotlib",
+        "tqdm",
+        "transformers",
+        "datasets",
+        "scipy",
+        "PIL",
+        "cv2",
+    }
+)
 
-TYPING_NAMES = frozenset({
-    "annotations", "Any", "Callable", "Dict", "List", "Literal", "Optional",
-    "Sequence", "Tuple", "Type", "Union", "TYPE_CHECKING", "TypeVar", "Generic",
-    "Enum",  # from enum module but commonly imported alongside typing
-    "F",  # torch.nn.functional alias
-})
+TYPING_NAMES = frozenset(
+    {
+        "annotations",
+        "Any",
+        "Callable",
+        "Dict",
+        "List",
+        "Literal",
+        "Optional",
+        "Sequence",
+        "Tuple",
+        "Type",
+        "Union",
+        "TYPE_CHECKING",
+        "TypeVar",
+        "Generic",
+        "Enum",  # from enum module but commonly imported alongside typing
+        "F",  # torch.nn.functional alias
+    }
+)
 
-DATACLASS_NAMES = frozenset({
-    "dataclass", "field", "asdict", "astuple", "fields",
-})
+DATACLASS_NAMES = frozenset(
+    {
+        "dataclass",
+        "field",
+        "asdict",
+        "astuple",
+        "fields",
+    }
+)
 
 EXCLUDED_NAMES = STDLIB_MODULES | THIRDPARTY_MODULES | TYPING_NAMES | DATACLASS_NAMES
 
@@ -113,6 +271,7 @@ EXCLUDED_NAMES = STDLIB_MODULES | THIRDPARTY_MODULES | TYPING_NAMES | DATACLASS_
 # =============================================================================
 # Helpers
 # =============================================================================
+
 
 def _is_module(obj: Any) -> bool:
     return isinstance(obj, type(sys))
@@ -148,6 +307,7 @@ def _get_public_names(module: Any) -> list[str]:
 # Core Export Functions
 # =============================================================================
 
+
 def _export_module_contents(
     module: Any,
     into: dict[str, Any],
@@ -169,16 +329,14 @@ def _export_module_contents(
 
 def _find_modules(directory: Path) -> list[str]:
     """Find Python module names in a directory."""
-    return [
-        p.stem for p in sorted(directory.glob("*.py"))
-        if p.name != "__init__.py"
-    ]
+    return [p.stem for p in sorted(directory.glob("*.py")) if p.name != "__init__.py"]
 
 
 def _find_packages(directory: Path) -> list[str]:
     """Find subpackage names in a directory."""
     return [
-        p.name for p in sorted(directory.iterdir())
+        p.name
+        for p in sorted(directory.iterdir())
         if p.is_dir() and (p / "__init__.py").exists() and not p.name.startswith("_")
     ]
 
@@ -186,6 +344,7 @@ def _find_packages(directory: Path) -> list[str]:
 # =============================================================================
 # Main API
 # =============================================================================
+
 
 def auto_export(
     init_file: str,

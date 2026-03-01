@@ -35,7 +35,9 @@ class PositionsFile:
     """Standardized positions file format."""
 
     model: str  # Model name/path
-    method: str  # Method that generated this (e.g., "activation_patching", "attribution")
+    method: (
+        str  # Method that generated this (e.g., "activation_patching", "attribution")
+    )
     positions: list[PositionSpec]
 
     # Optional metadata
@@ -105,7 +107,9 @@ class PositionsFile:
         """Get position indices, optionally filtered by layer."""
         if layer is None:
             return [p.position for p in self.positions]
-        return [p.position for p in self.positions if p.layer is None or p.layer == layer]
+        return [
+            p.position for p in self.positions if p.layer is None or p.layer == layer
+        ]
 
     def get_top_n(self, n: int) -> list[PositionSpec]:
         """Get top N positions by score."""

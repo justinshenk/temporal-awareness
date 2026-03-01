@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from .entropy_diversity.core import _EPS
+from .entropy_diversity.entropy_primitives import _EPS
 
 
 def argmin(xs: Sequence[float]) -> int:

@@ -143,7 +143,7 @@ def generate_and_extract(
     device = get_device()
     print(f"Loading model: {model_name} on {device}")
     runner = ModelRunner(model_name=model_name, device=device)
-    tokenizer = runner.tokenizer
+    tokenizer = runner._tokenizer
     layers = list(range(runner.n_layers))
 
     updated_samples = []

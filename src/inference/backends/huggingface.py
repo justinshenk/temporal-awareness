@@ -6,15 +6,19 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention
 
 
 class HuggingFaceBackend(Backend):
     """Backend using HuggingFace Transformers for model inference."""
 
+    def __init__(self, runner: Any, tokenizer: Any):
+        super().__init__(runner)
+        self._tokenizer = tokenizer
+
     def get_tokenizer(self):
-        return self.runner._tokenizer
+        return self._tokenizer
 
     def get_n_layers(self) -> int:
         return self.runner._model.config.num_hidden_layers
@@ -33,16 +37,22 @@ class HuggingFaceBackend(Backend):
             return model.gpt_neox.layers  # GPT-NeoX
         raise ValueError(f"Unknown model architecture: {type(model)}")
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        tokens = self.runner._tokenizer(text, return_tensors="pt")
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        tokens = self.runner._tokenizer(
+            text, return_tensors="pt", add_special_tokens=add_special_tokens
+        )
         input_ids = tokens["input_ids"].to(self.runner.device)
         if prepend_bos and self.runner._tokenizer.bos_token_id is not None:
-            bos = torch.tensor([[self.runner._tokenizer.bos_token_id]], device=self.runner.device)
+            bos = torch.tensor(
+                [[self.runner._tokenizer.bos_token_id]], device=self.runner.device
+            )
             input_ids = torch.cat([bos, input_ids], dim=1)
         return input_ids
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.runner._tokenizer.decode(token_ids, skip_special_tokens=True)
+        return self.runner._tokenizer.decode(token_ids, skip_special_tokens=False)
 
     def generate(
         self,
@@ -53,9 +63,11 @@ class HuggingFaceBackend(Backend):
         past_kv_cache: Any = None,
     ) -> str:
         if intervention is not None:
-            raise NotImplementedError("HuggingFace backend does not support interventions")
+            raise NotImplementedError(
+                "HuggingFace backend does not support interventions"
+            )
 
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         gen_kwargs = {
@@ -77,7 +89,7 @@ class HuggingFaceBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             outputs = self.runner._model(input_ids)
             logits = outputs.logits
@@ -92,7 +104,7 @@ class HuggingFaceBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             outputs = self.runner._model(input_ids)
             logits = outputs.logits
@@ -172,7 +184,9 @@ class HuggingFaceBackend(Backend):
         max_new_tokens: int,
         temperature: float,
     ) -> str:
-        raise NotImplementedError("HuggingFace backend does not support cache generation yet")
+        raise NotImplementedError(
+            "HuggingFace backend does not support cache generation yet"
+        )
 
     def init_kv_cache(self):
         raise NotImplementedError("HuggingFace backend does not support KV cache yet")
@@ -190,7 +204,9 @@ class HuggingFaceBackend(Backend):
         input_ids: torch.Tensor,
         interventions: Sequence[Intervention],
     ) -> torch.Tensor:
-        raise NotImplementedError("HuggingFace backend does not support interventions yet")
+        raise NotImplementedError(
+            "HuggingFace backend does not support interventions yet"
+        )
 
     def run_with_intervention_and_cache(
         self,
@@ -198,4 +214,6 @@ class HuggingFaceBackend(Backend):
         interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
-        raise NotImplementedError("HuggingFace backend does not support interventions yet")
+        raise NotImplementedError(
+            "HuggingFace backend does not support interventions yet"
+        )

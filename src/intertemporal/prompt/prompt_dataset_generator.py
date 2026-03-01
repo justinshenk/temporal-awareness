@@ -15,7 +15,11 @@ import random
 import re
 from typing import Optional
 from itertools import product
-from ..formatting.formatting_variation import FormattingVariation, apply_time_variation, get_formatting_id
+from ..formatting.formatting_variation import (
+    FormattingVariation,
+    apply_time_variation,
+    get_formatting_id,
+)
 from .prompt_dataset_config import PromptDatasetConfig, StepType
 from .prompt_dataset import PromptDataset
 from ..common.preference_types import (
@@ -315,11 +319,9 @@ class PromptDatasetGenerator:
         variation = self._process_formatting_variation(variation)
         labels = variation.labels
 
-        # Randomly assign short_term to left (index 0) or right (index 1)
-        # The variation.flip_order adds another layer of randomization
-        short_on_left = random.choice([True, False])
+        short_on_left = True
         if variation.flip_order:
-            short_on_left = not short_on_left
+            short_on_left = random.choice([True, False])
         if short_on_left:
             left_label, right_label = labels[0], labels[1]
             short_term_label, long_term_label = left_label, right_label
