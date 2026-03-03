@@ -265,3 +265,43 @@ class HuggingFaceBackend(Backend):
         """
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory using HF generate() with KV caching."""
+        input_ids = torch.tensor([token_ids], device=self.runner.device)
+        prompt_len = len(token_ids)
+
+        gen_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": temperature > 0,
+            "pad_token_id": self._tokenizer.eos_token_id,
+            "return_dict_in_generate": True,
+            "output_scores": True,
+            "use_cache": True,  # Enable KV caching
+            "repetition_penalty": 1.0,
+            "num_beams": 1,
+        }
+        if temperature > 0:
+            gen_kwargs["temperature"] = temperature
+
+        with torch.no_grad():
+            outputs = self.runner._model.generate(input_ids, **gen_kwargs)
+
+        # outputs.sequences: [1, prompt_len + generated_len]
+        # outputs.scores: tuple of (generated_len) tensors, each [1, vocab_size]
+        all_token_ids = outputs.sequences[0].tolist()
+        generated_ids = all_token_ids[prompt_len:]
+
+        # Compute logprobs from scores
+        all_logprobs = [0.0] * prompt_len  # Prompt tokens get logprob=0
+
+        for i, (score, token_id) in enumerate(zip(outputs.scores, generated_ids)):
+            log_probs = torch.log_softmax(score[0], dim=-1)
+            all_logprobs.append(log_probs[token_id].item())
+
+        return all_token_ids, all_logprobs

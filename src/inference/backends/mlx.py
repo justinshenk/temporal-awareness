@@ -24,6 +24,13 @@ def _get_generate():
     return generate
 
 
+def _get_stream_generate():
+    """Lazy import of mlx_lm stream_generate."""
+    from mlx_lm import stream_generate
+
+    return stream_generate
+
+
 class MLXBackend(Backend):
     """Backend using MLX for Apple Silicon inference."""
 
@@ -497,3 +504,39 @@ class MLXBackend(Backend):
             cache[k] = cache[k].to(self.runner.device)
 
         return logits, cache
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory using stream_generate with KV caching."""
+        stream_generate = _get_stream_generate()
+
+        # Build kwargs for stream_generate
+        kwargs = {}
+        if temperature > 0:
+            from mlx_lm.sample_utils import make_sampler
+
+            kwargs["sampler"] = make_sampler(temp=temperature)
+
+        all_token_ids = list(token_ids)
+        all_logprobs: list[float] = [0.0] * len(token_ids)  # Prompt tokens get 0.0
+
+        for response in stream_generate(
+            self.runner._model,
+            self.runner._tokenizer,
+            prompt=token_ids,
+            max_tokens=max_new_tokens,
+            **kwargs,
+        ):
+            all_token_ids.append(response.token)
+            # logprobs is a vector; get the logprob for the selected token
+            token_logprob = float(response.logprobs[response.token].item())
+            all_logprobs.append(token_logprob)
+
+            if response.finish_reason == "stop":
+                break
+
+        return all_token_ids, all_logprobs

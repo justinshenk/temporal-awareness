@@ -105,7 +105,7 @@ def step_visualize_results(ctx: ExperimentContext) -> None:
 
     for pair_idx, pair in enumerate(ctx.pairs):
         pair_out_dir = ctx.output_dir / f"pair_{pair_idx}"
-        coloring = get_token_coloring_for_pair(pair, ctx.runner)
+        coloring = get_token_coloring_for_pair(pair)
         position_labels = coloring.get_position_labels("short")
         section_markers = coloring.get_section_markers("short")
 

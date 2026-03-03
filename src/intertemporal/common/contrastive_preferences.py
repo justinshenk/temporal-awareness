@@ -58,10 +58,11 @@ class ContrastivePreferences(BaseSchema):
         position_mapping.first_interesting_marker = first_interesting_marker
 
         return ContrastivePair(
-            short_traj=short_traj,
-            long_traj=long_traj,
+            clean_traj=short_traj,
+            corrupted_traj=long_traj,
             position_mapping=position_mapping,
             full_texts=(self.short_term.full_text, self.long_term.full_text),
+            prompt_texts=(self.short_term.prompt_text, self.long_term.prompt_text),
             labels=(
                 self.short_term.short_term_label,
                 self.short_term.long_term_label,

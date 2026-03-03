@@ -43,6 +43,7 @@ class ExperimentConfig(BaseSchema):
     internals_config: dict | None = None
     max_samples: int | None = None
     n_pairs: int = 5
+    debug_by_using_single_sample: bool = False
 
     @property
     def name(self) -> str:
@@ -91,7 +92,10 @@ class ExperimentContext:
         """Contrastive pairs (cached)."""
         if self._pairs is None:
             print("[ctx] Getting contrastive preferences...")
-            all_pref_pairs = get_contrastive_preferences(self.pref_data)
+            all_pref_pairs = get_contrastive_preferences(
+                self.pref_data,
+                debug_by_using_single_sample=self.cfg.debug_by_using_single_sample,
+            )
             print(
                 f"[ctx] Found {len(all_pref_pairs)} contrastive preferences, selecting {self.cfg.n_pairs}"
             )
@@ -171,7 +175,9 @@ class ExperimentContext:
         """First contrastive pair (for coarse patching)."""
         return self.pairs[0] if self.pairs else None
 
-    def save_token_trees(self, pair_idx: int, pair: ContrastivePair, output_dir: Path) -> None:
+    def save_token_trees(
+        self, pair_idx: int, pair: ContrastivePair, output_dir: Path
+    ) -> None:
         """Save analyzed TokenTree for a contrastive pair.
 
         Creates a combined tree with both short and long trajectories,
@@ -187,7 +193,7 @@ class ExperimentContext:
 
         # Build combined tree with both trajectories and fork analysis
         tree = TokenTree.from_trajectories(
-            [pair.short_traj, pair.long_traj],
+            [pair.clean_traj, pair.corrupted_traj],
             groups_per_traj=[[0], [1]],
             fork_arms=[(0, 1)],
         )

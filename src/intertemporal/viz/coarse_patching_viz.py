@@ -121,13 +121,21 @@ def _plot_layer_sweep_single(
     if not layers:
         return
 
+    # Extract baseline info from first result for subtitle
+    baseline_info = ""
+    first_result = layer_data[layers[0]]
+    if first_result.denoising and first_result.denoising.original:
+        orig = first_result.denoising.original
+        lp_diff = orig._divergent_logprobs[0] - orig._divergent_logprobs[1]
+        baseline_info = f"Baseline logprob diff: {lp_diff:.2f}"
+
     # Create figure with 2x6 subplots - LARGE for readability
     fig, axes = plt.subplots(2, 6, figsize=(54, 16), facecolor="white")
     for ax_row in axes:
         for ax in ax_row:
             ax.set_facecolor("white")
     fig.suptitle(
-        f"Coarse Layer Sweep, Clean = {clean_traj}, Steps = {step_size}",
+        f"Coarse Layer Sweep, Clean = {clean_traj}, Steps = {step_size}\n{baseline_info}",
         fontsize=24,
         fontweight="bold",
     )
@@ -164,10 +172,10 @@ def _plot_layer_sweep_single(
         rr_shorts = [m.reciprocal_rank_short for m in all_metrics]
 
         # Recovery/Disruption and recip_rank on primary axis (left)
-        recovery_label = "recovery" if mode == "denoising" else "disruption"
+        metric_label = "recovery" if mode == "denoising" else "disruption"
         ax1.plot(layers, recoveries, linestyle=LINE_STYLES["recovery"],
                  color=METRIC_COLORS["recovery"], linewidth=LINE_WIDTHS["recovery"],
-                 marker=MARKERS["recovery"], markersize=MARKER_SIZES["recovery"], label=recovery_label)
+                 marker=MARKERS["recovery"], markersize=MARKER_SIZES["recovery"], label=metric_label)
         ax1.plot(layers, rr_shorts,
                  linestyle=LINE_STYLES["rr_short"], color=METRIC_COLORS["rr_short"],
                  linewidth=LINE_WIDTHS["rr_short"], marker=MARKERS["rr_short"],
@@ -175,7 +183,7 @@ def _plot_layer_sweep_single(
         ylabel_left = "Recovery / RR" if mode == "denoising" else "Disruption / RR"
         ax1.set_ylabel(ylabel_left, fontsize=16, fontweight="bold")
         ax1.tick_params(axis="y", labelsize=13)
-        ax1.set_ylim(-0.1, 1.1)
+        ax1.set_ylim(-0.1, 1.5)
 
         # Logit diff on secondary axis (right)
         ax1b = ax1.twinx()
@@ -194,11 +202,11 @@ def _plot_layer_sweep_single(
         ax1.grid(True, alpha=0.4, linewidth=1.0)
         ax1b.axhline(y=0, color="gray", linestyle="-", alpha=0.5, linewidth=1)
         ax1.set_xticks(tick_positions)
-        if row_idx == 1:
-            lines1, labels1 = ax1.get_legend_handles_labels()
-            lines1b, labels1b = ax1b.get_legend_handles_labels()
-            ax1.legend(lines1 + lines1b, labels1 + labels1b,
-                       loc="upper left", bbox_to_anchor=(0, -0.10), fontsize=13, ncol=1, frameon=True, fancybox=True)
+        # Add legend below plot for each row
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines1b, labels1b = ax1b.get_legend_handles_labels()
+        ax1.legend(lines1 + lines1b, labels1 + labels1b,
+                   loc="upper left", bbox_to_anchor=(0, -0.10), fontsize=13, ncol=1, frameon=True, fancybox=True)
 
         # ─── Column 2: Probs/Logprobs ───
         ax2 = axes[row_idx, 1]
@@ -252,6 +260,7 @@ def _plot_layer_sweep_single(
         logit_longs = [m.logit_long for m in all_metrics]
         norm_logit_shorts = [m.norm_logit_short for m in all_metrics]
         norm_logit_longs = [m.norm_logit_long for m in all_metrics]
+        rel_logit_deltas = [m.rel_logit_delta for m in all_metrics]
 
         # Check if logits have valid data (not all zeros)
         has_valid_logits = any(v != 0.0 for v in logit_shorts + logit_longs)
@@ -267,6 +276,11 @@ def _plot_layer_sweep_single(
                      markerfacecolor=METRIC_COLORS["logit_long"], label="logit(long)")
 
             ax3b = ax3.twinx()
+            # Plot rel_logit_delta - normalized change from baseline
+            ax3b.plot(layers, rel_logit_deltas, linestyle=LINE_STYLES["rel_logit_delta"],
+                      color=METRIC_COLORS["rel_logit_delta"], linewidth=LINE_WIDTHS["rel_logit_delta"],
+                      marker=MARKERS["rel_logit_delta"], markersize=MARKER_SIZES["rel_logit_delta"],
+                      markerfacecolor=METRIC_COLORS["rel_logit_delta"], label="rel_logit_delta")
             ax3b.plot(layers, norm_logit_shorts, linestyle=LINE_STYLES["norm_logit_short"],
                       color=METRIC_COLORS["norm_logit_short"], linewidth=LINE_WIDTHS["norm_logit_short"],
                       marker=MARKERS["norm_logit_short"], markersize=MARKER_SIZES["norm_logit_short"],
@@ -277,8 +291,16 @@ def _plot_layer_sweep_single(
                       marker=MARKERS["norm_logit_long"], markersize=MARKER_SIZES["norm_logit_long"],
                       markerfacecolor="white", markeredgecolor=METRIC_COLORS["norm_logit_long"],
                       markeredgewidth=2, label="norm_logit(long)")
-            ax3b.set_ylabel("Z-score", fontsize=16)
+            ax3b.set_ylabel("Normalized", fontsize=16)
             ax3b.tick_params(axis="y", labelsize=13)
+            ax3b.axhline(y=0, color="gray", linestyle="--", alpha=0.5, linewidth=1)
+            # Auto-scale y-axis to show rel_logit_delta variation with padding
+            if rel_logit_deltas:
+                rld_min, rld_max = min(rel_logit_deltas), max(rel_logit_deltas)
+                rld_range = rld_max - rld_min
+                if rld_range > 0:
+                    padding = rld_range * 0.2
+                    ax3b.set_ylim(rld_min - padding, rld_max + padding)
 
             ax3.set_xlabel("Layer", fontsize=16)
             ax3.set_ylabel("Raw Logit", fontsize=16)
@@ -446,11 +468,19 @@ def _plot_position_sweep_single(
     prompt_boundary = None
     choice_div_pos = None
     if coloring:
-        prompt_boundary = coloring.short_prompt_len
-        for pos, info in coloring.short_colors.items():
+        prompt_boundary = coloring.clean_prompt_len
+        for pos, info in coloring.clean_colors.items():
             if info.is_choice_divergent:
                 choice_div_pos = pos
                 break
+
+    # Extract baseline info from first result for subtitle
+    baseline_info = ""
+    first_result = position_data[positions[0]]
+    if first_result.denoising and first_result.denoising.original:
+        orig = first_result.denoising.original
+        lp_diff = orig._divergent_logprobs[0] - orig._divergent_logprobs[1]
+        baseline_info = f"Baseline logprob diff: {lp_diff:.2f}"
 
     # Create figure with 2x6 subplots - LARGE for readability
     fig, axes = plt.subplots(2, 6, figsize=(54, 16), facecolor="white")
@@ -458,7 +488,7 @@ def _plot_position_sweep_single(
         for ax in ax_row:
             ax.set_facecolor("white")
     fig.suptitle(
-        f"Coarse Position Sweep, Clean = {clean_traj}, Steps = {step_size}",
+        f"Coarse Position Sweep, Clean = {clean_traj}, Steps = {step_size}\n{baseline_info}",
         fontsize=24,
         fontweight="bold",
     )
@@ -505,17 +535,17 @@ def _plot_position_sweep_single(
         rr_shorts = [m.reciprocal_rank_short for m in all_metrics]
 
         # Recovery/Disruption and recip_rank on primary axis (left)
-        recovery_label = "recovery" if mode == "denoising" else "disruption"
+        metric_label = "recovery" if mode == "denoising" else "disruption"
         ax1.plot(positions, recoveries, linestyle=LINE_STYLES["recovery"],
                  color=METRIC_COLORS["recovery"], linewidth=2.5,
-                 marker=MARKERS["recovery"], markersize=5, label=recovery_label)
+                 marker=MARKERS["recovery"], markersize=5, label=metric_label)
         ax1.plot(positions, rr_shorts,
                  linestyle=LINE_STYLES["rr_short"], color=METRIC_COLORS["rr_short"],
                  linewidth=2, marker=MARKERS["rr_short"], markersize=4,
                  label="recip_rank(clean)")
         ylabel_left = "Recovery / RR" if mode == "denoising" else "Disruption / RR"
         ax1.set_ylabel(ylabel_left, fontsize=10, fontweight="bold")
-        ax1.set_ylim(-0.1, 1.1)
+        ax1.set_ylim(-0.1, 1.5)
 
         # Logit diff on secondary axis (right)
         ax1b = ax1.twinx()
@@ -533,11 +563,11 @@ def _plot_position_sweep_single(
         ax1.grid(True, alpha=0.3)
         ax1.axhline(y=0, color="gray", linestyle="-", alpha=0.5)
         add_vlines(ax1)
-        if row_idx == 1:
-            lines1, labels1 = ax1.get_legend_handles_labels()
-            lines1b, labels1b = ax1b.get_legend_handles_labels()
-            ax1.legend(lines1 + lines1b, labels1 + labels1b,
-                       loc="upper left", bbox_to_anchor=(0, -0.18), fontsize=7, ncol=1, frameon=False)
+        # Add legend below plot for each row
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines1b, labels1b = ax1b.get_legend_handles_labels()
+        ax1.legend(lines1 + lines1b, labels1 + labels1b,
+                   loc="upper left", bbox_to_anchor=(0, -0.18), fontsize=7, ncol=1, frameon=True)
 
         # ─── Column 2: Probs/Logprobs ───
         ax2 = axes[row_idx, 1]
@@ -584,6 +614,7 @@ def _plot_position_sweep_single(
         logit_longs = [m.logit_long for m in all_metrics]
         norm_logit_shorts = [m.norm_logit_short for m in all_metrics]
         norm_logit_longs = [m.norm_logit_long for m in all_metrics]
+        rel_logit_deltas = [m.rel_logit_delta for m in all_metrics]
 
         # Check if logits have valid data
         has_valid_logits = any(v != 0.0 for v in logit_shorts + logit_longs)
@@ -597,13 +628,25 @@ def _plot_position_sweep_single(
                      marker=MARKERS["logit_long"], markersize=4, label="logit(long)")
 
             ax3b = ax3.twinx()
+            # Plot rel_logit_delta - normalized change from baseline
+            ax3b.plot(positions, rel_logit_deltas, linestyle=LINE_STYLES["rel_logit_delta"],
+                      color=METRIC_COLORS["rel_logit_delta"], linewidth=2.5,
+                      marker=MARKERS["rel_logit_delta"], markersize=5, label="rel_logit_delta")
             ax3b.plot(positions, norm_logit_shorts, linestyle=LINE_STYLES["norm_logit_short"],
                       color=METRIC_COLORS["norm_logit_short"], linewidth=1.5,
                       marker=MARKERS["norm_logit_short"], markersize=3, label="norm_logit(short)")
             ax3b.plot(positions, norm_logit_longs, linestyle=LINE_STYLES["norm_logit_long"],
                       color=METRIC_COLORS["norm_logit_long"], linewidth=1.5,
                       marker=MARKERS["norm_logit_long"], markersize=3, label="norm_logit(long)")
-            ax3b.set_ylabel("Z-score", fontsize=9)
+            ax3b.set_ylabel("Normalized", fontsize=9)
+            ax3b.axhline(y=0, color="gray", linestyle="--", alpha=0.5, linewidth=1)
+            # Auto-scale y-axis to show rel_logit_delta variation with padding
+            if rel_logit_deltas:
+                rld_min, rld_max = min(rel_logit_deltas), max(rel_logit_deltas)
+                rld_range = rld_max - rld_min
+                if rld_range > 0:
+                    padding = rld_range * 0.2
+                    ax3b.set_ylim(rld_min - padding, rld_max + padding)
 
             ax3.set_ylabel("Raw Logit", fontsize=10)
         else:
@@ -1073,24 +1116,24 @@ def _plot_sanity_check(
         ax2.text(0.5, 0.5, "No sanity data", ha="center", va="center")
         ax2.axis("off")
 
-    # ─── Panel 3: Per-position logprob difference (short vs long traj) ───
+    # ─── Panel 3: Per-position logprob difference (clean vs corrupted traj) ───
     ax3 = axes[1, 0]
 
     if pair is not None:
         # Get logprobs from both trajectories
-        short_logprobs = pair.short_traj.logprobs
-        long_logprobs = pair.long_traj.logprobs
+        clean_logprobs = pair.clean_traj.logprobs
+        corrupted_logprobs = pair.corrupted_traj.logprobs
         position_mapping = pair.position_mapping
 
         # Compute per-position difference using position mapping
         positions = []
         logprob_diffs = []
 
-        for src_pos in range(len(short_logprobs)):
+        for src_pos in range(len(clean_logprobs)):
             dst_pos = position_mapping.get(src_pos, src_pos)
-            if dst_pos is not None and dst_pos < len(long_logprobs):
+            if dst_pos is not None and dst_pos < len(corrupted_logprobs):
                 positions.append(src_pos)
-                diff = short_logprobs[src_pos] - long_logprobs[dst_pos]
+                diff = clean_logprobs[src_pos] - corrupted_logprobs[dst_pos]
                 logprob_diffs.append(diff)
 
         if positions:
@@ -1190,7 +1233,7 @@ def _visualize_aggregated_coarse(
             ax1.set_ylabel("Mean Recovery", fontsize=11)
             ax1.set_title("Layer Sweep", fontsize=11)
             ax1.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
-            ax1.set_ylim(-0.1, 1.1)
+            ax1.set_ylim(-0.1, 1.5)
             ax1.grid(True, alpha=0.3)
         else:
             ax1.text(0.5, 0.5, "No layer results", ha="center", va="center")
@@ -1207,7 +1250,7 @@ def _visualize_aggregated_coarse(
             ax2.set_ylabel("Mean Recovery", fontsize=11)
             ax2.set_title("Position Sweep", fontsize=11)
             ax2.axhline(y=0.5, color="gray", linestyle="--", alpha=0.5)
-            ax2.set_ylim(-0.1, 1.1)
+            ax2.set_ylim(-0.1, 1.5)
             ax2.grid(True, alpha=0.3)
 
             # Color x-axis tick labels

@@ -6,7 +6,7 @@ IMPORTANT: Use ModelRunner API, never access backends directly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, Union
 
 import numpy as np
 import torch
@@ -15,6 +15,9 @@ from ...common.base_schema import BaseSchema
 from .intervention_target import InterventionTarget
 
 Mode = Literal["add", "set", "mul", "interpolate"]
+
+# Type alias for single or multiple interventions
+Interventions = Union["Intervention", list["Intervention"]]
 
 
 @dataclass

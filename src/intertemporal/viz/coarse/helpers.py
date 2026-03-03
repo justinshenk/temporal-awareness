@@ -26,17 +26,17 @@ def get_tick_spacing(n_points: int) -> int:
 
 def get_tick_color(pos: int, coloring: PairTokenColoring | None) -> str:
     """Get the color for a tick label at given position."""
-    if coloring is None or not coloring.short_colors:
+    if coloring is None or not coloring.clean_colors:
         return TOKEN_COLORS["response_edge"]
 
-    color_info = coloring.short_colors.get(pos)
+    color_info = coloring.clean_colors.get(pos)
     if color_info is None:
         for offset in range(20):
-            if pos + offset in coloring.short_colors:
-                color_info = coloring.short_colors[pos + offset]
+            if pos + offset in coloring.clean_colors:
+                color_info = coloring.clean_colors[pos + offset]
                 break
-            if pos - offset in coloring.short_colors:
-                color_info = coloring.short_colors[pos - offset]
+            if pos - offset in coloring.clean_colors:
+                color_info = coloring.clean_colors[pos - offset]
                 break
 
     return color_info.edgecolor if color_info else TOKEN_COLORS["response_edge"]

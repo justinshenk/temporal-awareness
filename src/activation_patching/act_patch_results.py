@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
 
 from ..common.base_schema import BaseSchema
 from ..common.choice import LabeledSimpleBinaryChoice
+from ..common.types import PatchingMode
 from ..inference.interventions.intervention_target import InterventionTarget
 
 
@@ -16,7 +16,7 @@ class IntervenedChoice(BaseSchema):
 
     original: LabeledSimpleBinaryChoice
     intervened: LabeledSimpleBinaryChoice
-    mode: Literal["noising", "denoising"]
+    mode: PatchingMode
 
     @property
     def recovery(self) -> float:

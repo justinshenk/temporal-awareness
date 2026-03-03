@@ -40,6 +40,8 @@ METRIC_COLORS = {
     # Column 3: Long logits - magenta/pink family (dark to light)
     "logit_long": "#C71585",
     "norm_logit_long": "#FF69B4",
+    # Column 3: Relative logit delta - bright green for visibility
+    "rel_logit_delta": "#00FF00",
     # Fork and Vocab metrics (same colors for same quantities)
     "fork_entropy": OKABE_ITO["blue"],
     "fork_diversity": OKABE_ITO["reddish_purple"],
@@ -75,6 +77,7 @@ LINE_STYLES = {
     "inv_perplexity_short": "-",
     "inv_perplexity_long": "-",
     # Secondary metrics (dashed/dotted)
+    "rel_logit_delta": "-",
     "norm_logit_diff": "--",
     "prob_short": "--",
     "prob_long": "--",
@@ -91,6 +94,7 @@ LINE_STYLES = {
 LINE_WIDTHS = {
     "recovery": 4.0,
     "logit_diff": 3.5,
+    "rel_logit_delta": 4.0,
     "norm_logit_diff": 3.0,
     "logprob_short": 3.5,
     "logprob_long": 3.5,
@@ -118,6 +122,7 @@ LINE_WIDTHS = {
 MARKERS = {
     "recovery": "D",
     "logit_diff": "o",
+    "rel_logit_delta": "H",  # Hexagon for rel_logit_delta
     "norm_logit_diff": "s",
     "logprob_short": "o",
     "logprob_long": "^",
@@ -145,6 +150,7 @@ MARKERS = {
 MARKER_SIZES = {
     "recovery": 12,
     "logit_diff": 10,
+    "rel_logit_delta": 12,
     "norm_logit_diff": 9,
     "logprob_short": 10,
     "logprob_long": 10,

@@ -436,3 +436,24 @@ class NNsightBackend(Backend):
         """
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Not implemented for NNsight backend.
+
+        NNsight wraps models with a tracing API that doesn't expose HuggingFace's
+        KV cache. The underlying model uses meta tensors for lazy loading, making
+        direct access to generate() impossible. Using nnsight's trace() for each
+        token is actually slower than the baseline due to tracing overhead.
+
+        For efficient trajectory generation, use HuggingFace or MLX backends.
+        """
+        raise NotImplementedError(
+            "generate_trajectory not supported for NNsight backend. "
+            "NNsight's tracing API doesn't expose KV cache for efficient generation. "
+            "Use HuggingFace or MLX backend for trajectory generation."
+        )
