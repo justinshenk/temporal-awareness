@@ -38,6 +38,7 @@ def load_and_merge_pairs(
     input_file: Path,
     template: str,
     option_keys: list[str],
+    text_order: list[str],
 ) -> tuple[list[str], list[str]]:
     """Load pairs from ``input_file`` and return both clean and swapped prompts.
 
@@ -45,6 +46,8 @@ def load_and_merge_pairs(
         input_file: Path to JSON file containing question pairs
         template: Template string for formatting prompts
         option_keys: List of option keys to use
+        text_order: List of keys specifying the order in which to extract fields
+            from each pair dict (e.g. ``["question", "immediate", "long_term"]``)
 
     Returns:
         Tuple of (clean_prompts, swapped_prompts)
@@ -63,9 +66,9 @@ def load_and_merge_pairs(
             prompt = pair
         elif isinstance(pair, dict):
             prompt = template.format(
-                pair.get("question", ""),
-                pair.get("immediate", ""),
-                pair.get("long_term", ""),
+                pair.get(text_order[0], ""),
+                pair.get(text_order[1], ""),
+                pair.get(text_order[2], ""),
             )
         else:
             raise RuntimeError("Incorrect type for pairs")
@@ -147,12 +150,6 @@ def main() -> None:
     metric_type: str = config["parameters"]["metric_type"]
     steps: list[int] = config["parameters"]["steps"]
 
-    # Validate metric type matches implementation
-    if metric_type != "logit-diff":
-        raise ValueError(
-            f"Only 'logit-diff' metric is currently supported, got '{metric_type}'"
-        )
-
     config_stem = args.config.stem
 
     input_file_path = data_loc / data_file
@@ -191,10 +188,10 @@ def main() -> None:
 
     token_a = tokenizer.tokenizer.encode(
         extract_alnum(option_keys[0]), add_special_tokens=False
-    )
+    )[0]
     token_b = tokenizer.tokenizer.encode(
         extract_alnum(option_keys[1]), add_special_tokens=False
-    )
+    )[0]
 
     metrics = {
         "logit_A": lambda logits: logits[:, -1, token_a].mean(),
@@ -215,11 +212,13 @@ def main() -> None:
         input_file_path,
         template=template,
         option_keys=option_keys,
+        text_order=["question", "immediate", "long_term"],
     )
     all_clean_prompts_swapped, all_corrupted_prompts_swapped = load_and_merge_pairs(
         input_file_path,
         template=template,
-        option_keys=list(reversed(option_keys)),
+        option_keys=option_keys,
+        text_order=["question", "long_term", "immediate"],
     )
 
     option_orders = [
@@ -309,7 +308,9 @@ def main() -> None:
                     }
 
                     clean_logits_list = torch.cat(all_clean_logits, dim=0).tolist()
-                    corrupted_logits_list = torch.cat(all_corrupted_logits, dim=0).tolist()
+                    corrupted_logits_list = torch.cat(
+                        all_corrupted_logits, dim=0
+                    ).tolist()
 
                     output_dict["steps"][num_steps] = {
                         **raw_scores_dict,
@@ -317,12 +318,14 @@ def main() -> None:
                         "corrupted_logits": corrupted_logits_list,
                     }
 
-                    run.log({
-                        **raw_scores_dict,
-                        "clean_logits": clean_logits_list,
-                        "corrupted_logits": corrupted_logits_list,
-                        "num_steps": num_steps,
-                    })
+                    run.log(
+                        {
+                            **raw_scores_dict,
+                            "clean_logits": clean_logits_list,
+                            "corrupted_logits": corrupted_logits_list,
+                            "num_steps": num_steps,
+                        }
+                    )
 
                 # Write complete results with all steps to file
                 output_file.write_text(json.dumps(output_dict, indent=2))
