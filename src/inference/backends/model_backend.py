@@ -179,7 +179,7 @@ class Backend(ABC):
         Returns:
             Tuple of (all_token_ids, logprobs) where logprobs[i] is the
             log probability of token_ids[i] given the previous tokens.
-            Prompt tokens have logprob=0.0.
+            The first token has logprob=0.0 (no prior context).
         """
         ...
 

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+# Toggle between full_text and prompt_text for patching
+# full_text includes the model's response in the user message (works correctly)
+# prompt_text uses only the prompt without response (gives flat results)
+USING_FULL_TEXT = True
+
 from .act_patch_results import (
     ActPatchPairResult,
     ActPatchTargetResult,
@@ -34,21 +39,21 @@ def patch_for_choice(
     Returns:
         IntervenedChoice with original and intervened model outputs
     """
-    # Get base prompt based on mode
-    # denoising: run on clean prompt, patch corrupted activations
-    # noising: run on corrupted prompt, patch clean activations
-    if mode == "denoising":
-        prompt = pair.clean_prompt
+    # Get base text based on mode
+    # denoising: run on clean text, patch corrupted activations
+    # noising: run on corrupted text, patch clean activations
+    if USING_FULL_TEXT:
+        text = pair.clean_text if mode == "denoising" else pair.corrupted_text
     else:
-        prompt = pair.corrupted_prompt
+        text = pair.clean_prompt if mode == "denoising" else pair.corrupted_prompt
 
     layers = target.resolve_layers(pair.available_layers)
     intervention = pair.get_interventions(target, layers, target.component, mode, alpha)
 
     # Get baseline and intervened choices
-    original = runner.choose(prompt, pair.choice_prefix, pair.labels, intervention=None)
+    original = runner.choose(text, pair.choice_prefix, pair.labels, intervention=None)
     intervened = runner.choose(
-        prompt, pair.choice_prefix, pair.labels, intervention=intervention
+        text, pair.choice_prefix, pair.labels, intervention=intervention
     )
 
     # Strip heavy tensors to save memory (we only need metrics)

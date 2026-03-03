@@ -362,7 +362,6 @@ class TransformerLensBackend(Backend):
     ) -> tuple[list[int], list[float]]:
         """Generate trajectory with KV caching using TransformerLens."""
         all_token_ids = list(token_ids)
-        all_logprobs: list[float] = [0.0] * len(token_ids)  # Prompt tokens get 0.0
 
         # Initialize KV cache for efficient generation
         kv_cache = self.init_kv_cache()
@@ -372,6 +371,17 @@ class TransformerLensBackend(Backend):
             input_ids = torch.tensor([all_token_ids], device=self.runner.device)
             logits = self.runner._model(input_ids, past_kv_cache=kv_cache)
             next_logits = logits[0, -1, :]
+
+            # Compute logprobs for prefilled tokens from the forward pass
+            prefix_log_probs = torch.log_softmax(logits[0], dim=-1)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(len(token_ids) - 1):
+            next_token = token_ids[i + 1]
+            all_logprobs.append(prefix_log_probs[i, next_token].item())
+
+        with torch.no_grad():
 
             for _ in range(max_new_tokens):
                 # Sample next token

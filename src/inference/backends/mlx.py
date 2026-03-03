@@ -512,7 +512,21 @@ class MLXBackend(Backend):
         temperature: float,
     ) -> tuple[list[int], list[float]]:
         """Generate trajectory using stream_generate with KV caching."""
+        mx = _get_mx()
         stream_generate = _get_stream_generate()
+
+        # Compute logprobs for prefilled tokens via forward pass
+        input_mx = mx.array([token_ids])
+        logits = self.runner._model(input_mx)
+        log_probs = mx.softmax(logits, axis=-1)
+        log_probs = mx.log(log_probs + 1e-12)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(len(token_ids) - 1):
+            next_token = token_ids[i + 1]
+            lp = float(log_probs[0, i, next_token].item())
+            all_logprobs.append(lp)
 
         # Build kwargs for stream_generate
         kwargs = {}
@@ -522,7 +536,6 @@ class MLXBackend(Backend):
             kwargs["sampler"] = make_sampler(temp=temperature)
 
         all_token_ids = list(token_ids)
-        all_logprobs: list[float] = [0.0] * len(token_ids)  # Prompt tokens get 0.0
 
         for response in stream_generate(
             self.runner._model,

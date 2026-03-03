@@ -645,15 +645,24 @@ class PyveneBackend(Backend):
         with torch.no_grad():
             outputs = self.runner._model.generate(input_ids, **gen_kwargs)
 
+            # Compute logprobs for prefilled tokens via forward pass
+            prefix_outputs = self.runner._model(input_ids)
+            prefix_logits = prefix_outputs.logits[0]
+            prefix_log_probs = torch.log_softmax(prefix_logits, dim=-1)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(prompt_len - 1):
+            next_token = token_ids[i + 1]
+            all_logprobs.append(prefix_log_probs[i, next_token].item())
+
         # outputs.sequences: [1, prompt_len + generated_len]
         # outputs.scores: tuple of (generated_len) tensors, each [1, vocab_size]
         all_token_ids = outputs.sequences[0].tolist()
         generated_ids = all_token_ids[prompt_len:]
 
-        # Compute logprobs from scores
-        all_logprobs = [0.0] * prompt_len  # Prompt tokens get logprob=0
-
-        for i, (score, token_id) in enumerate(zip(outputs.scores, generated_ids)):
+        # Append logprobs for generated tokens from scores
+        for score, token_id in zip(outputs.scores, generated_ids):
             log_probs = torch.log_softmax(score[0], dim=-1)
             all_logprobs.append(log_probs[token_id].item())
 
