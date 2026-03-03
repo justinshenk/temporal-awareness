@@ -72,8 +72,28 @@ class ModelRunner:
     ############################
 
     @property
-    def tokenizer(self):
+    def _tokenizer(self):
         return self._backend.get_tokenizer()
+
+    @property
+    def bos_token_id(self) -> int | None:
+        return self._tokenizer.bos_token_id
+
+    @property
+    def eos_token_id(self) -> int | None:
+        return self._tokenizer.eos_token_id
+
+    @property
+    def pad_token_id(self) -> int | None:
+        return self._tokenizer.pad_token_id
+
+    @property
+    def bos_token(self) -> str | None:
+        return self._tokenizer.bos_token
+
+    @property
+    def eos_token(self) -> str | None:
+        return self._tokenizer.eos_token
 
     @property
     def n_layers(self) -> int:
@@ -83,20 +103,45 @@ class ModelRunner:
     def d_model(self) -> int:
         return self._backend.get_d_model()
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into tensor of token IDs.
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into tensor of token IDs.
 
         Args:
-            text: Input text to tokenize
+            text: Input text to encode
+            add_special_tokens: Whether to add special tokens (default True)
             prepend_bos: Whether to prepend BOS token (default False)
 
         Returns:
             Token IDs tensor of shape [1, seq_len]
         """
-        return self._backend.tokenize(text, prepend_bos=prepend_bos)
+        return self._backend.encode(
+            text, add_special_tokens=add_special_tokens, prepend_bos=prepend_bos
+        )
+
+    def encode_ids(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> list[int]:
+        """Encode text into list of token IDs.
+
+        Convenience method that returns a list instead of tensor.
+        """
+        tensor = self.encode(
+            text, add_special_tokens=add_special_tokens, prepend_bos=prepend_bos
+        )
+        return tensor.squeeze().tolist()
 
     def decode(self, token_ids: torch.Tensor) -> str:
+        """Decode tensor of token IDs to string."""
         return self._backend.decode(token_ids)
+
+    def decode_ids(self, token_ids: list[int]) -> str:
+        """Decode list of token IDs to string.
+
+        Convenience method that accepts a list instead of tensor.
+        """
+        return self._backend.decode(torch.tensor(token_ids))
 
     # High-level API
 
@@ -116,10 +161,112 @@ class ModelRunner:
             formatted, max_new_tokens, temperature, intervention, past_kv_cache
         )
 
+    @profile
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+        intervention: Optional[Intervention] = None,
+    ) -> GeneratedTrajectory:
+        """Generate text autoregressively and return trajectory with logprobs.
+
+        Args:
+            token_ids: Initial token IDs to start generation from
+            max_new_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 = greedy)
+            intervention: Optional intervention to apply during generation
+
+        Returns:
+            GeneratedTrajectory containing all tokens (input + generated) with logprobs
+        """
+        all_token_ids = list(token_ids)
+        all_logits: list[torch.Tensor] = []
+
+        interventions = (
+            [intervention] if isinstance(intervention, Intervention) else intervention
+        )
+
+        ctx = (
+            torch.inference_mode()
+            if self._backend.supports_inference_mode
+            else torch.no_grad()
+        )
+
+        with ctx:
+            for _ in range(max_new_tokens):
+                input_ids = torch.tensor([all_token_ids], device=self.device)
+                if interventions:
+                    logits_batch = self._backend.run_with_intervention(
+                        input_ids, interventions
+                    )
+                else:
+                    logits_batch = self._backend.forward(input_ids)
+                # logits_batch is [1, seq_len, vocab_size]
+                # logits[i] predicts the next token after position i
+
+                if len(all_logits) == 0:
+                    # First iteration: collect logits for all input positions
+                    all_logits.extend(list(logits_batch[0]))
+                else:
+                    # Subsequent iterations: only collect last position
+                    all_logits.append(logits_batch[0, -1, :])
+
+                # Sample from last position's logits
+                next_logits = logits_batch[0, -1, :]
+                if temperature == 0.0:
+                    next_token = next_logits.argmax().item()
+                else:
+                    probs = torch.softmax(next_logits / temperature, dim=-1)
+                    next_token = torch.multinomial(probs, 1).item()
+
+                all_token_ids.append(next_token)
+
+                if next_token == self.eos_token_id:
+                    break
+
+        # all_logits[i] predicts token_ids[i+1]
+        # from_inference expects logits of shape [n_sequence, vocab_size]
+        # Add dummy logits for the last position (no prediction after final token)
+        vocab_size = all_logits[0].shape[-1]
+        dummy_logits = torch.zeros(vocab_size, device=self.device, dtype=all_logits[0].dtype)
+        all_logits.append(dummy_logits)
+
+        full_logits = torch.stack(all_logits, dim=0)
+
+        return GeneratedTrajectory.from_inference(
+            all_token_ids, full_logits, self.device
+        )
+
+    @profile
+    def generate_trajectory_from_prompt(
+        self,
+        prompt: str,
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+        prefilling: str = "",
+        intervention: Optional[Intervention] = None,
+    ) -> GeneratedTrajectory:
+        """Generate text from prompt and return trajectory with logprobs.
+
+        Args:
+            prompt: Input prompt text
+            max_new_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 = greedy)
+            prefilling: Optional text to prepend to model response
+            intervention: Optional intervention to apply during generation
+
+        Returns:
+            GeneratedTrajectory containing all tokens with logprobs
+        """
+        formatted = self.apply_chat_template(prompt) + prefilling
+        token_ids = self.encode_ids(formatted, add_special_tokens=True)
+        return self.generate_trajectory(token_ids, max_new_tokens, temperature, intervention)
+
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
     @profile
-    def generate_trajectory(
+    def compute_trajectory(
         self,
         token_ids: list[int],
     ) -> GeneratedTrajectory:
@@ -134,15 +281,15 @@ class ModelRunner:
         Returns:
             GeneratedTrajectory with per-token logprobs/logits and full vocab tensor
         """
-        return self.get_prob_trajectories_for_batch([token_ids])[0]
+        return self.compute_trajectories_batch([token_ids])[0]
 
     @profile
-    def get_prob_trajectories_for_batch(
+    def compute_trajectories_batch(
         self,
         token_ids_batch: list[list[int]],
     ) -> list[GeneratedTrajectory]:
         max_len = max(len(ids) for ids in token_ids_batch)
-        pad_token = self.tokenizer.pad_token_id or 0
+        pad_token = self._tokenizer.pad_token_id or 0
         padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
         input_ids_batch = torch.tensor(padded, device=self.device)
 
@@ -181,7 +328,7 @@ class ModelRunner:
             Tuple of (logits, cache) where cache maps hook names to activation tensors
         """
         formatted = self.apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
         return self._backend.run_with_cache(input_ids, names_filter, past_kv_cache)
 
     @profile
@@ -202,7 +349,7 @@ class ModelRunner:
             Logits tensor of shape [1, seq_len, vocab_size]
         """
         formatted = self.apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
@@ -220,7 +367,7 @@ class ModelRunner:
     ) -> tuple[torch.Tensor, dict]:
         """Run forward with intervention AND capture activations with gradients."""
         formatted = self.apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
@@ -237,13 +384,13 @@ class ModelRunner:
     ) -> tuple[torch.Tensor, dict]:
         """Run forward pass with gradients enabled for attribution patching."""
         formatted = self.apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
         return self._backend.run_with_cache_and_grad(input_ids, names_filter)
 
     # Complex Interpretability APIs (for classes like BinaryChoiceRunner)
 
     @profile
-    def generate_trajectory_with_intervention(
+    def compute_trajectory_with_intervention(
         self,
         token_ids: list[int],
         intervention: Union[Intervention, list[Intervention]] | None = None,
@@ -269,7 +416,7 @@ class ModelRunner:
         return GeneratedTrajectory.from_inference(token_ids, logits, self.device)
 
     @profile
-    def generate_trajectory_with_cache(
+    def compute_trajectory_with_cache(
         self,
         token_ids: list[int],
         names_filter: Optional[callable] = None,
@@ -293,7 +440,7 @@ class ModelRunner:
         )
 
     @profile
-    def generate_trajectory_with_intervention_and_cache(
+    def compute_trajectory_with_intervention_and_cache(
         self,
         token_ids: list[int],
         intervention: Union[Intervention, list[Intervention]] | None = None,
@@ -322,6 +469,77 @@ class ModelRunner:
             token_ids, logits, self.device, internals=internals_cache
         )
 
+    @profile
+    def compute_trajectory_with_cache_and_grad(
+        self,
+        token_ids: list[int],
+        names_filter: Optional[callable] = None,
+    ) -> GeneratedTrajectory:
+        """Generate trajectory with cache and gradients enabled.
+
+        Similar to compute_trajectory_with_cache, but keeps gradients
+        enabled for attribution patching. The returned trajectory's
+        internals will have requires_grad=True.
+
+        Args:
+            token_ids: Full token ID sequence
+            names_filter: Function to filter which hooks to cache
+
+        Returns:
+            GeneratedTrajectory with internals that support gradient computation
+        """
+        input_ids = torch.tensor([token_ids], device=self.device)
+
+        # No inference_mode context - keep gradients enabled
+        logits_batch, internals_cache = self._backend.run_with_cache_and_grad(
+            input_ids, names_filter
+        )  # [1, seq_len, vocab_size]
+
+        logits = logits_batch[0]  # [seq_len, vocab_size]
+        return GeneratedTrajectory.from_inference(
+            token_ids, logits, self.device, internals=internals_cache
+        )
+
+    @profile
+    def get_embeddings(self, token_ids: list[int]) -> torch.Tensor:
+        """Get token embeddings from the model.
+
+        Args:
+            token_ids: List of token IDs
+
+        Returns:
+            Embeddings tensor [1, seq_len, d_model]
+        """
+        input_ids = torch.tensor([token_ids], device=self.device)
+        return self._backend.get_embeddings(input_ids)
+
+    @property
+    def W_E(self) -> torch.Tensor:
+        """Token embedding matrix W_E.
+
+        Returns:
+            Embedding matrix of shape [vocab_size, d_model]
+        """
+        return self._backend.get_W_E()
+
+    @property
+    def W_U(self) -> torch.Tensor:
+        """Unembedding matrix W_U.
+
+        Returns:
+            Unembedding matrix of shape [d_model, vocab_size]
+        """
+        return self._backend.get_W_U()
+
+    @property
+    def b_U(self) -> torch.Tensor | None:
+        """Unembedding bias b_U.
+
+        Returns:
+            Unembedding bias of shape [vocab_size], or None if no bias
+        """
+        return self._backend.get_b_U()
+
     # Basic Forward API
 
     @profile
@@ -340,7 +558,7 @@ class ModelRunner:
             Logits tensor of shape [1, seq_len, vocab_size]
         """
         formatted = self.apply_chat_template(prompt)
-        input_ids = self.tokenize(formatted, prepend_bos=prepend_bos)
+        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
 
         ctx = (
             torch.inference_mode()
@@ -378,16 +596,20 @@ class ModelRunner:
 
     def apply_chat_template(self, prompt: str) -> str:
         if not self._is_chat_model:
+            # print(f"apply_chat_template: {self.model_name} is not chat model")
             return prompt
-        tokenizer = self.tokenizer
+        tokenizer = self._tokenizer
         if hasattr(tokenizer, "apply_chat_template"):
+            # print(f"apply_chat_template: True for {self.model_name}")
             return tokenizer.apply_chat_template(
                 [{"role": "user", "content": prompt}],
                 tokenize=False,
                 add_generation_prompt=True,
             )
 
-        print("apply_chat_template: tokenizer does not have apply_chat_template")
+        print(
+            f"apply_chat_template: tokenizer does not have apply_chat_template for {self.model_name}"
+        )
         return prompt
 
     ##################
@@ -423,8 +645,8 @@ class ModelRunner:
             self.model_name, torch_dtype=self.dtype
         ).to(self.device)
         self._model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self._backend = PyveneBackend(self)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self._backend = PyveneBackend(self, tokenizer)
 
     def _init_huggingface(self) -> None:
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -434,45 +656,37 @@ class ModelRunner:
             self.model_name, torch_dtype=self.dtype
         ).to(self.device)
         self._model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self._backend = HuggingFaceBackend(self)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self._backend = HuggingFaceBackend(self, tokenizer)
 
     def _init_mlx(self) -> None:
         from mlx_lm import load
 
         print(f"Loading {self.model_name} (MLX)...")
-        self._model, self._tokenizer = load(self.model_name)
-        self._backend = MLXBackend(self)
+        self._model, tokenizer = load(self.model_name)
+        self._backend = MLXBackend(self, tokenizer)
 
     def _detect_chat_model(self, model_name: str) -> bool:
-        """Detect if model is a chat/instruct model.
+        """Detect if model is a chat/instruct model based on name.
 
-        Detection strategy:
-        1. Check if tokenizer has a chat_template (most reliable)
-        2. Check for base model indicators in name (return False)
-        3. Fall back to name heuristics for instruct indicators
+        Detection strategy (name-based only, tokenizer check was unreliable):
+        1. Check for explicit base model indicators (return False)
+        2. Special case Qwen3 (always chat/instruct, no base variant exists)
+        3. Check for instruct/chat/etc. indicators in name
         """
-        # Primary method: check if tokenizer has a chat template
-        tokenizer = self.tokenizer
-        if tokenizer is not None:
-            chat_template = getattr(tokenizer, "chat_template", None)
-            if chat_template:
-                # chat_template can be a string or dict (for multiple templates)
-                if isinstance(chat_template, str) and chat_template.strip():
-                    return True
-                if isinstance(chat_template, dict) and chat_template:
-                    return True
-
-        # Secondary method: name-based heuristics
         if not model_name:
             model_name = self.model_name
         name = model_name.lower()
 
-        # Explicit base model indicators (e.g., Qwen3-0.6B-Base)
+        # Explicit base model indicators
         if any(x in name for x in ["-base", "_base"]):
             return False
 
-        # Instruct/chat model indicators
+        # Qwen3 models are instruct/reasoning by default (no base variant)
+        if "qwen3" in name or "qwen/qwen3" in name:
+            return True
+
+        # Explicit chat/instruct indicators
         return any(x in name for x in ["instruct", "chat", "-it", "rlhf"])
 
     def _detect_reasoning_model(self) -> bool:
@@ -491,7 +705,7 @@ class ModelRunner:
             return False
 
         # Primary method: check chat_template for thinking tokens
-        tokenizer = self.tokenizer
+        tokenizer = self._tokenizer
         if tokenizer is not None:
             chat_template = getattr(tokenizer, "chat_template", None)
             if chat_template:

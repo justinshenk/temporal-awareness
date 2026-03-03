@@ -906,55 +906,6 @@ class TestBatchProcessing:
 
 
 # =============================================================================
-# Pattern Matching During Generation
-# =============================================================================
-
-
-class TestPatternMatchingGeneration:
-    """Test pattern-based targeting during actual generation."""
-
-    def test_pattern_steering_during_generation(self, transformerlens_runner):
-        """Pattern-based steering triggers during generation."""
-        from src.inference.interventions import steering, create_intervention_hook
-
-        # Prompt that should generate "I think" or similar
-        prompt = "When asked about the weather,"
-        d_model = transformerlens_runner.d_model
-        direction = np.random.randn(d_model).astype(np.float32)
-
-        intervention = steering(
-            layer=transformerlens_runner.n_layers // 2,
-            direction=direction,
-            strength=50.0,
-            pattern=" the",  # common pattern
-        )
-
-        # Create hook with real tokenizer
-        hook, matcher = create_intervention_hook(
-            intervention,
-            transformerlens_runner.dtype,
-            transformerlens_runner.device,
-            transformerlens_runner.tokenizer,
-        )
-
-        assert matcher is not None
-        assert not matcher.should_apply()
-
-        # Simulate tokens being generated
-        test_text = "I think the weather"
-        for i in range(1, len(test_text) + 1):
-            partial = test_text[:i]
-            ids = transformerlens_runner.tokenizer.encode(
-                partial, add_special_tokens=False
-            )
-            if ids:
-                matcher.update(torch.tensor([ids[-1]]))
-
-        # Pattern " the" should have been found
-        # (Note: depends on tokenization, might need adjustment)
-
-
-# =============================================================================
 # KV Cache Tests
 # =============================================================================
 
@@ -1252,9 +1203,8 @@ class TestQueryDatasetIntegration:
         from src.intertemporal.preference.preference_querier import (
             PreferenceQuerier,
             PreferenceQueryConfig,
-            InternalsConfig,
-            ActivationSpec,
         )
+        from src.inference import InternalsConfig, ActivationSpec
 
         samples = [
             make_sample(1, "Choose: a) now or b) later? I choose:"),

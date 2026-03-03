@@ -14,7 +14,7 @@ from ..inference import GeneratedTrajectory
 from .choice_utils import encode_into_trajectory_ids
 from ..common.choice import LabeledSimpleBinaryChoice, GroupedBinaryChoice
 from ..common.token_tree import TokenTree
-from ..common.analysis.trajectory_branch_node_analysis import analyze_token_tree
+from ..common.analysis.analyze import analyze_token_tree
 from ..common.profiler import profile
 
 
@@ -58,7 +58,7 @@ class BinaryChoiceRunner(ModelRunner):
         """
 
         prompt = self.apply_chat_template(prompt)
-        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=True)
+        prompt_ids = self.encode_ids(prompt, add_special_tokens=True)
 
         # Auto-prepend skip thinking prefix for reasoning models
         effective_prefix = self.skip_thinking_prefix + choice_prefix
@@ -81,12 +81,22 @@ class BinaryChoiceRunner(ModelRunner):
 
         # ── Assemble result ──────────────────────────────────────────────
 
+        # Get W_U and b_U for TCB computation if available
+        try:
+            W_U = self.W_U
+            b_U = self.b_U
+        except (NotImplementedError, AttributeError):
+            W_U = None
+            b_U = None
+
         return LabeledSimpleBinaryChoice.from_trajectories(
             traj_a,
             traj_b,
             labels=labels,
             response_texts=(response_text_a, response_text_b),
             trunk=prompt_ids,
+            W_U=W_U,
+            b_U=b_U,
         )
 
     # ══════════════════════════════════════════════════════════════════════
@@ -147,17 +157,25 @@ class BinaryChoiceRunner(ModelRunner):
 
         # ── Batched inference ────────────────────────────────────────────
 
-        trajs_a = self.get_prob_trajectories_for_batch(batch_ids_a)
-        trajs_b = self.get_prob_trajectories_for_batch(batch_ids_b)
+        trajs_a = self.compute_trajectories_batch(batch_ids_a)
+        trajs_b = self.compute_trajectories_batch(batch_ids_b)
 
         # ── Compute trunk (prompt_ids) per prompt ────────────────────────
 
         prompt_ids_list = [
-            self.tokenizer.encode(self.apply_chat_template(p), add_special_tokens=True)
+            self.encode_ids(self.apply_chat_template(p), add_special_tokens=True)
             for p in prompts
         ]
 
         # ── Assemble results ─────────────────────────────────────────────
+
+        # Get W_U and b_U for TCB computation if available
+        try:
+            W_U = self.W_U
+            b_U = self.b_U
+        except (NotImplementedError, AttributeError):
+            W_U = None
+            b_U = None
 
         results: list[LabeledSimpleBinaryChoice] = []
         for i in range(n):
@@ -167,6 +185,8 @@ class BinaryChoiceRunner(ModelRunner):
                 labels=labels[i],
                 response_texts=(response_texts_a[i], response_texts_b[i]),
                 trunk=prompt_ids_list[i],
+                W_U=W_U,
+                b_U=b_U,
             )
             results.append(choice)
         return results
@@ -238,7 +258,7 @@ class BinaryChoiceRunner(ModelRunner):
             raise ValueError("labels must contain at least one label pair")
 
         prompt = self.apply_chat_template(prompt)
-        prompt_ids = self.tokenizer.encode(prompt, add_special_tokens=True)
+        prompt_ids = self.encode_ids(prompt, add_special_tokens=True)
 
         # Auto-prepend skip thinking prefix for reasoning models
         effective_prefix = self.skip_thinking_prefix + choice_prefix
@@ -262,21 +282,21 @@ class BinaryChoiceRunner(ModelRunner):
             trajs = []
             for token_ids in all_token_ids:
                 if intervention and with_cache:
-                    traj = self.generate_trajectory_with_intervention_and_cache(
+                    traj = self.compute_trajectory_with_intervention_and_cache(
                         token_ids, intervention, names_filter
                     )
                 elif intervention:
-                    traj = self.generate_trajectory_with_intervention(
+                    traj = self.compute_trajectory_with_intervention(
                         token_ids, intervention, names_filter
                     )
                 else:
-                    traj = self.generate_trajectory_with_cache(
+                    traj = self.compute_trajectory_with_cache(
                         token_ids, names_filter, past_kv_cache
                     )
                 trajs.append(traj)
         else:
             # Batched inference
-            trajs = self.get_prob_trajectories_for_batch(all_token_ids)
+            trajs = self.compute_trajectories_batch(all_token_ids)
 
         # ── Build tree structure ────────────────────────────────────────
 
@@ -331,32 +351,32 @@ class BinaryChoiceRunner(ModelRunner):
         GeneratedTrajectory instances with internals attached.
         """
         if intervention and with_cache:
-            traj_a = self.generate_trajectory_with_intervention_and_cache(
+            traj_a = self.compute_trajectory_with_intervention_and_cache(
                 token_ids_a, intervention, names_filter
             )
-            traj_b = self.generate_trajectory_with_intervention_and_cache(
+            traj_b = self.compute_trajectory_with_intervention_and_cache(
                 token_ids_b, intervention, names_filter
             )
             return traj_a, traj_b
 
         if intervention:
-            traj_a = self.generate_trajectory_with_intervention(
+            traj_a = self.compute_trajectory_with_intervention(
                 token_ids_a, intervention, names_filter
             )
-            traj_b = self.generate_trajectory_with_intervention(
+            traj_b = self.compute_trajectory_with_intervention(
                 token_ids_b, intervention, names_filter
             )
             return traj_a, traj_b
 
         if with_cache:
-            traj_a = self.generate_trajectory_with_cache(
+            traj_a = self.compute_trajectory_with_cache(
                 token_ids_a, names_filter, past_kv_cache
             )
-            traj_b = self.generate_trajectory_with_cache(
+            traj_b = self.compute_trajectory_with_cache(
                 token_ids_b, names_filter, past_kv_cache
             )
             return traj_a, traj_b
 
         # Default: plain forward pass, batched for efficiency
-        trajs = self.get_prob_trajectories_for_batch([token_ids_a, token_ids_b])
+        trajs = self.compute_trajectories_batch([token_ids_a, token_ids_b])
         return trajs[0], trajs[1]

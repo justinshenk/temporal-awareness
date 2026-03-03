@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 
 import numpy as np
 
-from ..common.base_schema import BaseSchema
-
-if TYPE_CHECKING:
-    from ..activation_patching import ActivationPatchingTarget
+from ..common import BaseSchema
+from ..inference import InterventionTarget
 
 
 @dataclass
@@ -161,39 +160,17 @@ class AttributionPatchingResult(BaseSchema):
         )
 
     def get_scores_by_layer(self) -> dict[int, np.ndarray]:
-        """Get scores grouped by layer.
-
-        Returns:
-            Dict mapping layer index to scores array
-        """
+        """Get scores grouped by layer."""
         return {layer: self.scores[i] for i, layer in enumerate(self.layers)}
 
-    def get_top_targets_for_activation_patching(
-        self, n: int = 5
-    ) -> list["ActivationPatchingTarget"]:
-        """Convert top attributions to activation patching targets.
-
-        Args:
-            n: Number of targets to return
-
-        Returns:
-            List of ActivationPatchingTarget for top scoring positions
-        """
-        from ..activation_patching import ActivationPatchingTarget
-
-        top_scores = self.get_top_scores(n)
-        targets = []
-        for score in top_scores:
-            # Create target with both position and layer specified
-            targets.append(
-                ActivationPatchingTarget(
-                    position_mode="explicit",
-                    token_positions=[score.position],
-                    layers=[score.layer],
-                    component=score.component,
-                )
+    def get_top_targets(self, n: int = 5) -> list[InterventionTarget]:
+        """Get InterventionTargets for top scoring positions."""
+        return [
+            InterventionTarget.at(
+                positions=[s.position], layers=[s.layer], component=s.component
             )
-        return targets
+            for s in self.get_top_scores(n)
+        ]
 
     def print_summary(self) -> None:
         print(f"  {self.method} ({self.component}):")
@@ -207,16 +184,18 @@ class AttributionPatchingResult(BaseSchema):
 
 
 @dataclass
-class AggregatedAttributionResult(BaseSchema):
+class AttributionSummary(BaseSchema):
     """Aggregated attribution results across methods and/or pairs.
 
     Attributes:
         results: Dict mapping method/component name to result
         n_pairs: Number of pairs aggregated (1 if single pair)
+        mode: Attribution mode ("denoising" or "noising")
     """
 
     results: dict[str, AttributionPatchingResult] = field(default_factory=dict)
     n_pairs: int = 1
+    mode: Literal["denoising", "noising"] | None = None
 
     @property
     def methods(self) -> list[str]:
@@ -245,101 +224,37 @@ class AggregatedAttributionResult(BaseSchema):
             all_scores.extend(result.get_top_scores(n))
         return sorted(all_scores)[:n]
 
-    def get_consensus_target(
+    def get_position_target(
         self, n: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
-        """Get single target combining top consensus positions.
-
-        Finds (layer, position) pairs where methods agree and returns
-        a single ActivationPatchingTarget that patches all of them together.
+    ) -> InterventionTarget | None:
+        """Get target from top attributed positions.
 
         NOTE: For most effective activation patching, prefer get_layer_target()
-        which patches ALL positions at high-attribution layers. This is because
-        causal effects are distributed across many positions, and individual
-        high-attribution positions often don't capture enough signal.
+        which patches ALL positions at high-attribution layers.
 
         Args:
-            n: Number of top (layer, position) pairs to include
-            min_methods: Minimum methods that must agree
+            n: Number of top scores per method
+            min_methods: Minimum methods a position must appear in
 
         Returns:
-            Single ActivationPatchingTarget or None if no consensus
+            InterventionTarget or None
         """
-        from ..activation_patching import ActivationPatchingTarget
-        from collections import Counter
-
-        # Count how many methods rank each (layer, position) in top 2n
-        position_counts: Counter[tuple[int, int]] = Counter()
-        for result in self.results.values():
-            for score in result.get_top_scores(n * 2):
-                position_counts[(score.layer, score.position)] += 1
-
-        # Filter to positions with enough agreement
-        consensus = [
-            (layer, pos) for (layer, pos), count in position_counts.most_common()
-            if count >= min_methods
-        ][:n]
-
-        if not consensus:
-            return None
-
-        # Combine all consensus layers and positions
-        layers = sorted(set(layer for layer, _ in consensus))
-        positions = sorted(set(pos for _, pos in consensus))
-
-        return ActivationPatchingTarget(
-            position_mode="explicit",
-            token_positions=positions,
-            layers=layers,
-        )
-
-    def get_union_target(
-        self, n: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
-        """Get target with UNION of top positions across all methods.
-
-        Unlike get_consensus_target which requires positions to appear in
-        multiple methods, this takes all unique positions from the top N
-        scores of each method. Provides broader coverage.
-
-        Args:
-            n: Number of top scores to take from each method
-            min_methods: Minimum methods a position must appear in (1=union, 2+=intersection)
-
-        Returns:
-            ActivationPatchingTarget with all unique positions and layers
-        """
-        from ..activation_patching import ActivationPatchingTarget
-        from collections import Counter
-
-        # Count occurrences of each (layer, position) across methods
-        position_counts: Counter[tuple[int, int]] = Counter()
+        counts: Counter[tuple[int, int]] = Counter()
         for result in self.results.values():
             for score in result.get_top_scores(n):
-                position_counts[(score.layer, score.position)] += 1
+                counts[(score.layer, score.position)] += 1
 
-        # Filter by min_methods threshold
-        selected = [
-            (layer, pos) for (layer, pos), count in position_counts.items()
-            if count >= min_methods
-        ]
-
+        selected = [(l, p) for (l, p), c in counts.most_common() if c >= min_methods][:n]
         if not selected:
             return None
 
-        # Extract unique layers and positions
-        layers = sorted(set(layer for layer, _ in selected))
-        positions = sorted(set(pos for _, pos in selected))
-
-        return ActivationPatchingTarget(
-            position_mode="explicit",
-            token_positions=positions,
-            layers=layers,
-        )
+        layers = sorted(set(l for l, _ in selected))
+        positions = sorted(set(p for _, p in selected))
+        return InterventionTarget.at(positions=positions, layers=layers)
 
     def get_layer_target(
         self, n_layers: int = 10, min_methods: int = 1
-    ) -> "ActivationPatchingTarget | None":
+    ) -> "InterventionTarget | None":
         """Get target that patches ALL positions at top attributed layers.
 
         Attribution identifies WHERE differences are encoded, but causal effects
@@ -351,11 +266,8 @@ class AggregatedAttributionResult(BaseSchema):
             min_methods: Minimum methods that must rank a layer highly
 
         Returns:
-            ActivationPatchingTarget with position_mode="all" and top layers
+            InterventionTarget with position_mode="all" and top layers
         """
-        from ..activation_patching import ActivationPatchingTarget
-        from collections import Counter
-
         # Count how many times each layer appears in top N scores across methods
         layer_counts: Counter[int] = Counter()
         for result in self.results.values():
@@ -364,57 +276,39 @@ class AggregatedAttributionResult(BaseSchema):
 
         # Get layers with enough agreement
         top_layers = [
-            layer for layer, count in layer_counts.most_common()
-            if count >= min_methods
+            layer for layer, count in layer_counts.most_common() if count >= min_methods
         ][:n_layers]
 
         if not top_layers:
             return None
 
-        return ActivationPatchingTarget(
-            position_mode="all",
-            layers=sorted(top_layers),
-        )
+        return InterventionTarget.at_layers(sorted(top_layers))
 
-    def get_recommended_target(
+    def get_target(
         self,
         n: int = 10,
         mode: str = "layer",
-    ) -> "ActivationPatchingTarget | None":
-        """Get recommended target for activation patching.
-
-        The default "layer" mode patches ALL positions at top N attributed layers.
-        This is recommended because:
-        - Attribution identifies WHERE differences are encoded
-        - But causal effects are distributed across many positions
-        - Patching all positions at important layers captures more of the effect
-
-        Position-based modes ("union", "consensus") typically give lower recovery
-        because individual positions don't capture enough causal signal.
+    ) -> InterventionTarget | None:
+        """Get intervention target for activation patching.
 
         Args:
-            n: Number of top items (layers for "layer" mode, positions per method for others)
-            mode: Target mode:
-                - "layer": ALL positions at top N layers (recommended, ~0.5-0.7 recovery)
-                - "union": Top N positions from each method (~0.05-0.25 recovery)
-                - "consensus": Positions in multiple methods (~0.01-0.05 recovery)
+            n: Number of top layers or positions
+            mode: "layer" (recommended) or "position"
 
         Returns:
-            ActivationPatchingTarget configured for the specified mode
+            InterventionTarget
         """
         if mode == "layer":
             return self.get_layer_target(n_layers=n)
-        elif mode == "union":
-            return self.get_union_target(n=n, min_methods=1)
-        elif mode == "consensus":
-            return self.get_consensus_target(n=n, min_methods=2)
+        elif mode == "position":
+            return self.get_position_target(n=n)
         else:
-            raise ValueError(f"Unknown mode: {mode}. Use 'layer', 'union', or 'consensus'")
+            raise ValueError(f"Unknown mode: {mode}. Use 'layer' or 'position'")
 
     @classmethod
     def aggregate(
-        cls, results: list["AggregatedAttributionResult"]
-    ) -> "AggregatedAttributionResult":
+        cls, results: list["AttributionSummary"]
+    ) -> "AttributionSummary":
         """Aggregate multiple results (e.g., from multiple pairs).
 
         Args:
@@ -459,7 +353,7 @@ class AggregatedAttributionResult(BaseSchema):
             for a in arrays:
                 if a.shape[1] < max_len:
                     p = np.zeros((a.shape[0], max_len))
-                    p[:, :a.shape[1]] = a
+                    p[:, : a.shape[1]] = a
                     padded.append(p)
                 else:
                     padded.append(a)
@@ -484,3 +378,121 @@ class AggregatedAttributionResult(BaseSchema):
             print("\nTop 5 overall:")
             for s in top:
                 print(f"  L{s.layer} @ pos {s.position}: {s.score:.4f} ({s.component})")
+
+
+# =============================================================================
+# Pair-level Results (mirroring activation patching structure)
+# =============================================================================
+
+
+@dataclass
+class AttrPatchTargetResult(BaseSchema):
+    """Attribution results for one target (both modes).
+
+    Mirrors ActPatchTargetResult in activation_patching.
+    """
+
+    denoising: AttributionSummary | None = None
+    noising: AttributionSummary | None = None
+
+    @property
+    def mean_max_score(self) -> float:
+        """Mean of max scores across modes."""
+        scores = []
+        if self.denoising:
+            for r in self.denoising.results.values():
+                scores.append(r.max_score)
+        if self.noising:
+            for r in self.noising.results.values():
+                scores.append(r.max_score)
+        return sum(scores) / len(scores) if scores else 0.0
+
+    def get_top_scores(self, n: int = 10) -> list[AttributionScore]:
+        """Get top scores across both modes."""
+        all_scores = []
+        if self.denoising:
+            all_scores.extend(self.denoising.get_top_scores(n))
+        if self.noising:
+            all_scores.extend(self.noising.get_top_scores(n))
+        return sorted(all_scores)[:n]
+
+    def get_target(self, n: int = 10, mode: str = "layer") -> InterventionTarget | None:
+        """Get intervention target from attribution results."""
+        result = self.denoising or self.noising
+        return result.get_target(n=n, mode=mode) if result else None
+
+
+@dataclass
+class AttrPatchPairResult(BaseSchema):
+    """Attribution results for one contrastive pair.
+
+    Mirrors ActPatchPairResult in activation_patching.
+    """
+
+    sample_id: int = 0
+    result: AttrPatchTargetResult = field(default_factory=AttrPatchTargetResult)
+
+    def get_top_scores(self, n: int = 10) -> list[AttributionScore]:
+        return self.result.get_top_scores(n)
+
+    def get_target(self, n: int = 10, mode: str = "layer") -> InterventionTarget | None:
+        return self.result.get_target(n=n, mode=mode)
+
+    def print_summary(self) -> None:
+        print(f"Sample {self.sample_id}:")
+        if self.result.denoising:
+            print("  Denoising:")
+            self.result.denoising.print_summary()
+        if self.result.noising:
+            print("  Noising:")
+            self.result.noising.print_summary()
+
+
+@dataclass
+class AttrPatchAggregatedResults(BaseSchema):
+    """Aggregator for attribution patching results across pairs.
+
+    Mirrors CoarseActPatchAggregatedResults pattern.
+    """
+
+    denoising: list[AttributionSummary] = field(default_factory=list)
+    noising: list[AttributionSummary] = field(default_factory=list)
+    _denoising_agg: AttributionSummary | None = field(default=None, init=False)
+    _noising_agg: AttributionSummary | None = field(default=None, init=False)
+
+    def add(self, pair_result: AttrPatchPairResult) -> None:
+        """Add a pair result to the aggregation."""
+        if pair_result.result.denoising:
+            self.denoising.append(pair_result.result.denoising)
+            self._denoising_agg = None  # Invalidate cache
+        if pair_result.result.noising:
+            self.noising.append(pair_result.result.noising)
+            self._noising_agg = None
+
+    @property
+    def denoising_agg(self) -> AttributionSummary | None:
+        """Aggregated denoising results."""
+        if self._denoising_agg is None and self.denoising:
+            self._denoising_agg = AttributionSummary.aggregate(self.denoising)
+        return self._denoising_agg
+
+    @property
+    def noising_agg(self) -> AttributionSummary | None:
+        """Aggregated noising results."""
+        if self._noising_agg is None and self.noising:
+            self._noising_agg = AttributionSummary.aggregate(self.noising)
+        return self._noising_agg
+
+    def get_target(self, n: int = 10, mode: str = "layer") -> InterventionTarget | None:
+        """Get intervention target from aggregated results."""
+        agg = self.denoising_agg or self.noising_agg
+        return agg.get_target(n=n, mode=mode) if agg else None
+
+    def print_summary(self) -> None:
+        print(f"Attribution Patching ({len(self.denoising)} denoising, {len(self.noising)} noising):")
+        if self.denoising_agg:
+            print("  Denoising aggregated:")
+            self.denoising_agg.print_summary()
+        if self.noising_agg:
+            print("  Noising aggregated:")
+            self.noising_agg.print_summary()

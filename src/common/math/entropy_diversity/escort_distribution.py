@@ -11,7 +11,7 @@ Provides:
 from __future__ import annotations
 
 from ..num_types import Nums, is_numpy, is_tensor
-from .core import logprobs_to_probs
+from .entropy_primitives import logprobs_to_probs
 from .escort_distribution_impl import (
     _escort_logprobs_native,
     _escort_logprobs_numpy,

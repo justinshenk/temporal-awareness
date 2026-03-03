@@ -28,7 +28,7 @@ class InternalsConfig(BaseSchema):
 
     def get_names(self) -> list[str]:
         names = []
-        for spec in internals.activations:
+        for spec in self.activations:
             for layer in spec.layers:
                 names.append(f"blocks.{layer}.hook_{spec.component}")
         return names

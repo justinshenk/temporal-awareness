@@ -1,233 +1,173 @@
-"""
-Intertemporal preference experiment module.
-
-Provides configs and the main experiment runner for analyzing
-temporal preferences in language models.
-"""
+"""Intertemporal preference experiment orchestration."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
 
-from ...common import ensure_dir, get_timestamp, profile, BaseSchema
-from ...inference import InternalsConfig
-
-from ..common import get_experiment_dir
-from ..preference import (
-    load_and_merge_preference_data,
-    get_pref_dataset_dir,
-    PreferenceDataset,
-    generate_preference_data,
+from ...common import profile
+from ...inference import InternalsConfig, COMPONENTS
+from ...activation_patching import patch_pair, ActPatchAggregatedResult
+from ...activation_patching.coarse_activation_patching import (
+    run_coarse_act_patching,
+    CoarseActPatchAggregatedResults,
 )
-from .activation_patching import (
-    run_activation_patching,
-    IntertemporalActivationPatchingConfig,
-    DualModeActivationPatchingResult,
+from ...attribution_patching import attribute_pair, AttrPatchAggregatedResults
+
+from ..common import get_pref_dataset_dir
+from ..preference import generate_preference_data, load_and_merge_preference_data
+from ..viz import (
+    visualize_att_patching,
+    visualize_coarse_patching,
+    visualize_fine_patching,
+    visualize_tokenization,
 )
-from .attribution_patching import (
-    run_attribution_patching,
-    IntertemporalAttributionConfig,
-)
-from ..prompt import PromptDatasetConfig
-from ...viz import visualize_activation_patching
-from ...viz.patching_heatmaps import visualize_attribution_patching_result
+from ...viz.token_coloring import get_token_coloring_for_pair
 
-
-# ---------------------------------------------------------------------------
-# Dataclasses
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ExperimentConfig(BaseSchema):
-    """Configuration for intertemporal experiments."""
-
-    # Important
-    model: str
-    dataset_config: dict
-
-    # Optional
-    internals_config: dict | None = None
-    max_samples: int | None = None
-    activation_patching_config: dict | None = None
-    attribution_patching_config: dict | None = None
-
-    # Attribution -> Activation patching flow
-    use_attribution_targets: bool = False
-    n_attribution_targets: int = 10
-
-    @property
-    def name(self) -> str:
-        """Human-readable name derived from dataset_config."""
-        return self.dataset_config.get("name", "default_name")
-
-    def get_preference_dataset_prefix(self) -> str:
-        """Get the prefix for preference dataset files: {dataset_id}_{model_name}."""
-        dataset_cfg = PromptDatasetConfig.from_dict(self.dataset_config)
-        return PreferenceDataset.make_prefix(dataset_cfg.get_id(), self.model)
-
-
-@dataclass
-class ExperimentContext:
-    """Shared state passed between experiment steps."""
-
-    cfg: ExperimentConfig
-    pref_data: PreferenceDataset | None = None
-
-    act_patching: Any | None = None
-
-    att_patching: Any | None = None
-
-    # Output
-    output_dir: Path = field(default_factory=get_experiment_dir)
-    timestamp: str | None = None
-
-    @property
-    def ts(self) -> Path:
-        if not self.timestamp:
-            self.timestamp = get_timestamp()
-        return self.timestamp
-
-    @property
-    def viz_dir(self) -> Path:
-        viz_dir = self.output_dir / "viz"
-        ensure_dir(viz_dir)
-        return viz_dir
-
-    @property
-    def data_dir(self) -> Path:
-        data_dir = self.output_dir / "data"
-        ensure_dir(data_dir)
-        return data_dir
-
-    @property
-    def run_dir(self) -> Path:
-        run_dir = self.output_dir / self.ts
-        ensure_dir(run_dir)
-        return run_dir
+from .experiment_context import ExperimentConfig, ExperimentContext
 
 
 @profile("step_preference_data")
-def step_preference_data(ctx: ExperimentContext) -> None:
-    """Load preference data if it exists, otherwise generate it."""
-    pref_dataset_prefix = ctx.cfg.get_preference_dataset_prefix()
+def step_preference_data(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Load or generate preference data."""
 
-    pref_data = load_and_merge_preference_data(
-        pref_dataset_prefix, get_pref_dataset_dir()
-    )
-
-    if not pref_data:
-        pref_data = generate_preference_data(
+    if try_loading_data:
+        ctx.pref_data = load_and_merge_preference_data(
+            ctx.cfg.get_prefix(), get_pref_dataset_dir()
+        )
+    if not ctx.pref_data:
+        ctx.pref_data = generate_preference_data(
             model=ctx.cfg.model,
             dataset_config=ctx.cfg.dataset_config,
-            internals_config=(
-                InternalsConfig.from_dict(ctx.cfg.internals_config)
-                if ctx.cfg.internals_config
-                else None
-            ),
+            internals_config=InternalsConfig.from_dict(ctx.cfg.internals_config)
+            if ctx.cfg.internals_config
+            else None,
             max_samples=ctx.cfg.max_samples,
         )
-        print("Generated preference data")
-    else:
-        print("Loaded existing preference data")
 
-    pref_data.print_summary()
-    ctx.pref_data = pref_data
+    print(ctx.pref_data)
+    ctx.pref_data.print_summary()
 
 
 @profile("step_attribution_patching")
 def step_attribution_patching(ctx: ExperimentContext) -> None:
-    """Run attribution patching to identify important layers/positions."""
-    cfg = None
-    if ctx.cfg.attribution_patching_config:
-        cfg = IntertemporalAttributionConfig.from_dict(
-            ctx.cfg.attribution_patching_config
-        )
-    ctx.att_patching = run_attribution_patching(ctx.pref_data, cfg)
+    """Run attribution patching on each contrastive pair."""
+    ctx.att_agg = AttrPatchAggregatedResults()
+
+    for pair_idx, pair in enumerate(ctx.pairs):
+        print(f"\n[attr] Processing pair {pair_idx + 1}/{len(ctx.pairs)}")
+        result = attribute_pair(ctx.runner, pair)
+        ctx.att_patching[pair_idx] = result
+        ctx.att_agg.add(result)
+
+    ctx.att_agg.print_summary()
 
 
-@profile("step_activation_patching")
-def step_activation_patching(ctx: ExperimentContext) -> None:
-    """Run activation patching, optionally guided by attribution results."""
-    cfg = (
-        IntertemporalActivationPatchingConfig.from_dict(
-            ctx.cfg.activation_patching_config
-        )
-        if ctx.cfg.activation_patching_config
-        else IntertemporalActivationPatchingConfig()
-    )
+@profile("step_coarse_activation_patching")
+def step_coarse_activation_patching(ctx: ExperimentContext) -> None:
+    """Run layer and position sweeps on each contrastive pair."""
+    ctx.coarse_agg = CoarseActPatchAggregatedResults()
 
-    # Use attribution-identified layers if available
-    if ctx.cfg.use_attribution_targets and ctx.att_patching:
-        target = ctx.att_patching.get_layer_target(
-            n_layers=ctx.cfg.n_attribution_targets
-        )
-        if target:
-            cfg.target = target
+    for pair_idx, pair in enumerate(ctx.pairs):
+        print(f"\n[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}")
+        result = run_coarse_act_patching(ctx.runner, pair)
+        result.sample_id = pair_idx
+        ctx.coarse_patching[pair_idx] = result
+        ctx.coarse_agg.add(result)
 
-    ctx.act_patching = run_activation_patching(ctx.pref_data, cfg)
+    ctx.coarse_agg.print_summary()
 
 
-@profile("step_visualization")
-def step_visualization(ctx: ExperimentContext) -> None:
-    """Generate visualizations for experiment results."""
-    if ctx.act_patching:
-        if isinstance(ctx.act_patching, DualModeActivationPatchingResult):
-            # Visualize both modes
-            if ctx.act_patching.denoising:
-                viz_path = ctx.viz_dir / f"activation_patching_denoising_{ctx.ts}.png"
-                visualize_activation_patching(
-                    ctx.act_patching.denoising,
-                    title="Activation Patching (Denoising)",
-                    save_path=viz_path,
-                )
-            if ctx.act_patching.noising:
-                viz_path = ctx.viz_dir / f"activation_patching_noising_{ctx.ts}.png"
-                visualize_activation_patching(
-                    ctx.act_patching.noising,
-                    title="Activation Patching (Noising)",
-                    save_path=viz_path,
-                )
-        else:
-            # Single mode
-            viz_path = ctx.viz_dir / f"activation_patching_{ctx.ts}.png"
-            visualize_activation_patching(
-                ctx.act_patching,
-                title="Activation Patching Recovery by Layer",
-                save_path=viz_path,
+@profile("step_fine_activation_patching")
+def step_fine_activation_patching(ctx: ExperimentContext) -> None:
+    """Run targeted activation patching on decomposed targets for each component."""
+    ctx.fine_agg = ActPatchAggregatedResult()
+
+    for component in COMPONENTS:
+        target = ctx.get_union_target(component=component)
+        targets = target.decompose()
+
+        for pair_idx, pair in enumerate(ctx.pairs):
+            print(
+                f"\n[fine] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
             )
-    if ctx.att_patching:
-        # Save visualization
-        viz_path = ctx.viz_dir / f"attribution_patching_{ctx.ts}.png"
-        visualize_attribution_patching_result(
-            ctx.att_patching,
-            save_path=viz_path,
-        )
+            pair_result = patch_pair(ctx.runner, pair, targets)
+            pair_result.sample_id = pair_idx
+            ctx.fine_patching[pair_idx] = pair_result
+            ctx.fine_agg.add(pair_result)
+
+    ctx.fine_agg.print_summary()
 
 
-# ---------------------------------------------------------------------------
-# Main orchestrator
-# ---------------------------------------------------------------------------
+@profile("step_visualize_results")
+def step_visualize_results(ctx: ExperimentContext) -> None:
+    """Visualize all patching results."""
+
+    for pair_idx, pair in enumerate(ctx.pairs):
+        pair_out_dir = ctx.output_dir / f"pair_{pair_idx}"
+        coloring = get_token_coloring_for_pair(pair, ctx.runner)
+        position_labels = coloring.get_position_labels("short")
+        section_markers = coloring.get_section_markers("short")
+
+        ctx.save_token_trees(pair_idx, pair, pair_out_dir)
+
+        # Tokenization visualization (single pair as list)
+        visualize_tokenization([pair], ctx.runner, pair_out_dir, max_pairs=1)
+
+        # Per-pair patching visualizations
+        if pair_idx in ctx.att_patching:
+            pair_result = ctx.att_patching[pair_idx]
+            if pair_result.result.denoising:
+                visualize_att_patching(
+                    pair_result.result.denoising,
+                    pair_out_dir / "denoising",
+                    position_labels,
+                    section_markers,
+                )
+            if pair_result.result.noising:
+                visualize_att_patching(
+                    pair_result.result.noising,
+                    pair_out_dir / "noising",
+                    position_labels,
+                    section_markers,
+                )
+        if pair_idx in ctx.coarse_patching:
+            visualize_coarse_patching(
+                ctx.coarse_patching[pair_idx], pair_out_dir, coloring, pair=pair
+            )
+        if pair_idx in ctx.fine_patching:
+            visualize_fine_patching(
+                ctx.fine_patching[pair_idx],
+                pair_out_dir,
+                position_labels,
+                section_markers,
+            )
+
+    # Aggregated visualizations
+    agg_out_dir = ctx.output_dir / "agg"
+    if ctx.att_agg:
+        visualize_att_patching(ctx.att_agg.denoising_agg, agg_out_dir / "denoising")
+        visualize_att_patching(ctx.att_agg.noising_agg, agg_out_dir / "noising")
+    visualize_coarse_patching(ctx.coarse_agg, agg_out_dir)
+    visualize_fine_patching(ctx.fine_agg, agg_out_dir)
 
 
 @profile("run_experiment")
 def run_experiment(cfg: ExperimentConfig) -> ExperimentContext:
-    """Run the full intertemporal preference experiment."""
-
+    """Run full experiment."""
     ctx = ExperimentContext(cfg)
-
-    # Step 1: Get Preference Dataset (Prompt Dataset + Model's responses)
     step_preference_data(ctx)
 
-    # Step 2: Attribution Patching (identifies important layers/positions)
-    step_attribution_patching(ctx)
+    if not ctx.pairs:
+        print("No preference pairs!")
+        return
 
-    # Step 3: Activation Patching (tests causal effects at those positions)
-    step_activation_patching(ctx)
+    # step_attribution_patching(ctx)
 
-    # Step 4: Visualization
-    step_visualization(ctx)
+    step_coarse_activation_patching(ctx)
+
+    # step_fine_activation_patching(ctx)
+
+    step_visualize_results(ctx)
 
     return ctx

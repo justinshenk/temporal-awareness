@@ -16,9 +16,11 @@ class BinaryFork(BaseSchema):
         next_token_ids: The two token IDs being compared (branch_a, branch_b)
         next_token_logprobs: Log-probabilities for each token
         group_idx: Which groups the two branches belong to (group_a, group_b)
+        vocab_logits: Full logits over vocabulary at this fork position (for raw logit extraction)
     """
 
     next_token_ids: tuple[int, int]
     next_token_logprobs: tuple[float, float]
     group_idx: tuple[int, int] | None = None
+    vocab_logits: list[float] | None = None
     analysis: Any | None = None

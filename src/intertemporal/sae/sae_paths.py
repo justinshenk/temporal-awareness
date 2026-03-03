@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-
 # temporal-awareness/ root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 if str(PROJECT_ROOT) not in sys.path:
@@ -103,5 +102,3 @@ def ensure_dirs(file_cfg: FilepathConfig | None = None):
 
     for d in file_cfg.get_all_dirs():
         d.mkdir(parents=True, exist_ok=True)
-
-

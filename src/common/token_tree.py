@@ -6,17 +6,18 @@ Provides TokenTree for representing branching token sequences.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Any, Sequence
 
 import torch
 
-from .token_trajectory import TokenTrajectory
-from .branching_node import BranchingNode
+from .base_schema import BaseSchema
 from .binary_fork import BinaryFork
+from .branching_node import BranchingNode
+from .token_trajectory import TokenTrajectory
 
 
 @dataclass
-class TokenTree:
+class TokenTree(BaseSchema):
     """A tree of token trajectories with branching points."""
 
     trajs: tuple[TokenTrajectory, ...]
@@ -151,6 +152,7 @@ class TokenTree:
             trunk_length=d.get("trunk_length"),
             analysis=d.get("analysis"),
         )
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -417,7 +419,8 @@ def _group_by_token_id(
 
     for idx in traj_indices:
         token_id = trajs[idx].token_ids[pos]
-        logits = trajs[idx].full_logits[pos]
+        full_logits = trajs[idx].full_logits
+        logits = full_logits[pos] if full_logits is not None else None
         logprob = trajs[idx].logprobs[pos]
 
         if token_id in token_to_branch:
@@ -510,7 +513,13 @@ def _create_forks_for_arms(acc: _TreeAccumulator) -> None:
             continue
 
         # Create forks only for specified fork_arms
-        fork_indices = _create_forks_for_node(acc, branches_with_groups)
+        # Pass vocab_logits from node (use first trajectory's logits if available)
+        node_vocab_logits = None
+        if node.vocab_logits and len(node.vocab_logits) > 0:
+            node_vocab_logits = node.vocab_logits[0]
+        fork_indices = _create_forks_for_node(
+            acc, branches_with_groups, node_vocab_logits
+        )
 
         # Update node's forks_idx
         if fork_indices:
@@ -568,8 +577,14 @@ def _get_branches_with_groups(
 def _create_forks_for_node(
     acc: _TreeAccumulator,
     branches: list[_BranchWithGroups],
+    vocab_logits: list[float] | None = None,
 ) -> list[int]:
     """Create forks between branches for specified fork_arms.
+
+    Args:
+        acc: Tree accumulator
+        branches: List of branches with group membership
+        vocab_logits: Full vocabulary logits at this position (for raw logit extraction)
 
     Returns indices of created forks in acc.forks.
     """
@@ -606,6 +621,7 @@ def _create_forks_for_node(
                         next_token_ids=(b_i.token_id, b_j.token_id),
                         next_token_logprobs=(b_i.token_logprob, b_j.token_logprob),
                         group_idx=(g_i, g_j),
+                        vocab_logits=vocab_logits,
                     )
                 )
                 fork_indices.append(fork_idx)

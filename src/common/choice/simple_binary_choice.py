@@ -11,10 +11,8 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 
-from ..analysis.trajectory_branch_node_analysis import (
-    StructureSystemAnalysis,
-    analyze_token_tree,
-)
+from ..analysis.analyze import analyze_token_tree
+from ..analysis.tree_as_structures_system import StructureSystemAnalysis
 from ..token_tree import TokenTrajectory, TokenTree
 from .binary_choice import BinaryChoice, LabeledBinaryChoice
 
@@ -41,12 +39,22 @@ class SimpleBinaryChoice(BinaryChoice):
         traj_a: TokenTrajectory,
         traj_b: TokenTrajectory,
         trunk: Sequence[int] | None = None,
+        W_U: Any = None,
+        b_U: Any = None,
         **kwargs: Any,
     ) -> SimpleBinaryChoice:
         """Build a SimpleBinaryChoice (or subclass) from two trajectories.
 
         Each trajectory represents a different label/choice, so they are
         placed in separate groups for cross-group fork creation.
+
+        Args:
+            traj_a: First trajectory (label A)
+            traj_b: Second trajectory (label B)
+            trunk: Optional shared prefix token IDs
+            W_U: Optional unembedding matrix for TCB computation
+            b_U: Optional unembedding bias for TCB computation
+            **kwargs: Additional arguments for the class constructor
         """
         tree = TokenTree.from_trajectories(
             [traj_a, traj_b],
@@ -54,7 +62,7 @@ class SimpleBinaryChoice(BinaryChoice):
             fork_arms=[(0, 1)],
             trunk=trunk,
         )
-        analyze_token_tree(tree)  # Sets tree.analysis
+        analyze_token_tree(tree, W_U=W_U, b_U=b_U)  # Sets tree.analysis
         return cls(tree=tree, **kwargs)
 
     # ── Decision ─────────────────────────────────────────────────────────

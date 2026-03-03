@@ -11,25 +11,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .heatmaps import (
+from ..activation_patching import ActPatchAggregatedResult
+from ..attribution_patching import AttributionSummary
+from .layer_position_heatmaps import (
     HeatmapConfig,
     _compute_figsize,
     _compute_range,
     _draw_heatmap,
-    _setup_position_axis,
-    _set_title,
     _draw_section_markers,
     _finalize_plot,
+    _set_title,
+    _setup_position_axis,
 )
-
-if TYPE_CHECKING:
-    from ..activation_patching import AggregatedActivationPatchingResult
-    from ..attribution_patching import AggregatedAttributionResult
 
 
 @dataclass
@@ -85,7 +82,9 @@ def plot_patching_heatmap(
 
     n_layers, n_positions = plot_matrix.shape
 
-    fig, ax = plt.subplots(figsize=_compute_figsize(config.figsize, n_layers, n_positions))
+    fig, ax = plt.subplots(
+        figsize=_compute_figsize(config.figsize, n_layers, n_positions)
+    )
 
     vmin, vmax = _compute_range(plot_matrix, config.vmin, config.vmax, config.cmap)
     im = _draw_heatmap(ax, plot_matrix, config.cmap, vmin, vmax)
@@ -172,12 +171,22 @@ def plot_multi_metric_heatmap(
 
         # Simplified axis labels
         ax.set_yticks(range(0, n_layers, max(1, n_layers // 10)))
-        ax.set_yticklabels([f"L{layers[i]}" for i in range(0, n_layers, max(1, n_layers // 10))], fontsize=8)
+        ax.set_yticklabels(
+            [f"L{layers[i]}" for i in range(0, n_layers, max(1, n_layers // 10))],
+            fontsize=8,
+        )
 
         step = max(1, n_positions // 15)
         ax.set_xticks(range(0, n_positions, step))
-        ax.set_xticklabels([position_labels[i] if i < len(position_labels) else str(i)
-                          for i in range(0, n_positions, step)], fontsize=7, rotation=45, ha="right")
+        ax.set_xticklabels(
+            [
+                position_labels[i] if i < len(position_labels) else str(i)
+                for i in range(0, n_positions, step)
+            ],
+            fontsize=7,
+            rotation=45,
+            ha="right",
+        )
 
         plt.colorbar(im, ax=ax, shrink=0.6)
 
@@ -216,7 +225,10 @@ def plot_activation_vs_attribution(
         save_path: Save path
     """
     plot_multi_metric_heatmap(
-        matrices={activation_label: activation_matrix, attribution_label: attribution_matrix},
+        matrices={
+            activation_label: activation_matrix,
+            attribution_label: attribution_matrix,
+        },
         layers=layers,
         position_labels=position_labels,
         section_markers=section_markers,
@@ -225,7 +237,7 @@ def plot_activation_vs_attribution(
 
 
 def visualize_activation_patching_result(
-    result: "AggregatedActivationPatchingResult",
+    result: ActPatchAggregatedResult,
     position_labels: list[str] | None = None,
     section_markers: dict[str, int] | None = None,
     save_path: Path | None = None,
@@ -246,32 +258,38 @@ def visualize_activation_patching_result(
         print("No per-layer results to visualize")
         return
 
-    # Get positions from first result
+    # Get positions from all pairs
     all_positions = set()
-    for pr in result.results:
-        by_pos = pr.get_results_by_position()
-        all_positions.update(by_pos.keys())
-    positions = sorted(all_positions)
+    for pair in result.by_sample.values():
+        for target in pair.by_target.keys():
+            if target.positions:
+                all_positions.update(target.positions)
 
-    if not positions or max(positions) < 0:
+    if not all_positions:
         print("No per-position results to visualize")
         return
 
+    positions = sorted(all_positions)
     n_layers = len(layers)
     n_positions = max(positions) + 1
 
     # Build recovery matrix
     matrix = np.full((n_layers, n_positions), np.nan)
-    for layer_idx, layer in enumerate(layers):
-        for pr in result.results:
-            for r in pr.results:
-                if r.layer == layer and r.target.positions:
-                    pos = r.target.positions[0]
-                    if 0 <= pos < n_positions:
-                        if np.isnan(matrix[layer_idx, pos]):
-                            matrix[layer_idx, pos] = r.recovery
-                        else:
-                            matrix[layer_idx, pos] = (matrix[layer_idx, pos] + r.recovery) / 2
+    for pair in result.by_sample.values():
+        for target, target_result in pair.by_target.items():
+            if target.layers and len(target.layers) == 1:
+                layer = target.layers[0]
+                if layer in layers:
+                    layer_idx = layers.index(layer)
+                    if target.positions:
+                        for pos in target.positions:
+                            if 0 <= pos < n_positions:
+                                if np.isnan(matrix[layer_idx, pos]):
+                                    matrix[layer_idx, pos] = target_result.recovery
+                                else:
+                                    matrix[layer_idx, pos] = (
+                                        matrix[layer_idx, pos] + target_result.recovery
+                                    ) / 2
 
     if position_labels is None:
         position_labels = [f"p{i}" for i in range(n_positions)]
@@ -295,7 +313,7 @@ def visualize_activation_patching_result(
 
 
 def visualize_attribution_patching_result(
-    result: "AggregatedAttributionResult",
+    result: AttributionSummary,
     position_labels: list[str] | None = None,
     section_markers: dict[str, int] | None = None,
     save_path: Path | None = None,
@@ -328,7 +346,9 @@ def visualize_attribution_patching_result(
 
         # Determine save path for this method
         if save_path:
-            method_path = save_path.parent / f"{save_path.stem}_{name}{save_path.suffix}"
+            method_path = (
+                save_path.parent / f"{save_path.stem}_{name}{save_path.suffix}"
+            )
         else:
             method_path = None
 
@@ -361,15 +381,19 @@ def _highlight_top_cells(
 
         # Draw a circle marker
         circle = plt.Circle(
-            (col, row), 0.3, fill=False,
-            color=color, linewidth=2, alpha=0.8
+            (col, row), 0.3, fill=False, color=color, linewidth=2, alpha=0.8
         )
         ax.add_patch(circle)
 
         # Add rank number for top 3
         if rank < 3:
             ax.text(
-                col, row - 0.45, str(rank + 1),
-                ha="center", va="bottom", fontsize=7,
-                color=color, fontweight="bold"
+                col,
+                row - 0.45,
+                str(rank + 1),
+                ha="center",
+                va="bottom",
+                fontsize=7,
+                color=color,
+                fontweight="bold",
             )
