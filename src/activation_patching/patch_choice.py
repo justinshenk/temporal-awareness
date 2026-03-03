@@ -5,7 +5,7 @@ from __future__ import annotations
 # Toggle between full_text and prompt_text for patching
 # full_text includes the model's response in the user message (works correctly)
 # prompt_text uses only the prompt without response (gives flat results)
-USING_FULL_TEXT = True
+USING_FULL_TEXT = False
 
 from .act_patch_results import (
     ActPatchPairResult,
@@ -42,10 +42,17 @@ def patch_for_choice(
     # Get base text based on mode
     # denoising: run on clean text, patch corrupted activations
     # noising: run on corrupted text, patch clean activations
+
+    if mode == "denoising":
+        text = pair.clean_prompt
+    else:
+        text = pair.corrupted_prompt
+
+    print(f"\n\n\nPROMPT TEXT: \n\n {text}")
+
     if USING_FULL_TEXT:
         text = pair.clean_text if mode == "denoising" else pair.corrupted_text
-    else:
-        text = pair.clean_prompt if mode == "denoising" else pair.corrupted_prompt
+        print(f"\nFULL TEXT: \n\n {text}\n\n\n")
 
     layers = target.resolve_layers(pair.available_layers)
     intervention = pair.get_interventions(target, layers, target.component, mode, alpha)

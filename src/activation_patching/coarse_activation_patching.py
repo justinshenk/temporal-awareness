@@ -271,7 +271,7 @@ def run_coarse_act_patching(
         layer_step_sizes = [1]  # Fast iteration for testing
     if pos_step_sizes is None:
         # pos_step_sizes = [1, 3, 9, 16]
-        pos_step_sizes = [3]  # Fast iteration for testing
+        pos_step_sizes = [12]  # Fast iteration for testing
 
     # Sanity check: patch all positions
     print("[coarse] Starting sanity check (all layers, all positions)...")
