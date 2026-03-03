@@ -133,8 +133,11 @@ def _weighted_power_mean_native(
     if not active:
         return 0.0
 
-    active_values = [v for v, _ in active]
-    active_weights = [w for _, w in active]
+    # Renormalize weights after filtering
+    total_w = sum(w for _, w in active)
+    if total_w < _EPS:
+        return 0.0
+    active = [(v, w / total_w) for v, w in active]
 
     if abs(alpha) < _EPS:
         # Weighted geometric mean: exp(Σ wᵢ log(xᵢ))
@@ -182,6 +185,12 @@ def _weighted_power_mean_numpy(
     active_v = values[mask]
     active_w = weights[mask]
 
+    # Renormalize weights after filtering
+    total_w = active_w.sum()
+    if total_w < _EPS:
+        return np.float64(0.0)
+    active_w = active_w / total_w
+
     if abs(alpha) < _EPS:
         # Weighted geometric mean
         return np.exp((active_w * np.log(active_v)).sum())
@@ -226,6 +235,12 @@ def _weighted_power_mean_torch(
 
     active_v = values[mask]
     active_w = weights[mask]
+
+    # Renormalize weights after filtering
+    total_w = active_w.sum()
+    if total_w < _EPS:
+        return torch.tensor(0.0, device=values.device)
+    active_w = active_w / total_w
 
     if abs(alpha) < _EPS:
         # Weighted geometric mean
