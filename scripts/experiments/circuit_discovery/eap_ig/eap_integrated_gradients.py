@@ -11,6 +11,7 @@ import subprocess
 import sys
 import warnings
 from pathlib import Path
+from typing import cast
 
 import torch
 import wandb
@@ -152,6 +153,8 @@ def main() -> None:
             f"Only 'logit-diff' metric is currently supported, got '{metric_type}'"
         )
 
+    config_stem = args.config.stem
+
     input_file_path = data_loc / data_file
     save_loc.mkdir(parents=True, exist_ok=True)
     ensure_mech_interp_toolkit_installed()
@@ -193,8 +196,10 @@ def main() -> None:
         extract_alnum(option_keys[1]), add_special_tokens=False
     )
 
-    def metric_fn(logits: torch.Tensor) -> torch.Tensor:
-        return (logits[:, -1, token_a] - logits[:, -1, token_b]).mean()
+    metrics = {
+        "logit_A": lambda logits: logits[:, -1, token_a].mean(),
+        "logit_B": lambda logits: logits[:, -1, token_b].mean(),
+    }
 
     def chunk_list(prompt_list: list[str]) -> list[list[str]]:
         """Split a list into chunks of size batch_size."""
@@ -203,72 +208,124 @@ def main() -> None:
             for i in range(0, len(prompt_list), batch_size)
         ]
 
-    # Load the data file once and generate both clean and swapped prompts
+    # Load the data file once and generate both clean and swapped prompts.
+    # "normal" order: short-term option first (option_keys as-is).
+    # "swapped" order: long-term option first (option_keys reversed).
     all_clean_prompts, all_corrupted_prompts = load_and_merge_pairs(
         input_file_path,
         template=template,
         option_keys=option_keys,
     )
+    all_clean_prompts_swapped, all_corrupted_prompts_swapped = load_and_merge_pairs(
+        input_file_path,
+        template=template,
+        option_keys=list(reversed(option_keys)),
+    )
 
-    chunked_clean_prompts = chunk_list(all_clean_prompts)
-    chunked_corrupted_prompts = chunk_list(all_corrupted_prompts)
+    option_orders = [
+        (
+            "short_first",
+            chunk_list(all_clean_prompts),
+            chunk_list(all_corrupted_prompts),
+        ),
+        (
+            "long_first",
+            chunk_list(all_clean_prompts_swapped),
+            chunk_list(all_corrupted_prompts_swapped),
+        ),
+    ]
 
-    with wandb.init(project=wandb_project, config=config) as run:
-        run_id = run.id
-        output_file = save_loc / f"{wandb_project}_{filename}_{run_id}.json"
-        output_dict = config.copy()
-        output_dict["steps"] = {}
-
-        for num_steps in tqdm(steps, desc="Processing step counts"):
-            scores_list = []
-            for i in tqdm(
-                range(len(chunked_clean_prompts)),
-                desc=f"Batches (steps={num_steps})",
-                leave=False,
-            ):
-                clean_inputs = tokenizer(chunked_clean_prompts[i])
-                corrupted_inputs = tokenizer(chunked_corrupted_prompts[i])
-
-                eap_ig_scores = eap_integrated_gradients(  # (batch, pos)
-                    model,  # type: ignore
-                    clean_inputs,
-                    corrupted_inputs,
-                    metric_fn,
-                    num_steps,
-                    include_block_outputs=True,
+    for order_label, chunked_clean_prompts, chunked_corrupted_prompts in option_orders:
+        for metric_label, metric_fn in metrics.items():
+            run_name = f"{config_stem}_{order_label}_{metric_label}"
+            with wandb.init(project=wandb_project, name=run_name, config=config) as run:
+                run_id = run.id
+                output_file = (
+                    save_loc
+                    / f"{wandb_project}_{filename}_{order_label}_{metric_label}_{run_id}.json"
                 )
-                eap_ig_scores.attention_mask = expand_mask(
-                    eap_ig_scores.attention_mask, system_prompt_length
-                )
-                eap_ig_scores = eap_ig_scores.apply(
-                    torch.nanmean, dim=-1, mask_aware=True
-                )  # (batch,)
+                output_dict = config.copy()
+                output_dict["option_order"] = order_label
+                output_dict["metric_type"] = metric_type
+                output_dict["steps"] = {}
 
-                # Move scores to CPU to free GPU memory
-                eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
-                scores_list.append(eap_ig_scores)
+                for num_steps in tqdm(
+                    steps, desc=f"[{order_label}/{metric_label}] Processing step counts"
+                ):
+                    scores_list = []
+                    all_clean_logits = []
+                    all_corrupted_logits = []
+                    for i in tqdm(
+                        range(len(chunked_clean_prompts)),
+                        desc=f"Batches (steps={num_steps})",
+                        leave=False,
+                    ):
+                        clean_inputs = tokenizer(chunked_clean_prompts[i])
+                        corrupted_inputs = tokenizer(chunked_corrupted_prompts[i])
 
-                # Delete temporary objects to free memory
-                del eap_ig_scores
-                del clean_inputs
-                del corrupted_inputs
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+                        eap_ig_scores, (clean_logits, corrupted_logits) = (
+                            eap_integrated_gradients(  # (batch, pos)
+                                model,  # type: ignore
+                                clean_inputs,
+                                corrupted_inputs,
+                                metric_fn,
+                                num_steps,
+                                include_block_outputs=True,
+                            )
+                        )
 
-            scores = concat_activations(scores_list)
-            scores = scores.apply(torch.mean)  # scalar
-            scores_dict = {
-                f"{key[1]}/{key[0]}": value.item() for key, value in scores.items()
-            }
+                        clean_logits = cast(torch.Tensor, clean_logits)
+                        corrupted_logits = cast(torch.Tensor, corrupted_logits)
 
-            output_dict["steps"][num_steps] = scores_dict
+                        clean_logits = clean_logits[:, -1, [token_a, token_b]]
+                        corrupted_logits = corrupted_logits[:, -1, [token_a, token_b]]
 
-            scores_dict["num_steps"] = num_steps
-            run.log(scores_dict)
+                        all_clean_logits.append(clean_logits.detach().cpu())
+                        all_corrupted_logits.append(corrupted_logits.detach().cpu())
 
-        # Write complete results with all steps to file
-        output_file.write_text(json.dumps(output_dict, indent=2))
+                        eap_ig_scores.attention_mask = expand_mask(
+                            eap_ig_scores.attention_mask, system_prompt_length
+                        )
+                        eap_ig_scores = eap_ig_scores.apply(
+                            torch.nanmean, dim=-1, mask_aware=True
+                        )  # (batch,)
+
+                        # Move scores to CPU to free GPU memory
+                        eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
+                        scores_list.append(eap_ig_scores)
+
+                        # Delete temporary objects to free memory
+                        del eap_ig_scores
+                        del clean_inputs
+                        del corrupted_inputs
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+
+                    scores = concat_activations(scores_list)
+                    raw_scores_dict = {
+                        f"{key[1]}/{key[0]}": value.tolist()
+                        for key, value in scores.items()
+                    }
+
+                    clean_logits_list = torch.cat(all_clean_logits, dim=0).tolist()
+                    corrupted_logits_list = torch.cat(all_corrupted_logits, dim=0).tolist()
+
+                    output_dict["steps"][num_steps] = {
+                        **raw_scores_dict,
+                        "clean_logits": clean_logits_list,
+                        "corrupted_logits": corrupted_logits_list,
+                    }
+
+                    run.log({
+                        **raw_scores_dict,
+                        "clean_logits": clean_logits_list,
+                        "corrupted_logits": corrupted_logits_list,
+                        "num_steps": num_steps,
+                    })
+
+                # Write complete results with all steps to file
+                output_file.write_text(json.dumps(output_dict, indent=2))
 
 
 if __name__ == "__main__":
