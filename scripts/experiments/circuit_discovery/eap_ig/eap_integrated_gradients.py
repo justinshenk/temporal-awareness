@@ -125,6 +125,7 @@ def main() -> None:
         required=True,
         help="Path to config YAML file (e.g., step_numbers.yaml)",
     )
+
     args = parser.parse_args()
 
     config = load_config(CONFIG_PATH / args.config)
@@ -182,9 +183,9 @@ def main() -> None:
         dtype=dtype,
     )
 
-    system_prompt_length = len(
-        tokenizer.tokenizer.encode(system_prompt, add_special_tokens=False)
-    )
+    system_prompt_length = (
+        len(tokenizer.tokenizer.encode(system_prompt, add_special_tokens=False)) + 1
+    )  # For <|im_end|>
 
     token_a = tokenizer.tokenizer.encode(
         extract_alnum(option_keys[0]), add_special_tokens=False
@@ -214,7 +215,9 @@ def main() -> None:
         option_keys=option_keys,
         text_order=["question", "immediate", "long_term"],
     )
-    all_clean_prompts_swapped, all_corrupted_prompts_swapped = load_and_merge_pairs(
+
+    # Reverse order is an artifact of data syntax
+    all_corrupted_prompts_swapped, all_clean_prompts_swapped = load_and_merge_pairs(
         input_file_path,
         template=template,
         option_keys=option_keys,
