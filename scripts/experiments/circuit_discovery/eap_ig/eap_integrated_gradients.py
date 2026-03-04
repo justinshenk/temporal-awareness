@@ -72,6 +72,10 @@ def load_and_merge_pairs(
             )
         else:
             raise RuntimeError("Incorrect type for pairs")
+
+        prompt.replace("(A)", option_a)
+        prompt.replace("(B)", option_b)
+
         clean_prompts.append(prompt)
 
         swapped_prompt = re.sub(
@@ -331,6 +335,7 @@ def main() -> None:
                     )
 
                 # Write complete results with all steps to file
+                output_file.parent.mkdir(parents=True, exist_ok=True)
                 output_file.write_text(json.dumps(output_dict, indent=2))
 
 
