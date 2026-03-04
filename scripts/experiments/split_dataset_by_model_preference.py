@@ -116,8 +116,8 @@ def main() -> None:
 
     def extract_preference(logits: torch.Tensor) -> tuple[bool, bool]:
         logit_a_preferred = (logits[token_a] > logits[token_b]).item()
-        _, topk = torch.topk(logits, k=7)
-        clear_preference = torch.any((topk == token_a) | (topk == token_b)).item()
+        top_token = logits.argmax()
+        clear_preference = ((top_token == token_a) | (top_token == token_b)).item()
         return logit_a_preferred, clear_preference  # type: ignore
 
     all_pairs, all_clean_prompts = load_pairs_and_prompts(
@@ -163,22 +163,31 @@ def main() -> None:
         "option_b_horizon": option_b_horizon,
     }
 
+    base_fp = (save_loc / data_file).with_suffix("")
+
+    def make_path(suffix):
+        return base_fp.with_suffix(f"_{suffix}.json")
+
+    save_name_a = make_path(option_a_horizon)
+    save_name_b = make_path(option_b_horizon)
+    save_name_ambig = make_path("ambig")
+
     if a_preferred:
         save_split(
             a_preferred,
-            save_loc / option_a_horizon / data_file,
+            save_name_a,
             {**base_metadata, "split": option_a_horizon, "n_pairs": len(a_preferred)},
         )
     if b_preferred:
         save_split(
             b_preferred,
-            save_loc / option_b_horizon / data_file,
+            save_name_b,
             {**base_metadata, "split": option_b_horizon, "n_pairs": len(b_preferred)},
         )
     if ambiguous:
         save_split(
             ambiguous,
-            save_loc / "ambiguous" / data_file,
+            save_name_ambig,
             {**base_metadata, "split": "ambiguous", "n_pairs": len(ambiguous)},
         )
 
