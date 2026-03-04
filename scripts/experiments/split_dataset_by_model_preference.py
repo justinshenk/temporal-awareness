@@ -166,7 +166,7 @@ def main() -> None:
     base_fp = (save_loc / data_file).with_suffix("")
 
     def make_path(suffix):
-        return base_fp.with_suffix(f"_{suffix}.json")
+        return base_fp.parent / f"{base_fp.name}_{suffix}.json"
 
     save_name_a = make_path(option_a_horizon)
     save_name_b = make_path(option_b_horizon)
