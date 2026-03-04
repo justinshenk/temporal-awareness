@@ -73,8 +73,8 @@ def load_and_merge_pairs(
         else:
             raise RuntimeError("Incorrect type for pairs")
 
-        prompt.replace("(A)", option_a)
-        prompt.replace("(B)", option_b)
+        prompt = prompt.replace("(A)", option_a)
+        prompt = prompt.replace("(B)", option_b)
 
         clean_prompts.append(prompt)
 
