@@ -137,6 +137,7 @@ def main() -> None:
     model_name: str = config["setup"]["model"]
     seed: int = config["setup"]["seed"]
     batch_size: int = config["setup"]["batch_size"]
+    layer_components = config["setup"].get("layer_components", None)
 
     dtype = config["setup"].get("dtype", None)
 
@@ -275,6 +276,7 @@ def main() -> None:
                                 clean_inputs,
                                 corrupted_inputs,
                                 metric_fn,
+                                layer_components,
                                 num_steps,
                                 include_block_outputs=True,
                             )
