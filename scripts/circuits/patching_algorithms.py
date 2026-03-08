@@ -94,20 +94,9 @@ class ActivationPatching(Patching):
         LOGIT = 1,
         LOGPROB = 2
 
-    def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
+    def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers, metric_type=Metric.LOGIT_DIFF):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
-
-    def __precalculate_caches_and_baselines__(self):
-        super().__precalculate_baselines__()
-        if not self.caches_and_baselines_ready:
-            __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
-            self.caches_and_baselines_ready = True
-
-    def __patch__(self, layer_specific_algorithm, metric_type):
-        # Precalculate caches and baselines if not yet:
-        self.__precalculate_caches_and_baselines__()
-        assert(self.caches_and_baselines_ready)
 
         # Define answer_token_indices needed for logit_metric function
         answer_token_indices = torch.tensor(
@@ -118,7 +107,7 @@ class ActivationPatching(Patching):
             device=self.model.cfg.device,
         ).to(dtype=int)
 
-        inner_metric = None
+        self.inner_metric = None
         if (metric_type == ActivationPatching.Metric.LOGIT_DIFF):
             # Implement batched version of logit_metric that uses defined variables:
             def __inner_get_logit_diff__(logits):
@@ -128,7 +117,7 @@ class ActivationPatching(Patching):
                 correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
                 incorrect_logits = logits.gather(1, answer_token_indices[:, 1].unsqueeze(1))
                 return (correct_logits - incorrect_logits).mean()
-            inner_metric = __inner_get_logit_diff__
+            self.inner_metric = __inner_get_logit_diff__
         elif (metric_type == ActivationPatching.Metric.LOGIT):
             def __inner_get_logit__(logits):
                 if len(logits.shape) == 3:
@@ -136,7 +125,7 @@ class ActivationPatching(Patching):
                     logits = logits[:, -1, :]
                 correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
                 return correct_logits
-            inner_metric = __inner_get_logit__
+            self.inner_metric = __inner_get_logit__
         elif (metric_type == ActivationPatching.Metric.LOGPROB):
             def __inner_get_logprob__(logits):
                 if len(logits.shape) == 3:
@@ -145,10 +134,49 @@ class ActivationPatching(Patching):
                 logits_logprobs = torch.nn.functional.log_softmax(logits, dim=-1)
                 correct_logprobs = logits_logprobs.gather(1, answer_token_indices[:, 0].unsqueeze(1))
                 return correct_logprobs
-            inner_metric = __inner_get_logprob__
+            self.inner_metric = __inner_get_logprob__
+
+    def __precalculate_caches_and_baselines__(self):
+        if not self.baselines_ready:
+            num_prompts = len(self.clean_tokens)
+            self.clean_logits_top_3 = []
+            self.corrupted_logits_top_3 = []
+            self.clean_baseline = 0
+            self.corrupted_baseline = 0
+            for i in range(0, num_prompts):
+                clean_logits, __ = self.model.run_with_cache(self.clean_tokens[i])
+                self.clean_logits_top_3.append(torch.sort(clean_logits[-1, -1, :], descending=True).indices[0:3])
+                corrupted_logits, __ = self.model.run_with_cache(self.corrupted_tokens[i])
+                self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
+
+                self.clean_baseline += self.inner_metric(clean_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
+                self.corrupted_baseline += self.inner_metric(corrupted_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
+
+            self.clean_baseline /= num_prompts
+            self.corrupted_baseline /= num_prompts
+
+            self.baselines_ready = True
+
+        print(f"Clean logit TOP-3: {self.model.to_string(torch.stack(self.clean_logits_top_3))}")
+        print()
+        print(f"Corrupted logit TOP-3: {self.model.to_string(torch.stack(self.corrupted_logits_top_3))}")
+        print()
+        print()
+        
+        print(f"Clean logit diff: {self.clean_baseline:.4f}")
+        print(f"Corrupted logit diff: {self.corrupted_baseline:.4f}")
+
+        if not self.caches_and_baselines_ready:
+            __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
+            self.caches_and_baselines_ready = True
+
+    def __patch__(self, layer_specific_algorithm, metric_type):
+        # Precalculate caches and baselines if not yet:
+        self.__precalculate_caches_and_baselines__()
+        assert(self.caches_and_baselines_ready)
 
         def __inner_logit_metric__(logits):
-            return (inner_metric(logits) - self.corrupted_baseline) / (
+            return (self.inner_metric(logits) - self.corrupted_baseline) / (
                 self.clean_baseline - self.corrupted_baseline
             )
 
