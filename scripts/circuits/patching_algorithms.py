@@ -141,19 +141,19 @@ class ActivationPatching(Patching):
             num_prompts = len(self.clean_tokens)
             self.clean_logits_top_3 = []
             self.corrupted_logits_top_3 = []
-            self.clean_baseline = 0
-            self.corrupted_baseline = 0
+            batched_clean_logits = []
+            batched_corrupted_logits = []
             for i in range(0, num_prompts):
                 clean_logits, __ = self.model.run_with_cache(self.clean_tokens[i])
                 self.clean_logits_top_3.append(torch.sort(clean_logits[-1, -1, :], descending=True).indices[0:3])
+                batched_clean_logits.append(clean_logits)
+
                 corrupted_logits, __ = self.model.run_with_cache(self.corrupted_tokens[i])
                 self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
+                batched_corrupted_logits.append(corrupted_logits)
 
-                self.clean_baseline += self.inner_metric(clean_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
-                self.corrupted_baseline += self.inner_metric(corrupted_logits, self.clean_answer_ids[i], self.corrupted_answer_ids[i]).item()
-
-            self.clean_baseline /= num_prompts
-            self.corrupted_baseline /= num_prompts
+            self.clean_baseline += self.inner_metric(torch.stack(batched_clean_logits)).item()
+            self.corrupted_baseline += self.inner_metric(torch.stack(batched_corrupted_logits)).item()
 
             self.baselines_ready = True
 
