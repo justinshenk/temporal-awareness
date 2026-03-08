@@ -9,6 +9,8 @@ from transformer_lens import (
     patching
 )
 
+import gc
+
 def get_logit_diff(logits, clean_answer_id, corrupted_answer_id):
     if len(logits.shape) == 3:
         # Get final logits only from batch size == 1
@@ -136,6 +138,7 @@ class ActivationPatching(Patching):
                 return correct_logprobs.mean(())
             self.inner_metric = __inner_get_logprob__
 
+    # TODO: Is removing gradients save for Activation Patching (not for Attribution Patching)?
     def __precalculate_caches_and_baselines__(self):
         if not self.baselines_ready:
             num_prompts = len(self.clean_tokens)
@@ -143,17 +146,26 @@ class ActivationPatching(Patching):
             self.corrupted_logits_top_3 = []
             batched_clean_logits = []
             batched_corrupted_logits = []
+
             for i in range(0, num_prompts):
-                clean_logits, __ = self.model.run_with_cache(self.clean_tokens[i])
+                clean_logits, clean_cache = self.model.run_with_cache(self.clean_tokens[i])
+                del clean_cache
+                gc.collect()
                 self.clean_logits_top_3.append(torch.sort(clean_logits[-1, -1, :], descending=True).indices[0:3])
                 batched_clean_logits.append(clean_logits)
+            self.clean_baseline = self.inner_metric(torch.cat(batched_clean_logits)).item()
+            del batched_clean_logits
+            gc.collect()
 
-                corrupted_logits, __ = self.model.run_with_cache(self.corrupted_tokens[i])
+            for i in range(0, num_prompts):
+                corrupted_logits, corrupted_cache = self.model.run_with_cache(self.corrupted_tokens[i])
+                del corrupted_cache
+                gc.collect()
                 self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
-                batched_corrupted_logits.append(corrupted_logits)
-
-            self.clean_baseline += self.inner_metric(torch.stack(batched_clean_logits)).item()
-            self.corrupted_baseline += self.inner_metric(torch.stack(batched_corrupted_logits)).item()
+                batched_corrupted_logits.append(corrupted_logits)           
+            self.corrupted_baseline = self.inner_metric(torch.cat(batched_corrupted_logits)).item()
+            del batched_corrupted_logits
+            gc.collect()
 
             self.baselines_ready = True
 
