@@ -124,7 +124,7 @@ class ActivationPatching(Patching):
                     # Get final logits only
                     logits = logits[:, -1, :]
                 correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
-                return correct_logits
+                return correct_logits.mean()
             self.inner_metric = __inner_get_logit__
         elif (metric_type == ActivationPatching.Metric.LOGPROB):
             def __inner_get_logprob__(logits):
@@ -133,7 +133,7 @@ class ActivationPatching(Patching):
                     logits = logits[:, -1, :]
                 logits_logprobs = torch.nn.functional.log_softmax(logits, dim=-1)
                 correct_logprobs = logits_logprobs.gather(1, answer_token_indices[:, 0].unsqueeze(1))
-                return correct_logprobs
+                return correct_logprobs.mean(())
             self.inner_metric = __inner_get_logprob__
 
     def __precalculate_caches_and_baselines__(self):
