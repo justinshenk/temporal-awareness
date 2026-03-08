@@ -1,6 +1,7 @@
 import torch
 import einops
 import pandas as pd
+from enum import Enum
 
 from transformer_lens import (
     HookedTransformer,
@@ -88,6 +89,11 @@ class Patching:
         return df
 
 class ActivationPatching(Patching):
+    class Metric(Enum):
+        LOGIT_DIFF = 0,
+        LOGIT = 1,
+        LOGPROB = 2
+
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
@@ -98,7 +104,7 @@ class ActivationPatching(Patching):
             __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
             self.caches_and_baselines_ready = True
 
-    def __patch__(self, layer_specific_algorithm):
+    def __patch__(self, layer_specific_algorithm, metric_type):
         # Precalculate caches and baselines if not yet:
         self.__precalculate_caches_and_baselines__()
         assert(self.caches_and_baselines_ready)
@@ -112,17 +118,37 @@ class ActivationPatching(Patching):
             device=self.model.cfg.device,
         ).to(dtype=int)
 
-        # Implement batched version of logit_metric that uses defined variables:
-        def __inner_get_logit_diff__(logits):
-            if len(logits.shape) == 3:
-                # Get final logits only
-                logits = logits[:, -1, :]
-            correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
-            incorrect_logits = logits.gather(1, answer_token_indices[:, 1].unsqueeze(1))
-            return (correct_logits - incorrect_logits).mean()
+        inner_metric = None
+        if (metric_type == ActivationPatching.Metric.LOGIT_DIFF):
+            # Implement batched version of logit_metric that uses defined variables:
+            def __inner_get_logit_diff__(logits):
+                if len(logits.shape) == 3:
+                    # Get final logits only
+                    logits = logits[:, -1, :]
+                correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
+                incorrect_logits = logits.gather(1, answer_token_indices[:, 1].unsqueeze(1))
+                return (correct_logits - incorrect_logits).mean()
+            inner_metric = __inner_get_logit_diff__
+        elif (metric_type == ActivationPatching.Metric.LOGIT):
+            def __inner_get_logit__(logits):
+                if len(logits.shape) == 3:
+                    # Get final logits only
+                    logits = logits[:, -1, :]
+                correct_logits = logits.gather(1, answer_token_indices[:, 0].unsqueeze(1))
+                return correct_logits
+            inner_metric = __inner_get_logit__
+        elif (metric_type == ActivationPatching.Metric.LOGPROB):
+            def __inner_get_logprob__(logits):
+                if len(logits.shape) == 3:
+                    # Get final logits only
+                    logits = logits[:, -1, :]
+                logits_logprobs = torch.nn.functional.log_softmax(logits, dim=-1)
+                correct_logprobs = logits_logprobs.gather(1, answer_token_indices[:, 0].unsqueeze(1))
+                return correct_logprobs
+            inner_metric = __inner_get_logprob__
 
         def __inner_logit_metric__(logits):
-            return (__inner_get_logit_diff__(logits) - self.corrupted_baseline) / (
+            return (inner_metric(logits) - self.corrupted_baseline) / (
                 self.clean_baseline - self.corrupted_baseline
             )
 
@@ -133,17 +159,17 @@ class ActivationPatching(Patching):
         df = pd.DataFrame(every_block_act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
         return df
 
-    def patch_residual(self):
-        return self.__patch__(patching.get_act_patch_resid_pre)
+    def patch_residual(self, metric_type=Metric.LOGIT_DIFF):
+        return self.__patch__(patching.get_act_patch_resid_pre, metric_type)
 
-    def patch_layer_out(self):
+    def patch_layer_out(self, metric_type=Metric.LOGIT_DIFF):
         raise NotImplementedError()
 
-    def patch_attn_out(self):
-        return self.__patch__(patching.get_act_patch_attn_out)
+    def patch_attn_out(self, metric_type=Metric.LOGIT_DIFF):
+        return self.__patch__(patching.get_act_patch_attn_out, metric_type)
 
-    def patch_mlp_out(self):
-        return self.__patch__(patching.get_act_patch_mlp_out)
+    def patch_mlp_out(self, metric_type=Metric.LOGIT_DIFF):
+        return self.__patch__(patching.get_act_patch_mlp_out, metric_type)
 
 class AttributionPatching(Patching):
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
