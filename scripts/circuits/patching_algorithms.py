@@ -170,7 +170,7 @@ class ActivationPatching(Patching):
             __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
             self.caches_and_baselines_ready = True
 
-    def __patch__(self, layer_specific_algorithm, metric_type):
+    def __patch__(self, layer_specific_algorithm):
         # Precalculate caches and baselines if not yet:
         self.__precalculate_caches_and_baselines__()
         assert(self.caches_and_baselines_ready)
@@ -187,17 +187,17 @@ class ActivationPatching(Patching):
         df = pd.DataFrame(every_block_act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
         return df
 
-    def patch_residual(self, metric_type=Metric.LOGIT_DIFF):
-        return self.__patch__(patching.get_act_patch_resid_pre, metric_type)
+    def patch_residual(self):
+        return self.__patch__(patching.get_act_patch_resid_pre)
 
-    def patch_layer_out(self, metric_type=Metric.LOGIT_DIFF):
+    def patch_layer_out(self):
         raise NotImplementedError()
 
-    def patch_attn_out(self, metric_type=Metric.LOGIT_DIFF):
-        return self.__patch__(patching.get_act_patch_attn_out, metric_type)
+    def patch_attn_out(self):
+        return self.__patch__(patching.get_act_patch_attn_out)
 
-    def patch_mlp_out(self, metric_type=Metric.LOGIT_DIFF):
-        return self.__patch__(patching.get_act_patch_mlp_out, metric_type)
+    def patch_mlp_out(self):
+        return self.__patch__(patching.get_act_patch_mlp_out)
 
 class AttributionPatching(Patching):
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers):
