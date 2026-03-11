@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..common.base_schema import BaseSchema
+from ..common.patching_types import PatchingMode
 
 if TYPE_CHECKING:
     from .act_patch_results import IntervenedChoice
@@ -20,7 +21,9 @@ class IntervenedChoiceMetrics(BaseSchema):
     """
 
     # Core metrics
+    mode: PatchingMode = "denoising"
     recovery: float = 0.0
+    disruption: float = 0.0
     flipped: bool = False
 
     # Logprob metrics
@@ -38,6 +41,10 @@ class IntervenedChoiceMetrics(BaseSchema):
     norm_logit_short: float = 0.0
     norm_logit_long: float = 0.0
     norm_logit_diff: float = 0.0
+
+    # Baseline-relative metrics
+    baseline_logit_diff: float = 0.0
+    rel_logit_delta: float = 0.0  # (logit_diff - baseline) / abs(baseline)
 
     # Rank metrics
     reciprocal_rank_short: float = 0.0
@@ -74,10 +81,25 @@ class IntervenedChoiceMetrics(BaseSchema):
         if choice is None:
             return cls()
 
+        # Extract baseline logit diff from the appropriate baseline
+        # Denoising runs corrupted, noising runs clean
+        baseline_logit_diff = 0.0
+        baseline = (
+            choice.baseline_corrupted
+            if choice.mode == "denoising"
+            else choice.baseline_clean
+        )
+        if baseline is not None:
+            orig_lps = baseline.divergent_logprobs
+            baseline_logit_diff = orig_lps[0] - orig_lps[1]
+
         # Start with defaults
         metrics = cls(
+            mode=choice.mode,
             recovery=choice.recovery,
+            disruption=choice.disruption,
             flipped=choice.flipped,
+            baseline_logit_diff=baseline_logit_diff,
         )
 
         # Get the intervened LabeledSimpleBinaryChoice
@@ -86,7 +108,7 @@ class IntervenedChoiceMetrics(BaseSchema):
             return metrics
 
         # Logprobs from _divergent_logprobs (short=0, long=1)
-        lp_short, lp_long = intervened._divergent_logprobs
+        lp_short, lp_long = intervened.divergent_logprobs
         metrics.logprob_short = lp_short
         metrics.logprob_long = lp_long
         metrics.prob_short = math.exp(lp_short) if lp_short > -50 else 0.0
@@ -124,6 +146,13 @@ class IntervenedChoiceMetrics(BaseSchema):
                 metrics.norm_logit_short - metrics.norm_logit_long
             )
 
+        # Compute relative logit delta (change from baseline, normalized)
+        if abs(metrics.baseline_logit_diff) > 1e-6:
+            metrics.rel_logit_delta = (
+                (metrics.logit_diff - metrics.baseline_logit_diff)
+                / abs(metrics.baseline_logit_diff)
+            )
+
         # NodeMetrics from tree.nodes[0].analysis.metrics
         if tree.nodes and tree.nodes[0].analysis:
             node_metrics = tree.nodes[0].analysis.metrics
@@ -138,14 +167,14 @@ class IntervenedChoiceMetrics(BaseSchema):
             traj_metrics = chosen.analysis.full_traj
             metrics.inv_perplexity = traj_metrics.inv_perplexity
 
-        # Trajectory inv_perplexity from continuation_only (short=trajs[0], long=trajs[1])
+        # Trajectory inv_perplexity from continuation_only (trajs[0]=A, trajs[1]=B)
         if tree.trajs and len(tree.trajs) >= 2:
-            short_traj = tree.trajs[0]
-            long_traj = tree.trajs[1]
-            if short_traj.analysis and short_traj.analysis.continuation_only:
-                metrics.traj_inv_perplexity_short = short_traj.analysis.continuation_only.inv_perplexity
-            if long_traj.analysis and long_traj.analysis.continuation_only:
-                metrics.traj_inv_perplexity_long = long_traj.analysis.continuation_only.inv_perplexity
+            traj_a = tree.trajs[0]
+            traj_b = tree.trajs[1]
+            if traj_a.analysis and traj_a.analysis.continuation_only:
+                metrics.traj_inv_perplexity_short = traj_a.analysis.continuation_only.inv_perplexity
+            if traj_b.analysis and traj_b.analysis.continuation_only:
+                metrics.traj_inv_perplexity_long = traj_b.analysis.continuation_only.inv_perplexity
 
         return metrics
 

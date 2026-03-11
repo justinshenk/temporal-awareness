@@ -6,12 +6,14 @@ choice flips correspond to valid text generation or degenerate outputs.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
+
+from ...common.patching_types import PatchingMode
 
 if TYPE_CHECKING:
+    from ...activation_patching import ActivationPatchingResult
     from ...binary_choice import BinaryChoiceRunner
     from ...common.contrastive_pair import ContrastivePair
-    from ...activation_patching import ActivationPatchingResult
     from .activation_patching import IntertemporalActivationPatchingConfig
 
 
@@ -20,7 +22,7 @@ def verify_flipped_choices(
     runner: "BinaryChoiceRunner",
     contrastive_pair: "ContrastivePair",
     cfg: "IntertemporalActivationPatchingConfig",
-    mode: Literal["noising", "denoising"],
+    mode: PatchingMode,
 ) -> None:
     """Verify flipped choices with greedy generation to detect degeneration.
 
@@ -79,19 +81,19 @@ def verify_flipped_choices(
 
 def _get_prompt_text(
     contrastive_pair: "ContrastivePair",
-    mode: Literal["noising", "denoising"],
+    mode: PatchingMode,
 ) -> str:
     """Get the base prompt text for the given mode."""
     if mode == "denoising":
-        return contrastive_pair.short_text
-    return contrastive_pair.long_text
+        return contrastive_pair.clean_prompt
+    return contrastive_pair.corrupted_prompt
 
 
 def _get_labels(contrastive_pair: "ContrastivePair") -> tuple[str, str]:
-    """Get (short_label, long_label) tuple."""
+    """Get (clean_label, corrupted_label) tuple."""
     return (
-        contrastive_pair.short_label or "",
-        contrastive_pair.long_label or "",
+        contrastive_pair.clean_label or "",
+        contrastive_pair.corrupted_label or "",
     )
 
 

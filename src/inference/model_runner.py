@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import torch
 
 from ..common.device_utils import get_device
 from ..common.profiler import profile
-from .interventions import Intervention
+from .interventions import Intervention, Interventions
 from .backends import (
     ModelBackend,
     TransformerLensBackend,
@@ -130,7 +130,8 @@ class ModelRunner:
         tensor = self.encode(
             text, add_special_tokens=add_special_tokens, prepend_bos=prepend_bos
         )
-        return tensor.squeeze().tolist()
+        # flatten() ensures we always get a 1D tensor, tolist() then returns a list
+        return tensor.flatten().tolist()
 
     def decode(self, token_ids: torch.Tensor) -> str:
         """Decode tensor of token IDs to string."""
@@ -167,25 +168,53 @@ class ModelRunner:
         token_ids: list[int],
         max_new_tokens: int = 256,
         temperature: float = 0.0,
-        intervention: Optional[Intervention] = None,
     ) -> GeneratedTrajectory:
         """Generate text autoregressively and return trajectory with logprobs.
+
+        Uses backend's optimized generation with KV caching for maximum speed.
 
         Args:
             token_ids: Initial token IDs to start generation from
             max_new_tokens: Maximum number of tokens to generate
             temperature: Sampling temperature (0.0 = greedy)
-            intervention: Optional intervention to apply during generation
 
         Returns:
             GeneratedTrajectory containing all tokens (input + generated) with logprobs
         """
-        all_token_ids = list(token_ids)
-        all_logits: list[torch.Tensor] = []
+        all_token_ids, all_logprobs = self._backend.generate_trajectory(
+            token_ids, max_new_tokens, temperature
+        )
+        return GeneratedTrajectory.from_logprobs(all_token_ids, all_logprobs)
 
+    @profile
+    def generate_trajectory_with_intervention(
+        self,
+        token_ids: list[int],
+        intervention: Interventions,
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+    ) -> GeneratedTrajectory:
+        """Generate trajectory with intervention applied at each step.
+
+        This is slower than generate_trajectory because interventions invalidate
+        KV caching - each token requires a full forward pass through all positions.
+        Use generate_trajectory when no intervention is needed.
+
+        Args:
+            token_ids: Initial token IDs to start generation from
+            intervention: Intervention(s) to apply at each generation step
+            max_new_tokens: Maximum number of tokens to generate
+            temperature: Sampling temperature (0.0 = greedy)
+
+        Returns:
+            GeneratedTrajectory with full logits (not just logprobs)
+        """
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
+
+        all_token_ids = list(token_ids)
+        all_logits: list[torch.Tensor] = []
 
         ctx = (
             torch.inference_mode()
@@ -196,23 +225,15 @@ class ModelRunner:
         with ctx:
             for _ in range(max_new_tokens):
                 input_ids = torch.tensor([all_token_ids], device=self.device)
-                if interventions:
-                    logits_batch = self._backend.run_with_intervention(
-                        input_ids, interventions
-                    )
-                else:
-                    logits_batch = self._backend.forward(input_ids)
-                # logits_batch is [1, seq_len, vocab_size]
-                # logits[i] predicts the next token after position i
+                logits_batch = self._backend.run_with_intervention(
+                    input_ids, interventions
+                )
 
                 if len(all_logits) == 0:
-                    # First iteration: collect logits for all input positions
                     all_logits.extend(list(logits_batch[0]))
                 else:
-                    # Subsequent iterations: only collect last position
                     all_logits.append(logits_batch[0, -1, :])
 
-                # Sample from last position's logits
                 next_logits = logits_batch[0, -1, :]
                 if temperature == 0.0:
                     next_token = next_logits.argmax().item()
@@ -225,13 +246,11 @@ class ModelRunner:
                 if next_token == self.eos_token_id:
                     break
 
-        # all_logits[i] predicts token_ids[i+1]
-        # from_inference expects logits of shape [n_sequence, vocab_size]
-        # Add dummy logits for the last position (no prediction after final token)
         vocab_size = all_logits[0].shape[-1]
-        dummy_logits = torch.zeros(vocab_size, device=self.device, dtype=all_logits[0].dtype)
+        dummy_logits = torch.zeros(
+            vocab_size, device=self.device, dtype=all_logits[0].dtype
+        )
         all_logits.append(dummy_logits)
-
         full_logits = torch.stack(all_logits, dim=0)
 
         return GeneratedTrajectory.from_inference(
@@ -261,7 +280,11 @@ class ModelRunner:
         """
         formatted = self.apply_chat_template(prompt) + prefilling
         token_ids = self.encode_ids(formatted, add_special_tokens=True)
-        return self.generate_trajectory(token_ids, max_new_tokens, temperature, intervention)
+        if intervention is not None:
+            return self.generate_trajectory_with_intervention(
+                token_ids, intervention, max_new_tokens, temperature
+            )
+        return self.generate_trajectory(token_ids, max_new_tokens, temperature)
 
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
@@ -335,7 +358,7 @@ class ModelRunner:
     def run_with_intervention(
         self,
         prompt: str,
-        intervention: Union[Intervention, list[Intervention]],
+        intervention: Interventions,
         prepend_bos: bool = False,
     ) -> torch.Tensor:
         """Run forward pass with intervention(s) applied.
@@ -361,7 +384,7 @@ class ModelRunner:
     def run_with_intervention_and_cache(
         self,
         prompt: str,
-        intervention: Union[Intervention, list[Intervention]],
+        intervention: Interventions,
         names_filter: Optional[callable] = None,
         prepend_bos: bool = False,
     ) -> tuple[torch.Tensor, dict]:
@@ -393,7 +416,7 @@ class ModelRunner:
     def compute_trajectory_with_intervention(
         self,
         token_ids: list[int],
-        intervention: Union[Intervention, list[Intervention]] | None = None,
+        intervention: Interventions | None = None,
         names_filter: Optional[callable] = None,
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
@@ -443,7 +466,7 @@ class ModelRunner:
     def compute_trajectory_with_intervention_and_cache(
         self,
         token_ids: list[int],
-        intervention: Union[Intervention, list[Intervention]] | None = None,
+        intervention: Interventions | None = None,
         names_filter: Optional[callable] = None,
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
@@ -682,8 +705,8 @@ class ModelRunner:
         if any(x in name for x in ["-base", "_base"]):
             return False
 
-        # Qwen3 models are instruct/reasoning by default (no base variant)
-        if "qwen3" in name or "qwen/qwen3" in name:
+        # Qwen3/Qwen3.5 models are instruct/reasoning by default (no base variant)
+        if any(x in name for x in ["qwen3", "qwen-3", "qwen_3"]):
             return True
 
         # Explicit chat/instruct indicators
@@ -726,7 +749,7 @@ class ModelRunner:
                     return True
 
         # Name-based heuristics for known reasoning models
-        reasoning_models = ["qwen3", "deepseek-r1", "o1", "o3"]
+        reasoning_models = ["qwen3", "qwen-3", "qwen_3", "deepseek-r1", "o1", "o3"]
         return any(model in name for model in reasoning_models)
 
     @property

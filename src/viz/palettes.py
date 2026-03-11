@@ -117,11 +117,11 @@ TOKEN_COLORS = {
     # Prompt tokens
     "prompt": PALETTES[0][2],
     "prompt_light": _lighten(PALETTES[0][2]),
-    "prompt_edge": PALETTES[0][4],
+    "prompt_edge": PALETTES[0][2],  # Dark orange - distinct from response
     # Response tokens
     "response": PALETTES[0][4],
     "response_light": _lighten(PALETTES[0][4]),
-    "response_edge": PALETTES[0][4],
+    "response_edge": PALETTES[0][4],  # Green - keep for response
     # Choice divergent tokens
     "choice_div": PALETTES[0][3],
     "choice_div_light": _lighten(PALETTES[0][3]),

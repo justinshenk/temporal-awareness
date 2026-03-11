@@ -46,8 +46,8 @@ def visualize_tokenization(
 
     for i, pair in enumerate(pairs[:max_pairs]):
         # Decode tokens
-        short_tokens = [runner.decode_ids([tid]) for tid in pair.short_traj.token_ids]
-        long_tokens = [runner.decode_ids([tid]) for tid in pair.long_traj.token_ids]
+        clean_tokens = [runner.decode_ids([tid]) for tid in pair.clean_traj.token_ids]
+        corrupted_tokens = [runner.decode_ids([tid]) for tid in pair.corrupted_traj.token_ids]
 
         # Get coloring info
         coloring = get_token_coloring_for_pair(pair)
@@ -55,7 +55,7 @@ def visualize_tokenization(
         # Use simple index if multiple pairs, otherwise no suffix
         suffix = f"_{i}" if max_pairs > 1 else ""
         _plot_tokenization_detail(
-            pair, coloring, short_tokens, long_tokens, output_dir / f"tokenization{suffix}.png"
+            pair, coloring, clean_tokens, corrupted_tokens, output_dir / f"tokenization{suffix}.png"
         )
 
     print(f"[viz] Tokenization plots saved to {output_dir}")
@@ -64,8 +64,8 @@ def visualize_tokenization(
 def _plot_tokenization_detail(
     pair: ContrastivePair,
     coloring: PairTokenColoring,
-    short_tokens: list[str],
-    long_tokens: list[str],
+    clean_tokens: list[str],
+    corrupted_tokens: list[str],
     save_path: Path,
 ) -> None:
     """Plot detailed tokenization for a contrastive pair.
@@ -73,15 +73,15 @@ def _plot_tokenization_detail(
     Args:
         pair: ContrastivePair with token IDs and labels
         coloring: PairTokenColoring with color info
-        short_tokens: Decoded token strings for short trajectory
-        long_tokens: Decoded token strings for long trajectory
+        clean_tokens: Decoded token strings for clean trajectory
+        corrupted_tokens: Decoded token strings for corrupted trajectory
         save_path: Path to save the plot
     """
-    short_ids = pair.short_traj.token_ids
-    long_ids = pair.long_traj.token_ids
+    clean_ids = pair.clean_traj.token_ids
+    corrupted_ids = pair.corrupted_traj.token_ids
 
     # Create figure with detailed layout - size based on sequence length
-    max_len = max(len(short_ids), len(long_ids))
+    max_len = max(len(clean_ids), len(corrupted_ids))
     fig_height = max(14, min(32, 3 + (max_len // 15) * 0.8))
     fig = plt.figure(figsize=(20, fig_height))
 
@@ -89,14 +89,14 @@ def _plot_tokenization_detail(
     ax_info = fig.add_axes([0.05, 0.92, 0.9, 0.06])
     ax_info.axis("off")
 
-    # Get labels
-    short_term_label = pair.short_label or "?"
-    long_term_label = pair.long_label or "?"
+    # Get labels (clean = short-term, corrupted = long-term)
+    clean_label = pair.clean_labels[0] if pair.clean_labels else "?"
+    corrupted_label = pair.clean_labels[1] if pair.clean_labels else "?"
 
     info_text = (
-        f"Short-term label: {short_term_label}    |    Long-term label: {long_term_label}    |    "
-        f"Prompt tokens: {coloring.short_prompt_len}/{coloring.long_prompt_len}    |    "
-        f"Lengths: {len(short_ids)}/{len(long_ids)}"
+        f"Clean label: {clean_label}    |    Corrupted label: {corrupted_label}    |    "
+        f"Prompt tokens: {coloring.clean_prompt_len}/{coloring.corrupted_prompt_len}    |    "
+        f"Lengths: {len(clean_ids)}/{len(corrupted_ids)}"
     )
     ax_info.text(
         0.5,
@@ -108,24 +108,24 @@ def _plot_tokenization_detail(
         fontweight="bold",
     )
 
-    # Short trajectory - leave space on right for legend
-    ax_short = fig.add_axes([0.02, 0.48, 0.88, 0.42])
+    # Clean trajectory - leave space on right for legend
+    ax_clean = fig.add_axes([0.02, 0.48, 0.88, 0.42])
     _plot_token_grid(
-        ax_short,
-        short_ids,
-        short_tokens,
-        coloring.short_colors,
-        f"Short-term chooser (chose {short_term_label}, rejected {long_term_label})",
+        ax_clean,
+        clean_ids,
+        clean_tokens,
+        coloring.clean_colors,
+        f"Clean trajectory (chose {clean_label}, rejected {corrupted_label})",
     )
 
-    # Long trajectory
-    ax_long = fig.add_axes([0.02, 0.02, 0.88, 0.42])
+    # Corrupted trajectory
+    ax_corrupted = fig.add_axes([0.02, 0.02, 0.88, 0.42])
     _plot_token_grid(
-        ax_long,
-        long_ids,
-        long_tokens,
-        coloring.long_colors,
-        f"Long-term chooser (chose {long_term_label}, rejected {short_term_label})",
+        ax_corrupted,
+        corrupted_ids,
+        corrupted_tokens,
+        coloring.corrupted_colors,
+        f"Corrupted trajectory (chose {corrupted_label}, rejected {clean_label})",
     )
 
     _finalize_plot(save_path)

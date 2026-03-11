@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ...common import ensure_dir, get_timestamp, get_device, BaseSchema
+from ...common.file_io import save_json
+from ...common.profiler import P
 from ...common.token_tree import TokenTree
 from ...common.contrastive_pair import ContrastivePair
 from ...common.analysis.analyze import analyze_token_tree
@@ -27,7 +29,7 @@ from ..common.contrastive_preferences import (
 )
 from ..preference import PreferenceDataset
 from ..prompt import PromptDatasetConfig
-from ...activation_patching.coarse_activation_patching import (
+from ...activation_patching.coarse import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
 )
@@ -40,9 +42,9 @@ class ExperimentConfig(BaseSchema):
 
     model: str
     dataset_config: dict
-    internals_config: dict | None = None
     max_samples: int | None = None
-    n_pairs: int = 5
+    n_pairs: int | None = None
+    try_loading_data: bool = False
 
     @property
     def name(self) -> str:
@@ -95,7 +97,11 @@ class ExperimentContext:
             print(
                 f"[ctx] Found {len(all_pref_pairs)} contrastive preferences, selecting {self.cfg.n_pairs}"
             )
-            selected = all_pref_pairs[: self.cfg.n_pairs]
+            if self.cfg.n_pairs is not None:
+                print(f"[ctx] Selecting {self.cfg.n_pairs} pairs")
+                selected = all_pref_pairs[: self.cfg.n_pairs]
+            else:
+                selected = all_pref_pairs
             anchor_texts = self.pref_data.prompt_format_config.get_anchor_texts()
             first_interesting_marker = self.pref_data.prompt_format_config.get_prompt_marker_before_time_horizon()
             print("[ctx] Building contrastive pairs...")
@@ -171,7 +177,9 @@ class ExperimentContext:
         """First contrastive pair (for coarse patching)."""
         return self.pairs[0] if self.pairs else None
 
-    def save_token_trees(self, pair_idx: int, pair: ContrastivePair, output_dir: Path) -> None:
+    def save_token_trees(
+        self, pair_idx: int, pair: ContrastivePair, output_dir: Path
+    ) -> None:
         """Save analyzed TokenTree for a contrastive pair.
 
         Creates a combined tree with both short and long trajectories,
@@ -187,7 +195,7 @@ class ExperimentContext:
 
         # Build combined tree with both trajectories and fork analysis
         tree = TokenTree.from_trajectories(
-            [pair.short_traj, pair.long_traj],
+            [pair.clean_traj, pair.corrupted_traj],
             groups_per_traj=[[0], [1]],
             fork_arms=[(0, 1)],
         )
@@ -196,3 +204,83 @@ class ExperimentContext:
 
         with open(output_dir / "token_tree.json", "w") as f:
             json.dump(tree.to_dict(), f, indent=2)
+
+    # ─── Save/Load methods for cached results ───
+
+    def get_coarse_pair_path(self, pair_idx: int) -> Path:
+        return self.output_dir / f"pair_{pair_idx}" / "coarse_results.json"
+
+    def save_coarse_pair(self, pair_idx: int) -> None:
+        """Save per-pair coarse patching results for re-visualization."""
+        if pair_idx in self.coarse_patching:
+            result = self.coarse_patching[pair_idx]
+            path = self.get_coarse_pair_path(pair_idx)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            result.pop_heavy()
+            save_json(result.to_dict(), path)
+
+    def load_coarse_pair(self, pair_idx: int) -> bool:
+        """Load per-pair coarse patching results."""
+        path = self.get_coarse_pair_path(pair_idx)
+        if path.exists():
+            self.coarse_patching[pair_idx] = CoarseActPatchResults.from_json(path)
+            return True
+        return False
+
+    def get_coarse_agg_path(self) -> Path:
+        return self.output_dir / "coarse_agg.json"
+
+    def save_coarse_agg(self) -> None:
+        if self.coarse_agg:
+            path = self.get_coarse_agg_path()
+            print(f"[coarse] Saving aggregated results to {path}...")
+            with P("save_coarse_agg"):
+                with P("pop_heavy"):
+                    self.coarse_agg.pop_heavy()
+                with P("to_dict"):
+                    data = self.coarse_agg.to_dict()
+                with P("save_json"):
+                    save_json(data, path)
+            P.report()
+            print(f"[coarse] Saved.")
+
+    def load_coarse_agg(self) -> bool:
+        path = self.get_coarse_agg_path()
+        if path.exists():
+            self.coarse_agg = CoarseActPatchAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def get_att_agg_path(self) -> Path:
+        return self.output_dir / "att_agg.json"
+
+    def save_att_agg(self) -> None:
+        if self.att_agg:
+            path = self.get_att_agg_path()
+            print(f"[attr] Saving aggregated results to {path}...")
+            save_json(self.att_agg.to_dict(), path)
+            print(f"[attr] Saved.")
+
+    def load_att_agg(self) -> bool:
+        path = self.get_att_agg_path()
+        if path.exists():
+            self.att_agg = AttrPatchAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def get_fine_agg_path(self) -> Path:
+        return self.output_dir / "fine_agg.json"
+
+    def save_fine_agg(self) -> None:
+        if self.fine_agg:
+            path = self.get_fine_agg_path()
+            print(f"[fine] Saving aggregated results to {path}...")
+            save_json(self.fine_agg.to_dict(), path)
+            print(f"[fine] Saved.")
+
+    def load_fine_agg(self) -> bool:
+        path = self.get_fine_agg_path()
+        if path.exists():
+            self.fine_agg = ActPatchAggregatedResult.from_json(path)
+            return True
+        return False

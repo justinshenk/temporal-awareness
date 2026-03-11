@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
+from ..common.patching_types import PatchingMode, TrajectoryType
 
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
@@ -14,25 +15,25 @@ if TYPE_CHECKING:
 
 def _get_trajectory(
     pair: ContrastivePair,
-    which: Literal["clean", "corrupted"],
-    mode: Literal["denoising", "noising"],
+    which: TrajectoryType,
+    mode: PatchingMode,
 ):
     """Get the appropriate trajectory based on mode and which.
 
-    In denoising mode: clean=long, corrupted=short
-    In noising mode: clean=short, corrupted=long
+    In denoising mode: we patch from corrupted -> clean (inject clean into corrupted)
+    In noising mode: we patch from clean -> corrupted (inject corrupted into clean)
     """
     if mode == "denoising":
-        return pair.long_traj if which == "clean" else pair.short_traj
+        return pair.corrupted_traj if which == "clean" else pair.clean_traj
     else:
-        return pair.short_traj if which == "clean" else pair.long_traj
+        return pair.clean_traj if which == "clean" else pair.corrupted_traj
 
 
 def get_cache(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
-    which: Literal["clean", "corrupted"],
-    mode: Literal["denoising", "noising"],
+    which: TrajectoryType,
+    mode: PatchingMode,
     names_filter: callable | None = None,
     with_grad: bool = False,
 ) -> tuple[torch.Tensor, dict]:
@@ -72,9 +73,9 @@ def get_seq_len(cache: dict, hook_name: str) -> int:
 def get_caches_for_attribution(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
-    mode: Literal["denoising", "noising"],
+    mode: PatchingMode,
     names_filter: callable | None = None,
-    grad_at: Literal["clean", "corrupted"] = "corrupted",
+    grad_at: TrajectoryType = "corrupted",
 ) -> tuple[torch.Tensor, dict, dict, dict]:
     """Get clean and corrupted caches with gradients at specified point.
 

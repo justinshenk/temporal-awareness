@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-
-import numpy as np
 
 from ..inference.interventions import Intervention, InterventionTarget
 from .base_schema import BaseSchema
-from .hook_utils import hook_name as make_hook_name, parse_hook_name
+from .choice import LabeledSimpleBinaryChoice
+from .hook_utils import hook_name
+from .patching_types import PatchingMode
 from .token_positions import PositionMapping
 from .token_trajectory import TokenTrajectory
+
+DEBUG_INTERVENTIONS = False
 
 
 @dataclass
@@ -19,18 +20,25 @@ class ContrastivePair(BaseSchema):
     """A pair of contrasting trajectories for activation patching.
 
     Attributes:
-        short_traj: Trajectory for short-term choice
-        long_traj: Trajectory for long-term choice
-        position_mapping: Maps short positions to long positions
-        labels: (short_label, long_label)
+        clean_traj: Clean trajectory (baseline/reference behavior)
+        corrupted_traj: Corrupted trajectory (target/counterfactual behavior)
+        position_mapping: Maps clean positions to corrupted positions
+        full_texts: (clean_text, corrupted_text) full prompt+response strings
+        clean_labels: (option_a, option_b) labels for clean trajectory
+        corrupted_labels: (option_a, option_b) labels for corrupted trajectory
         choice_prefix: e.g. "I choose: "
+        sample_id: Unique identifier for this sample
+        prompt_token_counts: (clean_prompt_len, corrupted_prompt_len)
+        choice_divergent_positions: (clean_pos, corrupted_pos) where A/B diverge
     """
 
-    short_traj: TokenTrajectory
-    long_traj: TokenTrajectory
+    clean_traj: TokenTrajectory
+    corrupted_traj: TokenTrajectory
     position_mapping: PositionMapping = field(default_factory=PositionMapping)
     full_texts: tuple[str, str] = ("", "")
-    labels: tuple[str, str] | None = None
+    prompt_texts: tuple[str, str] = ("", "")
+    clean_labels: tuple[str, str] | None = None
+    corrupted_labels: tuple[str, str] | None = None
     choice_prefix: str = ""
     sample_id: int = 0
     prompt_token_counts: tuple[int, int] | None = None
@@ -41,31 +49,31 @@ class ContrastivePair(BaseSchema):
     # =========================================================================
 
     @property
-    def short_text(self) -> str:
+    def clean_text(self) -> str:
         return self.full_texts[0]
 
     @property
-    def long_text(self) -> str:
+    def corrupted_text(self) -> str:
         return self.full_texts[1]
 
     @property
-    def short_label(self) -> str | None:
-        return self.labels[0] if self.labels else None
+    def clean_prompt(self) -> str:
+        return self.prompt_texts[0]
 
     @property
-    def long_label(self) -> str | None:
-        return self.labels[1] if self.labels else None
+    def corrupted_prompt(self) -> str:
+        return self.prompt_texts[1]
 
     @property
-    def short_divergent_position(self) -> int | None:
-        """Position where A/B tokens diverge in short trajectory."""
+    def clean_divergent_position(self) -> int | None:
+        """Position where A/B tokens diverge in clean trajectory."""
         if self.choice_divergent_positions is None:
             return None
         return self.choice_divergent_positions[0]
 
     @property
-    def long_divergent_position(self) -> int | None:
-        """Position where A/B tokens diverge in long trajectory."""
+    def corrupted_divergent_position(self) -> int | None:
+        """Position where A/B tokens diverge in corrupted trajectory."""
         if self.choice_divergent_positions is None:
             return None
         return self.choice_divergent_positions[1]
@@ -75,26 +83,26 @@ class ContrastivePair(BaseSchema):
     # =========================================================================
 
     @property
-    def short_length(self) -> int:
-        return self.short_traj.n_sequence
+    def clean_length(self) -> int:
+        return self.clean_traj.n_sequence
 
     @property
-    def long_length(self) -> int:
-        return self.long_traj.n_sequence
+    def corrupted_length(self) -> int:
+        return self.corrupted_traj.n_sequence
 
     @property
     def max_length(self) -> int:
-        return max(self.short_traj.n_sequence, self.long_traj.n_sequence)
+        return max(self.clean_traj.n_sequence, self.corrupted_traj.n_sequence)
 
     @property
-    def short_prompt_length(self) -> int:
-        if self.prompt_token_counts and len(self.prompt_token_counts) > 0:
+    def clean_prompt_length(self) -> int:
+        if self.prompt_token_counts:
             return self.prompt_token_counts[0]
         return 0
 
     @property
-    def long_prompt_length(self) -> int:
-        if self.prompt_token_counts and len(self.prompt_token_counts) > 1:
+    def corrupted_prompt_length(self) -> int:
+        if self.prompt_token_counts:
             return self.prompt_token_counts[1]
         return 0
 
@@ -103,150 +111,149 @@ class ContrastivePair(BaseSchema):
     # =========================================================================
 
     @property
-    def short(self) -> TokenTrajectory:
-        return self.short_traj
+    def clean(self) -> TokenTrajectory:
+        return self.clean_traj
 
     @property
-    def long(self) -> TokenTrajectory:
-        return self.long_traj
-
-    @property
-    def reference(self) -> TokenTrajectory:
-        """Short as reference (baseline behavior)."""
-        return self.short_traj
-
-    @property
-    def counterfactual(self) -> TokenTrajectory:
-        """Long as counterfactual (target behavior)."""
-        return self.long_traj
-
-    @property
-    def positive(self) -> TokenTrajectory:
-        """Long as positive (desired behavior)."""
-        return self.long_traj
-
-    @property
-    def negative(self) -> TokenTrajectory:
-        """Short as negative (baseline behavior)."""
-        return self.short_traj
-
-    @property
-    def baseline(self) -> TokenTrajectory:
-        """Short as baseline for patching."""
-        return self.short_traj
-
-    @property
-    def target(self) -> TokenTrajectory:
-        """Long as target for patching."""
-        return self.long_traj
-
-    # =========================================================================
-    # Cache Access
-    # =========================================================================
-
-    @property
-    def short_cache(self) -> dict:
-        return self.short_traj.internals if self.short_traj.has_internals() else {}
-
-    @property
-    def long_cache(self) -> dict:
-        return self.long_traj.internals if self.long_traj.has_internals() else {}
-
-    @property
-    def available_layers(self) -> list[int]:
-        """Layers with cached activations."""
-        layers = set()
-        for name in self.short_cache.keys():
-            parsed = parse_hook_name(name)
-            if parsed:
-                layers.add(parsed[0])
-        return sorted(layers)
-
-    @property
-    def available_components(self) -> list[str]:
-        """Components with cached activations."""
-        components = set()
-        for name in self.short_cache.keys():
-            parsed = parse_hook_name(name)
-            if parsed:
-                components.add(parsed[1])
-        return sorted(components)
-
-    def _get_acts(self, cache: dict, layer: int, component: str) -> np.ndarray | None:
-        """Get activations from cache."""
-        hook = make_hook_name(layer, component)
-        if hook not in cache:
-            return None
-        act = cache[hook]
-        try:
-            import torch
-
-            if isinstance(act, torch.Tensor):
-                act = act.detach().cpu().numpy()
-        except ImportError:
-            pass
-        return act[0] if act.ndim == 3 and act.shape[0] == 1 else act
+    def corrupted(self) -> TokenTrajectory:
+        return self.corrupted_traj
 
     # =========================================================================
     # Interventions
     # =========================================================================
 
-    def get_interventions(
+    def create_patching_intervention(
         self,
         target: InterventionTarget,
-        layers: list[int],
-        component: str,
-        mode: str,
+        mode: PatchingMode,
+        clean_choice: LabeledSimpleBinaryChoice,
+        corrupted_choice: LabeledSimpleBinaryChoice,
         alpha: float = 1.0,
     ) -> list[Intervention]:
-        """Get interventions for all specified layers."""
-        return [
-            self._make_intervention(target, layer, component, mode, alpha)
-            for layer in layers
-            if self._get_acts(self.short_cache, layer, component) is not None
-        ]
+        """Create interventions for activation patching.
 
-    def _make_intervention(
+        Gets activations from the choice objects (computed via forward pass),
+        not from pre-cached trajectory activations.
+
+        Args:
+            target: InterventionTarget specifying layers/positions to patch
+            mode: "denoising" (inject clean into corrupted) or "noising" (inject corrupted into clean)
+            clean_choice: Result of runner.choose on clean prompt (has activations)
+            corrupted_choice: Result of runner.choose on corrupted prompt (has activations)
+            alpha: Interpolation strength (1.0 = full replacement)
+
+        Returns:
+            List of Intervention objects for each layer
+        """
+        # Get activations from the choice trees
+        # Only the source choice needs internals (clean for denoising, corrupted for noising)
+        clean_internals = self._get_choice_internals(clean_choice)
+        corrupted_internals = self._get_choice_internals(corrupted_choice)
+
+        source_internals = clean_internals if mode == "denoising" else corrupted_internals
+        if not source_internals:
+            raise ValueError(f"Missing internals in source choice for {mode} mode")
+
+        # Resolve layers from source internals
+        available = self._get_available_layers(source_internals)
+        layers = target.resolve_layers(available)
+        component = target.component or "resid_post"
+
+        if DEBUG_INTERVENTIONS:
+            print(f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}")
+
+        interventions = []
+        for layer in layers:
+            intervention = self._make_layer_intervention(
+                layer, component, target, mode,
+                clean_internals, corrupted_internals, alpha
+            )
+            if intervention:
+                interventions.append(intervention)
+
+        return interventions
+
+    def _get_choice_internals(self, choice: LabeledSimpleBinaryChoice) -> dict:
+        """Extract internals from a choice object."""
+        if not choice.tree or not choice.tree.trajs:
+            return {}
+        # Use first trajectory's internals (shared prefix has same activations)
+        traj = choice.tree.trajs[0]
+        return traj.internals if traj.has_internals() else {}
+
+    def _get_available_layers(self, internals: dict) -> list[int]:
+        """Get available layers from internals dict."""
+        from .hook_utils import parse_hook_name
+        layers = set()
+        for name in internals.keys():
+            parsed = parse_hook_name(name)
+            if parsed:
+                layers.add(parsed[0])
+        return sorted(layers)
+
+    def _make_layer_intervention(
         self,
-        target: InterventionTarget,
         layer: int,
         component: str,
-        mode: str,
+        target: InterventionTarget,
+        mode: PatchingMode,
+        clean_internals: dict,
+        corrupted_internals: dict,
         alpha: float,
-    ) -> Intervention:
+    ) -> Intervention | None:
         """Create intervention for a single layer."""
-        short = self._get_acts(self.short_cache, layer, component)
-        long = self._get_acts(self.long_cache, layer, component)
+        hook = hook_name(layer, component)
 
-        if short is None or long is None:
-            raise ValueError(f"Missing activations for layer {layer}")
+        # Get source activations (only source needs internals)
+        if mode == "denoising":
+            patch_acts = clean_internals.get(hook)
+            running_len = self.corrupted_length  # Destination sequence length
+        else:
+            patch_acts = corrupted_internals.get(hook)
+            running_len = self.clean_length  # Destination sequence length
+
+        if patch_acts is None:
+            return None
+
+        # Squeeze batch dimension if present: [1, seq, hidden] -> [seq, hidden]
+        if patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)
 
         positions = target.positions
 
         if mode == "denoising":
-            # Inject long into short context
-            source, dest = short, long
+            # Running corrupted context, inject clean activations
             if positions:
-                mapped = [self.position_mapping.get(p, p) for p in positions]
-                mapped = [max(0, min(p, len(long) - 1)) for p in mapped]
-                positions = [max(0, min(p, len(short) - 1)) for p in positions]
-                src_vals = source[list(positions)]
-                dst_vals = dest[mapped]
+                patch_positions = [
+                    self.position_mapping.dst_to_src_interpolated(p) for p in positions
+                ]
             else:
-                min_len = min(len(short), len(long))
-                src_vals, dst_vals = source[:min_len], dest[:min_len]
+                patch_positions = [
+                    self.position_mapping.dst_to_src_interpolated(p)
+                    for p in range(running_len)
+                ]
         else:
-            # Inject short into long context
-            source, dest = long, short
+            # Running clean context, inject corrupted activations
             if positions:
-                mapped = [self.position_mapping.dst_to_src(p) or p for p in positions]
-                mapped = [max(0, min(p, len(short) - 1)) for p in mapped]
-                positions = [max(0, min(p, len(long) - 1)) for p in positions]
-                src_vals = source[list(positions)]
-                dst_vals = dest[mapped]
+                patch_positions = [self.position_mapping.get(p, p) for p in positions]
             else:
-                min_len = min(len(short), len(long))
-                src_vals, dst_vals = source[:min_len], dest[:min_len]
+                patch_positions = [
+                    self.position_mapping.get(p, p) for p in range(running_len)
+                ]
+
+        # Clamp positions to valid range
+        patch_positions = [
+            max(0, min(int(p), len(patch_acts) - 1)) for p in patch_positions
+        ]
+        patch_vals = patch_acts[patch_positions]
+
+        # Properly convert tensor to numpy array
+        if hasattr(patch_vals, "detach"):
+            patch_vals = patch_vals.detach()
+        if hasattr(patch_vals, "cpu"):
+            patch_vals = patch_vals.cpu()
+        if hasattr(patch_vals, "numpy"):
+            patch_vals = patch_vals.numpy()
 
         patch_target = (
             InterventionTarget.at_positions(positions)
@@ -254,40 +261,49 @@ class ContrastivePair(BaseSchema):
             else InterventionTarget.all()
         )
 
-        if alpha < 1.0:
+        if DEBUG_INTERVENTIONS and layer == 0:
+            print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
+            print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
+            print(f"[intervention]   running_len={running_len}, target.positions={positions}")
+            print(f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}")
+            print(f"[intervention]   patch_vals.shape={patch_vals.shape}")
+            print(f"[intervention]   patch_target={patch_target}")
+
+        # Use set mode for full replacement, interpolate for partial
+        if alpha >= 1.0:
+            return Intervention(
+                layer=layer,
+                mode="set",
+                values=patch_vals,
+                target=patch_target,
+                component=component,
+            )
+        else:
             return Intervention(
                 layer=layer,
                 mode="interpolate",
-                values=src_vals,
-                target_values=dst_vals,
+                values=patch_vals,  # Required but unused for interpolate mode
+                target_values=patch_vals,
                 alpha=alpha,
                 target=patch_target,
                 component=component,
             )
 
-        return Intervention(
-            layer=layer,
-            mode="set",
-            values=dst_vals,
-            target=patch_target,
-            component=component,
-        )
-
-    def get_steering_vector(
-        self, layer: int, component: str = "resid_post"
-    ) -> np.ndarray:
-        """Get mean (long - short) difference."""
-        short = self._get_acts(self.short_cache, layer, component)
-        long = self._get_acts(self.long_cache, layer, component)
-        if short is None or long is None:
-            raise ValueError(f"Missing activations for layer {layer}")
-        min_len = min(len(short), len(long))
-        return (long[:min_len] - short[:min_len]).mean(axis=0)
-
     def print_summary(self) -> None:
-        layers = self.available_layers
-        layers_str = f"{layers[:5]}..." if len(layers) > 5 else str(layers)
-        print(
-            f"Short: {self.short_length}, Long: {self.long_length}, Layers: {layers_str}"
-        )
+        print(f"Clean: {self.clean_length}, Corrupted: {self.corrupted_length}")
 
+    def print_position_mapping_debug(self, prefix: str = "[debug]") -> None:
+        """Print debug info about position mapping."""
+        pm = self.position_mapping
+        print(f"{prefix} Position mapping: src_len={pm.src_len}, dst_len={pm.dst_len}")
+        print(
+            f"{prefix} Anchors ({len(pm.anchors)}): {list(zip(pm.anchors, pm.anchor_texts))}"
+        )
+        print(
+            f"{prefix} First interesting: {pm.first_interesting_marker} -> pos={pm.first_interesting_pos}"
+        )
+        if pm.anchors:
+            for (src_pos, dst_pos), text in zip(pm.anchors[:3], pm.anchor_texts[:3]):
+                print(
+                    f"{prefix}   Anchor '{text}': src={src_pos} -> dst={dst_pos}, mapping[{src_pos}]={pm.mapping.get(src_pos)}"
+                )

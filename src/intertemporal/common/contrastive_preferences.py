@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
-from ...inference import GeneratedTrajectory
 from ...common.token_positions import build_position_mapping
 from ..preference import PreferenceDataset
 from .preference_types import PreferenceSample
@@ -28,16 +27,15 @@ class ContrastivePreferences(BaseSchema):
     def get_contrastive_pair(
         self,
         runner: BinaryChoiceRunner,
-        names_filter: callable | None = None,
         anchor_texts: list[str] | None = None,
         first_interesting_marker: str | None = None,
     ) -> ContrastivePair | None:
-        """Build a ContrastivePair using cached activations when available.
+        """Build a ContrastivePair from the two preference samples.
 
         Args:
-            runner: BinaryChoiceRunner for inference
-            names_filter: Filter for which activations to capture
+            runner: BinaryChoiceRunner for tokenizer access
             anchor_texts: Text markers for position alignment (defaults to choice labels)
+            first_interesting_marker: Marker for first interesting position
 
         Returns None if either sample fails verification.
         """
@@ -49,8 +47,9 @@ class ContrastivePreferences(BaseSchema):
             print("  Skipping pair: different label formatting")
             return None
 
-        long_traj = self._get_trajectory(self.long_term, runner, names_filter)
-        short_traj = self._get_trajectory(self.short_term, runner, names_filter)
+        short_traj = self.short_term.chosen_traj
+        long_traj = self.long_term.chosen_traj
+        assert short_traj is not None and long_traj is not None
 
         position_mapping = build_position_mapping(
             runner._tokenizer, short_traj, long_traj, anchor_texts
@@ -58,13 +57,18 @@ class ContrastivePreferences(BaseSchema):
         position_mapping.first_interesting_marker = first_interesting_marker
 
         return ContrastivePair(
-            short_traj=short_traj,
-            long_traj=long_traj,
+            clean_traj=short_traj,
+            corrupted_traj=long_traj,
             position_mapping=position_mapping,
             full_texts=(self.short_term.full_text, self.long_term.full_text),
-            labels=(
+            prompt_texts=(self.short_term.prompt_text, self.long_term.prompt_text),
+            clean_labels=(
                 self.short_term.short_term_label,
                 self.short_term.long_term_label,
+            ),
+            corrupted_labels=(
+                self.long_term.short_term_label,
+                self.long_term.long_term_label,
             ),
             choice_prefix=self.short_term.choice_prefix,
             prompt_token_counts=(
@@ -76,33 +80,6 @@ class ContrastivePreferences(BaseSchema):
                 self.long_term.divergent_position,
             ),
         )
-
-    def _get_trajectory(
-        self,
-        sample: PreferenceSample,
-        runner: BinaryChoiceRunner,
-        names_filter: callable | None,
-    ) -> GeneratedTrajectory:
-        """Get trajectory with internals for a sample.
-
-        Attempts in order:
-        1. Existing trajectory with required internals
-        2. Load internals from disk
-        3. Run model forward pass
-        """
-        traj = sample.chosen_traj
-        assert traj is not None
-
-        if traj.has_internals_for(names_filter):
-            return traj
-
-        # Try loading from disk
-        sample.load_internals_from_disk()
-        if traj.has_internals_for(names_filter):
-            return traj
-
-        # Run forward pass
-        return runner.compute_trajectory_with_cache(traj.token_ids, names_filter)
 
     @property
     def same_formatting(self) -> bool:

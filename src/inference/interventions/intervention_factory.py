@@ -111,22 +111,25 @@ def interpolate(
     positions: Optional[Union[int, list[int]]] = None,
     component: str = "resid_post",
 ) -> Intervention:
-    """Interpolate between source and target activations (mode=interpolate).
+    """Interpolate from current activation towards target values (mode=interpolate).
 
-    Result: source + alpha * (target - source)
-    - alpha=0: use source values
-    - alpha=1: use target values
+    Result: act + alpha * (target_values - act)
+    - alpha=0: keep current activation unchanged
+    - alpha=1: fully replace with target_values
+
+    NOTE: source_values is required for API compatibility but IGNORED at runtime.
+    The actual current activation is used as the interpolation source.
 
     Args:
         layer: Layer to intervene on
-        source_values: Source activations (e.g., corrupted)
-        target_values: Target activations (e.g., clean)
-        alpha: Interpolation factor [0, 1]
+        source_values: IGNORED - kept for API compatibility only
+        target_values: Target activations to interpolate towards
+        alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
         component: Component to intervene on
 
     Returns:
-        Intervention that computes interpolated activations
+        Intervention that interpolates current activation towards target
     """
     return Intervention(
         layer=layer,
@@ -173,20 +176,25 @@ def interpolate_embeddings(
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
 ) -> Intervention:
-    """Interpolate between source and target embeddings (mode=interpolate).
+    """Interpolate from current embeddings towards target embeddings (mode=interpolate).
 
-    Result: source + alpha * (target - source)
+    Result: act + alpha * (target_values - act)
+    - alpha=0: keep current embeddings unchanged
+    - alpha=1: fully replace with target_values
+
+    NOTE: source_values is required for API compatibility but IGNORED at runtime.
+    The actual current embedding is used as the interpolation source.
 
     Use this for embedding-level EAP-IG.
 
     Args:
-        source_values: Source embeddings (e.g., corrupted)
-        target_values: Target embeddings (e.g., clean)
-        alpha: Interpolation factor [0, 1]
+        source_values: IGNORED - kept for API compatibility only
+        target_values: Target embeddings to interpolate towards
+        alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
 
     Returns:
-        Intervention that interpolates embeddings
+        Intervention that interpolates current embeddings towards target
     """
     if isinstance(source_values, torch.Tensor):
         source_values = source_values.detach().cpu().numpy()

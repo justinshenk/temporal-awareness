@@ -6,7 +6,7 @@ IMPORTANT: Use ModelRunner API, never access backends directly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, Union
 
 import numpy as np
 import torch
@@ -16,15 +16,21 @@ from .intervention_target import InterventionTarget
 
 Mode = Literal["add", "set", "mul", "interpolate"]
 
+# Type alias for single or multiple interventions
+Interventions = Union["Intervention", list["Intervention"]]
+
+DEBUG_HOOKS = False
+
 
 @dataclass
 class Intervention(BaseSchema):
     """Intervention config: layer, mode, values, target.
 
     For interpolate mode:
-        - values: source values (e.g., corrupted activations)
-        - target_values: target values (e.g., clean activations)
-        - alpha: interpolation factor (0=source, 1=target)
+        - Uses actual current activation as source (not pre-computed values)
+        - target_values: target values to interpolate towards
+        - alpha: interpolation factor (0=keep current, 1=use target)
+        - Note: values field is ignored for interpolate mode
 
     For embedding interventions:
         - Set component="embed" to intervene on input embeddings
@@ -81,16 +87,26 @@ def create_intervention_hook(
     if mode == "interpolate" and config.target_values is not None:
         target_values = torch.tensor(config.target_values, dtype=dtype, device=device)
 
+    if DEBUG_HOOKS:
+        print(f"[hook] Creating hook: layer={config.layer}, mode={mode}, alpha={alpha}")
+        print(f"[hook]   values.shape={values.shape}, target={target}")
+        if target_values is not None:
+            print(f"[hook]   target_values.shape={target_values.shape}")
+
     # All positions
     if target.is_all_positions:
-        return lambda act, hook=None: _apply_full(
-            act, values, mode, target_values, alpha
-        ), None
+        def full_hook(act, hook=None):
+            if DEBUG_HOOKS:
+                print(f"[hook] Applying FULL: act.shape={act.shape}, values.shape={values.shape}")
+            return _apply_full(act, values, mode, target_values, alpha)
+        return full_hook, None
 
     # Specific positions
     positions = list(target.positions)
 
     def hook(act, hook=None):
+        if DEBUG_HOOKS:
+            print(f"[hook] Applying to positions {positions[:5]}..., act.shape={act.shape}")
         for i, pos in enumerate(positions):
             if pos < act.shape[1]:
                 v = values[i] if values.dim() > 1 and i < values.shape[0] else values
@@ -120,13 +136,15 @@ def _apply_full(
     if mode == "mul":
         return act * values
     if mode == "interpolate":
-        interp = values + alpha * (target_values - values)
-        if interp.dim() == 2 and act.dim() == 3:
-            seq = min(act.shape[1], interp.shape[0])
+        # Use actual current activation as source, interpolate towards target_values
+        # Result: act + alpha * (target_values - act) = (1-alpha)*act + alpha*target_values
+        if target_values.dim() == 2 and act.dim() == 3:
+            seq = min(act.shape[1], target_values.shape[0])
             result = act.clone()
-            result[:, :seq] = interp[:seq].unsqueeze(0).expand(act.shape[0], -1, -1)
+            tv = target_values[:seq].unsqueeze(0).expand(act.shape[0], -1, -1)
+            result[:, :seq] = act[:, :seq] + alpha * (tv - act[:, :seq])
             return result
-        return interp
+        return act + alpha * (target_values - act)
     # set mode
     if values.dim() <= 1:
         return values.expand_as(act)
@@ -150,8 +168,9 @@ def _apply_position(
     if mode == "mul":
         return act * v
     if mode == "interpolate":
+        # Use actual current activation as source, interpolate towards target_values
         tv = target_values[-1] if target_values.dim() > 1 else target_values
-        return v + alpha * (tv - v)
+        return act + alpha * (tv - act)
     return v.expand_as(act)
 
 

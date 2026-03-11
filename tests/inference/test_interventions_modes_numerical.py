@@ -430,11 +430,17 @@ class TestMulModeNumerical:
 
 
 class TestInterpolateModeNumerical:
-    """Test INTERPOLATE mode: result = source + alpha * (target - source)"""
+    """Test INTERPOLATE mode: result = act + alpha * (target - act)
 
-    def test_interpolate_alpha_zero_gives_source(self):
-        """INTERPOLATE with alpha=0 returns source values."""
-        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+    NOTE: Interpolate mode uses the ACTUAL activation as source, not the 'values' field.
+    This is the correct behavior for activation patching:
+    - alpha=0: keep current activation unchanged
+    - alpha=1: fully replace with target_values
+    """
+
+    def test_interpolate_alpha_zero_keeps_activation(self):
+        """INTERPOLATE with alpha=0 keeps the current activation unchanged."""
+        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)  # Ignored
         target = np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32)
 
         intervention = Intervention(
@@ -447,12 +453,13 @@ class TestInterpolateModeNumerical:
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
-        act = torch.ones(1, 1, 4) * 999  # Shouldn't matter for interpolate
+        act = torch.ones(1, 1, 4) * 999  # This IS the source for interpolate
         result = hook(act)
 
-        expected = torch.tensor([[[0.0, 0.0, 0.0, 0.0]]])
+        # With alpha=0: result = act + 0 * (target - act) = act
+        expected = torch.tensor([[[999.0, 999.0, 999.0, 999.0]]])
         assert torch.allclose(result, expected, atol=TOLERANCE), (
-            f"alpha=0 should give source. Expected {expected}, got {result}"
+            f"alpha=0 should keep activation unchanged. Expected {expected}, got {result}"
         )
 
     def test_interpolate_alpha_one_gives_target(self):
@@ -479,8 +486,8 @@ class TestInterpolateModeNumerical:
         )
 
     def test_interpolate_alpha_half_gives_midpoint(self):
-        """INTERPOLATE with alpha=0.5 returns midpoint."""
-        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+        """INTERPOLATE with alpha=0.5 returns midpoint between act and target."""
+        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)  # Ignored
         target = np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32)
 
         intervention = Intervention(
@@ -493,13 +500,14 @@ class TestInterpolateModeNumerical:
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
-        act = torch.ones(1, 1, 4) * 999
+        # Use act=0 so we can easily verify the midpoint
+        act = torch.zeros(1, 1, 4)
         result = hook(act)
 
-        # midpoint = source + 0.5 * (target - source) = 0 + 0.5 * 10 = 5
+        # midpoint = act + 0.5 * (target - act) = 0 + 0.5 * target = [5, 10, 15, 20]
         expected = torch.tensor([[[5.0, 10.0, 15.0, 20.0]]])
         assert torch.allclose(result, expected, atol=TOLERANCE), (
-            f"alpha=0.5 should give midpoint. Expected {expected}, got {result}"
+            f"alpha=0.5 should give midpoint between act and target. Expected {expected}, got {result}"
         )
 
     def test_interpolate_alpha_quarter(self):
@@ -524,9 +532,9 @@ class TestInterpolateModeNumerical:
         expected = torch.tensor([[[25.0, 50.0, 75.0, 100.0]]])
         assert torch.allclose(result, expected, atol=TOLERANCE)
 
-    def test_interpolate_with_nonzero_source(self):
-        """INTERPOLATE works correctly when source is nonzero."""
-        source = np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32)
+    def test_interpolate_with_nonzero_activation(self):
+        """INTERPOLATE works correctly when activation is nonzero."""
+        source = np.array([[999.0, 999.0, 999.0, 999.0]], dtype=np.float32)  # Ignored
         target = np.array([[110.0, 120.0, 130.0, 140.0]], dtype=np.float32)
 
         intervention = Intervention(
@@ -539,18 +547,20 @@ class TestInterpolateModeNumerical:
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
-        act = torch.zeros(1, 1, 4)
+        # Use act as the source
+        act = torch.tensor([[[10.0, 20.0, 30.0, 40.0]]])
         result = hook(act)
 
-        # result = source + 0.5 * (target - source)
+        # result = act + 0.5 * (target - act)
+        # = [10,20,30,40] + 0.5 * ([110,120,130,140] - [10,20,30,40])
         # = [10,20,30,40] + 0.5 * [100,100,100,100]
         # = [10,20,30,40] + [50,50,50,50] = [60, 70, 80, 90]
         expected = torch.tensor([[[60.0, 70.0, 80.0, 90.0]]])
         assert torch.allclose(result, expected, atol=TOLERANCE)
 
-    def test_interpolate_negative_source_positive_target(self):
-        """INTERPOLATE works when interpolating from negative to positive."""
-        source = np.array([[-10.0, -20.0, -30.0, -40.0]], dtype=np.float32)
+    def test_interpolate_negative_activation_positive_target(self):
+        """INTERPOLATE works when interpolating from negative activation to positive target."""
+        source = np.array([[999.0, 999.0, 999.0, 999.0]], dtype=np.float32)  # Ignored
         target = np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32)
 
         intervention = Intervention(
@@ -563,10 +573,14 @@ class TestInterpolateModeNumerical:
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
-        act = torch.zeros(1, 1, 4)
+        # Use negative activation
+        act = torch.tensor([[[-10.0, -20.0, -30.0, -40.0]]])
         result = hook(act)
 
-        # midpoint between -x and +x is 0
+        # result = act + 0.5 * (target - act)
+        # = [-10,-20,-30,-40] + 0.5 * ([10,20,30,40] - [-10,-20,-30,-40])
+        # = [-10,-20,-30,-40] + 0.5 * [20,40,60,80]
+        # = [-10,-20,-30,-40] + [10,20,30,40] = [0, 0, 0, 0]
         expected = torch.tensor([[[0.0, 0.0, 0.0, 0.0]]])
         assert torch.allclose(result, expected, atol=TOLERANCE)
 
@@ -598,18 +612,22 @@ class TestInterpolateModeNumerical:
         assert torch.allclose(result, expected, atol=TOLERANCE)
 
     def test_interpolate_helper_function(self):
-        """interpolate() helper creates correct intervention."""
-        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+        """interpolate() helper creates correct intervention.
+
+        NOTE: source_values is IGNORED - the actual activation is used as source.
+        """
+        source = np.array([[999.0, 999.0, 999.0, 999.0]], dtype=np.float32)  # Ignored!
         target = np.array([[100.0, 100.0, 100.0, 100.0]], dtype=np.float32)
 
         intervention = interpolate(
             layer=0,
-            source_values=source,
+            source_values=source,  # This is ignored by the hook
             target_values=target,
             alpha=0.3,
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
+        # The actual activation is the source, not source_values
         act = torch.zeros(1, 1, 4)
         result = hook(act)
 
@@ -618,27 +636,27 @@ class TestInterpolateModeNumerical:
         assert torch.allclose(result, expected, atol=TOLERANCE)
 
     def test_interpolate_formula_verification(self):
-        """Verify exact interpolation formula: source + alpha * (target - source)."""
+        """Verify exact interpolation formula: act + alpha * (target - act)."""
         # Use arbitrary values to verify formula
-        source = np.array([[3.0, 7.0, 11.0, 13.0]], dtype=np.float32)
+        act_values = np.array([[3.0, 7.0, 11.0, 13.0]], dtype=np.float32)
         target = np.array([[23.0, 37.0, 51.0, 73.0]], dtype=np.float32)
         alpha = 0.35
 
         intervention = Intervention(
             layer=0,
             mode="interpolate",
-            values=source,
+            values=np.zeros_like(target),  # Ignored
             target_values=target,
             alpha=alpha,
             target=InterventionTarget.all(),
         )
         hook, _ = create_intervention_hook(intervention, torch.float32, "cpu")
 
-        act = torch.zeros(1, 1, 4)
+        act = torch.tensor(act_values).unsqueeze(0)  # [1, 1, 4]
         result = hook(act)
 
-        # Manual calculation
-        expected_values = source + alpha * (target - source)
+        # Manual calculation: act + alpha * (target - act)
+        expected_values = act_values + alpha * (target - act_values)
         expected = torch.tensor(expected_values).unsqueeze(0)
         assert torch.allclose(result, expected, atol=TOLERANCE), (
             f"Formula mismatch. Expected {expected}, got {result}"
@@ -727,7 +745,7 @@ class TestPositionAxisNumerical:
         act = torch.tensor([[[1.0, 2.0, 3.0, 4.0],
                              [5.0, 6.0, 7.0, 8.0],
                              [9.0, 10.0, 11.0, 12.0]]])
-        source = np.array([[0.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+        source = np.array([[999.0, 999.0, 999.0, 999.0]], dtype=np.float32)  # Ignored
         target = np.array([[100.0, 100.0, 100.0, 100.0]], dtype=np.float32)
 
         intervention = Intervention(
@@ -744,8 +762,11 @@ class TestPositionAxisNumerical:
         # Positions 0 and 2 unchanged
         assert torch.allclose(result[0, 0], act[0, 0], atol=TOLERANCE)
         assert torch.allclose(result[0, 2], act[0, 2], atol=TOLERANCE)
-        # Position 1 interpolated: 0 + 0.5 * 100 = 50
-        expected_pos1 = torch.tensor([50.0, 50.0, 50.0, 50.0])
+        # Position 1 interpolated: act[1] + 0.5 * (target - act[1])
+        # = [5,6,7,8] + 0.5 * ([100,100,100,100] - [5,6,7,8])
+        # = [5,6,7,8] + 0.5 * [95,94,93,92]
+        # = [5,6,7,8] + [47.5,47,46.5,46] = [52.5, 53, 53.5, 54]
+        expected_pos1 = torch.tensor([52.5, 53.0, 53.5, 54.0])
         assert torch.allclose(result[0, 1], expected_pos1, atol=TOLERANCE)
 
     def test_multiple_positions_add(self):
@@ -833,6 +854,176 @@ class TestBatchDimensionNumerical:
         # Batch 1: [10,20,30,40] * 2 = [20,40,60,80]
         expected_b1 = torch.tensor([[20.0, 40.0, 60.0, 80.0]])
         assert torch.allclose(result[1], expected_b1, atol=TOLERANCE)
+
+
+# =============================================================================
+# Mode Equivalence Tests
+# =============================================================================
+
+
+class TestModeEquivalence:
+    """Test that modes produce equivalent results when they should."""
+
+    def test_set_equals_interpolate_alpha_one_all_positions(self):
+        """SET mode produces same result as INTERPOLATE with alpha=1.0 for all positions."""
+        values = np.array([[1.0, 2.0, 3.0, 4.0],
+                           [5.0, 6.0, 7.0, 8.0]], dtype=np.float32)  # [2, 4]
+
+        # SET intervention
+        set_intervention = Intervention(
+            layer=0,
+            mode="set",
+            values=values,
+            target=InterventionTarget.all(),
+        )
+
+        # INTERPOLATE with alpha=1.0 intervention
+        interp_intervention = Intervention(
+            layer=0,
+            mode="interpolate",
+            values=np.zeros_like(values),  # Ignored in interpolate mode
+            target_values=values,
+            alpha=1.0,
+            target=InterventionTarget.all(),
+        )
+
+        set_hook, _ = create_intervention_hook(set_intervention, torch.float32, "cpu")
+        interp_hook, _ = create_intervention_hook(interp_intervention, torch.float32, "cpu")
+
+        # Use very different activation to ensure we're truly replacing
+        act = torch.ones(1, 2, 4) * 999
+        set_result = set_hook(act.clone())
+        interp_result = interp_hook(act.clone())
+
+        assert torch.allclose(set_result, interp_result, atol=TOLERANCE), (
+            f"SET and INTERPOLATE(alpha=1) should be equivalent.\n"
+            f"SET result: {set_result}\n"
+            f"INTERPOLATE result: {interp_result}"
+        )
+
+    def test_set_equals_interpolate_alpha_one_specific_positions(self):
+        """SET mode produces same result as INTERPOLATE with alpha=1.0 for specific positions."""
+        values = np.array([[10.0, 20.0, 30.0, 40.0]], dtype=np.float32)
+
+        # SET intervention at position 1
+        set_intervention = Intervention(
+            layer=0,
+            mode="set",
+            values=values,
+            target=InterventionTarget.at_positions([1]),
+        )
+
+        # INTERPOLATE with alpha=1.0 at position 1
+        interp_intervention = Intervention(
+            layer=0,
+            mode="interpolate",
+            values=np.zeros_like(values),
+            target_values=values,
+            alpha=1.0,
+            target=InterventionTarget.at_positions([1]),
+        )
+
+        set_hook, _ = create_intervention_hook(set_intervention, torch.float32, "cpu")
+        interp_hook, _ = create_intervention_hook(interp_intervention, torch.float32, "cpu")
+
+        act = torch.tensor([[[1.0, 2.0, 3.0, 4.0],
+                             [5.0, 6.0, 7.0, 8.0],
+                             [9.0, 10.0, 11.0, 12.0]]])
+        set_result = set_hook(act.clone())
+        interp_result = interp_hook(act.clone())
+
+        assert torch.allclose(set_result, interp_result, atol=TOLERANCE), (
+            f"SET and INTERPOLATE(alpha=1) should be equivalent for specific positions.\n"
+            f"SET result: {set_result}\n"
+            f"INTERPOLATE result: {interp_result}"
+        )
+
+    def test_interpolate_near_one_differs_from_set(self):
+        """INTERPOLATE with alpha<1.0 should differ from SET (proves interpolation works)."""
+        values = np.array([[100.0, 100.0, 100.0, 100.0]], dtype=np.float32)
+
+        set_intervention = Intervention(
+            layer=0,
+            mode="set",
+            values=values,
+            target=InterventionTarget.all(),
+        )
+
+        interp_intervention = Intervention(
+            layer=0,
+            mode="interpolate",
+            values=np.zeros_like(values),
+            target_values=values,
+            alpha=0.99,  # Not quite 1.0
+            target=InterventionTarget.all(),
+        )
+
+        set_hook, _ = create_intervention_hook(set_intervention, torch.float32, "cpu")
+        interp_hook, _ = create_intervention_hook(interp_intervention, torch.float32, "cpu")
+
+        # Use activation that differs significantly from target
+        act = torch.zeros(1, 1, 4)
+        set_result = set_hook(act.clone())
+        interp_result = interp_hook(act.clone())
+
+        # SET gives [100, 100, 100, 100]
+        # INTERPOLATE gives 0 + 0.99 * (100 - 0) = [99, 99, 99, 99]
+        expected_set = torch.tensor([[[100.0, 100.0, 100.0, 100.0]]])
+        expected_interp = torch.tensor([[[99.0, 99.0, 99.0, 99.0]]])
+
+        assert torch.allclose(set_result, expected_set, atol=TOLERANCE)
+        assert torch.allclose(interp_result, expected_interp, atol=TOLERANCE)
+        # They should NOT be equal
+        assert not torch.allclose(set_result, interp_result, atol=TOLERANCE)
+
+    def test_interpolate_alpha_9999_nearly_equals_set(self):
+        """INTERPOLATE with alpha=0.9999 should be nearly identical to SET.
+
+        This tests that the 0.01% residual is negligible.
+        """
+        values = np.array([[1.0, 2.0, 3.0, 4.0],
+                           [5.0, 6.0, 7.0, 8.0]], dtype=np.float32)  # [2, 4]
+
+        set_intervention = Intervention(
+            layer=0,
+            mode="set",
+            values=values,
+            target=InterventionTarget.all(),
+        )
+
+        interp_intervention = Intervention(
+            layer=0,
+            mode="interpolate",
+            values=np.zeros_like(values),
+            target_values=values,
+            alpha=0.9999,
+            target=InterventionTarget.all(),
+        )
+
+        set_hook, _ = create_intervention_hook(set_intervention, torch.float32, "cpu")
+        interp_hook, _ = create_intervention_hook(interp_intervention, torch.float32, "cpu")
+
+        # Use activation with moderate magnitude
+        act = torch.ones(1, 2, 4) * 100  # Very different from target
+        set_result = set_hook(act.clone())
+        interp_result = interp_hook(act.clone())
+
+        # SET: result = values
+        # INTERPOLATE: result = act + 0.9999 * (values - act) = 0.0001*act + 0.9999*values
+        # With act=100, values~5: result ≈ 0.01 + 4.9995 ≈ 5.01
+        # Difference from set is about 0.0001 * act = 0.01
+
+        # They should be VERY close (within 0.1% of activation magnitude)
+        max_diff = (set_result - interp_result).abs().max().item()
+        max_act = act.abs().max().item()
+        relative_diff = max_diff / max_act
+
+        assert relative_diff < 0.001, (
+            f"alpha=0.9999 should give nearly identical results to set mode.\n"
+            f"Max diff: {max_diff}, Relative diff: {relative_diff:.6f}\n"
+            f"SET result: {set_result}\n"
+            f"INTERPOLATE result: {interp_result}"
+        )
 
 
 # =============================================================================

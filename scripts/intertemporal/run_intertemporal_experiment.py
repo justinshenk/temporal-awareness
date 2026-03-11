@@ -44,6 +44,11 @@ def parse_args() -> ExperimentConfig:
         default=None,
         help="Model name to use (e.g., Qwen/Qwen3-4B-Instruct-2507)",
     )
+    parser.add_argument(
+        "--cache",
+        action="store_true",
+        help="Try loading cached data before recomputing",
+    )
 
     args = parser.parse_args()
 
@@ -54,6 +59,8 @@ def parse_args() -> ExperimentConfig:
 
     if args.model:
         config_dict["model"] = args.model
+
+    config_dict["try_loading_data"] = args.cache
 
     return ExperimentConfig.from_dict(config_dict)
 

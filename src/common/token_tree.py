@@ -165,7 +165,7 @@ class _Branch:
     """One arm of a divergence: a group of trajectories that share the same
     logits (and therefore the same next-token distribution) at a position."""
 
-    logits: torch.Tensor
+    logits: torch.Tensor | None
     traj_indices: list[int]
     token_id: int
     token_logprob: float

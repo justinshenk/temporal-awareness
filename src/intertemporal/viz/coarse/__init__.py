@@ -1,43 +1,11 @@
 """Coarse activation patching visualization module.
 
 Provides visualization for layer and position sweep patching results.
+
+DO NOT add explicit __all__ lists here - use auto_export instead.
+See src/common/auto_export.py for documentation on how this works.
 """
 
-from .colors import (
-    OKABE_ITO,
-    METRIC_COLORS,
-    LINE_STYLES,
-    LINE_WIDTHS,
-    MARKERS,
-    MARKER_SIZES,
-    SUBPLOT_TITLE_STYLE,
-)
+from ....common.auto_export import auto_export
 
-from .helpers import (
-    get_tick_spacing,
-    get_tick_color,
-    color_xaxis_ticks,
-    save_with_colored_ticks,
-    save_with_colored_ticks_multi,
-    add_token_type_legend,
-    finalize_plot,
-)
-
-__all__ = [
-    # Colors
-    "OKABE_ITO",
-    "METRIC_COLORS",
-    "LINE_STYLES",
-    "LINE_WIDTHS",
-    "MARKERS",
-    "MARKER_SIZES",
-    "SUBPLOT_TITLE_STYLE",
-    # Helpers
-    "get_tick_spacing",
-    "get_tick_color",
-    "color_xaxis_ticks",
-    "save_with_colored_ticks",
-    "save_with_colored_ticks_multi",
-    "add_token_type_legend",
-    "finalize_plot",
-]
+__all__ = auto_export(__file__, __name__, globals())

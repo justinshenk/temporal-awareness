@@ -8,35 +8,50 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.transforms import blended_transform_factory
 
 from ....viz.palettes import TOKEN_COLORS
 from ....viz.token_coloring import PairTokenColoring
+from .colors import VLINE_COLORS
+
+
+def setup_grid(ax: plt.Axes) -> None:
+    """Set up granular grid with both major and minor gridlines."""
+    ax.minorticks_on()
+    ax.grid(True, which="major", alpha=0.5, linewidth=0.6, color="#AAAAAA")
+    ax.grid(True, which="minor", alpha=0.3, linewidth=0.3, color="#CCCCCC")
+    ax.set_axisbelow(True)
 
 
 def get_tick_spacing(n_points: int) -> int:
     """Return tick spacing to keep x-axis legible."""
-    if n_points <= 15:
+    if n_points <= 10:
         return 1
-    elif n_points <= 30:
+    elif n_points <= 20:
         return 2
-    elif n_points <= 60:
+    elif n_points <= 35:
+        return 4
+    elif n_points <= 50:
         return 5
+    elif n_points <= 80:
+        return 8
     return 10
 
 
 def get_tick_color(pos: int, coloring: PairTokenColoring | None) -> str:
     """Get the color for a tick label at given position."""
-    if coloring is None or not coloring.short_colors:
+    if coloring is None or not coloring.clean_colors:
         return TOKEN_COLORS["response_edge"]
 
-    color_info = coloring.short_colors.get(pos)
+    color_info = coloring.clean_colors.get(pos)
     if color_info is None:
         for offset in range(20):
-            if pos + offset in coloring.short_colors:
-                color_info = coloring.short_colors[pos + offset]
+            if pos + offset in coloring.clean_colors:
+                color_info = coloring.clean_colors[pos + offset]
                 break
-            if pos - offset in coloring.short_colors:
-                color_info = coloring.short_colors[pos - offset]
+            if pos - offset in coloring.clean_colors:
+                color_info = coloring.clean_colors[pos - offset]
                 break
 
     return color_info.edgecolor if color_info else TOKEN_COLORS["response_edge"]
@@ -50,7 +65,13 @@ def color_xaxis_ticks(
     """Color x-axis tick labels by token type."""
     colors = [get_tick_color(pos, coloring) for pos in positions]
     ax.set_xticks(positions)
-    ax.set_xticklabels([str(p) for p in positions], fontsize=10, fontweight="bold")
+    ax.set_xticklabels(
+        [str(p) for p in positions],
+        fontsize=9,
+        fontweight="bold",
+        rotation=45,
+        ha="right",
+    )
     for label, color in zip(ax.get_xticklabels(), colors):
         label.set_color(color)
 
@@ -110,14 +131,13 @@ def save_with_colored_ticks_multi(
 
 
 def add_token_type_legend(fig: plt.Figure) -> None:
-    """Add a small legend for token type colors at the bottom."""
-    from matplotlib.lines import Line2D
-
+    """Add a legend for token type colors at the bottom left."""
+    # Use edge colors for squares to match tick label colors
     legend_elements = [
         Line2D(
             [0], [0],
             marker="s", color="w",
-            markerfacecolor=TOKEN_COLORS["prompt"],
+            markerfacecolor=TOKEN_COLORS["prompt_edge"],
             markeredgecolor=TOKEN_COLORS["prompt_edge"],
             markersize=10, markeredgewidth=2,
             label="Prompt",
@@ -125,7 +145,7 @@ def add_token_type_legend(fig: plt.Figure) -> None:
         Line2D(
             [0], [0],
             marker="s", color="w",
-            markerfacecolor=TOKEN_COLORS["response"],
+            markerfacecolor=TOKEN_COLORS["response_edge"],
             markeredgecolor=TOKEN_COLORS["response_edge"],
             markersize=10, markeredgewidth=2,
             label="Response",
@@ -133,7 +153,7 @@ def add_token_type_legend(fig: plt.Figure) -> None:
         Line2D(
             [0], [0],
             marker="s", color="w",
-            markerfacecolor=TOKEN_COLORS["choice_div"],
+            markerfacecolor=TOKEN_COLORS["choice_div_edge"],
             markeredgecolor=TOKEN_COLORS["choice_div_edge"],
             markersize=10, markeredgewidth=2,
             label="Choice Div",
@@ -141,7 +161,7 @@ def add_token_type_legend(fig: plt.Figure) -> None:
         Line2D(
             [0], [0],
             marker="s", color="w",
-            markerfacecolor=TOKEN_COLORS["contrast_div"],
+            markerfacecolor=TOKEN_COLORS["contrast_div_edge"],
             markeredgecolor=TOKEN_COLORS["contrast_div_edge"],
             markersize=10, markeredgewidth=2,
             label="Contrast Div",
@@ -150,16 +170,100 @@ def add_token_type_legend(fig: plt.Figure) -> None:
 
     fig.legend(
         handles=legend_elements,
-        loc="lower center",
+        loc="upper left",
         fontsize=9,
-        title="Tick colors by token type",
+        title="Token Position Types",
         title_fontsize=9,
         ncol=4,
-        bbox_to_anchor=(0.42, -0.01),
+        bbox_to_anchor=(0.10, 0.02),
         frameon=True,
         fancybox=True,
         shadow=False,
     )
+
+
+def add_boundary_legend(fig: plt.Figure, y_offset: float = -0.06) -> None:
+    """Add a separate legend for boundary markers (vertical lines) at bottom right."""
+    legend_elements = [
+        Line2D(
+            [0], [0],
+            color=VLINE_COLORS["prompt_boundary"],
+            linewidth=2.5,
+            linestyle="--",
+            label="Prompt End",
+        ),
+        Line2D(
+            [0], [0],
+            color=VLINE_COLORS["choice_div_pos"],
+            linewidth=2.5,
+            linestyle=":",
+            label="Choice Div Pos",
+        ),
+    ]
+
+    fig.legend(
+        handles=legend_elements,
+        loc="upper right",
+        fontsize=9,
+        title="Context Boundaries",
+        title_fontsize=9,
+        ncol=2,
+        bbox_to_anchor=(0.90, 0.02),
+        frameon=True,
+        fancybox=True,
+        shadow=False,
+    )
+
+
+def add_xaxis_boundary_markers(
+    ax: plt.Axes,
+    prompt_boundary: int | None,
+    choice_div_pos: int | None,
+) -> None:
+    """Add vertical line markers with triangle knicks at top/bottom edges for boundaries."""
+    marker_size = 10
+    # Transform: x in data coords, y in axes coords (0=bottom, 1=top)
+    trans = blended_transform_factory(ax.transData, ax.transAxes)
+
+    if prompt_boundary is not None:
+        color = VLINE_COLORS["prompt_boundary"]
+        # Transparent vertical line
+        ax.axvline(
+            prompt_boundary,
+            color=color,
+            linewidth=1.5, linestyle="--", alpha=0.2, zorder=5,
+        )
+        # Triangle knicks at top and bottom edges of plot box
+        ax.plot(
+            prompt_boundary, 0, marker="^", color=color, transform=trans,
+            markersize=marker_size, clip_on=False, zorder=10,
+            markeredgecolor="#222222", markeredgewidth=0.8,
+        )
+        ax.plot(
+            prompt_boundary, 1, marker="v", color=color, transform=trans,
+            markersize=marker_size, clip_on=False, zorder=10,
+            markeredgecolor="#222222", markeredgewidth=0.8,
+        )
+
+    if choice_div_pos is not None:
+        color = VLINE_COLORS["choice_div_pos"]
+        # Transparent vertical line
+        ax.axvline(
+            choice_div_pos,
+            color=color,
+            linewidth=1.5, linestyle=":", alpha=0.2, zorder=5,
+        )
+        # Triangle knicks at top and bottom edges of plot box
+        ax.plot(
+            choice_div_pos, 0, marker="^", color=color, transform=trans,
+            markersize=marker_size, clip_on=False, zorder=10,
+            markeredgecolor="#222222", markeredgewidth=0.8,
+        )
+        ax.plot(
+            choice_div_pos, 1, marker="v", color=color, transform=trans,
+            markersize=marker_size, clip_on=False, zorder=10,
+            markeredgecolor="#222222", markeredgewidth=0.8,
+        )
 
 
 def finalize_plot(fig: plt.Figure, output_path: Path) -> None:

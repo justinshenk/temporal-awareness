@@ -9,6 +9,7 @@ from typing import Literal
 import numpy as np
 
 from ..common import BaseSchema
+from ..common.patching_types import PatchingMode
 from ..inference import InterventionTarget
 
 
@@ -195,7 +196,7 @@ class AttributionSummary(BaseSchema):
 
     results: dict[str, AttributionPatchingResult] = field(default_factory=dict)
     n_pairs: int = 1
-    mode: Literal["denoising", "noising"] | None = None
+    mode: PatchingMode | None = None
 
     @property
     def methods(self) -> list[str]:

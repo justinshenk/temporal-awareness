@@ -396,8 +396,11 @@ class TestCreateInterventionHook:
         assert torch.allclose(result, activation)
 
     def test_interpolate_alpha_0(self):
-        """Interpolate with alpha=0 returns source values."""
-        source = np.ones((3, D_MODEL), dtype=np.float32)
+        """Interpolate with alpha=0 keeps activation unchanged.
+
+        NOTE: source_values is IGNORED - the actual activation is the source.
+        """
+        source = np.ones((3, D_MODEL), dtype=np.float32)  # Ignored
         target = np.ones((3, D_MODEL), dtype=np.float32) * 10
 
         intervention = interpolate(layer=0, source_values=source, target_values=target, alpha=0.0)
@@ -406,8 +409,9 @@ class TestCreateInterventionHook:
         activation = torch.zeros(1, 3, D_MODEL)
         result = hook_fn(activation)
 
-        expected = torch.tensor(source)
-        assert torch.allclose(result[0], expected)
+        # With alpha=0: result = act + 0 * (target - act) = act
+        expected = activation  # activation is the source, not source_values
+        assert torch.allclose(result, expected)
 
     def test_interpolate_alpha_1(self):
         """Interpolate with alpha=1 returns target values."""

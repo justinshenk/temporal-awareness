@@ -264,7 +264,16 @@ class NNsightBackend(Backend):
                 )
                 target = intervention.target
                 mode = intervention.mode
+                alpha = intervention.alpha
                 component = intervention.component
+
+                target_values = None
+                if mode == "interpolate" and intervention.target_values is not None:
+                    target_values = torch.tensor(
+                        intervention.target_values,
+                        dtype=self.runner.dtype,
+                        device=self.runner.device,
+                    )
 
                 if component == "mlp_out":
                     out = module.output
@@ -278,10 +287,20 @@ class NNsightBackend(Backend):
                         out[:, :] = values
                     elif mode == "mul":
                         out[:, :] *= values
+                    elif mode == "interpolate" and target_values is not None:
+                        # out = out + alpha * (target_values - out)
+                        out[:, :] = out[:, :] + alpha * (target_values - out[:, :])
                 else:
                     seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
-                    for pos in target.positions:
+                    for i, pos in enumerate(target.positions):
                         if pos < seq_len:
+                            tv = None
+                            if target_values is not None:
+                                tv = (
+                                    target_values[i]
+                                    if target_values.ndim > 1 and i < len(target_values)
+                                    else target_values
+                                )
                             if out.ndim == 2:
                                 if mode == "add":
                                     out[pos, :] += values
@@ -289,6 +308,8 @@ class NNsightBackend(Backend):
                                     out[pos, :] = values
                                 elif mode == "mul":
                                     out[pos, :] *= values
+                                elif mode == "interpolate" and tv is not None:
+                                    out[pos, :] = out[pos, :] + alpha * (tv - out[pos, :])
                             else:
                                 if mode == "add":
                                     out[:, pos, :] += values
@@ -296,6 +317,8 @@ class NNsightBackend(Backend):
                                     out[:, pos, :] = values
                                 elif mode == "mul":
                                     out[:, pos, :] *= values
+                                elif mode == "interpolate" and tv is not None:
+                                    out[:, pos, :] = out[:, pos, :] + alpha * (tv - out[:, pos, :])
 
             logits = self._get_lm_head().output.save()
 
@@ -351,6 +374,15 @@ class NNsightBackend(Backend):
                         )
                         target = intervention.target
                         mode = intervention.mode
+                        alpha = intervention.alpha
+
+                        target_values = None
+                        if mode == "interpolate" and intervention.target_values is not None:
+                            target_values = torch.tensor(
+                                intervention.target_values,
+                                dtype=self.runner.dtype,
+                                device=self.runner.device,
+                            )
 
                         if target.is_all_positions:
                             if mode == "add":
@@ -359,12 +391,19 @@ class NNsightBackend(Backend):
                                 out[:, :] = values
                             elif mode == "mul":
                                 out[:, :] *= values
-                            elif mode == "interpolate":
-                                out[:, :] = values
+                            elif mode == "interpolate" and target_values is not None:
+                                out[:, :] = out[:, :] + alpha * (target_values - out[:, :])
                         else:
                             seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
-                            for pos in target.positions:
+                            for i, pos in enumerate(target.positions):
                                 if pos < seq_len:
+                                    tv = None
+                                    if target_values is not None:
+                                        tv = (
+                                            target_values[i]
+                                            if target_values.ndim > 1 and i < len(target_values)
+                                            else target_values
+                                        )
                                     if out.ndim == 2:
                                         if mode == "add":
                                             out[pos, :] += values
@@ -372,8 +411,8 @@ class NNsightBackend(Backend):
                                             out[pos, :] = values
                                         elif mode == "mul":
                                             out[pos, :] *= values
-                                        elif mode == "interpolate":
-                                            out[pos, :] = values
+                                        elif mode == "interpolate" and tv is not None:
+                                            out[pos, :] = out[pos, :] + alpha * (tv - out[pos, :])
                                     else:
                                         if mode == "add":
                                             out[:, pos, :] += values
@@ -381,8 +420,8 @@ class NNsightBackend(Backend):
                                             out[:, pos, :] = values
                                         elif mode == "mul":
                                             out[:, pos, :] *= values
-                                        elif mode == "interpolate":
-                                            out[:, pos, :] = values
+                                        elif mode == "interpolate" and tv is not None:
+                                            out[:, pos, :] = out[:, pos, :] + alpha * (tv - out[:, pos, :])
 
                     if should_cache:
                         name = f"blocks.{layer_idx}.hook_resid_post"
@@ -436,3 +475,24 @@ class NNsightBackend(Backend):
         """
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Not implemented for NNsight backend.
+
+        NNsight wraps models with a tracing API that doesn't expose HuggingFace's
+        KV cache. The underlying model uses meta tensors for lazy loading, making
+        direct access to generate() impossible. Using nnsight's trace() for each
+        token is actually slower than the baseline due to tracing overhead.
+
+        For efficient trajectory generation, use HuggingFace or MLX backends.
+        """
+        raise NotImplementedError(
+            "generate_trajectory not supported for NNsight backend. "
+            "NNsight's tracing API doesn't expose KV cache for efficient generation. "
+            "Use HuggingFace or MLX backend for trajectory generation."
+        )

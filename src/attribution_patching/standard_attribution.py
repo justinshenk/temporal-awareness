@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
-from ..common.profiler import P
-from ..common.hook_utils import hook_names_for_layers, hook_filter_for_component
-from ..common.token_positions import build_position_arrays
 from ..common.contrastive_pair import ContrastivePair
+from ..common.hook_utils import hook_filter_for_component, hook_names_for_layers
+from ..common.profiler import P
+from ..common.token_positions import build_position_arrays
+from ..common.patching_types import GradTarget, PatchingMode
 
 from .trajectory_helpers import get_caches_for_attribution, get_seq_len
 from .vectorized import compute_attribution_vectorized
@@ -49,9 +50,9 @@ def compute_attribution(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
-    mode: Literal["denoising", "noising"],
+    mode: PatchingMode,
     component: str = "resid_post",
-    grad_at: Literal["clean", "corrupted"] = "corrupted",
+    grad_at: GradTarget = "corrupted",
 ) -> np.ndarray:
     """Standard attribution patching: (clean - corrupted) * grad.
 

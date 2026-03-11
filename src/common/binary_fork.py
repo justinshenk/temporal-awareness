@@ -24,3 +24,11 @@ class BinaryFork(BaseSchema):
     group_idx: tuple[int, int] | None = None
     vocab_logits: list[float] | None = None
     analysis: Any | None = None
+
+    @property
+    def next_token_logits(self) -> tuple[float, float] | None:
+        """Raw logits for the two tokens, extracted from vocab_logits."""
+        if self.vocab_logits is None:
+            return None
+        id_a, id_b = self.next_token_ids
+        return (self.vocab_logits[id_a], self.vocab_logits[id_b])

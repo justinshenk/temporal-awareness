@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from ..common.patching_types import PatchingMode
 from .attribution_metric import AttributionMetric
 from .attribution_settings import AttributionSettings
 from .attribution_results import (
@@ -64,7 +65,7 @@ def attribute_for_choice(
     runner: BinaryChoiceRunner,
     pair: ContrastivePair,
     settings: AttributionSettings | None = None,
-    mode: Literal["denoising", "noising"] = "denoising",
+    mode: PatchingMode = "denoising",
 ) -> AttributionSummary:
     """Compute attribution scores for a contrastive pair.
 

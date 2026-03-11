@@ -5,14 +5,15 @@ Uses embedding-level interpolation for mathematically correct Integrated Gradien
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
-from ..common.profiler import P
-from ..common.hook_utils import hook_name, hook_filter_for_component, attribution_filter
 from ..common.contrastive_pair import ContrastivePair
+from ..common.hook_utils import attribution_filter, hook_filter_for_component, hook_name
+from ..common.profiler import P
+from ..common.patching_types import GradTarget, PatchingMode
 from ..inference.interventions import interpolate_embeddings
 
 from .trajectory_helpers import get_cache
@@ -57,10 +58,10 @@ def compute_eap_ig(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
-    mode: Literal["denoising", "noising"],
+    mode: PatchingMode,
     n_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
-    grad_at: Literal["clean", "corrupted"] = "corrupted",
+    grad_at: GradTarget = "corrupted",
 ) -> dict[str, np.ndarray]:
     """Edge Attribution Patching with Integrated Gradients.
 
@@ -88,8 +89,8 @@ def compute_eap_ig(
     n_layers = runner.n_layers
 
     # Determine clean/corrupted based on mode
-    clean_traj = pair.long_traj if mode == "denoising" else pair.short_traj
-    corrupted_traj = pair.short_traj if mode == "denoising" else pair.long_traj
+    clean_traj = pair.corrupted_traj if mode == "denoising" else pair.clean_traj
+    corrupted_traj = pair.clean_traj if mode == "denoising" else pair.corrupted_traj
 
     with P("eap_ig_embeddings"):
         clean_embeds = runner.get_embeddings(clean_traj.token_ids)

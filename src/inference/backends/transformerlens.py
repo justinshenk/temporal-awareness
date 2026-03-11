@@ -154,9 +154,12 @@ class TransformerLensBackend(Backend):
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
         with torch.no_grad():
-            return self.runner._model.run_with_cache(
+            logits, cache = self.runner._model.run_with_cache(
                 input_ids, names_filter=names_filter, past_kv_cache=past_kv_cache
             )
+        # Convert ActivationCache to dict for consistent API across backends
+        cache_dict = dict(cache)
+        return logits, cache_dict
 
     def run_with_cache_and_grad(
         self,
@@ -353,3 +356,57 @@ class TransformerLensBackend(Backend):
             Unembedding bias of shape [vocab_size], or None if no bias
         """
         return getattr(self.runner._model, "b_U", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory with KV caching using TransformerLens."""
+        all_token_ids = list(token_ids)
+
+        # Initialize KV cache for efficient generation
+        kv_cache = self.init_kv_cache()
+
+        with torch.no_grad():
+            # First forward pass to populate cache and get initial logits
+            input_ids = torch.tensor([all_token_ids], device=self.runner.device)
+            logits = self.runner._model(input_ids, past_kv_cache=kv_cache)
+            next_logits = logits[0, -1, :]
+
+            # Compute logprobs for prefilled tokens from the forward pass
+            prefix_log_probs = torch.log_softmax(logits[0], dim=-1)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(len(token_ids) - 1):
+            next_token = token_ids[i + 1]
+            all_logprobs.append(prefix_log_probs[i, next_token].item())
+
+        with torch.no_grad():
+
+            for _ in range(max_new_tokens):
+                # Sample next token
+                if temperature > 0:
+                    probs = torch.softmax(next_logits / temperature, dim=-1)
+                    next_token = torch.multinomial(probs, 1).item()
+                else:
+                    next_token = next_logits.argmax().item()
+
+                # Compute logprob for selected token
+                log_probs = torch.log_softmax(next_logits, dim=-1)
+                token_logprob = log_probs[next_token].item()
+
+                all_token_ids.append(next_token)
+                all_logprobs.append(token_logprob)
+
+                if next_token == self.get_tokenizer().eos_token_id:
+                    break
+
+                # Forward pass with just the new token (using KV cache)
+                next_input = torch.tensor([[next_token]], device=self.runner.device)
+                logits = self.runner._model(next_input, past_kv_cache=kv_cache)
+                next_logits = logits[0, -1, :]
+
+        return all_token_ids, all_logprobs

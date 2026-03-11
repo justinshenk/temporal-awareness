@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..common.profiler import P
 from ..common.contrastive_pair import ContrastivePair
+from ..common.profiler import P
+from ..common.patching_types import GradTarget, PatchingMode
 
-from .standard_attribution import compute_attribution
+from .attribution_settings import GradPoint
 from .eap import compute_eap
 from .eap_ig import compute_eap_ig
 from .embedding_alignment import PaddingStrategy
-from .attribution_settings import GradPoint
+from .standard_attribution import compute_attribution
 
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
@@ -24,11 +25,11 @@ def _run_methods_for_grad_point(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
-    mode: Literal["denoising", "noising"],
+    mode: PatchingMode,
     methods: list[str],
     ig_steps: int,
     padding_strategy: PaddingStrategy,
-    grad_at: Literal["clean", "corrupted"],
+    grad_at: GradTarget,
 ) -> dict[str, np.ndarray]:
     """Run attribution methods for a single gradient point."""
     results = {}
@@ -67,7 +68,7 @@ def run_all_attribution_methods(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
-    mode: Literal["denoising", "noising"],
+    mode: PatchingMode,
     methods: list[str] | None = None,
     ig_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,

@@ -12,11 +12,7 @@ from typing import Optional
 
 from ...common.file_io import ensure_dir
 from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
-from .preference_querier import (
-    PreferenceQuerier,
-    PreferenceQueryConfig,
-    InternalsConfig,
-)
+from .preference_querier import PreferenceQuerier, PreferenceQueryConfig
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
 from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
@@ -27,10 +23,9 @@ def generate_preference_data(
     model: Optional[str] = None,
     dataset_config: Optional[dict] = None,
     temperature: float = 0.0,
-    max_new_tokens: int = 256,
+    max_new_tokens: int = 1024,
     max_samples: Optional[int] = None,
-    internals_config: Optional[InternalsConfig] = None,
-    save_data: bool = True,
+    save_data: bool = False,
     prompt_datasets_dir: Optional[Path] = None,
     pref_datasets_dir: Optional[Path] = None,
 ) -> PreferenceDataset:
@@ -49,7 +44,6 @@ def generate_preference_data(
     if max_samples and max_samples > 0 and prompt_dataset.samples:
         subsample = min(1.0, max_samples / len(prompt_dataset.samples))
     query_config = PreferenceQueryConfig(
-        internals=internals_config,
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         subsample=subsample,

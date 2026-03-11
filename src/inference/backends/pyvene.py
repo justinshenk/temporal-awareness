@@ -343,11 +343,19 @@ class PyveneBackend(Backend):
             )
             target = intervention.target
             mode = intervention.mode
+            alpha = intervention.alpha
+            target_values = None
+            if mode == "interpolate" and intervention.target_values is not None:
+                target_values = torch.tensor(
+                    intervention.target_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
             module = self._get_component_module(
                 intervention.layer, intervention.component
             )
 
-            def make_hook(values, target, mode):
+            def make_hook(values, target, mode, target_values, alpha, layer_idx):
                 def intervention_hook(mod, input, output):
                     if isinstance(output, tuple):
                         hidden = output[0]
@@ -372,6 +380,22 @@ class PyveneBackend(Backend):
                                 hidden = values.expand_as(hidden)
                         elif mode == "mul":
                             hidden = hidden * values
+                        elif mode == "interpolate":
+                            # Interpolate: hidden + alpha * (target_values - hidden)
+                            if target_values is not None and target_values.ndim == 2:
+                                seq_len = min(hidden.shape[1], target_values.shape[0])
+                                new_hidden = hidden.clone()
+                                tv = (
+                                    target_values[:seq_len]
+                                    .unsqueeze(0)
+                                    .expand(hidden.shape[0], -1, -1)
+                                )
+                                new_hidden[:, :seq_len, :] = (
+                                    hidden[:, :seq_len, :] + alpha * (tv - hidden[:, :seq_len, :])
+                                )
+                                hidden = new_hidden
+                            elif target_values is not None:
+                                hidden = hidden + alpha * (target_values - hidden)
                     else:
                         for i, pos in enumerate(target.positions):
                             if pos < hidden.shape[1]:
@@ -387,6 +411,16 @@ class PyveneBackend(Backend):
                                     hidden[:, pos, :] = pos_values
                                 elif mode == "mul":
                                     hidden[:, pos, :] = hidden[:, pos, :] * pos_values
+                                elif mode == "interpolate":
+                                    if target_values is not None:
+                                        tv = (
+                                            target_values[i]
+                                            if target_values.ndim > 1 and i < len(target_values)
+                                            else target_values
+                                        )
+                                        hidden[:, pos, :] = (
+                                            hidden[:, pos, :] + alpha * (tv - hidden[:, pos, :])
+                                        )
 
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
@@ -394,7 +428,7 @@ class PyveneBackend(Backend):
 
                 return intervention_hook
 
-            hook = module.register_forward_hook(make_hook(values, target, mode))
+            hook = module.register_forward_hook(make_hook(values, target, mode, target_values, alpha, intervention.layer))
             hooks.append(hook)
 
         with torch.no_grad():
@@ -618,3 +652,52 @@ class PyveneBackend(Backend):
         """
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory using HF generate() with KV caching."""
+        input_ids = torch.tensor([token_ids], device=self.runner.device)
+        prompt_len = len(token_ids)
+
+        gen_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": temperature > 0,
+            "pad_token_id": self.get_tokenizer().eos_token_id,
+            "return_dict_in_generate": True,
+            "output_scores": True,
+            "use_cache": True,
+            "repetition_penalty": 1.0,
+            "num_beams": 1,
+        }
+        if temperature > 0:
+            gen_kwargs["temperature"] = temperature
+
+        with torch.no_grad():
+            outputs = self.runner._model.generate(input_ids, **gen_kwargs)
+
+            # Compute logprobs for prefilled tokens via forward pass
+            prefix_outputs = self.runner._model(input_ids)
+            prefix_logits = prefix_outputs.logits[0]
+            prefix_log_probs = torch.log_softmax(prefix_logits, dim=-1)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(prompt_len - 1):
+            next_token = token_ids[i + 1]
+            all_logprobs.append(prefix_log_probs[i, next_token].item())
+
+        # outputs.sequences: [1, prompt_len + generated_len]
+        # outputs.scores: tuple of (generated_len) tensors, each [1, vocab_size]
+        all_token_ids = outputs.sequences[0].tolist()
+        generated_ids = all_token_ids[prompt_len:]
+
+        # Append logprobs for generated tokens from scores
+        for score, token_id in zip(outputs.scores, generated_ids):
+            log_probs = torch.log_softmax(score[0], dim=-1)
+            all_logprobs.append(log_probs[token_id].item())
+
+        return all_token_ids, all_logprobs

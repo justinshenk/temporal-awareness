@@ -3,18 +3,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Union
 
 import numpy as np
 
+from .base_schema import BaseSchema
 from .token_trajectory import TokenTrajectory
 
 
 @dataclass
-class PositionMapping:
+class PositionMapping(BaseSchema):
     """Mapping between positions in two token sequences.
 
     Maps source positions to destination positions, with metadata.
+
+    Attributes:
+        mapping: Dict mapping source position indices to destination position indices.
+        src_len: Length of the source sequence.
+        dst_len: Length of the destination sequence.
+        anchors: List of (src_pos, dst_pos) tuples marking known correspondences.
+            Parallel array with anchor_texts - anchors[i] corresponds to anchor_texts[i].
+        anchor_texts: List of text markers used to find anchor positions.
+            Parallel array with anchors - anchor_texts[i] is the text that was matched
+            to find anchors[i].
+        first_interesting_marker: Optional marker text indicating the first position
+            of interest (e.g., where answer choices begin).
     """
 
     mapping: dict[int, int] = field(default_factory=dict)
@@ -31,7 +43,17 @@ class PositionMapping:
         return cls(mapping=mapping, src_len=src_len, dst_len=dst_len, anchors=[])
 
     def src_to_dst(self, src_pos: int, default: int | None = None) -> int | None:
-        """Get destination position for a source position."""
+        """Get destination position for a source position.
+
+        Args:
+            src_pos: Source position index to look up.
+            default: Value to return if src_pos is not in the mapping.
+                If None (the default), returns src_pos itself (identity mapping).
+
+        Returns:
+            The destination position corresponding to src_pos, or the default
+            value if src_pos is not found in the mapping.
+        """
         if default is None:
             default = src_pos
         return self.mapping.get(src_pos, default)
@@ -72,7 +94,7 @@ class PositionMapping:
 
     @property
     def min_len(self) -> int:
-        """Length of the longer sequence."""
+        """Length of the shorter sequence."""
         return min(self.src_len, self.dst_len)
 
     @property
@@ -88,6 +110,56 @@ class PositionMapping:
     def inv(self) -> dict[int, int]:
         """Return inverse mapping (dst -> src)."""
         return {dst: src for src, dst in self.mapping.items()}
+
+    def dst_to_src_interpolated(self, dst_pos: int) -> int:
+        """Get source position for a destination position, with interpolation.
+
+        Unlike dst_to_src which returns None for unmapped positions, this method
+        uses linear interpolation based on src_len and dst_len to estimate the
+        corresponding source position.
+        """
+        # First try direct lookup
+        for src, dst in self.mapping.items():
+            if dst == dst_pos:
+                return src
+
+        # Fall back to linear interpolation
+        if self.dst_len == 0:
+            return 0
+        ratio = dst_pos / self.dst_len
+        return int(ratio * self.src_len)
+
+    def switch(self) -> "PositionMapping":
+        """Return a new PositionMapping with src and dst swapped.
+
+        Inverts the mapping direction: if original maps clean→corrupted,
+        switched maps corrupted→clean.
+
+        Warning:
+            If the original mapping is non-injective (multiple source positions
+            map to the same destination position), the switched mapping will
+            lose information. Only one of the original source positions will
+            be preserved in the inverted mapping (the last one encountered
+            during dict construction). This is expected behavior for mappings
+            where sequences have different lengths, but callers should be aware
+            that switch().switch() may not equal the original mapping in such cases.
+
+        Returns:
+            A new PositionMapping with source and destination swapped.
+        """
+        # Note: For non-injective mappings (where multiple src positions map to
+        # the same dst position), the inversion will only preserve one of the
+        # original source positions. This is inherent to dict-based inversion.
+        switched_anchors = [(dst, src) for src, dst in self.anchors]
+
+        return PositionMapping(
+            mapping=self.inv(),
+            src_len=self.dst_len,
+            dst_len=self.src_len,
+            anchors=switched_anchors,
+            anchor_texts=self.anchor_texts,
+            first_interesting_marker=self.first_interesting_marker,
+        )
 
 
 @dataclass
@@ -167,7 +239,7 @@ def find_anchor_points(
     src_tokens: list[str],
     dst_tokens: list[str],
     anchor_texts: list[str] | None = None,
-) -> list[tuple[int, int]]:
+) -> tuple[list[tuple[int, int]], list[str]]:
     """Find anchor points between two token sequences.
 
     Anchors are positions where we know the correspondence between sequences,
@@ -179,10 +251,12 @@ def find_anchor_points(
         anchor_texts: Text markers to find in both sequences (e.g., ["a)", "b)"])
 
     Returns:
-        List of (src_pos, dst_pos) anchor tuples, sorted by src_pos
+        Tuple of (anchor_points, anchor_markers) where:
+            - anchor_points: List of (src_pos, dst_pos) tuples, sorted by src_pos
+            - anchor_markers: List of text markers that were matched, in same order
     """
     if not anchor_texts:
-        return []
+        return [], []
 
     # Dedupe while preserving order
     seen = set()
@@ -240,7 +314,7 @@ def interpolate_positions(
 
 
 def resolve_position(
-    spec: Union[dict, int, str],
+    spec: dict | int | str,
     tokens: list[str],
     prompt_len: int | None = None,
 ) -> ResolvedPosition:
@@ -307,7 +381,7 @@ def resolve_position(
 
 
 def resolve_positions(
-    specs: list[Union[dict, int, str]],
+    specs: list[dict | int | str],
     tokens: list[str],
     prompt_len: int | None = None,
 ) -> list[ResolvedPosition]:
@@ -316,7 +390,7 @@ def resolve_positions(
 
 
 def resolve_positions_with_info(
-    specs: list[Union[dict, int, str]],
+    specs: list[dict | int | str],
     tokens: list[str],
     prompt_len: int | None = None,
 ) -> tuple[list[ResolvedPosition], ResolvedPositionInfo]:

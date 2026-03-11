@@ -162,6 +162,27 @@ class Backend(ABC):
         """Run forward with interventions AND capture activations with gradients."""
         ...
 
+    @abstractmethod
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory with KV caching.
+
+        Args:
+            token_ids: Input token IDs
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0.0 = greedy)
+
+        Returns:
+            Tuple of (all_token_ids, logprobs) where logprobs[i] is the
+            log probability of token_ids[i] given the previous tokens.
+            The first token has logprob=0.0 (no prior context).
+        """
+        ...
+
     def get_embeddings(self, token_ids: torch.Tensor) -> torch.Tensor:
         """Get token embeddings from the model.
 

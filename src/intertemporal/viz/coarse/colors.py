@@ -40,6 +40,8 @@ METRIC_COLORS = {
     # Column 3: Long logits - magenta/pink family (dark to light)
     "logit_long": "#C71585",
     "norm_logit_long": "#FF69B4",
+    # Column 3: Relative logit delta - bright green for visibility
+    "rel_logit_delta": "#00FF00",
     # Fork and Vocab metrics (same colors for same quantities)
     "fork_entropy": OKABE_ITO["blue"],
     "fork_diversity": OKABE_ITO["reddish_purple"],
@@ -75,6 +77,7 @@ LINE_STYLES = {
     "inv_perplexity_short": "-",
     "inv_perplexity_long": "-",
     # Secondary metrics (dashed/dotted)
+    "rel_logit_delta": "-",
     "norm_logit_diff": "--",
     "prob_short": "--",
     "prob_long": "--",
@@ -87,37 +90,39 @@ LINE_STYLES = {
     "inv_perplexity": "-",
 }
 
-# Line widths - thick for visibility
+# Line widths - thinner for better visibility with granular sweeps
 LINE_WIDTHS = {
-    "recovery": 4.0,
-    "logit_diff": 3.5,
-    "norm_logit_diff": 3.0,
-    "logprob_short": 3.5,
-    "logprob_long": 3.5,
-    "prob_short": 3.0,
-    "prob_long": 3.0,
-    "logit_short": 3.5,
-    "logit_long": 3.5,
-    "norm_logit_short": 3.0,
-    "norm_logit_long": 3.0,
-    "fork_entropy": 3.5,
-    "fork_diversity": 3.5,
-    "fork_simpson": 3.0,
-    "vocab_entropy": 3.5,
-    "vocab_diversity": 3.0,
-    "vocab_simpson": 3.0,
-    "vocab_tcb": 3.0,
-    "rr_short": 3.5,
-    "rr_long": 3.5,
-    "inv_perplexity": 3.5,
-    "inv_perplexity_short": 3.5,
-    "inv_perplexity_long": 3.5,
+    "recovery": 2.0,
+    "logit_diff": 1.8,
+    "rel_logit_delta": 2.0,
+    "norm_logit_diff": 1.5,
+    "logprob_short": 1.8,
+    "logprob_long": 1.8,
+    "prob_short": 1.5,
+    "prob_long": 1.5,
+    "logit_short": 1.8,
+    "logit_long": 1.8,
+    "norm_logit_short": 1.5,
+    "norm_logit_long": 1.5,
+    "fork_entropy": 1.8,
+    "fork_diversity": 1.8,
+    "fork_simpson": 1.5,
+    "vocab_entropy": 1.8,
+    "vocab_diversity": 1.5,
+    "vocab_simpson": 1.5,
+    "vocab_tcb": 1.5,
+    "rr_short": 1.8,
+    "rr_long": 1.8,
+    "inv_perplexity": 1.8,
+    "inv_perplexity_short": 1.8,
+    "inv_perplexity_long": 1.8,
 }
 
 # Markers - distinct shapes for easy identification
 MARKERS = {
     "recovery": "D",
     "logit_diff": "o",
+    "rel_logit_delta": "H",  # Hexagon for rel_logit_delta
     "norm_logit_diff": "s",
     "logprob_short": "o",
     "logprob_long": "^",
@@ -141,31 +146,38 @@ MARKERS = {
     "inv_perplexity_long": "^",
 }
 
-# Marker sizes - large for visibility
+# Marker sizes - smaller for granular sweeps
 MARKER_SIZES = {
-    "recovery": 12,
-    "logit_diff": 10,
-    "norm_logit_diff": 9,
-    "logprob_short": 10,
-    "logprob_long": 10,
-    "prob_short": 9,
-    "prob_long": 9,
-    "logit_short": 11,
-    "logit_long": 11,
-    "norm_logit_short": 9,
-    "norm_logit_long": 9,
-    "fork_entropy": 10,
-    "fork_diversity": 9,
-    "fork_simpson": 9,
-    "vocab_entropy": 10,
-    "vocab_diversity": 9,
-    "vocab_simpson": 9,
-    "vocab_tcb": 10,
-    "rr_short": 10,
-    "rr_long": 10,
-    "inv_perplexity": 12,
-    "inv_perplexity_short": 10,
-    "inv_perplexity_long": 10,
+    "recovery": 6,
+    "logit_diff": 5,
+    "rel_logit_delta": 6,
+    "norm_logit_diff": 4,
+    "logprob_short": 5,
+    "logprob_long": 5,
+    "prob_short": 4,
+    "prob_long": 4,
+    "logit_short": 5,
+    "logit_long": 5,
+    "norm_logit_short": 4,
+    "norm_logit_long": 4,
+    "fork_entropy": 5,
+    "fork_diversity": 4,
+    "fork_simpson": 4,
+    "vocab_entropy": 5,
+    "vocab_diversity": 4,
+    "vocab_simpson": 4,
+    "vocab_tcb": 5,
+    "rr_short": 5,
+    "rr_long": 5,
+    "inv_perplexity": 6,
+    "inv_perplexity_short": 5,
+    "inv_perplexity_long": 5,
+}
+
+# Vertical line markers for position sweeps
+VLINE_COLORS = {
+    "prompt_boundary": "#1E90FF",  # Dodger blue - prompt/response boundary
+    "choice_div_pos": "#FF1493",   # Deep pink - where A/B tokens diverge
 }
 
 # Subplot title style

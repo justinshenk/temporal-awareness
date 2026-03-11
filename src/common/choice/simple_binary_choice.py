@@ -70,7 +70,7 @@ class SimpleBinaryChoice(BinaryChoice):
     @property
     def choice_idx(self) -> int:
         """0 if model prefers A, 1 if B, -1 if tied."""
-        lp_a, lp_b = self._divergent_logprobs
+        lp_a, lp_b = self.divergent_logprobs
         if lp_a > lp_b:
             return 0
         if lp_b > lp_a:
@@ -91,7 +91,7 @@ class SimpleBinaryChoice(BinaryChoice):
         idx = self.choice_idx
         if idx == -1:
             return None
-        return self._divergent_logprobs[idx]
+        return self.divergent_logprobs[idx]
 
     @property
     def alternative_logprob(self) -> float | None:
@@ -99,7 +99,7 @@ class SimpleBinaryChoice(BinaryChoice):
         idx = self.choice_idx
         if idx == -1:
             return None
-        return self._divergent_logprobs[1 - idx]
+        return self.divergent_logprobs[1 - idx]
 
     # ── Trajectory access ────────────────────────────────────────────────
 
@@ -124,15 +124,20 @@ class SimpleBinaryChoice(BinaryChoice):
             return None
         return self.tree.nodes[0].branching_token_position
 
-    # ── Internal ─────────────────────────────────────────────────────────
-
     @property
-    def _divergent_logprobs(self) -> tuple[float, float]:
+    def divergent_logprobs(self) -> tuple[float, float]:
         """(logprob_a, logprob_b) at the first divergent position."""
         if not self.tree.forks:
             return (0.0, 0.0)
         lp = self.tree.forks[0].next_token_logprobs
         return (float(lp[0]), float(lp[1]))
+
+    @property
+    def divergent_logits(self) -> tuple[float, float] | None:
+        """(logit_a, logit_b) at the first divergent position, or None if unavailable."""
+        if not self.tree.forks:
+            return None
+        return self.tree.forks[0].next_token_logits
 
     def pop_heavy(self):
         self.tree.pop_heavy()
