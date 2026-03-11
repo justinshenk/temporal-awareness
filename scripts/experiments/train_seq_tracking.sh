@@ -10,7 +10,8 @@
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 source ~/sae-env/bin/activate
-export HF_HOME=~/.cache/huggingface
+export HF_HOME=$SCRATCH/.cache/huggingface
+export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
 
 MODE="${1:-full}"
 EXTRA_ARGS="${2:-}"
