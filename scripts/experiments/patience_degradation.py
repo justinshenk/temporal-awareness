@@ -102,14 +102,14 @@ MODEL_CONFIGS = {
     },
     "gpt2": {
         "sae_release": "gpt2-small-res-jb",
-        "sae_id_template": "blocks.{layer}.hook_resid_post",
+        "sae_id_template": "blocks.{layer}.hook_resid_pre",
         "default_layers": [2, 5, 8, 10],
         "quick_layers": [5],
         "n_layers": 12,
     },
     "pythia-160m": {
         "sae_release": "pythia-160m-deduped-res-sm",
-        "sae_id_template": "blocks.{layer}.hook_resid_post",
+        "sae_id_template": "blocks.{layer}.hook_resid_pre",
         "default_layers": [2, 4, 6, 8, 10],
         "quick_layers": [6],
         "n_layers": 12,
