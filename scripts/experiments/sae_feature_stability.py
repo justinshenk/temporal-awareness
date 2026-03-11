@@ -104,7 +104,7 @@ MODEL_CONFIGS = {
     },
     "pythia-70m": {
         "sae_release": "pythia-70m-deduped-res-sm",
-        "sae_id_template": "blocks.{layer}.hook_resid_pre",
+        "sae_id_template": "blocks.{layer}.hook_resid_post",
         "default_layers": [1, 2, 3, 4],
         "quick_layers": [3],
         "n_layers": 6,

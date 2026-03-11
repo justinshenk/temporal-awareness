@@ -35,13 +35,31 @@ else
     sbatch scripts/experiments/train_seq_tracking.sh "$MODE"
 fi
 
-# 3. Patience Degradation
+# 3. Patience Degradation (Gemma-2-2b default)
 echo ""
-echo "--- Patience & Compliance Degradation ---"
+echo "--- Patience & Compliance Degradation: Gemma-2-2b ---"
 if [ "$MODE" = "quick" ]; then
-    sbatch --time=02:00:00 scripts/experiments/train_patience_deg.sh "$MODE"
+    sbatch --time=02:00:00 scripts/experiments/train_patience_deg.sh "gemma-2-2b" "$MODE"
 else
-    sbatch scripts/experiments/train_patience_deg.sh "$MODE"
+    sbatch scripts/experiments/train_patience_deg.sh "gemma-2-2b" "$MODE"
+fi
+
+# 4. Patience Degradation — Qwen2.5-3B-Instruct (activation-only)
+echo ""
+echo "--- Patience Degradation: Qwen2.5-3B-Instruct ---"
+if [ "$MODE" = "quick" ]; then
+    sbatch --time=03:00:00 scripts/experiments/train_patience_deg_large.sh "Qwen/Qwen2.5-3B-Instruct" "$MODE"
+else
+    sbatch scripts/experiments/train_patience_deg_large.sh "Qwen/Qwen2.5-3B-Instruct" "$MODE"
+fi
+
+# 5. Patience Degradation — Llama-3.1-8B-Instruct (activation-only)
+echo ""
+echo "--- Patience Degradation: Llama-3.1-8B-Instruct ---"
+if [ "$MODE" = "quick" ]; then
+    sbatch --time=04:00:00 scripts/experiments/train_patience_deg_large.sh "meta-llama/Llama-3.1-8B-Instruct" "$MODE"
+else
+    sbatch scripts/experiments/train_patience_deg_large.sh "meta-llama/Llama-3.1-8B-Instruct" "$MODE"
 fi
 
 echo ""

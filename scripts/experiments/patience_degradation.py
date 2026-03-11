@@ -109,10 +109,24 @@ MODEL_CONFIGS = {
     },
     "pythia-70m": {
         "sae_release": "pythia-70m-deduped-res-sm",
-        "sae_id_template": "blocks.{layer}.hook_resid_pre",
+        "sae_id_template": "blocks.{layer}.hook_resid_post",
         "default_layers": [1, 2, 3, 4],
         "quick_layers": [3],
         "n_layers": 6,
+    },
+    "Qwen/Qwen2.5-3B-Instruct": {
+        "sae_release": None,  # No pre-trained SAEs available
+        "sae_id_template": None,
+        "default_layers": [4, 12, 20, 28, 34],
+        "quick_layers": [20],
+        "n_layers": 36,
+    },
+    "meta-llama/Llama-3.1-8B-Instruct": {
+        "sae_release": None,  # No pre-trained SAEs available
+        "sae_id_template": None,
+        "default_layers": [4, 10, 16, 22, 28],
+        "quick_layers": [16],
+        "n_layers": 32,
     },
 }
 
@@ -157,16 +171,16 @@ class RepetitionMetrics:
     """Metrics at a single repetition level."""
     repetition_count: int
     n_samples: int
-    # Probe performance
-    sae_probe_accuracy: float
+    # Probe performance (SAE probe is Optional — None when no SAE available)
+    sae_probe_accuracy: Optional[float]
     act_probe_accuracy: float
-    sae_probe_f1: float
+    sae_probe_f1: Optional[float]
     act_probe_f1: float
-    # Feature drift from rep=1
+    # Feature drift from rep=1 (based on SAE features if available, else raw acts)
     cosine_sim_to_baseline: float
     jaccard_to_baseline: float
     magnitude_ratio: float
-    # Neuron-level analysis
+    # Neuron-level analysis (computed on SAE features if available, else raw acts)
     top_neuron_concentration: float  # how much variance top neurons explain
     feature_entropy: float  # entropy of activation distribution (higher = more distributed)
     # Structural coherence (measured by probe confidence)
@@ -383,14 +397,17 @@ def generate_repetitive_sequences(
 
 def extract_activations(
     model: HookedTransformer,
-    sae: SaeLensSAE,
+    sae: Optional[SaeLensSAE],
     prompts: list[str],
     layer: int,
     batch_size: int = 16,
     device: str = "cpu",
     verbose: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Extract raw residual stream activations and SAE-encoded latents."""
+) -> tuple[np.ndarray, Optional[np.ndarray]]:
+    """Extract raw residual stream activations and SAE-encoded latents.
+
+    If sae is None, returns (raw_activations, None).
+    """
     hook_name = f"blocks.{layer}.hook_resid_post"
     all_raw, all_sae = [], []
 
@@ -405,11 +422,14 @@ def extract_activations(
                 batch, names_filter=[hook_name], stop_at_layer=layer + 1,
             )
         acts = cache[hook_name][:, -1, :]
-        sae_out = sae.encode(acts)
         all_raw.append(acts.detach().float().cpu().numpy())
-        all_sae.append(sae_out.detach().float().cpu().numpy())
+        if sae is not None:
+            sae_out = sae.encode(acts)
+            all_sae.append(sae_out.detach().float().cpu().numpy())
 
-    return np.concatenate(all_raw), np.concatenate(all_sae)
+    raw = np.concatenate(all_raw)
+    sae_feats = np.concatenate(all_sae) if all_sae else None
+    return raw, sae_feats
 
 
 # ---------------------------------------------------------------------------
@@ -517,16 +537,23 @@ def _wandb_active() -> bool:
 
 def run_single_layer_degradation(
     model: HookedTransformer,
-    sae: SaeLensSAE,
+    sae: Optional[SaeLensSAE],
     layer: int,
     all_sequences: dict[str, dict[str, list[RepetitionLevel]]],
     device: str = "cpu",
     batch_size: int = 16,
 ) -> list[DegradationResult]:
-    """Run patience degradation experiment for one layer."""
+    """Run patience degradation experiment for one layer.
+
+    When sae is None (e.g. for instruction-tuned models without pre-trained
+    SAEs), the experiment runs with activation probes only.  Drift metrics
+    are computed on raw activations and SAE-specific fields are set to None.
+    """
+
+    has_sae = sae is not None
 
     print(f"\n{'#' * 70}")
-    print(f"# LAYER {layer} — Patience Degradation")
+    print(f"# LAYER {layer} — Patience Degradation {'(activation-only)' if not has_sae else ''}")
     print(f"{'#' * 70}")
 
     layer_results = []
@@ -544,21 +571,35 @@ def run_single_layer_degradation(
                 batch_size=batch_size, device=device,
             )
 
-            # Select discriminative latents
-            mean_imm = sae_base[baseline.labels == 0].mean(axis=0)
-            mean_lt = sae_base[baseline.labels == 1].mean(axis=0)
-            abs_diff = np.abs(mean_lt - mean_imm)
-            top_k_indices = np.argsort(abs_diff)[-TOP_K_LATENTS:][::-1]
+            # --- SAE probe (only when SAE is available) ---
+            sae_probe = None
+            top_k_indices = None
+            base_mean_acts_sae = None
+            base_active_sae = None
 
-            X_sae_base = sae_base[:, top_k_indices]
-            sae_probe = LogisticRegression(max_iter=5000, random_state=42)
-            sae_probe.fit(X_sae_base, baseline.labels)
+            if has_sae and sae_base is not None:
+                # Select discriminative latents
+                mean_imm = sae_base[baseline.labels == 0].mean(axis=0)
+                mean_lt = sae_base[baseline.labels == 1].mean(axis=0)
+                abs_diff = np.abs(mean_lt - mean_imm)
+                top_k_indices = np.argsort(abs_diff)[-TOP_K_LATENTS:][::-1]
 
+                X_sae_base = sae_base[:, top_k_indices]
+                sae_probe = LogisticRegression(max_iter=5000, random_state=42)
+                sae_probe.fit(X_sae_base, baseline.labels)
+
+                base_mean_acts_sae = sae_base[:, top_k_indices].mean(axis=0)
+                base_active_sae = set(np.argsort(np.abs(sae_base).mean(axis=0))[-TOP_K_LATENTS:][::-1].tolist())
+
+            # --- Activation probe (always) ---
             act_probe = LogisticRegression(max_iter=5000, random_state=42)
             act_probe.fit(raw_base, baseline.labels)
 
-            base_mean_acts = sae_base[:, top_k_indices].mean(axis=0)
-            base_active = set(np.argsort(np.abs(sae_base).mean(axis=0))[-TOP_K_LATENTS:][::-1].tolist())
+            # Baseline drift anchors on raw activations (used when SAE absent)
+            base_mean_raw = raw_base.mean(axis=0)
+            # For Jaccard on raw acts, pick top-k dimensions by variance
+            raw_var = np.var(raw_base, axis=0)
+            base_active_raw = set(np.argsort(raw_var)[-TOP_K_LATENTS:][::-1].tolist())
 
             # Evaluate at each repetition level
             print(f"  [2/3] Evaluating across {len(rep_levels)} repetition levels...")
@@ -575,70 +616,102 @@ def run_single_layer_degradation(
                         batch_size=batch_size, device=device,
                     )
 
-                X_sae_r = sae_r[:, top_k_indices]
+                # --- SAE probe metrics ---
+                sae_acc = None
+                sae_f1_val = None
 
-                # Probe metrics
-                sae_preds = sae_probe.predict(X_sae_r)
+                if sae_probe is not None and sae_r is not None:
+                    X_sae_r = sae_r[:, top_k_indices]
+                    sae_preds = sae_probe.predict(X_sae_r)
+                    sae_acc = float(accuracy_score(level.labels, sae_preds))
+                    sae_f1_val = float(f1_score(level.labels, sae_preds, zero_division=0))
+
+                # --- Activation probe metrics (always) ---
                 act_preds = act_probe.predict(raw_r)
-                sae_probs = sae_probe.predict_proba(X_sae_r)
+                act_probs = act_probe.predict_proba(raw_r)
+                act_acc = float(accuracy_score(level.labels, act_preds))
+                act_f1_val = float(f1_score(level.labels, act_preds, zero_division=0))
 
-                sae_acc = accuracy_score(level.labels, sae_preds)
-                act_acc = accuracy_score(level.labels, act_preds)
-                sae_f1 = f1_score(level.labels, sae_preds, zero_division=0)
-                act_f1 = f1_score(level.labels, act_preds, zero_division=0)
+                # Confidence (from SAE probe if available, else activation probe)
+                if sae_probe is not None and sae_r is not None:
+                    sae_probs = sae_probe.predict_proba(sae_r[:, top_k_indices])
+                    confidence = np.max(sae_probs, axis=1)
+                else:
+                    confidence = np.max(act_probs, axis=1)
 
-                # Confidence
-                confidence = np.max(sae_probs, axis=1)
+                # --- Feature drift from baseline ---
+                if has_sae and sae_r is not None:
+                    # Drift on SAE features
+                    curr_mean_acts = sae_r[:, top_k_indices].mean(axis=0)
+                    cos_sim = float(np.dot(curr_mean_acts, base_mean_acts_sae) / (
+                        np.linalg.norm(curr_mean_acts) * np.linalg.norm(base_mean_acts_sae) + 1e-10
+                    ))
+                    curr_active = set(np.argsort(np.abs(sae_r).mean(axis=0))[-TOP_K_LATENTS:][::-1].tolist())
+                    intersection = len(base_active_sae & curr_active)
+                    union = len(base_active_sae | curr_active)
+                    jaccard = intersection / union if union > 0 else 0.0
 
-                # Feature drift from baseline
-                curr_mean_acts = sae_r[:, top_k_indices].mean(axis=0)
-                cos_sim = float(np.dot(curr_mean_acts, base_mean_acts) / (
-                    np.linalg.norm(curr_mean_acts) * np.linalg.norm(base_mean_acts) + 1e-10
-                ))
+                    base_mag = np.abs(sae_base[:, top_k_indices]).mean()
+                    curr_mag = np.abs(sae_r[:, top_k_indices]).mean()
+                    mag_ratio = float(curr_mag / base_mag) if base_mag > 0 else 0.0
 
-                curr_active = set(np.argsort(np.abs(sae_r).mean(axis=0))[-TOP_K_LATENTS:][::-1].tolist())
-                intersection = len(base_active & curr_active)
-                union = len(base_active | curr_active)
-                jaccard = intersection / union if union > 0 else 0.0
+                    # Neuron-level analysis on SAE features
+                    conc = compute_neuron_concentration(sae_r)
+                    ent = compute_feature_entropy(sae_r)
+                else:
+                    # Drift on raw activations
+                    curr_mean_raw = raw_r.mean(axis=0)
+                    cos_sim = float(np.dot(curr_mean_raw, base_mean_raw) / (
+                        np.linalg.norm(curr_mean_raw) * np.linalg.norm(base_mean_raw) + 1e-10
+                    ))
+                    curr_var = np.var(raw_r, axis=0)
+                    curr_active_raw = set(np.argsort(curr_var)[-TOP_K_LATENTS:][::-1].tolist())
+                    intersection = len(base_active_raw & curr_active_raw)
+                    union = len(base_active_raw | curr_active_raw)
+                    jaccard = intersection / union if union > 0 else 0.0
 
-                base_mag = np.abs(sae_base[:, top_k_indices]).mean()
-                curr_mag = np.abs(sae_r[:, top_k_indices]).mean()
-                mag_ratio = float(curr_mag / base_mag) if base_mag > 0 else 0.0
+                    base_mag = np.abs(raw_base).mean()
+                    curr_mag = np.abs(raw_r).mean()
+                    mag_ratio = float(curr_mag / base_mag) if base_mag > 0 else 0.0
 
-                # Neuron-level analysis
-                concentration = compute_neuron_concentration(sae_r)
-                entropy = compute_feature_entropy(sae_r)
-                concentration_values.append(concentration)
-                entropy_values.append(entropy)
+                    # Neuron-level analysis on raw activations
+                    conc = compute_neuron_concentration(raw_r)
+                    ent = compute_feature_entropy(raw_r)
+
+                concentration_values.append(conc)
+                entropy_values.append(ent)
 
                 rm = RepetitionMetrics(
                     repetition_count=level.repetition_count,
                     n_samples=len(level.prompts),
-                    sae_probe_accuracy=float(sae_acc),
-                    act_probe_accuracy=float(act_acc),
-                    sae_probe_f1=float(sae_f1),
-                    act_probe_f1=float(act_f1),
+                    sae_probe_accuracy=sae_acc,
+                    act_probe_accuracy=act_acc,
+                    sae_probe_f1=sae_f1_val,
+                    act_probe_f1=act_f1_val,
                     cosine_sim_to_baseline=cos_sim,
                     jaccard_to_baseline=jaccard,
                     magnitude_ratio=mag_ratio,
-                    top_neuron_concentration=concentration,
-                    feature_entropy=entropy,
+                    top_neuron_concentration=conc,
+                    feature_entropy=ent,
                     mean_confidence=float(confidence.mean()),
                     confidence_std=float(confidence.std()),
                 )
                 rep_metrics.append(rm)
 
+                sae_str = f"SAE={sae_acc:.3f} " if sae_acc is not None else ""
                 print(f"    Rep {level.repetition_count:2d}: "
-                      f"SAE={sae_acc:.3f} Act={act_acc:.3f} "
-                      f"cos={cos_sim:.3f} conc={concentration:.3f}")
+                      f"{sae_str}Act={act_acc:.3f} "
+                      f"cos={cos_sim:.3f} conc={conc:.3f}")
 
             # Summary analysis
             print(f"  [3/3] Analyzing degradation patterns...")
             reps = [m.repetition_count for m in rep_metrics]
-            sae_accs = [m.sae_probe_accuracy for m in rep_metrics]
+            # Use SAE probe accuracy for behavioral onset when available, else act probe
+            probe_accs = [m.sae_probe_accuracy if m.sae_probe_accuracy is not None
+                          else m.act_probe_accuracy for m in rep_metrics]
             cos_sims = [m.cosine_sim_to_baseline for m in rep_metrics]
 
-            behav_onset = find_degradation_onset(reps, sae_accs)
+            behav_onset = find_degradation_onset(reps, probe_accs)
             act_onset = find_activation_drift_onset(reps, cos_sims)
             precursor_gap = compute_precursor_gap(behav_onset, act_onset)
             representation_type = classify_representation(concentration_values, entropy_values)
@@ -664,13 +737,15 @@ def run_single_layer_degradation(
             if _wandb_active():
                 for rm in rep_metrics:
                     prefix = f"layer_{layer}/{domain}_{stakes}"
-                    wandb.log({
-                        f"{prefix}/rep_{rm.repetition_count}/sae_accuracy": rm.sae_probe_accuracy,
+                    log_dict = {
                         f"{prefix}/rep_{rm.repetition_count}/act_accuracy": rm.act_probe_accuracy,
                         f"{prefix}/rep_{rm.repetition_count}/cosine_baseline": rm.cosine_sim_to_baseline,
                         f"{prefix}/rep_{rm.repetition_count}/concentration": rm.top_neuron_concentration,
                         f"{prefix}/rep_{rm.repetition_count}/confidence": rm.mean_confidence,
-                    })
+                    }
+                    if rm.sae_probe_accuracy is not None:
+                        log_dict[f"{prefix}/rep_{rm.repetition_count}/sae_accuracy"] = rm.sae_probe_accuracy
+                    wandb.log(log_dict)
                 wandb.log({
                     f"layer_{layer}/{domain}_{stakes}/degradation_onset": behav_onset,
                     f"layer_{layer}/{domain}_{stakes}/precursor_gap": precursor_gap,
@@ -716,17 +791,24 @@ def plot_degradation_results(
     fig.suptitle("Patience Degradation: Probe Accuracy vs. Repetition Count", fontsize=14)
 
     color_map = {"low": "green", "high": "red"}
+
+    # Plot SAE or activation probe accuracy depending on availability
+    any_has_sae = any(m.sae_probe_accuracy is not None
+                      for r in all_results for m in r.repetition_metrics)
     for r in all_results:
         reps = [m.repetition_count for m in r.repetition_metrics]
-        sae_accs = [m.sae_probe_accuracy for m in r.repetition_metrics]
-        act_accs = [m.act_probe_accuracy for m in r.repetition_metrics]
+        if any_has_sae:
+            accs = [m.sae_probe_accuracy if m.sae_probe_accuracy is not None
+                    else m.act_probe_accuracy for m in r.repetition_metrics]
+        else:
+            accs = [m.act_probe_accuracy for m in r.repetition_metrics]
         color = color_map.get(r.stakes, "blue")
 
-        axes[0, 0].plot(reps, sae_accs, "o-", color=color,
+        axes[0, 0].plot(reps, accs, "o-", color=color,
                         label=f"{r.domain}/{r.stakes} L{r.layer}", alpha=0.7)
     axes[0, 0].set_xlabel("Repetition Count")
-    axes[0, 0].set_ylabel("SAE Probe Accuracy")
-    axes[0, 0].set_title("SAE Probe Degradation")
+    axes[0, 0].set_ylabel("SAE Probe Accuracy" if any_has_sae else "Activation Probe Accuracy")
+    axes[0, 0].set_title("SAE Probe Degradation" if any_has_sae else "Activation Probe Degradation")
     axes[0, 0].legend(fontsize=6, ncol=2)
     axes[0, 0].grid(True, alpha=0.3)
 
@@ -943,20 +1025,29 @@ def run_experiment(
 
     # Load model
     print(f"\n--- Loading {MODEL_NAME} ---")
-    model = HookedTransformer.from_pretrained(MODEL_NAME, device=device)
+    load_kwargs: dict = {"device": device}
+    # Use float16 for larger models to save VRAM
+    if MODEL_CONFIGS[MODEL_NAME].get("sae_release") is None:
+        load_kwargs["dtype"] = torch.float16
+        print("  Using float16 (instruction-tuned model, no SAE)")
+    model = HookedTransformer.from_pretrained(MODEL_NAME, **load_kwargs)
     print(f"  Layers: {model.cfg.n_layers}, d_model: {model.cfg.d_model}")
 
     # Run per layer
     all_results = []
     for layer in layers:
-        sae_id = MODEL_CONFIGS[MODEL_NAME]["sae_id_template"].format(layer=layer)
-        try:
-            sae = SaeLensSAE.from_pretrained(
-                release=SAE_RELEASE, sae_id=sae_id, device=device,
-            )
-        except Exception as e:
-            print(f"Failed to load SAE for layer {layer}: {e}")
-            continue
+        sae = None
+        if SAE_RELEASE is not None:
+            sae_id = MODEL_CONFIGS[MODEL_NAME]["sae_id_template"].format(layer=layer)
+            try:
+                sae = SaeLensSAE.from_pretrained(
+                    release=SAE_RELEASE, sae_id=sae_id, device=device,
+                )
+            except Exception as e:
+                print(f"Failed to load SAE for layer {layer}: {e}")
+                print("  Continuing with activation-only probes...")
+        else:
+            print(f"  No SAE available for {MODEL_NAME} — running activation-only probes")
 
         layer_results = run_single_layer_degradation(
             model, sae, layer, all_sequences,
@@ -964,7 +1055,8 @@ def run_experiment(
         )
         all_results.extend(layer_results)
 
-        del sae
+        if sae is not None:
+            del sae
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
