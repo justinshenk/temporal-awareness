@@ -87,12 +87,39 @@ from sae_lens import SAE as SaeLensSAE
 # Configuration
 # ---------------------------------------------------------------------------
 
-MODEL_NAME = "gemma-2-2b"
-SAE_RELEASE = "gemma-scope-2b-pt-res-canonical"
 TOP_K_LATENTS = 64
 
-DEFAULT_LAYERS = [6, 13, 20, 24]
-QUICK_LAYERS = [13]
+# ---------------------------------------------------------------------------
+# Model configurations
+# ---------------------------------------------------------------------------
+MODEL_CONFIGS = {
+    "gemma-2-2b": {
+        "sae_release": "gemma-scope-2b-pt-res-canonical",
+        "sae_id_template": "layer_{layer}/width_16k/canonical",
+        "default_layers": [6, 13, 20, 24],
+        "quick_layers": [13],
+        "n_layers": 26,
+    },
+    "gpt2": {
+        "sae_release": "gpt2-small-res-jb",
+        "sae_id_template": "blocks.{layer}.hook_resid_post",
+        "default_layers": [2, 5, 8, 10],
+        "quick_layers": [5],
+        "n_layers": 12,
+    },
+    "pythia-160m": {
+        "sae_release": "pythia-160m-deduped-res-sm",
+        "sae_id_template": "blocks.{layer}.hook_resid_post",
+        "default_layers": [2, 4, 6, 8, 10],
+        "quick_layers": [6],
+        "n_layers": 12,
+    },
+}
+
+MODEL_NAME = "gemma-2-2b"
+SAE_RELEASE = MODEL_CONFIGS[MODEL_NAME]["sae_release"]
+DEFAULT_LAYERS = MODEL_CONFIGS[MODEL_NAME]["default_layers"]
+QUICK_LAYERS = MODEL_CONFIGS[MODEL_NAME]["quick_layers"]
 
 # Repetition counts to test
 REPETITION_COUNTS = [1, 3, 5, 8, 12, 16, 20]
@@ -922,7 +949,7 @@ def run_experiment(
     # Run per layer
     all_results = []
     for layer in layers:
-        sae_id = f"layer_{layer}/width_16k/canonical"
+        sae_id = MODEL_CONFIGS[MODEL_NAME]["sae_id_template"].format(layer=layer)
         try:
             sae = SaeLensSAE.from_pretrained(
                 release=SAE_RELEASE, sae_id=sae_id, device=device,
@@ -970,7 +997,18 @@ def main():
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--wandb-entity", type=str, default=None)
     parser.add_argument("--wandb-run-name", type=str, default=None)
+    parser.add_argument("--model", type=str, default="gemma-2-2b",
+                        choices=list(MODEL_CONFIGS.keys()),
+                        help="Model to use (default: gemma-2-2b)")
     args = parser.parse_args()
+
+    # Apply model config
+    global MODEL_NAME, SAE_RELEASE, DEFAULT_LAYERS, QUICK_LAYERS
+    MODEL_NAME = args.model
+    cfg = MODEL_CONFIGS[MODEL_NAME]
+    SAE_RELEASE = cfg["sae_release"]
+    DEFAULT_LAYERS = cfg["default_layers"]
+    QUICK_LAYERS = cfg["quick_layers"]
 
     layers = args.layers or (QUICK_LAYERS if args.quick else DEFAULT_LAYERS)
     rep_counts = QUICK_REPETITION_COUNTS if args.quick else REPETITION_COUNTS
