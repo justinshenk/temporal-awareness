@@ -46,6 +46,21 @@ import random
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
+
+
+class NumpyEncoder(json.JSONEncoder):
+    """Handle numpy types in JSON serialization."""
+    def default(self, obj):
+        import numpy as np
+        if isinstance(obj, (np.bool_,)):
+            return bool(obj)
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 from typing import Optional
 
 import numpy as np
@@ -830,12 +845,12 @@ def save_results(results: list[DegradationResult], output_dir: Path, timestamp: 
 
     out_path = output_dir / f"patience_results_{timestamp}.json"
     with open(out_path, "w") as f:
-        json.dump(serializable, f, indent=2)
+        json.dump(serializable, f, indent=2, cls=NumpyEncoder)
     print(f"\nResults saved to {out_path}")
 
     latest_path = output_dir / "patience_results_latest.json"
     with open(latest_path, "w") as f:
-        json.dump(serializable, f, indent=2)
+        json.dump(serializable, f, indent=2, cls=NumpyEncoder)
 
 
 # ---------------------------------------------------------------------------
