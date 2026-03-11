@@ -10,6 +10,7 @@
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 source ~/sae-env/bin/activate
+export HF_HOME=~/.cache/huggingface
 
 MODE="${1:-full}"
 EXTRA_ARGS="${2:-}"
