@@ -14,14 +14,13 @@ source ~/sae-env/bin/activate
 MODE="${1:-full}"
 EXTRA_ARGS="${2:-}"
 
-# Use SLURM_SUBMIT_DIR (where sbatch was called from) instead of script location
 cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 
-RESULTS_DIR="results/sae_feature_stability"
+RESULTS_DIR="results/sequential_tracking"
 mkdir -p "$RESULTS_DIR"
 
 echo "=========================================="
-echo "SAE Feature Stability Experiment"
+echo "Sequential Activation Tracking (RQ1)"
 echo "Mode: $MODE"
 echo "PWD: $(pwd)"
 echo "Node: $(hostname)"
@@ -29,12 +28,15 @@ echo "GPU:  $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || e
 echo "Started: $(date)"
 echo "=========================================="
 
-# W&B config — logs to justinshenk-time team workspace
-WANDB_PROJECT="sae-feature-stability"
+WANDB_PROJECT="sequential-tracking"
 WANDB_ENTITY="justinshenk-time"
-WANDB_RUN_NAME="sae-stability-${MODE}-$(date +%Y%m%d_%H%M%S)"
+WANDB_RUN_NAME="seq-tracking-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
-srun python3 scripts/experiments/sae_feature_stability.py \
+if [ "$MODE" = "quick" ]; then
+    EXTRA_ARGS="--quick $EXTRA_ARGS"
+fi
+
+srun python3 scripts/experiments/sequential_activation_tracking.py \
     --device cuda \
     --batch-size 32 \
     --output-dir "$RESULTS_DIR" \
