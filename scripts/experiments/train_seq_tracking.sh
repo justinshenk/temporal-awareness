@@ -35,13 +35,14 @@ echo "=========================================="
 
 WANDB_PROJECT="sequential-tracking"
 WANDB_ENTITY="justinshenk-time"
-WANDB_RUN_NAME="seq-tracking-${MODE}-$(date +%Y%m%d_%H%M%S)"
+WANDB_RUN_NAME="seq-tracking-${MODEL_SLUG}-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
 if [ "$MODE" = "quick" ]; then
     EXTRA_ARGS="--quick $EXTRA_ARGS"
 fi
 
 srun python3 scripts/experiments/sequential_activation_tracking.py \
+    --model "$MODEL" \
     --device cuda \
     --batch-size 32 \
     --output-dir "$RESULTS_DIR" \

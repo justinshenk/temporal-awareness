@@ -17,32 +17,38 @@ echo "Submitting all experiments (mode: $MODE)"
 echo "Project root: $PROJECT_ROOT"
 echo "============================================="
 
-# 1. SAE Feature Stability
-echo ""
-echo "--- SAE Feature Stability ---"
-if [ "$MODE" = "quick" ]; then
-    sbatch --time=01:00:00 scripts/experiments/train_sae_stability.sh "$MODE" "--quick"
-else
-    sbatch scripts/experiments/train_sae_stability.sh "$MODE"
-fi
+# 1. SAE Feature Stability (gemma, gpt2, pythia)
+for MODEL in gemma-2-2b gpt2 pythia-70m; do
+    echo ""
+    echo "--- SAE Feature Stability: $MODEL ---"
+    if [ "$MODE" = "quick" ]; then
+        sbatch --time=01:00:00 scripts/experiments/train_sae_stability.sh "$MODEL" "$MODE" "--quick"
+    else
+        sbatch scripts/experiments/train_sae_stability.sh "$MODEL" "$MODE"
+    fi
+done
 
-# 2. Sequential Activation Tracking
-echo ""
-echo "--- Sequential Activation Tracking ---"
-if [ "$MODE" = "quick" ]; then
-    sbatch --time=02:00:00 scripts/experiments/train_seq_tracking.sh "$MODE"
-else
-    sbatch scripts/experiments/train_seq_tracking.sh "$MODE"
-fi
+# 2. Sequential Activation Tracking (gemma, gpt2, pythia)
+for MODEL in gemma-2-2b gpt2 pythia-70m; do
+    echo ""
+    echo "--- Sequential Activation Tracking: $MODEL ---"
+    if [ "$MODE" = "quick" ]; then
+        sbatch --time=02:00:00 scripts/experiments/train_seq_tracking.sh "$MODEL" "$MODE"
+    else
+        sbatch scripts/experiments/train_seq_tracking.sh "$MODEL" "$MODE"
+    fi
+done
 
-# 3. Patience Degradation (Gemma-2-2b default)
-echo ""
-echo "--- Patience & Compliance Degradation: Gemma-2-2b ---"
-if [ "$MODE" = "quick" ]; then
-    sbatch --time=02:00:00 scripts/experiments/train_patience_deg.sh "gemma-2-2b" "$MODE"
-else
-    sbatch scripts/experiments/train_patience_deg.sh "gemma-2-2b" "$MODE"
-fi
+# 3. Patience Degradation (gemma, gpt2, pythia — with SAEs)
+for MODEL in gemma-2-2b gpt2 pythia-70m; do
+    echo ""
+    echo "--- Patience Degradation: $MODEL ---"
+    if [ "$MODE" = "quick" ]; then
+        sbatch --time=02:00:00 scripts/experiments/train_patience_deg.sh "$MODEL" "$MODE"
+    else
+        sbatch scripts/experiments/train_patience_deg.sh "$MODEL" "$MODE"
+    fi
+done
 
 # 4. Patience Degradation — Qwen2.5-3B-Instruct (activation-only)
 echo ""
