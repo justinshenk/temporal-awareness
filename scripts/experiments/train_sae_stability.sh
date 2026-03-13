@@ -39,6 +39,10 @@ WANDB_PROJECT="sae-feature-stability"
 WANDB_ENTITY="justinshenk-time"
 WANDB_RUN_NAME="sae-stability-${MODEL_SLUG}-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
+if [ "$MODE" = "quick" ]; then
+    EXTRA_ARGS="--quick $EXTRA_ARGS"
+fi
+
 srun python3 scripts/experiments/sae_feature_stability.py \
     --model "$MODEL" \
     --device cuda \

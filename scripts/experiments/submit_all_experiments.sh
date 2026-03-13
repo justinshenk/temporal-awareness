@@ -22,7 +22,7 @@ for MODEL in gemma-2-2b gpt2 pythia-70m; do
     echo ""
     echo "--- SAE Feature Stability: $MODEL ---"
     if [ "$MODE" = "quick" ]; then
-        sbatch --time=01:00:00 scripts/experiments/train_sae_stability.sh "$MODEL" "$MODE" "--quick"
+        sbatch --time=01:00:00 scripts/experiments/train_sae_stability.sh "$MODEL" "$MODE"
     else
         sbatch scripts/experiments/train_sae_stability.sh "$MODEL" "$MODE"
     fi
