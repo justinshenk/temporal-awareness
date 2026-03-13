@@ -13,8 +13,10 @@ source ~/sae-env/bin/activate
 export HF_HOME=$SCRATCH/.cache/huggingface
 export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
 
-MODE="${1:-full}"
-EXTRA_ARGS="${2:-}"
+MODEL="${1:-gemma-2-2b}"
+MODE="${2:-full}"
+EXTRA_ARGS="${3:-}"
+MODEL_SLUG=$(echo "$MODEL" | tr '/' '-')
 
 cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 
@@ -23,6 +25,7 @@ mkdir -p "$RESULTS_DIR"
 
 echo "=========================================="
 echo "Sequential Activation Tracking (RQ1)"
+echo "Model: $MODEL"
 echo "Mode: $MODE"
 echo "PWD: $(pwd)"
 echo "Node: $(hostname)"

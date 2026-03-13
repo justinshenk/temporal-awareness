@@ -22,8 +22,11 @@ cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 RESULTS_DIR="results/patience_degradation"
 mkdir -p "$RESULTS_DIR"
 
+MODEL_SLUG=$(echo "$MODEL" | tr '/' '-')
+
 echo "=========================================="
 echo "Patience & Compliance Degradation (RQ3)"
+echo "Model: $MODEL"
 echo "Mode: $MODE"
 echo "PWD: $(pwd)"
 echo "Node: $(hostname)"
@@ -33,7 +36,7 @@ echo "=========================================="
 
 WANDB_PROJECT="patience-degradation"
 WANDB_ENTITY="justinshenk-time"
-WANDB_RUN_NAME="patience-deg-${MODE}-$(date +%Y%m%d_%H%M%S)"
+WANDB_RUN_NAME="patience-deg-${MODEL_SLUG}-${MODE}-$(date +%Y%m%d_%H%M%S)"
 
 if [ "$MODE" = "quick" ]; then
     EXTRA_ARGS="--quick $EXTRA_ARGS"

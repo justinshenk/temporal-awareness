@@ -2,13 +2,18 @@
 #SBATCH --time=08:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
-#SBATCH -C GPU_MEM:48GB
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=64GB
 
 # For instruction-tuned models (Qwen2.5-3B-Instruct, Llama-3.1-8B-Instruct)
-# Requires >=48GB VRAM (L40S) for Llama-3.1-8B
+# Llama-3.1-8B float16: ~16GB weights + activations = needs ~24-40GB VRAM
+# Qwen2.5-3B float16: ~6GB weights, fits on V100 16GB
+#
+# IMPORTANT: Check available GPU types with: node_feat -p gpu | grep GPU_
+# Then uncomment the appropriate constraint below:
+##SBATCH -C GPU_MEM:48GB
+##SBATCH -C GPU_MEM:24GB
 
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
