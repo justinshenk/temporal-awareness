@@ -69,13 +69,18 @@ sbatch scripts/experiments/train_patience_deg_large.sh "meta-llama/Llama-3.1-8B-
 ### Full Run (multiple layers, 7 repetition counts)
 
 ```bash
-# All experiments, all models
+# All experiments, all models (11 jobs total)
 bash scripts/experiments/submit_all_experiments.sh full
 
 # Or individually
 sbatch scripts/experiments/train_sae_stability.sh gemma-2-2b full
-sbatch scripts/experiments/train_patience_deg.sh gpt2 full
+sbatch scripts/experiments/train_seq_tracking.sh gpt2 full
+sbatch scripts/experiments/train_patience_deg.sh pythia-70m full
+sbatch scripts/experiments/train_patience_deg_large.sh "Qwen/Qwen2.5-3B-Instruct" full
+sbatch scripts/experiments/train_patience_deg_large.sh "meta-llama/Llama-3.1-8B-Instruct" full
 ```
+
+`submit_all_experiments.sh` submits: 3 SAE stability + 3 seq tracking + 3 patience degradation (SAE models) + Qwen patience deg + Llama patience deg = 11 jobs.
 
 ### Script Arguments
 
@@ -120,6 +125,10 @@ Results are logged to the `justinshenk-time` W&B team:
 - https://wandb.ai/justinshenk-time/sequential-tracking
 - https://wandb.ai/justinshenk-time/patience-degradation
 
+Run names follow the pattern `<experiment>-<model>-<mode>-<timestamp>`, e.g.:
+- `sae-stability-gemma-2-2b-full-20260312_205142`
+- `patience-deg-Qwen-Qwen2.5-3B-Instruct-quick-20260311_163443`
+
 ### Results Files
 
 ```
@@ -150,3 +159,5 @@ Each directory contains timestamped JSON results and PNG plots.
 **SafetensorError (corrupted download)**: Delete and re-download: `rm -rf $SCRATCH/.cache/huggingface/hub/models--<org>--<model>`
 
 **Module not found (sae_lens, etc.)**: Activate venv first: `source ~/sae-env/bin/activate`
+
+**"unrecognized arguments: full"**: The SLURM scripts handle `quick`/`full` mode internally — `full` is the default (no `--quick` flag passed to Python). Make sure you're using the latest version of the scripts (`git pull`). The `MODE` argument should be `quick` or `full`, not passed directly to the Python script.
