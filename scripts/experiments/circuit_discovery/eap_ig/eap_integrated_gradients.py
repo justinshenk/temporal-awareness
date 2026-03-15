@@ -206,7 +206,7 @@ def main() -> None:
             dtype=dtype,
         )
 
-        n_layers = model.config.n_layers
+        n_layers = model.config.num_hidden_layers
 
         if layer_components is None:
             if granularity == "coarse":
