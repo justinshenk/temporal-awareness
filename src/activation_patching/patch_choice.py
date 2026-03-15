@@ -17,6 +17,7 @@ def patch_for_choice(
     target: InterventionTarget,
     mode: PatchingMode,
     alpha: float = 1.0,
+    clear_memory: bool = True,
 ) -> IntervenedChoice:
     """Run activation patching experiment.
 
@@ -51,6 +52,10 @@ def patch_for_choice(
         with_cache=(mode == "denoising"),
         names_filter=names_filter if mode == "denoising" else None,
     )
+    if clear_memory:
+        clean_grouped.pop_heavy()
+        clear_gpu_memory()
+
     corrupted_grouped = runner.multilabel_choose(
         pair.corrupted_prompt,
         pair.choice_prefix,
@@ -58,6 +63,9 @@ def patch_for_choice(
         with_cache=(mode == "noising"),
         names_filter=names_filter if mode == "noising" else None,
     )
+    if clear_memory:
+        corrupted_grouped.pop_heavy()
+        clear_gpu_memory()
 
     # For intervention, use the "native" choice for each prompt:
     # - clean_prompt with clean_labels (index 0)
@@ -85,6 +93,10 @@ def patch_for_choice(
         names_filter=tcb_filter,
     )
 
+    if clear_memory:
+        intervened_grouped.pop_heavy()
+        clear_gpu_memory()
+
     # Store the full GroupedBinaryChoice objects
     # Viz code can use .choices or .get_choice(i) to extract per-label results
     return IntervenedChoice(
@@ -104,6 +116,7 @@ def patch_target(
     noising_target: InterventionTarget | None = None,
     skip_denoising: bool = False,
     skip_noising: bool = False,
+    clear_memory: bool = True,
 ) -> ActPatchTargetResult:
     """Run patching for a single target in both modes.
 
@@ -130,6 +143,10 @@ def patch_target(
         ns_target = noising_target or target
         result.noising = patch_for_choice(runner, pair, ns_target, "noising", alpha)
 
+    if clear_memory:
+        result.pop_heavy()
+        clear_gpu_memory()
+
     return result
 
 
@@ -138,6 +155,7 @@ def patch_pair(
     pair: ContrastivePair,
     targets: list[InterventionTarget],
     alpha: float = 1.0,
+    clear_memory: bool = True,
 ) -> ActPatchPairResult:
     """Run patching for all targets on a pair (both denoising and noising modes).
 
@@ -155,5 +173,9 @@ def patch_pair(
     for target in targets:
         target_result = patch_target(runner, pair, target, alpha)
         result.by_target[target] = target_result
+
+        if clear_memory:
+            result.pop_heavy()
+            clear_gpu_memory()
 
     return result

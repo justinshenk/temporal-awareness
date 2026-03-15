@@ -37,6 +37,10 @@ def run_sanity_check(
     result = patch_target(
         runner, pair, dn_target, denoising_target=dn_target, noising_target=ns_target
     )
+
+    result.pop_heavy()
+    clear_gpu_memory()
+
     print(f"[coarse] Sanity check done: {result.format_summary()}")
     return result
 
@@ -83,14 +87,19 @@ def run_layer_sweep(
             )
 
             result = patch_target(
-                runner, pair, dn_target, denoising_target=dn_target, noising_target=ns_target
+                runner,
+                pair,
+                dn_target,
+                denoising_target=dn_target,
+                noising_target=ns_target,
             )
             layer_results[layer_step][layer_range[0]] = result
+            result.pop_heavy()
+            clear_gpu_memory()
+
             print(
                 f"[coarse] Layers:{layer_range} {result.format_summary()}, {i // layer_step + 1}/{n_steps}"
             )
-            # Free GPU memory from full_logits tensors after caching metrics
-            result.pop_heavy()
 
         clear_gpu_memory()
 
@@ -127,7 +136,6 @@ def run_position_sweep(
         print(
             f"[coarse] Position sweep (step={pos_step}) dn=0-{corrupted_end_pos}, ns=0-{clean_end_pos}..."
         )
-        clear_gpu_memory()
 
         # Iterate over the longer range, create mode-specific targets
         max_end = max(clean_end_pos, corrupted_end_pos)
@@ -167,9 +175,10 @@ def run_position_sweep(
                 skip_noising=not ns_range,
             )
             position_results[pos_step][pos] = result
-            print(f"[coarse] pos={pos} {result.format_summary()}")
-            # Free GPU memory from full_logits tensors after caching metrics
+
             result.pop_heavy()
             clear_gpu_memory()
+
+            print(f"[coarse] pos={pos} {result.format_summary()}")
 
     return position_results
