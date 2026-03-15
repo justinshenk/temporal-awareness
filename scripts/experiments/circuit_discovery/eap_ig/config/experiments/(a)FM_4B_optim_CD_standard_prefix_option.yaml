@@ -1,8 +1,9 @@
 setup:
   model: "Qwen/Qwen3-4B-Instruct-2507"
   seed: 0
-  batch_size: 32
+  batch_size: 64
   dtype: "bfloat16"
+  granularity: "fine"
 
 paths:
   data_loc: "./data/raw/temporal_scope"
@@ -23,8 +24,8 @@ parameters:
 
     Respond in the following format:
 
-    'Answer: (a)' if you prefer option 1
+    'Answer: (a)' if you prefer option a
 
-    'Answer: (b)' if you prefer option 2"
+    'Answer: (b)' if you prefer option b"
   steps: [ 20 ]
   metric_type: "option-logit"
