@@ -35,7 +35,7 @@ subprocess.run(
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
 torch.set_grad_enabled(False)
-HF_REPO_ID = "Temporal_Awareness_EAP_IG"
+HF_REPO_ID = os.getenv("HF_REPO_ID", "Temporal_Awareness_EAP_IG")
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -131,6 +131,21 @@ def extract_alnum(s: str) -> str:
     raise ValueError(f"malformed option string {s}")
 
 
+def resolve_hf_repo_id(hf_api: HfApi, repo_id: str) -> str:
+    """Return a fully qualified Hub repo id."""
+    if "/" in repo_id:
+        return repo_id
+
+    whoami = hf_api.whoami()
+    username = whoami.get("name")
+    if not username:
+        raise ValueError(
+            "HF repo id must include a namespace like 'username/repo', or the "
+            "HF token must expose an account name so one can be inferred."
+        )
+    return f"{username}/{repo_id}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run EAP Integrated Gradients on clean vs corrupted prompts"
@@ -176,7 +191,12 @@ def main() -> None:
     if not hf_token:
         raise ValueError("HF_TOKEN environment variable is required for Hub uploads.")
     hf_api = HfApi(token=hf_token)
+    hf_repo_id = resolve_hf_repo_id(hf_api, hf_repo_id)
     hf_api.create_repo(repo_id=hf_repo_id, repo_type=hf_repo_type, exist_ok=True)
+    print(
+        f"[HF upload] Using repo_id={hf_repo_id} repo_type={hf_repo_type}",
+        flush=True,
+    )
 
     def _upload_to_hf(local_file: Path, path_in_repo: str) -> None:
         file_size = local_file.stat().st_size
