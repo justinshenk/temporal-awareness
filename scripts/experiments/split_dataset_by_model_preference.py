@@ -1,0 +1,196 @@
+"""
+Split a dataset into subsets based on model token preference (option A, option B, ambiguous).
+"""
+
+import argparse
+import json
+import warnings
+from pathlib import Path
+
+import torch
+import yaml
+from dotenv import load_dotenv
+from mech_interp_toolkit.utils import load_model_tokenizer_config
+from tqdm import tqdm
+
+warnings.filterwarnings("ignore")
+
+load_dotenv()
+CONFIG_PATH = Path(__file__).parent / "circuit_discovery" / "eap_ig" / "config"
+
+
+def load_pairs_and_prompts(
+    input_file: Path, template: str
+) -> tuple[list[dict], list[str]]:
+    """Load pairs from ``input_file`` and return both raw pairs and formatted prompts.
+
+    Args:
+        input_file: Path to JSON file containing question pairs
+        template: Template string for formatting prompts
+
+    Returns:
+        Tuple of (original pair dicts, formatted prompt strings)
+    """
+    with input_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    pairs = data.get("pairs", [])
+    prompts = [
+        template.format(
+            pair.get("question", ""),
+            pair.get("immediate", ""),
+            pair.get("long_term", ""),
+        )
+        for pair in pairs
+    ]
+    return pairs, prompts
+
+
+def load_config(config_path: Path) -> dict:
+    with config_path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def extract_alnum(s: str) -> str:
+    """Return the first alphanumeric character in *s*, or raise ValueError."""
+    for c in s:
+        if c.isalnum():
+            return c
+    raise ValueError(f"No alphanumeric character found in option string {s!r}")
+
+
+def save_split(pairs: list[dict], path: Path, metadata: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump({"metadata": metadata, "pairs": pairs}, f, indent=2)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Split a dataset by model token preference"
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to config YAML file (e.g., step_numbers.yaml)",
+    )
+    args = parser.parse_args()
+
+    config = load_config(CONFIG_PATH / args.config)
+
+    model_name: str = config["setup"]["model"]
+    batch_size: int = config["setup"]["batch_size"]
+    dtype = config["setup"].get("dtype", None)
+
+    data_loc: Path = Path(config["paths"]["data_loc"])
+
+    data_file: str = config["input"]["data_file"]
+    template: str = config["input"]["template"]
+    option_keys: list[str] = config["input"]["option_keys"]
+    prompt_suffix: str = config["input"]["prompt_suffix"]
+    option_a_horizon, option_b_horizon = config["input"]["horizon"]
+
+    system_prompt: str = config["parameters"]["system_prompt"]
+
+    input_file_path = data_loc / data_file
+    save_loc = data_loc.parent.parent / "stratified_dataset"
+
+    torch.set_grad_enabled(False)
+
+    # Suffix prompts the model to complete with option character
+    model, tokenizer, _ = load_model_tokenizer_config(
+        model_name=model_name,
+        suffix=prompt_suffix,
+        system_prompt=system_prompt,
+        attn_type="sdpa",
+        dtype=dtype,
+    )
+
+    token_a = tokenizer.tokenizer.encode(
+        extract_alnum(option_keys[0]), add_special_tokens=False
+    )[0]
+    token_b = tokenizer.tokenizer.encode(
+        extract_alnum(option_keys[1]), add_special_tokens=False
+    )[0]
+
+    def extract_preference(logits: torch.Tensor) -> tuple[bool, bool]:
+        logit_a_preferred = (logits[token_a] > logits[token_b]).item()
+        top_token = logits.argmax()
+        clear_preference = ((top_token == token_a) | (top_token == token_b)).item()
+        return logit_a_preferred, clear_preference  # type: ignore
+
+    all_pairs, all_clean_prompts = load_pairs_and_prompts(
+        input_file_path, template=template
+    )
+
+    prompt_chunks = [
+        all_clean_prompts[i : i + batch_size]
+        for i in range(0, len(all_clean_prompts), batch_size)
+    ]
+
+    a_preferred: list[dict] = []
+    b_preferred: list[dict] = []
+    ambiguous: list[dict] = []
+
+    for i, chunk in enumerate(tqdm(prompt_chunks)):
+        clean_inputs = tokenizer(chunk)
+        device = next(model.parameters()).device
+        clean_inputs = {
+            k: v.to(device) if isinstance(v, torch.Tensor) else v
+            for k, v in clean_inputs.items()
+        }
+        batch_logits = model(**clean_inputs).logits  # type: ignore (batch, seq_len, vocab)
+
+        for j, all_pos_logits in enumerate(batch_logits):
+            logits = all_pos_logits[-1, :]  # (d_vocab,)
+            logit_a_preferred, clear_preference = extract_preference(logits)
+
+            pair = all_pairs[i * batch_size + j]
+            if clear_preference:
+                (a_preferred if logit_a_preferred else b_preferred).append(pair)
+            else:
+                ambiguous.append(pair)
+
+    base_metadata = {
+        "model": model_name,
+        "source_file": data_file,
+        "n_total": len(all_clean_prompts),
+        "n_a_preferred": len(a_preferred),
+        "n_b_preferred": len(b_preferred),
+        "n_ambiguous": len(ambiguous),
+        "option_a_horizon": option_a_horizon,
+        "option_b_horizon": option_b_horizon,
+    }
+
+    base_fp = (save_loc / data_file).with_suffix("")
+
+    def make_path(suffix):
+        return base_fp.parent / f"{base_fp.name}_{suffix}.json"
+
+    save_name_a = make_path(option_a_horizon)
+    save_name_b = make_path(option_b_horizon)
+    save_name_ambig = make_path("ambig")
+
+    if a_preferred:
+        save_split(
+            a_preferred,
+            save_name_a,
+            {**base_metadata, "split": option_a_horizon, "n_pairs": len(a_preferred)},
+        )
+    if b_preferred:
+        save_split(
+            b_preferred,
+            save_name_b,
+            {**base_metadata, "split": option_b_horizon, "n_pairs": len(b_preferred)},
+        )
+    if ambiguous:
+        save_split(
+            ambiguous,
+            save_name_ambig,
+            {**base_metadata, "split": "ambiguous", "n_pairs": len(ambiguous)},
+        )
+
+
+if __name__ == "__main__":
+    main()

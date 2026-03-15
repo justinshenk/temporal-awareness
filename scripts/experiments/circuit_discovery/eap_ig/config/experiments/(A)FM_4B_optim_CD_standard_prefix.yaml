@@ -1,0 +1,61 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 16
+  dtype: "bfloat16"
+  layer_components:
+  - [ 0, "z" ]
+  - [ 0, "mlp_hidden" ]
+  - [ 1, "z" ]
+  - [ 1, "mlp_hidden" ]
+  - [ 2, "mlp_hidden" ]
+  - [ 3, "z" ]
+  - [ 3, "mlp_hidden" ]
+  - [ 4, "z" ]
+  - [ 4, "mlp_hidden" ]
+  - [ 5, "mlp_hidden" ]
+  - [ 6, "z" ]
+  - [ 6, "mlp_hidden" ]
+  - [ 23, "z" ]
+  - [ 24, "z" ]
+  - [ 24, "mlp_hidden" ]
+  - [ 25, "z" ]
+  - [ 25, "mlp_hidden" ]
+  - [ 27, "mlp_hidden" ]
+  - [ 28, "z" ]
+  - [ 28, "mlp_hidden" ]
+  - [ 29, "z" ]
+  - [ 29, "mlp_hidden" ]
+  - [ 30, "z" ]
+  - [ 31, "z" ]
+  - [ 31, "mlp_hidden" ]
+  - [ 32, "z" ]
+  - [ 32, "mlp_hidden" ]
+  - [ 34, "mlp_hidden" ]
+  - [ 35, "z" ]
+  - [ 35, "mlp_hidden" ]
+paths:
+  data_loc: "./data/raw/temporal_scope"
+  save_loc: "./results/eap_integrated_gradients/model_exploration"
+
+input:
+  data_file: "temporal_scope_explicit_expanded_500.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(A)", "(B)" ]
+  prompt_suffix: "Answer: ("
+  horizon: [ "ST", "LT" ]
+
+output:
+  wandb_project: "model_exploration"
+  filename: "Qwen/Qwen3-4B-Instruct-2507"
+
+parameters:
+  system_prompt: "You are evaluating a preference between two options.
+
+    Respond in the following format:
+
+    'Answer: (A)' if you prefer option A
+
+    'Answer: (B)' if you prefer option B"
+  steps: [ 20 ]
+  metric_type: "option-logit"
