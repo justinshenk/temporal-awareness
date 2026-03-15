@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from ..common.base_schema import BaseSchema
+from ..common.math import logaddexp
 from ..common.patching_types import PatchingMode
 
 if TYPE_CHECKING:
@@ -14,13 +14,6 @@ if TYPE_CHECKING:
 
 # Label perspective types
 LabelPerspective = Literal["clean", "corrupted", "combined"]
-
-
-def _logaddexp(a: float, b: float) -> float:
-    """Compute log(exp(a) + exp(b)) numerically stably."""
-    if a > b:
-        return a + math.log1p(math.exp(b - a))
-    return b + math.log1p(math.exp(a - b))
 
 
 @dataclass
@@ -158,7 +151,10 @@ class IntervenedChoiceMetrics(BaseSchema):
             else choice.baseline_clean
         )
         if baseline is not None:
-            if isinstance(baseline, GroupedBinaryChoice) and label_idx < baseline.n_forks:
+            if (
+                isinstance(baseline, GroupedBinaryChoice)
+                and label_idx < baseline.n_forks
+            ):
                 sub_choice = baseline.get_choice(label_idx)
                 orig_lps = sub_choice.divergent_logprobs
             else:
@@ -186,7 +182,10 @@ class IntervenedChoiceMetrics(BaseSchema):
             return metrics
 
         # Extract the specific label's choice if grouped
-        if isinstance(intervened, GroupedBinaryChoice) and label_idx < intervened.n_forks:
+        if (
+            isinstance(intervened, GroupedBinaryChoice)
+            and label_idx < intervened.n_forks
+        ):
             sub_intervened = intervened.get_choice(label_idx)
             tree = sub_intervened.tree
         else:
@@ -215,9 +214,7 @@ class IntervenedChoiceMetrics(BaseSchema):
         metrics.logit_diff = fork_metrics.logit_diff
         # effect_logit_diff: target - source (positive = toward target)
         metrics.effect_logit_diff = (
-            metrics.logit_diff
-            if metrics.mode == "denoising"
-            else -metrics.logit_diff
+            metrics.logit_diff if metrics.mode == "denoising" else -metrics.logit_diff
         )
         metrics.fork_entropy = fork_metrics.fork_entropy
         metrics.fork_diversity = fork_metrics.fork_diversity
@@ -314,7 +311,9 @@ class IntervenedChoiceMetrics(BaseSchema):
 
         # Get vocab_logits from both forks
         clean_fork = intervened.tree.forks[0] if intervened.tree.forks else None
-        corrupt_fork = intervened.tree.forks[1] if len(intervened.tree.forks) > 1 else None
+        corrupt_fork = (
+            intervened.tree.forks[1] if len(intervened.tree.forks) > 1 else None
+        )
 
         if not clean_fork or not corrupt_fork:
             return metrics
@@ -331,8 +330,8 @@ class IntervenedChoiceMetrics(BaseSchema):
             lp_corrupt_short, lp_corrupt_long = corrupt_choice.divergent_logprobs
 
             # Combined using logaddexp: log(exp(a) + exp(b))
-            combined_short = _logaddexp(lp_clean_short, lp_corrupt_short)
-            combined_long = _logaddexp(lp_clean_long, lp_corrupt_long)
+            combined_short = logaddexp(lp_clean_short, lp_corrupt_short)
+            combined_long = logaddexp(lp_clean_long, lp_corrupt_long)
         else:
             # Get token IDs from both forks
             clean_short_id, clean_long_id = clean_fork.next_token_ids
@@ -347,8 +346,8 @@ class IntervenedChoiceMetrics(BaseSchema):
             # Combined: aggregate across both label systems
             # patient_logit = logaddexp(clean_short, corrupt_short)
             # impatient_logit = logaddexp(clean_long, corrupt_long)
-            combined_short = _logaddexp(clean_short_logit, corrupt_short_logit)
-            combined_long = _logaddexp(clean_long_logit, corrupt_long_logit)
+            combined_short = logaddexp(clean_short_logit, corrupt_short_logit)
+            combined_long = logaddexp(clean_long_logit, corrupt_long_logit)
 
         metrics.combined_logit_short = combined_short
         metrics.combined_logit_long = combined_long

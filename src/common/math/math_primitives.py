@@ -76,3 +76,10 @@ def normalize_pair(a: float, b: float) -> tuple[float, float]:
     log_total = m + math.log(math.exp(loga - m) + math.exp(logb - m))
 
     return math.exp(loga - log_total), math.exp(logb - log_total)
+
+
+def logaddexp(a: float, b: float) -> float:
+    """Compute log(exp(a) + exp(b)) numerically stably."""
+    if a > b:
+        return a + math.log1p(math.exp(b - a))
+    return b + math.log1p(math.exp(a - b))
