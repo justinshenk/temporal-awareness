@@ -89,6 +89,8 @@ def run_layer_sweep(
             print(
                 f"[coarse] Layers:{layer_range} {result.format_summary()}, {i // layer_step + 1}/{n_steps}"
             )
+            # Free GPU memory from full_logits tensors after caching metrics
+            result.pop_heavy()
 
         clear_gpu_memory()
 
@@ -166,6 +168,8 @@ def run_position_sweep(
             )
             position_results[pos_step][pos] = result
             print(f"[coarse] pos={pos} {result.format_summary()}")
+            # Free GPU memory from full_logits tensors after caching metrics
+            result.pop_heavy()
             clear_gpu_memory()
 
     return position_results
