@@ -39,6 +39,14 @@ torch.set_grad_enabled(False)
 HF_REPO_ID = "Temporal_Awareness_EAP_IG"
 
 
+def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
+    """Convert a tensor to a NumPy array, normalizing unsupported dtypes."""
+    cpu_tensor = tensor.detach().cpu()
+    if cpu_tensor.dtype == torch.bfloat16:
+        cpu_tensor = cpu_tensor.to(torch.float32)
+    return cpu_tensor.numpy()
+
+
 def load_and_merge_pairs(
     input_file: Path,
     template: str,
@@ -367,15 +375,15 @@ def main() -> None:
                     scores = concat_activations(scores_list)
                     for key, value in scores.items():
                         output_arrays[f"step_{num_steps}__{key[1]}__{key[0]}"] = (
-                            value.detach().cpu().numpy()
+                            tensor_to_numpy(value)
                         )
 
                     output_arrays[f"step_{num_steps}__clean_logits"] = torch.cat(
                         all_clean_logits, dim=0
-                    ).numpy()
+                    ).float().numpy()
                     output_arrays[f"step_{num_steps}__corrupted_logits"] = torch.cat(
                         all_corrupted_logits, dim=0
-                    ).numpy()
+                    ).float().numpy()
 
                     # Free memory between num_steps iterations
                     del scores, scores_list, all_clean_logits, all_corrupted_logits
