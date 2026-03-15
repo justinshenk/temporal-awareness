@@ -124,24 +124,6 @@ def extract_alnum(s: str) -> str:
     raise ValueError(f"malformed option string {s}")
 
 
-def get_num_layers(model: torch.nn.Module) -> int:
-    """Return transformer layer count across common config naming conventions."""
-    config = model.config
-    for attr_name in (
-        "n_layers",
-        "num_hidden_layers",
-        "num_layers",
-        "n_layer",
-    ):
-        value = getattr(config, attr_name, None)
-        if isinstance(value, int):
-            return value
-    raise AttributeError(
-        "Unable to determine layer count from model config; checked "
-        "n_layers, num_hidden_layers, num_layers, n_layer."
-    )
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run EAP Integrated Gradients on clean vs corrupted prompts"
@@ -224,7 +206,7 @@ def main() -> None:
             dtype=dtype,
         )
 
-        n_layers = get_num_layers(model)
+        n_layers = model.config.n_layers
 
         if layer_components is None:
             if granularity == "coarse":
@@ -374,6 +356,9 @@ def main() -> None:
                         eap_ig_scores = eap_ig_scores.apply(
                             torch.nanmean, dim=1, mask_aware=True
                         )  # (batch,) | (batch, n_head) | (batch, neuron)
+                        eap_ig_scores = eap_ig_scores.apply(
+                            lambda x: x.detach().cpu()
+                        )
 
                         scores_list.append(eap_ig_scores)
 
