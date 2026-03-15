@@ -191,7 +191,7 @@ def main() -> None:
         )
 
     try:
-        from mech_interp_toolkit.activation_dict import concat_activations, expand_mask
+        from mech_interp_toolkit.activation_dict import expand_mask
         from mech_interp_toolkit.gradient_based_attribution import (
             eap_integrated_gradients,
         )
@@ -295,24 +295,23 @@ def main() -> None:
             tokenized_corrupted = [tokenizer(b) for b in chunked_corrupted_prompts]
 
             for metric_label, metric_fn in metrics.items():
-                output_file = save_loc / f"{filename}_{order_label}_{metric_label}.npz"
-                output_arrays: dict[str, np.ndarray] = {}
-                output_arrays["metadata__config_json"] = np.array(
-                    json.dumps(config), dtype=np.str_
-                )
-                output_arrays["metadata__option_order"] = np.array(
-                    order_label, dtype=np.str_
-                )
-                output_arrays["metadata__metric_type"] = np.array(
-                    metric_type, dtype=np.str_
-                )
+                batch_outputs: list[dict[str, np.ndarray]] = []
+                for _ in range(len(tokenized_clean)):
+                    batch_output: dict[str, np.ndarray] = {}
+                    batch_output["metadata__config_json"] = np.array(
+                        json.dumps(config), dtype=np.str_
+                    )
+                    batch_output["metadata__option_order"] = np.array(
+                        order_label, dtype=np.str_
+                    )
+                    batch_output["metadata__metric_type"] = np.array(
+                        metric_type, dtype=np.str_
+                    )
+                    batch_outputs.append(batch_output)
 
                 for num_steps in tqdm(
                     steps, desc=f"[{order_label}/{metric_label}] Processing step counts"
                 ):
-                    scores_list = []
-                    all_clean_logits = []
-                    all_corrupted_logits = []
                     for i in tqdm(
                         range(len(tokenized_clean)),
                         desc=f"Batches (steps={num_steps})",
@@ -350,10 +349,6 @@ def main() -> None:
                         )
                         del clean_logits, corrupted_logits
 
-                        all_clean_logits.append(clean_logits_cpu)
-                        all_corrupted_logits.append(corrupted_logits_cpu)
-                        del clean_logits_cpu, corrupted_logits_cpu
-
                         eap_ig_scores.attention_mask = expand_mask(
                             eap_ig_scores.attention_mask, system_prompt_length
                         )
@@ -364,46 +359,48 @@ def main() -> None:
                             lambda x: x.detach().cpu()
                         )
 
-                        scores_list.append(eap_ig_scores)
+                        for key, value in eap_ig_scores.items():
+                            batch_outputs[i][
+                                f"step_{num_steps}__{key[1]}__{key[0]}"
+                            ] = tensor_to_numpy(value)
+
+                        batch_outputs[i][f"step_{num_steps}__clean_logits"] = (
+                            clean_logits_cpu.float().numpy()
+                        )
+                        batch_outputs[i][f"step_{num_steps}__corrupted_logits"] = (
+                            corrupted_logits_cpu.float().numpy()
+                        )
 
                         # Delete temporary objects to free memory
-                        del eap_ig_scores, clean_inputs, corrupted_inputs
+                        del (
+                            eap_ig_scores,
+                            clean_inputs,
+                            corrupted_inputs,
+                            clean_logits_cpu,
+                            corrupted_logits_cpu,
+                        )
                         if torch.cuda.is_available():
                             torch.cuda.empty_cache()
                         gc.collect()
 
-                    scores = concat_activations(scores_list)
-                    for key, value in scores.items():
-                        output_arrays[f"step_{num_steps}__{key[1]}__{key[0]}"] = (
-                            tensor_to_numpy(value)
+                for batch_idx, output_arrays in enumerate(batch_outputs):
+                    output_file = save_loc / (
+                        f"{filename}_{order_label}_{metric_label}_batch_{batch_idx:05d}.npz"
+                    )
+                    output_file.parent.mkdir(parents=True, exist_ok=True)
+                    np.savez_compressed(output_file, **output_arrays)
+                    output_file_abs = output_file.resolve()
+                    try:
+                        path_in_repo = output_file_abs.relative_to(
+                            Path.cwd().resolve()
+                        ).as_posix()
+                    except ValueError:
+                        path_in_repo = output_file.name
+                    upload_futures.append(
+                        upload_executor.submit(
+                            _upload_to_hf, output_file_abs, path_in_repo
                         )
-
-                    output_arrays[f"step_{num_steps}__clean_logits"] = torch.cat(
-                        all_clean_logits, dim=0
-                    ).float().numpy()
-                    output_arrays[f"step_{num_steps}__corrupted_logits"] = torch.cat(
-                        all_corrupted_logits, dim=0
-                    ).float().numpy()
-
-                    # Free memory between num_steps iterations
-                    del scores, scores_list, all_clean_logits, all_corrupted_logits
-                    gc.collect()
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-
-                # Write complete results with all steps to file
-                output_file.parent.mkdir(parents=True, exist_ok=True)
-                np.savez_compressed(output_file, **output_arrays)
-                output_file_abs = output_file.resolve()
-                try:
-                    path_in_repo = output_file_abs.relative_to(
-                        Path.cwd().resolve()
-                    ).as_posix()
-                except ValueError:
-                    path_in_repo = output_file.name
-                upload_futures.append(
-                    upload_executor.submit(_upload_to_hf, output_file_abs, path_in_repo)
-                )
+                    )
     finally:
         upload_executor.shutdown(wait=True)
 
