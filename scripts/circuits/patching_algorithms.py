@@ -91,14 +91,21 @@ class Patching:
         return df
 
 class ActivationPatching(Patching):
+    class Technique(Enum):
+        DENOISING = 0,
+        NOISING = 1
+
     class Metric(Enum):
         LOGIT_DIFF = 0,
         LOGIT = 1,
         LOGPROB = 2
 
-    def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers, metric_type=Metric.LOGIT_DIFF):
+    def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers,
+                 metric_type=Metric.LOGIT_DIFF,
+                 technique_type=Technique.DENOISING):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
+        self.technique_type = technique_type
 
         # Define answer_token_indices needed for logit_metric function
         answer_token_indices = torch.tensor(
@@ -162,7 +169,7 @@ class ActivationPatching(Patching):
                 del corrupted_cache
                 gc.collect()
                 self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
-                batched_corrupted_logits.append(corrupted_logits)           
+                batched_corrupted_logits.append(corrupted_logits)        
             self.corrupted_baseline = self.inner_metric(torch.cat(batched_corrupted_logits)).item()
             del batched_corrupted_logits
             gc.collect()
@@ -180,6 +187,7 @@ class ActivationPatching(Patching):
 
         if not self.caches_and_baselines_ready:
             __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
+            __, self.corrupted_cache = self.model.run_with_cache(self.corrupted_tokens)
             self.caches_and_baselines_ready = True
 
     def __patch__(self, layer_specific_algorithm):
@@ -192,11 +200,26 @@ class ActivationPatching(Patching):
                 self.clean_baseline - self.corrupted_baseline
             )
 
-        # for batch..
-        every_block_act_patch_result = layer_specific_algorithm(
-            self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
+        if (self.technique_type == self.Technique.DENOISING):
+            # for batch..
+            act_patch_result = layer_specific_algorithm(
+                self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
+        elif (self.technique_type == self.Technique.NOISING):
+            # For Noising: basically do the same, but:
+            # run corrupted and cache it first and then patch the clean.
+            # We need to inject corrupted patches into clean run.
+            # Metric: how much clean answer is preserved.
+            # metric - corrupted
+            # __________________
+            #  clean - corrupted 
+            # If clean answer is preserved, then metric -> 1.
+            # If clean answer is broken, then metric -> 0.
+            act_patch_result = layer_specific_algorithm(
+                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
+        else:
+            raise Exception("Unknown patching technique type is sent!")
 
-        df = pd.DataFrame(every_block_act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
+        df = pd.DataFrame(act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
         return df
 
     def patch_residual(self):
