@@ -182,12 +182,23 @@ def main() -> None:
     upload_futures: list[Future] = []
 
     def _upload_to_hf(local_file: Path, path_in_repo: str) -> None:
+        file_size = local_file.stat().st_size
+        print(
+            f"[HF upload] Starting file={local_file.name} "
+            f"local_path={local_file} repo_path={path_in_repo} "
+            f"size_gb={file_size / (1024 ** 3):.2f}",
+            flush=True,
+        )
         hf_api.upload_file(
             path_or_fileobj=str(local_file),
             path_in_repo=path_in_repo,
             repo_id=hf_repo_id,
             repo_type=hf_repo_type,
             commit_message=f"Upload {path_in_repo}",
+        )
+        print(
+            f"[HF upload] Completed file={local_file.name}",
+            flush=True,
         )
 
     try:
