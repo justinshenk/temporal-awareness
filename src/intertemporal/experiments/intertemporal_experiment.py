@@ -83,8 +83,8 @@ def step_coarse_activation_patching(
         result = run_coarse_act_patching(
             ctx.runner,
             pair,
-            layer_step_sizes=ctx.cfg.coarse_patch_layer_step_sizes,
-            pos_step_sizes=ctx.cfg.coarse_patch_pos_step_sizes,
+            layer_step_sizes=ctx.cfg.coarse_layer_steps,
+            pos_step_sizes=ctx.cfg.coarse_pos_steps,
         )
         result.sample_id = pair_idx
         ctx.coarse_patching[pair_idx] = result
@@ -206,12 +206,9 @@ def run_experiment(
     ctx = ExperimentContext(cfg, output_dir=output_dir)
 
     step_preference_data(ctx, try_loading_data=try_loading_data)
+
     step_coarse_activation_patching(ctx, try_loading_data=try_loading_data)
 
-    # if not ctx.coarse_agg and not ctx.att_agg and not ctx.fine_agg:
-    #     if not ctx.pairs:
-    #         log("No preference pairs!")
-    #         return ctx
-
     step_visualize_results(ctx, try_loading_data=try_loading_data)
+
     return ctx

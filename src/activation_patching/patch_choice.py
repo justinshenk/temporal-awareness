@@ -6,6 +6,7 @@ from .act_patch_results import ActPatchPairResult, ActPatchTargetResult
 from .intervened_choice import IntervenedChoice
 from ..binary_choice import BinaryChoiceRunner
 from ..common.contrastive_pair import ContrastivePair
+from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import hook_filter_for_component, hook_filter_exact, hook_name
 from ..common.patching_types import PatchingMode
 from ..inference.interventions.intervention_target import InterventionTarget
@@ -52,9 +53,6 @@ def patch_for_choice(
         with_cache=(mode == "denoising"),
         names_filter=names_filter if mode == "denoising" else None,
     )
-    if clear_memory:
-        clean_grouped.pop_heavy()
-        clear_gpu_memory()
 
     corrupted_grouped = runner.multilabel_choose(
         pair.corrupted_prompt,
@@ -63,9 +61,6 @@ def patch_for_choice(
         with_cache=(mode == "noising"),
         names_filter=names_filter if mode == "noising" else None,
     )
-    if clear_memory:
-        corrupted_grouped.pop_heavy()
-        clear_gpu_memory()
 
     # For intervention, use the "native" choice for each prompt:
     # - clean_prompt with clean_labels (index 0)
@@ -77,6 +72,11 @@ def patch_for_choice(
     intervention = pair.create_patching_intervention(
         target, mode, clean_for_intervention, corrupted_for_intervention, alpha
     )
+
+    if clear_memory:
+        clean_grouped.pop_heavy()
+        corrupted_grouped.pop_heavy()
+        clear_gpu_memory()
 
     # Run with intervention
     run_prompt = pair.corrupted_prompt if mode == "denoising" else pair.clean_prompt

@@ -13,12 +13,15 @@ from ..prompt import PromptDatasetConfig
 class ExperimentConfig(BaseSchema):
     """Experiment configuration."""
 
+    # Core settings
     model: str
     dataset_config: dict
     max_samples: int | None = None
     n_pairs: int | None = None
-    coarse_patch_layer_step_sizes: list[int] = field(default_factory=lambda: [1])
-    coarse_patch_pos_step_sizes: list[int] = field(default_factory=lambda: [1])
+
+    # Coarse patching sweep settings (empty list = skip sweep)
+    coarse_layer_steps: list[int] = field(default_factory=lambda: [1])
+    coarse_pos_steps: list[int] = field(default_factory=lambda: [1])
 
     @property
     def name(self) -> str:

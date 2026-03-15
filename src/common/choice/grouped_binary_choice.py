@@ -15,11 +15,11 @@ Example:
     Final choice = aggregate across forks
 """
 
+from ..analysis import analyze_token_tree
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, TYPE_CHECKING
 
 import math
 
@@ -110,8 +110,7 @@ class GroupedBinaryChoice(SimpleBinaryChoice):
             fork_arms=[(0, 1)],
         )
 
-        # Analyze the subtree (populates fork.analysis)
-        from ..analysis import analyze_token_tree
+        # Analyze the subtree (populates fork.analysis...)
         analyze_token_tree(subtree)
 
         # Get labels for this fork
