@@ -168,8 +168,6 @@ def main() -> None:
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:
         raise ValueError("HF_TOKEN environment variable is required for Hub uploads.")
-    if not hf_repo_id:
-        raise ValueError("Set HF_REPO_ID in this script before running.")
     hf_api = HfApi(token=hf_token)
     hf_api.create_repo(repo_id=hf_repo_id, repo_type=hf_repo_type, exist_ok=True)
     upload_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hf-upload")
@@ -195,7 +193,6 @@ def main() -> None:
         )
 
         set_global_seed(seed)
-        torch.set_grad_enabled(False)
 
         # Suffix prompts the model to complete with option character
         model, tokenizer, _ = load_model_tokenizer_config(
@@ -313,7 +310,6 @@ def main() -> None:
                         desc=f"Batches (steps={num_steps})",
                         leave=False,
                     ):
-                        model.zero_grad(set_to_none=True)
                         # Deep-copy tensors to prevent get_embeddings_dict from mutating the
                         # pre-tokenized dicts (it pops input_ids and injects inputs_embeds
                         # in-place, causing stale GPU tensors with live graphs to accumulate).
