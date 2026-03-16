@@ -87,9 +87,9 @@ The NarrativeQA adversarial experiment directly tests whether models can update 
 
 - **Phi-3 (4k):** 30.8% modification tracking accuracy on the old regex-based test; 50% on new story-specific modifications. Re-ask update rate of 62.5% — the model updates its answer after correction about two-thirds of the time, but this is in early context (< 40% fill).
 - **SmolLM2 (8k):** 68.6% modification tracking — better than the larger Phi-3, suggesting smaller models with simpler representations may be more amenable to in-context fact updates.
-- **Qwen-7B (32k):** Run in progress.
+- **Qwen-7B (32k):** 41.7% modification quiz accuracy, 20.3% re-ask update rate, 6.8% revert rate. With a lightweight prompt forcing "Noted." replies on corrections (preventing echo), update rate stays low — the model wasn't truly integrating corrections, just echoing them.
 
-Critically, when models fail to update after a correction, they don't stubbornly revert to the original answer (0% revert rate). Instead they produce a **third, unrelated answer** — suggesting the correction disrupts retrieval without successfully replacing the fact.
+When models fail to update after a correction, they mostly don't revert to the original answer (6.8% revert rate). Instead they produce a **third, unrelated answer** — suggesting the correction disrupts retrieval without successfully replacing the fact.
 
 ### Activation drift (Code Review)
 
@@ -99,23 +99,45 @@ By hooking into Phi-3's layers and comparing activations between two runs of the
 
 In medical QA, hedging language ("possibly", "could be", "might") peaks at 25-50% context fill then drops — models become more assertive (but not more correct) in later turns. In code review, response specificity declines: early responses reference specific variable names and line numbers, while late responses become increasingly generic.
 
-### Cross-domain consistency
+### Two modes of fatigue: template lock-in vs. destabilization
 
-The key finding is that fatigue manifests **identically across domains**: entropy drops, accuracy degrades, responses become more repetitive (similarity_to_prev increases), and fact-tracking fails — whether the model is diagnosing patients, reviewing code, or answering questions about stories. This suggests fatigue is a fundamental property of how these models process accumulated context, not a domain-specific limitation.
+A critical finding is that entropy moves in **opposite directions** depending on the task structure:
+
+In **MedQA and Code Review**, where the model encounters repeated similar tasks (patient after patient, code snippet after code snippet), entropy **decreases** as context fills (Phi-3 NarrativeQA old-style: 0.70 → 0.08). The model locks into a response template — it stops attending to task-specific details and produces increasingly confident, formulaic answers. It "sounds sure" but accuracy degrades. Responses stay short and repetitive.
+
+In **NarrativeQA adversarial**, where each story introduces unique content and corrections that contradict prior facts, entropy **increases** (Qwen-7B: 0.08 → 0.28 on per-story entropy). The model can't settle into a template because corrections actively destabilize its representations. Responses become verbose — mean followup length nearly doubles from 626 to 1,194 characters at 50-75% fill — as the model compensates for uncertainty by generating more text.
+
+These are two distinct failure modes of the same underlying phenomenon:
+
+- **Template lock-in** (repetitive tasks): model over-compresses, ignoring new information. Entropy drops, confidence rises, accuracy falls silently.
+- **Destabilization** (contradictory information): model under-compresses, unable to resolve conflicts between accumulated facts. Entropy rises, responses become verbose and hedged, the model "talks more but says less."
+
+Both represent fatigue — the model's inability to maintain consistent, calibrated performance as context accumulates. The direction of entropy change depends on whether the accumulated context reinforces patterns (lock-in) or introduces contradictions (destabilization).
+
+### Recall and the shrinking attention window
+
+The recall phase (asking the model to summarize each story after all stories are processed) reveals how attention distributes across context at high fill. At 86-91% context fill with 13 stories accumulated:
+
+- **Early stories (S0-S2):** recalled with low entropy (0.23-0.25), relatively confident
+- **Mid stories (S5-S8):** recalled with high entropy (0.42-0.50), most uncertain
+- **Late stories (S10-S12):** entropy drops back slightly (0.30-0.41)
+
+This U-shaped pattern suggests the model doesn't simply "forget" early stories via recency bias. Instead, early stories benefit from having been processed with a clean, uncluttered context. Mid-conversation stories sit in the worst position: enough prior context to create interference, but not recent enough to benefit from recency bias. This aligns with the 50% fill degradation peak observed in the main experiment.
 
 ## Dataset Structure
 
 ```
-datasets/
+data/adversarial/
 ├── medqa/
-│   ├── medqa_interactive.csv/.parquet    (311 rows, 26 cols)
-│   └── conversations/                    (8 JSONL files)
+│   ├── medqa_interactive.csv/.parquet       (311 rows, 26 cols)
+│   └── conversations/                       (8 JSONL files)
 ├── code_review/
-│   ├── code_review_turns.csv/.parquet    (41 rows, 23 cols)
-│   ├── code_review_activation_drift.csv  (13 rows)
-│   └── conversations/                    (3 JSONL files)
-└── narrativeqa/  (pending Qwen-7B 32k run)
-    ├── narrativeqa_adversarial.csv/.parquet
+│   ├── code_review_turns.csv/.parquet       (41 rows, 23 cols)
+│   ├── code_review_activation_drift.csv     (13 rows)
+│   └── conversations/                       (3 JSONL files)
+└── narrativeqa/
+    ├── narrativeqa_adversarial.csv/.parquet  (325 rows, 35 cols)
+    ├── narrativeqa_modifications.json        (187 stories, 748 modifications)
     ├── conversation.jsonl
     └── summary.json
 ```
