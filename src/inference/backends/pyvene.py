@@ -197,7 +197,7 @@ class PyveneBackend(Backend):
 
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -205,16 +205,20 @@ class PyveneBackend(Backend):
         for layer_idx, component, name in hooks_to_capture:
             module = self._get_component_module(layer_idx, component)
 
-            def make_hook(hook_name):
+            def make_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0].detach()
+                    if use_input:
+                        # resid_pre: capture input to the layer
+                        val = inp[0] if isinstance(inp, tuple) else inp
                     else:
-                        cache[hook_name] = out.detach()
+                        # Others: capture output
+                        val = out[0] if isinstance(out, tuple) else out
+                    cache[hook_name] = val.detach()
 
                 return hook_fn
 
-            hooks.append(module.register_forward_hook(make_hook(name)))
+            use_input = component == "resid_pre"
+            hooks.append(module.register_forward_hook(make_hook(name, use_input)))
 
         try:
             with torch.no_grad():
@@ -237,7 +241,7 @@ class PyveneBackend(Backend):
 
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -245,16 +249,18 @@ class PyveneBackend(Backend):
         for layer_idx, component, name in hooks_to_capture:
             module = self._get_component_module(layer_idx, component)
 
-            def make_hook(hook_name):
+            def make_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0]
+                    if use_input:
+                        val = inp[0] if isinstance(inp, tuple) else inp
                     else:
-                        cache[hook_name] = out
+                        val = out[0] if isinstance(out, tuple) else out
+                    cache[hook_name] = val
 
                 return hook_fn
 
-            hooks.append(module.register_forward_hook(make_hook(name)))
+            use_input = component == "resid_pre"
+            hooks.append(module.register_forward_hook(make_hook(name, use_input)))
 
         try:
             outputs = self.runner._model(input_ids)
@@ -451,7 +457,7 @@ class PyveneBackend(Backend):
 
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -459,16 +465,18 @@ class PyveneBackend(Backend):
         for layer_idx, component, name in hooks_to_capture:
             module = self._get_component_module(layer_idx, component)
 
-            def make_cache_hook(hook_name):
+            def make_cache_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0]
+                    if use_input:
+                        val = inp[0] if isinstance(inp, tuple) else inp
                     else:
-                        cache[hook_name] = out
+                        val = out[0] if isinstance(out, tuple) else out
+                    cache[hook_name] = val
 
                 return hook_fn
 
-            hooks.append(module.register_forward_hook(make_cache_hook(name)))
+            use_input = component == "resid_pre"
+            hooks.append(module.register_forward_hook(make_cache_hook(name, use_input)))
 
         for intervention in interventions:
             values = torch.tensor(
