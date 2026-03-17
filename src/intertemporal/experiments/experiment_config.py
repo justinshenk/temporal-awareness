@@ -13,7 +13,7 @@ from ..prompt import PromptDatasetConfig
 COARSE_PATCH: dict = {
     "layer_steps": [1],
     "pos_steps": [1],
-    "component": "resid_post",
+    "components": ["resid_post"],
 }
 
 

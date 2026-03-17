@@ -52,11 +52,17 @@ class ExperimentContext:
     _pref_pairs: list[ContrastivePreferences] | None = field(default=None, init=False)
     _pair_to_pref_idx: dict[int, int] = field(default_factory=dict, init=False)
 
-    coarse_patching: dict[int, CoarseActPatchResults] = field(default_factory=dict)
+    # coarse_patching now keyed by (pair_idx, component) tuple
+    coarse_patching: dict[tuple[int, str] | int, CoarseActPatchResults] = field(
+        default_factory=dict
+    )
     fine_patching: dict[int, ActPatchPairResult] = field(default_factory=dict)
     att_patching: dict[int, AttrPatchPairResult] = field(default_factory=dict)
 
     coarse_agg: CoarseActPatchAggregatedResults | None = None
+    coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] = field(
+        default_factory=dict
+    )
     fine_agg: ActPatchAggregatedResult | None = None
     att_agg: AttrPatchAggregatedResults | None = None
 
@@ -191,23 +197,27 @@ class ExperimentContext:
 
     # ─── Save/Load methods for cached results ───
 
-    def get_coarse_pair_path(self, pair_idx: int) -> Path:
+    def get_coarse_pair_path(self, pair_idx: int, component: str | None = None) -> Path:
+        if component:
+            return self.output_dir / f"pair_{pair_idx}" / f"sweep_{component}" / "coarse_results.json"
         return self.output_dir / f"pair_{pair_idx}" / "coarse_results.json"
 
-    def save_coarse_pair(self, pair_idx: int) -> None:
+    def save_coarse_pair(self, pair_idx: int, component: str | None = None) -> None:
         """Save per-pair coarse patching results for re-visualization."""
-        if pair_idx in self.coarse_patching:
-            result = self.coarse_patching[pair_idx]
-            path = self.get_coarse_pair_path(pair_idx)
+        key = (pair_idx, component) if component else pair_idx
+        if key in self.coarse_patching:
+            result = self.coarse_patching[key]
+            path = self.get_coarse_pair_path(pair_idx, component)
             path.parent.mkdir(parents=True, exist_ok=True)
             result.pop_heavy()
             save_json(result.to_dict(), path)
 
-    def load_coarse_pair(self, pair_idx: int) -> bool:
+    def load_coarse_pair(self, pair_idx: int, component: str | None = None) -> bool:
         """Load per-pair coarse patching results."""
-        path = self.get_coarse_pair_path(pair_idx)
+        path = self.get_coarse_pair_path(pair_idx, component)
+        key = (pair_idx, component) if component else pair_idx
         if path.exists():
-            self.coarse_patching[pair_idx] = CoarseActPatchResults.from_json(path)
+            self.coarse_patching[key] = CoarseActPatchResults.from_json(path)
             return True
         return False
 

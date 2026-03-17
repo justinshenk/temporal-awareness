@@ -211,6 +211,20 @@ def _add_point_label(ax: plt.Axes, x: float, y: float, label: str) -> None:
 
 def _setup_comparison_axes(ax: plt.Axes, title: str) -> None:
     """Configure axes for comparison scatter plot."""
+    # Add faint background region labels (before other elements)
+    # "AND" above x=y line: both denoising and noising have strong effect
+    ax.text(
+        0.25, 0.75, "AND",
+        fontsize=48, fontweight="bold", color="gray", alpha=0.15,
+        ha="center", va="center", zorder=0,
+    )
+    # "OR" below x=y line: one or the other has effect
+    ax.text(
+        0.75, 0.25, "OR",
+        fontsize=48, fontweight="bold", color="gray", alpha=0.15,
+        ha="center", va="center", zorder=0,
+    )
+
     ax.plot([0, 1], [0, 1], "k--", alpha=0.7, linewidth=2.5, label="Equal effect (y=x)")
     ax.set_xlabel("Recovery (Denoising)", fontsize=14, fontweight="bold")
     ax.set_ylabel("Disruption (Noising)", fontsize=14, fontweight="bold")

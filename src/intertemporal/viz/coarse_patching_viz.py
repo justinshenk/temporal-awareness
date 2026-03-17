@@ -25,6 +25,7 @@ from ...common.contrastive_pair import ContrastivePair
 from ...viz.token_coloring import PairTokenColoring
 from .coarse.aggregated import plot_aggregated_structured
 from .coarse.comparison import plot_comparison
+from .coarse.redundancy import plot_redundancy
 from .coarse.sanity import plot_sanity_check
 from .coarse.sweep_plots import plot_layer_sweep, plot_position_sweep
 
@@ -81,13 +82,14 @@ def visualize_coarse_patching(
             plot_position_sweep(pos_data, output_dir, step_size, "short", coloring, component)
             plot_position_sweep(pos_data, output_dir, step_size, "long", coloring, component)
 
-    # Denoising vs Noising comparison plots (for all step sizes)
+    # Denoising vs Noising comparison and redundancy plots (for all step sizes)
     all_step_sizes = set(result.layer_step_sizes) | set(result.position_step_sizes)
     for step_size in sorted(all_step_sizes):
         layer_data = result.get_layer_results_for_step(step_size)
         pos_data = result.get_position_results_for_step(step_size)
         if layer_data or pos_data:
             plot_comparison(layer_data, pos_data, output_dir, coloring, step_size, component)
+            plot_redundancy(layer_data, pos_data, output_dir, step_size, coloring, component)
 
     # Sanity check visualization
     if result.sanity_result:
