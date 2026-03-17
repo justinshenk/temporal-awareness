@@ -36,6 +36,14 @@ load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
 torch.set_grad_enabled(False)
 HF_REPO_ID = os.getenv("HF_REPO_ID", "Temporal_Awareness_EAP_IG")
+SUPPORTED_QUADRATURES = {
+    "gauss-chebyshev",
+    "gauss-legendre",
+    "riemann-midpoint",
+}
+QUADRATURE_ALIASES = {
+    "midpoint": "riemann-midpoint",
+}
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -146,6 +154,21 @@ def resolve_hf_repo_id(hf_api: HfApi, repo_id: str) -> str:
     return f"{username}/{repo_id}"
 
 
+def resolve_quadrature(config: dict) -> str:
+    """Resolve config quadrature into a mech-interp-toolkit-supported value."""
+    raw_quadrature = config["setup"].get("quadrature")
+    if raw_quadrature is None:
+        raw_quadrature = config["parameters"].get("quadrature", "riemann-midpoint")
+
+    quadrature = QUADRATURE_ALIASES.get(raw_quadrature, raw_quadrature)
+    if quadrature not in SUPPORTED_QUADRATURES:
+        supported = ", ".join(sorted(SUPPORTED_QUADRATURES))
+        raise ValueError(
+            f"Unsupported quadrature '{raw_quadrature}'. Use one of: {supported}."
+        )
+    return quadrature
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run EAP Integrated Gradients on clean vs corrupted prompts"
@@ -166,6 +189,7 @@ def main() -> None:
     batch_size: int = config["setup"]["batch_size"]
     layer_components = config["setup"].get("layer_components", None)
     granularity = config["setup"].get("granularity", "coarse")
+    quadrature = resolve_quadrature(config)
 
     dtype = config["setup"].get("dtype", None)
 
@@ -363,8 +387,9 @@ def main() -> None:
                             corrupted_inputs,
                             metric_fn,
                             layer_components,
-                            num_steps,
+                            steps=num_steps,
                             include_block_outputs=True,
+                            quadrature=quadrature,
                         )
                     )
 
