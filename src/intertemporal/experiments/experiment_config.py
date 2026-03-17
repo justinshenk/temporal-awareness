@@ -9,9 +9,11 @@ from ..preference import PreferenceDataset
 from ..prompt import PromptDatasetConfig
 
 # Default coarse patching settings (empty dict or empty lists = skip)
+# component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
     "layer_steps": [1],
     "pos_steps": [1],
+    "component": "resid_post",
 }
 
 

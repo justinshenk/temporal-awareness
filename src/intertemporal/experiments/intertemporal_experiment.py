@@ -83,6 +83,7 @@ def step_coarse_activation_patching(
         result = run_coarse_act_patching(
             ctx.runner,
             pair,
+            component=ctx.cfg.coarse_patch.get("component", "resid_post"),
             layer_step_sizes=ctx.cfg.coarse_patch.get("layer_steps"),
             pos_step_sizes=ctx.cfg.coarse_patch.get("pos_steps"),
         )

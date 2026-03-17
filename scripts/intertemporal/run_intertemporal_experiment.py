@@ -17,11 +17,15 @@ Usage:
 
     # Save to a custom folder name
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --rename my_experiment
+
+    # Override coarse patching settings
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --coarse '{"component": "mlp_out"}'
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -69,6 +73,13 @@ def parse_args() -> argparse.Namespace:
         metavar="NAME",
         help="Custom folder name for output (only works without --cache)",
     )
+    parser.add_argument(
+        "--coarse",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help='Override coarse patching settings as JSON, e.g. \'{"component": "mlp_out"}\'',
+    )
 
     return parser.parse_args()
 
@@ -83,6 +94,12 @@ def main() -> int:
 
     if args.model:
         config_dict["model"] = args.model
+
+    if args.coarse:
+        coarse_overrides = json.loads(args.coarse)
+        if "coarse_patch" not in config_dict:
+            config_dict["coarse_patch"] = {}
+        config_dict["coarse_patch"].update(coarse_overrides)
 
     exp_cfg = ExperimentConfig.from_dict(config_dict)
 
