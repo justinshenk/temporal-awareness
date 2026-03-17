@@ -65,19 +65,21 @@ def visualize_coarse_patching(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    component = result.component
+
     # Layer sweep visualizations (both perspectives)
     for step_size in result.layer_step_sizes:
         layer_data = result.get_layer_results_for_step(step_size)
         if layer_data:
-            plot_layer_sweep(layer_data, output_dir, step_size, "short")
-            plot_layer_sweep(layer_data, output_dir, step_size, "long")
+            plot_layer_sweep(layer_data, output_dir, step_size, "short", component)
+            plot_layer_sweep(layer_data, output_dir, step_size, "long", component)
 
     # Position sweep visualizations (both perspectives)
     for step_size in result.position_step_sizes:
         pos_data = result.get_position_results_for_step(step_size)
         if pos_data:
-            plot_position_sweep(pos_data, output_dir, step_size, "short", coloring)
-            plot_position_sweep(pos_data, output_dir, step_size, "long", coloring)
+            plot_position_sweep(pos_data, output_dir, step_size, "short", coloring, component)
+            plot_position_sweep(pos_data, output_dir, step_size, "long", coloring, component)
 
     # Denoising vs Noising comparison plots (for all step sizes)
     all_step_sizes = set(result.layer_step_sizes) | set(result.position_step_sizes)
@@ -85,10 +87,10 @@ def visualize_coarse_patching(
         layer_data = result.get_layer_results_for_step(step_size)
         pos_data = result.get_position_results_for_step(step_size)
         if layer_data or pos_data:
-            plot_comparison(layer_data, pos_data, output_dir, coloring, step_size)
+            plot_comparison(layer_data, pos_data, output_dir, coloring, step_size, component)
 
     # Sanity check visualization
     if result.sanity_result:
-        plot_sanity_check(result, output_dir, coloring, pair)
+        plot_sanity_check(result, output_dir, coloring, pair, component)
 
     print(f"[viz] Coarse patching plots saved to {output_dir}")

@@ -22,6 +22,7 @@ def plot_comparison(
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
     step_size: int = 8,
+    component: str = "resid_post",
 ) -> None:
     """Plot denoising vs noising comparison scatter plots.
 
@@ -33,6 +34,7 @@ def plot_comparison(
         output_dir: Directory to save output
         coloring: Token coloring for position colors
         step_size: Step size used in the sweep
+        component: Component being patched (for plot title)
     """
     has_layer = bool(layer_data)
     has_position = bool(position_data)
@@ -56,7 +58,7 @@ def plot_comparison(
         title_suffix = f"Position Sweep (step={step_size})"
 
     fig.suptitle(
-        f"Activation Patching: Denoising vs Noising {title_suffix}",
+        f"Activation Patching [{component}]: Denoising vs Noising {title_suffix}",
         fontsize=18,
         fontweight="bold",
     )
@@ -83,8 +85,8 @@ def _plot_layer_comparison(
         return
 
     layers = sorted(layer_data.keys())
-    recoveries = [layer_data[l].recovery for l in layers]
-    disruptions = [layer_data[l].disruption for l in layers]
+    recoveries = [layer_data[lyr].recovery for lyr in layers]
+    disruptions = [layer_data[lyr].disruption for lyr in layers]
 
     # Viridis colormap for layers
     colors = plt.cm.viridis(np.linspace(0, 1, len(layers)))

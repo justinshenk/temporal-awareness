@@ -24,6 +24,7 @@ def plot_sanity_check(
     output_dir: Path,
     coloring: PairTokenColoring | None = None,
     pair: ContrastivePair | None = None,
+    component: str = "resid_post",
 ) -> None:
     """Plot sanity check results.
 
@@ -38,6 +39,7 @@ def plot_sanity_check(
         output_dir: Directory to save output
         coloring: Token coloring (unused, kept for API compatibility)
         pair: ContrastivePair for per-position logprob plot
+        component: Component being patched (for plot title)
     """
     sanity = result.sanity_result
     if sanity is None:
@@ -46,7 +48,7 @@ def plot_sanity_check(
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(
-        "Sanity Check: Full Patching (All Layers + All Positions)",
+        f"Sanity Check [{component}]: Full Patching (All Layers + All Positions)",
         fontsize=14,
         fontweight="bold",
     )

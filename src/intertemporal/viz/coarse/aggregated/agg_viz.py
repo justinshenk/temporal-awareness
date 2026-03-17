@@ -84,6 +84,9 @@ def plot_aggregated_structured(
         pair_groupings = ["same_labels"]
         label_perspectives = ["clean"]
 
+    # Get component from result
+    component = result.component
+
     for sweep_type in sweep_types:
         sweep_dir_name = f"agg_{sweep_type}_sweep"
 
@@ -121,12 +124,12 @@ def plot_aggregated_structured(
                                 "combined": "Combined",
                             }[label_persp]
                             title_prefix = (
-                                f"{sweep_label} | {label_label} | {perspective.upper()}=clean | "
+                                f"[{component}] {sweep_label} | {label_label} | {perspective.upper()}=clean | "
                                 f"{mode_label} | n={result.n_samples}"
                             )
                         else:
                             title_prefix = (
-                                f"{sweep_label} | {perspective.upper()}=clean | "
+                                f"[{component}] {sweep_label} | {perspective.upper()}=clean | "
                                 f"{mode_label} | n={result.n_samples}"
                             )
 

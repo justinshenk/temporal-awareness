@@ -72,6 +72,13 @@ class CoarseActPatchResults(BaseSchema):
         """Available position step sizes."""
         return sorted(self.position_results.keys())
 
+    @property
+    def component(self) -> str:
+        """Component used for patching (from sanity_result target)."""
+        if self.sanity_result and self.sanity_result.target:
+            return self.sanity_result.target.component or "resid_post"
+        return "resid_post"
+
     def get_layer_results_for_step(self, step_size: int) -> SweepStepResults:
         """Get layer results for a specific step size."""
         return self.layer_results.get(step_size, SweepStepResults())
@@ -191,6 +198,13 @@ class CoarseActPatchAggregatedResults(BaseSchema):
         for r in self.by_sample.values():
             sizes.update(r.position_step_sizes)
         return sorted(sizes)
+
+    @property
+    def component(self) -> str:
+        """Component used for patching (from first sample)."""
+        if self.by_sample:
+            return next(iter(self.by_sample.values())).component
+        return "resid_post"
 
     def mean_sanity_score(self) -> float:
         """Mean sanity check score across samples."""

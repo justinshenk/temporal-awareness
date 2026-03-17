@@ -193,6 +193,7 @@ def plot_layer_sweep(
     output_dir: Path,
     step_size: int,
     clean_traj: Literal["short", "long"],
+    component: str = "resid_post",
 ) -> None:
     """Plot layer sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -201,6 +202,7 @@ def plot_layer_sweep(
         output_dir: Directory to save output
         step_size: Step size used in the sweep
         clean_traj: Which trajectory is "clean" ("short" or "long")
+        component: Component being patched (for plot title)
     """
     layers = sorted(layer_data.keys())
     if not layers:
@@ -215,7 +217,7 @@ def plot_layer_sweep(
     # Title with baseline info
     baseline_info = _get_baseline_info(layer_data, layers[0])
     fig.suptitle(
-        f"Coarse Layer Sweep, Clean = {clean_traj}, Steps = {step_size}\n{baseline_info}",
+        f"Coarse Layer Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}\n{baseline_info}",
         fontsize=20,
         fontweight="bold",
         y=0.97,
@@ -264,6 +266,7 @@ def plot_position_sweep(
     step_size: int,
     clean_traj: Literal["short", "long"],
     coloring: PairTokenColoring | None = None,
+    component: str = "resid_post",
 ) -> None:
     """Plot position sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -273,6 +276,7 @@ def plot_position_sweep(
         step_size: Step size used in the sweep
         clean_traj: Which trajectory is "clean" ("short" or "long")
         coloring: Optional token coloring for position tick colors
+        component: Component being patched (for plot title)
     """
     positions = sorted(pos_data.keys())
     if not positions:
@@ -286,7 +290,7 @@ def plot_position_sweep(
 
     # Title
     fig.suptitle(
-        f"Coarse Position Sweep, Clean = {clean_traj}, Steps = {step_size}",
+        f"Coarse Position Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}",
         fontsize=20,
         fontweight="bold",
         y=0.97,
