@@ -16,7 +16,17 @@ Phase 1 focused on designing repetitive task sequences, running models on those 
 
 ### Patience Degradation (RQ3)
 
-Synthetic task bank covering **3 domains × 2 stakes levels**:
+#### Datasets
+
+- **Low-stakes:** [AG News](https://huggingface.co/datasets/ag_news) text classification (7,600 test examples, 4-class topic classification). Simple, non-temporal classification tasks with minimal cognitive load, serving as a baseline for probe stability under trivial repetition.
+- **Medium-stakes:** [TRAM temporal arithmetic](https://github.com/EternityYW/TRAM-Benchmark) (15,584 MCQ examples, ACL 2024) + [MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp) code generation (500 test examples). TRAM tests explicit temporal computation — duration arithmetic, time differences, and scheduling calculations — providing a direct measure of temporal reasoning under repetition. MBPP serves as a cognitively demanding but non-temporal control to isolate whether degradation is temporal-specific or a general effect of cognitive load.
+- **High-stakes:** [MedQA](https://huggingface.co/datasets/GBaker/MedQA-USMLE-4-options) temporal curated (128 examples, triple-filtered from 10,178 → 993 → 452 → 128). Every example requires genuine temporal horizon reasoning — follow-up planning (34), screening protocols (22), long-term management (26), prevention strategy (20), prognosis assessment (13), and acute vs. chronic contrast (8). The filtering pipeline removed examples where temporal keywords were incidental (e.g., "presents to the emergency department").
+
+All datasets are standardized in `data/processed/patience_degradation/` with consistent schema (`id`, `question`, `answer`, `options`, `category`).
+
+#### Experimental Design
+
+Synthetic task bank covering **3 domains × 2 stakes levels** (original design, now supplemented with benchmark datasets above):
 
 - **Domains:** scheduling, writing, analysis
 - **Stakes:** low, high
@@ -61,28 +71,51 @@ Activation extraction via **TransformerLens** (`HookedTransformer`). SAE feature
 
 ## 3. Measurements at Each Step
 
-### Probe Performance
-- **SAE probe accuracy/F1:** logistic regression trained on top-64 discriminative SAE latents (where SAE available)
-- **Activation probe accuracy/F1:** logistic regression trained on raw residual stream activations (all models)
+The Phase 1 spec requires two categories of measurements: **behavioral metrics** (model output quality) and **activation-level metrics** (internal representation tracking). Status of each is indicated below.
 
-### Feature Drift (from baseline)
-- **Cosine similarity:** cosine distance between mean activation vectors at rep N vs rep 1
-- **Jaccard similarity:** overlap of top-k active features/dimensions between rep N and baseline
-- **Activation magnitude ratio:** ratio of mean activation magnitudes (tracks scaling changes)
+### A. Behavioral Metrics (Output Quality)
 
-### Neuron-Level Analysis
-- **Top neuron concentration:** variance explained by top-k neurons (high = neuron-level encoding, low = distributed)
-- **Feature entropy:** Shannon entropy of activation magnitude distribution (higher = more distributed representation)
+Per the Phase 1 spec: "Run models on these sequences, measuring at each step."
 
-### Structural Coherence
-- **Mean probe confidence:** average predicted probability from the probe (tracks certainty)
-- **Confidence standard deviation:** variability of probe confidence across samples
+| Metric | Description | Status |
+|--------|-------------|--------|
+| **Task accuracy / quality** | Did the model get the answer right? MCQ accuracy for AG News, TRAM, MedQA; functional correctness for MBPP. Automated scoring + spot-check human eval. | ⬜ Not yet implemented |
+| **Response length** | Track output token count across repetitions — degradation may manifest as truncated or bloated responses. | ⬜ Not yet implemented |
+| **Format compliance** | Does the model follow the expected output format (e.g., selecting A/B/C/D, producing valid Python)? | ⬜ Not yet implemented |
+| **Refusal / hedge rate** | Fraction of responses where the model refuses, hedges, or gives meta-commentary instead of answering. | ⬜ Not yet implemented |
+| **Logprob entropy** | Shannon entropy of token-level logprobs — higher entropy may signal uncertainty or disengagement. | ⬜ Not yet implemented |
+| **Repetition rate** | N-gram overlap between consecutive responses — measures whether the model starts repeating itself. | ⬜ Not yet implemented |
 
-### Summary Statistics
-- **Degradation onset:** repetition count where probe accuracy drops >5% from baseline
-- **Behavioral precursor gap:** difference between behavioral degradation onset and activation drift onset (positive = activations change first, meaning we can detect degradation early)
-- **Representation type:** classified as "neuron-level" or "distributed" based on concentration and entropy thresholds
-- **Domain generality:** whether the same degradation pattern holds across scheduling/writing/analysis
+### B. Activation-Level Metrics (Internal Representations) ✅
+
+These are implemented and have completed runs.
+
+#### Probe Performance
+- **SAE probe accuracy/F1:** logistic regression trained on top-64 discriminative SAE latents (where SAE available) ✅
+- **Activation probe accuracy/F1:** logistic regression trained on raw residual stream activations (all models) ✅
+
+#### Feature Drift (from baseline)
+- **Cosine similarity:** cosine distance between mean activation vectors at rep N vs rep 1 ✅
+- **Jaccard similarity:** overlap of top-k active features/dimensions between rep N and baseline ✅
+- **Activation magnitude ratio:** ratio of mean activation magnitudes (tracks scaling changes) ✅
+
+#### Neuron-Level Analysis
+- **Top neuron concentration:** variance explained by top-k neurons (high = neuron-level encoding, low = distributed) ✅
+- **Feature entropy:** Shannon entropy of activation magnitude distribution (higher = more distributed representation) ✅
+
+#### Structural Coherence
+- **Mean probe confidence:** average predicted probability from the probe (tracks certainty) ✅
+- **Confidence standard deviation:** variability of probe confidence across samples ✅
+
+### C. Summary Statistics
+
+| Metric | Description | Status |
+|--------|-------------|--------|
+| **Degradation onset** | Repetition count where probe accuracy drops >5% from baseline | ✅ Implemented |
+| **Behavioral degradation onset** | Repetition count where task accuracy drops >5% from baseline | ⬜ Requires behavioral metrics |
+| **Behavioral precursor gap** | Difference between behavioral vs. activation drift onset (positive = activations change first = early warning) | ⚠️ Partially — activation side done, behavioral side pending |
+| **Representation type** | Classified as "neuron-level" or "distributed" based on concentration and entropy thresholds | ✅ Implemented |
+| **Domain generality** | Whether the same degradation pattern holds across low/medium/high stakes | ⬜ Requires runs on new datasets |
 
 ---
 
@@ -123,16 +156,83 @@ Activation extraction via **TransformerLens** (`HookedTransformer`). SAE feature
 
 ## 7. Remaining for Phase 1 Completion
 
+### Datasets ✅
+- [x] Curate benchmark datasets for 3-tier repetitive task design (low/medium/high stakes)
+- [x] AG News (low-stakes), TRAM + MBPP (medium-stakes), MedQA curated (high-stakes)
+- [x] Triple-filter MedQA to remove incidental temporal keywords (10,178 → 128)
+- [x] Standardize all datasets with consistent schema in `data/processed/patience_degradation/`
+
+### Behavioral Metrics (⬜ Not Yet Implemented)
+- [ ] Add task accuracy scoring to patience degradation pipeline (MCQ match for AG News/TRAM/MedQA, test-case pass rate for MBPP)
+- [ ] Add response length tracking (output token count per repetition step)
+- [ ] Add format compliance check (valid option selection for MCQ, valid Python for MBPP)
+- [ ] Add refusal/hedge detection (keyword-based classifier for refusals, hedges, meta-commentary)
+- [ ] Add logprob entropy extraction (token-level Shannon entropy from model output)
+- [ ] Add repetition rate metric (n-gram overlap between consecutive responses)
+- [ ] Spot-check human eval (~20 examples per domain, sampled at rep 1, 8, 20)
+
+### Experiment Runs
+- [ ] Run patience degradation experiments with new benchmark datasets (all 5 models × 3 stakes tiers)
 - [ ] Resubmit SAE stability full runs (3 jobs) — script fix ready
 - [ ] Resubmit sequential tracking full runs (3 jobs) — script fix ready
+
+### Visualization & Analysis
+- [ ] Visualize degradation curves across all 3 stakes tiers (behavioral + activation metrics)
+- [ ] Establish behavioral degradation curves: at what step does performance drop significantly?
+- [ ] Compare behavioral onset vs. activation onset (precursor gap analysis)
+
+### Cleanup
 - [ ] Clean up W&B run naming (3 patience-deg runs missing model slug)
 - [ ] Delete duplicate Llama W&B run
 
 ---
 
-## 8. Next Steps (Phase 2)
+## 8. Dataset Filtering Pipeline
 
+### MedQA Triple-Filter (High-Stakes)
+
+| Stage | Count | Method |
+|-------|-------|--------|
+| Raw MedQA | 10,178 | Full USMLE-style dataset |
+| Keyword filter | 993 (9.8%) | 45 temporal regex patterns |
+| Quality audit | 452 (45.5%) | Remove incidental keywords (e.g., "emergency department") |
+| Temporal horizon verification | 128 (28.3%) | Require question to test genuine temporal reasoning |
+
+Scripts: `scripts/data/filter_medqa_temporal.py`, `scripts/data/audit_medqa_temporal.py`
+
+### Medium-Stakes Sources
+
+| Dataset | Examples | Source | Format |
+|---------|----------|--------|--------|
+| TRAM Arithmetic | 15,584 | TRAM Benchmark (ACL 2024) | MCQ (4-option) |
+| MBPP | 500 | Google Research | Code generation |
+
+Scripts: `scripts/data/download_medium_stakes.py`, `scripts/data/organize_all_datasets.py`
+
+---
+
+## 9. Phase 1 Requirement Checklist
+
+Cross-reference against the Phase 1 spec:
+
+| Requirement | Status |
+|------------|--------|
+| Design repetitive task sequences in 3 domains | ✅ Low (AG News), Medium (TRAM + MBPP), High (MedQA curated) |
+| Low-stakes: repeated text classification (50-100 instances) | ✅ AG News, 7,600 available, sample 50-100 per sequence |
+| Medium-stakes: repeated code review or math problem solving | ✅ TRAM arithmetic (15,584) + MBPP code (500) |
+| High-stakes: repeated safety-critical reasoning (medical, legal) | ⚠️ MedQA medical (128 curated). Legal (LegalBench) unavailable on HF — justified in report as medical being stronger temporal fit |
+| Task accuracy / quality at each step | ⬜ Not yet implemented |
+| Response length and format compliance | ⬜ Not yet implemented |
+| Refusal / hedge rate | ⬜ Not yet implemented |
+| Logprob entropy, repetition rate | ⬜ Not yet implemented |
+| Establish behavioral degradation curves | ⬜ Activation-level curves done; behavioral curves pending above metrics |
+
+---
+
+## 10. Next Steps (Phase 2)
+
+- Complete remaining Phase 1 behavioral metrics (Section 7)
+- Run patience degradation with new benchmark datasets across all 5 models
 - Domain transfer experiments: train probe on one domain, test generalization to another
 - Refusal direction comparison (H5): compare disengagement direction with Arditi et al. refusal direction
-- Add output quality metric beyond probe accuracy as behavioral ground truth
 - Paper writing targeting NeurIPS (May 7, 2026)
