@@ -85,7 +85,7 @@ class ModelRunner:
                 self._init_mlx()
             except ValueError as e:
                 if "not supported" in str(e):
-                    print(f"MLX doesn't support this model, using HuggingFace...")
+                    print("MLX doesn't support this model, using HuggingFace...")
                     self._backend = ModelBackend.HUGGINGFACE
                     self._init_huggingface()
                 else:
@@ -734,7 +734,10 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (nnsight)...")
         self._model = LanguageModel(
-            self.model_name, device_map=self.device, dtype=self.dtype, trust_remote_code=True
+            self.model_name,
+            device_map=self.device,
+            dtype=self.dtype,
+            trust_remote_code=True,
         )
         self._backend = NNsightBackend(self)
 
@@ -746,7 +749,9 @@ class ModelRunner:
             self.model_name, torch_dtype=self.dtype, trust_remote_code=True
         ).to(self.device)
         self._model.eval()
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name, trust_remote_code=True
+        )
         self._backend = PyveneBackend(self, tokenizer)
 
     def _init_huggingface(self) -> None:
@@ -757,7 +762,9 @@ class ModelRunner:
             self.model_name, torch_dtype=self.dtype, trust_remote_code=True
         ).to(self.device)
         self._model.eval()
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name, trust_remote_code=True
+        )
         self._backend = HuggingFaceBackend(self, tokenizer)
 
     def _init_mlx(self) -> None:
