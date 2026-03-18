@@ -39,7 +39,7 @@ MINIMAL_PROMPT_DATASET_CONFIG = {
         {"value": 50, "unit": "years"},  # Long horizon
     ],
     "add_formatting_noise": False,
-    "do_variation_grid": False,
+    "do_formatting_variation_grid": False,
 }
 
 # Small config for testing

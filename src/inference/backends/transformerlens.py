@@ -6,7 +6,9 @@ import copy
 from typing import Any, Optional, Sequence
 
 import torch
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+# TransformerLens 3.0 renamed HookedTransformerKeyValueCache to TransformerLensKeyValueCache
+# and moved it from transformer_lens.past_key_value_caching to the top-level module
+from transformer_lens import TransformerLensKeyValueCache
 
 from .model_backend import Backend
 from ..interventions import Intervention, create_intervention_hook
@@ -226,7 +228,7 @@ class TransformerLensBackend(Backend):
         return self.decode(torch.tensor(generated_ids))
 
     def init_kv_cache(self):
-        return HookedTransformerKeyValueCache.init_cache(
+        return TransformerLensKeyValueCache.init_cache(
             self.runner._model.cfg,
             device=self.runner.device,
             batch_size=1,

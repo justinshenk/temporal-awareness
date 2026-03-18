@@ -19,7 +19,8 @@ from ..formatting.formatting_variation import (
     apply_time_variation,
     get_formatting_id,
 )
-from .prompt_dataset_config import PromptDatasetConfig, StepType
+from .prompt_dataset_config import PromptDatasetConfig, ContextConfig, StepType
+from .prompt_dataset_variations import get_context_variations, apply_context_variation
 from .prompt_dataset import PromptDataset
 from ..common.preference_types import (
     PromptSample,
@@ -170,6 +171,7 @@ class PromptDatasetGenerator:
         left_time_str: Optional[str] = None,
         right_time_str: Optional[str] = None,
         horizon_time_str: Optional[str] = None,
+        context: Optional[ContextConfig] = None,
     ) -> str:
         """
         Format prompt text using template and context.
@@ -187,11 +189,12 @@ class PromptDatasetGenerator:
             left_time_str: Optional formatted time string for left option
             right_time_str: Optional formatted time string for right option
             horizon_time_str: Optional formatted time string for horizon
+            context: Optional context config (uses dataset_config.context if None)
 
         Returns:
             Formatted prompt text
         """
-        ctx = self.dataset_config.context
+        ctx = context if context is not None else self.dataset_config.context
         pf = self.dataset_config.prompt_format_config
 
         # Assemble question template (conditionally includes time-horizon spec)
@@ -287,8 +290,8 @@ class PromptDatasetGenerator:
 
     def do_formatting_grid(self):
         return (
-            self.dataset_config.do_variation_grid
-            or self.dataset_config.do_variation_grid
+            self.dataset_config.do_formatting_variation_grid
+            or self.dataset_config.do_full_formatting_variation_grid
         )
 
     def do_random_formatting(self):
@@ -314,6 +317,7 @@ class PromptDatasetGenerator:
         long_term_data: tuple[float, TimeValue],
         time_horizon: Optional[TimeValue],
         variation: Optional[FormattingVariation] = None,
+        context: Optional[ContextConfig] = None,
     ) -> PromptSample:
         """
         Create a dataset sample from option data.
@@ -326,11 +330,13 @@ class PromptDatasetGenerator:
             short_term_data: (reward, time) for short-term option
             long_term_data: (reward, time) for long-term option
             time_horizon: Decision time horizon (None = no constraint)
+            variation: Optional formatting variation
+            context: Optional context config (uses dataset_config.context if None)
 
         Returns:
             PromptSample instance
         """
-        ctx = self.dataset_config.context
+        ctx = context if context is not None else self.dataset_config.context
 
         variation = self._process_formatting_variation(variation)
         labels = variation.labels
@@ -381,6 +387,7 @@ class PromptDatasetGenerator:
             left_time_str=left_time_str,
             right_time_str=right_time_str,
             horizon_time_str=horizon_time_str,
+            context=ctx,
         )
 
         # Format response_template with labels and prompt_const_keywords
@@ -407,7 +414,7 @@ class PromptDatasetGenerator:
         formatting_id = get_formatting_id(short_term_label, long_term_label)
 
         # Compute context_id from the context config
-        context_id = self.dataset_config.context.get_context_id()
+        context_id = ctx.get_context_id()
 
         return PromptSample(
             sample_idx=sample_idx,
@@ -417,19 +424,40 @@ class PromptDatasetGenerator:
         )
 
     def generate_formatting_variation_grid(self):
-        if self.dataset_config.do_full_variation_grid:
+        if self.dataset_config.do_full_formatting_variation_grid:
             return FormattingVariation.get_full_grid()
-        if self.dataset_config.do_variation_grid:
+        if self.dataset_config.do_formatting_variation_grid:
             return FormattingVariation.get_simple_grid()
         return [self.get_default_formatting()]
+
+    def generate_context_variation_grid(self) -> list[ContextConfig]:
+        """Generate list of context configs to use.
+
+        If do_context_variations is True, returns the base context plus
+        all variations applied to it. Otherwise, returns just the base context.
+        """
+        base_context = self.dataset_config.context
+        if not self.dataset_config.do_context_variations:
+            return [base_context]
+
+        # Start with base context
+        contexts = [base_context]
+
+        # Add all variations applied to base
+        for variation in get_context_variations():
+            varied_context = apply_context_variation(base_context, variation)
+            contexts.append(varied_context)
+
+        return contexts
 
     def generate_grid(self):
         short_term_grid = self.generate_option_grid("short_term")
         long_term_grid = self.generate_option_grid("long_term")
         time_horizons_grid = self.dataset_config.time_horizons
         var_grid = self.generate_formatting_variation_grid()
+        context_grid = self.generate_context_variation_grid()
         full_grid = product(
-            short_term_grid, long_term_grid, time_horizons_grid, var_grid
+            short_term_grid, long_term_grid, time_horizons_grid, var_grid, context_grid
         )
         return full_grid
 
@@ -441,6 +469,8 @@ class PromptDatasetGenerator:
         - Short-term option grid
         - Long-term option grid
         - Time horizons
+        - Formatting variations (if enabled)
+        - Context variations (if enabled)
 
         Returns:
             List of PromptSample objects
