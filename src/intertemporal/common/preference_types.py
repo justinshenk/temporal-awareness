@@ -116,6 +116,7 @@ class PromptSample(BaseSchema):
     prompt: Prompt
 
     formatting_id: int | None = None
+    context_id: int | None = None
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -153,6 +154,7 @@ class PreferenceSample(BaseSchema):
     decoding_mismatch: bool | None = None
 
     formatting_id: int | None = None
+    context_id: int | None = None
     matches_rational: bool | None = None
     matches_associated: bool | None = None
 

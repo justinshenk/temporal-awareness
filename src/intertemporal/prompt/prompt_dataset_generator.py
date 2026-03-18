@@ -406,10 +406,14 @@ class PromptDatasetGenerator:
         # Compute formatting_id based on which label is assigned to short_term
         formatting_id = get_formatting_id(short_term_label, long_term_label)
 
+        # Compute context_id from the context config
+        context_id = self.dataset_config.context.get_context_id()
+
         return PromptSample(
             sample_idx=sample_idx,
             prompt=prompt,
             formatting_id=formatting_id,
+            context_id=context_id,
         )
 
     def generate_formatting_variation_grid(self):

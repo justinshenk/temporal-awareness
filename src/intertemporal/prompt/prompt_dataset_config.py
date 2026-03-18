@@ -37,6 +37,24 @@ class ContextConfig(BaseSchema):
         defaults = cls().to_dict()
         return super().from_dict(defaults | d)
 
+    def get_context_id(self) -> int:
+        """Get a deterministic context ID based on context fields.
+
+        Returns a positive integer ID that uniquely identifies this context
+        configuration (excluding labels, which are tracked by formatting_id).
+        """
+        # Hash all context fields except labels (which are formatting-related)
+        hashable = (
+            self.reward_unit,
+            self.role,
+            self.situation,
+            self.task_in_question,
+            self.reasoning_ask,
+            self.domain,
+            self.extra_situation,
+        )
+        return hash(hashable) & 0x7FFFFFFF  # Ensure positive
+
 
 @dataclass
 class OptionRangeConfig(BaseSchema):

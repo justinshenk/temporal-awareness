@@ -1,11 +1,11 @@
 """Main entry point for aggregated coarse patching visualization.
 
-Creates structured output with per-metric-column plots organized by:
-- Sweep type (layer, position)
-- Pair grouping (same_labels, different_labels)
-- Label perspective (clean, corrupted, combined) - for multilabel
-- Perspective (short/long clean)
-- Mode (denoising/noising)
+Creates structured output organized by analysis slice at top level:
+- agg/all/sweep_<component>/layer_sweep/denoising/...
+- agg/same_labels/sweep_<component>/position_sweep/noising/...
+- etc.
+
+All plots use short=clean perspective (long is just the inverse).
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from typing import Literal
 
 from .....activation_patching.coarse import CoarseActPatchAggregatedResults
 from .....activation_patching.act_patch_metrics import LabelPerspective
+from .analysis_slices import ANALYSIS_SLICES
 from .data_extraction import extract_column_data
 from .metric_plots import plot_column
 from .style import COLUMN_METRICS
@@ -34,125 +35,151 @@ def _get_n_labels(result: CoarseActPatchAggregatedResults) -> int:
 def plot_aggregated_structured(
     result: CoarseActPatchAggregatedResults,
     output_dir: Path,
+    analysis_slice: str = "all",
 ) -> None:
-    """Create structured aggregated visualization.
+    """Create structured aggregated visualization for a single analysis slice.
 
-    Directory structure for multilabel (n_labels > 1):
-        agg_layer_sweep/
-          different_labels/
-            clean/                    # metrics using clean label tokens
-              short/                  # clean=short perspective
-                denoising/
-                  core.png, probs.png, logits.png, fork.png, vocab.png, trajectory.png
-                noising/
-              long/
-            corrupted/                # metrics using corrupted label tokens
-              short/
-              long/
-            combined/                 # aggregated metrics across both label systems
-              short/
-              long/
-        agg_pos_sweep/
-          (same structure)
+    Directory structure:
+        layer_sweep/
+          denoising/
+            core.png, probs.png, logits.png, fork.png, vocab.png, trajectory.png
+          noising/
+        position_sweep/
+          denoising/
+          noising/
 
-    For single-label (n_labels == 1):
-        agg_layer_sweep/
-          same_labels/
-            short/
-            long/
-        ...
+    All plots use short=clean perspective (long=clean is redundant).
 
     Args:
         result: Aggregated coarse patching results
-        output_dir: Base output directory
+        output_dir: Output directory for this slice (e.g., agg/all/sweep_resid_post/)
+        analysis_slice: Name of the analysis slice for title
     """
     output_dir = Path(output_dir)
 
     sweep_types: list[Literal["layer", "position"]] = ["layer", "position"]
-    perspectives: list[Literal["short", "long"]] = ["short", "long"]
     modes: list[Literal["denoising", "noising"]] = ["denoising", "noising"]
     columns = list(COLUMN_METRICS.keys())
+
+    # Always use short=clean perspective
+    perspective: Literal["short", "long"] = "short"
 
     # Determine if this is multilabel
     n_labels = _get_n_labels(result)
     is_multilabel = n_labels > 1
 
     if is_multilabel:
-        pair_groupings = ["different_labels"]
         label_perspectives: list[LabelPerspective] = ["clean", "corrupted", "combined"]
     else:
-        pair_groupings = ["same_labels"]
         label_perspectives = ["clean"]
 
     # Get component from result
     component = result.component
 
     for sweep_type in sweep_types:
-        sweep_dir_name = f"agg_{sweep_type}_sweep"
+        sweep_dir_name = f"{sweep_type}_sweep"
 
-        for grouping in pair_groupings:
-            for label_persp in label_perspectives:
-                for perspective in perspectives:
-                    for mode in modes:
-                        # Build directory path
-                        if is_multilabel:
-                            dir_path = (
-                                output_dir
-                                / sweep_dir_name
-                                / grouping
-                                / label_persp
-                                / perspective
-                                / mode
-                            )
-                        else:
-                            dir_path = (
-                                output_dir
-                                / sweep_dir_name
-                                / grouping
-                                / perspective
-                                / mode
-                            )
-                        dir_path.mkdir(parents=True, exist_ok=True)
+        for label_persp in label_perspectives:
+            for mode in modes:
+                # Build directory path
+                if is_multilabel:
+                    dir_path = output_dir / sweep_dir_name / label_persp / mode
+                else:
+                    dir_path = output_dir / sweep_dir_name / mode
+                dir_path.mkdir(parents=True, exist_ok=True)
 
-                        # Build title prefix (compact format)
-                        sweep_label = "Layer" if sweep_type == "layer" else "Pos"
-                        mode_label = "Denoise" if mode == "denoising" else "Noise"
-                        if is_multilabel:
-                            label_label = {
-                                "clean": "CleanLbl",
-                                "corrupted": "CorruptLbl",
-                                "combined": "Combined",
-                            }[label_persp]
-                            title_prefix = (
-                                f"[{component}] {sweep_label} | {label_label} | {perspective.upper()}=clean | "
-                                f"{mode_label} | n={result.n_samples}"
-                            )
-                        else:
-                            title_prefix = (
-                                f"[{component}] {sweep_label} | {perspective.upper()}=clean | "
-                                f"{mode_label} | n={result.n_samples}"
-                            )
+                # Build title prefix (compact format)
+                sweep_label = "Layer" if sweep_type == "layer" else "Pos"
+                mode_label = "Denoise" if mode == "denoising" else "Noise"
+                if is_multilabel:
+                    label_label = {
+                        "clean": "CleanLbl",
+                        "corrupted": "CorruptLbl",
+                        "combined": "Combined",
+                    }[label_persp]
+                    title_prefix = (
+                        f"[{component}] {sweep_label} | {label_label} | "
+                        f"{mode_label} | {analysis_slice} | n={result.n_samples}"
+                    )
+                else:
+                    title_prefix = (
+                        f"[{component}] {sweep_label} | "
+                        f"{mode_label} | {analysis_slice} | n={result.n_samples}"
+                    )
 
-                        for column in columns:
-                            # Extract data
-                            column_data = extract_column_data(
-                                result,
-                                column,
-                                sweep_type,
-                                perspective,
-                                mode,
-                                label_persp,
-                            )
+                for column in columns:
+                    # Extract data
+                    column_data = extract_column_data(
+                        result,
+                        column,
+                        sweep_type,
+                        perspective,
+                        mode,
+                        label_persp,
+                    )
 
-                            if not column_data.metrics:
-                                continue
+                    if not column_data.metrics:
+                        continue
 
-                            # Plot
-                            output_path = dir_path / f"{column}.png"
-                            plot_column(
-                                column_data,
-                                output_path,
-                                title_prefix,
-                            )
+                    # Plot
+                    output_path = dir_path / f"{column}.png"
+                    plot_column(
+                        column_data,
+                        output_path,
+                        title_prefix,
+                    )
 
-    print(f"[viz] Aggregated structured plots saved to {output_dir}")
+
+def plot_all_aggregated_slices(
+    agg_by_component: dict[str, CoarseActPatchAggregatedResults],
+    output_dir: Path,
+) -> None:
+    """Create aggregated visualizations for all analysis slices and components.
+
+    Directory structure:
+        output_dir/
+          all/
+            sweep_resid_post/
+              layer_sweep/denoising/...
+            sweep_attn_out/
+            component_comparison/
+          same_labels/
+            sweep_resid_post/
+            ...
+
+    Args:
+        agg_by_component: Dict mapping component name to aggregated results
+        output_dir: Base output directory (e.g., agg/)
+    """
+    from ..component_comparison import plot_all_component_comparisons
+
+    output_dir = Path(output_dir)
+
+    from .....activation_patching.coarse import CoarseActPatchResults
+
+    # Get first sample from each component for component_comparison plots
+    results_by_component: dict[str, CoarseActPatchResults] = {}
+    for comp, agg_result in agg_by_component.items():
+        if agg_result.by_sample:
+            first_sample = next(iter(agg_result.by_sample.values()))
+            results_by_component[comp] = first_sample
+
+    has_multi_component = len(results_by_component) > 1
+
+    # Generate plots for each analysis slice
+    for analysis_slice in ANALYSIS_SLICES:
+        slice_name = analysis_slice.name
+        slice_dir = output_dir / slice_name
+
+        # Per-component aggregated sweep plots
+        for component, agg_result in agg_by_component.items():
+            comp_dir = slice_dir / f"sweep_{component}"
+            plot_aggregated_structured(agg_result, comp_dir, slice_name)
+
+        # Multi-component comparison plots
+        if has_multi_component:
+            comp_comparison_dir = slice_dir / "component_comparison"
+            comp_comparison_dir.mkdir(parents=True, exist_ok=True)
+            plot_all_component_comparisons(results_by_component, comp_comparison_dir)
+
+    print(f"[viz] All aggregated slices saved to {output_dir}")

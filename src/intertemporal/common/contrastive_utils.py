@@ -7,14 +7,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ...common.base_schema import BaseSchema
-
-log = logging.getLogger(__name__)
 from .contrastive_preferences import ContrastivePreferences
 from .preference_types import PreferenceSample
 
 if TYPE_CHECKING:
-    from .contrastive_preferences import ContrastivePreferences
     from ..preference import PreferenceDataset
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,6 +27,14 @@ class ContrastivePrefReq(BaseSchema):
     # Label requirements (both False = no requirement, allows multilabel pairing)
     same_labels: bool = False
     different_labels: bool = False
+
+    # Context requirements
+    same_context: bool = False
+    different_context: bool = False
+
+    # Formatting requirements
+    same_formatting: bool = False
+    different_formatting: bool = False
 
     # Reward requirements
     same_rewards: bool = False
@@ -71,6 +78,8 @@ class ContrastivePrefReq(BaseSchema):
         # Check mutually exclusive pairs
         exclusive_pairs = [
             ("same_labels", "different_labels"),
+            ("same_context", "different_context"),
+            ("same_formatting", "different_formatting"),
             ("same_rewards", "different_rewards"),
             ("same_times", "different_times"),
             ("same_horizon", "different_horizon"),
@@ -144,108 +153,76 @@ class ContrastivePrefReq(BaseSchema):
         """Check if a ContrastivePreferences pair passes all requirements."""
         self.verify()
 
-        def fail(req_name: str, req_val: bool, pair_val: bool) -> bool:
-            print(
-                f"\n\nPair {pair.short_term.sample_idx}/{pair.long_term.sample_idx} "
-                f"\n\nfailed: {req_name}={req_val} but pair.{req_name}={pair_val}"
-            )
-            return False
-
         # Label checks
         if self.same_labels and not pair.same_labels:
-            return fail("same_labels", self.same_labels, pair.same_labels)
+            return False
         if self.different_labels and pair.same_labels:
-            return fail("different_labels", self.different_labels, not pair.same_labels)
+            return False
+
+        # Context checks
+        if self.same_context and not pair.same_context:
+            return False
+        if self.different_context and pair.same_context:
+            return False
+
+        # Formatting checks
+        if self.same_formatting and not pair.same_formatting:
+            return False
+        if self.different_formatting and pair.same_formatting:
+            return False
 
         # Reward checks
         if self.same_rewards and not pair.same_rewards:
-            return fail("same_rewards", self.same_rewards, pair.same_rewards)
+            return False
         if self.different_rewards and pair.same_rewards:
-            return fail(
-                "different_rewards", self.different_rewards, not pair.same_rewards
-            )
+            return False
 
         # Time checks
         if self.same_times and not pair.same_times:
-            return fail("same_times", self.same_times, pair.same_times)
+            return False
         if self.different_times and pair.same_times:
-            return fail("different_times", self.different_times, not pair.same_times)
+            return False
 
         # Horizon checks
         if self.same_horizon and not pair.same_horizon:
-            return fail("same_horizon", self.same_horizon, pair.same_horizon)
+            return False
         if self.different_horizon and pair.same_horizon:
-            return fail(
-                "different_horizon", self.different_horizon, not pair.same_horizon
-            )
+            return False
         if self.neither_horizon and not pair.neither_horizon:
-            return fail("neither_horizon", self.neither_horizon, pair.neither_horizon)
+            return False
         if self.both_horizon and not pair.both_horizon:
-            return fail("both_horizon", self.both_horizon, pair.both_horizon)
+            return False
         if self.only_short_horizon and not pair.only_short_horizon:
-            return fail(
-                "only_short_horizon", self.only_short_horizon, pair.only_short_horizon
-            )
+            return False
         if self.only_long_horizon and not pair.only_long_horizon:
-            return fail(
-                "only_long_horizon", self.only_long_horizon, pair.only_long_horizon
-            )
+            return False
         if self.only_one_horizon and not pair.only_one_horizon:
-            return fail(
-                "only_one_horizon", self.only_one_horizon, pair.only_one_horizon
-            )
+            return False
 
         # Rational checks
         if self.both_rational and not pair.both_rational:
-            return fail("both_rational", self.both_rational, pair.both_rational)
+            return False
         if self.neither_rational and not pair.neither_rational:
-            return fail(
-                "neither_rational", self.neither_rational, pair.neither_rational
-            )
+            return False
         if self.only_short_rational and not pair.only_short_rational:
-            return fail(
-                "only_short_rational",
-                self.only_short_rational,
-                pair.only_short_rational,
-            )
+            return False
         if self.only_long_rational and not pair.only_long_rational:
-            return fail(
-                "only_long_rational", self.only_long_rational, pair.only_long_rational
-            )
+            return False
         if self.only_one_rational and not pair.only_one_rational:
-            return fail(
-                "only_one_rational", self.only_one_rational, pair.only_one_rational
-            )
+            return False
 
         # Associated checks
         if self.both_associated and not pair.both_associated:
-            return fail("both_associated", self.both_associated, pair.both_associated)
+            return False
         if self.neither_associated and not pair.neither_associated:
-            return fail(
-                "neither_associated", self.neither_associated, pair.neither_associated
-            )
+            return False
         if self.only_short_associated and not pair.only_short_associated:
-            return fail(
-                "only_short_associated",
-                self.only_short_associated,
-                pair.only_short_associated,
-            )
+            return False
         if self.only_long_associated and not pair.only_long_associated:
-            return fail(
-                "only_long_associated",
-                self.only_long_associated,
-                pair.only_long_associated,
-            )
+            return False
         if self.only_one_associated and not pair.only_one_associated:
-            return fail(
-                "only_one_associated",
-                self.only_one_associated,
-                pair.only_one_associated,
-            )
+            return False
 
-        log.debug(
-            f"Pair {pair.short_term.sample_idx}/{pair.long_term.sample_idx} passed all requirements"
-        )
         return True
 
 
@@ -303,17 +280,11 @@ def get_contrastive_preferences(
     total_passed = 0
 
     for key, samples in content_groups.items():
-        # Separate by choice
         short_choosers = [s for s in samples if s.choice_term == "short_term"]
         long_choosers = [s for s in samples if s.choice_term == "long_term"]
         total_short += len(short_choosers)
         total_long += len(long_choosers)
 
-        print(
-            f"Content group {key}: {len(short_choosers)} short, {len(long_choosers)} long"
-        )
-
-        # Create pairs
         for short_sample in short_choosers:
             for long_sample in long_choosers:
                 total_candidates += 1
@@ -325,8 +296,8 @@ def get_contrastive_preferences(
                     total_passed += 1
                     pairs.append(candidate_pair)
 
-    print(
-        f"Contrastive pairs: {total_short} short choosers, {total_long} long choosers, "
+    log.info(
+        f"Contrastive pairs: {total_short} short, {total_long} long, "
         f"{total_candidates} candidates, {total_passed} passed"
     )
 

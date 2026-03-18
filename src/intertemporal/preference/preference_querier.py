@@ -251,6 +251,7 @@ class PreferenceQuerier:
                     internals_paths=None,
                     decoding_mismatch=decoding_mismatch,
                     formatting_id=sample.formatting_id,
+                    context_id=sample.context_id,
                     matches_rational=matches_rational,
                     matches_associated=matches_associated,
                 )

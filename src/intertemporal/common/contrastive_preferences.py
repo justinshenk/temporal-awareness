@@ -85,11 +85,21 @@ class ContrastivePreferences(BaseSchema):
 
     @property
     def same_labels(self) -> bool:
-        """Alias for same_formatting."""
+        """Check if both samples have the same label text."""
         return (
             self.short_term.short_term_label == self.long_term.short_term_label
             and self.short_term.long_term_label == self.long_term.long_term_label
         )
+
+    @property
+    def same_formatting(self) -> bool:
+        """Check if both samples have the same formatting_id."""
+        return self.short_term.formatting_id == self.long_term.formatting_id
+
+    @property
+    def same_context(self) -> bool:
+        """Check if both samples have the same context_id."""
+        return self.short_term.context_id == self.long_term.context_id
 
     # =========================================================================
     # Reward/Time Properties

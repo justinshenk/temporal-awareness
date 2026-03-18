@@ -131,13 +131,17 @@ def _plot_layer_heatmap(
     fig, ax = plt.subplots(figsize=(8, max(10, n_layers * 0.3)), facecolor="white")
     ax.set_facecolor("white")
 
-    im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
+    # Flip matrix so layer 0 is at bottom
+    matrix_flipped = matrix[::-1, :]
+    layers_flipped = layers[::-1]
+
+    im = ax.imshow(matrix_flipped, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
     plt.colorbar(im, ax=ax, label="Recovery" if mode == "denoising" else "Disruption")
 
     ax.set_xticks(range(n_components))
     ax.set_xticklabels(COMPONENTS, rotation=45, ha="right")
     ax.set_yticks(range(n_layers))
-    ax.set_yticklabels([f"L{lyr}" for lyr in layers])
+    ax.set_yticklabels([f"L{lyr}" for lyr in layers_flipped])
 
     ax.set_xlabel("Component", fontsize=12, fontweight="bold")
     ax.set_ylabel("Layer", fontsize=12, fontweight="bold")
@@ -181,11 +185,14 @@ def _plot_position_heatmap(
                     if val is not None:
                         matrix[row_idx, col_idx] = val
 
-    # Plot
+    # Plot - flip matrix so position 0 is at bottom
+    matrix_flipped = matrix[::-1, :]
+    positions_flipped = positions[::-1]
+
     fig, ax = plt.subplots(figsize=(8, max(10, n_positions * 0.15)), facecolor="white")
     ax.set_facecolor("white")
 
-    im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
+    im = ax.imshow(matrix_flipped, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
     plt.colorbar(im, ax=ax, label="Recovery" if mode == "denoising" else "Disruption")
 
     ax.set_xticks(range(n_components))
@@ -195,10 +202,10 @@ def _plot_position_heatmap(
     if n_positions > 30:
         step = max(1, n_positions // 20)
         ax.set_yticks(range(0, n_positions, step))
-        ax.set_yticklabels([f"P{positions[i]}" for i in range(0, n_positions, step)])
+        ax.set_yticklabels([f"P{positions_flipped[i]}" for i in range(0, n_positions, step)])
     else:
         ax.set_yticks(range(n_positions))
-        ax.set_yticklabels([f"P{p}" for p in positions])
+        ax.set_yticklabels([f"P{p}" for p in positions_flipped])
 
     ax.set_xlabel("Component", fontsize=12, fontweight="bold")
     ax.set_ylabel("Position", fontsize=12, fontweight="bold")

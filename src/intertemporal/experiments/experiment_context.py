@@ -52,14 +52,13 @@ class ExperimentContext:
     _pref_pairs: list[ContrastivePreferences] | None = field(default=None, init=False)
     _pair_to_pref_idx: dict[int, int] = field(default_factory=dict, init=False)
 
-    # coarse_patching now keyed by (pair_idx, component) tuple
-    coarse_patching: dict[tuple[int, str] | int, CoarseActPatchResults] = field(
+    # coarse_patching keyed by (pair_idx, component) tuple
+    coarse_patching: dict[tuple[int, str], CoarseActPatchResults] = field(
         default_factory=dict
     )
     fine_patching: dict[int, ActPatchPairResult] = field(default_factory=dict)
     att_patching: dict[int, AttrPatchPairResult] = field(default_factory=dict)
 
-    coarse_agg: CoarseActPatchAggregatedResults | None = None
     coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] = field(
         default_factory=dict
     )
@@ -147,15 +146,15 @@ class ExperimentContext:
 
     def get_union_target(self, component: str = "resid_post") -> InterventionTarget:
         """Get union target from attribution or coarse patching aggregates."""
-        # Use attribution patching results if available
         if self.att_agg:
             target = self.att_agg.get_target()
             if target:
                 return target
 
-        # Fall back to coarse patching aggregated results
-        if self.coarse_agg:
-            return self.coarse_agg.get_union_target(component=component)
+        if component in self.coarse_agg_by_component:
+            return self.coarse_agg_by_component[component].get_union_target(
+                component=component
+            )
 
         return InterventionTarget.all(component=component)
 
@@ -197,14 +196,17 @@ class ExperimentContext:
 
     # ─── Save/Load methods for cached results ───
 
-    def get_coarse_pair_path(self, pair_idx: int, component: str | None = None) -> Path:
-        if component:
-            return self.output_dir / f"pair_{pair_idx}" / f"sweep_{component}" / "coarse_results.json"
-        return self.output_dir / f"pair_{pair_idx}" / "coarse_results.json"
+    def get_coarse_pair_path(self, pair_idx: int, component: str) -> Path:
+        return (
+            self.output_dir
+            / f"pair_{pair_idx}"
+            / f"sweep_{component}"
+            / "coarse_results.json"
+        )
 
-    def save_coarse_pair(self, pair_idx: int, component: str | None = None) -> None:
+    def save_coarse_pair(self, pair_idx: int, component: str) -> None:
         """Save per-pair coarse patching results for re-visualization."""
-        key = (pair_idx, component) if component else pair_idx
+        key = (pair_idx, component)
         if key in self.coarse_patching:
             result = self.coarse_patching[key]
             path = self.get_coarse_pair_path(pair_idx, component)
@@ -212,33 +214,37 @@ class ExperimentContext:
             result.pop_heavy()
             save_json(result.to_dict(), path)
 
-    def load_coarse_pair(self, pair_idx: int, component: str | None = None) -> bool:
+    def load_coarse_pair(self, pair_idx: int, component: str) -> bool:
         """Load per-pair coarse patching results."""
         path = self.get_coarse_pair_path(pair_idx, component)
-        key = (pair_idx, component) if component else pair_idx
         if path.exists():
-            self.coarse_patching[key] = CoarseActPatchResults.from_json(path)
+            self.coarse_patching[(pair_idx, component)] = CoarseActPatchResults.from_json(
+                path
+            )
             return True
         return False
-
-    def get_coarse_agg_path(self) -> Path:
-        return self.output_dir / "coarse_agg.json"
 
     def save_coarse_agg(self) -> None:
-        if self.coarse_agg:
-            path = self.get_coarse_agg_path()
+        """Save all component aggregated results."""
+        for component, agg in self.coarse_agg_by_component.items():
+            path = self.output_dir / f"coarse_agg_{component}.json"
             ensure_dir(path.parent)
             log(f"[coarse] Saving aggregated results to {path}...")
-            self.coarse_agg.pop_heavy()
-            save_json(self.coarse_agg.to_dict(), path)
-            log("[coarse] Saved.")
+            agg.pop_heavy()
+            save_json(agg.to_dict(), path)
+        log("[coarse] Saved.")
 
-    def load_coarse_agg(self) -> bool:
-        path = self.get_coarse_agg_path()
-        if path.exists():
-            self.coarse_agg = CoarseActPatchAggregatedResults.from_json(path)
-            return True
-        return False
+    def load_coarse_agg(self, components: list[str]) -> bool:
+        """Load aggregated results for specified components."""
+        any_loaded = False
+        for component in components:
+            path = self.output_dir / f"coarse_agg_{component}.json"
+            if path.exists():
+                self.coarse_agg_by_component[component] = (
+                    CoarseActPatchAggregatedResults.from_json(path)
+                )
+                any_loaded = True
+        return any_loaded
 
     def get_att_agg_path(self) -> Path:
         return self.output_dir / "att_agg.json"

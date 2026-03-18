@@ -24,12 +24,12 @@ from src.common import TimeValue, TIME_UNIT_TO_YEARS, TIME_UNITS
 # Different label pair styles
 SIMPLE_LABEL_STYLES: list[tuple[str, str]] = [
     ("a)", "b)"),
-    ("x.", "y."),
-    # ("[i]", "[ii]"),
-    # ("<1>", "<2>"),
+    ("[i]", "[ii]"),
 ]
 # Additional styles for full variation grid - varied but natural formats
 MORE_LABEL_STYLES: list[tuple[str, str]] = [
+    ("x.", "y."),
+    ("<1>", "<2>"),
     ("(AA)", "(BB)"),
     ("{Option A}", "{Option B}"),
     ("Choice (a)", "Choice (b)"),

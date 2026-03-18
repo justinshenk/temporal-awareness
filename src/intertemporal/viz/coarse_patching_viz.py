@@ -23,7 +23,7 @@ from ...activation_patching.coarse import (
 from ...common import profile
 from ...common.contrastive_pair import ContrastivePair
 from ...viz.token_coloring import PairTokenColoring
-from .coarse.aggregated import plot_aggregated_structured
+from .coarse.aggregated import plot_aggregated_structured, plot_all_aggregated_slices
 from .coarse.comparison import plot_comparison
 from .coarse.component_comparison import plot_all_component_comparisons
 from .coarse.redundancy import plot_redundancy
@@ -128,3 +128,35 @@ def visualize_component_comparison(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     plot_all_component_comparisons(results_by_component, output_dir, step_size)
+
+
+@profile
+def visualize_all_aggregated(
+    agg_by_component: dict[str, CoarseActPatchAggregatedResults],
+    output_dir: Path,
+) -> None:
+    """Visualize all aggregated results with new folder structure.
+
+    Creates:
+        output_dir/
+          all/
+            sweep_resid_post/layer_sweep/denoising/...
+            sweep_attn_out/...
+            component_comparison/
+          same_labels/
+            sweep_resid_post/...
+            component_comparison/
+          ... (other analysis slices)
+
+    Args:
+        agg_by_component: Dict mapping component name to aggregated results
+        output_dir: Base output directory (typically agg/)
+    """
+    if not agg_by_component:
+        print("[viz] No aggregated results to visualize")
+        return
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    plot_all_aggregated_slices(agg_by_component, output_dir)

@@ -18,6 +18,7 @@ from ...viz.token_coloring import get_token_coloring_for_pair
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
 from ..viz import (
+    visualize_all_aggregated,
     visualize_att_patching,
     visualize_coarse_patching,
     visualize_component_comparison,
@@ -73,20 +74,13 @@ def step_coarse_activation_patching(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Run layer and position sweeps on each contrastive pair for each component."""
-    # Support both old "component" (single) and new "components" (list) config
-    components = ctx.cfg.coarse_patch.get("components")
-    if components is None:
-        # Fall back to single component for backwards compatibility
-        single_component = ctx.cfg.coarse_patch.get("component", "resid_post")
-        components = [single_component]
+    components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
 
-    # Run sweeps for each component
     for component in components:
         ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
         all_loaded = True
 
         for pair_idx, pair in enumerate(ctx.pairs):
-            # Try to load cached result first
             if try_loading_data and ctx.load_coarse_pair(pair_idx, component):
                 result = ctx.coarse_patching[(pair_idx, component)]
                 ctx.coarse_agg_by_component[component].add(result)
@@ -110,9 +104,6 @@ def step_coarse_activation_patching(
             log(f"[coarse] All pairs loaded from cache for component: {component}")
         ctx.coarse_agg_by_component[component].print_summary()
 
-    # Also save combined aggregated results (first component for backwards compat)
-    if components:
-        ctx.coarse_agg = ctx.coarse_agg_by_component[components[0]]
     ctx.save_coarse_agg()
 
 
@@ -150,11 +141,7 @@ def step_visualize_results(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Visualize all patching results."""
-    # Get components from config
-    components = ctx.cfg.coarse_patch.get("components")
-    if components is None:
-        single_component = ctx.cfg.coarse_patch.get("component", "resid_post")
-        components = [single_component]
+    components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
 
     has_per_pair_results = (
         bool(ctx.att_patching) or bool(ctx.coarse_patching) or bool(ctx.fine_patching)
@@ -162,21 +149,13 @@ def step_visualize_results(
 
     # Try loading cached results if needed
     if not has_per_pair_results and try_loading_data:
-        # Try loading per-component results first
         for component in components:
-            if ctx.coarse_agg_by_component.get(component):
-                n_samples = ctx.coarse_agg_by_component[component].n_samples
-                log(f"[viz] Loading {n_samples} per-pair results for {component}...")
-                for pair_idx in range(n_samples):
+            agg = ctx.coarse_agg_by_component.get(component)
+            if agg:
+                log(f"[viz] Loading {agg.n_samples} per-pair results for {component}...")
+                for pair_idx in range(agg.n_samples):
                     if ctx.load_coarse_pair(pair_idx, component):
                         has_per_pair_results = True
-        # Fall back to old single-component format
-        if not has_per_pair_results and ctx.coarse_agg:
-            n_samples = ctx.coarse_agg.n_samples
-            log(f"[viz] Loading {n_samples} per-pair results from cache...")
-            for pair_idx in range(n_samples):
-                if ctx.load_coarse_pair(pair_idx):
-                    has_per_pair_results = True
 
     if has_per_pair_results:
         for pair_idx, pair in enumerate(ctx.pairs):
@@ -214,12 +193,6 @@ def step_visualize_results(
                         ctx.coarse_patching[key], sweep_dir, coloring, pair=pair
                     )
 
-            # Backwards compat: also check old single-key format
-            if pair_idx in ctx.coarse_patching:
-                visualize_coarse_patching(
-                    ctx.coarse_patching[pair_idx], pair_out_dir, coloring, pair=pair
-                )
-
             if pair_idx in ctx.fine_patching:
                 visualize_fine_patching(
                     ctx.fine_patching[pair_idx],
@@ -229,11 +202,11 @@ def step_visualize_results(
                 )
 
             # Multi-component comparison plots (when multiple components available)
-            results_by_component = {}
-            for component in components:
-                key = (pair_idx, component)
-                if key in ctx.coarse_patching:
-                    results_by_component[component] = ctx.coarse_patching[key]
+            results_by_component = {
+                component: ctx.coarse_patching[(pair_idx, component)]
+                for component in components
+                if (pair_idx, component) in ctx.coarse_patching
+            }
             if len(results_by_component) > 1:
                 visualize_component_comparison(
                     results_by_component, pair_out_dir / "component_comparison"
@@ -241,22 +214,16 @@ def step_visualize_results(
     else:
         log("[viz] No per-pair results to visualize")
 
-    # Aggregated visualizations
+    # Aggregated visualizations with new folder structure
+    # Structure: agg/<analysis_slice>/sweep_<component>/... and agg/<slice>/component_comparison/
     agg_out_dir = ctx.output_dir / "agg"
     if ctx.att_agg:
-        visualize_att_patching(ctx.att_agg.denoising_agg, agg_out_dir / "denoising")
-        visualize_att_patching(ctx.att_agg.noising_agg, agg_out_dir / "noising")
+        visualize_att_patching(ctx.att_agg.denoising_agg, agg_out_dir / "all" / "att_patching" / "denoising")
+        visualize_att_patching(ctx.att_agg.noising_agg, agg_out_dir / "all" / "att_patching" / "noising")
 
-    # Aggregated coarse patching per component
-    for component in components:
-        if component in ctx.coarse_agg_by_component:
-            visualize_coarse_patching(
-                ctx.coarse_agg_by_component[component], agg_out_dir / f"sweep_{component}"
-            )
-
-    # Backwards compat: also visualize single coarse_agg
-    if ctx.coarse_agg and not ctx.coarse_agg_by_component:
-        visualize_coarse_patching(ctx.coarse_agg, agg_out_dir)
+    # All coarse patching aggregated visualizations (sweep plots + component comparison)
+    if ctx.coarse_agg_by_component:
+        visualize_all_aggregated(ctx.coarse_agg_by_component, agg_out_dir)
 
     visualize_fine_patching(ctx.fine_agg, agg_out_dir)
 
