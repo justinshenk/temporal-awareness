@@ -12,7 +12,7 @@ from ...common.logging import log, log_progress
 from ...common.token_tree import TokenTree
 from ...common.contrastive_pair import ContrastivePair
 from ...inference import (
-    get_recommended_backend_internals,
+    get_recommended_backend_interventions,
     InterventionTarget,
 )
 from ...inference.backends import ModelBackend
@@ -44,7 +44,7 @@ class ExperimentContext:
     output_dir: Path | None = field(default=None)
     timestamp: str = field(default_factory=get_timestamp)
 
-    # Backend override (None = auto-detect via get_recommended_backend_internals)
+    # Backend override (None = auto-detect via get_recommended_backend_interventions)
     backend: str | None = None
 
     def __post_init__(self) -> None:
@@ -77,7 +77,7 @@ class ExperimentContext:
             if self.backend:
                 backend = ModelBackend(self.backend)
             else:
-                backend = get_recommended_backend_internals()
+                backend = get_recommended_backend_interventions()
             self._runner = BinaryChoiceRunner(
                 self.pref_data.model, device=get_device(), backend=backend
             )
