@@ -94,6 +94,7 @@ def attribute_for_choice(
         methods=settings.methods,
         ig_steps=settings.ig_steps,
         grad_at=settings.grad_at,
+        quadrature=settings.quadrature_method,
     )
 
     results = _build_results(raw_results, layers)

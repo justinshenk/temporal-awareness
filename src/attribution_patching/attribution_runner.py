@@ -14,6 +14,7 @@ from .attribution_settings import GradPoint
 from .eap import compute_eap
 from .eap_ig import compute_eap_ig
 from .embedding_alignment import PaddingStrategy
+from .quadrature import QuadratureMethod
 from .standard_attribution import compute_attribution
 
 if TYPE_CHECKING:
@@ -30,6 +31,7 @@ def _run_methods_for_grad_point(
     ig_steps: int,
     padding_strategy: PaddingStrategy,
     grad_at: GradTarget,
+    quadrature: QuadratureMethod,
 ) -> dict[str, np.ndarray]:
     """Run attribution methods for a single gradient point."""
     results = {}
@@ -52,7 +54,7 @@ def _run_methods_for_grad_point(
         with P("eap_ig"):
             eap_ig = compute_eap_ig(
                 runner, pair, metric, mode, ig_steps, padding_strategy,
-                grad_at=grad_at
+                grad_at=grad_at, quadrature=quadrature
             )
             results["eap_ig_attn"] = eap_ig["attn"]
             results["eap_ig_mlp"] = eap_ig["mlp"]
@@ -73,6 +75,7 @@ def run_all_attribution_methods(
     ig_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
     grad_at: GradPoint = "both",
+    quadrature: QuadratureMethod = QuadratureMethod.MIDPOINT,
 ) -> dict[str, np.ndarray]:
     """Run specified attribution methods and return results.
 
@@ -88,6 +91,7 @@ def run_all_attribution_methods(
         ig_steps: Integration steps for EAP-IG
         padding_strategy: How to pad segments for EAP-IG
         grad_at: Where to compute gradients ("clean", "corrupted", or "both")
+        quadrature: Quadrature method for EAP-IG integration
 
     Returns:
         Dict with keys like 'resid', 'attn', 'mlp', 'eap_attn', 'eap_ig_attn', etc.
@@ -101,14 +105,15 @@ def run_all_attribution_methods(
         for point in ["clean", "corrupted"]:
             point_results = _run_methods_for_grad_point(
                 runner, pair, metric, mode, methods, ig_steps,
-                padding_strategy, point
+                padding_strategy, point, quadrature
             )
             for key, val in point_results.items():
                 results[f"{key}_{point}"] = val
         return results
 
     return _run_methods_for_grad_point(
-        runner, pair, metric, mode, methods, ig_steps, padding_strategy, grad_at
+        runner, pair, metric, mode, methods, ig_steps, padding_strategy, grad_at,
+        quadrature
     )
 
 

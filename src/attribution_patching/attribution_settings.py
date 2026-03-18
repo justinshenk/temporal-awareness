@@ -6,11 +6,13 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from ..common.base_schema import BaseSchema
+from .quadrature import QuadratureMethod
 
 
 Method = Literal["standard", "eap", "eap_ig"]
 Component = Literal["resid_post", "attn_out", "mlp_out"]
 GradPoint = Literal["clean", "corrupted", "both"]
+Quadrature = Literal["midpoint", "gauss-legendre", "gauss-chebyshev"]
 
 
 @dataclass
@@ -22,12 +24,19 @@ class AttributionSettings(BaseSchema):
         methods: Attribution methods to use
         ig_steps: Integration steps for EAP-IG
         grad_at: Where to compute gradients ("clean", "corrupted", or "both")
+        quadrature: Quadrature method for EAP-IG integration
     """
 
     components: list[Component] = field(default_factory=lambda: ["resid_post"])
     methods: list[Method] = field(default_factory=lambda: ["standard", "eap"])
     ig_steps: int = 10
     grad_at: GradPoint = "both"
+    quadrature: Quadrature = "midpoint"
+
+    @property
+    def quadrature_method(self) -> QuadratureMethod:
+        """Get the QuadratureMethod enum value."""
+        return QuadratureMethod(self.quadrature)
 
     @classmethod
     def all(cls) -> "AttributionSettings":

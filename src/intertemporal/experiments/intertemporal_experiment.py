@@ -69,6 +69,7 @@ def step_attribution_patching(
         methods=att_cfg.get("methods", ["standard", "eap"]),
         ig_steps=att_cfg.get("ig_steps", 10),
         grad_at=att_cfg.get("grad_at", "both"),
+        quadrature=att_cfg.get("quadrature", "midpoint"),
     )
 
     ctx.att_agg = AttrPatchAggregatedResults()

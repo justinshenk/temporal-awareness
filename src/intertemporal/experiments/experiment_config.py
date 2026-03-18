@@ -19,13 +19,15 @@ COARSE_PATCH: dict = {
 # Default attribution patching settings (empty dict = skip)
 # methods: "standard", "eap", "eap_ig"
 # components: "resid_post", "attn_out", "mlp_out"
-# grad_at: "clean", "corrupted", "both"
+# grad_at: ["clean"], ["corrupted"], or ["clean", "corrupted"]
+# quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 ATT_PATCH: dict = {
     "enabled": False,
-    "methods": ["standard", "eap"],
+    "methods": ["standard", "eap", "eap_ig"],
     "components": ["resid_post", "attn_out", "mlp_out"],
-    "ig_steps": 10,
-    "grad_at": "both",
+    "ig_steps": [20],
+    "grad_at": ["clean", "corrupted"],
+    "quadrature": ["midpoint", "gauss-legendre", "gauss-chebyshev"],
 }
 
 
