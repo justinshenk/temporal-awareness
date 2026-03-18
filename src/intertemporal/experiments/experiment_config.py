@@ -11,6 +11,7 @@ from ..prompt import PromptDatasetConfig
 # Default coarse patching settings (empty dict or empty lists = skip)
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
+    "enabled": True,
     "layer_steps": [1],
     "pos_steps": [1],
     "components": ["resid_pre", "resid_post", "attn_out", "mlp_out"],
@@ -22,12 +23,18 @@ COARSE_PATCH: dict = {
 # grad_at: ["clean"], ["corrupted"], or ["clean", "corrupted"]
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 ATT_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "methods": ["standard", "eap", "eap_ig"],
     "components": ["resid_post", "attn_out", "mlp_out"],
-    "ig_steps": [20],
+    "ig_steps": 20,
     "grad_at": ["clean", "corrupted"],
     "quadrature": ["midpoint", "gauss-legendre", "gauss-chebyshev"],
+}
+
+# Default visualization settings
+VIZ: dict = {
+    "enabled": True,
+    "regenerate_all": False,
 }
 
 
@@ -46,6 +53,9 @@ class ExperimentConfig(BaseSchema):
 
     # Attribution patching settings
     att_patch: dict = field(default_factory=lambda: ATT_PATCH.copy())
+
+    # Visualization settings
+    viz: dict = field(default_factory=lambda: VIZ.copy())
 
     @property
     def name(self) -> str:
