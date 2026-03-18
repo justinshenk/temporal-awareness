@@ -67,11 +67,11 @@ def visualize_pair_results(
     )
 
     if coloring is None:
-        log(f"[viz] Skipping pair {pair_idx}: no coloring available")
-        return
+        log(f"[viz] Pair {pair_idx}: no coloring available (position labels will be numeric)")
 
-    position_labels = coloring.get_position_labels("short")
-    section_markers = coloring.get_section_markers("short")
+    # In intertemporal experiments, "short" corresponds to "clean" trajectory
+    position_labels = coloring.get_position_labels("clean") if coloring else None
+    section_markers = coloring.get_section_markers("clean") if coloring else None
 
     # Step 2: Attribution patching visualizations
     if att_result is not None:
@@ -123,7 +123,13 @@ def _ensure_tokenization_and_get_coloring(
 ) -> PairTokenColoring | None:
     """Ensure tokenization viz exists and return coloring.
 
-    Tries to load from cache first, otherwise creates fresh visualization.
+    Tries multiple sources in order of preference:
+    1. tokenization_viz_cache.json (full data with decoded tokens)
+    2. token_tree.json (fallback with token IDs and prompt lengths)
+    3. ContrastivePair object (if provided)
+
+    The function degrades gracefully - visualizations will work even with
+    partial data, just with less rich annotations.
 
     Returns:
         PairTokenColoring or None if unavailable
@@ -147,10 +153,19 @@ def _ensure_tokenization_and_get_coloring(
             # Reload viz_data after creating
             viz_data = TokenizationVizData.load(pair_out_dir)
 
-    # Get coloring
+    # Get coloring - try multiple sources in order of preference
     if viz_data is not None:
         return viz_data.get_coloring()
-    elif pair is not None:
+
+    # Fallback 1: Try to load from token_tree.json
+    viz_data_from_tree = TokenizationVizData.from_token_tree(pair_out_dir)
+    if viz_data_from_tree is not None:
+        log(f"[viz] Pair {pair_idx}: using token_tree.json fallback for coloring")
+        return viz_data_from_tree.get_coloring()
+
+    # Fallback 2: Use ContrastivePair if provided
+    if pair is not None:
         return get_token_coloring_for_pair(pair)
-    else:
-        return None
+
+    # No coloring available
+    return None

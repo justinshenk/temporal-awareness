@@ -9,7 +9,7 @@ import torch
 
 from ..common.contrastive_pair import ContrastivePair
 from ..common.hook_utils import attribution_filter, hook_name
-from ..common.profiler import P
+from ..common.profiler import P, profile
 from ..common.token_positions import build_position_arrays
 from ..common.patching_types import GradTarget, PatchingMode
 
@@ -64,6 +64,7 @@ def _compute_component_gradients(
     return result
 
 
+@profile
 def compute_eap(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,

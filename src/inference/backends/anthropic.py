@@ -42,8 +42,8 @@ class AnthropicBackend(Backend):
     def is_cloud_api(self) -> bool:
         return True
 
-    # Default model
-    DEFAULT_MODEL = "claude-sonnet-4-20250514"
+    # Default Anthropic model
+    ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-20250514"
 
     def __init__(self, runner: Any, model: str | None = None):
         """Initialize Anthropic backend.
@@ -53,7 +53,7 @@ class AnthropicBackend(Backend):
             model: Anthropic model name (default: claude-sonnet-4-20250514)
         """
         super().__init__(runner)
-        self._model = model or self.DEFAULT_MODEL
+        self._model = model or self.ANTHROPIC_DEFAULT_MODEL
         # Use cl100k_base as approximation for Claude tokenization
         self._tokenizer = APITokenizer(encoding_name="cl100k_base")
         self._client = None

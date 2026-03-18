@@ -14,8 +14,8 @@ from .sweep_runners import run_sanity_check, run_layer_sweep, run_position_sweep
 def run_coarse_act_patching(
     runner: BinaryChoiceRunner,
     pair: ContrastivePair,
-    min_layer_depth: float = 0.001,
-    max_layer_depth: float = 0.999,
+    min_layer_depth: float = 0.0,
+    max_layer_depth: float = 1.0,
     component: str | None = None,
     layer_step_sizes: list[int] | None = None,
     pos_step_sizes: list[int] | None = None,

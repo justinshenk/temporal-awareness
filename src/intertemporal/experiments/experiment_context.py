@@ -226,8 +226,8 @@ class ExperimentContext:
         """Load per-pair coarse patching results."""
         path = self.get_coarse_pair_path(pair_idx, component)
         if path.exists():
-            self.coarse_patching[(pair_idx, component)] = CoarseActPatchResults.from_json(
-                path
+            self.coarse_patching[(pair_idx, component)] = (
+                CoarseActPatchResults.from_json(path)
             )
             return True
         return False

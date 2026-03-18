@@ -16,7 +16,7 @@ from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from .preference_querier import PreferenceQuerier, PreferenceQueryConfig
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
-from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
+from ..data.default_configs import FULL_EXPERIMENT_CONFIG
 from ...common.profiler import P
 
 
@@ -32,8 +32,8 @@ def generate_preference_data(
 ) -> PreferenceDataset:
     """Generate preference data on-the-fly by querying a model."""
 
-    model = model or DEFAULT_MODEL
-    config_dict = dataset_config or DEFAULT_PROMPT_DATASET_CONFIG
+    model = model or FULL_EXPERIMENT_CONFIG["model"]
+    config_dict = dataset_config or FULL_EXPERIMENT_CONFIG["dataset_config"]
 
     # Generate prompt dataset
     with P("generate_prompt_dataset"):
