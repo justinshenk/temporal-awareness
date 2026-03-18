@@ -164,6 +164,10 @@ def step_visualize_results(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Visualize all patching results."""
+    if not ctx.cfg.viz.get("enabled", True):
+        log("[viz] Visualization disabled, skipping")
+        return
+
     components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
 
     has_per_pair_results = (
@@ -258,3 +262,106 @@ def run_experiment(
     step_visualize_results(ctx, try_loading_data=try_loading_data)
 
     return ctx
+
+
+def regenerate_all_visualizations(experiments_dir: Path) -> None:
+    """Regenerate visualizations for all experiments in the directory.
+
+    Args:
+        experiments_dir: Path to the experiments directory containing experiment folders
+    """
+    experiments_dir = Path(experiments_dir)
+    if not experiments_dir.exists():
+        log(f"[viz] Experiments directory does not exist: {experiments_dir}")
+        return
+
+    # Find all experiment directories (those with pair_0 subdirectory)
+    exp_dirs = []
+    for d in experiments_dir.iterdir():
+        if d.is_dir() and (d / "pair_0").exists():
+            exp_dirs.append(d)
+
+    if not exp_dirs:
+        log("[viz] No experiment directories found")
+        return
+
+    log(f"[viz] Found {len(exp_dirs)} experiment directories")
+
+    for exp_dir in sorted(exp_dirs):
+        log(f"\n[viz] Regenerating visualizations for: {exp_dir.name}")
+        _regenerate_experiment_visualizations(exp_dir)
+
+
+def _regenerate_experiment_visualizations(exp_dir: Path) -> None:
+    """Regenerate visualizations for a single experiment directory.
+
+    Args:
+        exp_dir: Path to the experiment directory
+    """
+    from ...activation_patching.coarse import CoarseActPatchAggregatedResults
+
+    # Detect available components from cached files
+    components = []
+    pair_0 = exp_dir / "pair_0"
+    if pair_0.exists():
+        for d in pair_0.iterdir():
+            if d.is_dir() and d.name.startswith("sweep_"):
+                comp = d.name.replace("sweep_", "")
+                if (d / "coarse_results.json").exists():
+                    components.append(comp)
+
+    if not components:
+        log(f"[viz] No cached component results found in {exp_dir}")
+        return
+
+    log(f"[viz] Found components: {components}")
+
+    # Load aggregated results for each component
+    coarse_agg_by_component = {}
+    for component in components:
+        agg_path = exp_dir / f"coarse_agg_{component}.json"
+        if agg_path.exists():
+            coarse_agg_by_component[component] = CoarseActPatchAggregatedResults.from_json(
+                agg_path
+            )
+            log(f"[viz] Loaded aggregated results for {component}")
+
+    # Regenerate aggregated visualizations
+    if coarse_agg_by_component:
+        agg_out_dir = exp_dir / "agg"
+        visualize_all_aggregated(coarse_agg_by_component, agg_out_dir)
+        log(f"[viz] Regenerated aggregated visualizations")
+
+    # Regenerate per-pair visualizations
+    pair_idx = 0
+    while True:
+        pair_dir = exp_dir / f"pair_{pair_idx}"
+        if not pair_dir.exists():
+            break
+
+        # Load coarse results for this pair
+        from ...activation_patching.coarse import CoarseActPatchResults
+
+        coarse_results = {}
+        for component in components:
+            results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
+            if results_path.exists():
+                coarse_results[component] = CoarseActPatchResults.from_json(results_path)
+
+        if coarse_results:
+            visualize_pair_results(
+                pair_idx=pair_idx,
+                pair_out_dir=pair_dir,
+                pair=None,  # No model needed for cache-based regeneration
+                runner=None,
+                att_result=None,
+                coarse_results=coarse_results,
+                fine_result=None,
+                try_loading_cache=True,
+                save_token_trees_fn=None,
+            )
+            log(f"[viz] Regenerated pair {pair_idx} visualizations")
+
+        pair_idx += 1
+
+    log(f"[viz] Done regenerating {exp_dir.name}")
