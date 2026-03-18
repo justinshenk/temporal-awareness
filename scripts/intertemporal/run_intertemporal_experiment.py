@@ -93,6 +93,13 @@ def parse_args() -> argparse.Namespace:
         metavar="JSON",
         help='Override coarse patching settings as JSON, e.g. \'{"component": "mlp_out"}\'',
     )
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default=None,
+        choices=["pyvene", "transformerlens", "huggingface", "nnsight"],
+        help="Override backend for model internals (default: auto-detect)",
+    )
 
     return parser.parse_args()
 
@@ -107,6 +114,9 @@ def main() -> int:
 
     if args.model:
         config_dict["model"] = args.model
+
+    if args.backend:
+        config_dict["backend"] = args.backend
 
     if args.coarse:
         coarse_overrides = json.loads(args.coarse)

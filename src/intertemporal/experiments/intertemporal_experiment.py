@@ -75,7 +75,7 @@ def step_coarse_activation_patching(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Run layer and position sweeps on each contrastive pair for each component."""
-    components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
+    components = ctx.cfg.coarse_patch.get("components", [])
 
     for component in components:
         ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
@@ -85,10 +85,14 @@ def step_coarse_activation_patching(
             if try_loading_data and ctx.load_coarse_pair(pair_idx, component):
                 result = ctx.coarse_patching[(pair_idx, component)]
                 ctx.coarse_agg_by_component[component].add(result)
-                log(f"[coarse] Loaded cached pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}")
+                log(
+                    f"[coarse] Loaded cached pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+                )
             else:
                 all_loaded = False
-                log(f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}")
+                log(
+                    f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+                )
                 result = run_coarse_act_patching(
                     ctx.runner,
                     pair,
@@ -153,14 +157,18 @@ def step_visualize_results(
         for component in components:
             agg = ctx.coarse_agg_by_component.get(component)
             if agg:
-                log(f"[viz] Loading {agg.n_samples} per-pair results for {component}...")
+                log(
+                    f"[viz] Loading {agg.n_samples} per-pair results for {component}..."
+                )
                 for pair_idx in range(agg.n_samples):
                     if ctx.load_coarse_pair(pair_idx, component):
                         has_per_pair_results = True
 
     if has_per_pair_results:
         # Determine number of pairs from coarse patching results
-        n_pairs = len(ctx.coarse_patching) // len(components) if ctx.coarse_patching else 0
+        n_pairs = (
+            len(ctx.coarse_patching) // len(components) if ctx.coarse_patching else 0
+        )
 
         for pair_idx in range(n_pairs):
             pair_out_dir = ctx.output_dir / f"pair_{pair_idx}"
@@ -169,12 +177,16 @@ def step_visualize_results(
             tokenization_png = pair_out_dir / "tokenization.png"
             if not tokenization_png.exists():
                 if try_loading_data and visualize_tokenization_from_cache(pair_out_dir):
-                    log(f"[viz] Regenerated tokenization plot from cache for pair {pair_idx}")
+                    log(
+                        f"[viz] Regenerated tokenization plot from cache for pair {pair_idx}"
+                    )
                 else:
                     # Need the model - get pair and create visualization with cache
                     pair = ctx.pairs[pair_idx]
                     ctx.save_token_trees(pair_idx, pair, pair_out_dir)
-                    visualize_tokenization([pair], ctx.runner, pair_out_dir, max_pairs=1)
+                    visualize_tokenization(
+                        [pair], ctx.runner, pair_out_dir, max_pairs=1
+                    )
 
             # Get coloring for other visualizations
             # Try to load from cache first, otherwise use pair
@@ -244,8 +256,13 @@ def step_visualize_results(
     # Structure: agg/<analysis_slice>/sweep_<component>/... and agg/<slice>/component_comparison/
     agg_out_dir = ctx.output_dir / "agg"
     if ctx.att_agg:
-        visualize_att_patching(ctx.att_agg.denoising_agg, agg_out_dir / "all" / "att_patching" / "denoising")
-        visualize_att_patching(ctx.att_agg.noising_agg, agg_out_dir / "all" / "att_patching" / "noising")
+        visualize_att_patching(
+            ctx.att_agg.denoising_agg,
+            agg_out_dir / "all" / "att_patching" / "denoising",
+        )
+        visualize_att_patching(
+            ctx.att_agg.noising_agg, agg_out_dir / "all" / "att_patching" / "noising"
+        )
 
     # All coarse patching aggregated visualizations (sweep plots + component comparison)
     if ctx.coarse_agg_by_component:

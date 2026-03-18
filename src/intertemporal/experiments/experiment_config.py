@@ -13,7 +13,7 @@ from ..prompt import PromptDatasetConfig
 COARSE_PATCH: dict = {
     "layer_steps": [1],
     "pos_steps": [1],
-    "components": ["resid_post"],
+    "components": ["resid_pre", "resid_post", "attn_out", "mlp_out"],
 }
 
 
@@ -26,6 +26,9 @@ class ExperimentConfig(BaseSchema):
     dataset_config: dict
     max_samples: int | None = None
     n_pairs: int | None = None
+
+    # Backend override (None = auto-detect via get_recommended_backend_internals)
+    backend: str | None = None
 
     # Coarse patching settings
     coarse_patch: dict = field(default_factory=lambda: COARSE_PATCH.copy())
