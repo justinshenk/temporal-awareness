@@ -7,17 +7,12 @@ from typing import Any, Optional, Sequence
 import torch
 
 try:
-    import pyvene as pv
     from pyvene import (
         IntervenableConfig,
         IntervenableModel,
         RepresentationConfig,
     )
-    from pyvene.models.interventions import (
-        AdditionIntervention,
-        VanillaIntervention,
-        SourcelessIntervention,
-    )
+    from pyvene.models.interventions import SourcelessIntervention
 
     PYVENE_AVAILABLE = True
 except ImportError:
@@ -25,6 +20,79 @@ except ImportError:
 
 from .model_backend import Backend
 from ..interventions import Intervention
+
+
+def _tile_to_match_flattened(values: torch.Tensor, base: torch.Tensor) -> torch.Tensor:
+    """Tile values to match pyvene's flattened activation shape.
+
+    Pyvene flattens [batch, seq, hidden] to [batch, seq*hidden].
+    This function handles values of various shapes:
+    - [hidden] → tile for each position
+    - [seq, hidden] → flatten and truncate/pad to match actual seq
+    """
+    if base.dim() != 2:
+        # Not flattened by pyvene, use regular broadcasting
+        while values.dim() < base.dim():
+            values = values.unsqueeze(0)
+        return values.expand_as(base)
+
+    if values.dim() == 1:
+        # base is [batch, seq*hidden], values is [hidden]
+        hidden_size = values.shape[0]
+        seq_len = base.shape[1] // hidden_size
+        # Tile values for each position
+        return values.unsqueeze(0).repeat(1, seq_len)  # [1, seq*hidden]
+    elif values.dim() == 2:
+        # base is [batch, seq*hidden], values is [provided_seq, hidden]
+        provided_seq, hidden_size = values.shape
+        actual_seq = base.shape[1] // hidden_size
+        # Truncate to actual sequence length
+        effective_seq = min(provided_seq, actual_seq)
+        truncated = values[:effective_seq, :]  # [effective_seq, hidden]
+        # Flatten: [effective_seq, hidden] → [effective_seq * hidden]
+        flattened = truncated.flatten()
+        # Pad if needed to match actual_seq * hidden
+        if effective_seq < actual_seq:
+            padding = torch.zeros(
+                (actual_seq - effective_seq) * hidden_size,
+                dtype=values.dtype,
+                device=values.device,
+            )
+            flattened = torch.cat([flattened, padding])
+        return flattened.unsqueeze(0)  # [1, actual_seq * hidden]
+    else:
+        # Higher dimensions - try broadcasting
+        while values.dim() < base.dim():
+            values = values.unsqueeze(0)
+        return values.expand_as(base)
+
+
+class AddIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
+    """Custom intervention that adds values to activations."""
+
+    def __init__(self, embed_dim: int, values: torch.Tensor):
+        if not PYVENE_AVAILABLE:
+            raise ImportError("pyvene is required for PyveneBackend")
+        super().__init__(embed_dim=embed_dim)
+        self.values = values
+
+    def forward(self, base, source=None, subspaces=None):
+        values = _tile_to_match_flattened(self.values, base)
+        return base + values
+
+
+class SetIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
+    """Custom intervention that replaces activations with values."""
+
+    def __init__(self, embed_dim: int, values: torch.Tensor):
+        if not PYVENE_AVAILABLE:
+            raise ImportError("pyvene is required for PyveneBackend")
+        super().__init__(embed_dim=embed_dim)
+        self.values = values
+
+    def forward(self, base, source=None, subspaces=None):
+        values = _tile_to_match_flattened(self.values, base)
+        return values
 
 
 class MultiplyIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
@@ -37,7 +105,8 @@ class MultiplyIntervention(SourcelessIntervention if PYVENE_AVAILABLE else objec
         self.multiplier = multiplier
 
     def forward(self, base, source=None, subspaces=None):
-        return base * self.multiplier
+        mult = _tile_to_match_flattened(self.multiplier, base)
+        return base * mult
 
 
 class InterpolateIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
@@ -53,7 +122,8 @@ class InterpolateIntervention(SourcelessIntervention if PYVENE_AVAILABLE else ob
         self.alpha = alpha
 
     def forward(self, base, source=None, subspaces=None):
-        return base + self.alpha * (self.target_values - base)
+        target = _tile_to_match_flattened(self.target_values, base)
+        return base + self.alpha * (target - base)
 
 
 class PyveneBackend(Backend):
@@ -126,7 +196,11 @@ class PyveneBackend(Backend):
     def _create_intervenable_model(
         self, interventions: Sequence[Intervention]
     ) -> IntervenableModel:
-        """Create an IntervenableModel configured for the given interventions."""
+        """Create an IntervenableModel configured for the given interventions.
+
+        All intervention modes use custom SourcelessIntervention classes to avoid
+        pyvene's model registration requirement (which only supports certain models).
+        """
         configs = []
 
         for intervention in interventions:
@@ -134,36 +208,26 @@ class PyveneBackend(Backend):
                 intervention.layer, intervention.component
             )
 
-            # Create the appropriate pyvene intervention type
+            # Prepare the values tensor
+            values = torch.tensor(
+                intervention.scaled_values,
+                dtype=self.runner.dtype,
+                device=self.runner.device,
+            )
+
+            # All modes use custom sourceless interventions to avoid model registration
             if intervention.mode == "add":
-                # AdditionIntervention adds source to base
-                values = torch.tensor(
-                    intervention.scaled_values,
-                    dtype=self.runner.dtype,
-                    device=self.runner.device,
-                )
-                intervention_type = AdditionIntervention(
+                intervention_obj = AddIntervention(
                     embed_dim=self._d_model,
-                    source_representation=values,
+                    values=values,
                 )
             elif intervention.mode == "set":
-                # VanillaIntervention replaces base with source
-                values = torch.tensor(
-                    intervention.scaled_values,
-                    dtype=self.runner.dtype,
-                    device=self.runner.device,
-                )
-                intervention_type = VanillaIntervention(
+                intervention_obj = SetIntervention(
                     embed_dim=self._d_model,
-                    source_representation=values,
+                    values=values,
                 )
             elif intervention.mode == "mul":
-                values = torch.tensor(
-                    intervention.scaled_values,
-                    dtype=self.runner.dtype,
-                    device=self.runner.device,
-                )
-                intervention_type = MultiplyIntervention(
+                intervention_obj = MultiplyIntervention(
                     embed_dim=self._d_model,
                     multiplier=values,
                 )
@@ -173,7 +237,7 @@ class PyveneBackend(Backend):
                     dtype=self.runner.dtype,
                     device=self.runner.device,
                 )
-                intervention_type = InterpolateIntervention(
+                intervention_obj = InterpolateIntervention(
                     embed_dim=self._d_model,
                     target_values=target_values,
                     alpha=intervention.alpha,
@@ -184,7 +248,7 @@ class PyveneBackend(Backend):
             config = RepresentationConfig(
                 layer=intervention.layer,
                 component=component_path,
-                intervention=intervention_type,
+                intervention=intervention_obj,
             )
             configs.append(config)
 
@@ -251,18 +315,14 @@ class PyveneBackend(Backend):
         if intervention is not None:
             # Use pyvene's IntervenableModel for generation with intervention
             intervenable = self._create_intervenable_model([intervention])
-            unit_locations = self._get_unit_locations([intervention], input_ids.shape[1])
 
             generated = input_ids.clone()
             eos_id = self._tokenizer.eos_token_id
 
             for _ in range(max_new_tokens):
                 with torch.no_grad():
-                    # Run intervened forward pass
-                    _, outputs = intervenable(
-                        {"input_ids": generated},
-                        unit_locations={"sources->base": (None, unit_locations)},
-                    )
+                    # Run intervened forward pass (constant sources apply to all positions)
+                    _, outputs = intervenable({"input_ids": generated})
                     logits = outputs.logits
 
                 if temperature > 0:
@@ -504,13 +564,10 @@ class PyveneBackend(Backend):
             return self.forward(input_ids)
 
         intervenable = self._create_intervenable_model(interventions)
-        unit_locations = self._get_unit_locations(interventions, input_ids.shape[1])
 
         with torch.no_grad():
-            _, outputs = intervenable(
-                {"input_ids": input_ids},
-                unit_locations={"sources->base": (None, unit_locations)},
-            )
+            # Constant sources apply to all positions automatically
+            _, outputs = intervenable({"input_ids": input_ids})
 
         return outputs.logits
 
@@ -555,14 +612,8 @@ class PyveneBackend(Backend):
         try:
             if interventions:
                 intervenable = self._create_intervenable_model(interventions)
-                unit_locations = self._get_unit_locations(
-                    interventions, input_ids.shape[1]
-                )
-
-                _, outputs = intervenable(
-                    {"input_ids": input_ids},
-                    unit_locations={"sources->base": (None, unit_locations)},
-                )
+                # Constant sources apply to all positions automatically
+                _, outputs = intervenable({"input_ids": input_ids})
                 logits = outputs.logits
             else:
                 outputs = self.runner._model(input_ids)
