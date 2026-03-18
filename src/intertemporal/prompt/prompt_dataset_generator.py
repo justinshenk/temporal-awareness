@@ -407,7 +407,6 @@ class PromptDatasetGenerator:
         prompt = Prompt(
             preference_pair=pair,
             time_horizon=time_horizon,
-            text=prompt_text,
         )
 
         # Compute formatting_id based on which label is assigned to short_term
@@ -419,6 +418,7 @@ class PromptDatasetGenerator:
         return PromptSample(
             sample_idx=sample_idx,
             prompt=prompt,
+            text=prompt_text,
             formatting_id=formatting_id,
             context_id=context_id,
         )

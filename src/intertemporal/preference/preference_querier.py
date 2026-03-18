@@ -160,7 +160,7 @@ class PreferenceQuerier:
                 if sample.prompt.time_horizon
                 else None
             )
-            prompt_text = sample.prompt.text
+            prompt_text = sample.text
 
             pair = sample.prompt.preference_pair
             short_label = pair.short_term.label

@@ -65,7 +65,7 @@ def get_recommended_backend_internals() -> ModelBackend:
     Returns:
         ModelBackend: Recommended backend for internals/caching
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.HUGGINGFACE
 
 
 def get_recommended_backend_interventions() -> ModelBackend:
@@ -82,4 +82,4 @@ def get_recommended_backend_interventions() -> ModelBackend:
     Returns:
         ModelBackend: Recommended backend for interventions
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.TRANSFORMERLENS
