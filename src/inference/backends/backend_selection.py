@@ -57,17 +57,15 @@ def get_recommended_backend_inference() -> ModelBackend:
 def get_recommended_backend_internals() -> ModelBackend:
     """Get the recommended backend for capturing internal activations.
 
-    Prioritizes activation caching support and hook infrastructure.
-    TransformerLens has the best hook infrastructure with consistent
-    naming conventions. HuggingFace is a good alternative with
-    standard PyTorch hooks.
+    HuggingFace uses PyTorch hooks for activation caching and interventions.
+    This is the most reliable and compatible option.
 
     Note: MLX does not support activation caching (returns empty dict).
 
     Returns:
         ModelBackend: Recommended backend for internals/caching
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.HUGGINGFACE
 
 
 def get_recommended_backend_interventions() -> ModelBackend:
@@ -76,10 +74,13 @@ def get_recommended_backend_interventions() -> ModelBackend:
     Interventions include activation patching, steering, and other
     modifications to internal model states during forward passes.
 
+    HuggingFace uses PyTorch hooks for reliable intervention support.
+    Pyvene backend is available but may have compatibility issues with
+    newer transformers versions.
+
     Note: MLX does not support interventions.
 
     Returns:
         ModelBackend: Recommended backend for interventions
-
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.HUGGINGFACE

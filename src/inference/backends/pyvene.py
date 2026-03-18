@@ -1,4 +1,4 @@
-"""Pyvene backend implementation."""
+"""Pyvene backend implementation using actual pyvene IntervenableModel."""
 
 from __future__ import annotations
 
@@ -6,35 +6,209 @@ from typing import Any, Optional, Sequence
 
 import torch
 
+try:
+    import pyvene as pv
+    from pyvene import (
+        IntervenableConfig,
+        IntervenableModel,
+        RepresentationConfig,
+    )
+    from pyvene.models.interventions import (
+        AdditionIntervention,
+        VanillaIntervention,
+        SourcelessIntervention,
+    )
+
+    PYVENE_AVAILABLE = True
+except ImportError:
+    PYVENE_AVAILABLE = False
+
 from .model_backend import Backend
 from ..interventions import Intervention
 
 
+class MultiplyIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
+    """Custom intervention that multiplies activations by a value."""
+
+    def __init__(self, embed_dim: int, multiplier: torch.Tensor):
+        if not PYVENE_AVAILABLE:
+            raise ImportError("pyvene is required for PyveneBackend")
+        super().__init__(embed_dim=embed_dim)
+        self.multiplier = multiplier
+
+    def forward(self, base, source=None, subspaces=None):
+        return base * self.multiplier
+
+
+class InterpolateIntervention(SourcelessIntervention if PYVENE_AVAILABLE else object):
+    """Custom intervention that interpolates between base and target values."""
+
+    def __init__(
+        self, embed_dim: int, target_values: torch.Tensor, alpha: float = 0.5
+    ):
+        if not PYVENE_AVAILABLE:
+            raise ImportError("pyvene is required for PyveneBackend")
+        super().__init__(embed_dim=embed_dim)
+        self.target_values = target_values
+        self.alpha = alpha
+
+    def forward(self, base, source=None, subspaces=None):
+        return base + self.alpha * (self.target_values - base)
+
+
 class PyveneBackend(Backend):
-    """Backend using pyvene for interventions."""
+    """Backend using pyvene's IntervenableModel for interventions.
+
+    This backend wraps the model with pyvene's IntervenableModel to leverage
+    pyvene's intervention infrastructure for activation patching and steering.
+    """
 
     def __init__(self, runner: Any, tokenizer: Any):
+        if not PYVENE_AVAILABLE:
+            raise ImportError(
+                "pyvene is required for PyveneBackend. "
+                "Install with: pip install pyvene"
+            )
         super().__init__(runner)
         self._tokenizer = tokenizer
-        if hasattr(self.runner._model, "transformer"):
+
+        # Detect model architecture
+        model = self.runner._model
+        if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
             self._layers_attr = "transformer.h"
-            self._layers = self.runner._model.transformer.h
+            self._layers = model.transformer.h
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.n_embd
-        elif hasattr(self.runner._model, "gpt_neox"):
+            self._d_model = model.config.n_embd
+        elif hasattr(model, "gpt_neox") and hasattr(model.gpt_neox, "layers"):
             self._layers_attr = "gpt_neox.layers"
-            self._layers = self.runner._model.gpt_neox.layers
+            self._layers = model.gpt_neox.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
-        elif hasattr(self.runner._model, "model") and hasattr(
-            self.runner._model.model, "layers"
-        ):
+            self._d_model = model.config.hidden_size
+        elif hasattr(model, "model") and hasattr(model.model, "layers"):
             self._layers_attr = "model.layers"
-            self._layers = self.runner._model.model.layers
+            self._layers = model.model.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
+            self._d_model = model.config.hidden_size
         else:
-            raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
+            raise ValueError(f"Unknown model architecture: {type(model)}")
+
+    def _get_pyvene_component(self, layer_idx: int, component: str) -> str:
+        """Convert layer index and component to pyvene component path.
+
+        Args:
+            layer_idx: Layer index
+            component: Component name (resid_post, attn_out, mlp_out, etc.)
+
+        Returns:
+            Pyvene component path like "model.layers[0].mlp.output"
+        """
+        base = self._layers_attr
+
+        if component == "resid_post":
+            # Output of the entire layer block
+            return f"{base}[{layer_idx}].output"
+        elif component == "resid_pre":
+            # Input to the layer block
+            return f"{base}[{layer_idx}].input"
+        elif component == "mlp_out":
+            return f"{base}[{layer_idx}].mlp.output"
+        elif component == "attn_out":
+            # Attention output varies by architecture
+            if self._layers_attr == "transformer.h":
+                return f"{base}[{layer_idx}].attn.output"
+            elif self._layers_attr == "gpt_neox.layers":
+                return f"{base}[{layer_idx}].attention.output"
+            else:
+                return f"{base}[{layer_idx}].self_attn.output"
+        else:
+            raise ValueError(f"Unknown component: {component}")
+
+    def _create_intervenable_model(
+        self, interventions: Sequence[Intervention]
+    ) -> IntervenableModel:
+        """Create an IntervenableModel configured for the given interventions."""
+        configs = []
+
+        for intervention in interventions:
+            component_path = self._get_pyvene_component(
+                intervention.layer, intervention.component
+            )
+
+            # Create the appropriate pyvene intervention type
+            if intervention.mode == "add":
+                # AdditionIntervention adds source to base
+                values = torch.tensor(
+                    intervention.scaled_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                intervention_type = AdditionIntervention(
+                    embed_dim=self._d_model,
+                    source_representation=values,
+                )
+            elif intervention.mode == "set":
+                # VanillaIntervention replaces base with source
+                values = torch.tensor(
+                    intervention.scaled_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                intervention_type = VanillaIntervention(
+                    embed_dim=self._d_model,
+                    source_representation=values,
+                )
+            elif intervention.mode == "mul":
+                values = torch.tensor(
+                    intervention.scaled_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                intervention_type = MultiplyIntervention(
+                    embed_dim=self._d_model,
+                    multiplier=values,
+                )
+            elif intervention.mode == "interpolate":
+                target_values = torch.tensor(
+                    intervention.target_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                intervention_type = InterpolateIntervention(
+                    embed_dim=self._d_model,
+                    target_values=target_values,
+                    alpha=intervention.alpha,
+                )
+            else:
+                raise ValueError(f"Unknown intervention mode: {intervention.mode}")
+
+            config = RepresentationConfig(
+                layer=intervention.layer,
+                component=component_path,
+                intervention=intervention_type,
+            )
+            configs.append(config)
+
+        intervenable_config = IntervenableConfig(representations=configs)
+        return IntervenableModel(intervenable_config, model=self.runner._model)
+
+    def _get_unit_locations(
+        self, interventions: Sequence[Intervention], seq_len: int
+    ) -> dict:
+        """Convert intervention targets to pyvene unit_locations format."""
+        # pyvene expects unit_locations as a dict mapping intervention index
+        # to position specifications
+        locations = {}
+
+        for idx, intervention in enumerate(interventions):
+            target = intervention.target
+            if target.is_all_positions:
+                # All positions: use range from 0 to seq_len
+                locations[idx] = list(range(seq_len))
+            else:
+                # Specific positions
+                locations[idx] = list(target.positions)
+
+        return locations
 
     def get_tokenizer(self):
         return self._tokenizer
@@ -49,40 +223,18 @@ class PyveneBackend(Backend):
         self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
     ) -> torch.Tensor:
         """Encode text into token IDs tensor."""
-        tokenizer = self.get_tokenizer()
-        ids = tokenizer(
+        ids = self._tokenizer(
             text, return_tensors="pt", add_special_tokens=add_special_tokens
         ).input_ids
         if prepend_bos:
-            bos_id = tokenizer.bos_token_id
+            bos_id = self._tokenizer.bos_token_id
             if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
                 bos = torch.tensor([[bos_id]], dtype=ids.dtype)
                 ids = torch.cat([bos, ids], dim=1)
         return ids.to(self.runner.device)
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.get_tokenizer().decode(token_ids, skip_special_tokens=False)
-
-    def _get_component_module(self, layer_idx: int, component: str):
-        """Get the module for a specific component within a layer."""
-        layer = self._layers[layer_idx]
-        if component in ("resid_post", "resid_pre", "resid_mid"):
-            return layer
-        elif component == "attn_out":
-            if hasattr(layer, "attn"):
-                return layer.attn
-            elif hasattr(layer, "attention"):
-                return layer.attention
-            elif hasattr(layer, "self_attn"):
-                return layer.self_attn
-            else:
-                raise ValueError(
-                    f"Cannot find attention module in layer: {type(layer)}"
-                )
-        elif component == "mlp_out":
-            return layer.mlp
-        else:
-            raise ValueError(f"Unknown component: {component}")
+        return self._tokenizer.decode(token_ids, skip_special_tokens=False)
 
     def generate(
         self,
@@ -92,40 +244,26 @@ class PyveneBackend(Backend):
         intervention: Optional[Intervention],
         past_kv_cache: Any = None,
     ) -> str:
+        """Generate text with optional intervention using pyvene."""
         input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
-        if (
-            intervention is not None
-            and isinstance(intervention, Intervention)
-            and intervention.mode == "add"
-        ):
-            direction = torch.tensor(
-                intervention.scaled_values,
-                dtype=self.runner.dtype,
-                device=self.runner.device,
-            )
-            layer_module = self._layers[intervention.layer]
-
-            def steering_hook(module, input, output):
-                if isinstance(output, tuple):
-                    hidden = output[0]
-                    steered = hidden + direction.unsqueeze(0).unsqueeze(0)
-                    return (steered,) + output[1:]
-                else:
-                    return output + direction.unsqueeze(0).unsqueeze(0)
+        if intervention is not None:
+            # Use pyvene's IntervenableModel for generation with intervention
+            intervenable = self._create_intervenable_model([intervention])
+            unit_locations = self._get_unit_locations([intervention], input_ids.shape[1])
 
             generated = input_ids.clone()
-            eos_id = self.get_tokenizer().eos_token_id
+            eos_id = self._tokenizer.eos_token_id
 
             for _ in range(max_new_tokens):
-                hook = layer_module.register_forward_hook(steering_hook)
-
                 with torch.no_grad():
-                    outputs = self.runner._model(generated)
+                    # Run intervened forward pass
+                    _, outputs = intervenable(
+                        {"input_ids": generated},
+                        unit_locations={"sources->base": (None, unit_locations)},
+                    )
                     logits = outputs.logits
-
-                hook.remove()
 
                 if temperature > 0:
                     probs = torch.softmax(logits[0, -1, :] / temperature, dim=-1)
@@ -139,10 +277,11 @@ class PyveneBackend(Backend):
                 if next_token.item() == eos_id:
                     break
         else:
+            # No intervention - use standard generation
             gen_kwargs = {
                 "max_new_tokens": max_new_tokens,
                 "do_sample": temperature > 0,
-                # Override model's default generation config to ensure greedy decoding
+                "pad_token_id": self._tokenizer.eos_token_id,
                 "repetition_penalty": 1.0,
                 "num_beams": 1,
             }
@@ -165,9 +304,8 @@ class PyveneBackend(Backend):
 
         probs = torch.softmax(logits[0, -1, :], dim=-1)
         result = {}
-        tokenizer = self.get_tokenizer()
         for token_str in target_tokens:
-            ids = tokenizer.encode(token_str, add_special_tokens=False)
+            ids = self._tokenizer.encode(token_str, add_special_tokens=False)
             result[token_str] = probs[ids[0]].item() if ids else 0.0
         return result
 
@@ -186,15 +324,38 @@ class PyveneBackend(Backend):
                 result[tok_id] = probs[tok_id].item()
         return result
 
+    def _get_component_module(self, layer_idx: int, component: str):
+        """Get the module for a specific component within a layer."""
+        layer = self._layers[layer_idx]
+        if component in ("resid_post", "resid_pre", "resid_mid"):
+            return layer
+        elif component == "attn_out":
+            if hasattr(layer, "attn"):
+                return layer.attn
+            elif hasattr(layer, "attention"):
+                return layer.attention
+            elif hasattr(layer, "self_attn"):
+                return layer.self_attn
+            else:
+                raise ValueError(
+                    f"Cannot find attention module in layer: {type(layer)}"
+                )
+        elif component == "mlp_out":
+            return layer.mlp
+        else:
+            raise ValueError(f"Unknown component: {component}")
+
     def run_with_cache(
         self,
         input_ids: torch.Tensor,
         names_filter: Optional[callable],
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
+        """Run with cache using pyvene's activation collection."""
         cache = {}
         hooks = []
 
+        # Use standard PyTorch hooks for caching (pyvene's getter hooks work similarly)
         hooks_to_capture = []
         for i in range(self._n_layers):
             for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
@@ -208,10 +369,8 @@ class PyveneBackend(Backend):
             def make_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):
                     if use_input:
-                        # resid_pre: capture input to the layer
                         val = inp[0] if isinstance(inp, tuple) else inp
                     else:
-                        # Others: capture output
                         val = out[0] if isinstance(out, tuple) else out
                     cache[hook_name] = val.detach()
 
@@ -279,7 +438,7 @@ class PyveneBackend(Backend):
         temperature: float,
     ) -> str:
         """Generate using prefill logits and frozen KV cache."""
-        eos_token_id = self.get_tokenizer().eos_token_id
+        eos_token_id = self._tokenizer.eos_token_id
         generated_ids = []
 
         next_logits = prefill_logits[0, -1, :]
@@ -340,108 +499,18 @@ class PyveneBackend(Backend):
         input_ids: torch.Tensor,
         interventions: Sequence[Intervention],
     ) -> torch.Tensor:
-        hooks = []
-        for intervention in interventions:
-            values = torch.tensor(
-                intervention.scaled_values,
-                dtype=self.runner.dtype,
-                device=self.runner.device,
-            )
-            target = intervention.target
-            mode = intervention.mode
-            alpha = intervention.alpha
-            target_values = None
-            if mode == "interpolate" and intervention.target_values is not None:
-                target_values = torch.tensor(
-                    intervention.target_values,
-                    dtype=self.runner.dtype,
-                    device=self.runner.device,
-                )
-            module = self._get_component_module(
-                intervention.layer, intervention.component
-            )
+        """Run forward with interventions using pyvene's IntervenableModel."""
+        if not interventions:
+            return self.forward(input_ids)
 
-            def make_hook(values, target, mode, target_values, alpha, layer_idx):
-                def intervention_hook(mod, input, output):
-                    if isinstance(output, tuple):
-                        hidden = output[0]
-                    else:
-                        hidden = output
-
-                    if target.is_all_positions:
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            # Handle sequence length mismatch for 2D values
-                            if values.ndim == 2:
-                                seq_len = min(hidden.shape[1], values.shape[0])
-                                new_hidden = hidden.clone()
-                                new_hidden[:, :seq_len, :] = (
-                                    values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                hidden = new_hidden
-                            else:
-                                hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                        elif mode == "interpolate":
-                            # Interpolate: hidden + alpha * (target_values - hidden)
-                            if target_values is not None and target_values.ndim == 2:
-                                seq_len = min(hidden.shape[1], target_values.shape[0])
-                                new_hidden = hidden.clone()
-                                tv = (
-                                    target_values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                new_hidden[:, :seq_len, :] = (
-                                    hidden[:, :seq_len, :] + alpha * (tv - hidden[:, :seq_len, :])
-                                )
-                                hidden = new_hidden
-                            elif target_values is not None:
-                                hidden = hidden + alpha * (target_values - hidden)
-                    else:
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = (
-                                    values[i]
-                                    if values.ndim > 1 and i < len(values)
-                                    else values
-                                )
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-                                elif mode == "interpolate":
-                                    if target_values is not None:
-                                        tv = (
-                                            target_values[i]
-                                            if target_values.ndim > 1 and i < len(target_values)
-                                            else target_values
-                                        )
-                                        hidden[:, pos, :] = (
-                                            hidden[:, pos, :] + alpha * (tv - hidden[:, pos, :])
-                                        )
-
-                    if isinstance(output, tuple):
-                        return (hidden,) + output[1:]
-                    return hidden
-
-                return intervention_hook
-
-            hook = module.register_forward_hook(make_hook(values, target, mode, target_values, alpha, intervention.layer))
-            hooks.append(hook)
+        intervenable = self._create_intervenable_model(interventions)
+        unit_locations = self._get_unit_locations(interventions, input_ids.shape[1])
 
         with torch.no_grad():
-            outputs = self.runner._model(input_ids)
-
-        for hook in hooks:
-            hook.remove()
+            _, outputs = intervenable(
+                {"input_ids": input_ids},
+                unit_locations={"sources->base": (None, unit_locations)},
+            )
 
         return outputs.logits
 
@@ -451,10 +520,15 @@ class PyveneBackend(Backend):
         interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
-        """Run forward with interventions AND capture activations with gradients."""
+        """Run forward with interventions AND capture activations.
+
+        Note: This uses pyvene for interventions but standard hooks for caching,
+        since pyvene's activation collection is separate from interventions.
+        """
         cache = {}
         hooks = []
 
+        # Set up cache hooks
         hooks_to_capture = []
         for i in range(self._n_layers):
             for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
@@ -478,135 +552,21 @@ class PyveneBackend(Backend):
             use_input = component == "resid_pre"
             hooks.append(module.register_forward_hook(make_cache_hook(name, use_input)))
 
-        for intervention in interventions:
-            values = torch.tensor(
-                intervention.scaled_values,
-                dtype=self.runner.dtype,
-                device=self.runner.device,
-            )
-            target = intervention.target
-            mode = intervention.mode
-            alpha = getattr(intervention, "alpha", 1.0)
-            target_values = None
-            if (
-                hasattr(intervention, "target_values")
-                and intervention.target_values is not None
-            ):
-                target_values = torch.tensor(
-                    intervention.target_values,
-                    dtype=self.runner.dtype,
-                    device=self.runner.device,
-                )
-            module = self._get_component_module(
-                intervention.layer, intervention.component
-            )
-
-            def make_intervention_hook(values, target, mode, alpha, target_values):
-                def intervention_hook(mod, input, output):
-                    if isinstance(output, tuple):
-                        hidden = output[0]
-                    else:
-                        hidden = output
-
-                    if target.is_all_positions:
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            # Handle sequence length mismatch for 2D values
-                            if values.ndim == 2:
-                                seq_len = min(hidden.shape[1], values.shape[0])
-                                new_hidden = hidden.clone()
-                                new_hidden[:, :seq_len, :] = (
-                                    values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                hidden = new_hidden
-                            else:
-                                hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                        elif mode == "interpolate":
-                            # Interpolation: hidden + alpha * (target - hidden)
-                            if target_values is not None:
-                                if target_values.ndim == 2:
-                                    seq_len = min(
-                                        hidden.shape[1], target_values.shape[0]
-                                    )
-                                    new_hidden = hidden.clone()
-                                    tgt = (
-                                        target_values[:seq_len]
-                                        .unsqueeze(0)
-                                        .expand(hidden.shape[0], -1, -1)
-                                    )
-                                    new_hidden[:, :seq_len, :] = hidden[
-                                        :, :seq_len, :
-                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
-                                    hidden = new_hidden
-                                else:
-                                    tgt = target_values.expand_as(hidden)
-                                    hidden = hidden + alpha * (tgt - hidden)
-                            else:
-                                # Fallback: treat values as target
-                                if values.ndim == 2:
-                                    seq_len = min(hidden.shape[1], values.shape[0])
-                                    new_hidden = hidden.clone()
-                                    tgt = (
-                                        values[:seq_len]
-                                        .unsqueeze(0)
-                                        .expand(hidden.shape[0], -1, -1)
-                                    )
-                                    new_hidden[:, :seq_len, :] = hidden[
-                                        :, :seq_len, :
-                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
-                                    hidden = new_hidden
-                                else:
-                                    tgt = values.expand_as(hidden)
-                                    hidden = hidden + alpha * (tgt - hidden)
-                    else:
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = (
-                                    values[i]
-                                    if values.ndim > 1 and i < len(values)
-                                    else values
-                                )
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-                                elif mode == "interpolate":
-                                    # Get target values for this position
-                                    if target_values is not None:
-                                        tgt_val = (
-                                            target_values[i]
-                                            if target_values.ndim > 1
-                                            and i < len(target_values)
-                                            else target_values
-                                        )
-                                    else:
-                                        tgt_val = pos_values
-                                    hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
-                                        tgt_val - hidden[:, pos, :]
-                                    )
-
-                    if isinstance(output, tuple):
-                        return (hidden,) + output[1:]
-                    return hidden
-
-                return intervention_hook
-
-            hook = module.register_forward_hook(
-                make_intervention_hook(values, target, mode, alpha, target_values)
-            )
-            hooks.append(hook)
-
         try:
-            outputs = self.runner._model(input_ids)
-            logits = outputs.logits
+            if interventions:
+                intervenable = self._create_intervenable_model(interventions)
+                unit_locations = self._get_unit_locations(
+                    interventions, input_ids.shape[1]
+                )
+
+                _, outputs = intervenable(
+                    {"input_ids": input_ids},
+                    unit_locations={"sources->base": (None, unit_locations)},
+                )
+                logits = outputs.logits
+            else:
+                outputs = self.runner._model(input_ids)
+                logits = outputs.logits
         finally:
             for hook in hooks:
                 hook.remove()
@@ -617,47 +577,34 @@ class PyveneBackend(Backend):
         """Get the token embedding module."""
         model = self.runner._model
         if hasattr(model, "model") and hasattr(model.model, "embed_tokens"):
-            return model.model.embed_tokens  # Llama, Mistral, Qwen
+            return model.model.embed_tokens
         if hasattr(model, "transformer") and hasattr(model.transformer, "wte"):
-            return model.transformer.wte  # GPT-2
+            return model.transformer.wte
         if hasattr(model, "gpt_neox") and hasattr(model.gpt_neox, "embed_in"):
-            return model.gpt_neox.embed_in  # GPT-NeoX
+            return model.gpt_neox.embed_in
         raise ValueError(f"Cannot find embedding module for: {type(model)}")
 
     def _get_lm_head(self):
         """Get the language model head module."""
         model = self.runner._model
         if hasattr(model, "lm_head"):
-            return model.lm_head  # Most models
+            return model.lm_head
         if hasattr(model, "embed_out"):
-            return model.embed_out  # GPT-NeoX
+            return model.embed_out
         raise ValueError(f"Cannot find lm_head for: {type(model)}")
 
     def get_W_E(self) -> torch.Tensor:
-        """Get the token embedding matrix W_E.
-
-        Returns:
-            Embedding matrix of shape [vocab_size, d_model]
-        """
+        """Get the token embedding matrix W_E."""
         embed = self._get_embed_tokens()
         return embed.weight
 
     def get_W_U(self) -> torch.Tensor:
-        """Get the unembedding matrix W_U.
-
-        Returns:
-            Unembedding matrix of shape [d_model, vocab_size]
-        """
+        """Get the unembedding matrix W_U."""
         lm_head = self._get_lm_head()
-        # lm_head.weight is [vocab_size, d_model], we need [d_model, vocab_size]
         return lm_head.weight.T
 
     def get_b_U(self) -> torch.Tensor | None:
-        """Get the unembedding bias b_U.
-
-        Returns:
-            Unembedding bias of shape [vocab_size], or None if no bias
-        """
+        """Get the unembedding bias b_U."""
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
 
@@ -674,7 +621,7 @@ class PyveneBackend(Backend):
         gen_kwargs = {
             "max_new_tokens": max_new_tokens,
             "do_sample": temperature > 0,
-            "pad_token_id": self.get_tokenizer().eos_token_id,
+            "pad_token_id": self._tokenizer.eos_token_id,
             "return_dict_in_generate": True,
             "output_scores": True,
             "use_cache": True,
@@ -687,23 +634,18 @@ class PyveneBackend(Backend):
         with torch.no_grad():
             outputs = self.runner._model.generate(input_ids, **gen_kwargs)
 
-            # Compute logprobs for prefilled tokens via forward pass
             prefix_outputs = self.runner._model(input_ids)
             prefix_logits = prefix_outputs.logits[0]
             prefix_log_probs = torch.log_softmax(prefix_logits, dim=-1)
 
-        # For position i, get logprob of token[i+1]
-        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        all_logprobs: list[float] = [0.0]
         for i in range(prompt_len - 1):
             next_token = token_ids[i + 1]
             all_logprobs.append(prefix_log_probs[i, next_token].item())
 
-        # outputs.sequences: [1, prompt_len + generated_len]
-        # outputs.scores: tuple of (generated_len) tensors, each [1, vocab_size]
         all_token_ids = outputs.sequences[0].tolist()
         generated_ids = all_token_ids[prompt_len:]
 
-        # Append logprobs for generated tokens from scores
         for score, token_id in zip(outputs.scores, generated_ids):
             log_probs = torch.log_softmax(score[0], dim=-1)
             all_logprobs.append(log_probs[token_id].item())
