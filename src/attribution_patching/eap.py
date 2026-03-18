@@ -21,35 +21,47 @@ if TYPE_CHECKING:
     from .attribution_metric import AttributionMetric
 
 
-def _compute_resid_gradients(
+def _compute_component_gradients(
     metric: "AttributionMetric",
     grad_logits: torch.Tensor,
     grad_cache: dict,
     n_layers: int,
-) -> dict[int, torch.Tensor]:
-    """Compute gradients w.r.t. residual stream at each layer."""
+) -> dict[str, dict[int, torch.Tensor]]:
+    """Compute gradients w.r.t. each component at each layer.
+
+    Returns:
+        Dict mapping component name to dict of layer -> gradient tensor.
+        E.g. {"attn_out": {0: grad_tensor, 1: grad_tensor, ...}, "mlp_out": {...}}
+    """
     metric_val = metric.compute_raw(grad_logits.unsqueeze(0))
 
-    resid_acts = []
-    resid_layers = []
-    for layer in range(n_layers):
-        name = hook_name(layer, "resid_post")
-        act = grad_cache.get(name)
-        if act is not None and act.requires_grad:
-            resid_acts.append(act)
-            resid_layers.append(layer)
+    # Collect activations for all components
+    components = ["attn_out", "mlp_out"]
+    all_acts = []
+    all_info = []  # (component, layer) tuples
 
-    if not resid_acts:
-        return {}
+    for component in components:
+        for layer in range(n_layers):
+            name = hook_name(layer, component)
+            act = grad_cache.get(name)
+            if act is not None and act.requires_grad:
+                all_acts.append(act)
+                all_info.append((component, layer))
+
+    if not all_acts:
+        return {"attn_out": {}, "mlp_out": {}}
 
     grad_list = torch.autograd.grad(
-        metric_val, resid_acts, retain_graph=True, allow_unused=True
+        metric_val, all_acts, retain_graph=True, allow_unused=True
     )
-    return {
-        layer: grad.detach()
-        for layer, grad in zip(resid_layers, grad_list)
-        if grad is not None
-    }
+
+    # Organize results by component
+    result: dict[str, dict[int, torch.Tensor]] = {"attn_out": {}, "mlp_out": {}}
+    for (component, layer), grad in zip(all_info, grad_list):
+        if grad is not None:
+            result[component][layer] = grad.detach()
+
+    return result
 
 
 def compute_eap(
@@ -84,10 +96,10 @@ def compute_eap(
         )
 
     with P("eap_grads"):
-        resid_grads = _compute_resid_gradients(metric, grad_logits, grad_cache, n_layers)
+        component_grads = _compute_component_gradients(metric, grad_logits, grad_cache, n_layers)
 
     with P("eap_scores"):
-        first_hook = hook_name(0, "resid_post")
+        first_hook = hook_name(0, "attn_out")
         clean_len = get_seq_len(clean_cache, first_hook)
         corr_len = get_seq_len(corr_cache, first_hook)
 
@@ -97,26 +109,26 @@ def compute_eap(
         mlp_scores = np.zeros((n_layers, clean_len))
 
         for layer in range(n_layers):
-            grad = resid_grads.get(layer)
-            if grad is None:
-                continue
+            # Attention edge: use gradient w.r.t. attn_out
+            attn_grad = component_grads["attn_out"].get(layer)
+            if attn_grad is not None:
+                attn_name = hook_name(layer, "attn_out")
+                clean_attn = clean_cache.get(attn_name)
+                corr_attn = corr_cache.get(attn_name)
+                if clean_attn is not None and corr_attn is not None:
+                    attn_scores[layer] = compute_attribution_vectorized(
+                        clean_attn, corr_attn, attn_grad, clean_pos, corr_pos, valid
+                    )
 
-            # Attention edge
-            attn_name = hook_name(layer, "attn_out")
-            clean_attn = clean_cache.get(attn_name)
-            corr_attn = corr_cache.get(attn_name)
-            if clean_attn is not None and corr_attn is not None:
-                attn_scores[layer] = compute_attribution_vectorized(
-                    clean_attn, corr_attn, grad, clean_pos, corr_pos, valid
-                )
-
-            # MLP edge
-            mlp_name = hook_name(layer, "mlp_out")
-            clean_mlp = clean_cache.get(mlp_name)
-            corr_mlp = corr_cache.get(mlp_name)
-            if clean_mlp is not None and corr_mlp is not None:
-                mlp_scores[layer] = compute_attribution_vectorized(
-                    clean_mlp, corr_mlp, grad, clean_pos, corr_pos, valid
-                )
+            # MLP edge: use gradient w.r.t. mlp_out
+            mlp_grad = component_grads["mlp_out"].get(layer)
+            if mlp_grad is not None:
+                mlp_name = hook_name(layer, "mlp_out")
+                clean_mlp = clean_cache.get(mlp_name)
+                corr_mlp = corr_cache.get(mlp_name)
+                if clean_mlp is not None and corr_mlp is not None:
+                    mlp_scores[layer] = compute_attribution_vectorized(
+                        clean_mlp, corr_mlp, mlp_grad, clean_pos, corr_pos, valid
+                    )
 
     return {"attn": attn_scores, "mlp": mlp_scores}

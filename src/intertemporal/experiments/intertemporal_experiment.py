@@ -12,7 +12,11 @@ from ...activation_patching.coarse import (
     run_coarse_act_patching,
     CoarseActPatchAggregatedResults,
 )
-from ...attribution_patching import attribute_pair, AttrPatchAggregatedResults, AttributionSettings
+from ...attribution_patching import (
+    attribute_pair,
+    AttrPatchAggregatedResults,
+    AttributionSettings,
+)
 
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
@@ -50,7 +54,7 @@ def step_attribution_patching(
 ) -> None:
     """Run attribution patching on each contrastive pair."""
     att_cfg = ctx.cfg.att_patch
-    if not att_cfg.get("enabled", False):
+    if not att_cfg.get("enabled", True):
         log("[attr] Attribution patching disabled, skipping")
         return
 
@@ -84,7 +88,12 @@ def step_coarse_activation_patching(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Run layer and position sweeps on each contrastive pair for each component."""
-    components = ctx.cfg.coarse_patch.get("components", [])
+    coarse_cfg = ctx.cfg.coarse_patch
+    if not coarse_cfg.get("enabled", True):
+        log("[coarse] Coarse patching disabled, skipping")
+        return
+
+    components = coarse_cfg.get("components", [])
 
     for component in components:
         ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
@@ -106,8 +115,8 @@ def step_coarse_activation_patching(
                     ctx.runner,
                     pair,
                     component=component,
-                    layer_step_sizes=ctx.cfg.coarse_patch.get("layer_steps"),
-                    pos_step_sizes=ctx.cfg.coarse_patch.get("pos_steps"),
+                    layer_step_sizes=coarse_cfg.get("layer_steps"),
+                    pos_step_sizes=coarse_cfg.get("pos_steps"),
                 )
                 result.sample_id = pair_idx
                 ctx.coarse_patching[(pair_idx, component)] = result

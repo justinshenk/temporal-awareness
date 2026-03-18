@@ -11,13 +11,14 @@ import numpy as np
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
-from ..common.hook_utils import attribution_filter, hook_filter_for_component, hook_name
+from ..common.hook_utils import attribution_filter, hook_name
 from ..common.profiler import P
 from ..common.patching_types import GradTarget, PatchingMode
 from ..inference.interventions import interpolate_embeddings
 
 from .trajectory_helpers import get_cache
 from .embedding_alignment import PaddingStrategy, align_embeddings
+from .quadrature import QuadratureMethod, get_quadrature
 
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
@@ -62,6 +63,7 @@ def compute_eap_ig(
     n_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
     grad_at: GradTarget = "corrupted",
+    quadrature: QuadratureMethod = QuadratureMethod.MIDPOINT,
 ) -> dict[str, np.ndarray]:
     """Edge Attribution Patching with Integrated Gradients.
 
@@ -81,6 +83,7 @@ def compute_eap_ig(
         n_steps: Integration steps (higher = more accurate but slower)
         padding_strategy: How to pad segments between anchors
         grad_at: Accepted for API consistency (ignored for EAP-IG)
+        quadrature: Quadrature method for numerical integration
 
     Returns:
         Dict with 'attn' and 'mlp' attribution arrays [n_layers, aligned_len]
@@ -113,57 +116,74 @@ def compute_eap_ig(
     attn_scores = np.zeros((n_layers, aligned_len))
     mlp_scores = np.zeros((n_layers, aligned_len))
 
-    resid_filter = hook_filter_for_component("resid_post")
     clean_np = aligned.clean_embeds[0].detach().cpu().numpy()
     corrupted_np = aligned.corrupted_embeds[0].detach().cpu().numpy()
 
+    # Get quadrature nodes and weights
+    quad = get_quadrature(n_steps, quadrature, a=0.0, b=1.0)
+
     with P("eap_ig_integration"):
-        for step in range(n_steps):
-            alpha = (step + 0.5) / n_steps
+        for step_idx in range(n_steps):
+            alpha = quad.nodes[step_idx]
+            weight = quad.weights[step_idx]
+
             embed_intervention = interpolate_embeddings(
                 source_values=corrupted_np, target_values=clean_np, alpha=alpha,
             )
 
             interp_traj = runner.compute_trajectory_with_intervention_and_cache(
-                [0] * aligned_len, [embed_intervention], names_filter=resid_filter,
+                [0] * aligned_len, [embed_intervention], names_filter=attribution_filter,
             )
             metric_val = metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
 
-            # Collect resid activations for gradient
-            resid_acts, resid_layers = [], []
-            for layer in range(n_layers):
-                act = interp_traj.internals.get(hook_name(layer, "resid_post"))
-                if act is not None and act.requires_grad:
-                    resid_acts.append(act)
-                    resid_layers.append(layer)
+            # Collect activations for all components
+            components = ["attn_out", "mlp_out"]
+            all_acts = []
+            all_info = []  # (component, layer) tuples
 
-            if not resid_acts:
+            for component in components:
+                for layer in range(n_layers):
+                    act = interp_traj.internals.get(hook_name(layer, component))
+                    if act is not None and act.requires_grad:
+                        all_acts.append(act)
+                        all_info.append((component, layer))
+
+            if not all_acts:
                 continue
 
             grad_list = torch.autograd.grad(
-                metric_val, resid_acts, retain_graph=True, allow_unused=True
+                metric_val, all_acts, retain_graph=True, allow_unused=True
             )
 
-            # Accumulate attribution scores
-            for layer, grad in zip(resid_layers, grad_list):
-                if grad is None:
-                    continue
+            # Organize gradients by component
+            component_grads: dict[str, dict[int, torch.Tensor]] = {"attn_out": {}, "mlp_out": {}}
+            for (component, layer), grad in zip(all_info, grad_list):
+                if grad is not None:
+                    component_grads[component][layer] = grad
 
+            # Accumulate attribution scores with quadrature weights
+            for layer in range(n_layers):
                 for aligned_idx in range(aligned_len):
                     clean_orig = aligned.clean_pos_map[aligned_idx]
                     corr_orig = aligned.corrupted_pos_map[aligned_idx]
                     if clean_orig is None or corr_orig is None:
                         continue
 
-                    attn_scores[layer, aligned_idx] += _compute_edge_attribution(
-                        clean_cache, corrupted_cache, grad, layer, "attn_out",
-                        aligned_idx, clean_orig, corr_orig,
-                    ) / n_steps
+                    # Attention attribution using attn_out gradient
+                    attn_grad = component_grads["attn_out"].get(layer)
+                    if attn_grad is not None:
+                        attn_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
+                            clean_cache, corrupted_cache, attn_grad, layer, "attn_out",
+                            aligned_idx, clean_orig, corr_orig,
+                        )
 
-                    mlp_scores[layer, aligned_idx] += _compute_edge_attribution(
-                        clean_cache, corrupted_cache, grad, layer, "mlp_out",
-                        aligned_idx, clean_orig, corr_orig,
-                    ) / n_steps
+                    # MLP attribution using mlp_out gradient
+                    mlp_grad = component_grads["mlp_out"].get(layer)
+                    if mlp_grad is not None:
+                        mlp_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
+                            clean_cache, corrupted_cache, mlp_grad, layer, "mlp_out",
+                            aligned_idx, clean_orig, corr_orig,
+                        )
 
     return {
         "attn": attn_scores,
