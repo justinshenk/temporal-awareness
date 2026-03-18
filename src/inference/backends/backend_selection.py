@@ -57,8 +57,8 @@ def get_recommended_backend_inference() -> ModelBackend:
 def get_recommended_backend_internals() -> ModelBackend:
     """Get the recommended backend for capturing internal activations.
 
-    HuggingFace uses PyTorch hooks for activation caching and interventions.
-    This is the most reliable and compatible option.
+    Pyvene uses pyvene's IntervenableModel for interventions with
+    full activation caching support via PyTorch hooks.
 
     Note: MLX does not support activation caching (returns empty dict).
 
@@ -74,9 +74,8 @@ def get_recommended_backend_interventions() -> ModelBackend:
     Interventions include activation patching, steering, and other
     modifications to internal model states during forward passes.
 
-    HuggingFace uses PyTorch hooks for reliable intervention support.
-    Pyvene backend is available but may have compatibility issues with
-    newer transformers versions.
+    Pyvene uses pyvene's IntervenableModel for robust intervention support.
+    HuggingFace is an alternative using raw PyTorch hooks.
 
     Note: MLX does not support interventions.
 

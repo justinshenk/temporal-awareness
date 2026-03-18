@@ -56,7 +56,6 @@ class Prompt(BaseSchema):
 
     preference_pair: PreferencePair
     time_horizon: Optional[TimeValue] = None
-    text: str = ""
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -114,6 +113,7 @@ class PromptSample(BaseSchema):
 
     sample_idx: int
     prompt: Prompt
+    text: str = ""
 
     formatting_id: int | None = None
     context_id: int | None = None

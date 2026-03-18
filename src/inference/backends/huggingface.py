@@ -67,7 +67,15 @@ class HuggingFaceBackend(Backend):
         return self._tokenizer.decode(token_ids, skip_special_tokens=False)
 
     def _get_component_module(self, layer_idx: int, component: str):
-        """Get the module for a specific component within a layer."""
+        """Get the module for a specific component within a layer.
+
+        Args:
+            layer_idx: Layer index (ignored for embed component)
+            component: Component name (resid_post, attn_out, mlp_out, embed)
+        """
+        if component == "embed":
+            return self._get_embed_tokens()
+
         layer = self._layers[layer_idx]
         if component in ("resid_post", "resid_pre", "resid_mid"):
             return layer
@@ -657,6 +665,39 @@ class HuggingFaceBackend(Backend):
         """
         lm_head = self._get_lm_head()
         return getattr(lm_head, "bias", None)
+
+    def get_embeddings(self, token_ids: torch.Tensor) -> torch.Tensor:
+        """Get token embeddings from the model.
+
+        For models with learned position embeddings (GPT-2), this includes
+        position embeddings. For models with RoPE (Llama, Mistral), this
+        returns just token embeddings (RoPE is applied in attention).
+
+        Args:
+            token_ids: Token IDs [batch, seq_len] or [seq_len]
+
+        Returns:
+            Embeddings tensor [batch, seq_len, d_model]
+        """
+        if token_ids.ndim == 1:
+            token_ids = token_ids.unsqueeze(0)
+
+        token_ids = token_ids.to(self.runner.device)
+        embed_module = self._get_embed_tokens()
+
+        with torch.no_grad():
+            # Get token embeddings
+            embeds = embed_module(token_ids)
+
+            # Add position embeddings for GPT-2 style models
+            model = self.runner._model
+            if hasattr(model, "transformer") and hasattr(model.transformer, "wpe"):
+                seq_len = token_ids.shape[1]
+                position_ids = torch.arange(seq_len, device=self.runner.device)
+                pos_embeds = model.transformer.wpe(position_ids)
+                embeds = embeds + pos_embeds
+
+        return embeds
 
     def generate_trajectory(
         self,

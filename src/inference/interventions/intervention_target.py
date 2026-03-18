@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ...common.base_schema import BaseSchema
+from ...common.patching_types import PATCHING_COMPONENTS
 
-
-COMPONENTS = ("resid_post", "attn_out", "mlp_out")
+# Alias for this module
+COMPONENTS = PATCHING_COMPONENTS
 
 PositionMode = Literal["all", "explicit"]
 

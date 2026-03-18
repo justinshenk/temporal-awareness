@@ -23,6 +23,12 @@ Usage:
 
     # Enable attribution patching with specific methods
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --attrib '{"enabled": true, "methods": ["eap_ig"]}'
+
+    # Regenerate visualizations for all cached experiments
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_all": true}'
+
+    # Regenerate visualizations for one specific experiment
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_one": "label_grid"}'
 """
 
 from __future__ import annotations
@@ -41,6 +47,10 @@ from src.intertemporal.common import get_experiment_dir
 from src.intertemporal.experiments.intertemporal_experiment import (
     ExperimentConfig,
     run_experiment,
+)
+from src.intertemporal.experiments.intertemporal_viz import (
+    generate_viz,
+    regenerate_all_visualizations,
 )
 
 from src.intertemporal.data.default_configs import (
@@ -110,12 +120,36 @@ def parse_args() -> argparse.Namespace:
         choices=["pyvene", "transformerlens", "huggingface", "nnsight"],
         help="Override backend for model internals (default: auto-detect)",
     )
+    parser.add_argument(
+        "--viz",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help='Visualization settings as JSON, e.g. \'{"enabled": true, "regenerate_all": true}\'',
+    )
 
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+
+    # Handle --viz with regenerate options first (doesn't need other config)
+    if args.viz:
+        viz_config = json.loads(args.viz)
+        if viz_config.get("regenerate_all", False):
+            log_header("REGENERATING ALL VISUALIZATIONS", gap=1)
+            regenerate_all_visualizations(get_experiment_dir())
+            return 0
+        if "regenerate_one" in viz_config:
+            exp_name = viz_config["regenerate_one"]
+            exp_dir = get_experiment_dir() / exp_name
+            if not exp_dir.exists():
+                print(f"Error: Experiment directory not found: {exp_dir}")
+                return 1
+            log_header(f"REGENERATING VISUALIZATIONS: {exp_name}", gap=1)
+            generate_viz(exp_dir)
+            return 0
 
     if args.full:
         config_dict = FULL_EXPERIMENT_CONFIG.copy()
@@ -136,6 +170,12 @@ def main() -> int:
         if "att_patch" not in config_dict:
             config_dict["att_patch"] = {}
         config_dict["att_patch"].update(attrib_overrides)
+
+    if args.viz:
+        viz_overrides = json.loads(args.viz)
+        if "viz" not in config_dict:
+            config_dict["viz"] = {}
+        config_dict["viz"].update(viz_overrides)
 
     # Determine output directory
     output_dir = None

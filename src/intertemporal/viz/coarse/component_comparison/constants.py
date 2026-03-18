@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-# Component order for consistent visualization
+# Component order for visualization (matches transformer block computation order)
+# resid_pre -> attn_out -> mlp_out -> resid_post
 COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
 
 COMPONENT_COLORS = {

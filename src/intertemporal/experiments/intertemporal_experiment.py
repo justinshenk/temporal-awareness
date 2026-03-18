@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ...common import profile
 from ...common.logging import log, log_progress
-from ...inference import COMPONENTS
+from ...common.patching_types import PATCHING_COMPONENTS
 from ...activation_patching import patch_pair, ActPatchAggregatedResult
 from ...activation_patching.coarse import (
     run_coarse_act_patching,
@@ -20,13 +20,23 @@ from ...attribution_patching import (
 
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
-from ..viz import (
-    visualize_all_aggregated,
-    visualize_att_patching,
-    visualize_fine_patching,
-    visualize_pair_results,
-)
 from .experiment_context import ExperimentConfig, ExperimentContext
+from .intertemporal_viz import generate_viz
+
+
+def _detect_cached_pairs(output_dir: Path, component: str) -> list[int]:
+    """Detect all pair indices that have cached results for a component."""
+    cached = []
+    pair_idx = 0
+    while True:
+        pair_dir = output_dir / f"pair_{pair_idx}"
+        if not pair_dir.exists():
+            break
+        results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
+        if results_path.exists():
+            cached.append(pair_idx)
+        pair_idx += 1
+    return cached
 
 
 @profile("step_preference_data")
@@ -63,14 +73,8 @@ def step_attribution_patching(
         ctx.att_agg.print_summary()
         return
 
-    # Build settings from config
-    settings = AttributionSettings(
-        components=att_cfg.get("components", ["resid_post"]),
-        methods=att_cfg.get("methods", ["standard", "eap"]),
-        ig_steps=att_cfg.get("ig_steps", 10),
-        grad_at=att_cfg.get("grad_at", "both"),
-        quadrature=att_cfg.get("quadrature", "midpoint"),
-    )
+    # Build settings from config (only override defaults for fields present in att_cfg)
+    settings = AttributionSettings.from_dict(att_cfg)
 
     ctx.att_agg = AttrPatchAggregatedResults()
     for pair_idx, pair in enumerate(ctx.pairs):
@@ -95,40 +99,54 @@ def step_coarse_activation_patching(
         return
 
     components = coarse_cfg.get("components", [])
+    computed_any = False
 
     for component in components:
         ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
-        all_loaded = True
 
-        for pair_idx, pair in enumerate(ctx.pairs):
-            if try_loading_data and ctx.load_coarse_pair(pair_idx, component):
+        # Detect all cached pairs first when loading from cache
+        cached_pair_indices = set()
+        if try_loading_data:
+            cached_pair_indices = set(_detect_cached_pairs(ctx.output_dir, component))
+
+        # Load all cached pairs (may be more than len(ctx.pairs))
+        for pair_idx in sorted(cached_pair_indices):
+            if ctx.load_coarse_pair(pair_idx, component):
                 result = ctx.coarse_patching[(pair_idx, component)]
                 ctx.coarse_agg_by_component[component].add(result)
                 log(
-                    f"[coarse] Loaded cached pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+                    f"[coarse] Loaded cached pair {pair_idx + 1}, component={component}"
                 )
-            else:
-                all_loaded = False
-                log(
-                    f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
-                )
-                result = run_coarse_act_patching(
-                    ctx.runner,
-                    pair,
-                    component=component,
-                    layer_step_sizes=coarse_cfg.get("layer_steps"),
-                    pos_step_sizes=coarse_cfg.get("pos_steps"),
-                )
-                result.sample_id = pair_idx
-                ctx.coarse_patching[(pair_idx, component)] = result
-                ctx.coarse_agg_by_component[component].add(result)
-                ctx.save_coarse_pair(pair_idx, component)
 
-        if all_loaded:
-            log(f"[coarse] All pairs loaded from cache for component: {component}")
+        # Process any new pairs that aren't cached
+        for pair_idx, pair in enumerate(ctx.pairs):
+            if pair_idx in cached_pair_indices:
+                continue  # Already loaded from cache
+
+            computed_any = True
+            log(
+                f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+            )
+            result = run_coarse_act_patching(
+                ctx.runner,
+                pair,
+                component=component,
+                layer_step_sizes=coarse_cfg.get("layer_steps"),
+                pos_step_sizes=coarse_cfg.get("pos_steps"),
+            )
+            result.sample_id = pair_idx
+            ctx.coarse_patching[(pair_idx, component)] = result
+            ctx.coarse_agg_by_component[component].add(result)
+            ctx.save_coarse_pair(pair_idx, component)
+
+        n_loaded = len(cached_pair_indices)
+        n_total = ctx.coarse_agg_by_component[component].n_samples
+        log(f"[coarse] Component {component}: {n_loaded} loaded, {n_total} total")
         ctx.coarse_agg_by_component[component].print_summary()
 
-    ctx.save_coarse_agg()
+    # Only save agg if we computed new results
+    if computed_any:
+        ctx.save_coarse_agg()
 
 
 @profile("step_fine_activation_patching")
@@ -142,7 +160,7 @@ def step_fine_activation_patching(
         return
 
     ctx.fine_agg = ActPatchAggregatedResult()
-    for component in COMPONENTS:
+    for component in PATCHING_COMPONENTS:
         target = ctx.get_union_target(component=component)
         targets = target.decompose()
 
@@ -165,14 +183,14 @@ def step_visualize_results(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Visualize all patching results."""
+    if not ctx.cfg.viz.get("enabled", True):
+        log("[viz] Visualization disabled, skipping")
+        return
+
     components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
 
-    has_per_pair_results = (
-        bool(ctx.att_patching) or bool(ctx.coarse_patching) or bool(ctx.fine_patching)
-    )
-
-    # Try loading cached results if needed
-    if not has_per_pair_results and try_loading_data:
+    # Load cached per-pair results if needed
+    if not ctx.coarse_patching and try_loading_data:
         for component in components:
             agg = ctx.coarse_agg_by_component.get(component)
             if agg:
@@ -180,57 +198,22 @@ def step_visualize_results(
                     f"[viz] Loading {agg.n_samples} per-pair results for {component}..."
                 )
                 for pair_idx in range(agg.n_samples):
-                    if ctx.load_coarse_pair(pair_idx, component):
-                        has_per_pair_results = True
+                    ctx.load_coarse_pair(pair_idx, component)
 
-    if has_per_pair_results:
-        # Determine number of pairs from coarse patching results
-        n_pairs = (
-            len(ctx.coarse_patching) // len(components) if ctx.coarse_patching else 0
-        )
-
-        for pair_idx in range(n_pairs):
-            pair_out_dir = ctx.output_dir / f"pair_{pair_idx}"
-            pair = ctx.pairs[pair_idx] if pair_idx < len(ctx.pairs) else None
-
-            # Gather coarse results for this pair
-            coarse_results = {
-                component: ctx.coarse_patching[(pair_idx, component)]
-                for component in components
-                if (pair_idx, component) in ctx.coarse_patching
-            }
-
-            visualize_pair_results(
-                pair_idx=pair_idx,
-                pair_out_dir=pair_out_dir,
-                pair=pair,
-                runner=ctx.runner,
-                att_result=ctx.att_patching.get(pair_idx),
-                coarse_results=coarse_results if coarse_results else None,
-                fine_result=ctx.fine_patching.get(pair_idx),
-                try_loading_cache=try_loading_data,
-                save_token_trees_fn=ctx.save_token_trees,
-            )
-    else:
-        log("[viz] No per-pair results to visualize")
-
-    # Aggregated visualizations with new folder structure
-    # Structure: agg/<analysis_slice>/sweep_<component>/... and agg/<slice>/component_comparison/
-    agg_out_dir = ctx.output_dir / "agg"
-    if ctx.att_agg:
-        visualize_att_patching(
-            ctx.att_agg.denoising_agg,
-            agg_out_dir / "all" / "att_patching" / "denoising",
-        )
-        visualize_att_patching(
-            ctx.att_agg.noising_agg, agg_out_dir / "all" / "att_patching" / "noising"
-        )
-
-    # All coarse patching aggregated visualizations (sweep plots + component comparison)
-    if ctx.coarse_agg_by_component:
-        visualize_all_aggregated(ctx.coarse_agg_by_component, agg_out_dir)
-
-    visualize_fine_patching(ctx.fine_agg, agg_out_dir)
+    # Use shared generate_viz with in-memory data
+    generate_viz(
+        ctx.output_dir,
+        coarse_agg_by_component=ctx.coarse_agg_by_component or None,
+        coarse_patching=ctx.coarse_patching or None,
+        att_agg=ctx.att_agg,
+        att_patching=ctx.att_patching or None,
+        fine_agg=ctx.fine_agg,
+        fine_patching=ctx.fine_patching or None,
+        pairs=ctx.pairs if ctx._pairs else None,
+        runner=ctx.runner if ctx._runner else None,
+        save_token_trees_fn=ctx.save_token_trees,
+        components=components,
+    )
 
 
 @profile("run_experiment")

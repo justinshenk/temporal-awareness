@@ -94,13 +94,13 @@ class PromptDataset:
                     short_term=short_term, long_term=long_term
                 ),
                 time_horizon=time_horizon,
-                text=prompt_data["text"],
             )
 
             samples.append(
                 PromptSample(
                     sample_idx=s["sample_idx"],
                     prompt=prompt,
+                    text=s.get("text", ""),
                 )
             )
 

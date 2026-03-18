@@ -96,6 +96,72 @@ class TokenizationVizData(BaseSchema):
             return None
         return cls.from_dict(load_json(cache_path))
 
+    @classmethod
+    def from_token_tree(cls, output_dir: Path) -> "TokenizationVizData | None":
+        """Create minimal TokenizationVizData from token_tree.json as fallback.
+
+        This is used when tokenization_viz_cache.json is missing but token_tree.json
+        exists. The resulting data will have token IDs and prompt lengths but
+        placeholder strings for decoded tokens.
+
+        Args:
+            output_dir: Directory containing token_tree.json
+
+        Returns:
+            TokenizationVizData with minimal data, or None if token_tree.json not found
+        """
+        token_tree_path = Path(output_dir) / "token_tree.json"
+        if not token_tree_path.exists():
+            return None
+
+        try:
+            tree_data = load_json(token_tree_path)
+            trajs = tree_data.get("trajs", [])
+            if len(trajs) < 2:
+                return None
+
+            # In token_tree.json, trajectories are stored with analysis data
+            # that includes trunk_last_idx (which is the last prompt token index)
+            clean_traj = trajs[0]
+            corrupted_traj = trajs[1]
+
+            clean_token_ids = clean_traj.get("token_ids", [])
+            corrupted_token_ids = corrupted_traj.get("token_ids", [])
+
+            if not clean_token_ids or not corrupted_token_ids:
+                return None
+
+            # Extract prompt lengths from analysis.trunk_last_idx + 1
+            # trunk_last_idx is the index of the last prompt token
+            clean_analysis = clean_traj.get("analysis", {})
+            corrupted_analysis = corrupted_traj.get("analysis", {})
+
+            clean_prompt_len = clean_analysis.get("trunk_last_idx", 0) + 1
+            corrupted_prompt_len = corrupted_analysis.get("trunk_last_idx", 0) + 1
+
+            # Use placeholder strings for tokens (we don't have decoded text)
+            clean_tokens = [""] * len(clean_token_ids)
+            corrupted_tokens = [""] * len(corrupted_token_ids)
+
+            # Use generic labels since we don't have them
+            clean_label = "short"
+            corrupted_label = "long"
+
+            return cls(
+                clean_token_ids=clean_token_ids,
+                corrupted_token_ids=corrupted_token_ids,
+                clean_tokens=clean_tokens,
+                corrupted_tokens=corrupted_tokens,
+                clean_label=clean_label,
+                corrupted_label=corrupted_label,
+                clean_prompt_len=clean_prompt_len,
+                corrupted_prompt_len=corrupted_prompt_len,
+                choice_divergent_positions=None,  # Not available in token_tree.json
+            )
+        except Exception:
+            # If anything fails, return None to allow other fallbacks
+            return None
+
 
 def _compute_coloring_from_viz_data(data: TokenizationVizData) -> PairTokenColoring:
     """Compute PairTokenColoring from TokenizationVizData.
