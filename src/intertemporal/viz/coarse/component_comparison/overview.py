@@ -159,7 +159,7 @@ def _plot_position_heatmap(
     output_dir: Path,
     mode: Literal["denoising", "noising"],
 ) -> None:
-    """Plot position heatmap with UNIFORM spacing."""
+    """Plot position heatmap with UNIFORM spacing and text annotations."""
     all_positions = set()
     for comp, data in pos_data.items():
         if data:
@@ -193,15 +193,18 @@ def _plot_position_heatmap(
     im = ax.imshow(matrix_flipped, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
     plt.colorbar(im, ax=ax, label="Recovery" if mode == "denoising" else "Disruption")
 
-    # Text annotations for smaller datasets
-    if n_positions <= 30:
+    # Text annotations for significant values (same treatment as layer heatmaps)
+    # Show annotations for datasets up to 100 positions, threshold at 0.1
+    if n_positions <= 100:
         for row_idx in range(n_positions):
             for col_idx in range(n_components):
                 val = matrix_flipped[row_idx, col_idx]
                 if not np.isnan(val) and val > 0.1:
                     text_color = "white" if val > 0.6 else "black"
+                    # Smaller font for large datasets
+                    fontsize = 5 if n_positions > 50 else 6
                     ax.text(col_idx, row_idx, f"{val:.2f}", ha="center", va="center",
-                            fontsize=6, color=text_color, fontweight="bold")
+                            fontsize=fontsize, color=text_color, fontweight="bold")
 
     ax.set_xticks(range(n_components))
     ax.set_xticklabels(COMPONENTS, rotation=45, ha="right")
@@ -296,8 +299,12 @@ def _plot_layer_position_heatmap(
         ax.set_xlabel("Position", fontsize=12, fontweight="bold")
         ax.set_ylabel("Layer", fontsize=12, fontweight="bold")
         title = "Denoising Recovery" if mode == "denoising" else "Noising Disruption"
-        ax.set_title(f"Layer × Position Interaction ({title})", fontsize=12, fontweight="bold")
+        ax.set_title(f"{title}", fontsize=12, fontweight="bold")
 
-    fig.suptitle("2D Localization Map (Outer Product Approximation)", fontsize=14, fontweight="bold", y=1.02)
+    # Clear title: what it shows, not methodology
+    fig.suptitle("Layer × Position Importance Map", fontsize=14, fontweight="bold", y=1.02)
+    # Methodology note as subtitle
+    fig.text(0.5, 0.98, "(Outer product of marginal layer and position effects)",
+             fontsize=9, ha="center", va="top", style="italic", color="gray")
     plt.tight_layout()
     save_plot(fig, output_dir, "layer_position_heatmap.png")

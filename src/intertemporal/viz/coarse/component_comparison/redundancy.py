@@ -88,9 +88,11 @@ def _plot_noise_vs_denoise(
         adjust_labels(texts, ax)
 
         # Reference elements
-        ax.plot([0, 1], [0, 1], "k--", alpha=0.5)
-        ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4)
-        ax.axvline(x=0.5, color="gray", linestyle=":", alpha=0.4)
+        ax.plot([0, 1], [0, 1], "k--", alpha=0.5, label="y=x (equal effect)")
+        # 0.5 reference lines create clear quadrants for "high effect" vs "low effect"
+        # Higher alpha (0.6) for better visibility as requested
+        ax.axhline(y=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
+        ax.axvline(x=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
 
         # AND/OR labels
         ax.text(0.25, 0.75, "AND", fontsize=24, fontweight="bold", color="gray", alpha=0.15,
@@ -170,14 +172,15 @@ def _plot_redundancy_gap(
     ax.set_ylabel("Redundancy Gap (Disruption - Recovery)", fontsize=12, fontweight="bold")
     ax.set_title("Redundancy Gap per Layer per Component", fontsize=14, fontweight="bold")
 
-    # Tick labels
-    if n_layers > 20:
-        tick_step = 2
-        ax.set_xticks(x[::tick_step] + bar_width)
-        ax.set_xticklabels([f"L{layers[i]}" for i in range(0, n_layers, tick_step)], rotation=45, ha="right")
+    # Tick labels - always rotate 45° and show every other label if cramped
+    # Lower threshold to 15 to handle L18-L34 range (17 layers) mentioned in feedback
+    ax.set_xticks(x + bar_width)
+    if n_layers > 15:
+        # Show every other label to avoid cramping
+        tick_labels = [f"L{lyr}" if i % 2 == 0 else "" for i, lyr in enumerate(layers)]
+        ax.set_xticklabels(tick_labels, rotation=45, ha="right", fontsize=8)
     else:
-        ax.set_xticks(x + bar_width)
-        ax.set_xticklabels([f"L{lyr}" for lyr in layers], rotation=45, ha="right")
+        ax.set_xticklabels([f"L{lyr}" for lyr in layers], rotation=45, ha="right", fontsize=9)
 
     ax.legend(loc="best")
     setup_grid(ax)

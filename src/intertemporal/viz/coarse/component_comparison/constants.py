@@ -20,3 +20,10 @@ SUBDIR_REDUNDANCY = "04_redundancy"
 SUBDIR_SYNTHESIS = "05_circuit_synthesis"
 
 SUBDIRS = [SUBDIR_SANITY, SUBDIR_OVERVIEW, SUBDIR_DECOMP, SUBDIR_REDUNDANCY, SUBDIR_SYNTHESIS]
+
+# Colormap conventions for consistency across plots
+# These are documented in the README for reader reference
+CMAP_MAGNITUDE = "RdYlGn"      # Recovery/disruption magnitude (green=high, red=low)
+CMAP_INTERACTION = "hot"       # 2D localization map (white=high, black=low)
+CMAP_DIVERGING = "RdBu_r"      # Redundancy gap (red=necessity, blue=sufficiency)
+CMAP_SEQUENTIAL = "viridis"    # Layer/position indexing (yellow=late, purple=early)

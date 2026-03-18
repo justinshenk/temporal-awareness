@@ -117,7 +117,11 @@ def _plot_attn_vs_mlp_paired(
     layer_data: dict[str, SweepStepResults | None],
     output_dir: Path,
 ) -> None:
-    """Plot paired scatter with arrows showing denoising→noising movement per layer."""
+    """Plot paired scatter with arrows showing denoising→noising movement per layer.
+
+    Only draws arrows for layers that move more than a threshold distance to avoid
+    cluttering the dense central cluster.
+    """
     attn_data = layer_data.get("attn_out")
     mlp_data = layer_data.get("mlp_out")
 
@@ -153,8 +157,19 @@ def _plot_attn_vs_mlp_paired(
     color_values = get_sqrt_colors([d[0] for d in paired_data])
     cmap = plt.cm.viridis
 
+    # Calculate movement distances for threshold
+    movements = []
+    for layer, attn_den, mlp_den, attn_noi, mlp_noi in paired_data:
+        dist = np.sqrt((attn_noi - attn_den) ** 2 + (mlp_noi - mlp_den) ** 2)
+        movements.append(dist)
+
+    # Only draw arrows for layers that move more than median distance
+    # This prevents the central cluster from becoming illegible
+    movement_threshold = np.median(movements) if movements else 0
+
     for i, (layer, attn_den, mlp_den, attn_noi, mlp_noi) in enumerate(paired_data):
         color = cmap(color_values[i])
+        dist = movements[i]
 
         # Denoising point (circle)
         ax.scatter(attn_den, mlp_den, c=[color], s=80, marker="o", edgecolors="black", linewidth=0.5)
@@ -162,14 +177,16 @@ def _plot_attn_vs_mlp_paired(
         # Noising point (square)
         ax.scatter(attn_noi, mlp_noi, c=[color], s=80, marker="s", edgecolors="black", linewidth=0.5)
 
-        # Arrow from denoising to noising
-        ax.annotate("", xy=(attn_noi, mlp_noi), xytext=(attn_den, mlp_den),
-                    arrowprops=dict(arrowstyle="->", color=color, alpha=0.6, lw=1.5))
+        # Only draw arrow and label if movement exceeds threshold
+        if dist > movement_threshold:
+            # Arrow from denoising to noising
+            ax.annotate("", xy=(attn_noi, mlp_noi), xytext=(attn_den, mlp_den),
+                        arrowprops=dict(arrowstyle="->", color=color, alpha=0.6, lw=1.5))
 
-        # Label at midpoint
-        mid_x = (attn_den + attn_noi) / 2
-        mid_y = (mlp_den + mlp_noi) / 2
-        ax.text(mid_x, mid_y, f"L{layer}", fontsize=7, alpha=0.7, ha="center", va="center")
+            # Label at midpoint
+            mid_x = (attn_den + attn_noi) / 2
+            mid_y = (mlp_den + mlp_noi) / 2
+            ax.text(mid_x, mid_y, f"L{layer}", fontsize=7, alpha=0.7, ha="center", va="center")
 
     # Reference elements
     ax.plot([min_val, max_val], [min_val, max_val], "k--", alpha=0.5, linewidth=1)
@@ -180,7 +197,8 @@ def _plot_attn_vs_mlp_paired(
     ax.set_ylim(min_val, max_val)
     ax.set_xlabel("attn_out effect", fontsize=12, fontweight="bold")
     ax.set_ylabel("mlp_out effect", fontsize=12, fontweight="bold")
-    ax.set_title("Paired Attn vs MLP: Denoising (○) → Noising (□)", fontsize=14, fontweight="bold")
+    ax.set_title("Paired Attn vs MLP: Denoising (○) → Noising (□)\n(Arrows shown only for layers with significant movement)",
+                 fontsize=14, fontweight="bold")
 
     # Legend
     ax.scatter([], [], c="gray", s=80, marker="o", label="Denoising")
@@ -197,7 +215,11 @@ def _plot_component_importance(
     output_dir: Path,
     top_n: int = 15,
 ) -> None:
-    """Plot top N components with denoising and noising scores side-by-side."""
+    """Plot top N components with denoising and noising scores side-by-side.
+
+    Same-layer components (e.g., L24_attn and L24_mlp both in top N) are visually
+    linked with colored brackets and shared background highlighting.
+    """
     all_components = []
 
     for comp in ["attn_out", "mlp_out"]:
@@ -233,10 +255,22 @@ def _plot_component_importance(
         layer_counts[layer] = layer_counts.get(layer, 0) + 1
     multi_layers = {layer for layer, count in layer_counts.items() if count > 1}
 
+    # Assign unique colors to multi-layer groups for visual linking
+    multi_layer_colors = {}
+    link_colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#9B59B6", "#3498DB"]  # Gold, coral, teal, purple, blue
+    for i, layer in enumerate(sorted(multi_layers)):
+        multi_layer_colors[layer] = link_colors[i % len(link_colors)]
+
     fig, ax = create_figure(figsize=(12, max(6, top_n * 0.5)))
 
     y_pos = np.arange(len(labels))
     bar_height = 0.35
+
+    # Background highlighting for same-layer components
+    for i, layer in enumerate(layers_used):
+        if layer in multi_layers:
+            ax.axhspan(y_pos[i] - 0.45, y_pos[i] + 0.45, alpha=0.15,
+                       color=multi_layer_colors[layer], zorder=0)
 
     # Bars
     ax.barh(y_pos - bar_height / 2, recoveries, bar_height, color=colors, alpha=0.8,
@@ -244,17 +278,25 @@ def _plot_component_importance(
     ax.barh(y_pos + bar_height / 2, disruptions, bar_height, color=colors, alpha=0.4,
             edgecolor="black", label="Noising Disruption", hatch="//")
 
-    # Mark same-layer components
+    # Mark same-layer components with colored bracket and label
     for i, layer in enumerate(layers_used):
         if layer in multi_layers:
-            ax.annotate("★", xy=(0.02, y_pos[i]), fontsize=10, color="gold",
-                        xycoords=("axes fraction", "data"), ha="left", va="center")
+            bracket_color = multi_layer_colors[layer]
+            # Draw bracket on left side
+            ax.plot([-0.02, -0.02], [y_pos[i] - 0.3, y_pos[i] + 0.3],
+                    color=bracket_color, linewidth=4, transform=ax.get_yaxis_transform(),
+                    clip_on=False, solid_capstyle="butt")
+            # Small text label
+            ax.text(-0.04, y_pos[i], f"L{layer}", fontsize=7, fontweight="bold",
+                    color=bracket_color, ha="right", va="center",
+                    transform=ax.get_yaxis_transform())
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels)
     ax.invert_yaxis()
     ax.set_xlabel("Effect Score", fontsize=12, fontweight="bold")
-    ax.set_title(f"Top {top_n} Components by Importance", fontsize=14, fontweight="bold")
+    ax.set_title(f"Top {top_n} Components by Importance\n(Colored brackets link same-layer attn+mlp pairs)",
+                 fontsize=14, fontweight="bold")
     ax.legend(loc="lower right", fontsize=9)
     setup_grid(ax)
 
@@ -280,7 +322,7 @@ def _plot_cumulative_recovery(
     layer_data: dict[str, SweepStepResults | None],
     output_dir: Path,
 ) -> None:
-    """Plot cumulative recovery stacked area."""
+    """Plot cumulative recovery stacked area with dip annotations."""
     attn_data = layer_data.get("attn_out")
     mlp_data = layer_data.get("mlp_out")
 
@@ -308,7 +350,32 @@ def _plot_cumulative_recovery(
     ax.annotate("Full Recovery (1.0)", xy=(layers[0], 1.0), xytext=(layers[0] + 2, 1.05),
                 fontsize=10, fontweight="bold", color="black", alpha=0.7)
 
-    # Mark key layers
+    # Detect and annotate dips in cumulative attention
+    # Two types of dips:
+    # 1. Explicitly negative attention (attn_val < 0) - counterproductive
+    # 2. Relative dips - where attention contribution drops significantly vs recent average
+    if len(attn_recovery) > 3:
+        # Calculate rolling average for comparison
+        window = 3
+        for i in range(window, len(attn_recovery)):
+            layer = layers[i]
+            attn_val = attn_recovery[i]
+            recent_avg = np.mean(attn_recovery[max(0, i-window):i])
+
+            # Type 1: Explicitly negative
+            if attn_val < -0.02:
+                ax.annotate(f"L{layer} attn\ncounterproductive",
+                            xy=(layer, attn_cumsum[i]), xytext=(layer + 1, attn_cumsum[i] - 0.15),
+                            fontsize=8, fontweight="bold", color="red", alpha=0.8,
+                            arrowprops=dict(arrowstyle="->", color="red", alpha=0.5))
+            # Type 2: Relative dip (current << recent average)
+            elif recent_avg > 0.05 and attn_val < recent_avg * 0.3:
+                ax.annotate(f"L{layer} attn\ndip",
+                            xy=(layer, attn_cumsum[i]), xytext=(layer + 1, attn_cumsum[i] + 0.1),
+                            fontsize=7, color="orange", alpha=0.8,
+                            arrowprops=dict(arrowstyle="->", color="orange", alpha=0.4))
+
+    # Mark key layers (top contributors)
     total_per_layer = [a + m for a, m in zip(attn_recovery, mlp_recovery)]
     key_layers = sorted(zip(layers, total_per_layer), key=lambda x: x[1], reverse=True)[:5]
     for layer, val in key_layers:
