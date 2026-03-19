@@ -254,6 +254,40 @@ class GroupedBinaryChoice(SimpleBinaryChoice):
         """Get (logprob_a, logprob_b) from a BinaryFork."""
         return (float(fork.next_token_logprobs[0]), float(fork.next_token_logprobs[1]))
 
+    # ── Override parent properties to use aggregation ─────────────────────
+
+    @property
+    def divergent_logprobs(self) -> tuple[float, float]:
+        """Aggregated (logprob_a, logprob_b) across all forks.
+
+        Unlike SimpleBinaryChoice which uses only the first fork,
+        GroupedBinaryChoice aggregates across all label pairs using
+        the configured aggregation method.
+        """
+        return self._aggregated_logprobs_by_method(self.aggregation)
+
+    @property
+    def divergent_logits(self) -> tuple[float, float] | None:
+        """Aggregated (logit_a, logit_b) across all forks, or None if unavailable.
+
+        Uses mean aggregation for logits (raw values, not probabilities).
+        Returns None if any fork lacks logit data.
+        """
+        if not self.forks:
+            return None
+
+        logits_a = []
+        logits_b = []
+        for fork in self.forks:
+            fork_logits = fork.next_token_logits
+            if fork_logits is None:
+                return None  # Can't aggregate if any fork missing logits
+            logits_a.append(fork_logits[0])
+            logits_b.append(fork_logits[1])
+
+        # Mean aggregation for logits
+        return (sum(logits_a) / len(logits_a), sum(logits_b) / len(logits_b))
+
     def _aggregated_logprobs_by_method(
         self, method: ForkAggregation
     ) -> tuple[float, float]:

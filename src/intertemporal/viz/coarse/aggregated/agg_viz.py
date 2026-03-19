@@ -5,7 +5,9 @@ Creates structured output organized by analysis slice at top level:
 - agg/same_labels/sweep_<component>/position_sweep/noising/...
 - etc.
 
-All plots use short=clean perspective (long is just the inverse).
+For multilabel experiments, also generates:
+- by_method/<method_name>/... - plots for each aggregation method
+- by_fork/fork_<idx>/... - plots for each individual fork (label pair)
 """
 
 from __future__ import annotations
@@ -14,10 +16,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from .....activation_patching.coarse import CoarseActPatchAggregatedResults
-from .....activation_patching.act_patch_metrics import LabelPerspective
+from .....activation_patching.act_patch_metrics import (
+    LabelPerspective,
+    PLOT_AGGREGATION_METHODS,
+)
+from .....common.choice.grouped_binary_choice import ForkAggregation
 from ...viz_config import CORE_SLICES, GENERATE_ALL_SLICES
 from .analysis_slices import ANALYSIS_SLICES
-from .data_extraction import extract_all_columns
+from .data_extraction import (
+    extract_all_columns,
+    extract_all_columns_by_method,
+    extract_all_columns_per_fork,
+)
 from .metric_plots import plot_column
 from .style import COLUMN_METRICS
 
@@ -25,25 +35,134 @@ if TYPE_CHECKING:
     from ....common.contrastive_preferences import ContrastivePreferences
 
 
-def _get_n_labels(result: CoarseActPatchAggregatedResults) -> int:
-    """Get the number of label pairs from the first sample."""
+def _get_n_labels(
+    result: CoarseActPatchAggregatedResults,
+    pref_pairs: list["ContrastivePreferences"] | None = None,
+) -> int:
+    """Get the number of label pairs.
+
+    First checks pref_pairs for same_labels=False (multilabel indicator).
+    Falls back to checking result data. Validates consistency.
+    """
+    # Check contrastive preferences for multilabel indicator
+    if pref_pairs:
+        for pref in pref_pairs:
+            if not pref.same_labels:
+                return 2  # Multilabel: clean and corrupted label pairs
+
+    # Fallback: check result data
+    n_labels_seen: set[int] = set()
+
     for sample_result in result.by_sample.values():
         if sample_result.sanity_result:
-            return sample_result.sanity_result.n_labels
+            n_labels_seen.add(sample_result.sanity_result.n_labels)
         for step_results in sample_result.layer_results.values():
             for target_result in step_results.values():
-                return target_result.n_labels
-    return 1
+                n_labels_seen.add(target_result.n_labels)
+                break
+            break
+
+    if len(n_labels_seen) > 1:
+        print(f"[viz] WARNING: Inconsistent n_labels across samples: {n_labels_seen}")
+
+    return max(n_labels_seen) if n_labels_seen else 1
+
+
+def _plot_for_sweep_mode(
+    result: CoarseActPatchAggregatedResults,
+    output_dir: Path,
+    sweep_type: Literal["layer", "position"],
+    mode: Literal["denoising", "noising"],
+    perspective: Literal["short", "long"],
+    title_prefix: str,
+    label_perspective: LabelPerspective = "clean",
+) -> None:
+    """Generate plots for a specific sweep/mode combination."""
+    all_column_data = extract_all_columns(
+        result,
+        sweep_type,
+        perspective,
+        mode,
+        label_perspective,
+    )
+
+    columns = list(COLUMN_METRICS.keys())
+    for column in columns:
+        column_data = all_column_data.get(column)
+        if not column_data or not column_data.metrics:
+            continue
+
+        output_path = output_dir / f"{column}.png"
+        plot_column(column_data, output_path, title_prefix)
+
+
+def _plot_by_method(
+    result: CoarseActPatchAggregatedResults,
+    output_dir: Path,
+    sweep_type: Literal["layer", "position"],
+    mode: Literal["denoising", "noising"],
+    perspective: Literal["short", "long"],
+    title_prefix: str,
+    method: ForkAggregation,
+) -> None:
+    """Generate plots using a specific aggregation method."""
+    all_column_data = extract_all_columns_by_method(
+        result,
+        sweep_type,
+        perspective,
+        mode,
+        method,
+    )
+
+    columns = list(COLUMN_METRICS.keys())
+    for column in columns:
+        column_data = all_column_data.get(column)
+        if not column_data or not column_data.metrics:
+            continue
+
+        method_title = f"{title_prefix} | {method.value}"
+        output_path = output_dir / f"{column}.png"
+        plot_column(column_data, output_path, method_title)
+
+
+def _plot_per_fork(
+    result: CoarseActPatchAggregatedResults,
+    output_dir: Path,
+    sweep_type: Literal["layer", "position"],
+    mode: Literal["denoising", "noising"],
+    perspective: Literal["short", "long"],
+    title_prefix: str,
+    fork_idx: int,
+) -> None:
+    """Generate plots for a specific fork (label pair)."""
+    all_column_data = extract_all_columns_per_fork(
+        result,
+        sweep_type,
+        perspective,
+        mode,
+        fork_idx,
+    )
+
+    columns = list(COLUMN_METRICS.keys())
+    for column in columns:
+        column_data = all_column_data.get(column)
+        if not column_data or not column_data.metrics:
+            continue
+
+        fork_title = f"{title_prefix} | Fork {fork_idx}"
+        output_path = output_dir / f"{column}.png"
+        plot_column(column_data, output_path, fork_title)
 
 
 def plot_aggregated_structured(
     result: CoarseActPatchAggregatedResults,
     output_dir: Path,
     analysis_slice: str = "all",
+    pref_pairs: list["ContrastivePreferences"] | None = None,
 ) -> None:
     """Create structured aggregated visualization for a single analysis slice.
 
-    Directory structure:
+    Directory structure for single-label:
         layer_sweep/
           denoising/
             core.png, probs.png, logits.png, fork.png, vocab.png, trajectory.png
@@ -52,7 +171,20 @@ def plot_aggregated_structured(
           denoising/
           noising/
 
-    All plots use short=clean perspective (long=clean is redundant).
+    For multilabel, additionally:
+        layer_sweep/
+          denoising/
+            ... (main plots using default aggregation)
+          by_method/
+            mean_logprob/
+              core.png, ...
+            mean_normalized/
+              ...
+          by_fork/
+            fork_0/
+              core.png, ...
+            fork_1/
+              ...
 
     Args:
         result: Aggregated coarse patching results
@@ -63,19 +195,13 @@ def plot_aggregated_structured(
 
     sweep_types: list[Literal["layer", "position"]] = ["layer", "position"]
     modes: list[Literal["denoising", "noising"]] = ["denoising", "noising"]
-    columns = list(COLUMN_METRICS.keys())
 
     # Always use short=clean perspective
     perspective: Literal["short", "long"] = "short"
 
     # Determine if this is multilabel
-    n_labels = _get_n_labels(result)
+    n_labels = _get_n_labels(result, pref_pairs)
     is_multilabel = n_labels > 1
-
-    if is_multilabel:
-        label_perspectives: list[LabelPerspective] = ["clean", "corrupted", "combined"]
-    else:
-        label_perspectives = ["clean"]
 
     # Get component from result
     component = result.component
@@ -83,55 +209,73 @@ def plot_aggregated_structured(
     for sweep_type in sweep_types:
         sweep_dir_name = f"{sweep_type}_sweep"
 
-        for label_persp in label_perspectives:
-            for mode in modes:
-                # Build directory path
-                if is_multilabel:
-                    dir_path = output_dir / sweep_dir_name / label_persp / mode
-                else:
-                    dir_path = output_dir / sweep_dir_name / mode
-                dir_path.mkdir(parents=True, exist_ok=True)
+        for mode in modes:
+            # Build title prefix (compact format)
+            sweep_label = "Layer" if sweep_type == "layer" else "Pos"
+            mode_label = "Denoise" if mode == "denoising" else "Noise"
+            title_prefix = (
+                f"[{component}] {sweep_label} | "
+                f"{mode_label} | {analysis_slice} | n={result.n_samples}"
+            )
 
-                # Build title prefix (compact format)
-                sweep_label = "Layer" if sweep_type == "layer" else "Pos"
-                mode_label = "Denoise" if mode == "denoising" else "Noise"
-                if is_multilabel:
-                    label_label = {
-                        "clean": "CleanLbl",
-                        "corrupted": "CorruptLbl",
-                        "combined": "Combined",
-                    }[label_persp]
-                    title_prefix = (
-                        f"[{component}] {sweep_label} | {label_label} | "
-                        f"{mode_label} | {analysis_slice} | n={result.n_samples}"
-                    )
-                else:
-                    title_prefix = (
-                        f"[{component}] {sweep_label} | "
-                        f"{mode_label} | {analysis_slice} | n={result.n_samples}"
-                    )
+            # Main directory - uses default aggregation (MEAN_NORMALIZED for multilabel)
+            main_dir = output_dir / sweep_dir_name / mode
+            main_dir.mkdir(parents=True, exist_ok=True)
 
-                # Extract ALL columns at once (much more efficient)
-                all_column_data = extract_all_columns(
-                    result,
-                    sweep_type,
-                    perspective,
-                    mode,
-                    label_persp,
-                )
+            _plot_for_sweep_mode(
+                result,
+                main_dir,
+                sweep_type,
+                mode,
+                perspective,
+                title_prefix,
+            )
 
-                for column in columns:
-                    column_data = all_column_data.get(column)
-                    if not column_data or not column_data.metrics:
-                        continue
-
-                    # Plot
-                    output_path = dir_path / f"{column}.png"
-                    plot_column(
-                        column_data,
-                        output_path,
+            # For multilabel, also generate by_method and by_fork plots
+            if is_multilabel:
+                # By-method plots
+                by_method_base = output_dir / sweep_dir_name / "by_method"
+                for method in PLOT_AGGREGATION_METHODS:
+                    method_dir = by_method_base / method.value / mode
+                    method_dir.mkdir(parents=True, exist_ok=True)
+                    _plot_by_method(
+                        result,
+                        method_dir,
+                        sweep_type,
+                        mode,
+                        perspective,
                         title_prefix,
+                        method,
                     )
+
+                # By-fork plots
+                by_fork_base = output_dir / sweep_dir_name / "by_fork"
+                for fork_idx in range(n_labels):
+                    fork_dir = by_fork_base / f"fork_{fork_idx}" / mode
+                    fork_dir.mkdir(parents=True, exist_ok=True)
+                    _plot_per_fork(
+                        result,
+                        fork_dir,
+                        sweep_type,
+                        mode,
+                        perspective,
+                        title_prefix,
+                        fork_idx,
+                    )
+
+                # Combined (logaddexp) perspective
+                combined_dir = output_dir / sweep_dir_name / "combined" / mode
+                combined_dir.mkdir(parents=True, exist_ok=True)
+                combined_title = f"{title_prefix} | Combined"
+                _plot_for_sweep_mode(
+                    result,
+                    combined_dir,
+                    sweep_type,
+                    mode,
+                    perspective,
+                    combined_title,
+                    label_perspective="combined",
+                )
 
 
 def _load_horizon_indices_from_cache(
@@ -296,7 +440,7 @@ def plot_all_aggregated_slices(
             if agg_result.n_samples == 0:
                 continue
             comp_dir = slice_dir / f"sweep_{component}"
-            plot_aggregated_structured(agg_result, comp_dir, slice_name)
+            plot_aggregated_structured(agg_result, comp_dir, slice_name, pref_pairs)
 
         # Multi-component comparison plots
         has_multi_component = len(filtered_agg) > 1
