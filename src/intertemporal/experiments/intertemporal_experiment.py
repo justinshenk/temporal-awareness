@@ -24,6 +24,7 @@ from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
 from .experiment_context import ExperimentConfig, ExperimentContext
 from .horizon_analysis import build_horizon_analysis, save_horizon_analysis
+from .pair_analysis import build_pair_analysis, save_pair_analysis
 from .intertemporal_viz import generate_viz
 
 
@@ -51,6 +52,10 @@ def step_preference_data(
     # Build and save horizon analysis
     horizon_analysis = build_horizon_analysis(ctx.pref_pairs)
     save_horizon_analysis(horizon_analysis, ctx.output_dir)
+
+    # Build and save pair analysis (labels and order)
+    pair_analysis = build_pair_analysis(ctx.pref_pairs)
+    save_pair_analysis(pair_analysis, ctx.output_dir)
 
 
 @profile("step_attribution_patching")

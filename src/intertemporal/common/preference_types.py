@@ -239,6 +239,26 @@ class PreferenceSample(BaseSchema):
         return False
 
     @property
+    def short_term_first(self) -> bool | None:
+        """Check if short_term option appears first (index 0) in the choice.
+
+        Returns:
+            True if short_term label is at index 0
+            False if long_term label is at index 0
+            None if labels not available
+        """
+        if self.choice is None:
+            return None
+        if not hasattr(self.choice, "labels") or self.choice.labels is None:
+            return None
+        first_label = self.choice.labels[0]
+        if first_label == self.short_term_label:
+            return True
+        if first_label == self.long_term_label:
+            return False
+        return None
+
+    @property
     def full_text(self) -> str:
         """Full text: prompt + response."""
         return (self.prompt_text or "") + (self.response_text or "")

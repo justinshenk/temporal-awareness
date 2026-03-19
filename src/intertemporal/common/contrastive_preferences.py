@@ -102,6 +102,50 @@ class ContrastivePreferences(BaseSchema):
         return self.short_term.context_id == self.long_term.context_id
 
     # =========================================================================
+    # Option Order Properties
+    # =========================================================================
+
+    @property
+    def same_order(self) -> bool:
+        """Check if both samples have the same option order.
+
+        True if both have short_term_first or both have long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order == long_order
+
+    @property
+    def different_order(self) -> bool:
+        """Check if samples have different option orders.
+
+        True if one has short_term_first and the other has long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order != long_order
+
+    @property
+    def both_short_term_first(self) -> bool:
+        """Both samples have short_term option listed first."""
+        return (
+            self.short_term.short_term_first is True
+            and self.long_term.short_term_first is True
+        )
+
+    @property
+    def both_long_term_first(self) -> bool:
+        """Both samples have long_term option listed first."""
+        return (
+            self.short_term.short_term_first is False
+            and self.long_term.short_term_first is False
+        )
+
+    # =========================================================================
     # Reward/Time Properties
     # =========================================================================
 
