@@ -42,6 +42,9 @@ def step_preference_data(
         )
     ctx.pref_data.print_all()
 
+    # Save contrastive preferences for each pair
+    ctx.save_all_contrastive_prefs()
+
 
 @profile("step_attribution_patching")
 def step_attribution_patching(

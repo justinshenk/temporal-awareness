@@ -234,7 +234,7 @@ class ExperimentContext:
 
     def get_coarse_agg_dir(self) -> Path:
         """Get the directory for aggregated coarse patching results."""
-        return self.output_dir / "coarse_agg"
+        return self.output_dir / "agg" / "coarse"
 
     def save_coarse_agg(self) -> None:
         """Save all component aggregated results."""
@@ -252,9 +252,11 @@ class ExperimentContext:
         coarse_dir = self.get_coarse_agg_dir()
         any_loaded = False
         for component in components:
-            # Try new path first
+            # Try new path first (agg/coarse/)
             path = coarse_dir / f"{component}.json"
-            # Fallback to legacy path
+            # Fallback to legacy paths
+            if not path.exists():
+                path = self.output_dir / "coarse_agg" / f"{component}.json"
             if not path.exists():
                 path = self.output_dir / f"coarse_agg_{component}.json"
             if path.exists():
@@ -349,6 +351,25 @@ class ExperimentContext:
                 pair_idx = int(pair_dir.name.split("_")[1])
                 cached.append(pair_idx)
         return sorted(cached)
+
+    def get_contrastive_pref_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair contrastive preference JSON."""
+        return self.output_dir / f"pair_{pair_idx}" / "contrastive_preference.json"
+
+    def save_contrastive_pref(self, pair_idx: int) -> None:
+        """Save contrastive preference metadata for a pair."""
+        pref = self.get_pref_pair(pair_idx)
+        if pref is None:
+            return
+        path = self.get_contrastive_pref_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(pref.to_dict(), path)
+
+    def save_all_contrastive_prefs(self) -> None:
+        """Save contrastive preferences for all pairs."""
+        for pair_idx in range(len(self.pairs)):
+            self.save_contrastive_pref(pair_idx)
+        log(f"[ctx] Saved contrastive preferences for {len(self.pairs)} pairs")
 
     def get_fine_agg_path(self) -> Path:
         return self.output_dir / "fine_agg.json"

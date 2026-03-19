@@ -87,11 +87,13 @@ def load_coarse_aggregated(
         Dict mapping component name to aggregated results
     """
     coarse_agg = {}
-    coarse_dir = exp_dir / "coarse_agg"
+    # Try new path first (agg/coarse/)
+    coarse_dir = exp_dir / "agg" / "coarse"
     for component in components:
-        # Try new path first
         agg_path = coarse_dir / f"{component}.json"
-        # Fallback to legacy path
+        # Fallback to legacy paths
+        if not agg_path.exists():
+            agg_path = exp_dir / "coarse_agg" / f"{component}.json"
         if not agg_path.exists():
             agg_path = exp_dir / f"coarse_agg_{component}.json"
         if agg_path.exists():
