@@ -403,7 +403,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--dataset',
-        default='research/datasets/temporal_scope_caa.json',
+        # default='research/datasets/temporal_scope_caa.json',
+        default='data/raw/temporal_scope/temporal_scope_caa.json',
         help='Path to CAA dataset'
     )
     parser.add_argument(
