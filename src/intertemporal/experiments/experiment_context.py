@@ -27,6 +27,7 @@ from ...activation_patching.coarse import (
 )
 from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
 
+from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences
 from ..common.contrastive_preferences import ContrastivePreferences
@@ -68,6 +69,10 @@ class ExperimentContext:
     )
     fine_agg: ActPatchAggregatedResult | None = None
     att_agg: AttrPatchAggregatedResults | None = None
+
+    # Diffmeans results
+    diffmeans_patching: dict[int, DiffMeansPairResult] = field(default_factory=dict)
+    diffmeans_agg: DiffMeansAggregatedResults | None = None
 
     @property
     def runner(self) -> BinaryChoiceRunner:
@@ -388,6 +393,69 @@ class ExperimentContext:
             return True
         return False
 
+    # ─── Diffmeans save/load methods ───
+
+    def get_diffmeans_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair diffmeans results."""
+        return self.output_dir / f"pair_{pair_idx}" / "diffmeans"
+
+    def get_diffmeans_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair diffmeans results JSON."""
+        return self.get_diffmeans_pair_dir(pair_idx) / "diffmeans_results.json"
+
+    def save_diffmeans_pair(self, pair_idx: int) -> None:
+        """Save per-pair diffmeans results."""
+        if pair_idx not in self.diffmeans_patching:
+            return
+        result = self.diffmeans_patching[pair_idx]
+        path = self.get_diffmeans_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(result.to_dict(), path)
+
+    def load_diffmeans_pair(self, pair_idx: int) -> bool:
+        """Load per-pair diffmeans results."""
+        path = self.get_diffmeans_pair_path(pair_idx)
+        if path.exists():
+            self.diffmeans_patching[pair_idx] = DiffMeansPairResult.from_json(path)
+            return True
+        return False
+
+    def get_diffmeans_agg_dir(self) -> Path:
+        """Get directory for aggregated diffmeans results."""
+        return self.output_dir / "agg" / "diffmeans"
+
+    def save_diffmeans_agg(self) -> None:
+        """Save aggregated diffmeans results."""
+        if not self.diffmeans_agg:
+            return
+        agg_dir = self.get_diffmeans_agg_dir()
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        path = agg_dir / "diffmeans_agg.json"
+        log(f"[diffmeans] Saving aggregated results to {path}...")
+        save_json(self.diffmeans_agg.to_dict(), path)
+        log("[diffmeans] Saved.")
+
+    def load_diffmeans_agg(self) -> bool:
+        """Load aggregated diffmeans results."""
+        path = self.get_diffmeans_agg_dir() / "diffmeans_agg.json"
+        if path.exists():
+            self.diffmeans_agg = DiffMeansAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_diffmeans_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached diffmeans results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            if not pair_dir.exists():
+                break
+            if self.get_diffmeans_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
+
     # ─── Unload methods for memory management ───
 
     def unload_att_agg(self) -> None:
@@ -416,11 +484,17 @@ class ExperimentContext:
         self.fine_agg = None
         self.fine_patching.clear()
 
+    def unload_diffmeans_agg(self) -> None:
+        """Clear diffmeans aggregated results from memory."""
+        self.diffmeans_agg = None
+        self.diffmeans_patching.clear()
+
     def unload_all(self) -> None:
         """Clear all aggregated results from memory."""
         self.unload_att_agg()
         self.unload_coarse_agg()
         self.unload_fine_agg()
+        self.unload_diffmeans_agg()
 
     # ─── Cache detection methods ───
 

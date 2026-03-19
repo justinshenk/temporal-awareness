@@ -21,6 +21,8 @@ from ..viz import (
     visualize_fine_patching,
     visualize_pair_results,
 )
+from ..viz.diffmeans_viz import visualize_diffmeans
+from .diffmeans import DiffMeansAggregatedResults
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
@@ -184,6 +186,21 @@ def load_att_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
     return None
 
 
+def load_diffmeans_agg(exp_dir: Path) -> DiffMeansAggregatedResults | None:
+    """Load aggregated diffmeans results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        DiffMeansAggregatedResults or None if not found
+    """
+    path = exp_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
+    if path.exists():
+        return DiffMeansAggregatedResults.from_json(path)
+    return None
+
+
 def generate_viz(
     exp_dir: Path,
     *,
@@ -194,6 +211,7 @@ def generate_viz(
     att_patching: dict[int, "AttrPatchPairResult"] | None = None,
     fine_agg: "ActPatchAggregatedResult | None" = None,
     fine_patching: dict[int, "ActPatchPairResult"] | None = None,
+    diffmeans_agg: DiffMeansAggregatedResults | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
     runner: "BinaryChoiceRunner | None" = None,
@@ -245,6 +263,12 @@ def generate_viz(
         if att_agg:
             log("[viz] Loaded attribution aggregated results from cache")
 
+    # Load diffmeans aggregated results from cache if not provided
+    if diffmeans_agg is None:
+        diffmeans_agg = load_diffmeans_agg(exp_dir)
+        if diffmeans_agg:
+            log("[viz] Loaded diffmeans aggregated results from cache")
+
     # Generate aggregated visualizations
     agg_out_dir = exp_dir / "agg"
 
@@ -258,6 +282,10 @@ def generate_viz(
 
     if fine_agg:
         visualize_fine_patching(fine_agg, agg_out_dir)
+
+    if diffmeans_agg:
+        visualize_diffmeans(diffmeans_agg, agg_out_dir / "diffmeans")
+        log("[viz] Generated diffmeans visualizations")
 
     # Generate per-pair visualizations
     pair_idx = 0

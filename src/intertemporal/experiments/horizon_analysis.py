@@ -80,13 +80,10 @@ def categorize_pair(
     long_horizon = pref.long_term.time_horizon  # corrupted trajectory
 
     if short_horizon is not None and long_horizon is not None:
-        # Both have horizon - compare them
-        short_years = short_horizon.to_years()
-        long_years = long_horizon.to_years()
-
-        if short_years > long_years:
+        # Both have horizon - compare them (values are already in years as floats)
+        if short_horizon > long_horizon:
             analysis.horizon.clean_greater.append(pair_idx)
-        elif short_years < long_years:
+        elif short_horizon < long_horizon:
             analysis.horizon.corrupted_greater.append(pair_idx)
         else:
             analysis.horizon.equal.append(pair_idx)

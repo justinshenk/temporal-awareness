@@ -37,6 +37,12 @@ VIZ: dict = {
     "regenerate_all": False,
 }
 
+# Default difference-in-means settings
+DIFFMEANS: dict = {
+    "enabled": True,
+    "n_components": 10,  # Number of SVD components to track
+}
+
 
 @dataclass
 class ExperimentConfig(BaseSchema):
@@ -56,6 +62,9 @@ class ExperimentConfig(BaseSchema):
 
     # Visualization settings
     viz: dict = field(default_factory=lambda: VIZ.copy())
+
+    # Difference-in-means settings
+    diffmeans: dict = field(default_factory=lambda: DIFFMEANS.copy())
 
     @property
     def name(self) -> str:

@@ -17,6 +17,7 @@ from ...attribution_patching import (
     AttrPatchAggregatedResults,
     AttributionSettings,
 )
+from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
@@ -186,6 +187,48 @@ def step_fine_activation_patching(
     ctx.save_fine_agg()
 
 
+@profile("step_diffmeans")
+def step_diffmeans(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Run difference-in-means analysis on each contrastive pair."""
+    diffmeans_cfg = ctx.cfg.diffmeans
+    if not diffmeans_cfg.get("enabled", True):
+        log("[diffmeans] Diffmeans analysis disabled, skipping")
+        return
+
+    ctx.diffmeans_agg = DiffMeansAggregatedResults()
+
+    # Detect cached pairs first
+    cached_pair_indices = set()
+    if try_loading_data:
+        cached_pair_indices = set(ctx.detect_cached_diffmeans_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_diffmeans_pair(pair_idx):
+            result = ctx.diffmeans_patching[pair_idx]
+            ctx.diffmeans_agg.add(result)
+            log(f"[diffmeans] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
+    for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue
+
+        log_progress(pair_idx + 1, len(ctx.pairs), "[diffmeans] Processing pair ")
+        result = run_diffmeans_analysis(ctx.runner, pair, pair_idx=pair_idx)
+        ctx.diffmeans_patching[pair_idx] = result
+        ctx.diffmeans_agg.add(result)
+        ctx.save_diffmeans_pair(pair_idx)
+
+    n_loaded = len(cached_pair_indices)
+    n_total = ctx.diffmeans_agg.n_pairs
+    log(f"[diffmeans] Diffmeans: {n_loaded} loaded from cache, {n_total} total")
+    ctx.diffmeans_agg.print_summary()
+    ctx.save_diffmeans_agg()
+
+
 @profile("step_visualize_results")
 def step_visualize_results(
     ctx: ExperimentContext, try_loading_data: bool = False
@@ -217,6 +260,7 @@ def step_visualize_results(
         att_patching=ctx.att_patching or None,
         fine_agg=ctx.fine_agg,
         fine_patching=ctx.fine_patching or None,
+        diffmeans_agg=ctx.diffmeans_agg,
         pairs=ctx.pairs if ctx._pairs else None,
         runner=ctx.runner if ctx._runner else None,
         save_token_trees_fn=ctx.save_token_trees,
@@ -246,6 +290,8 @@ def run_experiment(
     step_attribution_patching(ctx, try_loading_data=try_loading_data)
 
     step_coarse_activation_patching(ctx, try_loading_data=try_loading_data)
+
+    step_diffmeans(ctx, try_loading_data=try_loading_data)
 
     step_visualize_results(ctx, try_loading_data=try_loading_data)
 

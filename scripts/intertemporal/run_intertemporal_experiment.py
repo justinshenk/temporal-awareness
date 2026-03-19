@@ -29,6 +29,12 @@ Usage:
 
     # Regenerate visualizations for one specific experiment
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_one": "label_grid"}'
+
+    # Run ONLY diffmeans (disable all other steps except those specified)
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --diffmeans '{"enabled": true}'
+
+    # Run ONLY coarse patching
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --coarse '{"enabled": true}'
 """
 
 from __future__ import annotations
@@ -127,6 +133,18 @@ def parse_args() -> argparse.Namespace:
         metavar="JSON",
         help='Visualization settings as JSON, e.g. \'{"enabled": true, "regenerate_all": true}\'',
     )
+    parser.add_argument(
+        "--diffmeans",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help='Override diffmeans settings as JSON, e.g. \'{"enabled": true}\'',
+    )
+    parser.add_argument(
+        "--disable",
+        action="store_true",
+        help="Disable all steps except those explicitly enabled via flags",
+    )
 
     return parser.parse_args()
 
@@ -159,6 +177,13 @@ def main() -> int:
     if args.model:
         config_dict["model"] = args.model
 
+    # Handle --disable: disable all steps first, then override with explicit flags
+    if args.disable:
+        config_dict["coarse_patch"] = {"enabled": False}
+        config_dict["att_patch"] = {"enabled": False}
+        config_dict["diffmeans"] = {"enabled": False}
+        config_dict["viz"] = {"enabled": False}
+
     if args.coarse:
         coarse_overrides = json.loads(args.coarse)
         if "coarse_patch" not in config_dict:
@@ -176,6 +201,12 @@ def main() -> int:
         if "viz" not in config_dict:
             config_dict["viz"] = {}
         config_dict["viz"].update(viz_overrides)
+
+    if args.diffmeans:
+        diffmeans_overrides = json.loads(args.diffmeans)
+        if "diffmeans" not in config_dict:
+            config_dict["diffmeans"] = {}
+        config_dict["diffmeans"].update(diffmeans_overrides)
 
     # Determine output directory
     output_dir = None
