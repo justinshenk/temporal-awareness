@@ -27,18 +27,43 @@ def get_experiments_dir() -> Path:
 
 
 def migrate_att_folder(pair_dir: Path, dry_run: bool) -> bool:
-    """Rename att/ -> att_patching/ if needed."""
+    """Rename att/ -> att_patching/ if needed, or merge contents."""
     old_path = pair_dir / "att"
     new_path = pair_dir / "att_patching"
 
-    if old_path.exists() and not new_path.exists():
+    if not old_path.exists():
+        return False
+
+    if not new_path.exists():
+        # Simple rename
         if dry_run:
             print(f"  Would rename: {old_path} -> {new_path}")
         else:
             old_path.rename(new_path)
             print(f"  Renamed: {old_path.name} -> {new_path.name}")
         return True
-    return False
+
+    # Both exist - merge contents from old to new
+    changed = False
+    for item in old_path.iterdir():
+        dest = new_path / item.name
+        if not dest.exists():
+            if dry_run:
+                print(f"  Would move: {item.name} from att/ to att_patching/")
+            else:
+                shutil.move(str(item), str(dest))
+                print(f"  Moved: {item.name} to att_patching/")
+            changed = True
+
+    # Remove old att/ if empty
+    if not dry_run:
+        try:
+            old_path.rmdir()
+            print(f"  Removed empty: att/")
+        except OSError:
+            pass  # Not empty
+
+    return changed
 
 
 def migrate_component_comparison(pair_dir: Path, dry_run: bool) -> bool:
