@@ -35,6 +35,15 @@ ATT_PATCH: dict = {
 VIZ: dict = {
     "enabled": True,
     "regenerate_all": False,
+    "only_agg": False,  # If True, skip per-pair visualizations
+}
+
+# Default geometric analysis settings (PCA of residual stream)
+GEO: dict = {
+    "enabled": False,
+    "layers": None,  # None = all layers, or list of specific layers
+    "positions": None,  # None = last token only, or list of positions
+    "n_components": 3,  # Number of PCA components to track
 }
 
 # Default difference-in-means settings
@@ -65,6 +74,9 @@ class ExperimentConfig(BaseSchema):
 
     # Difference-in-means settings
     diffmeans: dict = field(default_factory=lambda: DIFFMEANS.copy())
+
+    # Geometric analysis settings (PCA)
+    geo: dict = field(default_factory=lambda: GEO.copy())
 
     @property
     def name(self) -> str:

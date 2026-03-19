@@ -28,6 +28,7 @@ from ...activation_patching.coarse import (
 from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
 
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
+from .geo import GeoPairResult, GeoAggregatedResults
 from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences
 from ..common.contrastive_preferences import ContrastivePreferences
@@ -73,6 +74,10 @@ class ExperimentContext:
     # Diffmeans results
     diffmeans_patching: dict[int, DiffMeansPairResult] = field(default_factory=dict)
     diffmeans_agg: DiffMeansAggregatedResults | None = None
+
+    # Geo (PCA) results
+    geo_patching: dict[int, GeoPairResult] = field(default_factory=dict)
+    geo_agg: GeoAggregatedResults | None = None
 
     @property
     def runner(self) -> BinaryChoiceRunner:
@@ -459,6 +464,69 @@ class ExperimentContext:
             if not pair_dir.exists():
                 break
             if self.get_diffmeans_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
+
+    # ─── Geo save/load methods ───
+
+    def get_geo_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair geo results."""
+        return self.output_dir / f"pair_{pair_idx}" / "geo"
+
+    def get_geo_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair geo results JSON."""
+        return self.get_geo_pair_dir(pair_idx) / "geo_results.json"
+
+    def save_geo_pair(self, pair_idx: int) -> None:
+        """Save per-pair geo results."""
+        if pair_idx not in self.geo_patching:
+            return
+        result = self.geo_patching[pair_idx]
+        path = self.get_geo_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(result.to_dict(), path)
+
+    def load_geo_pair(self, pair_idx: int) -> bool:
+        """Load per-pair geo results."""
+        path = self.get_geo_pair_path(pair_idx)
+        if path.exists():
+            self.geo_patching[pair_idx] = GeoPairResult.from_json(path)
+            return True
+        return False
+
+    def get_geo_agg_dir(self) -> Path:
+        """Get directory for aggregated geo results."""
+        return self.output_dir / "agg_geo"
+
+    def save_geo_agg(self) -> None:
+        """Save aggregated geo results."""
+        if not self.geo_agg:
+            return
+        agg_dir = self.get_geo_agg_dir()
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        path = agg_dir / "geo_agg.json"
+        log(f"[geo] Saving aggregated results to {path}...")
+        save_json(self.geo_agg.to_dict(), path)
+        log("[geo] Saved.")
+
+    def load_geo_agg(self) -> bool:
+        """Load aggregated geo results."""
+        path = self.get_geo_agg_dir() / "geo_agg.json"
+        if path.exists():
+            self.geo_agg = GeoAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_geo_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached geo results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            if not pair_dir.exists():
+                break
+            if self.get_geo_pair_path(pair_idx).exists():
                 cached.append(pair_idx)
             pair_idx += 1
         return cached

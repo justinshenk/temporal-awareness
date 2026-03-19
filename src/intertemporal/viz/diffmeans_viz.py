@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ...common.logging import log
-from ..experiments.diffmeans import DiffMeansAggregatedResults
+from ..experiments.diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
 
 
 # Plot styling constants
@@ -58,6 +58,132 @@ def visualize_diffmeans(
     _plot_svd_metrics(agg, output_dir / "svd_metrics.png")
 
     log(f"[diffmeans_viz] Generated {4} plots in {output_dir}")
+
+
+def visualize_diffmeans_pair(
+    result: DiffMeansPairResult,
+    output_dir: Path,
+) -> None:
+    """Generate diffmeans visualizations for a single pair.
+
+    Args:
+        result: Per-pair diffmeans results
+        output_dir: Directory to save plots
+    """
+    if not result.layer_results:
+        return
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Plot cosine trajectory
+    layers, cosines = result.get_cosine_trajectory()
+    if layers and cosines:
+        _plot_single_cosine_trajectory(layers, cosines, output_dir / "cosine_trajectory.png")
+
+    # Plot rotation decomposition
+    rotation_data = result.get_rotation_trajectory()
+    if "total" in rotation_data and rotation_data["total"][0]:
+        _plot_single_rotation(rotation_data, output_dir / "rotation_decomposition.png")
+
+    # Plot diff norm trajectory
+    pair_layers = [lr.layer for lr in result.layer_results]
+    pair_norms = [float(lr.diff_norm) for lr in result.layer_results]
+    if pair_layers and pair_norms:
+        _plot_single_diff_norm(pair_layers, pair_norms, output_dir / "diff_norm_trajectory.png")
+
+
+def _plot_single_cosine_trajectory(
+    layers: list[int],
+    cosines: list[float],
+    output_path: Path,
+) -> None:
+    """Plot cosine trajectory for a single pair."""
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=DPI)
+
+    ax.plot(
+        layers,
+        cosines,
+        color=COSINE_COLOR,
+        linewidth=MEAN_LINE_WIDTH,
+        alpha=MEAN_LINE_ALPHA,
+        marker=MEAN_MARKER,
+        markersize=MEAN_MARKER_SIZE,
+    )
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("Cosine Similarity (to next layer)")
+    ax.set_title("Direction Stability Across Layers")
+    ax.set_ylim(-0.1, 1.1)
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_single_rotation(
+    rotation_data: dict[str, tuple[list[int], list[float]]],
+    output_path: Path,
+) -> None:
+    """Plot rotation decomposition for a single pair."""
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=DPI)
+
+    for name, color in [("attn", ATTN_COLOR), ("mlp", MLP_COLOR), ("total", TOTAL_COLOR)]:
+        if name not in rotation_data:
+            continue
+        pair_layers, pair_angles = rotation_data[name]
+        if not pair_layers:
+            continue
+        label = {"attn": "Attention", "mlp": "MLP", "total": "Total"}[name]
+        ax.plot(
+            pair_layers,
+            pair_angles,
+            color=color,
+            linewidth=MEAN_LINE_WIDTH,
+            alpha=MEAN_LINE_ALPHA,
+            marker=MEAN_MARKER,
+            markersize=MEAN_MARKER_SIZE,
+            label=label,
+        )
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("Rotation Angle (degrees)")
+    ax.set_title("Direction Rotation by Component")
+    ax.legend(loc="upper right")
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_single_diff_norm(
+    layers: list[int],
+    norms: list[float],
+    output_path: Path,
+) -> None:
+    """Plot diff norm trajectory for a single pair."""
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=DPI)
+
+    ax.plot(
+        layers,
+        norms,
+        color=DIFF_NORM_COLOR,
+        linewidth=MEAN_LINE_WIDTH,
+        alpha=MEAN_LINE_ALPHA,
+        marker=MEAN_MARKER,
+        markersize=MEAN_MARKER_SIZE,
+    )
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("Difference Vector Norm")
+    ax.set_title("Activation Difference Magnitude")
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
 
 
 def _setup_grid(ax: plt.Axes) -> None:

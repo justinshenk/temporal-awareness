@@ -141,6 +141,13 @@ def parse_args() -> argparse.Namespace:
         help='Override diffmeans settings as JSON, e.g. \'{"enabled": true}\'',
     )
     parser.add_argument(
+        "--geo",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": [86, 87]}\'',
+    )
+    parser.add_argument(
         "--disable",
         action="store_true",
         help="Disable all steps except those explicitly enabled via flags",
@@ -182,6 +189,7 @@ def main() -> int:
         config_dict["coarse_patch"] = {"enabled": False}
         config_dict["att_patch"] = {"enabled": False}
         config_dict["diffmeans"] = {"enabled": False}
+        config_dict["geo"] = {"enabled": False}
         config_dict["viz"] = {"enabled": False}
 
     if args.coarse:
@@ -207,6 +215,12 @@ def main() -> int:
         if "diffmeans" not in config_dict:
             config_dict["diffmeans"] = {}
         config_dict["diffmeans"].update(diffmeans_overrides)
+
+    if args.geo:
+        geo_overrides = json.loads(args.geo)
+        if "geo" not in config_dict:
+            config_dict["geo"] = {}
+        config_dict["geo"].update(geo_overrides)
 
     # Determine output directory
     output_dir = None

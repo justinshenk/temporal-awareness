@@ -22,7 +22,9 @@ from ..viz import (
     visualize_pair_results,
 )
 from ..viz.diffmeans_viz import visualize_diffmeans
-from .diffmeans import DiffMeansAggregatedResults
+from ..viz.geo_viz import visualize_geo, visualize_geo_pair
+from .diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
+from .geo import GeoAggregatedResults, GeoPairResult
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
@@ -209,6 +211,51 @@ def load_diffmeans_agg(exp_dir: Path) -> DiffMeansAggregatedResults | None:
     return None
 
 
+def load_diffmeans_pair(pair_dir: Path) -> DiffMeansPairResult | None:
+    """Load per-pair diffmeans results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        DiffMeansPairResult or None if not found
+    """
+    path = pair_dir / "diffmeans" / "diffmeans.json"
+    if path.exists():
+        return DiffMeansPairResult.from_json(path)
+    return None
+
+
+def load_geo_agg(exp_dir: Path) -> GeoAggregatedResults | None:
+    """Load aggregated geo results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        GeoAggregatedResults or None if not found
+    """
+    path = exp_dir / "agg_geo" / "geo_agg.json"
+    if path.exists():
+        return GeoAggregatedResults.from_json(path)
+    return None
+
+
+def load_geo_pair(pair_dir: Path) -> GeoPairResult | None:
+    """Load per-pair geo results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        GeoPairResult or None if not found
+    """
+    path = pair_dir / "geo" / "geo_results.json"
+    if path.exists():
+        return GeoPairResult.from_json(path)
+    return None
+
+
 def generate_viz(
     exp_dir: Path,
     *,
@@ -220,6 +267,9 @@ def generate_viz(
     fine_agg: "ActPatchAggregatedResult | None" = None,
     fine_patching: dict[int, "ActPatchPairResult"] | None = None,
     diffmeans_agg: DiffMeansAggregatedResults | None = None,
+    diffmeans_patching: dict[int, DiffMeansPairResult] | None = None,
+    geo_agg: GeoAggregatedResults | None = None,
+    geo_patching: dict[int, GeoPairResult] | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
     pref_pairs: list["ContrastivePreferences"] | None = None,
@@ -227,6 +277,8 @@ def generate_viz(
     save_token_trees_fn: callable | None = None,
     # Components to process (auto-detected from cache if None)
     components: list[str] | None = None,
+    # If True, only generate aggregated visualizations (skip per-pair)
+    only_agg: bool = False,
 ) -> None:
     """Generate all visualizations for an experiment.
 
@@ -241,11 +293,15 @@ def generate_viz(
         att_patching: In-memory per-pair attribution results
         fine_agg: In-memory aggregated fine patching results
         fine_patching: In-memory per-pair fine patching results
+        diffmeans_patching: In-memory per-pair diffmeans results
+        geo_agg: In-memory aggregated geo results
+        geo_patching: In-memory per-pair geo results
         pairs: List of contrastive pairs (for tokenization viz)
         pref_pairs: List of ContrastivePreferences for slice filtering
         runner: Model runner (for tokenization viz)
         save_token_trees_fn: Function to save token trees
         components: List of components to process (auto-detected if None)
+        only_agg: If True, skip per-pair visualizations
     """
     exp_dir = Path(exp_dir)
 
@@ -295,6 +351,22 @@ def generate_viz(
         visualize_diffmeans(diffmeans_agg, exp_dir / "agg_diffmeans")
         log("[viz] Generated diffmeans visualizations")
 
+    # Load geo aggregated results from cache if not provided
+    if geo_agg is None:
+        geo_agg = load_geo_agg(exp_dir)
+        if geo_agg:
+            log("[viz] Loaded geo aggregated results from cache")
+
+    if geo_agg:
+        visualize_geo(geo_agg, exp_dir / "agg_geo")
+        log("[viz] Generated geo visualizations")
+
+    # Skip per-pair visualizations if only_agg is True
+    if only_agg:
+        log(f"[viz] Skipping per-pair visualizations (only_agg=True)")
+        log(f"[viz] Done generating visualizations for {exp_dir.name}")
+        return
+
     # Generate per-pair visualizations
     pair_idx = 0
     while True:
@@ -316,8 +388,18 @@ def generate_viz(
         # Try in-memory first, then load from cache
         att_result = att_patching.get(pair_idx) if att_patching else load_att_pair_result(pair_dir)
         fine_result = fine_patching.get(pair_idx) if fine_patching else None
+        diffmeans_result = (
+            diffmeans_patching.get(pair_idx)
+            if diffmeans_patching
+            else load_diffmeans_pair(pair_dir)
+        )
+        geo_result = (
+            geo_patching.get(pair_idx)
+            if geo_patching
+            else load_geo_pair(pair_dir)
+        )
 
-        if pair_coarse or att_result or fine_result:
+        if pair_coarse or att_result or fine_result or diffmeans_result or geo_result:
             visualize_pair_results(
                 pair_idx=pair_idx,
                 pair_out_dir=pair_dir,
@@ -326,6 +408,8 @@ def generate_viz(
                 att_result=att_result,
                 coarse_results=pair_coarse if pair_coarse else None,
                 fine_result=fine_result,
+                diffmeans_result=diffmeans_result,
+                geo_result=geo_result,
                 try_loading_cache=True,
                 save_token_trees_fn=save_token_trees_fn,
             )

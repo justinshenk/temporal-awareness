@@ -18,6 +18,7 @@ from ...attribution_patching import (
     AttributionSettings,
 )
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
+from .geo import run_geo_analysis, GeoAggregatedResults
 
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
@@ -229,6 +230,60 @@ def step_diffmeans(
     ctx.save_diffmeans_agg()
 
 
+@profile("step_geo")
+def step_geo(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Run geometric (PCA) analysis on residual stream activations."""
+    geo_cfg = ctx.cfg.geo
+    if not geo_cfg.get("enabled", False):
+        log("[geo] Geo analysis disabled, skipping")
+        return
+
+    ctx.geo_agg = GeoAggregatedResults()
+
+    # Get analysis parameters from config
+    positions = geo_cfg.get("positions", None)  # None = last token only
+    layers = geo_cfg.get("layers", None)  # None = all layers
+    n_components = geo_cfg.get("n_components", 3)
+
+    # Detect cached pairs first
+    cached_pair_indices = set()
+    if try_loading_data:
+        cached_pair_indices = set(ctx.detect_cached_geo_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_geo_pair(pair_idx):
+            result = ctx.geo_patching[pair_idx]
+            ctx.geo_agg.add(result)
+            log(f"[geo] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
+    for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue
+
+        log_progress(pair_idx + 1, len(ctx.pairs), "[geo] Processing pair ")
+        result = run_geo_analysis(
+            ctx.runner,
+            pair,
+            pair_idx=pair_idx,
+            positions=positions,
+            layers=layers,
+            n_components=n_components,
+        )
+        ctx.geo_patching[pair_idx] = result
+        ctx.geo_agg.add(result)
+        ctx.save_geo_pair(pair_idx)
+
+    n_loaded = len(cached_pair_indices)
+    n_total = ctx.geo_agg.n_pairs
+    log(f"[geo] Geo: {n_loaded} loaded from cache, {n_total} total")
+    ctx.geo_agg.print_summary()
+    ctx.save_geo_agg()
+
+
 @profile("step_visualize_results")
 def step_visualize_results(
     ctx: ExperimentContext, try_loading_data: bool = False
@@ -252,6 +307,7 @@ def step_visualize_results(
                     ctx.load_coarse_pair(pair_idx, component)
 
     # Use shared generate_viz with in-memory data
+    only_agg = ctx.cfg.viz.get("only_agg", False)
     generate_viz(
         ctx.output_dir,
         coarse_agg_by_component=ctx.coarse_agg_by_component or None,
@@ -261,11 +317,15 @@ def step_visualize_results(
         fine_agg=ctx.fine_agg,
         fine_patching=ctx.fine_patching or None,
         diffmeans_agg=ctx.diffmeans_agg,
+        diffmeans_patching=ctx.diffmeans_patching or None,
+        geo_agg=ctx.geo_agg,
+        geo_patching=ctx.geo_patching or None,
         pairs=ctx.pairs if ctx._pairs else None,
         pref_pairs=ctx.pref_pairs if ctx._pref_pairs else None,
         runner=ctx.runner if ctx._runner else None,
         save_token_trees_fn=ctx.save_token_trees,
         components=components,
+        only_agg=only_agg,
     )
 
 
@@ -293,6 +353,8 @@ def run_experiment(
     step_coarse_activation_patching(ctx, try_loading_data=try_loading_data)
 
     step_diffmeans(ctx, try_loading_data=try_loading_data)
+
+    step_geo(ctx, try_loading_data=try_loading_data)
 
     step_visualize_results(ctx, try_loading_data=try_loading_data)
 
