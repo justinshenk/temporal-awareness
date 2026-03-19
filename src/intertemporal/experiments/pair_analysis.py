@@ -95,31 +95,15 @@ def save_pair_analysis(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save label categories
-    save_json(
-        {"pair_indices": analysis.labels.same_labels},
-        output_dir / "same_label.json"
-    )
-    save_json(
-        {"pair_indices": analysis.labels.different_labels},
-        output_dir / "different_label.json"
-    )
+    # Save label categories (simple lists like horizon.json subcategories)
+    save_json(analysis.labels.same_labels, output_dir / "same_label.json")
+    save_json(analysis.labels.different_labels, output_dir / "different_label.json")
 
     # Save order categories
-    save_json(
-        {
-            "pair_indices": analysis.order.same_order,
-            "both_short_first": analysis.order.both_short_first,
-            "both_long_first": analysis.order.both_long_first,
-        },
-        output_dir / "same_order.json"
-    )
-    save_json(
-        {"pair_indices": analysis.order.different_order},
-        output_dir / "different_order.json"
-    )
+    save_json(analysis.order.same_order, output_dir / "same_order.json")
+    save_json(analysis.order.different_order, output_dir / "different_order.json")
 
-    # Also save combined analysis
+    # Also save combined analysis with all details
     save_json(analysis.to_dict(), output_dir / "pair_analysis.json")
 
     print(f"[pair] Saved pair analysis to {output_dir}")
