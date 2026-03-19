@@ -239,7 +239,7 @@ class ExperimentContext:
 
     def get_coarse_agg_dir(self) -> Path:
         """Get the directory for aggregated coarse patching results."""
-        return self.output_dir / "agg" / "coarse"
+        return self.output_dir / "agg_coarse"
 
     def save_coarse_agg(self) -> None:
         """Save all component aggregated results."""
@@ -257,13 +257,12 @@ class ExperimentContext:
         coarse_dir = self.get_coarse_agg_dir()
         any_loaded = False
         for component in components:
-            # Try new path first (agg/coarse/)
             path = coarse_dir / f"{component}.json"
             # Fallback to legacy paths
             if not path.exists():
-                path = self.output_dir / "coarse_agg" / f"{component}.json"
+                path = self.output_dir / "agg" / "coarse" / f"{component}.json"
             if not path.exists():
-                path = self.output_dir / f"coarse_agg_{component}.json"
+                path = self.output_dir / "coarse_agg" / f"{component}.json"
             if path.exists():
                 self.coarse_agg_by_component[component] = (
                     CoarseActPatchAggregatedResults.from_json(path)
@@ -273,7 +272,7 @@ class ExperimentContext:
 
     def get_att_agg_dir(self) -> Path:
         """Get the directory for aggregated attribution results."""
-        return self.output_dir / "att_agg"
+        return self.output_dir / "agg_att"
 
     def get_att_agg_path(self) -> Path:
         """Legacy path for backwards compatibility check."""
@@ -314,11 +313,16 @@ class ExperimentContext:
             )
             return True
 
-        # Fallback to legacy path
-        legacy_path = self.get_att_agg_path()
-        if legacy_path.exists():
-            self.att_agg = AttrPatchAggregatedResults.from_json(legacy_path)
-            return True
+        # Fallback to legacy paths
+        legacy_paths = [
+            self.output_dir / "att_agg" / "att_agg.json",
+            self.output_dir / "agg" / "att" / "att_agg.json",
+            self.get_att_agg_path(),
+        ]
+        for path in legacy_paths:
+            if path.exists():
+                self.att_agg = AttrPatchAggregatedResults.from_json(path)
+                return True
 
         return False
 
@@ -422,7 +426,7 @@ class ExperimentContext:
 
     def get_diffmeans_agg_dir(self) -> Path:
         """Get directory for aggregated diffmeans results."""
-        return self.output_dir / "agg" / "diffmeans"
+        return self.output_dir / "agg_diffmeans"
 
     def save_diffmeans_agg(self) -> None:
         """Save aggregated diffmeans results."""
@@ -438,6 +442,9 @@ class ExperimentContext:
     def load_diffmeans_agg(self) -> bool:
         """Load aggregated diffmeans results."""
         path = self.get_diffmeans_agg_dir() / "diffmeans_agg.json"
+        # Fallback to legacy path
+        if not path.exists():
+            path = self.output_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
         if path.exists():
             self.diffmeans_agg = DiffMeansAggregatedResults.from_json(path)
             return True

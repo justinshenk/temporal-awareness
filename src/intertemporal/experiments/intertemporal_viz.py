@@ -89,15 +89,14 @@ def load_coarse_aggregated(
         Dict mapping component name to aggregated results
     """
     coarse_agg = {}
-    # Try new path first (agg/coarse/)
-    coarse_dir = exp_dir / "agg" / "coarse"
+    coarse_dir = exp_dir / "agg_coarse"
     for component in components:
         agg_path = coarse_dir / f"{component}.json"
         # Fallback to legacy paths
         if not agg_path.exists():
-            agg_path = exp_dir / "coarse_agg" / f"{component}.json"
+            agg_path = exp_dir / "agg" / "coarse" / f"{component}.json"
         if not agg_path.exists():
-            agg_path = exp_dir / f"coarse_agg_{component}.json"
+            agg_path = exp_dir / "coarse_agg" / f"{component}.json"
         if agg_path.exists():
             coarse_agg[component] = CoarseActPatchAggregatedResults.from_json(agg_path)
     return coarse_agg
@@ -154,14 +153,19 @@ def load_att_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
         AttrPatchAggregatedResults or None if not found
     """
     # Try new folder structure first
-    att_dir = exp_dir / "att_agg"
+    att_dir = exp_dir / "agg_att"
     if (att_dir / "att_agg.json").exists():
         return AttrPatchAggregatedResults.from_json(att_dir / "att_agg.json")
 
-    # Fallback to legacy path
-    legacy_path = exp_dir / "att_agg.json"
-    if legacy_path.exists():
-        return AttrPatchAggregatedResults.from_json(legacy_path)
+    # Fallback to legacy paths
+    legacy_paths = [
+        exp_dir / "att_agg" / "att_agg.json",
+        exp_dir / "agg" / "att" / "att_agg.json",
+        exp_dir / "att_agg.json",
+    ]
+    for path in legacy_paths:
+        if path.exists():
+            return AttrPatchAggregatedResults.from_json(path)
 
     return None
 
@@ -195,7 +199,10 @@ def load_diffmeans_agg(exp_dir: Path) -> DiffMeansAggregatedResults | None:
     Returns:
         DiffMeansAggregatedResults or None if not found
     """
-    path = exp_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
+    path = exp_dir / "agg_diffmeans" / "diffmeans_agg.json"
+    # Fallback to legacy path
+    if not path.exists():
+        path = exp_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
     if path.exists():
         return DiffMeansAggregatedResults.from_json(path)
     return None
@@ -270,21 +277,19 @@ def generate_viz(
             log("[viz] Loaded diffmeans aggregated results from cache")
 
     # Generate aggregated visualizations
-    agg_out_dir = exp_dir / "agg"
-
     if att_agg:
-        visualize_all_att_aggregated_slices(att_agg, agg_out_dir)
+        visualize_all_att_aggregated_slices(att_agg, exp_dir / "agg_att")
         log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
-        visualize_all_aggregated(coarse_agg_by_component, agg_out_dir)
+        visualize_all_aggregated(coarse_agg_by_component, exp_dir / "agg_coarse")
         log("[viz] Generated aggregated visualizations")
 
     if fine_agg:
-        visualize_fine_patching(fine_agg, agg_out_dir)
+        visualize_fine_patching(fine_agg, exp_dir / "agg_fine")
 
     if diffmeans_agg:
-        visualize_diffmeans(diffmeans_agg, agg_out_dir / "diffmeans")
+        visualize_diffmeans(diffmeans_agg, exp_dir / "agg_diffmeans")
         log("[viz] Generated diffmeans visualizations")
 
     # Generate per-pair visualizations
