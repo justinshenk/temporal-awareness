@@ -371,13 +371,17 @@ class ExperimentContext:
         return self.output_dir / f"pair_{pair_idx}" / "contrastive_preference.json"
 
     def save_contrastive_pref(self, pair_idx: int) -> None:
-        """Save contrastive preference metadata for a pair."""
+        """Save contrastive preference summary for a pair.
+
+        Uses to_summary_dict() to save only key properties, excluding heavy
+        data like choice trees and trajectories.
+        """
         pref = self.get_pref_pair(pair_idx)
         if pref is None:
             return
         path = self.get_contrastive_pref_path(pair_idx)
         path.parent.mkdir(parents=True, exist_ok=True)
-        save_json(pref.to_dict(), path)
+        save_json(pref.to_summary_dict(), path)
 
     def save_all_contrastive_prefs(self) -> None:
         """Save contrastive preferences for all pairs."""
