@@ -117,11 +117,8 @@ def run_geo_analysis(
 
         # Get position label if available
         pos_label = None
-        if pair.position_mapping and pos < len(pair.position_mapping.clean_to_common):
-            # Try to get token at this position
-            if pos < len(pair.clean_traj.token_ids):
-                token_id = pair.clean_traj.token_ids[pos]
-                pos_label = f"pos_{pos}"
+        if pos < len(pair.clean_traj.token_ids):
+            pos_label = f"pos_{pos}"
 
         position_results.append(GeoPCAPositionResult(
             position=pos,
