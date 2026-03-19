@@ -21,6 +21,7 @@ from ...attribution_patching import (
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
 from .experiment_context import ExperimentConfig, ExperimentContext
+from .horizon_analysis import build_horizon_analysis, save_horizon_analysis
 from .intertemporal_viz import generate_viz
 
 
@@ -44,6 +45,10 @@ def step_preference_data(
 
     # Save contrastive preferences for each pair
     ctx.save_all_contrastive_prefs()
+
+    # Build and save horizon analysis
+    horizon_analysis = build_horizon_analysis(ctx.pref_pairs)
+    save_horizon_analysis(horizon_analysis, ctx.output_dir)
 
 
 @profile("step_attribution_patching")

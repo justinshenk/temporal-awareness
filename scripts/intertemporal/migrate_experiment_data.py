@@ -109,8 +109,8 @@ def migrate_coarse_agg(exp_dir: Path, dry_run: bool) -> bool:
     return True
 
 
-def backfill_contrastive_prefs(exp_dir: Path, dry_run: bool) -> bool:
-    """Backfill contrastive_preference.json for existing pairs.
+def backfill_contrastive_prefs_and_horizon(exp_dir: Path, dry_run: bool) -> bool:
+    """Backfill contrastive_preference.json and horizon analysis for existing pairs.
 
     This requires reloading preference data, which may not be available.
     """
@@ -121,11 +121,18 @@ def backfill_contrastive_prefs(exp_dir: Path, dry_run: bool) -> bool:
         if not pref_path.exists():
             pairs_needing_backfill.append(pair_dir)
 
-    if not pairs_needing_backfill:
+    # Check if horizon analysis exists
+    horizon_path = exp_dir / "horizon_analysis.json"
+    needs_horizon_analysis = not horizon_path.exists()
+
+    if not pairs_needing_backfill and not needs_horizon_analysis:
         return False
 
     if dry_run:
-        print(f"  Would backfill contrastive_preference.json for {len(pairs_needing_backfill)} pairs")
+        if pairs_needing_backfill:
+            print(f"  Would backfill contrastive_preference.json for {len(pairs_needing_backfill)} pairs")
+        if needs_horizon_analysis:
+            print(f"  Would create horizon analysis files")
         return True
 
     # Try to rebuild from preference data
@@ -133,6 +140,7 @@ def backfill_contrastive_prefs(exp_dir: Path, dry_run: bool) -> bool:
     try:
         from src.intertemporal.experiments.experiment_config import ExperimentConfig
         from src.intertemporal.experiments.experiment_context import ExperimentContext
+        from src.intertemporal.experiments.horizon_analysis import build_horizon_analysis, save_horizon_analysis
         from src.intertemporal.preference import load_and_merge_preference_data
         from src.intertemporal.common import get_pref_dataset_dir
 
@@ -175,10 +183,16 @@ def backfill_contrastive_prefs(exp_dir: Path, dry_run: bool) -> bool:
             ctx.save_contrastive_pref(pair_idx)
             print(f"  Saved: {pair_dir.name}/contrastive_preference.json")
 
+        # Build and save horizon analysis
+        if needs_horizon_analysis:
+            horizon_analysis = build_horizon_analysis(ctx.pref_pairs)
+            save_horizon_analysis(horizon_analysis, exp_dir)
+            print(f"  Created horizon analysis files")
+
         return True
 
     except Exception as e:
-        print(f"  Error backfilling prefs: {e}")
+        print(f"  Error backfilling: {e}")
         return False
 
 
@@ -203,8 +217,8 @@ def migrate_experiment(exp_dir: Path, dry_run: bool) -> None:
     if migrate_coarse_agg(exp_dir, dry_run):
         changes += 1
 
-    # 4. Backfill contrastive_preference.json
-    if backfill_contrastive_prefs(exp_dir, dry_run):
+    # 4. Backfill contrastive_preference.json and horizon analysis
+    if backfill_contrastive_prefs_and_horizon(exp_dir, dry_run):
         changes += 1
 
     if changes == 0:
