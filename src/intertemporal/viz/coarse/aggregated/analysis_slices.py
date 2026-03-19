@@ -28,6 +28,17 @@ ANALYSIS_SLICES: list[AnalysisSlice] = [
         req=ContrastivePrefReq(),
         description="All contrastive pairs",
     ),
+    # Time horizon filtering - always generated alongside "all"
+    AnalysisSlice(
+        name="horizon",
+        req=ContrastivePrefReq(both_horizon=True),
+        description="Both samples have time horizon",
+    ),
+    AnalysisSlice(
+        name="no_horizon",
+        req=ContrastivePrefReq(neither_horizon=True),
+        description="Neither sample has time horizon",
+    ),
     # Label matching
     AnalysisSlice(
         name="same_labels",

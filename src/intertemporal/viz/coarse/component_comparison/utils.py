@@ -18,8 +18,10 @@ except ImportError:
 
 
 def setup_grid(ax: Axes) -> None:
-    """Configure grid styling for an axes."""
-    ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
+    """Configure grid styling for an axes with minor ticks for full resolution."""
+    ax.minorticks_on()
+    ax.grid(True, which="major", alpha=0.5, linewidth=0.6)
+    ax.grid(True, which="minor", alpha=0.25, linewidth=0.3)
     ax.set_axisbelow(True)
 
 

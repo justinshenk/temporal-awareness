@@ -19,9 +19,13 @@ SPREAD_ALPHA = 0.25
 MEAN_MARKER = "o"
 MEAN_MARKER_SIZE = 5
 
-# Grid style
+# Grid style (major)
 GRID_ALPHA = 0.5
 GRID_LINE_WIDTH = 0.5
+
+# Grid style (minor) - more resolution without additional labels
+MINOR_GRID_ALPHA = 0.25
+MINOR_GRID_LINE_WIDTH = 0.3
 
 # Figure settings
 SUBPLOT_WIDTH = 4

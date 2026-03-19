@@ -75,17 +75,18 @@ def visualize_pair_results(
 
     # Step 2: Attribution patching visualizations
     if att_result is not None:
+        att_dir = pair_out_dir / "att_patching"
         if att_result.result.denoising:
             visualize_att_patching(
                 att_result.result.denoising,
-                pair_out_dir / "denoising",
+                att_dir / "denoising",
                 position_labels,
                 section_markers,
             )
         if att_result.result.noising:
             visualize_att_patching(
                 att_result.result.noising,
-                pair_out_dir / "noising",
+                att_dir / "noising",
                 position_labels,
                 section_markers,
             )
@@ -109,7 +110,7 @@ def visualize_pair_results(
     if coarse_results and len(coarse_results) > 0:
         visualize_component_comparison(
             coarse_results,
-            pair_out_dir / "component_comparison",
+            pair_out_dir / "sweep_component_comparison",
         )
 
 

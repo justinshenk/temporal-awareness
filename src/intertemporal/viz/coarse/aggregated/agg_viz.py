@@ -15,6 +15,7 @@ from typing import Literal
 
 from .....activation_patching.coarse import CoarseActPatchAggregatedResults
 from .....activation_patching.act_patch_metrics import LabelPerspective
+from ...viz_config import CORE_SLICES, GENERATE_ALL_SLICES
 from .analysis_slices import ANALYSIS_SLICES
 from .data_extraction import extract_all_columns
 from .metric_plots import plot_column
@@ -166,13 +167,12 @@ def plot_all_aggregated_slices(
 
     has_multi_component = len(results_by_component) > 1
 
-    # Determine which slices to generate based on sample count
-    # For small datasets, only generate the "all" slice
+    # Determine which slices to generate
     first_agg = next(iter(agg_by_component.values()))
     n_samples = first_agg.n_samples
-    if n_samples <= 2:
-        # Only generate "all" slice for small datasets
-        slices_to_generate = [s for s in ANALYSIS_SLICES if s.name == "all"]
+    if not GENERATE_ALL_SLICES or n_samples <= 2:
+        # Only generate core slices (all, horizon, no_horizon)
+        slices_to_generate = [s for s in ANALYSIS_SLICES if s.name in CORE_SLICES]
     else:
         slices_to_generate = ANALYSIS_SLICES
 
@@ -188,7 +188,7 @@ def plot_all_aggregated_slices(
 
         # Multi-component comparison plots
         if has_multi_component:
-            comp_comparison_dir = slice_dir / "component_comparison"
+            comp_comparison_dir = slice_dir / "sweep_component_comparison"
             comp_comparison_dir.mkdir(parents=True, exist_ok=True)
             plot_all_component_comparisons(results_by_component, comp_comparison_dir)
 

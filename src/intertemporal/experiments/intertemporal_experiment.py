@@ -24,21 +24,6 @@ from .experiment_context import ExperimentConfig, ExperimentContext
 from .intertemporal_viz import generate_viz
 
 
-def _detect_cached_pairs(output_dir: Path, component: str) -> list[int]:
-    """Detect all pair indices that have cached results for a component."""
-    cached = []
-    pair_idx = 0
-    while True:
-        pair_dir = output_dir / f"pair_{pair_idx}"
-        if not pair_dir.exists():
-            break
-        results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
-        if results_path.exists():
-            cached.append(pair_idx)
-        pair_idx += 1
-    return cached
-
-
 @profile("step_preference_data")
 def step_preference_data(
     ctx: ExperimentContext, try_loading_data: bool = False
@@ -68,22 +53,37 @@ def step_attribution_patching(
         log("[attr] Attribution patching disabled, skipping")
         return
 
-    if try_loading_data and ctx.load_att_agg():
-        log("[attr] Loaded cached aggregated results")
-        ctx.att_agg.print_summary()
-        return
-
     # Build settings from config (only override defaults for fields present in att_cfg)
     settings = AttributionSettings.from_dict(att_cfg)
 
     ctx.att_agg = AttrPatchAggregatedResults()
+
+    # Detect cached pairs first when loading from cache
+    cached_pair_indices = set()
+    if try_loading_data:
+        cached_pair_indices = set(ctx.detect_cached_att_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_att_pair(pair_idx):
+            result = ctx.att_patching[pair_idx]
+            ctx.att_agg.add(result)
+            log(f"[attr] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
     for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue  # Already loaded from cache
+
         log_progress(pair_idx + 1, len(ctx.pairs), "[attr] Processing pair ")
         result = attribute_pair(ctx.runner, pair, settings=settings)
         ctx.att_patching[pair_idx] = result
         ctx.att_agg.add(result)
+        ctx.save_att_pair(pair_idx)
 
-    log()
+    n_loaded = len(cached_pair_indices)
+    n_total = len(ctx.att_agg.denoising) + len(ctx.att_agg.noising)
+    log(f"[attr] Attribution: {n_loaded} loaded from cache, {n_total} total")
     ctx.att_agg.print_summary()
     ctx.save_att_agg()
 
@@ -107,7 +107,7 @@ def step_coarse_activation_patching(
         # Detect all cached pairs first when loading from cache
         cached_pair_indices = set()
         if try_loading_data:
-            cached_pair_indices = set(_detect_cached_pairs(ctx.output_dir, component))
+            cached_pair_indices = set(ctx.detect_cached_coarse_pairs(component))
 
         # Load all cached pairs (may be more than len(ctx.pairs))
         for pair_idx in sorted(cached_pair_indices):

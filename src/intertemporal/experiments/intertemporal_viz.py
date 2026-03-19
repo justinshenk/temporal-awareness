@@ -13,17 +13,18 @@ from ...activation_patching.coarse import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
 )
+from ...attribution_patching import AttrPatchAggregatedResults, AttrPatchPairResult
 from ...common.logging import log
 from ..viz import (
     visualize_all_aggregated,
-    visualize_att_patching,
+    visualize_all_att_aggregated_slices,
     visualize_fine_patching,
     visualize_pair_results,
 )
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
-    from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
+    from ...attribution_patching import AttrPatchPairResult
     from ...binary_choice import BinaryChoiceRunner
     from ...common.contrastive_pair import ContrastivePair
 
@@ -36,6 +37,9 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
 
     Returns:
         List of component names with cached results
+
+    Note: This is a standalone version for use without ExperimentContext.
+    When using ExperimentContext, prefer ctx.detect_cached_components().
     """
     components = []
     pair_0 = exp_dir / "pair_0"
@@ -83,8 +87,13 @@ def load_coarse_aggregated(
         Dict mapping component name to aggregated results
     """
     coarse_agg = {}
+    coarse_dir = exp_dir / "coarse_agg"
     for component in components:
-        agg_path = exp_dir / f"coarse_agg_{component}.json"
+        # Try new path first
+        agg_path = coarse_dir / f"{component}.json"
+        # Fallback to legacy path
+        if not agg_path.exists():
+            agg_path = exp_dir / f"coarse_agg_{component}.json"
         if agg_path.exists():
             coarse_agg[component] = CoarseActPatchAggregatedResults.from_json(agg_path)
     return coarse_agg
@@ -127,6 +136,50 @@ def rebuild_coarse_aggregated(
 
     # Filter out empty aggregations
     return {comp: agg for comp, agg in coarse_agg.items() if agg.n_samples > 0}
+
+
+def load_att_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
+    """Load aggregated attribution results from cache.
+
+    Tries new folder structure first, then legacy path.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        AttrPatchAggregatedResults or None if not found
+    """
+    # Try new folder structure first
+    att_dir = exp_dir / "att_agg"
+    if (att_dir / "att_agg.json").exists():
+        return AttrPatchAggregatedResults.from_json(att_dir / "att_agg.json")
+
+    # Fallback to legacy path
+    legacy_path = exp_dir / "att_agg.json"
+    if legacy_path.exists():
+        return AttrPatchAggregatedResults.from_json(legacy_path)
+
+    return None
+
+
+def load_att_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
+    """Load per-pair attribution results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        AttrPatchPairResult or None if not found
+    """
+    # Try new path first
+    att_path = pair_dir / "att_patching" / "att_results.json"
+    if att_path.exists():
+        return AttrPatchPairResult.from_json(att_path)
+    # Fallback to legacy path
+    legacy_path = pair_dir / "att" / "att_results.json"
+    if legacy_path.exists():
+        return AttrPatchPairResult.from_json(legacy_path)
+    return None
 
 
 def generate_viz(
@@ -184,18 +237,18 @@ def generate_viz(
         coarse_agg_by_component = rebuild_coarse_aggregated(exp_dir, components)
         log(f"[viz] Rebuilt aggregation from {coarse_agg_by_component[components[0]].n_samples if coarse_agg_by_component else 0} pairs")
 
+    # Load attribution patching aggregated results from cache if not provided
+    if att_agg is None:
+        att_agg = load_att_agg(exp_dir)
+        if att_agg:
+            log("[viz] Loaded attribution aggregated results from cache")
+
     # Generate aggregated visualizations
     agg_out_dir = exp_dir / "agg"
 
     if att_agg:
-        visualize_att_patching(
-            att_agg.denoising_agg,
-            agg_out_dir / "all" / "att_patching" / "denoising",
-        )
-        visualize_att_patching(
-            att_agg.noising_agg,
-            agg_out_dir / "all" / "att_patching" / "noising",
-        )
+        visualize_all_att_aggregated_slices(att_agg, agg_out_dir)
+        log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
         visualize_all_aggregated(coarse_agg_by_component, agg_out_dir)
@@ -222,7 +275,8 @@ def generate_viz(
             pair_coarse = load_coarse_results_for_pair(pair_dir, components)
 
         pair = pairs[pair_idx] if pairs and pair_idx < len(pairs) else None
-        att_result = att_patching.get(pair_idx) if att_patching else None
+        # Try in-memory first, then load from cache
+        att_result = att_patching.get(pair_idx) if att_patching else load_att_pair_result(pair_dir)
         fine_result = fine_patching.get(pair_idx) if fine_patching else None
 
         if pair_coarse or att_result or fine_result:
