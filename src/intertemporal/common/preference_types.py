@@ -249,9 +249,18 @@ class PreferenceSample(BaseSchema):
         """
         if self.choice is None:
             return None
-        if not hasattr(self.choice, "labels") or self.choice.labels is None:
+
+        # Handle both object (with .labels attribute) and dict (from JSON)
+        labels = None
+        if isinstance(self.choice, dict):
+            labels = self.choice.get("labels")
+        elif hasattr(self.choice, "labels"):
+            labels = self.choice.labels
+
+        if labels is None or len(labels) < 1:
             return None
-        first_label = self.choice.labels[0]
+
+        first_label = labels[0]
         if first_label == self.short_term_label:
             return True
         if first_label == self.long_term_label:
