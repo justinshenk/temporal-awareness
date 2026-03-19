@@ -49,7 +49,8 @@ def load_caa_dataset(dataset_path):
 def extract_residual_stream_blocks(model):
     # using Python reflection:
     base_decoder = getattr(model, model.base_model_prefix)
-    base_decoder_block_class = getattr(getmodule(model), model._no_split_modules[0])
+    block_name = next(iter(model._no_split_modules))
+    base_decoder_block_class = getattr(getmodule(model), block_name)
     print(f"--- For model: {model.config.model_type} ---")
     print(f"base_decoder name: {model.base_model_prefix}")
     print(f"base_decoder_block_class : {base_decoder_block_class}")
@@ -71,7 +72,9 @@ def extract_activations(model, decoder_blocks, tokenizer, prompt):
 
     Returns: dict mapping layer_idx -> activation vector (hidden_dim,)
     """
+    device = next(model.parameters()).device
     inputs = tokenizer(prompt, return_tensors='pt')
+    inputs = {k: v.to(device) for k, v in inputs.items()}
 
     activations = {}
 
