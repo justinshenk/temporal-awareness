@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -20,12 +21,15 @@ if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
     from .attribution_metric import AttributionMetric
 
+logger = logging.getLogger(__name__)
+
 
 def _compute_component_gradients(
     metric: "AttributionMetric",
     grad_logits: torch.Tensor,
     grad_cache: dict,
     n_layers: int,
+    grad_at: GradTarget,
 ) -> dict[str, dict[int, torch.Tensor]]:
     """Compute gradients w.r.t. each component at each layer.
 
@@ -33,7 +37,20 @@ def _compute_component_gradients(
         Dict mapping component name to dict of layer -> gradient tensor.
         E.g. {"attn_out": {0: grad_tensor, 1: grad_tensor, ...}, "mlp_out": {...}}
     """
-    metric_val = metric.compute_raw(grad_logits.unsqueeze(0))
+    seq_len = grad_logits.shape[0] if grad_logits.ndim == 2 else grad_logits.shape[1]
+    logger.debug(f"EAP gradients: grad_at={grad_at}, seq_len={seq_len}, metric_pos={metric.divergent_position}")
+
+    # Adjust position if out of bounds for this trajectory
+    adjusted_metric = metric
+    if metric.divergent_position >= seq_len:
+        logger.warning(
+            f"EAP: Position {metric.divergent_position} out of bounds for seq_len={seq_len} "
+            f"(grad_at={grad_at}). Using last position."
+        )
+        from dataclasses import replace
+        adjusted_metric = replace(metric, divergent_position=-1)
+
+    metric_val = adjusted_metric.compute_raw(grad_logits.unsqueeze(0))
 
     # Collect activations for all components
     components = ["attn_out", "mlp_out"]
@@ -96,8 +113,11 @@ def compute_eap(
             runner, pair, mode, attribution_filter, grad_at
         )
 
+    logger.debug(f"EAP: mode={mode}, grad_at={grad_at}")
+    logger.debug(f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}")
+
     with P("eap_grads"):
-        component_grads = _compute_component_gradients(metric, grad_logits, grad_cache, n_layers)
+        component_grads = _compute_component_gradients(metric, grad_logits, grad_cache, n_layers, grad_at)
 
     with P("eap_scores"):
         first_hook = hook_name(0, "attn_out")

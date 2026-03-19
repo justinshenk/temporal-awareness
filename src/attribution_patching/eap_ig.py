@@ -5,6 +5,7 @@ Uses embedding-level interpolation for mathematically correct Integrated Gradien
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -23,6 +24,8 @@ from .quadrature import QuadratureMethod, get_quadrature
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
     from .attribution_metric import AttributionMetric
+
+logger = logging.getLogger(__name__)
 
 
 def _get_activation_at_position(act: torch.Tensor, pos: int) -> torch.Tensor:
@@ -92,6 +95,10 @@ def compute_eap_ig(
     del grad_at  # Unused - EAP-IG integrates along full path
     n_layers = runner.n_layers
 
+    logger.debug(f"EAP-IG: mode={mode}, n_steps={n_steps}, quadrature={quadrature}")
+    logger.debug(f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}")
+    logger.debug(f"  metric divergent_position={metric.divergent_position}")
+
     # Determine clean/corrupted based on mode
     clean_traj = pair.corrupted_traj if mode == "denoising" else pair.clean_traj
     corrupted_traj = pair.clean_traj if mode == "denoising" else pair.corrupted_traj
@@ -114,6 +121,17 @@ def compute_eap_ig(
 
     # Initialize accumulators
     aligned_len = aligned.aligned_len
+    logger.debug(f"  aligned_len={aligned_len}")
+
+    # Adjust metric for aligned sequence if needed
+    adjusted_metric = metric
+    if metric.divergent_position >= aligned_len and metric.divergent_position != -1:
+        logger.warning(
+            f"EAP-IG: Position {metric.divergent_position} out of bounds for aligned_len={aligned_len}. "
+            "Using last position."
+        )
+        from dataclasses import replace
+        adjusted_metric = replace(metric, divergent_position=-1)
     attn_scores = np.zeros((n_layers, aligned_len))
     mlp_scores = np.zeros((n_layers, aligned_len))
 
@@ -135,7 +153,7 @@ def compute_eap_ig(
             interp_traj = runner.compute_trajectory_with_intervention_and_cache(
                 [0] * aligned_len, [embed_intervention], names_filter=attribution_filter,
             )
-            metric_val = metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
+            metric_val = adjusted_metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
 
             # Collect activations for all components
             components = ["attn_out", "mlp_out"]
