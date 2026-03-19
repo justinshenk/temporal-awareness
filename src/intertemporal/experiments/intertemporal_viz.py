@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ...attribution_patching import AttrPatchPairResult
     from ...binary_choice import BinaryChoiceRunner
     from ...common.contrastive_pair import ContrastivePair
+    from ..common.contrastive_preferences import ContrastivePreferences
 
 
 def detect_cached_components(exp_dir: Path) -> list[str]:
@@ -221,6 +222,7 @@ def generate_viz(
     diffmeans_agg: DiffMeansAggregatedResults | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
+    pref_pairs: list["ContrastivePreferences"] | None = None,
     runner: "BinaryChoiceRunner | None" = None,
     save_token_trees_fn: callable | None = None,
     # Components to process (auto-detected from cache if None)
@@ -240,6 +242,7 @@ def generate_viz(
         fine_agg: In-memory aggregated fine patching results
         fine_patching: In-memory per-pair fine patching results
         pairs: List of contrastive pairs (for tokenization viz)
+        pref_pairs: List of ContrastivePreferences for slice filtering
         runner: Model runner (for tokenization viz)
         save_token_trees_fn: Function to save token trees
         components: List of components to process (auto-detected if None)
@@ -282,7 +285,7 @@ def generate_viz(
         log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
-        visualize_all_aggregated(coarse_agg_by_component, exp_dir / "agg_coarse")
+        visualize_all_aggregated(coarse_agg_by_component, exp_dir / "agg_coarse", pref_pairs, exp_dir)
         log("[viz] Generated aggregated visualizations")
 
     if fine_agg:

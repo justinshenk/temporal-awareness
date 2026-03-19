@@ -134,6 +134,8 @@ def visualize_component_comparison(
 def visualize_all_aggregated(
     agg_by_component: dict[str, CoarseActPatchAggregatedResults],
     output_dir: Path,
+    pref_pairs: list | None = None,
+    exp_dir: Path | None = None,
 ) -> None:
     """Visualize all aggregated results with new folder structure.
 
@@ -151,6 +153,8 @@ def visualize_all_aggregated(
     Args:
         agg_by_component: Dict mapping component name to aggregated results
         output_dir: Base output directory (typically agg/)
+        pref_pairs: Optional ContrastivePreferences list for slice filtering
+        exp_dir: Optional experiment dir for loading cached horizon analysis
     """
     if not agg_by_component:
         print("[viz] No aggregated results to visualize")
@@ -159,4 +163,4 @@ def visualize_all_aggregated(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_all_aggregated_slices(agg_by_component, output_dir)
+    plot_all_aggregated_slices(agg_by_component, output_dir, pref_pairs, exp_dir)

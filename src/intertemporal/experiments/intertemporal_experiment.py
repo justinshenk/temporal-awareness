@@ -262,6 +262,7 @@ def step_visualize_results(
         fine_patching=ctx.fine_patching or None,
         diffmeans_agg=ctx.diffmeans_agg,
         pairs=ctx.pairs if ctx._pairs else None,
+        pref_pairs=ctx.pref_pairs if ctx._pref_pairs else None,
         runner=ctx.runner if ctx._runner else None,
         save_token_trees_fn=ctx.save_token_trees,
         components=components,

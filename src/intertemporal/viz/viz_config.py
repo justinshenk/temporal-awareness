@@ -15,7 +15,7 @@ GENERATE_ALL_SLICES = False
 
 # Core slices that are ALWAYS generated (even when GENERATE_ALL_SLICES=False)
 # These are the most important analysis views
-CORE_SLICES = ["all", "horizon", "no_horizon"]
+CORE_SLICES = ["all", "horizon", "no_horizon", "half_horizon"]
 
 # =============================================================================
 # Attribution Visualization Axes

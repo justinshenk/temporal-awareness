@@ -39,6 +39,11 @@ ANALYSIS_SLICES: list[AnalysisSlice] = [
         req=ContrastivePrefReq(neither_horizon=True),
         description="Neither sample has time horizon",
     ),
+    AnalysisSlice(
+        name="half_horizon",
+        req=ContrastivePrefReq(only_one_horizon=True),
+        description="Only one sample has time horizon",
+    ),
     # Label matching
     AnalysisSlice(
         name="same_labels",

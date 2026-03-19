@@ -11,7 +11,7 @@ All plots use short=clean perspective (long is just the inverse).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from .....activation_patching.coarse import CoarseActPatchAggregatedResults
 from .....activation_patching.act_patch_metrics import LabelPerspective
@@ -20,6 +20,9 @@ from .analysis_slices import ANALYSIS_SLICES
 from .data_extraction import extract_all_columns
 from .metric_plots import plot_column
 from .style import COLUMN_METRICS
+
+if TYPE_CHECKING:
+    from ....common.contrastive_preferences import ContrastivePreferences
 
 
 def _get_n_labels(result: CoarseActPatchAggregatedResults) -> int:
@@ -131,9 +134,100 @@ def plot_aggregated_structured(
                     )
 
 
+def _load_horizon_indices_from_cache(
+    exp_dir: Path | None,
+    slice_name: str,
+) -> list[int] | None:
+    """Try to load slice pair indices from precomputed horizon analysis files.
+
+    Args:
+        exp_dir: Experiment directory containing horizon analysis files
+        slice_name: Name of the slice (horizon, no_horizon, half_horizon)
+
+    Returns:
+        List of pair indices if found, None otherwise
+    """
+    import json
+
+    if exp_dir is None:
+        return None
+
+    # Map slice name to horizon analysis file and key
+    horizon_mapping = {
+        "horizon": ("horizon.json", ["clean_greater", "corrupted_greater", "equal"]),
+        "no_horizon": ("no_horizon.json", ["pair_indices"]),
+        "half_horizon": ("half_horizon.json", ["clean_has_horizon", "corrupted_has_horizon"]),
+    }
+
+    if slice_name not in horizon_mapping:
+        return None
+
+    filename, keys = horizon_mapping[slice_name]
+    filepath = exp_dir / filename
+
+    if not filepath.exists():
+        return None
+
+    try:
+        with open(filepath) as f:
+            data = json.load(f)
+        # Collect all indices from relevant keys
+        indices = []
+        for key in keys:
+            if key in data and isinstance(data[key], list):
+                indices.extend(data[key])
+        return sorted(set(indices))
+    except (json.JSONDecodeError, KeyError):
+        return None
+
+
+def _get_slice_pair_indices(
+    slice_name: str,
+    pref_pairs: list["ContrastivePreferences"] | None,
+    exp_dir: Path | None = None,
+) -> tuple[list[int] | None, bool]:
+    """Get pair indices that pass the slice requirements.
+
+    Args:
+        slice_name: Name of the analysis slice
+        pref_pairs: List of ContrastivePreferences, indexed by pair_idx
+        exp_dir: Experiment directory (for loading cached horizon analysis)
+
+    Returns:
+        Tuple of (pair_indices, can_compute):
+        - pair_indices: List of pair indices that pass the slice, or None if no filtering needed
+        - can_compute: True if we can compute this slice (False when pref_pairs needed but missing)
+    """
+    from .analysis_slices import get_analysis_slice
+
+    # "all" slice means no filtering - always computable
+    if slice_name == "all":
+        return None, True
+
+    # Try to compute from pref_pairs first (most accurate)
+    if pref_pairs is not None:
+        analysis_slice = get_analysis_slice(slice_name)
+        if analysis_slice is not None:
+            indices = []
+            for pair_idx, pref in enumerate(pref_pairs):
+                if analysis_slice.req.passes(pref):
+                    indices.append(pair_idx)
+            return indices, True
+
+    # Fallback: try to load from cached horizon analysis
+    cached_indices = _load_horizon_indices_from_cache(exp_dir, slice_name)
+    if cached_indices is not None:
+        return cached_indices, True
+
+    # Can't compute this slice
+    return None, False
+
+
 def plot_all_aggregated_slices(
     agg_by_component: dict[str, CoarseActPatchAggregatedResults],
     output_dir: Path,
+    pref_pairs: list["ContrastivePreferences"] | None = None,
+    exp_dir: Path | None = None,
 ) -> None:
     """Create aggregated visualizations for all analysis slices and components.
 
@@ -151,6 +245,8 @@ def plot_all_aggregated_slices(
     Args:
         agg_by_component: Dict mapping component name to aggregated results
         output_dir: Base output directory (e.g., agg/)
+        pref_pairs: List of ContrastivePreferences for slice filtering
+        exp_dir: Experiment directory for loading cached horizon analysis
     """
     from ..component_comparison import plot_all_component_comparisons
 
@@ -158,20 +254,11 @@ def plot_all_aggregated_slices(
 
     from .....activation_patching.coarse import CoarseActPatchResults
 
-    # Get first sample from each component for component_comparison plots
-    results_by_component: dict[str, CoarseActPatchResults] = {}
-    for comp, agg_result in agg_by_component.items():
-        if agg_result.by_sample:
-            first_sample = next(iter(agg_result.by_sample.values()))
-            results_by_component[comp] = first_sample
-
-    has_multi_component = len(results_by_component) > 1
-
     # Determine which slices to generate
     first_agg = next(iter(agg_by_component.values()))
     n_samples = first_agg.n_samples
     if not GENERATE_ALL_SLICES or n_samples <= 2:
-        # Only generate core slices (all, horizon, no_horizon)
+        # Only generate core slices (all, horizon, no_horizon, half_horizon)
         slices_to_generate = [s for s in ANALYSIS_SLICES if s.name in CORE_SLICES]
     else:
         slices_to_generate = ANALYSIS_SLICES
@@ -181,15 +268,49 @@ def plot_all_aggregated_slices(
         slice_name = analysis_slice.name
         slice_dir = output_dir / slice_name
 
+        # Get pair indices for this slice
+        pair_indices, can_compute = _get_slice_pair_indices(slice_name, pref_pairs, exp_dir)
+
+        # Skip slices we can't compute (missing pref_pairs)
+        if not can_compute:
+            continue
+
+        # Skip slices with no matching pairs
+        if pair_indices is not None and len(pair_indices) == 0:
+            continue
+
+        # Filter aggregated results for this slice
+        if pair_indices is not None:
+            filtered_agg = {
+                comp: agg.filter_by_pairs(pair_indices)
+                for comp, agg in agg_by_component.items()
+            }
+            # Skip if all components are empty after filtering
+            if all(agg.n_samples == 0 for agg in filtered_agg.values()):
+                continue
+        else:
+            filtered_agg = agg_by_component
+
         # Per-component aggregated sweep plots
-        for component, agg_result in agg_by_component.items():
+        for component, agg_result in filtered_agg.items():
+            if agg_result.n_samples == 0:
+                continue
             comp_dir = slice_dir / f"sweep_{component}"
             plot_aggregated_structured(agg_result, comp_dir, slice_name)
 
         # Multi-component comparison plots
+        has_multi_component = len(filtered_agg) > 1
         if has_multi_component:
-            comp_comparison_dir = slice_dir / "sweep_component_comparison"
-            comp_comparison_dir.mkdir(parents=True, exist_ok=True)
-            plot_all_component_comparisons(results_by_component, comp_comparison_dir)
+            # Get first sample from each component for component_comparison plots
+            results_by_component: dict[str, CoarseActPatchResults] = {}
+            for comp, agg_result in filtered_agg.items():
+                if agg_result.by_sample:
+                    first_sample = next(iter(agg_result.by_sample.values()))
+                    results_by_component[comp] = first_sample
+
+            if results_by_component:
+                comp_comparison_dir = slice_dir / "sweep_component_comparison"
+                comp_comparison_dir.mkdir(parents=True, exist_ok=True)
+                plot_all_component_comparisons(results_by_component, comp_comparison_dir)
 
     print(f"[viz] All aggregated slices saved to {output_dir}")
