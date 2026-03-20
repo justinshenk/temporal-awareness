@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from ...common.base_schema import BaseSchema
 from .contrastive_preferences import ContrastivePreferences
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from ..preference import PreferenceDataset
 
 log = logging.getLogger(__name__)
+
+GroupByMode = Literal["content", "horizon", "choice"]
 
 
 @dataclass
@@ -229,76 +231,137 @@ class PrefPairRequirement(BaseSchema):
 def get_contrastive_preferences(
     dataset: PreferenceDataset,
     req: PrefPairRequirement | None = None,
+    group_by: GroupByMode = "content",
+    deduplicate: bool = False,
 ) -> list[ContrastivePreferences]:
-    """Find pairs of samples that differ primarily by time_horizon with different choices.
+    """Find pairs of samples with different choices for contrastive analysis.
 
-    This function groups samples by their content (formatting_id and reward/time values)
-    and finds pairs where:
-    - One sample chose short_term and one chose long_term
-    - The primary difference is the time_horizon (which affects rational choice)
+    Grouping modes:
+    - "content": Group by reward/time values. Pairs share same content but differ
+      in horizon. Isolates the horizon effect. (Default, original behavior)
+    - "horizon": Group by horizon value. Pairs share same horizon but may differ
+      in rewards/times. Isolates reward/time sensitivity.
+    - "choice": No grouping - pair any short-chooser with any long-chooser.
+      Maximum volume for PCA, noisier but reveals dominant separating direction.
 
     Args:
         dataset: PreferenceDataset containing samples to search
         req: Optional PrefPairRequirement specifying filtering requirements
+        group_by: Grouping mode ("content", "horizon", or "choice")
+        deduplicate: If True, keep only one pair per unique content×horizon
+            combination within each group. Reduces redundancy from formatting
+            variations. Recommended for geometry analysis.
 
     Returns:
-        List of ContrastivePreferences pairs
+        List of ContrastivePreferences pairs sorted by confidence
     """
-
     if req is None:
         req = PrefPairRequirement()
-
-    # Verify requirements are valid
     req.verify()
 
-    # Group samples by content (same rewards, times, but potentially different time_horizon/labels)
-    # Key: (short_reward, long_reward, short_time, long_time)
-    # Note: formatting_id is NOT included so different label formats can pair for multilabel choice
-    content_groups: dict[tuple, list[PreferenceSample]] = {}
-
+    # Collect samples by choice
+    short_choosers: list[PreferenceSample] = []
+    long_choosers: list[PreferenceSample] = []
     for pref in dataset.preferences:
-        # Skip samples with unknown choice
-        if pref.choice_term not in ("short_term", "long_term"):
-            continue
+        if pref.choice_term == "short_term":
+            short_choosers.append(pref)
+        elif pref.choice_term == "long_term":
+            long_choosers.append(pref)
 
-        # Build content key - excludes formatting_id to allow multilabel pairing
-        key = (
-            pref.short_term_reward,
-            pref.long_term_reward,
-            pref.short_term_time,
-            pref.long_term_time,
-        )
-        if key not in content_groups:
-            content_groups[key] = []
-        content_groups[key].append(pref)
+    # Build groups based on mode
+    if group_by == "choice":
+        # No grouping - all samples in one group
+        groups: dict[tuple, tuple[list[PreferenceSample], list[PreferenceSample]]] = {
+            (): (short_choosers, long_choosers)
+        }
+    elif group_by == "horizon":
+        # Group by horizon value
+        horizon_groups: dict[
+            float | None, tuple[list[PreferenceSample], list[PreferenceSample]]
+        ] = {}
+        for s in short_choosers:
+            h = s.time_horizon
+            if h not in horizon_groups:
+                horizon_groups[h] = ([], [])
+            horizon_groups[h][0].append(s)
+        for s in long_choosers:
+            h = s.time_horizon
+            if h not in horizon_groups:
+                horizon_groups[h] = ([], [])
+            horizon_groups[h][1].append(s)
+        groups = {(h,): v for h, v in horizon_groups.items()}
+    else:
+        # group_by == "content" (default, original behavior)
+        # Group by reward/time values
+        content_groups: dict[
+            tuple, tuple[list[PreferenceSample], list[PreferenceSample]]
+        ] = {}
+        for s in short_choosers:
+            key = (
+                s.short_term_reward,
+                s.long_term_reward,
+                s.short_term_time,
+                s.long_term_time,
+            )
+            if key not in content_groups:
+                content_groups[key] = ([], [])
+            content_groups[key][0].append(s)
+        for s in long_choosers:
+            key = (
+                s.short_term_reward,
+                s.long_term_reward,
+                s.short_term_time,
+                s.long_term_time,
+            )
+            if key not in content_groups:
+                content_groups[key] = ([], [])
+            content_groups[key][1].append(s)
+        groups = content_groups
 
-    # Find pairs with different choices within each group
+    # Generate pairs within each group
     pairs: list[ContrastivePreferences] = []
-    total_short = 0
-    total_long = 0
     total_candidates = 0
     total_passed = 0
 
-    for key, samples in content_groups.items():
-        short_choosers = [s for s in samples if s.choice_term == "short_term"]
-        long_choosers = [s for s in samples if s.choice_term == "long_term"]
-        total_short += len(short_choosers)
-        total_long += len(long_choosers)
-
-        for short_sample in short_choosers:
-            for long_sample in long_choosers:
+    for group_key, (group_short, group_long) in groups.items():
+        for short_sample in group_short:
+            for long_sample in group_long:
                 total_candidates += 1
-                candidate_pair = ContrastivePreferences(
+                candidate = ContrastivePreferences(
                     short_term=short_sample,
                     long_term=long_sample,
                 )
-                if req.passes(candidate_pair):
+                if req.passes(candidate):
                     total_passed += 1
-                    pairs.append(candidate_pair)
+                    pairs.append(candidate)
+
+    # Deduplication: keep one pair per unique content×horizon combination
+    if deduplicate:
+        seen: set[tuple] = set()
+        unique_pairs: list[ContrastivePreferences] = []
+        for p in pairs:
+            # Key: content (rewards/times) + horizons
+            dedup_key = (
+                p.short_term.short_term_reward,
+                p.short_term.long_term_reward,
+                p.short_term.short_term_time,
+                p.short_term.long_term_time,
+                p.short_term.time_horizon,
+                p.long_term.time_horizon,
+            )
+            if dedup_key not in seen:
+                seen.add(dedup_key)
+                unique_pairs.append(p)
+        log.info(
+            f"Deduplication: {len(pairs)} -> {len(unique_pairs)} pairs "
+            f"({len(pairs) - len(unique_pairs)} duplicates removed)"
+        )
+        pairs = unique_pairs
 
     log.info(
-        f"Contrastive pairs: {total_short} short, {total_long} long, "
-        f"{total_candidates} candidates, {total_passed} passed"
+        f"Contrastive pairs (group_by={group_by}): "
+        f"{len(short_choosers)} short, {len(long_choosers)} long, "
+        f"{total_candidates} candidates, {total_passed} passed, {len(pairs)} final"
     )
 
     # Sort by minimum choice probability (highest confidence pairs first)
