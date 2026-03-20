@@ -1,26 +1,27 @@
 setup:
   model: "Qwen/Qwen3-4B-Instruct-2507"
   seed: 0
-  batch_size: 64
+  batch_size: 32
   dtype: "bfloat16"
   granularity: "fine"
+  quadrature: "gauss-chebyshev"
 
 paths:
-  data_loc: "./data/raw/temporal_scope"
-  save_loc: "./results/eap_integrated_gradients/model_exploration"
+  data_loc: "./data/raw/refined_datasets"
+  save_loc: "./results/node_wise/explicit/(a)"
 
 input:
-  data_file: "temporal_scope_explicit_expanded_500.json"
+  data_file: "temporal_scope_explicit_expanded_500_debiased.json"
   template: "{}\n\n{}\n{}"
   option_keys: [ "(a)", "(b)" ]
   prompt_suffix: "Answer: ("
+  horizon: [ "ST", "LT" ]
 
 output:
-  wandb_project: "model_exploration"
-  filename: "(a)Qwen/Qwen3-4B-Instruct-2507"
+  filename: "(a)_explicit"
 
 parameters:
-  system_prompt: "You are evaluating a preference between two options.
+  system_prompt: "Evaluate which option is better, considering both immediate and long-term consequences.
 
     Respond in the following format:
 

@@ -1,0 +1,32 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 32
+  dtype: "bfloat16"
+  granularity: "fine"
+  quadrature: "gauss-chebyshev"
+
+paths:
+  data_loc: "./data/raw/refined_datasets"
+  save_loc: "./results/node_wise/explicit/[A]"
+
+input:
+  data_file: "temporal_scope_explicit_expanded_500_debiased.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "[A]", "[B]" ]
+  prompt_suffix: "Answer: ["
+  horizon: [ "ST", "LT" ]
+
+output:
+  filename: "[A]_explicit"
+
+parameters:
+  system_prompt: "Evaluate which option is better, considering both immediate and long-term consequences.
+
+    Respond in the following format:
+
+    'Answer: [A]' if you prefer option A
+
+    'Answer: [B]' if you prefer option B"
+  steps: [ 20 ]
+  metric_type: "option-logit"
