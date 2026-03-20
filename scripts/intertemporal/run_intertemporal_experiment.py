@@ -216,12 +216,13 @@ def main() -> int:
         config_dict["n_pairs"] = args.n_pairs
 
     # Handle --disable: disable all steps first, then override with explicit flags
+    # Use full defaults but with enabled=False so overrides can re-enable
     if args.disable:
-        config_dict["coarse_patch"] = {"enabled": False}
-        config_dict["att_patch"] = {"enabled": False}
-        config_dict["diffmeans"] = {"enabled": False}
-        config_dict["geo"] = {"enabled": False}
-        config_dict["viz"] = {"enabled": False}
+        config_dict["coarse_patch"] = {**COARSE_PATCH, "enabled": False}
+        config_dict["att_patch"] = {**ATT_PATCH, "enabled": False}
+        config_dict["diffmeans"] = {**DIFFMEANS, "enabled": False}
+        config_dict["geo"] = {**GEO, "enabled": False}
+        config_dict["viz"] = {**VIZ, "enabled": False}
 
     # Apply JSON overrides, merging with defaults if key missing
     if args.coarse:
