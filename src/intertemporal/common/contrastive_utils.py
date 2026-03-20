@@ -233,12 +233,14 @@ def get_contrastive_preferences(
     req: PrefPairRequirement | None = None,
     group_by: GroupByMode = "choice",
     deduplicate: bool = False,
+    best_only: bool = False,
+    min_confidence: float = 0.0,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples with different choices for contrastive analysis.
 
     Grouping modes:
     - "content": Group by reward/time values. Pairs share same content but differ
-      in horizon. Isolates the horizon effect. (Default, original behavior)
+      in horizon. Isolates the horizon effect.
     - "horizon": Group by horizon value. Pairs share same horizon but may differ
       in rewards/times. Isolates reward/time sensitivity.
     - "choice": No grouping - pair any short-chooser with any long-chooser.
@@ -251,6 +253,11 @@ def get_contrastive_preferences(
         deduplicate: If True, keep only one pair per unique content×horizon
             combination within each group. Reduces redundancy from formatting
             variations. Recommended for geometry analysis.
+        best_only: If True, only keep the single best pair per group (highest
+            confidence short + highest confidence long). Creates one high-quality
+            pair per content/horizon group instead of all pairwise combinations.
+        min_confidence: Minimum choice probability threshold. Pairs where either
+            sample has choice_prob below this are filtered out.
 
     Returns:
         List of ContrastivePreferences pairs sorted by confidence
@@ -324,19 +331,38 @@ def get_contrastive_preferences(
     total_passed = 0
 
     for group_key, (group_short, group_long) in groups.items():
-        for short_sample in group_short:
-            for long_sample in group_long:
+        if best_only:
+            # Only pair the best (highest confidence) short with best long
+            sorted_short = sorted(
+                group_short, key=lambda s: s.choice_prob, reverse=True
+            )
+            sorted_long = sorted(
+                group_long, key=lambda s: s.choice_prob, reverse=True
+            )
+            if sorted_short and sorted_long:
                 total_candidates += 1
                 candidate = ContrastivePreferences(
-                    short_term=short_sample,
-                    long_term=long_sample,
+                    short_term=sorted_short[0],
+                    long_term=sorted_long[0],
                 )
-                if req.passes(candidate):
+                if req.passes(candidate) and candidate.min_choice_prob >= min_confidence:
                     total_passed += 1
                     pairs.append(candidate)
+        else:
+            # All pairwise combinations
+            for short_sample in group_short:
+                for long_sample in group_long:
+                    total_candidates += 1
+                    candidate = ContrastivePreferences(
+                        short_term=short_sample,
+                        long_term=long_sample,
+                    )
+                    if req.passes(candidate) and candidate.min_choice_prob >= min_confidence:
+                        total_passed += 1
+                        pairs.append(candidate)
 
     # Deduplication: keep one pair per unique content×horizon combination
-    if deduplicate:
+    if deduplicate and not best_only:  # best_only already gives one per group
         seen: set[tuple] = set()
         unique_pairs: list[ContrastivePreferences] = []
         for p in pairs:
@@ -359,7 +385,7 @@ def get_contrastive_preferences(
         pairs = unique_pairs
 
     log.info(
-        f"Contrastive pairs (group_by={group_by}): "
+        f"Contrastive pairs (group_by={group_by}, best_only={best_only}): "
         f"{len(short_choosers)} short, {len(long_choosers)} long, "
         f"{total_candidates} candidates, {total_passed} passed, {len(pairs)} final"
     )
