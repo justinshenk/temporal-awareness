@@ -12,7 +12,7 @@ from ..prompt import PromptDatasetConfig
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
     "enabled": True,
-    "layer_steps": [2],
+    "layer_steps": [1],
     "pos_steps": [10],
     # "components": ["resid_post", "attn_out", "mlp_out"],
     "components": ["resid_post"],
@@ -24,8 +24,8 @@ COARSE_PATCH: dict = {
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 # Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
-    "enabled": False,
-    "ig_steps": 10,
+    "enabled": True,
+    "ig_steps": 15,
     # "methods": ["standard", "eap_ig", "eap"],
     # "components": ["mlp_out", "attn_out", "resid_post"],
     # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],

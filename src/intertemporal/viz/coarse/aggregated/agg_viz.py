@@ -140,29 +140,32 @@ def plot_aggregated_structured(
           denoising/
             core.png, probs.png, logits.png, fork.png, vocab.png, trajectory.png
           noising/
+            ...
         position_sweep/
           denoising/
           noising/
 
-    For multilabel, additionally:
+    For multilabel, additionally (mode-first grouping):
         layer_sweep/
           denoising/
-            ... (main plots using default aggregation)
-          by_method/
-            mean_logprob/
-              core.png, ...
-            mean_normalized/
-              ...
-          by_fork/
-            fork_0/
-              core.png, ...
-            fork_1/
-              ...
+            core.png, ... (main plots using default aggregation)
+            by_method/
+              mean_logprob/
+                core.png, ...
+              mean_normalized/
+                ...
+            combined/
+              core.png, ... (logaddexp aggregation across label systems)
+          noising/
+            ... (same structure)
+
+    Note: by_fork plots are generated in per-pair visualizations only, not here.
 
     Args:
         result: Aggregated coarse patching results
         output_dir: Output directory for this slice (e.g., agg/all/sweep_resid_post/)
         analysis_slice: Name of the analysis slice for title
+        pref_pairs: Optional preference pairs for multilabel detection
     """
     output_dir = Path(output_dir)
 
@@ -204,12 +207,11 @@ def plot_aggregated_structured(
                 title_prefix,
             )
 
-            # For multilabel, also generate by_method plots (by_fork is per-pair only)
+            # For multilabel, also generate by_method and combined plots
             if is_multilabel:
-                # By-method plots
-                by_method_base = output_dir / sweep_dir_name / "by_method"
+                # By-method plots: sweep/mode/by_method/method/
                 for method in PLOT_AGGREGATION_METHODS:
-                    method_dir = by_method_base / method.value / mode
+                    method_dir = main_dir / "by_method" / method.value
                     method_dir.mkdir(parents=True, exist_ok=True)
                     _plot_by_method(
                         result,
@@ -221,8 +223,8 @@ def plot_aggregated_structured(
                         method,
                     )
 
-                # Combined (logaddexp) perspective
-                combined_dir = output_dir / sweep_dir_name / "combined" / mode
+                # Combined (logaddexp) perspective: sweep/mode/combined/
+                combined_dir = main_dir / "combined"
                 combined_dir.mkdir(parents=True, exist_ok=True)
                 combined_title = f"{title_prefix} | Combined"
                 _plot_for_sweep_mode(

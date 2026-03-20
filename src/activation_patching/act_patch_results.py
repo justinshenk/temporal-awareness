@@ -26,6 +26,9 @@ class ActPatchTargetResult(BaseSchema):
     # Cached metrics (populated by pop_heavy before removing tree data)
     denoising_metrics: IntervenedChoiceMetrics | None = None
     noising_metrics: IntervenedChoiceMetrics | None = None
+    # Cached combined metrics for multilabel (label_perspective="combined")
+    denoising_combined_metrics: IntervenedChoiceMetrics | None = None
+    noising_combined_metrics: IntervenedChoiceMetrics | None = None
 
     @property
     def n_labels(self) -> int:
@@ -61,11 +64,28 @@ class ActPatchTargetResult(BaseSchema):
         return self.mean_effect
 
     def pop_heavy(self) -> None:
-        """Remove heavy data from choices."""
+        """Remove heavy data from choices.
+
+        Caches metrics before removing heavy data:
+        - clean perspective metrics (default)
+        - combined perspective metrics (for multilabel, needs vocab_logits)
+        """
+        # Cache clean perspective metrics
         if self.denoising and self.denoising_metrics is None:
             self.denoising_metrics = IntervenedChoiceMetrics.from_choice(self.denoising)
         if self.noising and self.noising_metrics is None:
             self.noising_metrics = IntervenedChoiceMetrics.from_choice(self.noising)
+
+        # Cache combined perspective metrics for multilabel (requires vocab_logits)
+        if self.n_labels > 1:
+            if self.denoising and self.denoising_combined_metrics is None:
+                self.denoising_combined_metrics = IntervenedChoiceMetrics.from_choice(
+                    self.denoising, label_perspective="combined"
+                )
+            if self.noising and self.noising_combined_metrics is None:
+                self.noising_combined_metrics = IntervenedChoiceMetrics.from_choice(
+                    self.noising, label_perspective="combined"
+                )
 
         if self.denoising:
             self.denoising.pop_heavy()
@@ -83,11 +103,13 @@ class ActPatchTargetResult(BaseSchema):
                 - "corrupted": Use corrupted labels
                 - "combined": Aggregate across both label systems
 
-        Note: Cached metrics always use "clean" perspective. For other perspectives,
-        metrics are computed fresh from the choice data.
+        Note: Cached metrics exist for "clean" and "combined" perspectives.
+        For "corrupted", metrics are computed fresh from the choice data.
         """
-        if self.denoising_metrics is not None and label_perspective == "clean":
+        if label_perspective == "clean" and self.denoising_metrics is not None:
             return self.denoising_metrics
+        if label_perspective == "combined" and self.denoising_combined_metrics is not None:
+            return self.denoising_combined_metrics
         return IntervenedChoiceMetrics.from_choice(self.denoising, label_perspective)
 
     def get_noising_metrics(
@@ -101,11 +123,13 @@ class ActPatchTargetResult(BaseSchema):
                 - "corrupted": Use corrupted labels
                 - "combined": Aggregate across both label systems
 
-        Note: Cached metrics always use "clean" perspective. For other perspectives,
-        metrics are computed fresh from the choice data.
+        Note: Cached metrics exist for "clean" and "combined" perspectives.
+        For "corrupted", metrics are computed fresh from the choice data.
         """
-        if self.noising_metrics is not None and label_perspective == "clean":
+        if label_perspective == "clean" and self.noising_metrics is not None:
             return self.noising_metrics
+        if label_perspective == "combined" and self.noising_combined_metrics is not None:
+            return self.noising_combined_metrics
         return IntervenedChoiceMetrics.from_choice(self.noising, label_perspective)
 
     def get_denoising_metrics_by_method(

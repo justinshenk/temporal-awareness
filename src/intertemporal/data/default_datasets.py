@@ -79,8 +79,9 @@ BINARY_HOR = [
 
 FEW_HOR = [
     None,
-    {"value": 11, "unit": "months"},
-    {"value": 10, "unit": "years"},
+    {"value": 1, "unit": "years"},
+    {"value": 7, "unit": "years"},
+    {"value": 15, "unit": "years"},
 ]
 
 SWEEP_HOR = [
@@ -166,7 +167,7 @@ MULTILABEL_CFG = {
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
 
 FULL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
 
