@@ -6,13 +6,16 @@ Provides unified plotting for layer and position sweeps with
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Sequence
 
 import matplotlib.pyplot as plt
 
 from ....activation_patching import IntervenedChoiceMetrics
+from ....activation_patching.act_patch_metrics import DEFAULT_AGGREGATION, PLOT_AGGREGATION_METHODS
 from ....activation_patching.coarse import SweepStepResults
+from ....common.choice.grouped_binary_choice import ForkAggregation
 from ....viz.token_coloring import PairTokenColoring
 from .columns import core, fork, logits, probs, trajectory, vocab
 from .helpers import (
@@ -22,6 +25,33 @@ from .helpers import (
     color_xaxis_ticks,
     get_tick_spacing,
 )
+
+
+@dataclass
+class ExtractionMode:
+    """Specifies how to extract metrics from multilabel results."""
+
+    # None = use default aggregation, int = specific fork
+    fork_idx: int | None = None
+    # None = use default, else use specific method
+    method: ForkAggregation | None = None
+    # Suffix for output filename
+    suffix: str = ""
+
+    @classmethod
+    def default(cls) -> ExtractionMode:
+        """Default extraction (aggregated with default method)."""
+        return cls()
+
+    @classmethod
+    def for_method(cls, method: ForkAggregation) -> ExtractionMode:
+        """Extract using specific aggregation method."""
+        return cls(method=method, suffix=f"_{method.value}")
+
+    @classmethod
+    def for_fork(cls, fork_idx: int) -> ExtractionMode:
+        """Extract for specific fork (label pair)."""
+        return cls(fork_idx=fork_idx, suffix=f"_fork{fork_idx}")
 
 
 # ============================================================================
@@ -34,6 +64,7 @@ def _extract_metrics_for_mode(
     x_values: Sequence[int],
     mode: Literal["denoising", "noising"],
     clean_traj: Literal["short", "long"],
+    extraction: ExtractionMode | None = None,
 ) -> list[IntervenedChoiceMetrics]:
     """Extract metrics for each x value in a sweep.
 
@@ -44,21 +75,38 @@ def _extract_metrics_for_mode(
         x_values: Sorted list of x values (layers or positions)
         mode: "denoising" or "noising"
         clean_traj: Which trajectory is considered "clean" ("short" or "long")
+        extraction: Optional extraction mode for multilabel (by_method or by_fork)
 
     Returns:
         List of IntervenedChoiceMetrics, one per x value
     """
+    extraction = extraction or ExtractionMode.default()
     metrics = []
     for x in x_values:
         target_result = sweep_data[x]
         # Switch perspective if viewing from long-term's point of view
         if clean_traj == "long":
             target_result = target_result.switch()
-        # Use getter which returns cached metrics if available
-        if mode == "denoising":
-            metrics.append(target_result.get_denoising_metrics())
+
+        # Extract metrics based on mode
+        if extraction.fork_idx is not None:
+            # Per-fork extraction
+            if mode == "denoising":
+                metrics.append(target_result.get_denoising_metrics_per_fork(extraction.fork_idx))
+            else:
+                metrics.append(target_result.get_noising_metrics_per_fork(extraction.fork_idx))
+        elif extraction.method is not None:
+            # By-method extraction
+            if mode == "denoising":
+                metrics.append(target_result.get_denoising_metrics_by_method(extraction.method))
+            else:
+                metrics.append(target_result.get_noising_metrics_by_method(extraction.method))
         else:
-            metrics.append(target_result.get_noising_metrics())
+            # Default extraction (uses cached if available)
+            if mode == "denoising":
+                metrics.append(target_result.get_denoising_metrics())
+            else:
+                metrics.append(target_result.get_noising_metrics())
     return metrics
 
 
@@ -194,6 +242,7 @@ def plot_layer_sweep(
     step_size: int,
     clean_traj: Literal["short", "long"],
     component: str = "resid_post",
+    extraction: ExtractionMode | None = None,
 ) -> None:
     """Plot layer sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -203,7 +252,9 @@ def plot_layer_sweep(
         step_size: Step size used in the sweep
         clean_traj: Which trajectory is "clean" ("short" or "long")
         component: Component being patched (for plot title)
+        extraction: Optional extraction mode for multilabel results
     """
+    extraction = extraction or ExtractionMode.default()
     layers = sorted(layer_data.keys())
     if not layers:
         return
@@ -214,10 +265,15 @@ def plot_layer_sweep(
         for ax in ax_row:
             ax.set_facecolor("white")
 
-    # Title with baseline info
+    # Title with baseline info and extraction mode
     baseline_info = _get_baseline_info(layer_data, layers[0])
+    title_suffix = ""
+    if extraction.method:
+        title_suffix = f" [{extraction.method.value}]"
+    elif extraction.fork_idx is not None:
+        title_suffix = f" [Fork {extraction.fork_idx}]"
     fig.suptitle(
-        f"Coarse Layer Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}\n{baseline_info}",
+        f"Coarse Layer Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}{title_suffix}\n{baseline_info}",
         fontsize=20,
         fontweight="bold",
         y=0.97,
@@ -231,7 +287,7 @@ def plot_layer_sweep(
     # Plot each row and collect secondary axes for synchronization
     secondary_axes_by_row: list[list[plt.Axes | None]] = []
     for row_idx, mode in enumerate(["denoising", "noising"]):
-        metrics = _extract_metrics_for_mode(layer_data, layers, mode, clean_traj)
+        metrics = _extract_metrics_for_mode(layer_data, layers, mode, clean_traj, extraction)
         row_secondary = _plot_sweep_row(
             axes[row_idx], layers, metrics, mode, tick_positions, "Layer"
         )
@@ -252,8 +308,8 @@ def plot_layer_sweep(
 
     _synchronize_y_axes(axes, secondary_axes_by_row)
 
-    # Save
-    save_path = output_dir / f"coarse_layer_sweep_{clean_traj}_{step_size}.png"
+    # Save with extraction suffix
+    save_path = output_dir / f"coarse_layer_sweep_{clean_traj}_{step_size}{extraction.suffix}.png"
     save_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -267,6 +323,7 @@ def plot_position_sweep(
     clean_traj: Literal["short", "long"],
     coloring: PairTokenColoring | None = None,
     component: str = "resid_post",
+    extraction: ExtractionMode | None = None,
 ) -> None:
     """Plot position sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -277,7 +334,9 @@ def plot_position_sweep(
         clean_traj: Which trajectory is "clean" ("short" or "long")
         coloring: Optional token coloring for position tick colors
         component: Component being patched (for plot title)
+        extraction: Optional extraction mode for multilabel results
     """
+    extraction = extraction or ExtractionMode.default()
     positions = sorted(pos_data.keys())
     if not positions:
         return
@@ -288,9 +347,14 @@ def plot_position_sweep(
         for ax in ax_row:
             ax.set_facecolor("white")
 
-    # Title
+    # Title with extraction mode
+    title_suffix = ""
+    if extraction.method:
+        title_suffix = f" [{extraction.method.value}]"
+    elif extraction.fork_idx is not None:
+        title_suffix = f" [Fork {extraction.fork_idx}]"
     fig.suptitle(
-        f"Coarse Position Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}",
+        f"Coarse Position Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}{title_suffix}",
         fontsize=20,
         fontweight="bold",
         y=0.97,
@@ -299,18 +363,15 @@ def plot_position_sweep(
     tick_positions = positions[:: get_tick_spacing(len(positions))]
 
     # Get boundary markers from BOTH trajectories to ensure consistent x-axis
-    # In intertemporal experiments: short=clean, long=corrupted
     prompt_boundary = None
     choice_div_pos = None
     all_boundaries: list[int] = []
     if coloring:
-        # Get markers for current trajectory
         traj_type = "clean" if clean_traj == "short" else "corrupted"
         section_markers = coloring.get_section_markers(traj_type)
         prompt_boundary = section_markers.get("prompt_boundary")
         choice_div_pos = section_markers.get("choice_div_pos")
 
-        # Collect ALL boundary positions from both trajectories for consistent x-axis
         for traj in ["clean", "corrupted"]:
             markers = coloring.get_section_markers(traj)
             if markers.get("prompt_boundary") is not None:
@@ -331,18 +392,16 @@ def plot_position_sweep(
     # Plot each row and collect secondary axes for synchronization
     secondary_axes_by_row: list[list[plt.Axes | None]] = []
     for row_idx, mode in enumerate(["denoising", "noising"]):
-        metrics = _extract_metrics_for_mode(pos_data, positions, mode, clean_traj)
+        metrics = _extract_metrics_for_mode(pos_data, positions, mode, clean_traj, extraction)
         row_secondary = _plot_sweep_row(
             axes[row_idx], positions, metrics, mode, tick_positions, "Position", coloring
         )
         secondary_axes_by_row.append(row_secondary)
 
-        # Set consistent x-axis limits and add boundary markers
         for ax in axes[row_idx]:
-            ax.set_xlim(x_min - 1, x_max + 1)  # Small padding
+            ax.set_xlim(x_min - 1, x_max + 1)
             add_xaxis_boundary_markers(ax, prompt_boundary, choice_div_pos)
 
-        # Row label - positioned based on subplot locations
         row_label = "Denoising" if mode == "denoising" else "Noising"
         fig.text(
             0.012,
@@ -357,12 +416,11 @@ def plot_position_sweep(
 
     _synchronize_y_axes(axes, secondary_axes_by_row)
 
-    # Add legends
     add_token_type_legend(fig)
     add_boundary_legend(fig)
 
-    # Save
-    save_path = output_dir / f"coarse_position_sweep_{clean_traj}_{step_size}.png"
+    # Save with extraction suffix
+    save_path = output_dir / f"coarse_position_sweep_{clean_traj}_{step_size}{extraction.suffix}.png"
     save_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -377,3 +435,22 @@ def _get_baseline_info(sweep_data: SweepStepResults, first_key: int) -> str:
         lp_diff = orig.divergent_logprobs[0] - orig.divergent_logprobs[1]
         return f"Baseline logprob diff: {lp_diff:.2f}"
     return ""
+
+
+def get_n_labels_from_sweep(sweep_data: SweepStepResults) -> int:
+    """Get number of labels from sweep data."""
+    if not sweep_data:
+        return 1
+    first_result = next(iter(sweep_data.values()))
+    return first_result.n_labels
+
+
+def get_multilabel_extraction_modes(n_labels: int) -> tuple[list[ExtractionMode], list[ExtractionMode]]:
+    """Get extraction modes for multilabel visualization.
+
+    Returns:
+        Tuple of (by_method_modes, by_fork_modes)
+    """
+    by_method = [ExtractionMode.for_method(m) for m in PLOT_AGGREGATION_METHODS]
+    by_fork = [ExtractionMode.for_fork(i) for i in range(n_labels)]
+    return by_method, by_fork
