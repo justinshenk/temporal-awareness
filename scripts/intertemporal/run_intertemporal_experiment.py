@@ -105,6 +105,12 @@ def parse_args() -> argparse.Namespace:
         help="Model name to use (e.g., Qwen/Qwen3-4B-Instruct-2507)",
     )
     parser.add_argument(
+        "--n_pairs",
+        type=int,
+        default=None,
+        help="Number of contrastive pairs to use",
+    )
+    parser.add_argument(
         "--cache",
         nargs="?",
         const=True,
@@ -206,6 +212,8 @@ def main() -> int:
 
     if args.model:
         config_dict["model"] = args.model
+    if args.n_pairs:
+        config_dict["n_pairs"] = args.n_pairs
 
     # Handle --disable: disable all steps first, then override with explicit flags
     if args.disable:
