@@ -19,10 +19,14 @@ class DiffMeansLayerResult(BaseSchema):
         layer: Layer index
         cosine_to_next: Cosine similarity to next layer's diff direction
         cosine_to_prev: Cosine similarity to previous layer's diff direction
-        diff_norm: L2 norm of the difference vector (mean across positions)
+        diff_norm: L2 norm of the difference vector
         attn_rotation_angle: Angle (degrees) of rotation from attention
         mlp_rotation_angle: Angle (degrees) of rotation from MLP
         total_rotation_angle: Total rotation angle from previous layer
+        cosine_to_logit: Cosine similarity to logit direction
+        cosine_to_initial: Cosine similarity to initial layer's diff direction (cumulative drift)
+        attn_out_diff_norm: L2 norm of attention output difference
+        mlp_out_diff_norm: L2 norm of MLP output difference
     """
     layer: int
     cosine_to_next: float | None = None
@@ -31,6 +35,10 @@ class DiffMeansLayerResult(BaseSchema):
     attn_rotation_angle: float | None = None
     mlp_rotation_angle: float | None = None
     total_rotation_angle: float | None = None
+    cosine_to_logit: float | None = None
+    cosine_to_initial: float | None = None
+    attn_out_diff_norm: float | None = None
+    mlp_out_diff_norm: float | None = None
 
 
 @dataclass
@@ -57,12 +65,16 @@ class DiffMeansPairResult(BaseSchema):
 
     Attributes:
         pair_idx: Pair index
-        layer_results: Results per layer
+        layer_results: Results per layer (for primary position)
         positions_analyzed: Number of positions analyzed
+        position_results: Per-position layer results (position -> layer results)
+        primary_position: The main position analyzed (e.g., last token)
     """
     pair_idx: int = 0
     layer_results: list[DiffMeansLayerResult] = field(default_factory=list)
     positions_analyzed: int = 0
+    position_results: dict[int, list[DiffMeansLayerResult]] = field(default_factory=dict)
+    primary_position: int | None = None
 
     def get_layer_result(self, layer: int) -> DiffMeansLayerResult | None:
         """Get result for a specific layer."""
@@ -101,6 +113,57 @@ class DiffMeansPairResult(BaseSchema):
             "mlp": (layers, mlp_angles),
             "total": (layers, total_angles),
         }
+
+    def get_cosine_to_logit_trajectory(self) -> tuple[list[int], list[float]]:
+        """Get cosine similarity to logit direction trajectory."""
+        layers = []
+        cosines = []
+        for r in self.layer_results:
+            if r.cosine_to_logit is not None:
+                layers.append(r.layer)
+                cosines.append(r.cosine_to_logit)
+        return layers, cosines
+
+    def get_cosine_to_initial_trajectory(self) -> tuple[list[int], list[float]]:
+        """Get cosine similarity to initial direction (cumulative drift) trajectory."""
+        layers = []
+        cosines = []
+        for r in self.layer_results:
+            if r.cosine_to_initial is not None:
+                layers.append(r.layer)
+                cosines.append(r.cosine_to_initial)
+        return layers, cosines
+
+    def get_component_norm_trajectory(self) -> dict[str, tuple[list[int], list[float]]]:
+        """Get attention and MLP output difference norm trajectories."""
+        layers = []
+        attn_norms = []
+        mlp_norms = []
+
+        for r in self.layer_results:
+            if r.attn_out_diff_norm is not None and r.mlp_out_diff_norm is not None:
+                layers.append(r.layer)
+                attn_norms.append(r.attn_out_diff_norm)
+                mlp_norms.append(r.mlp_out_diff_norm)
+
+        return {
+            "attn": (layers, attn_norms),
+            "mlp": (layers, mlp_norms),
+        }
+
+    def get_position_diff_norm_trajectory(
+        self, position: int
+    ) -> tuple[list[int], list[float]]:
+        """Get diff norm trajectory for a specific position."""
+        if position not in self.position_results:
+            return [], []
+
+        layers = []
+        norms = []
+        for r in self.position_results[position]:
+            layers.append(r.layer)
+            norms.append(r.diff_norm)
+        return layers, norms
 
 
 @dataclass
@@ -180,6 +243,130 @@ class DiffMeansAggregatedResults(BaseSchema):
         layers = [s.layer for s in self.svd_results]
         ratios = [s.top1_ratio for s in self.svd_results]
         return layers, ratios
+
+    def get_mean_cosine_to_logit_trajectory(
+        self,
+    ) -> tuple[list[int], list[float], list[float]]:
+        """Get mean and std cosine to logit direction trajectory."""
+        if not self.pair_results:
+            return [], [], []
+
+        layer_cosines: dict[int, list[float]] = {}
+        for pr in self.pair_results:
+            for lr in pr.layer_results:
+                if lr.cosine_to_logit is not None:
+                    if lr.layer not in layer_cosines:
+                        layer_cosines[lr.layer] = []
+                    layer_cosines[lr.layer].append(float(lr.cosine_to_logit))
+
+        layers = sorted(layer_cosines.keys())
+        means = [float(np.mean(layer_cosines[l])) for l in layers]
+        stds = [float(np.std(layer_cosines[l])) for l in layers]
+        return layers, means, stds
+
+    def get_mean_cosine_to_initial_trajectory(
+        self,
+    ) -> tuple[list[int], list[float], list[float]]:
+        """Get mean and std cosine to initial direction trajectory."""
+        if not self.pair_results:
+            return [], [], []
+
+        layer_cosines: dict[int, list[float]] = {}
+        for pr in self.pair_results:
+            for lr in pr.layer_results:
+                if lr.cosine_to_initial is not None:
+                    if lr.layer not in layer_cosines:
+                        layer_cosines[lr.layer] = []
+                    layer_cosines[lr.layer].append(float(lr.cosine_to_initial))
+
+        layers = sorted(layer_cosines.keys())
+        means = [float(np.mean(layer_cosines[l])) for l in layers]
+        stds = [float(np.std(layer_cosines[l])) for l in layers]
+        return layers, means, stds
+
+    def get_mean_component_norm_trajectory(
+        self,
+    ) -> dict[str, tuple[list[int], list[float], list[float]]]:
+        """Get mean and std attention/MLP output difference norm trajectories."""
+        if not self.pair_results:
+            return {}
+
+        layer_attn: dict[int, list[float]] = {}
+        layer_mlp: dict[int, list[float]] = {}
+
+        for pr in self.pair_results:
+            for lr in pr.layer_results:
+                if lr.attn_out_diff_norm is not None:
+                    if lr.layer not in layer_attn:
+                        layer_attn[lr.layer] = []
+                    layer_attn[lr.layer].append(float(lr.attn_out_diff_norm))
+                if lr.mlp_out_diff_norm is not None:
+                    if lr.layer not in layer_mlp:
+                        layer_mlp[lr.layer] = []
+                    layer_mlp[lr.layer].append(float(lr.mlp_out_diff_norm))
+
+        layers = sorted(layer_attn.keys())
+        return {
+            "attn": (
+                layers,
+                [float(np.mean(layer_attn[l])) for l in layers],
+                [float(np.std(layer_attn[l])) for l in layers],
+            ),
+            "mlp": (
+                layers,
+                [float(np.mean(layer_mlp[l])) for l in layers],
+                [float(np.std(layer_mlp[l])) for l in layers],
+            ),
+        }
+
+    def get_mean_diff_norm_trajectory(
+        self,
+    ) -> tuple[list[int], list[float], list[float]]:
+        """Get mean and std difference norm trajectory."""
+        if not self.pair_results:
+            return [], [], []
+
+        layer_norms: dict[int, list[float]] = {}
+        for pr in self.pair_results:
+            for lr in pr.layer_results:
+                if lr.layer not in layer_norms:
+                    layer_norms[lr.layer] = []
+                layer_norms[lr.layer].append(float(lr.diff_norm))
+
+        layers = sorted(layer_norms.keys())
+        means = [float(np.mean(layer_norms[l])) for l in layers]
+        stds = [float(np.std(layer_norms[l])) for l in layers]
+        return layers, means, stds
+
+    def get_mean_position_diff_norm_trajectory(
+        self, position: int
+    ) -> tuple[list[int], list[float], list[float]]:
+        """Get mean and std diff norm trajectory for a specific position."""
+        if not self.pair_results:
+            return [], [], []
+
+        layer_norms: dict[int, list[float]] = {}
+        for pr in self.pair_results:
+            if position in pr.position_results:
+                for lr in pr.position_results[position]:
+                    if lr.layer not in layer_norms:
+                        layer_norms[lr.layer] = []
+                    layer_norms[lr.layer].append(float(lr.diff_norm))
+
+        if not layer_norms:
+            return [], [], []
+
+        layers = sorted(layer_norms.keys())
+        means = [float(np.mean(layer_norms[l])) for l in layers]
+        stds = [float(np.std(layer_norms[l])) for l in layers]
+        return layers, means, stds
+
+    def get_all_analyzed_positions(self) -> set[int]:
+        """Get all positions that have been analyzed across all pairs."""
+        positions = set()
+        for pr in self.pair_results:
+            positions.update(pr.position_results.keys())
+        return positions
 
     def save(self, output_dir: Path) -> None:
         """Save results to directory."""

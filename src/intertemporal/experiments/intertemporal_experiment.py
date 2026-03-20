@@ -203,6 +203,9 @@ def step_diffmeans(
         log("[diffmeans] Diffmeans analysis disabled, skipping")
         return
 
+    # Get additional positions from config (e.g., [86, 87, 88, 145])
+    additional_positions = diffmeans_cfg.get("positions", None)
+
     ctx.diffmeans_agg = DiffMeansAggregatedResults()
 
     # Detect cached pairs first
@@ -223,7 +226,12 @@ def step_diffmeans(
             continue
 
         log_progress(pair_idx + 1, len(ctx.pairs), "[diffmeans] Processing pair ")
-        result = run_diffmeans_analysis(ctx.runner, pair, pair_idx=pair_idx)
+        result = run_diffmeans_analysis(
+            ctx.runner,
+            pair,
+            pair_idx=pair_idx,
+            additional_positions=additional_positions,
+        )
         ctx.diffmeans_patching[pair_idx] = result
         ctx.diffmeans_agg.add(result)
         ctx.save_diffmeans_pair(pair_idx)
