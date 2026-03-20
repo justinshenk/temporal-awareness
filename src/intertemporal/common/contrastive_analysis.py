@@ -58,6 +58,26 @@ def _get_horizon_years(time_horizon) -> float | None:
     return parse_horizon_years(time_horizon)
 
 
+def _bin_horizon(h: float | None) -> float | None:
+    """Bin horizon to max 1-year granularity."""
+    if h is None:
+        return None
+    if h < 1:
+        # Monthly bins for < 1 year: 1mo, 2mo, 3mo, 6mo
+        months = h * 12
+        if months <= 1:
+            return 1 / 12
+        if months <= 2:
+            return 2 / 12
+        if months <= 3:
+            return 3 / 12
+        if months <= 6:
+            return 6 / 12
+        return 1.0
+    # Yearly bins for >= 1 year
+    return float(int(h))
+
+
 def _format_horizon(h: float | None) -> str:
     """Format horizon for display."""
     if h is None:
@@ -164,7 +184,7 @@ def analyze_contrastive_pairs(
         else:
             analysis.n_neither_horizon += 1
 
-        key = (h_short, h_long)
+        key = (_bin_horizon(h_short), _bin_horizon(h_long))
         analysis.by_horizon_pair[key] = analysis.by_horizon_pair.get(key, 0) + 1
 
         # Rationality - only count when both are computable (not None)

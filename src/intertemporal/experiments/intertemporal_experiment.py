@@ -31,7 +31,12 @@ from .processing import (
 )
 
 from ..common import get_pref_dataset_dir
-from ..preference import generate_preference_data, load_and_merge_preference_data
+from ..preference import (
+    generate_preference_data,
+    load_and_merge_preference_data,
+    analyze_preferences,
+    print_analysis,
+)
 from .experiment_context import ExperimentConfig, ExperimentContext
 from .horizon_analysis import build_horizon_analysis, save_horizon_analysis
 from .pair_analysis import build_pair_analysis, save_pair_analysis
@@ -54,7 +59,8 @@ def step_preference_data(
             max_samples=ctx.cfg.max_samples,
             save_data=True,
         )
-    ctx.pref_data.print_all()
+    analysis = analyze_preferences(ctx.pref_data)
+    print_analysis(analysis)
 
     # Save contrastive preferences for each pair
     ctx.save_all_contrastive_prefs()

@@ -60,7 +60,7 @@ def get_args():
     parser.add_argument(
         "--best-only",
         action="store_true",
-        default=True,
+        default=False,
         help="Only keep the single best pair per group (default: True)",
     )
     parser.add_argument(
@@ -71,7 +71,7 @@ def get_args():
     parser.add_argument(
         "--min-confidence",
         type=float,
-        default=0.6,
+        default=0.0,
         help="Minimum choice probability threshold (default: 0.6)",
     )
     parser.add_argument(
@@ -84,7 +84,6 @@ def get_args():
 
 def print_summary(pref_dataset: PreferenceDataset) -> None:
     """Print preference analysis."""
-    pref_dataset.print_all()
     analysis = analyze_preferences(pref_dataset)
     print_analysis(analysis)
 
@@ -106,6 +105,7 @@ def main() -> int:
     print(f"Samples: {len(pref_dataset.preferences)}")
 
     print_summary(pref_dataset)
+    return 0
 
     best_only = args.best_only and not args.all_pairs
 

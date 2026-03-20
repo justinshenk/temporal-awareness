@@ -116,10 +116,6 @@ class PreferenceAnalysis:
     # By reward ratio (long/short)
     by_reward_ratio: dict[float, BucketStats] = field(default_factory=dict)
 
-    def print_all(self) -> None:
-        """Print the full analysis."""
-        print_analysis(self)
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Analysis Logic
@@ -132,15 +128,30 @@ def _get_horizon_years(sample: "PreferenceSample") -> float | None:
 
 
 def _bucket_horizon(horizon: float | None) -> float | None:
-    """Bucket horizon into meaningful groups."""
+    """Bucket horizon into meaningful groups (max 1 year granularity)."""
     if horizon is None:
         return None
-    # Round to nice values: 0, 0.5, 1, 2, 5, 10, 20, 50, 100
-    buckets = [0, 0.5, 1, 2, 5, 10, 20, 50, 100]
-    for b in buckets:
-        if horizon <= b + 0.01:
-            return b
-    return 100  # cap at 100
+    if horizon < 1:
+        # Monthly bins for < 1 year
+        months = horizon * 12
+        if months <= 1:
+            return 1 / 12
+        if months <= 3:
+            return 3 / 12
+        if months <= 6:
+            return 6 / 12
+        return 1.0
+    # Yearly bins for >= 1 year
+    return float(int(horizon))
+
+
+def _format_horizon(h: float | None) -> str:
+    """Format horizon for display."""
+    if h is None:
+        return "no horizon"
+    if h < 1:
+        return f"{h * 12:.0f}mo"
+    return f"{h:.0f}yr"
 
 
 def _add_sample_to_stats(stats: BucketStats, sample: "PreferenceSample") -> None:
@@ -230,7 +241,7 @@ def _print_bucket_table(
     title: str,
     buckets: dict,
     key_label: str,
-    key_format: str = "{}",
+    key_formatter=None,
     sort_key=None,
 ) -> None:
     """Print a table of bucket stats."""
@@ -253,10 +264,12 @@ def _print_bucket_table(
             continue
 
         # Format key
-        if key is None:
-            key_str = "no horizon"
+        if key_formatter:
+            key_str = key_formatter(key)
+        elif key is None:
+            key_str = "-"
         else:
-            key_str = key_format.format(key)
+            key_str = str(key)
 
         log(
             f"  {key_str:>12} │ {stats.n_total:4d} │"
@@ -295,10 +308,10 @@ def print_analysis(analysis: PreferenceAnalysis) -> None:
     # By Horizon
     # ─────────────────────────────────────────────────────────────────────────
     _print_bucket_table(
-        "BY TIME HORIZON (years)",
+        "BY TIME HORIZON",
         analysis.by_horizon,
         "Horizon",
-        "{:.1f}yr",
+        key_formatter=_format_horizon,
         sort_key=lambda x: (x is None, x or 0),
     )
 
@@ -309,38 +322,38 @@ def print_analysis(analysis: PreferenceAnalysis) -> None:
         "BY SHORT-TERM REWARD",
         analysis.by_short_reward,
         "Reward",
-        "${:,.0f}",
+        key_formatter=lambda x: f"${x:,.0f}",
     )
 
     _print_bucket_table(
         "BY LONG-TERM REWARD",
         analysis.by_long_reward,
         "Reward",
-        "${:,.0f}",
+        key_formatter=lambda x: f"${x:,.0f}",
     )
 
     _print_bucket_table(
         "BY REWARD RATIO (long/short)",
         analysis.by_reward_ratio,
         "Ratio",
-        "{:.2f}x",
+        key_formatter=lambda x: f"{x:.2f}x",
     )
 
     # ─────────────────────────────────────────────────────────────────────────
     # By Time
     # ─────────────────────────────────────────────────────────────────────────
     _print_bucket_table(
-        "BY SHORT-TERM DELIVERY TIME (years)",
+        "BY SHORT-TERM DELIVERY TIME",
         analysis.by_short_time,
         "Time",
-        "{:.2f}yr",
+        key_formatter=_format_horizon,
     )
 
     _print_bucket_table(
-        "BY LONG-TERM DELIVERY TIME (years)",
+        "BY LONG-TERM DELIVERY TIME",
         analysis.by_long_time,
         "Time",
-        "{:.2f}yr",
+        key_formatter=_format_horizon,
     )
 
     log("═" * WIDTH)

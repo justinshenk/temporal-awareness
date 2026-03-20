@@ -24,7 +24,6 @@ from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 from src.intertemporal.preference import (
     PreferenceQuerier,
     PreferenceQueryConfig,
-    PreferenceDataset,
     analyze_preferences,
     print_analysis,
 )
@@ -33,8 +32,6 @@ from src.intertemporal.prompt import (
     PromptDatasetGenerator,
     PromptDataset,
 )
-from src.intertemporal.common.contrastive_utils import get_contrastive_preferences
-from src.intertemporal.common.contrastive_analysis import print_contrastive_pairs
 
 
 # Default query config for querying models
@@ -121,16 +118,6 @@ def load_config(args) -> PreferenceQueryConfig:
     )
 
 
-def print_summary(pref_dataset: PreferenceDataset) -> None:
-    """Print preference analysis."""
-    # Original detailed output
-    pref_dataset.print_all()
-
-    # New clean analysis
-    analysis = analyze_preferences(pref_dataset)
-    print_analysis(analysis)
-
-
 def main() -> int:
     args = get_args()
     config, prompt_datasets, model_names = load_config(args)
@@ -149,16 +136,9 @@ def main() -> int:
 
             output_path = output_dir / pref_dataset.get_filename()
             pref_dataset.save_as_json(output_path)
-            print_summary(pref_dataset)
 
-            # Find and analyze contrastive preference pairs
-            contrastive_pairs = get_contrastive_preferences(
-                pref_dataset,
-                group_by="horizon",
-                best_only=True,
-                min_confidence=0.6,
-            )
-            print_contrastive_pairs(contrastive_pairs)
+            analysis = analyze_preferences(pref_dataset)
+            print_analysis(analysis)
 
     return 0
 

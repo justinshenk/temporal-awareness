@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from dataclasses import fields
 import torch
-from ...common.logging import log, log_banner, log_kv
+from ...common.logging import log
 from ..formatting.prompt_formats import find_prompt_format_config
 from ..common.project_paths import get_internals_dir
 from ..common.preference_types import PreferenceSample
@@ -219,36 +219,6 @@ class PreferenceDataset(BaseSchema):
 
     def print(self) -> None:
         log(str(self))
-
-    def print_summary(self) -> None:
-        log_banner(f"PreferenceDataset: {self.model_name}")
-        log_kv("Samples", str(len(self.preferences)))
-        try:
-            short_count, long_count = self.split_by_choice()
-            log_kv(
-                "Choices", f"short_term={len(short_count)}, long_term={len(long_count)}"
-            )
-        except Exception:
-            pass
-
-    def print_analysis(self) -> None:
-        """Print full analysis (includes summary).
-
-        Args:
-            detailed: If True, also print detailed breakdowns
-        """
-        try:
-            from .preference_analysis import analyze_preferences
-
-            analysis = analyze_preferences(self)
-            analysis.print_all()
-        except Exception as e:
-            log(f"Analysis failed: {e}")
-
-    def print_all(self) -> None:
-        self.print()
-        self.print_analysis()
-        self.print_summary()
 
     def pop_heavy(self) -> None:
         """Remove heavy data from all samples to reduce memory."""
