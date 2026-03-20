@@ -115,6 +115,10 @@ class PreferenceAnalysis:
     # By reward ratio (long/short)
     by_reward_ratio: dict[float, BucketStats] = field(default_factory=dict)
 
+    def print_all(self) -> None:
+        """Print the full analysis."""
+        print_analysis(self)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Analysis Logic
