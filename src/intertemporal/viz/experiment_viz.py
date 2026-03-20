@@ -10,7 +10,9 @@ from ...viz.token_coloring import PairTokenColoring, get_token_coloring_for_pair
 
 from .att_patching_viz import visualize_att_patching
 from .coarse_patching_viz import visualize_coarse_patching, visualize_component_comparison
+from .diffmeans_viz import visualize_diffmeans_pair
 from .fine_patching_viz import visualize_fine_patching
+from .geo_viz import visualize_geo_pair
 from .tokenization_viz import (
     TokenizationVizData,
     visualize_tokenization,
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
     from ...activation_patching.coarse import CoarseActPatchResult
     from ...attribution_patching import AttrPatchResult
     from ...common.contrastive_pair import ContrastivePair
+    from ..experiments.diffmeans import DiffMeansPairResult
+    from ..experiments.geo import GeoPairResult
 
 
 def visualize_pair_results(
@@ -33,14 +37,16 @@ def visualize_pair_results(
     att_result: "AttrPatchResult | None" = None,
     coarse_results: dict[str, "CoarseActPatchResult"] | None = None,
     fine_result: "ActPatchResult | None" = None,
+    diffmeans_result: "DiffMeansPairResult | None" = None,
+    geo_result: "GeoPairResult | None" = None,
     try_loading_cache: bool = False,
     save_token_trees_fn: Any = None,
 ) -> None:
     """Visualize all results for a single contrastive pair.
 
     This helper orchestrates visualization of tokenization, attribution patching,
-    coarse activation patching, fine activation patching, and component comparisons
-    for a single pair.
+    coarse activation patching, fine activation patching, diffmeans, geo, and
+    component comparisons for a single pair.
 
     Args:
         pair_idx: Index of the pair (for logging)
@@ -50,6 +56,8 @@ def visualize_pair_results(
         att_result: Attribution patching result for this pair
         coarse_results: Dict mapping component name to coarse patching result
         fine_result: Fine activation patching result for this pair
+        diffmeans_result: Difference-in-means result for this pair
+        geo_result: Geometric (PCA) analysis result for this pair
         try_loading_cache: If True, try loading tokenization from cache
         save_token_trees_fn: Optional callback to save token trees
     """
@@ -75,17 +83,18 @@ def visualize_pair_results(
 
     # Step 2: Attribution patching visualizations
     if att_result is not None:
+        att_dir = pair_out_dir / "att_patching"
         if att_result.result.denoising:
             visualize_att_patching(
                 att_result.result.denoising,
-                pair_out_dir / "denoising",
+                att_dir / "denoising",
                 position_labels,
                 section_markers,
             )
         if att_result.result.noising:
             visualize_att_patching(
                 att_result.result.noising,
-                pair_out_dir / "noising",
+                att_dir / "noising",
                 position_labels,
                 section_markers,
             )
@@ -109,8 +118,16 @@ def visualize_pair_results(
     if coarse_results and len(coarse_results) > 0:
         visualize_component_comparison(
             coarse_results,
-            pair_out_dir / "component_comparison",
+            pair_out_dir / "sweep_component_comparison",
         )
+
+    # Step 6: Diffmeans visualization
+    if diffmeans_result is not None and diffmeans_result.layer_results:
+        visualize_diffmeans_pair(diffmeans_result, pair_out_dir / "diffmeans")
+
+    # Step 7: Geo visualization
+    if geo_result is not None and geo_result.position_results:
+        visualize_geo_pair(geo_result, pair_out_dir / "geo")
 
 
 def _ensure_tokenization_and_get_coloring(

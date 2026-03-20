@@ -21,6 +21,8 @@ from .style import (
     MEAN_MARKER,
     MEAN_MARKER_SIZE,
     METRIC_DISPLAY_NAMES,
+    MINOR_GRID_ALPHA,
+    MINOR_GRID_LINE_WIDTH,
     PAIR_LINE_ALPHA,
     PAIR_LINE_WIDTH,
     SPREAD_ALPHA,
@@ -144,8 +146,10 @@ def plot_column(
         )
         ax.set_title(metric_display, fontsize=TITLE_FONTSIZE, fontweight=TITLE_FONTWEIGHT)
 
-        # Grid
-        ax.grid(True, alpha=GRID_ALPHA, linewidth=GRID_LINE_WIDTH)
+        # Grid - major and minor for better resolution
+        ax.grid(True, which="major", alpha=GRID_ALPHA, linewidth=GRID_LINE_WIDTH)
+        ax.minorticks_on()
+        ax.grid(True, which="minor", alpha=MINOR_GRID_ALPHA, linewidth=MINOR_GRID_LINE_WIDTH)
         ax.set_axisbelow(True)
 
         # Axis labels

@@ -51,6 +51,7 @@ def _canon(
             return None
     except ImportError:
         pass
+
     if isinstance(obj, float):
         if math.isnan(obj):
             return "NaN"

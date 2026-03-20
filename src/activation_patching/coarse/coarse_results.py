@@ -292,6 +292,22 @@ class CoarseActPatchAggregatedResults(BaseSchema):
                     f"  [step={step_size}] Best layers: {best} (scores: {scores_str})"
                 )
 
+    def filter_by_pairs(self, pair_indices: list[int]) -> CoarseActPatchAggregatedResults:
+        """Return a new aggregated result containing only the specified pairs.
+
+        Args:
+            pair_indices: List of sample IDs to keep
+
+        Returns:
+            New CoarseActPatchAggregatedResults with only the specified samples
+        """
+        filtered = CoarseActPatchAggregatedResults()
+        pair_set = set(pair_indices)
+        for sample_id, result in self.by_sample.items():
+            if sample_id in pair_set:
+                filtered.by_sample[sample_id] = result
+        return filtered
+
     def pop_heavy(self) -> None:
         """Remove heavy data from all results."""
         for result in self.by_sample.values():

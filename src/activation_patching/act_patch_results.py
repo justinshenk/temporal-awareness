@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..common.base_schema import BaseSchema
+from ..common.choice.grouped_binary_choice import ForkAggregation
 from ..inference.interventions.intervention_target import InterventionTarget
 from .intervened_choice import IntervenedChoice
 from .act_patch_metrics import IntervenedChoiceMetrics, LabelPerspective
@@ -106,6 +107,26 @@ class ActPatchTargetResult(BaseSchema):
         if self.noising_metrics is not None and label_perspective == "clean":
             return self.noising_metrics
         return IntervenedChoiceMetrics.from_choice(self.noising, label_perspective)
+
+    def get_denoising_metrics_by_method(
+        self, method: ForkAggregation
+    ) -> IntervenedChoiceMetrics:
+        """Get denoising metrics using a specific aggregation method."""
+        return IntervenedChoiceMetrics.from_choice_aggregated(self.denoising, method)
+
+    def get_noising_metrics_by_method(
+        self, method: ForkAggregation
+    ) -> IntervenedChoiceMetrics:
+        """Get noising metrics using a specific aggregation method."""
+        return IntervenedChoiceMetrics.from_choice_aggregated(self.noising, method)
+
+    def get_denoising_metrics_per_fork(self, fork_idx: int) -> IntervenedChoiceMetrics:
+        """Get denoising metrics for a specific fork (label pair)."""
+        return IntervenedChoiceMetrics.from_choice_per_fork(self.denoising, fork_idx)
+
+    def get_noising_metrics_per_fork(self, fork_idx: int) -> IntervenedChoiceMetrics:
+        """Get noising metrics for a specific fork (label pair)."""
+        return IntervenedChoiceMetrics.from_choice_per_fork(self.noising, fork_idx)
 
     def switch(self) -> ActPatchTargetResult:
         """Swap clean↔corrupted semantics."""

@@ -13,19 +13,26 @@ from ...activation_patching.coarse import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
 )
+from ...attribution_patching import AttrPatchAggregatedResults, AttrPatchPairResult
 from ...common.logging import log
 from ..viz import (
     visualize_all_aggregated,
-    visualize_att_patching,
+    visualize_all_att_aggregated_slices,
     visualize_fine_patching,
     visualize_pair_results,
 )
+from ..viz.diffmeans_viz import visualize_diffmeans
+from ..viz.geo_viz import visualize_geo, visualize_geo_pair
+from .diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
+from .geo import GeoAggregatedResults, GeoPairResult
+from .processing import ProcessedResults
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
-    from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
+    from ...attribution_patching import AttrPatchPairResult
     from ...binary_choice import BinaryChoiceRunner
     from ...common.contrastive_pair import ContrastivePair
+    from ..common.contrastive_preferences import ContrastivePreferences
 
 
 def detect_cached_components(exp_dir: Path) -> list[str]:
@@ -36,6 +43,9 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
 
     Returns:
         List of component names with cached results
+
+    Note: This is a standalone version for use without ExperimentContext.
+    When using ExperimentContext, prefer ctx.detect_cached_components().
     """
     components = []
     pair_0 = exp_dir / "pair_0"
@@ -83,8 +93,14 @@ def load_coarse_aggregated(
         Dict mapping component name to aggregated results
     """
     coarse_agg = {}
+    coarse_dir = exp_dir / "agg_coarse"
     for component in components:
-        agg_path = exp_dir / f"coarse_agg_{component}.json"
+        agg_path = coarse_dir / f"{component}.json"
+        # Fallback to legacy paths
+        if not agg_path.exists():
+            agg_path = exp_dir / "agg" / "coarse" / f"{component}.json"
+        if not agg_path.exists():
+            agg_path = exp_dir / "coarse_agg" / f"{component}.json"
         if agg_path.exists():
             coarse_agg[component] = CoarseActPatchAggregatedResults.from_json(agg_path)
     return coarse_agg
@@ -129,6 +145,118 @@ def rebuild_coarse_aggregated(
     return {comp: agg for comp, agg in coarse_agg.items() if agg.n_samples > 0}
 
 
+def load_att_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
+    """Load aggregated attribution results from cache.
+
+    Tries new folder structure first, then legacy path.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        AttrPatchAggregatedResults or None if not found
+    """
+    # Try new folder structure first
+    att_dir = exp_dir / "agg_att"
+    if (att_dir / "att_agg.json").exists():
+        return AttrPatchAggregatedResults.from_json(att_dir / "att_agg.json")
+
+    # Fallback to legacy paths
+    legacy_paths = [
+        exp_dir / "att_agg" / "att_agg.json",
+        exp_dir / "agg" / "att" / "att_agg.json",
+        exp_dir / "att_agg.json",
+    ]
+    for path in legacy_paths:
+        if path.exists():
+            return AttrPatchAggregatedResults.from_json(path)
+
+    return None
+
+
+def load_att_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
+    """Load per-pair attribution results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        AttrPatchPairResult or None if not found
+    """
+    # Try new path first
+    att_path = pair_dir / "att_patching" / "att_results.json"
+    if att_path.exists():
+        return AttrPatchPairResult.from_json(att_path)
+    # Fallback to legacy path
+    legacy_path = pair_dir / "att" / "att_results.json"
+    if legacy_path.exists():
+        return AttrPatchPairResult.from_json(legacy_path)
+    return None
+
+
+def load_diffmeans_agg(exp_dir: Path) -> DiffMeansAggregatedResults | None:
+    """Load aggregated diffmeans results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        DiffMeansAggregatedResults or None if not found
+    """
+    path = exp_dir / "agg_diffmeans" / "diffmeans_agg.json"
+    # Fallback to legacy path
+    if not path.exists():
+        path = exp_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
+    if path.exists():
+        return DiffMeansAggregatedResults.from_json(path)
+    return None
+
+
+def load_diffmeans_pair(pair_dir: Path) -> DiffMeansPairResult | None:
+    """Load per-pair diffmeans results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        DiffMeansPairResult or None if not found
+    """
+    path = pair_dir / "diffmeans" / "diffmeans.json"
+    if path.exists():
+        return DiffMeansPairResult.from_json(path)
+    return None
+
+
+def load_geo_agg(exp_dir: Path) -> GeoAggregatedResults | None:
+    """Load aggregated geo results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        GeoAggregatedResults or None if not found
+    """
+    path = exp_dir / "agg_geo" / "geo_agg.json"
+    if path.exists():
+        return GeoAggregatedResults.from_json(path)
+    return None
+
+
+def load_geo_pair(pair_dir: Path) -> GeoPairResult | None:
+    """Load per-pair geo results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        GeoPairResult or None if not found
+    """
+    path = pair_dir / "geo" / "geo_results.json"
+    if path.exists():
+        return GeoPairResult.from_json(path)
+    return None
+
+
 def generate_viz(
     exp_dir: Path,
     *,
@@ -139,12 +267,20 @@ def generate_viz(
     att_patching: dict[int, "AttrPatchPairResult"] | None = None,
     fine_agg: "ActPatchAggregatedResult | None" = None,
     fine_patching: dict[int, "ActPatchPairResult"] | None = None,
+    diffmeans_agg: DiffMeansAggregatedResults | None = None,
+    diffmeans_patching: dict[int, DiffMeansPairResult] | None = None,
+    geo_agg: GeoAggregatedResults | None = None,
+    geo_patching: dict[int, GeoPairResult] | None = None,
+    processed_results: ProcessedResults | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
+    pref_pairs: list["ContrastivePreferences"] | None = None,
     runner: "BinaryChoiceRunner | None" = None,
     save_token_trees_fn: callable | None = None,
     # Components to process (auto-detected from cache if None)
     components: list[str] | None = None,
+    # If True, only generate aggregated visualizations (skip per-pair)
+    only_agg: bool = False,
 ) -> None:
     """Generate all visualizations for an experiment.
 
@@ -159,10 +295,16 @@ def generate_viz(
         att_patching: In-memory per-pair attribution results
         fine_agg: In-memory aggregated fine patching results
         fine_patching: In-memory per-pair fine patching results
+        diffmeans_patching: In-memory per-pair diffmeans results
+        geo_agg: In-memory aggregated geo results
+        geo_patching: In-memory per-pair geo results
+        processed_results: Pre-computed analysis results from step_process_results
         pairs: List of contrastive pairs (for tokenization viz)
+        pref_pairs: List of ContrastivePreferences for slice filtering
         runner: Model runner (for tokenization viz)
         save_token_trees_fn: Function to save token trees
         components: List of components to process (auto-detected if None)
+        only_agg: If True, skip per-pair visualizations
     """
     exp_dir = Path(exp_dir)
 
@@ -184,25 +326,55 @@ def generate_viz(
         coarse_agg_by_component = rebuild_coarse_aggregated(exp_dir, components)
         log(f"[viz] Rebuilt aggregation from {coarse_agg_by_component[components[0]].n_samples if coarse_agg_by_component else 0} pairs")
 
-    # Generate aggregated visualizations
-    agg_out_dir = exp_dir / "agg"
+    # Load attribution patching aggregated results from cache if not provided
+    if att_agg is None:
+        att_agg = load_att_agg(exp_dir)
+        if att_agg:
+            log("[viz] Loaded attribution aggregated results from cache")
 
+    # Load diffmeans aggregated results from cache if not provided
+    if diffmeans_agg is None:
+        diffmeans_agg = load_diffmeans_agg(exp_dir)
+        if diffmeans_agg:
+            log("[viz] Loaded diffmeans aggregated results from cache")
+
+    # Generate aggregated visualizations
     if att_agg:
-        visualize_att_patching(
-            att_agg.denoising_agg,
-            agg_out_dir / "all" / "att_patching" / "denoising",
-        )
-        visualize_att_patching(
-            att_agg.noising_agg,
-            agg_out_dir / "all" / "att_patching" / "noising",
-        )
+        visualize_all_att_aggregated_slices(att_agg, exp_dir / "agg_att")
+        log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
-        visualize_all_aggregated(coarse_agg_by_component, agg_out_dir)
+        visualize_all_aggregated(
+            coarse_agg_by_component,
+            exp_dir / "agg_coarse",
+            pref_pairs,
+            exp_dir,
+            processed_results,
+        )
         log("[viz] Generated aggregated visualizations")
 
     if fine_agg:
-        visualize_fine_patching(fine_agg, agg_out_dir)
+        visualize_fine_patching(fine_agg, exp_dir / "agg_fine")
+
+    if diffmeans_agg:
+        visualize_diffmeans(diffmeans_agg, exp_dir / "agg_diffmeans")
+        log("[viz] Generated diffmeans visualizations")
+
+    # Load geo aggregated results from cache if not provided
+    if geo_agg is None:
+        geo_agg = load_geo_agg(exp_dir)
+        if geo_agg:
+            log("[viz] Loaded geo aggregated results from cache")
+
+    if geo_agg:
+        visualize_geo(geo_agg, exp_dir / "agg_geo")
+        log("[viz] Generated geo visualizations")
+
+    # Skip per-pair visualizations if only_agg is True
+    if only_agg:
+        log(f"[viz] Skipping per-pair visualizations (only_agg=True)")
+        log(f"[viz] Done generating visualizations for {exp_dir.name}")
+        return
 
     # Generate per-pair visualizations
     pair_idx = 0
@@ -222,10 +394,21 @@ def generate_viz(
             pair_coarse = load_coarse_results_for_pair(pair_dir, components)
 
         pair = pairs[pair_idx] if pairs and pair_idx < len(pairs) else None
-        att_result = att_patching.get(pair_idx) if att_patching else None
+        # Try in-memory first, then load from cache
+        att_result = att_patching.get(pair_idx) if att_patching else load_att_pair_result(pair_dir)
         fine_result = fine_patching.get(pair_idx) if fine_patching else None
+        diffmeans_result = (
+            diffmeans_patching.get(pair_idx)
+            if diffmeans_patching
+            else load_diffmeans_pair(pair_dir)
+        )
+        geo_result = (
+            geo_patching.get(pair_idx)
+            if geo_patching
+            else load_geo_pair(pair_dir)
+        )
 
-        if pair_coarse or att_result or fine_result:
+        if pair_coarse or att_result or fine_result or diffmeans_result or geo_result:
             visualize_pair_results(
                 pair_idx=pair_idx,
                 pair_out_dir=pair_dir,
@@ -234,6 +417,8 @@ def generate_viz(
                 att_result=att_result,
                 coarse_results=pair_coarse if pair_coarse else None,
                 fine_result=fine_result,
+                diffmeans_result=diffmeans_result,
+                geo_result=geo_result,
                 try_loading_cache=True,
                 save_token_trees_fn=save_token_trees_fn,
             )

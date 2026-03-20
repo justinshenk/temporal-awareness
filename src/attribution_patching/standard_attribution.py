@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -20,14 +21,31 @@ if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner
     from .attribution_metric import AttributionMetric
 
+logger = logging.getLogger(__name__)
+
 
 def _compute_gradients(
     metric: "AttributionMetric",
     grad_logits: torch.Tensor,
     grad_cache: dict,
+    grad_at: GradTarget,
 ) -> dict[str, torch.Tensor]:
     """Compute gradients of metric w.r.t. cached activations."""
-    metric_val = metric.compute_raw(grad_logits.unsqueeze(0))
+    seq_len = grad_logits.shape[0] if grad_logits.ndim == 2 else grad_logits.shape[1]
+    logger.debug(f"Computing gradients: grad_at={grad_at}, seq_len={seq_len}, metric_pos={metric.divergent_position}")
+
+    # Adjust position if out of bounds for this trajectory
+    adjusted_metric = metric
+    if metric.divergent_position >= seq_len:
+        logger.warning(
+            f"Position {metric.divergent_position} out of bounds for seq_len={seq_len} "
+            f"(grad_at={grad_at}). Using last position."
+        )
+        # Create adjusted metric with valid position
+        from dataclasses import replace
+        adjusted_metric = replace(metric, divergent_position=-1)
+
+    metric_val = adjusted_metric.compute_raw(grad_logits.unsqueeze(0))
 
     acts_with_grad = [
         (name, act) for name, act in grad_cache.items() if act.requires_grad
@@ -78,8 +96,11 @@ def compute_attribution(
             runner, pair, mode, hook_filter, grad_at
         )
 
+    logger.debug(f"Standard attribution: mode={mode}, component={component}, grad_at={grad_at}")
+    logger.debug(f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}")
+
     with P("attr_grads"):
-        grads = _compute_gradients(metric, grad_logits, grad_cache)
+        grads = _compute_gradients(metric, grad_logits, grad_cache, grad_at)
 
     with P("attr_scores"):
         hook_names = hook_names_for_layers(range(n_layers), component)

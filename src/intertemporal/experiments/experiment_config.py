@@ -35,7 +35,26 @@ ATT_PATCH: dict = {
 VIZ: dict = {
     "enabled": True,
     "regenerate_all": False,
+    "only_agg": False,  # If True, skip per-pair visualizations
 }
+
+# Default geometric analysis settings (PCA of residual stream)
+GEO: dict = {
+    "enabled": False,
+    "layers": None,  # None = all layers, or list of specific layers
+    "positions": None,  # None = last token only, or list of positions
+    "n_components": 3,  # Number of PCA components to track
+}
+
+# Default difference-in-means settings
+DIFFMEANS: dict = {
+    "enabled": True,
+    "n_components": 10,  # Number of SVD components to track
+}
+
+# Default pair requirement settings (empty = no requirements, allows all valid pairs)
+# Set "different_labels": True for multilabel experiments
+PAIR_REQ: dict = {}
 
 
 @dataclass
@@ -56,6 +75,15 @@ class ExperimentConfig(BaseSchema):
 
     # Visualization settings
     viz: dict = field(default_factory=lambda: VIZ.copy())
+
+    # Difference-in-means settings
+    diffmeans: dict = field(default_factory=lambda: DIFFMEANS.copy())
+
+    # Geometric analysis settings (PCA)
+    geo: dict = field(default_factory=lambda: GEO.copy())
+
+    # Pair requirements (filtering criteria for contrastive pairs)
+    pair_req: dict = field(default_factory=lambda: PAIR_REQ.copy())
 
     @property
     def name(self) -> str:

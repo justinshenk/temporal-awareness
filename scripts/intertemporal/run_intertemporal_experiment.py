@@ -29,6 +29,12 @@ Usage:
 
     # Regenerate visualizations for one specific experiment
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_one": "label_grid"}'
+
+    # Run ONLY diffmeans (disable all other steps except those specified)
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --diffmeans '{"enabled": true}'
+
+    # Run ONLY coarse patching
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --coarse '{"enabled": true}'
 """
 
 from __future__ import annotations
@@ -56,6 +62,15 @@ from src.intertemporal.experiments.intertemporal_viz import (
 from src.intertemporal.data.default_configs import (
     FULL_EXPERIMENT_CONFIG,
     MINIMAL_EXPERIMENT_CONFIG,
+    MULTILABEL_EXPERIMENT_CONFIG,
+)
+from src.intertemporal.experiments.experiment_config import (
+    COARSE_PATCH,
+    ATT_PATCH,
+    VIZ,
+    DIFFMEANS,
+    GEO,
+    PAIR_REQ,
 )
 from src.intertemporal.viz.coarse.component_comparison.constants import COMPONENTS
 
@@ -79,10 +94,21 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--full", action="store_true", help="Runs with many samples")
     parser.add_argument(
+        "--multilabel",
+        action="store_true",
+        help="Use multilabel dataset (do_formatting_variation_grid=True)",
+    )
+    parser.add_argument(
         "--model",
         type=str,
         default=None,
         help="Model name to use (e.g., Qwen/Qwen3-4B-Instruct-2507)",
+    )
+    parser.add_argument(
+        "--n_pairs",
+        type=int,
+        default=None,
+        help="Number of contrastive pairs to use",
     )
     parser.add_argument(
         "--cache",
@@ -127,6 +153,32 @@ def parse_args() -> argparse.Namespace:
         metavar="JSON",
         help='Visualization settings as JSON, e.g. \'{"enabled": true, "regenerate_all": true}\'',
     )
+    parser.add_argument(
+        "--diffmeans",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override diffmeans settings as JSON, e.g. '{\"enabled\": true}'",
+    )
+    parser.add_argument(
+        "--geo",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": [86, 87]}\'',
+    )
+    parser.add_argument(
+        "--pair_req",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override pair requirements as JSON, e.g. '{\"different_labels\": true}' for multilabel",
+    )
+    parser.add_argument(
+        "--disable",
+        action="store_true",
+        help="Disable all steps except those explicitly enabled via flags",
+    )
 
     return parser.parse_args()
 
@@ -151,25 +203,40 @@ def main() -> int:
             generate_viz(exp_dir)
             return 0
 
-    if args.full:
+    if args.multilabel:
+        config_dict = MULTILABEL_EXPERIMENT_CONFIG.copy()
+    elif args.full:
         config_dict = FULL_EXPERIMENT_CONFIG.copy()
     else:
         config_dict = MINIMAL_EXPERIMENT_CONFIG.copy()
 
     if args.model:
         config_dict["model"] = args.model
+    if args.n_pairs:
+        config_dict["n_pairs"] = args.n_pairs
 
+    # Handle --disable: disable all steps first, then override with explicit flags
+    # Use full defaults but with enabled=False so overrides can re-enable
+    if args.disable:
+        config_dict["coarse_patch"] = {**COARSE_PATCH, "enabled": False}
+        config_dict["att_patch"] = {**ATT_PATCH, "enabled": False}
+        config_dict["diffmeans"] = {**DIFFMEANS, "enabled": False}
+        config_dict["geo"] = {**GEO, "enabled": False}
+        config_dict["viz"] = {**VIZ, "enabled": False}
+
+    # Apply JSON overrides, merging with defaults if key missing
     if args.coarse:
-        coarse_overrides = json.loads(args.coarse)
-        if "coarse_patch" not in config_dict:
-            config_dict["coarse_patch"] = {}
-        config_dict["coarse_patch"].update(coarse_overrides)
-
+        config_dict.setdefault("coarse_patch", COARSE_PATCH.copy()).update(json.loads(args.coarse))
     if args.attrib:
-        attrib_overrides = json.loads(args.attrib)
-        if "att_patch" not in config_dict:
-            config_dict["att_patch"] = {}
-        config_dict["att_patch"].update(attrib_overrides)
+        config_dict.setdefault("att_patch", ATT_PATCH.copy()).update(json.loads(args.attrib))
+    if args.viz:
+        config_dict.setdefault("viz", VIZ.copy()).update(json.loads(args.viz))
+    if args.diffmeans:
+        config_dict.setdefault("diffmeans", DIFFMEANS.copy()).update(json.loads(args.diffmeans))
+    if args.geo:
+        config_dict.setdefault("geo", GEO.copy()).update(json.loads(args.geo))
+    if args.pair_req:
+        config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(json.loads(args.pair_req))
 
     if args.viz:
         viz_overrides = json.loads(args.viz)

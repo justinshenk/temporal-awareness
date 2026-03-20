@@ -1,15 +1,21 @@
 """Data extraction for aggregated visualization.
 
 Extracts metrics across pairs and step sizes for plotting.
+Supports different aggregation methods and per-fork extraction for multilabel.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Literal
 
 from .....activation_patching.coarse import CoarseActPatchAggregatedResults
-from .....activation_patching.act_patch_metrics import LabelPerspective
+from .....activation_patching.act_patch_metrics import (
+    IntervenedChoiceMetrics,
+    LabelPerspective,
+)
+from .....activation_patching.act_patch_results import ActPatchTargetResult
+from .....common.choice.grouped_binary_choice import ForkAggregation
 from .style import COLUMN_METRICS
 
 
@@ -46,37 +52,77 @@ class ColumnData:
     metrics: list[MetricSeries] = field(default_factory=list)
 
 
-def extract_all_columns(
+# Type for metric extraction function
+MetricsExtractor = Callable[[ActPatchTargetResult, str], IntervenedChoiceMetrics]
+
+
+def _make_standard_extractor(
+    mode: Literal["denoising", "noising"],
+    clean_traj: Literal["short", "long"],
+    label_perspective: LabelPerspective = "clean",
+) -> MetricsExtractor:
+    """Create a standard metrics extractor (using default aggregation)."""
+
+    def extractor(target_result: ActPatchTargetResult, _mode: str) -> IntervenedChoiceMetrics:
+        if clean_traj == "long":
+            target_result = target_result.switch()
+        if mode == "denoising":
+            return target_result.get_denoising_metrics(label_perspective)
+        return target_result.get_noising_metrics(label_perspective)
+
+    return extractor
+
+
+def _make_method_extractor(
+    mode: Literal["denoising", "noising"],
+    clean_traj: Literal["short", "long"],
+    method: ForkAggregation,
+) -> MetricsExtractor:
+    """Create a metrics extractor for a specific aggregation method."""
+
+    def extractor(target_result: ActPatchTargetResult, _mode: str) -> IntervenedChoiceMetrics:
+        if clean_traj == "long":
+            target_result = target_result.switch()
+        if mode == "denoising":
+            return target_result.get_denoising_metrics_by_method(method)
+        return target_result.get_noising_metrics_by_method(method)
+
+    return extractor
+
+
+def _make_fork_extractor(
+    mode: Literal["denoising", "noising"],
+    clean_traj: Literal["short", "long"],
+    fork_idx: int,
+) -> MetricsExtractor:
+    """Create a metrics extractor for a specific fork."""
+
+    def extractor(target_result: ActPatchTargetResult, _mode: str) -> IntervenedChoiceMetrics:
+        if clean_traj == "long":
+            target_result = target_result.switch()
+        if mode == "denoising":
+            return target_result.get_denoising_metrics_per_fork(fork_idx)
+        return target_result.get_noising_metrics_per_fork(fork_idx)
+
+    return extractor
+
+
+def _extract_with_extractor(
     agg_results: CoarseActPatchAggregatedResults,
     sweep_type: Literal["layer", "position"],
-    clean_traj: Literal["short", "long"],
     mode: Literal["denoising", "noising"],
-    label_perspective: LabelPerspective = "clean",
+    extractor: MetricsExtractor,
 ) -> dict[str, ColumnData]:
-    """Extract metric data for ALL columns at once.
-
-    This is more efficient than calling extract_column_data repeatedly
-    because it only iterates through samples once.
-
-    Args:
-        agg_results: Aggregated coarse patching results
-        sweep_type: "layer" or "position"
-        clean_traj: "short" or "long" - which is treated as clean
-        mode: "denoising" or "noising"
-        label_perspective: Which label system to use for metrics
-
-    Returns:
-        Dict mapping column_name to ColumnData
-    """
+    """Extract all columns using a given metrics extractor function."""
     step_sizes = (
         agg_results.layer_step_sizes
         if sweep_type == "layer"
         else agg_results.position_step_sizes
     )
 
-    # Single pass: collect x-values AND cache sweep_results with their metrics
+    # Single pass: collect x-values AND cache metrics
     all_x_values: set[int] = set()
-    cached_metrics: list[dict[int, object]] = []  # List of {x: metrics} for each sample+step
+    cached_metrics: list[dict[int, IntervenedChoiceMetrics]] = []
 
     for sample_id, result in agg_results.by_sample.items():
         for step_size in step_sizes:
@@ -90,21 +136,9 @@ def extract_all_columns(
 
             all_x_values.update(sweep_results.keys())
 
-            # Pre-compute metrics for each x value
-            metrics_for_sweep: dict[int, object] = {}
+            metrics_for_sweep: dict[int, IntervenedChoiceMetrics] = {}
             for x, target_result in sweep_results.items():
-                if clean_traj == "short":
-                    if mode == "denoising":
-                        metrics = target_result.get_denoising_metrics(label_perspective)
-                    else:
-                        metrics = target_result.get_noising_metrics(label_perspective)
-                else:
-                    switched = target_result.switch()
-                    if mode == "denoising":
-                        metrics = switched.get_denoising_metrics(label_perspective)
-                    else:
-                        metrics = switched.get_noising_metrics(label_perspective)
-                metrics_for_sweep[x] = metrics
+                metrics_for_sweep[x] = extractor(target_result, mode)
             cached_metrics.append(metrics_for_sweep)
 
     x_values = sorted(all_x_values)
@@ -119,7 +153,7 @@ def extract_all_columns(
             for name in metric_names
         }
         all_columns[column_name] = ColumnData(column_name=column_name)
-        all_columns[column_name]._metric_map = metric_series_map  # Temporary storage
+        all_columns[column_name]._metric_map = metric_series_map
 
     # Extract all metrics using cached data
     for metrics_for_sweep in cached_metrics:
@@ -146,98 +180,79 @@ def extract_all_columns(
     return all_columns
 
 
-def extract_column_data(
+def extract_all_columns(
     agg_results: CoarseActPatchAggregatedResults,
-    column_name: str,
     sweep_type: Literal["layer", "position"],
     clean_traj: Literal["short", "long"],
     mode: Literal["denoising", "noising"],
     label_perspective: LabelPerspective = "clean",
-) -> ColumnData:
-    """Extract metric data for a column, aggregated across pairs and step sizes.
+) -> dict[str, ColumnData]:
+    """Extract metric data for ALL columns at once (standard extraction).
+
+    For multilabel, uses the default aggregation method (MEAN_NORMALIZED).
+    All metrics are internally consistent.
 
     Args:
         agg_results: Aggregated coarse patching results
-        column_name: Column name (core, probs, logits, fork, vocab, trajectory)
         sweep_type: "layer" or "position"
         clean_traj: "short" or "long" - which is treated as clean
         mode: "denoising" or "noising"
-        label_perspective: Which label system to use for metrics:
-            - "clean": Use clean labels (default)
-            - "corrupted": Use corrupted labels
-            - "combined": Aggregate across both label systems
+        label_perspective: "clean", "corrupted", or "combined"
 
     Returns:
-        ColumnData with metrics aligned to common x-axis
+        Dict mapping column_name to ColumnData
     """
-    # Get metric names for this column
-    metric_names = list(COLUMN_METRICS.get(column_name, []))
+    extractor = _make_standard_extractor(mode, clean_traj, label_perspective)
+    return _extract_with_extractor(agg_results, sweep_type, mode, extractor)
 
-    step_sizes = (
-        agg_results.layer_step_sizes
-        if sweep_type == "layer"
-        else agg_results.position_step_sizes
-    )
 
-    # Single pass: collect x-values AND cache sweep_results
-    all_x_values: set[int] = set()
-    cached_sweeps: list[dict] = []  # List of (sweep_results) for each sample+step combo
+def extract_all_columns_by_method(
+    agg_results: CoarseActPatchAggregatedResults,
+    sweep_type: Literal["layer", "position"],
+    clean_traj: Literal["short", "long"],
+    mode: Literal["denoising", "noising"],
+    method: ForkAggregation,
+) -> dict[str, ColumnData]:
+    """Extract metric data using a specific aggregation method.
 
-    for sample_id, result in agg_results.by_sample.items():
-        for step_size in step_sizes:
-            sweep_results = (
-                result.get_layer_results_for_step(step_size)
-                if sweep_type == "layer"
-                else result.get_position_results_for_step(step_size)
-            )
-            if sweep_results:
-                all_x_values.update(sweep_results.keys())
-                cached_sweeps.append(sweep_results)
+    For multilabel, uses the specified aggregation method.
+    All metrics are internally consistent for that method.
 
-    x_values = sorted(all_x_values)
-    if not x_values:
-        return ColumnData(column_name=column_name)
+    Args:
+        agg_results: Aggregated coarse patching results
+        sweep_type: "layer" or "position"
+        clean_traj: "short" or "long" - which is treated as clean
+        mode: "denoising" or "noising"
+        method: ForkAggregation method to use
 
-    # Initialize metric series
-    metric_series_map: dict[str, MetricSeries] = {
-        name: MetricSeries(metric_name=name, x_values=x_values)
-        for name in metric_names
-    }
+    Returns:
+        Dict mapping column_name to ColumnData
+    """
+    extractor = _make_method_extractor(mode, clean_traj, method)
+    return _extract_with_extractor(agg_results, sweep_type, mode, extractor)
 
-    # Extract data using cached sweep_results (no duplicate lookups)
-    for sweep_results in cached_sweeps:
-        # Extract all metrics for this sweep in one pass
-        for metric_name in metric_names:
-            series: list[float | None] = []
-            for x in x_values:
-                target_result = sweep_results.get(x)
-                if target_result is None:
-                    series.append(None)
-                    continue
 
-                # Get metrics for the appropriate perspective
-                if clean_traj == "short":
-                    if mode == "denoising":
-                        metrics = target_result.get_denoising_metrics(label_perspective)
-                    else:
-                        metrics = target_result.get_noising_metrics(label_perspective)
-                else:
-                    switched = target_result.switch()
-                    if mode == "denoising":
-                        metrics = switched.get_denoising_metrics(label_perspective)
-                    else:
-                        metrics = switched.get_noising_metrics(label_perspective)
+def extract_all_columns_per_fork(
+    agg_results: CoarseActPatchAggregatedResults,
+    sweep_type: Literal["layer", "position"],
+    clean_traj: Literal["short", "long"],
+    mode: Literal["denoising", "noising"],
+    fork_idx: int,
+) -> dict[str, ColumnData]:
+    """Extract metric data for a specific fork (label pair).
 
-                value = getattr(metrics, metric_name, None)
-                series.append(value)
+    For multilabel, extracts metrics from only the specified fork.
+    All metrics are internally consistent for that fork.
 
-            metric_series_map[metric_name].per_pair_series.append(series)
+    Args:
+        agg_results: Aggregated coarse patching results
+        sweep_type: "layer" or "position"
+        clean_traj: "short" or "long" - which is treated as clean
+        mode: "denoising" or "noising"
+        fork_idx: Index of the fork to extract
 
-    # Compute means
-    for metric_series in metric_series_map.values():
-        metric_series.compute_mean()
-
-    return ColumnData(
-        column_name=column_name,
-        metrics=list(metric_series_map.values()),
-    )
+    Returns:
+        Dict mapping column_name to ColumnData
+    """
+    extractor = _make_fork_extractor(mode, clean_traj, fork_idx)
+    return _extract_with_extractor(agg_results, sweep_type, mode, extractor)

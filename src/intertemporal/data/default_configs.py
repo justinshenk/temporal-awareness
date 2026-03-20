@@ -5,6 +5,7 @@ from __future__ import annotations
 from .default_datasets import (
     FULL_EXPERIMENT_DATASET_CONFIG,
     MINIMAL_EXPERIMENT_DATASET_CONFIG,
+    MULTILABEL_CFG,
 )
 
 
@@ -21,4 +22,11 @@ MINIMAL_EXPERIMENT_CONFIG = {
 FULL_EXPERIMENT_CONFIG = {
     "model": DEFAULT_MODEL,
     "dataset_config": FULL_EXPERIMENT_DATASET_CONFIG,
+}
+
+# Multilabel dataset: do_formatting_variation_grid=True creates samples
+# with both label orderings (A/B and B/A), enabling different_labels pairs
+MULTILABEL_EXPERIMENT_CONFIG = {
+    "model": DEFAULT_MODEL,
+    "dataset_config": MULTILABEL_CFG,
 }

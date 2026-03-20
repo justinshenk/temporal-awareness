@@ -239,6 +239,35 @@ class PreferenceSample(BaseSchema):
         return False
 
     @property
+    def short_term_first(self) -> bool | None:
+        """Check if short_term option appears first (index 0) in the choice.
+
+        Returns:
+            True if short_term label is at index 0
+            False if long_term label is at index 0
+            None if labels not available
+        """
+        if self.choice is None:
+            return None
+
+        # Handle both object (with .labels attribute) and dict (from JSON)
+        labels = None
+        if isinstance(self.choice, dict):
+            labels = self.choice.get("labels")
+        elif hasattr(self.choice, "labels"):
+            labels = self.choice.labels
+
+        if labels is None or len(labels) < 1:
+            return None
+
+        first_label = labels[0]
+        if first_label == self.short_term_label:
+            return True
+        if first_label == self.long_term_label:
+            return False
+        return None
+
+    @property
     def full_text(self) -> str:
         """Full text: prompt + response."""
         return (self.prompt_text or "") + (self.response_text or "")

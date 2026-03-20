@@ -15,168 +15,141 @@ BASE_CONTEXT = {
 }
 
 SHORT_REWARDS = [1000, 2500]
-SHORT_TIMES = [
-    {"value": 6, "unit": "months"},
-    {"value": 1, "unit": "years"},
-]
-
 LONG_REWARDS = [30000, 100000]
+
 LONG_TIMES = [
     {"value": 10, "unit": "years"},
     {"value": 30, "unit": "years"},
 ]
+SHORT_TIMES = [
+    {"value": 0.5, "unit": "years"},
+    {"value": 1, "unit": "years"},
+]
 
+SHORT_SINGLE = {
+    "reward_range": SHORT_REWARDS,
+    "time_range": SHORT_TIMES,
+    "reward_steps": [0, "linear"],
+    "time_steps": [0, "linear"],
+}
+SHORT_MANY = {
+    "reward_range": SHORT_REWARDS,
+    "time_range": SHORT_TIMES,
+    "reward_steps": [3, "linear"],
+    "time_steps": [3, "linear"],
+}
+
+LONG_SINGLE = {
+    "reward_range": LONG_REWARDS,
+    "time_range": LONG_TIMES,
+    "reward_steps": [0, "logarithmic"],
+    "time_steps": [0, "logarithmic"],
+}
+LONG_MANY = {
+    "reward_range": LONG_REWARDS,
+    "time_range": LONG_TIMES,
+    "reward_steps": [3, "logarithmic"],
+    "time_steps": [3, "logarithmic"],
+}
+
+OPTIONS_SINGLE = {"short_term": SHORT_SINGLE, "long_term": LONG_SINGLE}
+OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
+
+
+BINARY_HOR = [
+    {"value": 1, "unit": "months"},  # Short horizon
+    {"value": 50, "unit": "years"},  # Long horizon
+]
+
+SWEEP_HOR = [
+    None,
+    {"value": 1, "unit": "months"},
+    {"value": 6, "unit": "months"},
+    {"value": 2, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 10, "unit": "years"},
+    {"value": 30, "unit": "years"},
+    {"value": 50, "unit": "years"},
+]
 
 ###########################
 ######## DATASETS #########
 ###########################
 
 # Simplest
-NANO_PROMPT_DATASET_CONFIG = {
+NANO_CFG = {
     "name": "nano",
     "context": BASE_CONTEXT,
-    "options": {
-        "short_term": {
-            "reward_range": SHORT_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [0, "linear"],
-            "time_steps": [0, "linear"],
-        },
-        "long_term": {
-            "reward_range": LONG_REWARDS,
-            "time_range": LONG_TIMES,
-            "reward_steps": [0, "logarithmic"],
-            "time_steps": [0, "logarithmic"],
-        },
-    },
-    "time_horizons": [
-        {"value": 1, "unit": "months"},  # Short horizon
-        {"value": 50, "unit": "years"},  # Long horizon
-    ],
+    "options": OPTIONS_SINGLE,
+    "time_horizons": BINARY_HOR,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
 }
 
+MULTINANO_CFG = {
+    "name": "multinano",
+    "context": BASE_CONTEXT,
+    "options": OPTIONS_SINGLE,
+    "time_horizons": SWEEP_HOR,
+    "add_formatting_noise": True,
+}
 
-HORIZON_SWEEP_PROMPT_DATASET_CONFIG = {
+
+HORIZON_SWEEP_CFG = {
     "name": "horizon_sweep",
     "context": BASE_CONTEXT,
-    "options": {
-        "short_term": {
-            "reward_range": SHORT_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [0, "linear"],
-            "time_steps": [0, "linear"],
-        },
-        "long_term": {
-            "reward_range": LONG_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [0, "logarithmic"],
-            "time_steps": [0, "logarithmic"],
-        },
-    },
-    "time_horizons": [
-        None,
-        {"value": 1, "unit": "months"},
-        {"value": 6, "unit": "months"},
-        {"value": 2, "unit": "years"},
-        {"value": 5, "unit": "years"},
-        {"value": 10, "unit": "years"},
-        {"value": 30, "unit": "years"},
-        {"value": 50, "unit": "years"},
-    ],
+    "options": OPTIONS_SINGLE,
+    "time_horizons": SWEEP_HOR,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
 }
 
 
-REWARD_SWEEP_PROMPT_DATASET_CONFIG = {
+REWARD_SWEEP_CFG = {
     "name": "reward_sweep",
     "context": BASE_CONTEXT,
-    "options": {
-        "short_term": {
-            "reward_range": SHORT_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [0, "linear"],
-            "time_steps": [0, "linear"],
-        },
-        "long_term": {
-            "reward_range": LONG_REWARDS,
-            "time_range": LONG_TIMES,
-            "reward_steps": [0, "logarithmic"],
-            "time_steps": [0, "logarithmic"],
-        },
-    },
-    "time_horizons": [
-        {"value": 1, "unit": "months"},  # Short horizon
-        {"value": 50, "unit": "years"},  # Long horizon
-    ],
+    "options": OPTIONS_SINGLE,
+    "time_horizons": BINARY_HOR,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
 }
 
 # Time Horizon Sweep
-MINI_PROMPT_DATASET_CONFIG = {
+MINI_CFG = {
     "name": "mini",
     "context": BASE_CONTEXT,
-    "options": {
-        "short_term": {
-            "reward_range": SHORT_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [0, "linear"],
-            "time_steps": [0, "linear"],
-        },
-        "long_term": {
-            "reward_range": LONG_REWARDS,
-            "time_range": LONG_TIMES,
-            "reward_steps": [0, "logarithmic"],
-            "time_steps": [0, "logarithmic"],
-        },
-    },
-    "time_horizons": [
-        {"value": 1, "unit": "months"},  # Short horizon
-        {"value": 50, "unit": "years"},  # Long horizon
-    ],
+    "options": OPTIONS_SINGLE,
+    "time_horizons": BINARY_HOR,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
 }
 
 
-GRANDE_PROMPT_DATASET_CONFIG = {
+GRANDE_CFG = {
     "name": "grande",
     "context": BASE_CONTEXT,
-    "options": {
-        "short_term": {
-            "reward_range": SHORT_REWARDS,
-            "time_range": SHORT_TIMES,
-            "reward_steps": [3, "linear"],
-            "time_steps": [3, "linear"],
-        },
-        "long_term": {
-            "reward_range": LONG_REWARDS,
-            "time_range": LONG_TIMES,
-            "reward_steps": [3, "logarithmic"],
-            "time_steps": [3, "logarithmic"],
-        },
-    },
-    "time_horizons": [
-        {"value": 1, "unit": "months"},
-        {"value": 6, "unit": "months"},
-        {"value": 2, "unit": "years"},
-        {"value": 5, "unit": "years"},
-        {"value": 10, "unit": "years"},
-        {"value": 30, "unit": "years"},
-        {"value": 50, "unit": "years"},
-    ],
+    "options": OPTIONS_MANY,
+    "time_horizons": SWEEP_HOR,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
+}
+
+# Multilabel: generates pairs with different label assignments (A/B swapped)
+# This creates GroupedBinaryChoice with multiple forks for testing multilabel handling
+MULTILABEL_CFG = {
+    "name": "multilabel",
+    "context": BASE_CONTEXT,
+    "options": OPTIONS_SINGLE,
+    "time_horizons": BINARY_HOR,
+    "add_formatting_noise": False,
+    "do_formatting_variation_grid": True,  # Key: creates both label orderings
 }
 
 ###########################
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = HORIZON_SWEEP_PROMPT_DATASET_CONFIG
-# MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_PROMPT_DATASET_CONFIG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG
+# MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
 
-FULL_EXPERIMENT_DATASET_CONFIG = MINI_PROMPT_DATASET_CONFIG
+FULL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG

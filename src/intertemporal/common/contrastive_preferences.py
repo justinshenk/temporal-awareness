@@ -102,6 +102,50 @@ class ContrastivePreferences(BaseSchema):
         return self.short_term.context_id == self.long_term.context_id
 
     # =========================================================================
+    # Option Order Properties
+    # =========================================================================
+
+    @property
+    def same_order(self) -> bool:
+        """Check if both samples have the same option order.
+
+        True if both have short_term_first or both have long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order == long_order
+
+    @property
+    def different_order(self) -> bool:
+        """Check if samples have different option orders.
+
+        True if one has short_term_first and the other has long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order != long_order
+
+    @property
+    def both_short_term_first(self) -> bool:
+        """Both samples have short_term option listed first."""
+        return (
+            self.short_term.short_term_first is True
+            and self.long_term.short_term_first is True
+        )
+
+    @property
+    def both_long_term_first(self) -> bool:
+        """Both samples have long_term option listed first."""
+        return (
+            self.short_term.short_term_first is False
+            and self.long_term.short_term_first is False
+        )
+
+    # =========================================================================
     # Reward/Time Properties
     # =========================================================================
 
@@ -263,3 +307,72 @@ class ContrastivePreferences(BaseSchema):
     def mean_choice_prob(self) -> float:
         """Mean choice probability across both samples."""
         return (self.short_term.choice_prob + self.long_term.choice_prob) / 2
+
+    # =========================================================================
+    # Serialization
+    # =========================================================================
+
+    def to_summary_dict(self) -> dict:
+        """Return a lightweight summary dict with key properties only.
+
+        Excludes heavy data like choice trees and full trajectories.
+        """
+        return {
+            # Sample indices
+            "short_term_sample_idx": self.short_term.sample_idx,
+            "long_term_sample_idx": self.long_term.sample_idx,
+            # Labels
+            "short_term_labels": [
+                self.short_term.short_term_label,
+                self.short_term.long_term_label,
+            ],
+            "long_term_labels": [
+                self.long_term.short_term_label,
+                self.long_term.long_term_label,
+            ],
+            "same_labels": self.same_labels,
+            # Order
+            "short_term_first": [
+                self.short_term.short_term_first,
+                self.long_term.short_term_first,
+            ],
+            "same_order": self.same_order,
+            # Time horizons
+            "time_horizons": [
+                self.short_term.time_horizon,
+                self.long_term.time_horizon,
+            ],
+            "both_horizon": self.both_horizon,
+            "neither_horizon": self.neither_horizon,
+            # Rewards and times
+            "short_term_reward": self.short_term.short_term_reward,
+            "long_term_reward": self.short_term.long_term_reward,
+            "short_term_time": self.short_term.short_term_time,
+            "long_term_time": self.short_term.long_term_time,
+            # Choice probabilities
+            "choice_probs": [
+                self.short_term.choice_prob,
+                self.long_term.choice_prob,
+            ],
+            "min_choice_prob": self.min_choice_prob,
+            # Rational/associated
+            "matches_rational": [
+                self.short_term.matches_rational,
+                self.long_term.matches_rational,
+            ],
+            "matches_associated": [
+                self.short_term.matches_associated,
+                self.long_term.matches_associated,
+            ],
+            # IDs
+            "formatting_ids": [
+                self.short_term.formatting_id,
+                self.long_term.formatting_id,
+            ],
+            "context_ids": [
+                self.short_term.context_id,
+                self.long_term.context_id,
+            ],
+            "same_formatting": self.same_formatting,
+            "same_context": self.same_context,
+        }
