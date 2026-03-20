@@ -1,4 +1,4 @@
-"""ContrastivePrefReq: requirements for filtering ContrastivePreferences pairs."""
+"""PrefPairRequirement: requirements for filtering ContrastivePreferences pairs."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class ContrastivePrefReq(BaseSchema):
+class PrefPairRequirement(BaseSchema):
     """Requirements for filtering ContrastivePreferences pairs.
 
     All fields default to False (no requirement). Set to True to require
@@ -147,7 +147,7 @@ class ContrastivePrefReq(BaseSchema):
         # (only_one_horizon with only_short_horizon is just more specific)
 
         if errors:
-            raise ValueError(f"Invalid ContrastivePrefReq: {'; '.join(errors)}")
+            raise ValueError(f"Invalid PrefPairRequirement: {'; '.join(errors)}")
 
     def passes(self, pair: ContrastivePreferences) -> bool:
         """Check if a ContrastivePreferences pair passes all requirements."""
@@ -228,7 +228,7 @@ class ContrastivePrefReq(BaseSchema):
 
 def get_contrastive_preferences(
     dataset: PreferenceDataset,
-    req: ContrastivePrefReq | None = None,
+    req: PrefPairRequirement | None = None,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples that differ primarily by time_horizon with different choices.
 
@@ -239,14 +239,14 @@ def get_contrastive_preferences(
 
     Args:
         dataset: PreferenceDataset containing samples to search
-        req: Optional ContrastivePrefReq specifying filtering requirements
+        req: Optional PrefPairRequirement specifying filtering requirements
 
     Returns:
         List of ContrastivePreferences pairs
     """
 
     if req is None:
-        req = ContrastivePrefReq()
+        req = PrefPairRequirement()
 
     # Verify requirements are valid
     req.verify()
@@ -309,114 +309,114 @@ def get_contrastive_preferences(
     return pairs
 
 
-def get_factorial_doe() -> dict[str, ContrastivePrefReq]:
+def get_factorial_doe() -> dict[str, PrefPairRequirement]:
     """Get factorial design of experiments configurations.
 
-    Returns a dictionary of named ContrastivePrefReq configurations for
+    Returns a dictionary of named PrefPairRequirement configurations for
     systematic exploration of contrastive pair characteristics.
 
     Returns:
-        Dict mapping descriptive names to ContrastivePrefReq instances.
+        Dict mapping descriptive names to PrefPairRequirement instances.
     """
     return {
         # Baseline: no special requirements
-        "baseline": ContrastivePrefReq(),
+        "baseline": PrefPairRequirement(),
         # Horizon variations
-        "only_horizon_different": ContrastivePrefReq(
+        "only_horizon_different": PrefPairRequirement(
             same_rewards=True,
             same_times=True,
             different_horizon=True,
         ),
-        "same_horizon": ContrastivePrefReq(
+        "same_horizon": PrefPairRequirement(
             same_horizon=True,
         ),
-        "neither_horizon": ContrastivePrefReq(
+        "neither_horizon": PrefPairRequirement(
             neither_horizon=True,
         ),
-        "both_horizon": ContrastivePrefReq(
+        "both_horizon": PrefPairRequirement(
             both_horizon=True,
         ),
-        "only_short_horizon": ContrastivePrefReq(
+        "only_short_horizon": PrefPairRequirement(
             only_short_horizon=True,
         ),
-        "only_long_horizon": ContrastivePrefReq(
+        "only_long_horizon": PrefPairRequirement(
             only_long_horizon=True,
         ),
         # Reward variations
-        "only_reward_different": ContrastivePrefReq(
+        "only_reward_different": PrefPairRequirement(
             different_rewards=True,
             same_times=True,
             same_horizon=True,
         ),
-        "same_rewards": ContrastivePrefReq(
+        "same_rewards": PrefPairRequirement(
             same_rewards=True,
         ),
         # Time variations
-        "only_time_different": ContrastivePrefReq(
+        "only_time_different": PrefPairRequirement(
             same_rewards=True,
             different_times=True,
             same_horizon=True,
         ),
-        "same_times": ContrastivePrefReq(
+        "same_times": PrefPairRequirement(
             same_times=True,
         ),
         # Rational choice variations
-        "both_rational": ContrastivePrefReq(
+        "both_rational": PrefPairRequirement(
             both_rational=True,
         ),
-        "neither_rational": ContrastivePrefReq(
+        "neither_rational": PrefPairRequirement(
             neither_rational=True,
         ),
-        "only_short_rational": ContrastivePrefReq(
+        "only_short_rational": PrefPairRequirement(
             only_short_rational=True,
         ),
-        "only_long_rational": ContrastivePrefReq(
+        "only_long_rational": PrefPairRequirement(
             only_long_rational=True,
         ),
         # Associated choice variations
-        "both_associated": ContrastivePrefReq(
+        "both_associated": PrefPairRequirement(
             both_associated=True,
         ),
-        "neither_associated": ContrastivePrefReq(
+        "neither_associated": PrefPairRequirement(
             neither_associated=True,
         ),
-        "only_short_associated": ContrastivePrefReq(
+        "only_short_associated": PrefPairRequirement(
             only_short_associated=True,
         ),
-        "only_long_associated": ContrastivePrefReq(
+        "only_long_associated": PrefPairRequirement(
             only_long_associated=True,
         ),
         # Rational + Associated combinations
-        "both_rational_neither_associated": ContrastivePrefReq(
+        "both_rational_neither_associated": PrefPairRequirement(
             both_rational=True,
             neither_associated=True,
         ),
-        "neither_rational_both_associated": ContrastivePrefReq(
+        "neither_rational_both_associated": PrefPairRequirement(
             neither_rational=True,
             both_associated=True,
         ),
-        "both_rational_both_associated": ContrastivePrefReq(
+        "both_rational_both_associated": PrefPairRequirement(
             both_rational=True,
             both_associated=True,
         ),
-        "neither_rational_neither_associated": ContrastivePrefReq(
+        "neither_rational_neither_associated": PrefPairRequirement(
             neither_rational=True,
             neither_associated=True,
         ),
         # Strict controlled experiments
-        "strict_only_horizon_varies": ContrastivePrefReq(
+        "strict_only_horizon_varies": PrefPairRequirement(
             same_labels=True,
             same_rewards=True,
             same_times=True,
             different_horizon=True,
         ),
-        "strict_only_reward_varies": ContrastivePrefReq(
+        "strict_only_reward_varies": PrefPairRequirement(
             same_labels=True,
             different_rewards=True,
             same_times=True,
             same_horizon=True,
         ),
-        "strict_only_time_varies": ContrastivePrefReq(
+        "strict_only_time_varies": PrefPairRequirement(
             same_labels=True,
             same_rewards=True,
             different_times=True,

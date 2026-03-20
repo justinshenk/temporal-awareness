@@ -30,7 +30,7 @@ from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResu
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from .geo import GeoPairResult, GeoAggregatedResults
 from ..common import get_experiment_dir
-from ..common.contrastive_utils import get_contrastive_preferences
+from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
 from ..common.contrastive_preferences import ContrastivePreferences
 from ..preference import PreferenceDataset
 from .experiment_config import ExperimentConfig
@@ -102,8 +102,13 @@ class ExperimentContext:
 
     def _build_pairs(self) -> None:
         """Build contrastive pairs from preference data."""
+        # Build pair requirements from config
+        pair_req = None
+        if self.cfg.pair_req:
+            pair_req = PrefPairRequirement.from_dict(self.cfg.pair_req)
+
         # Get all contrastive preferences
-        all_prefs = get_contrastive_preferences(self.pref_data)
+        all_prefs = get_contrastive_preferences(self.pref_data, req=pair_req)
         n_select = self.cfg.n_pairs or len(all_prefs)
         selected = all_prefs[:n_select]
         log(f"[ctx] Found {len(all_prefs)} contrastive prefs, using {len(selected)}")

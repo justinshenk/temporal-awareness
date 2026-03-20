@@ -62,6 +62,7 @@ from src.intertemporal.experiments.intertemporal_viz import (
 from src.intertemporal.data.default_configs import (
     FULL_EXPERIMENT_CONFIG,
     MINIMAL_EXPERIMENT_CONFIG,
+    MULTILABEL_EXPERIMENT_CONFIG,
 )
 from src.intertemporal.viz.coarse.component_comparison.constants import COMPONENTS
 
@@ -84,6 +85,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--full", action="store_true", help="Runs with many samples")
+    parser.add_argument(
+        "--multilabel",
+        action="store_true",
+        help="Use multilabel dataset (do_formatting_variation_grid=True)",
+    )
     parser.add_argument(
         "--model",
         type=str,
@@ -138,7 +144,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         metavar="JSON",
-        help='Override diffmeans settings as JSON, e.g. \'{"enabled": true}\'',
+        help="Override diffmeans settings as JSON, e.g. '{\"enabled\": true}'",
     )
     parser.add_argument(
         "--geo",
@@ -146,6 +152,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
         metavar="JSON",
         help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": [86, 87]}\'',
+    )
+    parser.add_argument(
+        "--pair_req",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override pair requirements as JSON, e.g. '{\"different_labels\": true}' for multilabel",
     )
     parser.add_argument(
         "--disable",
@@ -176,7 +189,9 @@ def main() -> int:
             generate_viz(exp_dir)
             return 0
 
-    if args.full:
+    if args.multilabel:
+        config_dict = MULTILABEL_EXPERIMENT_CONFIG.copy()
+    elif args.full:
         config_dict = FULL_EXPERIMENT_CONFIG.copy()
     else:
         config_dict = MINIMAL_EXPERIMENT_CONFIG.copy()
@@ -221,6 +236,12 @@ def main() -> int:
         if "geo" not in config_dict:
             config_dict["geo"] = {}
         config_dict["geo"].update(geo_overrides)
+
+    if args.pair_req:
+        pair_req_overrides = json.loads(args.pair_req)
+        if "pair_req" not in config_dict:
+            config_dict["pair_req"] = {}
+        config_dict["pair_req"].update(pair_req_overrides)
 
     # Determine output directory
     output_dir = None

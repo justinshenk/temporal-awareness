@@ -134,11 +134,22 @@ GRANDE_CFG = {
     "do_formatting_variation_grid": False,
 }
 
+# Multilabel: generates pairs with different label assignments (A/B swapped)
+# This creates GroupedBinaryChoice with multiple forks for testing multilabel handling
+MULTILABEL_CFG = {
+    "name": "multilabel",
+    "context": BASE_CONTEXT,
+    "options": OPTIONS_SINGLE,
+    "time_horizons": BINARY_HOR,
+    "add_formatting_noise": False,
+    "do_formatting_variation_grid": True,  # Key: creates both label orderings
+}
+
 ###########################
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = HORIZON_SWEEP_CFG
-MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG
+# MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
 
 FULL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG

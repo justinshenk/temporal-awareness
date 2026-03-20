@@ -52,6 +52,10 @@ DIFFMEANS: dict = {
     "n_components": 10,  # Number of SVD components to track
 }
 
+# Default pair requirement settings (empty = no requirements, allows all valid pairs)
+# Set "different_labels": True for multilabel experiments
+PAIR_REQ: dict = {}
+
 
 @dataclass
 class ExperimentConfig(BaseSchema):
@@ -77,6 +81,9 @@ class ExperimentConfig(BaseSchema):
 
     # Geometric analysis settings (PCA)
     geo: dict = field(default_factory=lambda: GEO.copy())
+
+    # Pair requirements (filtering criteria for contrastive pairs)
+    pair_req: dict = field(default_factory=lambda: PAIR_REQ.copy())
 
     @property
     def name(self) -> str:
