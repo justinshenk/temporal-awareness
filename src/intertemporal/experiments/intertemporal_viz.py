@@ -14,6 +14,7 @@ from ...activation_patching.coarse import (
     CoarseActPatchAggregatedResults,
 )
 from ...attribution_patching import AttrPatchAggregatedResults, AttrPatchPairResult
+from ...common.file_io import load_json
 from ...common.logging import log
 from ..viz import (
     visualize_all_aggregated,
@@ -58,6 +59,31 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
     return components
 
 
+def _extract_label_pairs_from_preference(pref_data: dict) -> tuple[tuple[str, str], ...] | None:
+    """Extract label pairs from contrastive preference data.
+
+    For multilabel experiments, short_term_labels and long_term_labels
+    are lists where each index corresponds to a fork.
+
+    Returns tuple of (short_label, long_label) pairs for each fork.
+    """
+    short_labels = pref_data.get("short_term_labels", [])
+    long_labels = pref_data.get("long_term_labels", [])
+
+    if not isinstance(short_labels, list) or not isinstance(long_labels, list):
+        return None
+
+    if len(short_labels) <= 1 and len(long_labels) <= 1:
+        return None  # Single label, not multilabel
+
+    # Create pairs: (short_label[i], long_label[i]) for each fork
+    pairs = []
+    for i in range(min(len(short_labels), len(long_labels))):
+        pairs.append((short_labels[i], long_labels[i]))
+
+    return tuple(pairs) if pairs else None
+
+
 def load_coarse_results_for_pair(
     pair_dir: Path,
     components: list[str],
@@ -71,11 +97,22 @@ def load_coarse_results_for_pair(
     Returns:
         Dict mapping component name to results
     """
+    # Load label_pairs from contrastive_preference.json if available
+    label_pairs = None
+    pref_path = pair_dir / "contrastive_preference.json"
+    if pref_path.exists():
+        pref_data = load_json(pref_path)
+        label_pairs = _extract_label_pairs_from_preference(pref_data)
+
     coarse_results = {}
     for component in components:
         results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
         if results_path.exists():
-            coarse_results[component] = CoarseActPatchResults.from_json(results_path)
+            result = CoarseActPatchResults.from_json(results_path)
+            # Add label_pairs if not already present
+            if label_pairs and result.label_pairs is None:
+                result.label_pairs = label_pairs
+            coarse_results[component] = result
     return coarse_results
 
 
@@ -131,12 +168,22 @@ def rebuild_coarse_aggregated(
         if not pair_dir.exists():
             break
 
+        # Load label_pairs from contrastive_preference.json if available
+        label_pairs = None
+        pref_path = pair_dir / "contrastive_preference.json"
+        if pref_path.exists():
+            pref_data = load_json(pref_path)
+            label_pairs = _extract_label_pairs_from_preference(pref_data)
+
         # Load and add results for each component
         for component in components:
             results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
             if results_path.exists():
                 result = CoarseActPatchResults.from_json(results_path)
                 result.sample_id = pair_idx
+                # Add label_pairs if not already present
+                if label_pairs and result.label_pairs is None:
+                    result.label_pairs = label_pairs
                 coarse_agg[component].add(result)
 
         pair_idx += 1

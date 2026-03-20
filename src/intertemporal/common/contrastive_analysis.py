@@ -5,7 +5,6 @@ Analyzes contrastive preference pairs by: horizon, rationality, confidence, cont
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 from ...common.logging import log
@@ -59,11 +58,6 @@ def _get_horizon_years(time_horizon) -> float | None:
     return parse_horizon_years(time_horizon)
 
 
-def _has_horizon(time_horizon: dict | None) -> bool:
-    """Check if time_horizon has an actual value."""
-    return _get_horizon_years(time_horizon) is not None
-
-
 def _format_horizon(h: float | None) -> str:
     """Format horizon for display."""
     if h is None:
@@ -71,6 +65,18 @@ def _format_horizon(h: float | None) -> str:
     if h < 1:
         return f"{h * 12:.0f}mo"
     return f"{h:.0f}yr"
+
+
+def _format_rational(val: bool | None) -> str:
+    """Format rationality value."""
+    if val is None:
+        return "n/a"
+    return "yes" if val else "no"
+
+
+def _format_prob(val: float) -> str:
+    """Format probability as percentage."""
+    return f"{val:.1%}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -87,6 +93,8 @@ class ContrastivePairsAnalysis:
     # Horizon breakdown
     n_both_horizon: int = 0
     n_neither_horizon: int = 0
+    n_only_short_horizon: int = 0
+    n_only_long_horizon: int = 0
     n_same_horizon: int = 0
     n_different_horizon: int = 0
 
@@ -95,15 +103,19 @@ class ContrastivePairsAnalysis:
         default_factory=dict
     )
 
-    # Rationality
+    # Rationality (only counted when both values are not None)
+    n_rationality_computable: int = 0
     n_both_rational: int = 0
     n_neither_rational: int = 0
     n_only_short_rational: int = 0
     n_only_long_rational: int = 0
 
-    # Association
+    # Association (only counted when both values are not None)
+    n_association_computable: int = 0
     n_both_associated: int = 0
     n_neither_associated: int = 0
+    n_only_short_associated: int = 0
+    n_only_long_associated: int = 0
 
     # Content variation
     n_same_rewards: int = 0
@@ -117,8 +129,6 @@ class ContrastivePairsAnalysis:
     mean_confidence: float = 0.0
 
     # By reward
-    by_short_reward: dict[float, int] = field(default_factory=dict)
-    by_long_reward: dict[float, int] = field(default_factory=dict)
     by_reward_ratio: dict[float, int] = field(default_factory=dict)
 
 
@@ -135,7 +145,7 @@ def analyze_contrastive_pairs(
     confidences = []
 
     for pair in pairs:
-        # Horizon - use actual value extraction, not property checks
+        # Horizon
         h_short = _get_horizon_years(pair.short_term.time_horizon)
         h_long = _get_horizon_years(pair.long_term.time_horizon)
         has_short = h_short is not None
@@ -147,26 +157,43 @@ def analyze_contrastive_pairs(
                 analysis.n_same_horizon += 1
             else:
                 analysis.n_different_horizon += 1
-        if not has_short and not has_long:
+        elif has_short and not has_long:
+            analysis.n_only_short_horizon += 1
+        elif not has_short and has_long:
+            analysis.n_only_long_horizon += 1
+        else:
             analysis.n_neither_horizon += 1
+
         key = (h_short, h_long)
         analysis.by_horizon_pair[key] = analysis.by_horizon_pair.get(key, 0) + 1
 
-        # Rationality
-        if pair.both_rational:
-            analysis.n_both_rational += 1
-        if pair.neither_rational:
-            analysis.n_neither_rational += 1
-        if pair.only_short_rational:
-            analysis.n_only_short_rational += 1
-        if pair.only_long_rational:
-            analysis.n_only_long_rational += 1
+        # Rationality - only count when both are computable (not None)
+        r_short = pair.short_term.matches_rational
+        r_long = pair.long_term.matches_rational
+        if r_short is not None and r_long is not None:
+            analysis.n_rationality_computable += 1
+            if r_short and r_long:
+                analysis.n_both_rational += 1
+            elif not r_short and not r_long:
+                analysis.n_neither_rational += 1
+            elif r_short and not r_long:
+                analysis.n_only_short_rational += 1
+            else:
+                analysis.n_only_long_rational += 1
 
-        # Association
-        if pair.both_associated:
-            analysis.n_both_associated += 1
-        if pair.neither_associated:
-            analysis.n_neither_associated += 1
+        # Association - only count when both are computable
+        a_short = pair.short_term.matches_associated
+        a_long = pair.long_term.matches_associated
+        if a_short is not None and a_long is not None:
+            analysis.n_association_computable += 1
+            if a_short and a_long:
+                analysis.n_both_associated += 1
+            elif not a_short and not a_long:
+                analysis.n_neither_associated += 1
+            elif a_short and not a_long:
+                analysis.n_only_short_associated += 1
+            else:
+                analysis.n_only_long_associated += 1
 
         # Content
         if pair.same_rewards:
@@ -180,7 +207,6 @@ def analyze_contrastive_pairs(
         conf = pair.min_choice_prob
         confidences.append(conf)
 
-        # Bucket confidence
         if conf >= 0.9:
             bucket = "≥90%"
         elif conf >= 0.8:
@@ -195,15 +221,7 @@ def analyze_contrastive_pairs(
             analysis.confidence_buckets.get(bucket, 0) + 1
         )
 
-        # By reward
-        if pair.short_term.short_term_reward is not None:
-            r = pair.short_term.short_term_reward
-            analysis.by_short_reward[r] = analysis.by_short_reward.get(r, 0) + 1
-
-        if pair.short_term.long_term_reward is not None:
-            r = pair.short_term.long_term_reward
-            analysis.by_long_reward[r] = analysis.by_long_reward.get(r, 0) + 1
-
+        # By reward ratio
         if pair.short_term.short_term_reward and pair.short_term.long_term_reward:
             ratio = round(
                 pair.short_term.long_term_reward / pair.short_term.short_term_reward, 2
@@ -224,43 +242,103 @@ def analyze_contrastive_pairs(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _print_pair_details(pair: ContrastivePreferences, idx: int) -> None:
+    """Print details of a single contrastive pair."""
+    short = pair.short_term
+    long = pair.long_term
+
+    h_short = _get_horizon_years(short.time_horizon)
+    h_long = _get_horizon_years(long.time_horizon)
+
+    # Summary line: horizon difference -> choice difference
+    h_short_str = _format_horizon(h_short)
+    h_long_str = _format_horizon(h_long)
+    log(f"  Pair {idx + 1}: horizon {h_short_str}→short vs {h_long_str}→long")
+
+    log(f"    Short chooser: #{short.sample_idx} prob={_format_prob(short.choice_prob)} rational={_format_rational(short.matches_rational)}")
+    log(f"    Long chooser:  #{long.sample_idx} prob={_format_prob(long.choice_prob)} rational={_format_rational(long.matches_rational)}")
+
+    if short.short_term_reward and short.long_term_reward:
+        ratio = short.long_term_reward / short.short_term_reward
+        log(f"    Rewards: ${short.short_term_reward:,.0f} vs ${short.long_term_reward:,.0f} ({ratio:.1f}x)")
+
+    # Show what varies between the pair
+    diff = []
+    if not pair.same_rewards:
+        diff.append("rewards")
+    if not pair.same_times:
+        diff.append("times")
+    if not pair.same_labels:
+        diff.append("labels")
+
+    if diff:
+        log(f"    Differs: {', '.join(diff)}")
+
+
 def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
     """Print analysis of contrastive preference pairs."""
-    analysis = analyze_contrastive_pairs(pairs)
-    n = analysis.n_pairs
+    n = len(pairs)
 
     log("")
     _banner("CONTRASTIVE PAIRS ANALYSIS")
     log("")
     log(f"  Total pairs: {n}")
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Confidence
-    # ─────────────────────────────────────────────────────────────────────────
-    _section("CONFIDENCE (min choice_prob per pair)")
-    log("")
-    log(f"  Range: {analysis.min_confidence:.1%} - {analysis.max_confidence:.1%}")
-    log(f"  Mean:  {analysis.mean_confidence:.1%}")
-    log("")
-    log("  Distribution:")
-    for bucket in ["≥90%", "80-90%", "70-80%", "60-70%", "<60%"]:
-        count = analysis.confidence_buckets.get(bucket, 0)
-        if count > 0:
-            bar = "█" * (count * 40 // n) if n else ""
-            log(f"    {bucket:>7}: {count:4d} ({100*count/n:5.1f}%) {bar}")
+    if n == 0:
+        log("")
+        log("  No pairs to analyze.")
+        log("")
+        return
+
+    # For small numbers of pairs, just show individual details (aggregate stats are redundant)
+    if n <= 5:
+        log("")
+        for i, pair in enumerate(pairs):
+            _print_pair_details(pair, i)
+            if i < n - 1:
+                log("")
+        log("")
+        return
+
+    # For larger datasets, show aggregate analysis
+    analysis = analyze_contrastive_pairs(pairs)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Horizon
+    # Confidence Summary
+    # ─────────────────────────────────────────────────────────────────────────
+    _section("CONFIDENCE")
+    log("")
+    if n == 1:
+        log(f"  Min choice prob: {analysis.mean_confidence:.1%}")
+    else:
+        log(f"  Range: {analysis.min_confidence:.1%} - {analysis.max_confidence:.1%}")
+        log(f"  Mean:  {analysis.mean_confidence:.1%}")
+        log("")
+        log("  Distribution:")
+        for bucket in ["≥90%", "80-90%", "70-80%", "60-70%", "<60%"]:
+            count = analysis.confidence_buckets.get(bucket, 0)
+            if count > 0:
+                bar = "█" * (count * 40 // n)
+                log(f"    {bucket:>7}: {count:4d} ({100*count/n:5.1f}%) {bar}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Horizon Summary
     # ─────────────────────────────────────────────────────────────────────────
     _section("HORIZON")
     log("")
-    log(f"  Both have horizon:    {_stat(analysis.n_both_horizon, n)}")
-    log(f"  Neither has horizon:  {_stat(analysis.n_neither_horizon, n)}")
-    log(f"  Same horizon value:   {_stat(analysis.n_same_horizon, n)}")
-    log(f"  Different horizons:   {_stat(analysis.n_different_horizon, n)}")
+    log(f"  Both have horizon:      {_stat(analysis.n_both_horizon, n)}")
+    log(f"  Only short has horizon: {_stat(analysis.n_only_short_horizon, n)}")
+    log(f"  Only long has horizon:  {_stat(analysis.n_only_long_horizon, n)}")
+    log(f"  Neither has horizon:    {_stat(analysis.n_neither_horizon, n)}")
 
-    # Horizon pair breakdown
-    if analysis.by_horizon_pair:
+    if analysis.n_both_horizon > 0:
+        log("")
+        log(f"  When both have horizon:")
+        log(f"    Same value:     {_stat(analysis.n_same_horizon, analysis.n_both_horizon)}")
+        log(f"    Different:      {_stat(analysis.n_different_horizon, analysis.n_both_horizon)}")
+
+    # Horizon pair breakdown (only show if more than 1 unique pair and n > 5)
+    if len(analysis.by_horizon_pair) > 1 and n > 5:
         log("")
         log("  Horizon pairs (short_chooser → long_chooser):")
         log("")
@@ -277,37 +355,53 @@ def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
             log(f"    {h_short_str:>7} │ {h_long_str:>7} │ {count:4d}")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Rationality
+    # Rationality Summary
     # ─────────────────────────────────────────────────────────────────────────
     _section("RATIONALITY")
     log("")
-    log(f"  Both rational:        {_stat(analysis.n_both_rational, n)}")
-    log(f"  Neither rational:     {_stat(analysis.n_neither_rational, n)}")
-    log(f"  Only short rational:  {_stat(analysis.n_only_short_rational, n)}")
-    log(f"  Only long rational:   {_stat(analysis.n_only_long_rational, n)}")
+    n_rat = analysis.n_rationality_computable
+    n_not_computable = n - n_rat
+    if n_not_computable > 0:
+        log(f"  Computable (both have horizon): {_stat(n_rat, n)}")
+    if n_rat > 0:
+        log(f"  Both rational:      {_stat(analysis.n_both_rational, n_rat)}")
+        log(f"  Neither rational:   {_stat(analysis.n_neither_rational, n_rat)}")
+        log(f"  Only short rational:{_stat(analysis.n_only_short_rational, n_rat)}")
+        log(f"  Only long rational: {_stat(analysis.n_only_long_rational, n_rat)}")
+    elif n_not_computable == n:
+        log("  Not computable (requires both samples to have horizon)")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Association
+    # Association Summary
     # ─────────────────────────────────────────────────────────────────────────
     _section("ASSOCIATION")
     log("")
-    log(f"  Both associated:      {_stat(analysis.n_both_associated, n)}")
-    log(f"  Neither associated:   {_stat(analysis.n_neither_associated, n)}")
+    n_assoc = analysis.n_association_computable
+    n_not_computable = n - n_assoc
+    if n_not_computable > 0:
+        log(f"  Computable (both have horizon): {_stat(n_assoc, n)}")
+    if n_assoc > 0:
+        log(f"  Both associated:      {_stat(analysis.n_both_associated, n_assoc)}")
+        log(f"  Neither associated:   {_stat(analysis.n_neither_associated, n_assoc)}")
+        log(f"  Only short associated:{_stat(analysis.n_only_short_associated, n_assoc)}")
+        log(f"  Only long associated: {_stat(analysis.n_only_long_associated, n_assoc)}")
+    elif n_not_computable == n:
+        log("  Not computable (requires both samples to have horizon)")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Content Variation
     # ─────────────────────────────────────────────────────────────────────────
-    _section("CONTENT VARIATION (what differs between pair members)")
+    _section("CONTENT VARIATION")
     log("")
-    log(f"  Same rewards:         {_stat(analysis.n_same_rewards, n)}")
-    log(f"  Same delivery times:  {_stat(analysis.n_same_times, n)}")
-    log(f"  Same labels:          {_stat(analysis.n_same_labels, n)}")
+    log(f"  Same rewards:        {_stat(analysis.n_same_rewards, n)}")
+    log(f"  Same delivery times: {_stat(analysis.n_same_times, n)}")
+    log(f"  Same labels:         {_stat(analysis.n_same_labels, n)}")
 
     # ─────────────────────────────────────────────────────────────────────────
-    # By Reward
+    # By Reward Ratio (only if multiple ratios)
     # ─────────────────────────────────────────────────────────────────────────
-    if analysis.by_reward_ratio:
-        _section("BY REWARD RATIO (long/short)")
+    if len(analysis.by_reward_ratio) > 1:
+        _section("BY REWARD RATIO")
         log("")
         log("    Ratio │ Count")
         log("    ──────┼──────")
@@ -315,6 +409,4 @@ def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
             count = analysis.by_reward_ratio[ratio]
             log(f"    {ratio:5.2f}x │ {count:4d}")
 
-    log("")
-    log("═" * WIDTH)
     log("")

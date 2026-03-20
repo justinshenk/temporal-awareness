@@ -61,6 +61,8 @@ class CoarseActPatchResults(BaseSchema):
     sanity_result: ActPatchTargetResult | None = None
     layer_results: dict[int, SweepStepResults] = field(default_factory=dict)
     position_results: dict[int, SweepStepResults] = field(default_factory=dict)
+    # Label pairs for multilabel experiments: (("a)", "b)"), ("[i]", "[ii]"), ...)
+    label_pairs: tuple[tuple[str, str], ...] | None = None
 
     @property
     def layer_step_sizes(self) -> list[int]:

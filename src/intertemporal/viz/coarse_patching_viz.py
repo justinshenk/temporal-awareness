@@ -29,6 +29,7 @@ from .coarse.coarse_comparison import plot_comparison
 from .coarse.component_comparison import plot_all_component_comparisons
 from .coarse.coarse_redundancy import plot_redundancy
 from .coarse.coarse_sanity import plot_sanity_check
+from .coarse.fork_comparison import plot_fork_comparison
 
 if TYPE_CHECKING:
     from ...intertemporal.experiments.processing import ProcessedResults
@@ -96,7 +97,9 @@ def visualize_coarse_patching(
     is_multilabel = n_labels > 1
     by_method_modes, by_fork_modes = [], []
     if is_multilabel:
-        by_method_modes, by_fork_modes = get_multilabel_extraction_modes(n_labels)
+        by_method_modes, by_fork_modes = get_multilabel_extraction_modes(
+            n_labels, label_pairs=result.label_pairs
+        )
 
     # Layer sweep visualizations (both perspectives)
     for step_size in result.layer_step_sizes:
@@ -127,6 +130,31 @@ def visualize_coarse_patching(
                     fork_dir = output_dir / "by_fork" / f"fork_{extraction.fork_idx}"
                     plot_position_sweep(pos_data, fork_dir, step_size, "short", coloring, component, extraction)
                     plot_position_sweep(pos_data, fork_dir, step_size, "long", coloring, component, extraction)
+
+    # Fork comparison for multilabel
+    if is_multilabel:
+        for step_size in result.layer_step_sizes:
+            layer_data = result.get_layer_results_for_step(step_size)
+            if layer_data:
+                plot_fork_comparison(
+                    layer_data, output_dir, step_size, "short",
+                    label_pairs=result.label_pairs, sweep_type="layer", component=component
+                )
+                plot_fork_comparison(
+                    layer_data, output_dir, step_size, "long",
+                    label_pairs=result.label_pairs, sweep_type="layer", component=component
+                )
+        for step_size in result.position_step_sizes:
+            pos_data = result.get_position_results_for_step(step_size)
+            if pos_data:
+                plot_fork_comparison(
+                    pos_data, output_dir, step_size, "short",
+                    label_pairs=result.label_pairs, sweep_type="position", component=component
+                )
+                plot_fork_comparison(
+                    pos_data, output_dir, step_size, "long",
+                    label_pairs=result.label_pairs, sweep_type="position", component=component
+                )
 
     # Denoising vs Noising comparison and redundancy plots (for all step sizes)
     all_step_sizes = set(result.layer_step_sizes) | set(result.position_step_sizes)

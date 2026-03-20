@@ -94,8 +94,16 @@ def run_coarse_act_patching(
     clear_gpu_memory()
     print("[coarse] Done.")
 
+    # Extract label_pairs from sanity result for multilabel experiments
+    label_pairs = None
+    if sanity_result and sanity_result.denoising:
+        baseline = sanity_result.denoising.baseline_clean
+        if baseline and hasattr(baseline, "label_pairs"):
+            label_pairs = baseline.label_pairs
+
     return CoarseActPatchResults(
         sanity_result=sanity_result,
         layer_results=layer_results,
         position_results=position_results,
+        label_pairs=label_pairs,
     )

@@ -37,6 +37,8 @@ class ExtractionMode:
     method: ForkAggregation | None = None
     # Suffix for output filename
     suffix: str = ""
+    # Label pair for title display (e.g., ("a)", "b)"))
+    label_pair: tuple[str, str] | None = None
 
     @classmethod
     def default(cls) -> ExtractionMode:
@@ -49,9 +51,19 @@ class ExtractionMode:
         return cls(method=method, suffix=f"_{method.value}")
 
     @classmethod
-    def for_fork(cls, fork_idx: int) -> ExtractionMode:
+    def for_fork(cls, fork_idx: int, label_pair: tuple[str, str] | None = None) -> ExtractionMode:
         """Extract for specific fork (label pair)."""
-        return cls(fork_idx=fork_idx, suffix=f"_fork{fork_idx}")
+        return cls(fork_idx=fork_idx, suffix=f"_fork{fork_idx}", label_pair=label_pair)
+
+    def get_title_suffix(self) -> str:
+        """Get suffix for plot titles."""
+        if self.method:
+            return f" [{self.method.value}]"
+        elif self.fork_idx is not None:
+            if self.label_pair:
+                return f" [{self.label_pair[0]}/{self.label_pair[1]}]"
+            return f" [Fork {self.fork_idx}]"
+        return ""
 
 
 # ============================================================================
@@ -267,11 +279,7 @@ def plot_layer_sweep(
 
     # Title with baseline info and extraction mode
     baseline_info = _get_baseline_info(layer_data, layers[0])
-    title_suffix = ""
-    if extraction.method:
-        title_suffix = f" [{extraction.method.value}]"
-    elif extraction.fork_idx is not None:
-        title_suffix = f" [Fork {extraction.fork_idx}]"
+    title_suffix = extraction.get_title_suffix()
     fig.suptitle(
         f"Coarse Layer Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}{title_suffix}\n{baseline_info}",
         fontsize=20,
@@ -348,11 +356,7 @@ def plot_position_sweep(
             ax.set_facecolor("white")
 
     # Title with extraction mode
-    title_suffix = ""
-    if extraction.method:
-        title_suffix = f" [{extraction.method.value}]"
-    elif extraction.fork_idx is not None:
-        title_suffix = f" [Fork {extraction.fork_idx}]"
+    title_suffix = extraction.get_title_suffix()
     fig.suptitle(
         f"Coarse Position Sweep [{component}], Clean = {clean_traj}, Steps = {step_size}{title_suffix}",
         fontsize=20,
@@ -445,12 +449,22 @@ def get_n_labels_from_sweep(sweep_data: SweepStepResults) -> int:
     return first_result.n_labels
 
 
-def get_multilabel_extraction_modes(n_labels: int) -> tuple[list[ExtractionMode], list[ExtractionMode]]:
+def get_multilabel_extraction_modes(
+    n_labels: int,
+    label_pairs: tuple[tuple[str, str], ...] | None = None,
+) -> tuple[list[ExtractionMode], list[ExtractionMode]]:
     """Get extraction modes for multilabel visualization.
+
+    Args:
+        n_labels: Number of label pairs
+        label_pairs: Optional tuple of (label_a, label_b) pairs for title display
 
     Returns:
         Tuple of (by_method_modes, by_fork_modes)
     """
     by_method = [ExtractionMode.for_method(m) for m in PLOT_AGGREGATION_METHODS]
-    by_fork = [ExtractionMode.for_fork(i) for i in range(n_labels)]
+    by_fork = []
+    for i in range(n_labels):
+        lp = label_pairs[i] if label_pairs and i < len(label_pairs) else None
+        by_fork.append(ExtractionMode.for_fork(i, label_pair=lp))
     return by_method, by_fork
