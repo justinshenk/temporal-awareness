@@ -6,9 +6,11 @@ import argparse
 import gc
 import json
 import os
+import queue
 import re
 import subprocess
 import sys
+import threading
 import warnings
 from pathlib import Path
 
@@ -222,25 +224,40 @@ def main() -> None:
         flush=True,
     )
 
-    def _upload_to_hf(local_file: Path, path_in_repo: str) -> None:
-        file_size = local_file.stat().st_size
-        print(
-            f"[HF upload] Starting file={local_file.name} "
-            f"local_path={local_file} repo_path={path_in_repo} "
-            f"size_gb={file_size / (1024 ** 3):.2f}",
-            flush=True,
-        )
-        hf_api.upload_file(
-            path_or_fileobj=str(local_file),
-            path_in_repo=path_in_repo,
-            repo_id=hf_repo_id,
-            repo_type=hf_repo_type,
-            commit_message=f"Upload {path_in_repo}",
-        )
-        print(
-            f"[HF upload] Completed file={local_file.name}",
-            flush=True,
-        )
+    upload_queue: queue.Queue[tuple[Path, str] | None] = queue.Queue()
+
+    def _upload_worker() -> None:
+        while True:
+            item = upload_queue.get()
+            if item is None:
+                upload_queue.task_done()
+                break
+            local_file, path_in_repo = item
+            file_size = local_file.stat().st_size
+            print(
+                f"[HF upload] Starting file={local_file.name} "
+                f"local_path={local_file} repo_path={path_in_repo} "
+                f"size_gb={file_size / (1024 ** 3):.2f}",
+                flush=True,
+            )
+            hf_api.upload_file(
+                path_or_fileobj=str(local_file),
+                path_in_repo=path_in_repo,
+                repo_id=hf_repo_id,
+                repo_type=hf_repo_type,
+                commit_message=f"Upload {path_in_repo}",
+            )
+            print(
+                f"[HF upload] Completed file={local_file.name}",
+                flush=True,
+            )
+            upload_queue.task_done()
+
+    upload_thread = threading.Thread(target=_upload_worker, daemon=True)
+    upload_thread.start()
+
+    def _enqueue_upload(local_file: Path, path_in_repo: str) -> None:
+        upload_queue.put((local_file, path_in_repo))
 
     from mech_interp_toolkit.activation_dict import expand_mask
     from mech_interp_toolkit.gradient_based_attribution import (
@@ -446,7 +463,11 @@ def main() -> None:
                     ).as_posix()
                 except ValueError:
                     path_in_repo = output_file.name
-                _upload_to_hf(output_file_abs, path_in_repo)
+                _enqueue_upload(output_file_abs, path_in_repo)
+
+
+    upload_queue.put(None)
+    upload_thread.join()
 
 
 if __name__ == "__main__":
