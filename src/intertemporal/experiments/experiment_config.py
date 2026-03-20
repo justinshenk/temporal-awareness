@@ -12,9 +12,10 @@ from ..prompt import PromptDatasetConfig
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
     "enabled": False,
-    "layer_steps": [1],
+    "layer_steps": [3],
     "pos_steps": [10],
-    "components": ["resid_post", "attn_out", "mlp_out"],
+    # "components": ["resid_post", "attn_out", "mlp_out"],
+    "components": ["resid_post"],
 }
 
 # Default attribution patching settings (empty dict = skip)

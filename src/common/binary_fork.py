@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from .base_schema import BaseSchema
+from .analysis.metrics import ForkAnalysis
 
 
 @dataclass
@@ -23,7 +23,7 @@ class BinaryFork(BaseSchema):
     next_token_logprobs: tuple[float, float]
     group_idx: tuple[int, int] | None = None
     vocab_logits: list[float] | None = None
-    analysis: Any | None = None
+    analysis: ForkAnalysis | None = None
 
     @property
     def next_token_logits(self) -> tuple[float, float] | None:

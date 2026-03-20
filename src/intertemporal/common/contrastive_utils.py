@@ -231,7 +231,7 @@ class PrefPairRequirement(BaseSchema):
 def get_contrastive_preferences(
     dataset: PreferenceDataset,
     req: PrefPairRequirement | None = None,
-    group_by: GroupByMode = "content",
+    group_by: GroupByMode = "choice",
     deduplicate: bool = False,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples with different choices for contrastive analysis.

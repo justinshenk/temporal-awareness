@@ -189,6 +189,7 @@ class _TreeAccumulator:
     trajs: list[TokenTrajectory]
     nodes: list[BranchingNode] = field(default_factory=list)
     forks: list[BinaryFork] = field(default_factory=list)
+    fork_keys: set[tuple[int, int]] = field(default_factory=set)  # O(1) fork lookup
     traj_to_groups: list[tuple[int, ...]] = field(
         default_factory=list
     )  # traj_idx -> groups
@@ -613,19 +614,17 @@ def _create_forks_for_node(
                 if b_i.token_id == b_j.token_id:
                     continue
 
-                # Check if this fork already exists
-                fork_exists = any(
-                    (
-                        f.next_token_ids == (b_i.token_id, b_j.token_id)
-                        or f.next_token_ids == (b_j.token_id, b_i.token_id)
-                    )
-                    for f in acc.forks
+                # Check if this fork already exists using O(1) set lookup
+                fork_key = (
+                    min(b_i.token_id, b_j.token_id),
+                    max(b_i.token_id, b_j.token_id),
                 )
-                if fork_exists:
+                if fork_key in acc.fork_keys:
                     continue
 
                 # Create fork with g_i's branch first (deterministic ordering)
                 fork_idx = len(acc.forks)
+                acc.fork_keys.add(fork_key)
                 acc.forks.append(
                     BinaryFork(
                         next_token_ids=(b_i.token_id, b_j.token_id),

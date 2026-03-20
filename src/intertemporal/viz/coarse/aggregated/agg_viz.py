@@ -7,7 +7,9 @@ Creates structured output organized by analysis slice at top level:
 
 For multilabel experiments, also generates:
 - by_method/<method_name>/... - plots for each aggregation method
-- by_fork/fork_<idx>/... - plots for each individual fork (label pair)
+- combined/... - logaddexp aggregation across label systems
+
+Note: by_fork plots are generated in per-pair visualizations only, not here.
 """
 
 from __future__ import annotations
@@ -26,7 +28,6 @@ from .analysis_slices import ANALYSIS_SLICES
 from .data_extraction import (
     extract_all_columns,
     extract_all_columns_by_method,
-    extract_all_columns_per_fork,
 )
 from .metric_plots import plot_column
 from .style import COLUMN_METRICS
@@ -126,35 +127,6 @@ def _plot_by_method(
         plot_column(column_data, output_path, method_title)
 
 
-def _plot_per_fork(
-    result: CoarseActPatchAggregatedResults,
-    output_dir: Path,
-    sweep_type: Literal["layer", "position"],
-    mode: Literal["denoising", "noising"],
-    perspective: Literal["short", "long"],
-    title_prefix: str,
-    fork_idx: int,
-) -> None:
-    """Generate plots for a specific fork (label pair)."""
-    all_column_data = extract_all_columns_per_fork(
-        result,
-        sweep_type,
-        perspective,
-        mode,
-        fork_idx,
-    )
-
-    columns = list(COLUMN_METRICS.keys())
-    for column in columns:
-        column_data = all_column_data.get(column)
-        if not column_data or not column_data.metrics:
-            continue
-
-        fork_title = f"{title_prefix} | Fork {fork_idx}"
-        output_path = output_dir / f"{column}.png"
-        plot_column(column_data, output_path, fork_title)
-
-
 def plot_aggregated_structured(
     result: CoarseActPatchAggregatedResults,
     output_dir: Path,
@@ -232,7 +204,7 @@ def plot_aggregated_structured(
                 title_prefix,
             )
 
-            # For multilabel, also generate by_method and by_fork plots
+            # For multilabel, also generate by_method plots (by_fork is per-pair only)
             if is_multilabel:
                 # By-method plots
                 by_method_base = output_dir / sweep_dir_name / "by_method"
@@ -247,21 +219,6 @@ def plot_aggregated_structured(
                         perspective,
                         title_prefix,
                         method,
-                    )
-
-                # By-fork plots
-                by_fork_base = output_dir / sweep_dir_name / "by_fork"
-                for fork_idx in range(n_labels):
-                    fork_dir = by_fork_base / f"fork_{fork_idx}" / mode
-                    fork_dir.mkdir(parents=True, exist_ok=True)
-                    _plot_per_fork(
-                        result,
-                        fork_dir,
-                        sweep_type,
-                        mode,
-                        perspective,
-                        title_prefix,
-                        fork_idx,
                     )
 
                 # Combined (logaddexp) perspective

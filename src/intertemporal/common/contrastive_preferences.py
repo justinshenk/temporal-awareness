@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
+import json
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
@@ -376,3 +376,6 @@ class ContrastivePreferences(BaseSchema):
             "same_formatting": self.same_formatting,
             "same_context": self.same_context,
         }
+
+    def to_summary_string(self):
+        return json.dumps(self.to_summary_dict(), indent=4)

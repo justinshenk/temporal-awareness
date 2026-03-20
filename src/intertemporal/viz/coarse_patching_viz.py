@@ -106,12 +106,8 @@ def visualize_coarse_patching(
             plot_layer_sweep(layer_data, output_dir, step_size, "short", component)
             plot_layer_sweep(layer_data, output_dir, step_size, "long", component)
 
-            # Multilabel: by_method and by_fork
+            # Multilabel: by_fork only for per-pair (by_method is in agg_coarse only)
             if is_multilabel:
-                for extraction in by_method_modes:
-                    method_dir = output_dir / "by_method" / extraction.method.value
-                    plot_layer_sweep(layer_data, method_dir, step_size, "short", component, extraction)
-                    plot_layer_sweep(layer_data, method_dir, step_size, "long", component, extraction)
                 for extraction in by_fork_modes:
                     fork_dir = output_dir / "by_fork" / f"fork_{extraction.fork_idx}"
                     plot_layer_sweep(layer_data, fork_dir, step_size, "short", component, extraction)
@@ -125,12 +121,8 @@ def visualize_coarse_patching(
             plot_position_sweep(pos_data, output_dir, step_size, "short", coloring, component)
             plot_position_sweep(pos_data, output_dir, step_size, "long", coloring, component)
 
-            # Multilabel: by_method and by_fork
+            # Multilabel: by_fork only for per-pair (by_method is in agg_coarse only)
             if is_multilabel:
-                for extraction in by_method_modes:
-                    method_dir = output_dir / "by_method" / extraction.method.value
-                    plot_position_sweep(pos_data, method_dir, step_size, "short", coloring, component, extraction)
-                    plot_position_sweep(pos_data, method_dir, step_size, "long", coloring, component, extraction)
                 for extraction in by_fork_modes:
                     fork_dir = output_dir / "by_fork" / f"fork_{extraction.fork_idx}"
                     plot_position_sweep(pos_data, fork_dir, step_size, "short", coloring, component, extraction)

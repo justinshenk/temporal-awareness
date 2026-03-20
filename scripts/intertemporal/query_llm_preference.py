@@ -74,7 +74,9 @@ def get_args():
 
 def generate_test_dataset() -> str:
     """Generate a test dataset and return its ID."""
-    prompt_dataset_cfg = PromptDatasetConfig.from_dict(FULL_EXPERIMENT_CONFIG["dataset_config"])
+    prompt_dataset_cfg = PromptDatasetConfig.from_dict(
+        FULL_EXPERIMENT_CONFIG["dataset_config"]
+    )
     generator = PromptDatasetGenerator(prompt_dataset_cfg)
     dataset = generator.generate()
     dataset.save_as_json()
@@ -150,7 +152,7 @@ def main() -> int:
             contrastive_pairs = get_contrastive_preferences(pref_dataset)
             print(f"\n  Contrastive pairs found: {len(contrastive_pairs)}")
             for pair in contrastive_pairs:
-                print(f"    {pair}")
+                print(f"    {pair.to_summary_string()}")
 
     return 0
 

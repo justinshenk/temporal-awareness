@@ -29,4 +29,5 @@ FULL_EXPERIMENT_CONFIG = {
 MULTILABEL_EXPERIMENT_CONFIG = {
     "model": DEFAULT_MODEL,
     "dataset_config": MULTILABEL_EXPERIMENT_DATASET_CONFIG,
+    "pair_req": {"different_labels": True},
 }

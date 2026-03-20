@@ -55,8 +55,8 @@ LONG_SINGLE = {
 LONG_FEW = {
     "reward_range": LONG_REWARDS,
     "time_range": LONG_TIMES,
-    "reward_steps": [1, "logarithmic"],
-    "time_steps": [1, "logarithmic"],
+    "reward_steps": [1, "linear"],
+    "time_steps": [1, "linear"],
 }
 LONG_MANY = {
     "reward_range": LONG_REWARDS,
@@ -70,7 +70,7 @@ OPTIONS_FEW = {"short_term": SHORT_FEW, "long_term": LONG_FEW}
 OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 
-NONE_HORIZON = [None]
+NONE_HOR = [None]
 
 BINARY_HOR = [
     {"value": 1, "unit": "months"},  # Short horizon
@@ -79,7 +79,7 @@ BINARY_HOR = [
 
 FEW_HOR = [
     None,
-    {"value": 1, "unit": "years"},
+    {"value": 11, "unit": "months"},
     {"value": 10, "unit": "years"},
 ]
 
@@ -104,8 +104,6 @@ NANO_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": BINARY_HOR,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
 }
 
 MULTINANO_CFG = {
@@ -122,8 +120,6 @@ HORIZON_SWEEP_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": SWEEP_HOR,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
 }
 
 
@@ -132,8 +128,6 @@ REWARD_SWEEP_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": BINARY_HOR,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
 }
 
 MINI_CFG = {
@@ -141,17 +135,13 @@ MINI_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": BINARY_HOR,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
 }
 
 SMALL_CFG = {
     "name": "small",
     "context": BASE_CONTEXT,
-    "options": OPTIONS_MANY,
-    "time_horizons": NONE_HORIZON,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
+    "options": OPTIONS_FEW,
+    "time_horizons": FEW_HOR,
 }
 
 
@@ -160,19 +150,16 @@ GRANDE_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_MANY,
     "time_horizons": SWEEP_HOR,
-    "add_formatting_noise": False,
-    "do_formatting_variation_grid": False,
 }
 
-# Multilabel: generates pairs with different label assignments (A/B swapped)
-# This creates GroupedBinaryChoice with multiple forks for testing multilabel handling
+
 MULTILABEL_CFG = {
     "name": "multilabel",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": BINARY_HOR,
     "add_formatting_noise": False,
-    "do_formatting_variation_grid": True,  # Key: creates both label orderings
+    "do_formatting_variation_grid": True,
 }
 
 ###########################
