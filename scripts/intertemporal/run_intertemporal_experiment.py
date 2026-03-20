@@ -64,6 +64,14 @@ from src.intertemporal.data.default_configs import (
     MINIMAL_EXPERIMENT_CONFIG,
     MULTILABEL_EXPERIMENT_CONFIG,
 )
+from src.intertemporal.experiments.experiment_config import (
+    COARSE_PATCH,
+    ATT_PATCH,
+    VIZ,
+    DIFFMEANS,
+    GEO,
+    PAIR_REQ,
+)
 from src.intertemporal.viz.coarse.component_comparison.constants import COMPONENTS
 
 
@@ -207,41 +215,19 @@ def main() -> int:
         config_dict["geo"] = {"enabled": False}
         config_dict["viz"] = {"enabled": False}
 
+    # Apply JSON overrides, merging with defaults if key missing
     if args.coarse:
-        coarse_overrides = json.loads(args.coarse)
-        if "coarse_patch" not in config_dict:
-            config_dict["coarse_patch"] = {}
-        config_dict["coarse_patch"].update(coarse_overrides)
-
+        config_dict.setdefault("coarse_patch", COARSE_PATCH.copy()).update(json.loads(args.coarse))
     if args.attrib:
-        attrib_overrides = json.loads(args.attrib)
-        if "att_patch" not in config_dict:
-            config_dict["att_patch"] = {}
-        config_dict["att_patch"].update(attrib_overrides)
-
+        config_dict.setdefault("att_patch", ATT_PATCH.copy()).update(json.loads(args.attrib))
     if args.viz:
-        viz_overrides = json.loads(args.viz)
-        if "viz" not in config_dict:
-            config_dict["viz"] = {}
-        config_dict["viz"].update(viz_overrides)
-
+        config_dict.setdefault("viz", VIZ.copy()).update(json.loads(args.viz))
     if args.diffmeans:
-        diffmeans_overrides = json.loads(args.diffmeans)
-        if "diffmeans" not in config_dict:
-            config_dict["diffmeans"] = {}
-        config_dict["diffmeans"].update(diffmeans_overrides)
-
+        config_dict.setdefault("diffmeans", DIFFMEANS.copy()).update(json.loads(args.diffmeans))
     if args.geo:
-        geo_overrides = json.loads(args.geo)
-        if "geo" not in config_dict:
-            config_dict["geo"] = {}
-        config_dict["geo"].update(geo_overrides)
-
+        config_dict.setdefault("geo", GEO.copy()).update(json.loads(args.geo))
     if args.pair_req:
-        pair_req_overrides = json.loads(args.pair_req)
-        if "pair_req" not in config_dict:
-            config_dict["pair_req"] = {}
-        config_dict["pair_req"].update(pair_req_overrides)
+        config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(json.loads(args.pair_req))
 
     # Determine output directory
     output_dir = None
