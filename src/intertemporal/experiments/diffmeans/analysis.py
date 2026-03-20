@@ -170,7 +170,12 @@ def _compute_logit_direction(
 
     # W_U is [d_model, vocab_size] or [vocab_size, d_model] depending on backend
     # We want the column/row for each token
-    W_U_np = W_U.cpu().numpy() if hasattr(W_U, "cpu") else np.array(W_U)
+    if hasattr(W_U, "detach"):
+        W_U_np = W_U.detach().cpu().numpy()
+    elif hasattr(W_U, "cpu"):
+        W_U_np = W_U.cpu().numpy()
+    else:
+        W_U_np = np.array(W_U)
 
     # Handle both shapes
     if W_U_np.shape[0] > W_U_np.shape[1]:
