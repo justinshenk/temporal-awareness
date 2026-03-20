@@ -25,6 +25,8 @@ from src.intertemporal.preference import (
     PreferenceQuerier,
     PreferenceQueryConfig,
     PreferenceDataset,
+    analyze_preferences,
+    print_analysis,
 )
 from src.intertemporal.prompt import (
     PromptDatasetConfig,
@@ -32,6 +34,7 @@ from src.intertemporal.prompt import (
     PromptDataset,
 )
 from src.intertemporal.common.contrastive_utils import get_contrastive_preferences
+from src.intertemporal.common.contrastive_analysis import print_contrastive_pairs
 
 
 # Default query config for querying models
@@ -119,13 +122,13 @@ def load_config(args) -> PreferenceQueryConfig:
 
 
 def print_summary(pref_dataset: PreferenceDataset) -> None:
+    """Print preference analysis."""
+    # Original detailed output
     pref_dataset.print_all()
 
-    # Print summary
-    short_count = sum(1 for p in pref_dataset.preferences if p.chose_short_term)
-    long_count = sum(1 for p in pref_dataset.preferences if p.chose_long_term)
-    print(f"\n  Total: {len(pref_dataset.preferences)}")
-    print(f"  Short-term: {short_count}, Long-term: {long_count}")
+    # New clean analysis
+    analysis = analyze_preferences(pref_dataset)
+    print_analysis(analysis)
 
 
 def main() -> int:
@@ -148,11 +151,14 @@ def main() -> int:
             pref_dataset.save_as_json(output_path)
             print_summary(pref_dataset)
 
-            # Find contrastive preference pairs
-            contrastive_pairs = get_contrastive_preferences(pref_dataset)
-            print(f"\n  Contrastive pairs found: {len(contrastive_pairs)}")
-            for pair in contrastive_pairs:
-                print(f"    {pair.to_summary_string()}")
+            # Find and analyze contrastive preference pairs
+            contrastive_pairs = get_contrastive_preferences(
+                pref_dataset,
+                group_by="content",
+                best_only=True,
+                min_confidence=0.6,
+            )
+            print_contrastive_pairs(contrastive_pairs)
 
     return 0
 

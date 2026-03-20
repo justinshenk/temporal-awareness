@@ -22,39 +22,6 @@ from ...common import (
 )
 
 
-class _MinimalChoice:
-    """Minimal choice object for lightweight loading."""
-
-    def __init__(
-        self,
-        choice_idx: int,
-        short_term_label: str | None = None,
-        long_term_label: str | None = None,
-    ):
-        self.choice_idx = choice_idx
-        self._short_term_label = short_term_label
-        self._long_term_label = long_term_label
-
-    @property
-    def chosen_label(self) -> str | None:
-        if self.choice_idx == 0:
-            return self._short_term_label
-        return self._long_term_label
-
-    @property
-    def alternative_idx(self) -> int:
-        return 1 - self.choice_idx
-
-    @property
-    def alternative_label(self) -> str | None:
-        if self.choice_idx == 0:
-            return self._long_term_label
-        return self._short_term_label
-
-    def pop_heavy(self) -> None:
-        pass
-
-
 @dataclass
 class PreferenceDataset(BaseSchema):
     """Preference dataset with metadata."""
@@ -356,98 +323,6 @@ class PreferenceDataset(BaseSchema):
                     torch.save(pref.internals.activations, file_path)
 
         save_json(data, path)
-
-    # Fields needed for analysis (lightweight loading)
-    ANALYSIS_FIELDS = {
-        "sample_idx",
-        "choice_idx",
-        "matches_rational",
-        "matches_associated",
-        "is_flipped",
-        "label_style",
-        "has_time_unit_variation",
-        "has_spell_numbers",
-        "content_key",
-        "short_term_label",
-        "long_term_label",
-        "time_horizon",
-    }
-
-    @classmethod
-    def from_json_lightweight(cls, path: str) -> "PreferenceDataset":
-        """Load preference dataset with only analysis-relevant fields.
-
-        Much faster than from_json() for large files - skips heavy data like
-        prompt_text, response_text, choice trees, internals, etc.
-
-        Args:
-            path: Path to JSON file
-
-        Returns:
-            PreferenceDataset with minimal data for analysis
-        """
-        import re
-
-        path = Path(path)
-
-        # Read file and fix non-standard JSON (Infinity, NaN)
-        with open(path, "r") as f:
-            content = f.read()
-
-        # Replace JavaScript literals with JSON nulls
-        content = re.sub(r":\s*Infinity\b", ": null", content)
-        content = re.sub(r":\s*-Infinity\b", ": null", content)
-        content = re.sub(r":\s*NaN\b", ": null", content)
-
-        # Parse JSON
-        data = json.loads(content)
-
-        # Extract metadata
-        metadata = {
-            "prompt_dataset_id": data.get("prompt_dataset_id", ""),
-            "model": data.get("model", ""),
-            "prompt_dataset_name": data.get("prompt_dataset_name"),
-            "prompt_format": data.get("prompt_format"),
-        }
-
-        # Extract only analysis fields from preferences
-        preferences = []
-        for pref in data.get("preferences", []):
-            filtered = {}
-            for key in cls.ANALYSIS_FIELDS:
-                if key in pref:
-                    filtered[key] = pref[key]
-
-            # Handle choice_idx from nested choice object
-            if "choice_idx" not in filtered and "choice" in pref:
-                choice = pref["choice"]
-                if isinstance(choice, dict) and "choice_idx" in choice:
-                    filtered["choice_idx"] = choice["choice_idx"]
-
-            # Create minimal choice object
-            filtered["choice"] = _MinimalChoice(
-                choice_idx=filtered.get("choice_idx", 0),
-                short_term_label=filtered.get("short_term_label"),
-                long_term_label=filtered.get("long_term_label"),
-            )
-
-            preferences.append(
-                PreferenceSample(
-                    **{
-                        k: v
-                        for k, v in filtered.items()
-                        if k in {f.name for f in fields(PreferenceSample)}
-                    }
-                )
-            )
-
-        return cls(
-            prompt_dataset_id=metadata.get("prompt_dataset_id", ""),
-            model=metadata.get("model", ""),
-            preferences=preferences,
-            prompt_dataset_name=metadata.get("prompt_dataset_name"),
-            prompt_format=metadata.get("prompt_format"),
-        )
 
     @classmethod
     def from_json(cls, path: str, with_internals: bool = False) -> "PreferenceDataset":

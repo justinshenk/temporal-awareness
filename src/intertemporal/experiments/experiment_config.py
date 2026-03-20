@@ -11,8 +11,8 @@ from ..prompt import PromptDatasetConfig
 # Default coarse patching settings (empty dict or empty lists = skip)
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
-    "enabled": False,
-    "layer_steps": [3],
+    "enabled": True,
+    "layer_steps": [2],
     "pos_steps": [10],
     # "components": ["resid_post", "attn_out", "mlp_out"],
     "components": ["resid_post"],
@@ -24,12 +24,16 @@ COARSE_PATCH: dict = {
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 # Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
-    "enabled": True,
-    "methods": ["standard", "eap_ig", "eap"],
-    "components": ["mlp_out", "attn_out", "resid_post"],
-    "ig_steps": 30,
-    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    "enabled": False,
+    "ig_steps": 10,
+    # "methods": ["standard", "eap_ig", "eap"],
+    # "components": ["mlp_out", "attn_out", "resid_post"],
+    # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    "methods": ["standard"],
+    "components": ["mlp_out"],
+    "quadrature": ["midpoint"],
 }
+
 
 # Default visualization settings
 VIZ: dict = {

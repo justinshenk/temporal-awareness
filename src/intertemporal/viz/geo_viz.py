@@ -13,7 +13,7 @@ from ...common.logging import log
 from ..experiments.geo import GeoAggregatedResults, GeoPairResult
 
 if TYPE_CHECKING:
-    from ..common.contrastive_preferences import ContrastivePreference
+    from ..common.contrastive_preferences import ContrastivePreferences
 
 
 # Plot styling constants
@@ -72,25 +72,40 @@ def _create_horizon_colormap() -> tuple[mcolors.LinearSegmentedColormap, mcolors
 
 
 def _get_pair_time_horizons(
-    pref_pairs: list["ContrastivePreference"] | None,
+    pref_pairs: list["ContrastivePreferences"] | None,
     pair_indices: list[int],
 ) -> list[float | None]:
     """Extract time horizons for pairs by index.
 
     Args:
-        pref_pairs: List of ContrastivePreference objects
+        pref_pairs: List of ContrastivePreferences objects
         pair_indices: Indices of pairs to get horizons for
 
     Returns:
         List of time horizon values in years (None if no horizon)
     """
+    from ...common.time_value import TimeValue
+
     if not pref_pairs:
         return [None] * len(pair_indices)
 
     horizons = []
     for idx in pair_indices:
-        if idx < len(pref_pairs) and pref_pairs[idx].prompt.time_horizon:
-            horizons.append(pref_pairs[idx].prompt.time_horizon.to_years())
+        if idx < len(pref_pairs):
+            # Use short_term sample's time_horizon (could be float, dict, or None)
+            th = pref_pairs[idx].short_term.time_horizon
+            if th is not None:
+                if isinstance(th, (int, float)):
+                    # Already in years
+                    horizons.append(float(th))
+                elif isinstance(th, dict):
+                    # Convert dict to TimeValue
+                    horizons.append(TimeValue.from_dict(th).to_years())
+                else:
+                    # Assume it's a TimeValue
+                    horizons.append(th.to_years())
+            else:
+                horizons.append(None)
         else:
             horizons.append(None)
     return horizons
@@ -106,7 +121,7 @@ def _setup_grid(ax: plt.Axes) -> None:
 def visualize_geo(
     agg: GeoAggregatedResults,
     output_dir: Path,
-    pref_pairs: list["ContrastivePreference"] | None = None,
+    pref_pairs: list["ContrastivePreferences"] | None = None,
 ) -> None:
     """Generate all geo visualizations.
 
@@ -467,7 +482,7 @@ def _plot_consolidated_pca_scatter(
 
 def _plot_pca_scatter_by_horizon(
     agg: GeoAggregatedResults,
-    pref_pairs: list["ContrastivePreference"],
+    pref_pairs: list["ContrastivePreferences"],
     output_path: Path,
 ) -> None:
     """Plot PCA scatter with points colored by time horizon.
