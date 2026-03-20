@@ -6,8 +6,8 @@ resid_pre, attn_out, mlp_out, resid_post.
 
 from __future__ import annotations
 
-from .constants import COMPONENTS, COMPONENT_COLORS, SUBDIRS
-from .main import plot_all_component_comparisons
+from .comp_constants import COMPONENTS, COMPONENT_COLORS, SUBDIRS
+from .comp_main import plot_all_component_comparisons
 
 __all__ = [
     "COMPONENTS",

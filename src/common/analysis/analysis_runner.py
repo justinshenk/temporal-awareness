@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from .builders import build_fork_analysis, build_node_analysis
+from .analysis_builders import build_fork_analysis, build_node_analysis
 from .metrics import TrajectoryAnalysis
 from .tree_as_structures_system import (
     StructureSystemAnalysis,

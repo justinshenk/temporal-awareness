@@ -10,7 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from .....activation_patching.coarse import SweepStepResults
-from .utils import create_figure, save_plot, setup_grid
+from .comp_utils import create_figure, save_plot, setup_grid
 
 
 def plot_sanity_checks(

@@ -10,7 +10,7 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 
 from .....activation_patching import IntervenedChoiceMetrics
-from .base import LineConfig, add_dual_axis_legend, plot_line, setup_column
+from .column_base import LineConfig, add_dual_axis_legend, plot_line, setup_column
 
 
 def plot(

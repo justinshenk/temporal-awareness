@@ -7,7 +7,7 @@ from typing import Literal
 
 from ..common.base_schema import BaseSchema
 from ..common.patching_types import PatchingComponent
-from .quadrature import QuadratureMethod
+from .attribution_quadrature import QuadratureMethod
 
 
 Method = Literal["standard", "eap", "eap_ig"]

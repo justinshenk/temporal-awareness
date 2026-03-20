@@ -17,7 +17,7 @@ from .....intertemporal.experiments.processing import (
     ComponentComparisonResults,
     extract_circuit_hypothesis,
 )
-from .utils import save_plot
+from .comp_utils import save_plot
 
 
 def plot_synthesis(

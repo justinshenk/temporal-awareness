@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .....activation_patching.coarse import CoarseActPatchResults, SweepStepResults
-from .constants import COMPONENTS
-from .utils import create_figure, save_plot
+from .comp_constants import COMPONENTS
+from .comp_utils import create_figure, save_plot
 
 
 def plot_overview(

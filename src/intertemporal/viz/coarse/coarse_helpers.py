@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
 
-from ....viz.palettes import TOKEN_COLORS
+from ....viz.viz_palettes import TOKEN_COLORS
 from ....viz.token_coloring import PairTokenColoring
-from .colors import VLINE_COLORS
+from .coarse_colors import VLINE_COLORS
 
 
 def setup_grid(ax: plt.Axes) -> None:

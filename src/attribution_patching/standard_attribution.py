@@ -16,7 +16,7 @@ from ..common.token_positions import build_position_arrays
 from ..common.patching_types import GradTarget, PatchingMode
 
 from .trajectory_helpers import get_caches_for_attribution, get_seq_len
-from .vectorized import compute_attribution_vectorized
+from .attribution_vectorized import compute_attribution_vectorized
 
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner

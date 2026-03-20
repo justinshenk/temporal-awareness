@@ -17,8 +17,8 @@ from ....activation_patching.act_patch_metrics import DEFAULT_AGGREGATION, PLOT_
 from ....activation_patching.coarse import SweepStepResults
 from ....common.choice.grouped_binary_choice import ForkAggregation
 from ....viz.token_coloring import PairTokenColoring
-from .columns import core, fork, logits, probs, trajectory, vocab
-from .helpers import (
+from .columns import column_core, column_fork, column_logits, column_probs, column_trajectory, column_vocab
+from .coarse_helpers import (
     add_boundary_legend,
     add_token_type_legend,
     add_xaxis_boundary_markers,
@@ -142,22 +142,22 @@ def _plot_sweep_row(
     secondary_axes: list[plt.Axes | None] = []
 
     # Column 0: Core metrics
-    secondary_axes.append(core.plot(axes_row[0], x_values, metrics, mode, tick_positions, xlabel))
+    secondary_axes.append(column_core.plot(axes_row[0], x_values, metrics, mode, tick_positions, xlabel))
 
     # Column 1: Probs/Logprobs
-    secondary_axes.append(probs.plot(axes_row[1], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_probs.plot(axes_row[1], x_values, metrics, tick_positions, xlabel))
 
     # Column 2: Logits
-    secondary_axes.append(logits.plot(axes_row[2], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_logits.plot(axes_row[2], x_values, metrics, tick_positions, xlabel))
 
     # Column 3: Fork metrics
-    secondary_axes.append(fork.plot(axes_row[3], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_fork.plot(axes_row[3], x_values, metrics, tick_positions, xlabel))
 
     # Column 4: Vocab metrics
-    secondary_axes.append(vocab.plot(axes_row[4], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_vocab.plot(axes_row[4], x_values, metrics, tick_positions, xlabel))
 
     # Column 5: Trajectory metrics
-    secondary_axes.append(trajectory.plot(axes_row[5], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_trajectory.plot(axes_row[5], x_values, metrics, tick_positions, xlabel))
 
     # Color x-axis ticks if coloring is provided (for position sweeps)
     # Use tick_positions (already subsampled) not x_values to avoid overwriting

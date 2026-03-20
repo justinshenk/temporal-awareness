@@ -656,15 +656,3 @@ class ExperimentContext:
         log(f"[process] Saving processed results to {path}...")
         save_json(self.processed_results.to_dict(), path)
         log("[process] Saved.")
-
-    def load_processed_results(self) -> bool:
-        """Load processed results from disk.
-
-        Returns:
-            True if successfully loaded, False otherwise
-        """
-        path = self.get_processed_results_path()
-        if path.exists():
-            self.processed_results = ProcessedResults.from_json(path)
-            return True
-        return False

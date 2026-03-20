@@ -25,14 +25,9 @@ from ...attribution_patching import (
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 from .geo import run_geo_analysis, GeoAggregatedResults
 from .processing import (
-    ComponentComparisonResults,
     ProcessedResults,
-    compute_cumulative_recovery,
-    compute_redundancy_gaps,
-    detect_hub_regions,
-    extract_circuit_hypothesis,
-    rank_component_importance,
-    analyze_attribution_agreement,
+    process_attribution_agreement,
+    process_coarse_results,
 )
 
 from ..common import get_pref_dataset_dir
@@ -342,96 +337,29 @@ def step_geo(
 
 
 @profile("step_process_results")
-def step_process_results(
-    ctx: ExperimentContext, try_loading_data: bool = False
-) -> None:
+def step_process_results(ctx: ExperimentContext) -> None:
     """Process raw results into structured analysis results.
 
     This step runs all algorithmic analysis (circuit extraction, redundancy
     analysis, etc.) and stores the results in ctx.processed_results. The
     visualization step then uses these pre-computed results.
+
+    Always recomputes results (no caching) since processing is fast.
     """
-    # Try loading cached processed results
-    if try_loading_data and ctx.load_processed_results():
-        log("[process] Loaded cached processed results")
-        return
-
-    components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
-
-    # Ensure we have aggregated results to process
-    if not ctx.coarse_agg_by_component and try_loading_data:
-        ctx.load_coarse_agg(components)
-
-    if not ctx.coarse_agg_by_component:
-        log("[process] No coarse results to process, skipping")
-        return
-
     log("[process] Processing results...")
     ctx.processed_results = ProcessedResults()
 
-    # Build layer_data and pos_data from ALL components
-    # This mirrors how viz code builds data in plot_all_component_comparisons
-    layer_data: dict = {}
-    pos_data: dict = {}
+    # Process coarse patching results if available
+    if ctx.coarse_agg_by_component:
+        process_coarse_results(ctx)
 
-    for component, agg in ctx.coarse_agg_by_component.items():
-        if not agg or agg.n_samples == 0:
-            continue
-        # Get the first sample's results (or aggregated mean if available)
-        if agg.by_sample:
-            first_sample = next(iter(agg.by_sample.values()))
-            layer_data[component] = first_sample.get_layer_results_for_step(1)
-            pos_data[component] = first_sample.get_position_results_for_step(1)
-
-    if not layer_data:
-        log("[process] No layer data available, skipping")
-        return
-
-    log(f"[process] Processing {len(layer_data)} components: {list(layer_data.keys())}")
-
-    # Run all analyses using combined data from all components
-    circuit = None
-    redundancy = None
-    cumulative = None
-    importance = None
-    position_analysis = None
-
-    if layer_data and pos_data:
-        circuit = extract_circuit_hypothesis(layer_data, pos_data)
-
-    if layer_data:
-        redundancy = compute_redundancy_gaps(layer_data)
-        cumulative = compute_cumulative_recovery(layer_data)
-        importance = rank_component_importance(layer_data)
-
-    if pos_data:
-        position_analysis = detect_hub_regions(pos_data)
-
-    # Store under "all" key since this uses data from all components
-    ctx.processed_results.component_comparison["all"] = ComponentComparisonResults(
-        circuit=circuit,
-        redundancy=redundancy,
-        cumulative=cumulative,
-        component_importance=importance,
-        position_analysis=position_analysis,
-    )
-
-    # Attribution method agreement analysis
+    # Attribution method agreement analysis (independent of coarse patching)
     if ctx.att_agg and (ctx.att_agg.denoising_agg or ctx.att_agg.noising_agg):
-        log("[process] Computing attribution method agreement...")
-        agreement_results = analyze_attribution_agreement(ctx.att_agg, top_k=20)
+        process_attribution_agreement(ctx)
 
-        for mode, result in agreement_results.items():
-            # Convert to dict-based MethodAgreementResults for serialization
-            from .processing.results import MethodAgreementResults as ResultsMAR
-            ctx.processed_results.attribution_agreement[mode] = ResultsMAR(
-                pair_agreements=[pa.to_dict() for pa in result.pair_agreements],
-                mean_jaccard=result.mean_jaccard,
-                methods_analyzed=result.methods_analyzed,
-                top_k=result.top_k,
-                mode=result.mode,
-            )
-            log(f"  {mode}: {result.overall_agreement} agreement (Jaccard={result.mean_jaccard:.3f})")
+    if not ctx.processed_results.component_comparison and not ctx.processed_results.attribution_agreement:
+        log("[process] No results to process")
+        return
 
     ctx.save_processed_results()
     log("[process] Done processing results")
@@ -510,7 +438,7 @@ def run_experiment(
 
     step_geo(ctx, try_loading_data=try_loading_data)
 
-    step_process_results(ctx, try_loading_data=try_loading_data)
+    step_process_results(ctx)
 
     step_visualize_results(ctx, try_loading_data=try_loading_data)
 

@@ -25,10 +25,10 @@ from ...common import profile
 from ...common.contrastive_pair import ContrastivePair
 from ...viz.token_coloring import PairTokenColoring
 from .coarse.aggregated import plot_aggregated_structured, plot_all_aggregated_slices
-from .coarse.comparison import plot_comparison
+from .coarse.coarse_comparison import plot_comparison
 from .coarse.component_comparison import plot_all_component_comparisons
-from .coarse.redundancy import plot_redundancy
-from .coarse.sanity import plot_sanity_check
+from .coarse.coarse_redundancy import plot_redundancy
+from .coarse.coarse_sanity import plot_sanity_check
 
 if TYPE_CHECKING:
     from ...intertemporal.experiments.processing import ProcessedResults

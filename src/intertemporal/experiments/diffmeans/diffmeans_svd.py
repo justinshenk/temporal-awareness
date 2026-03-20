@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .results import SVDResult
+from .diffmeans_results import SVDResult
 
 
 def compute_svd_analysis(

@@ -30,7 +30,7 @@ from .data_extraction import (
     extract_all_columns_by_method,
 )
 from .metric_plots import plot_column
-from .style import COLUMN_METRICS
+from .agg_style import COLUMN_METRICS
 
 if TYPE_CHECKING:
     from ....common.contrastive_preferences import ContrastivePreferences

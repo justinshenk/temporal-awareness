@@ -14,9 +14,9 @@ import numpy as np
 from ....activation_patching import IntervenedChoiceMetrics
 from ....activation_patching.coarse import CoarseActPatchResults
 from ....common.contrastive_pair import ContrastivePair
-from ....viz.palettes import BAR_COLORS
+from ....viz.viz_palettes import BAR_COLORS
 from ....viz.token_coloring import PairTokenColoring
-from .helpers import finalize_plot, setup_grid
+from .coarse_helpers import finalize_plot, setup_grid
 
 
 def plot_sanity_check(

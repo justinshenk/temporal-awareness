@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import numpy as np
 import torch
 
-from .intervention import Intervention
+from .intervention_base import Intervention
 from .intervention_target import InterventionTarget
 
 if TYPE_CHECKING:

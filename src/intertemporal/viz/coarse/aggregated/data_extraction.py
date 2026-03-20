@@ -16,7 +16,7 @@ from .....activation_patching.act_patch_metrics import (
 )
 from .....activation_patching.act_patch_results import ActPatchTargetResult
 from .....common.choice.grouped_binary_choice import ForkAggregation
-from .style import COLUMN_METRICS
+from .agg_style import COLUMN_METRICS
 
 
 @dataclass

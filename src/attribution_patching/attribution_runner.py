@@ -22,10 +22,10 @@ COMPONENT_TO_EAP_KEY = {
     "attn_out": "attn",
     "mlp_out": "mlp",
 }
-from .eap import compute_eap
+from .attribution_eap import compute_eap
 from .eap_ig import compute_eap_ig
 from .embedding_alignment import PaddingStrategy
-from .quadrature import QuadratureMethod
+from .attribution_quadrature import QuadratureMethod
 from .standard_attribution import compute_attribution
 
 if TYPE_CHECKING:

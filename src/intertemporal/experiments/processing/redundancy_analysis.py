@@ -7,7 +7,7 @@ This module contains the algorithmic logic for analyzing redundancy
 from __future__ import annotations
 
 from ....activation_patching.coarse import SweepStepResults
-from .results import RedundancyAnalysis, RedundancyGap
+from .processing_results import RedundancyAnalysis, RedundancyGap
 
 
 def compute_redundancy_gaps(

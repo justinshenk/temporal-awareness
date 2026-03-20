@@ -14,7 +14,7 @@ from ..inference import GeneratedTrajectory
 from .choice_utils import encode_into_trajectory_ids
 from ..common.choice import LabeledSimpleBinaryChoice, GroupedBinaryChoice
 from ..common.token_tree import TokenTree
-from ..common.analysis.analyze import analyze_token_tree
+from ..common.analysis.analysis_runner import analyze_token_tree
 from ..common.profiler import profile
 
 

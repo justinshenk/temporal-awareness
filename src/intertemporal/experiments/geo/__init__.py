@@ -1,17 +1,5 @@
 """Geometric (PCA) analysis of residual stream activations."""
 
-from .analysis import run_geo_analysis
-from .results import (
-    GeoAggregatedResults,
-    GeoPairResult,
-    GeoPCALayerResult,
-    GeoPCAPositionResult,
-)
+from src.common.auto_export import auto_export
 
-__all__ = [
-    "run_geo_analysis",
-    "GeoAggregatedResults",
-    "GeoPairResult",
-    "GeoPCALayerResult",
-    "GeoPCAPositionResult",
-]
+__all__ = auto_export(__file__, __name__, globals())

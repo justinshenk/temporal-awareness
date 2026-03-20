@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from ....activation_patching.coarse import SweepStepResults
 from ....viz.token_coloring import PairTokenColoring
-from .helpers import get_tick_color, setup_grid
+from .coarse_helpers import get_tick_color, setup_grid
 
 
 def plot_redundancy(

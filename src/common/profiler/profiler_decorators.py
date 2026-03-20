@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import Callable, TypeVar, Union, overload
 
-from .timer import P
+from .profiler_timer import P
 from ..device_utils import log_memory
 
 F = TypeVar("F", bound=Callable)

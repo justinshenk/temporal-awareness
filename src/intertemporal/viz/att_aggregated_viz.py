@@ -18,7 +18,7 @@ from ...viz.patching_heatmaps import (
     PatchingHeatmapConfig,
     plot_patching_heatmap,
 )
-from .analysis_plots.main import generate_analysis_plots
+from .analysis_plots.analysis_plots_main import generate_analysis_plots
 from .slice_config import CORE_SLICES, GENERATE_ALL_SLICES
 
 

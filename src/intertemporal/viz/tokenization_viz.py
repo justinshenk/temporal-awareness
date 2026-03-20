@@ -14,7 +14,7 @@ from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...common.file_io import load_json, save_json
 from ...viz.plot_helpers import finalize_plot as _finalize_plot
-from ...viz.palettes import TOKEN_COLORS
+from ...viz.viz_palettes import TOKEN_COLORS
 from ...viz.token_coloring import (
     TokenColorInfo,
     PairTokenColoring,

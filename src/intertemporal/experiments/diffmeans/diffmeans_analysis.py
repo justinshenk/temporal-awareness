@@ -8,8 +8,8 @@ import numpy as np
 import torch
 
 from ....common.logging import log
-from .results import DiffMeansLayerResult, DiffMeansPairResult
-from .rotation import (
+from .diffmeans_results import DiffMeansLayerResult, DiffMeansPairResult
+from .diffmeans_rotation import (
     compute_layer_direction_similarity,
     compute_rotation_decomposition,
     cosine_similarity,

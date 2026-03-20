@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 
 from ....common.logging import log
-from .results import GeoPCALayerResult, GeoPCAPositionResult, GeoPairResult
+from .geo_results import GeoPCALayerResult, GeoPCAPositionResult, GeoPairResult
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner

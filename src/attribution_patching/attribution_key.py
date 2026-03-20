@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, NamedTuple
 
-from .quadrature import QuadratureMethod
+from .attribution_quadrature import QuadratureMethod
 
 
 Method = Literal["standard", "eap", "eap_ig"]

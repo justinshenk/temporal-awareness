@@ -20,7 +20,7 @@ from ..inference.interventions import interpolate_embeddings
 
 from .trajectory_helpers import get_cache
 from .embedding_alignment import PaddingStrategy, align_embeddings
-from .quadrature import QuadratureMethod, get_quadrature
+from .attribution_quadrature import QuadratureMethod, get_quadrature
 
 if TYPE_CHECKING:
     from ..binary_choice import BinaryChoiceRunner

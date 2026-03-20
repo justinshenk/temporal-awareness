@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .data_extraction import ColumnData
-from .style import (
+from .agg_style import (
     AXIS_LABEL_FONTSIZE,
     DPI,
     GRID_ALPHA,

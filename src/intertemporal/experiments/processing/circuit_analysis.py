@@ -8,7 +8,7 @@ pre-computed results from this module.
 from __future__ import annotations
 
 from ....activation_patching.coarse import SweepStepResults
-from .results import (
+from .processing_results import (
     CircuitHypothesis,
     LayerInfo,
     LayerPositionBinding,

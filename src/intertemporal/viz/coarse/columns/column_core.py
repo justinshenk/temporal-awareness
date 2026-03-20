@@ -10,8 +10,8 @@ from typing import Literal, Sequence
 import matplotlib.pyplot as plt
 
 from .....activation_patching import IntervenedChoiceMetrics
-from ..colors import METRIC_COLORS
-from .base import LineConfig, add_dual_axis_legend, plot_line, setup_column
+from ..coarse_colors import METRIC_COLORS
+from .column_base import LineConfig, add_dual_axis_legend, plot_line, setup_column
 
 
 def plot(

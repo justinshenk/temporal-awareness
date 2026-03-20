@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .....activation_patching.coarse import CoarseActPatchResults
 from .....intertemporal.experiments.processing import ComponentComparisonResults
-from .constants import (
+from .comp_constants import (
     COMPONENTS,
     SUBDIR_DECOMP,
     SUBDIR_OVERVIEW,
@@ -14,11 +14,11 @@ from .constants import (
     SUBDIR_SANITY,
     SUBDIR_SYNTHESIS,
 )
-from .decomposition import plot_decomposition
-from .overview import plot_overview
-from .redundancy import plot_redundancy
-from .sanity import plot_sanity_checks
-from .synthesis import plot_synthesis
+from .comp_decomposition import plot_decomposition
+from .comp_overview import plot_overview
+from .comp_redundancy import plot_redundancy
+from .comp_sanity import plot_sanity_checks
+from .comp_synthesis import plot_synthesis
 
 
 def plot_all_component_comparisons(

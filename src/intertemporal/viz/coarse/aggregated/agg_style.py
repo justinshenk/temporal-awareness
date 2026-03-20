@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..colors import METRIC_COLORS
+from ..coarse_colors import METRIC_COLORS
 
 # Individual pair line style - use original colors
 PAIR_LINE_ALPHA = 0.15

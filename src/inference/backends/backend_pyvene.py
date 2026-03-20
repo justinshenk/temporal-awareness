@@ -18,7 +18,7 @@ try:
 except ImportError:
     PYVENE_AVAILABLE = False
 
-from .huggingface import HuggingFaceBackend
+from .backend_huggingface import HuggingFaceBackend
 from ..interventions import Intervention
 
 

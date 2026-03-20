@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 from ....activation_patching.coarse import SweepStepResults
-from .results import (
+from .processing_results import (
     ComponentImportance,
     CumulativeRecovery,
     HubRegion,

@@ -11,8 +11,8 @@ import numpy as np
 
 from .....activation_patching.coarse import SweepStepResults
 from .....intertemporal.experiments.processing import ComponentComparisonResults
-from .constants import COMPONENTS, COMPONENT_COLORS
-from .utils import adjust_labels, create_figure, get_sqrt_colors, save_plot, setup_grid
+from .comp_constants import COMPONENTS, COMPONENT_COLORS
+from .comp_utils import adjust_labels, create_figure, get_sqrt_colors, save_plot, setup_grid
 
 
 def plot_redundancy(

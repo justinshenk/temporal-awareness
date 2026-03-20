@@ -28,7 +28,7 @@ from .sae_activations import (
     get_normalized_vectors_for_sentences,
 )
 from .sae_inference import generate_and_extract
-from .sae import (
+from .sae_analysis import (
     SAE,
     initialize_sae_models,
     load_sae_models,

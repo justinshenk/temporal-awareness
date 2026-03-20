@@ -154,7 +154,7 @@ def main() -> int:
             # Find and analyze contrastive preference pairs
             contrastive_pairs = get_contrastive_preferences(
                 pref_dataset,
-                group_by="content",
+                group_by="horizon",
                 best_only=True,
                 min_confidence=0.6,
             )

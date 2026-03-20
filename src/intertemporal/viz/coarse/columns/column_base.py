@@ -10,8 +10,8 @@ from typing import Sequence
 
 import matplotlib.pyplot as plt
 
-from ..colors import LINE_STYLES, LINE_WIDTHS, MARKERS, MARKER_SIZES, METRIC_COLORS
-from ..helpers import setup_grid
+from ..coarse_colors import LINE_STYLES, LINE_WIDTHS, MARKERS, MARKER_SIZES, METRIC_COLORS
+from ..coarse_helpers import setup_grid
 
 
 @dataclass

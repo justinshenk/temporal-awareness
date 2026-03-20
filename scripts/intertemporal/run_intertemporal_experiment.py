@@ -72,7 +72,7 @@ from src.intertemporal.experiments.experiment_config import (
     GEO,
     PAIR_REQ,
 )
-from src.intertemporal.viz.coarse.component_comparison.constants import COMPONENTS
+from src.intertemporal.viz.coarse.component_comparison.comp_constants import COMPONENTS
 
 
 def detect_cached_components(exp_dir: Path) -> list[str]:

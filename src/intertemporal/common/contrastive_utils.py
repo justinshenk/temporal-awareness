@@ -336,16 +336,17 @@ def get_contrastive_preferences(
             sorted_short = sorted(
                 group_short, key=lambda s: s.choice_prob, reverse=True
             )
-            sorted_long = sorted(
-                group_long, key=lambda s: s.choice_prob, reverse=True
-            )
+            sorted_long = sorted(group_long, key=lambda s: s.choice_prob, reverse=True)
             if sorted_short and sorted_long:
                 total_candidates += 1
                 candidate = ContrastivePreferences(
                     short_term=sorted_short[0],
                     long_term=sorted_long[0],
                 )
-                if req.passes(candidate) and candidate.min_choice_prob >= min_confidence:
+                if (
+                    req.passes(candidate)
+                    and candidate.min_choice_prob >= min_confidence
+                ):
                     total_passed += 1
                     pairs.append(candidate)
         else:
@@ -357,7 +358,10 @@ def get_contrastive_preferences(
                         short_term=short_sample,
                         long_term=long_sample,
                     )
-                    if req.passes(candidate) and candidate.min_choice_prob >= min_confidence:
+                    if (
+                        req.passes(candidate)
+                        and candidate.min_choice_prob >= min_confidence
+                    ):
                         total_passed += 1
                         pairs.append(candidate)
 
