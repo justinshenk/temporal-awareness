@@ -44,6 +44,10 @@ class PatchingHeatmapConfig(HeatmapConfig):
     highlight_top_n: int = 0
     highlight_color: str = "black"
     show_flip_markers: bool = False
+    show_grid: bool = True
+    grid_color: str = "white"
+    grid_alpha: float = 0.3
+    grid_linewidth: float = 0.5
 
 
 def plot_patching_heatmap(
@@ -91,6 +95,18 @@ def plot_patching_heatmap(
 
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
     cbar.set_label(config.cbar_label, rotation=270, labelpad=20, fontsize=10)
+
+    # Grid lines between cells
+    if config.show_grid:
+        ax.set_xticks([i - 0.5 for i in range(n_positions + 1)], minor=True)
+        ax.set_yticks([i - 0.5 for i in range(n_layers + 1)], minor=True)
+        ax.grid(
+            which="minor",
+            color=config.grid_color,
+            alpha=config.grid_alpha,
+            linewidth=config.grid_linewidth,
+        )
+        ax.tick_params(which="minor", length=0)
 
     # Y-axis: layers
     ax.set_yticks(range(n_layers))
@@ -164,6 +180,12 @@ def plot_multi_metric_heatmap(
 
         vmin, vmax = _compute_range(plot_matrix, None, None, "RdYlGn")
         im = _draw_heatmap(ax, plot_matrix, "RdYlGn", vmin, vmax)
+
+        # Grid lines between cells
+        ax.set_xticks([i - 0.5 for i in range(n_positions + 1)], minor=True)
+        ax.set_yticks([i - 0.5 for i in range(n_layers + 1)], minor=True)
+        ax.grid(which="minor", color="white", alpha=0.3, linewidth=0.5)
+        ax.tick_params(which="minor", length=0)
 
         ax.set_title(name, fontsize=11, fontweight="bold")
         ax.set_ylabel("Layer", fontsize=10)
