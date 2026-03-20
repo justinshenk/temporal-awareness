@@ -615,7 +615,10 @@ def _create_forks_for_node(
                     continue
 
                 # Check if this fork already exists using O(1) set lookup
+                # Include fork_arm (g_i, g_j) in key to distinguish between
+                # different label pairs that may have the same token IDs
                 fork_key = (
+                    g_i, g_j,
                     min(b_i.token_id, b_j.token_id),
                     max(b_i.token_id, b_j.token_id),
                 )
