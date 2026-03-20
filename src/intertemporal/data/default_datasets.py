@@ -32,6 +32,13 @@ SHORT_SINGLE = {
     "reward_steps": [0, "linear"],
     "time_steps": [0, "linear"],
 }
+SHORT_FEW = {
+    "reward_range": SHORT_REWARDS,
+    "time_range": SHORT_TIMES,
+    "reward_steps": [1, "linear"],
+    "time_steps": [1, "linear"],
+}
+
 SHORT_MANY = {
     "reward_range": SHORT_REWARDS,
     "time_range": SHORT_TIMES,
@@ -45,6 +52,12 @@ LONG_SINGLE = {
     "reward_steps": [0, "logarithmic"],
     "time_steps": [0, "logarithmic"],
 }
+LONG_FEW = {
+    "reward_range": LONG_REWARDS,
+    "time_range": LONG_TIMES,
+    "reward_steps": [1, "logarithmic"],
+    "time_steps": [1, "logarithmic"],
+}
 LONG_MANY = {
     "reward_range": LONG_REWARDS,
     "time_range": LONG_TIMES,
@@ -53,15 +66,22 @@ LONG_MANY = {
 }
 
 OPTIONS_SINGLE = {"short_term": SHORT_SINGLE, "long_term": LONG_SINGLE}
+OPTIONS_FEW = {"short_term": SHORT_FEW, "long_term": LONG_FEW}
 OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
+
+NONE_HORIZON = [None]
 
 BINARY_HOR = [
     {"value": 1, "unit": "months"},  # Short horizon
     {"value": 50, "unit": "years"},  # Long horizon
 ]
 
-NONE_HORIZON = [None]
+FEW_HOR = [
+    None,
+    {"value": 1, "unit": "years"},
+    {"value": 10, "unit": "years"},
+]
 
 SWEEP_HOR = [
     None,

@@ -367,7 +367,7 @@ def generate_viz(
             log("[viz] Loaded geo aggregated results from cache")
 
     if geo_agg:
-        visualize_geo(geo_agg, exp_dir / "agg_geo")
+        visualize_geo(geo_agg, exp_dir / "agg_geo", pref_pairs=pref_pairs)
         log("[viz] Generated geo visualizations")
 
     # Skip per-pair visualizations if only_agg is True

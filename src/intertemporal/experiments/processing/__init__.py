@@ -11,6 +11,12 @@ from .component_analysis import (
     detect_hub_regions,
     rank_component_importance,
 )
+from .method_agreement import (
+    analyze_attribution_agreement,
+    compute_method_agreement,
+    MethodAgreementResults,
+    MethodPairAgreement,
+)
 from .redundancy_analysis import compute_redundancy_gaps
 from .results import (
     CircuitHypothesis,
@@ -35,6 +41,8 @@ __all__ = [
     "detect_hub_regions",
     "rank_component_importance",
     "compute_redundancy_gaps",
+    "analyze_attribution_agreement",
+    "compute_method_agreement",
     # Result dataclasses
     "CircuitHypothesis",
     "ComponentComparisonResults",
@@ -43,6 +51,8 @@ __all__ = [
     "HubRegion",
     "LayerInfo",
     "LayerPositionBinding",
+    "MethodAgreementResults",
+    "MethodPairAgreement",
     "PositionAnalysis",
     "PositionInfo",
     "ProcessedResults",

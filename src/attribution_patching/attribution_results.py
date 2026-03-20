@@ -269,7 +269,7 @@ class AttributionSummary(BaseSchema):
         """Get result for a specific method.
 
         Args:
-            method: Method name (e.g., "standard_resid_post", "eap_attn")
+            method: Result key (e.g., "standard_resid_post", "eap_attn_out_midpoint")
 
         Returns:
             AttributionPatchingResult or None

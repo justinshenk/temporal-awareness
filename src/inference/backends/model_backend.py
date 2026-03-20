@@ -256,3 +256,30 @@ class Backend(ABC):
             f"{self.__class__.__name__} does not support get_b_U"
         )
 
+    def get_n_heads(self) -> int:
+        """Get the number of attention heads per layer.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_n_heads"
+        )
+
+    def get_d_head(self) -> int:
+        """Get the dimension of each attention head.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_head"
+        )
+
+    def get_d_mlp(self) -> int:
+        """Get the MLP intermediate dimension.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_mlp"
+        )
+

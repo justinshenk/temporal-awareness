@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
 
 from ..common.device_utils import clear_gpu_memory
 from ..common.patching_types import PatchingMode
 from ..common.profiler import profile
+from .attribution_key import AttributionKey
 from .attribution_metric import AttributionMetric
 from .attribution_settings import AttributionSettings
 from .attribution_results import (
@@ -17,50 +16,26 @@ from .attribution_results import (
     AttrPatchTargetResult,
     AttrPatchPairResult,
 )
-from .attribution_runner import run_all_attribution_methods
+from .attribution_runner import run_attribution
 
 from ..binary_choice import BinaryChoiceRunner
 from ..common.contrastive_pair import ContrastivePair
 
 
-def _parse_result_key(key: str) -> tuple[Literal["standard", "eap", "eap_ig"], str]:
-    """Parse raw result key into method and component.
-
-    Handles both standard keys (e.g., 'resid', 'eap_attn') and
-    grad_at-suffixed keys (e.g., 'resid_clean', 'eap_attn_corrupted').
-    """
-    # Strip grad_at suffix if present
-    base_key = key
-    for suffix in ["_clean", "_corrupted"]:
-        if key.endswith(suffix):
-            base_key = key[:-len(suffix)]
-            break
-
-    if base_key in ["resid", "attn", "mlp"]:
-        method: Literal["standard", "eap", "eap_ig"] = "standard"
-        component = {"resid": "resid_post", "attn": "attn_out", "mlp": "mlp_out"}[base_key]
-    elif base_key.startswith("eap_ig_"):
-        method = "eap_ig"
-        component = base_key.replace("eap_ig_", "") + "_out"
-    elif base_key.startswith("eap_"):
-        method = "eap"
-        component = base_key.replace("eap_", "") + "_out"
-    else:
-        method = "standard"
-        component = "resid_post"
-    return method, component
-
-
-def _build_results(
-    raw_results: dict[str, np.ndarray],
+def _convert_to_results(
+    raw_results: dict[AttributionKey, np.ndarray],
     layers: list[int],
 ) -> dict[str, AttributionPatchingResult]:
-    """Convert raw attribution results to result objects."""
+    """Convert typed results to serializable dict with string keys."""
     results = {}
     for key, scores in raw_results.items():
-        method, component = _parse_result_key(key)
-        results[key] = AttributionPatchingResult(
-            scores=scores, layers=layers, component=component, method=method
+        # Use str(key) for dict key (human-readable format)
+        str_key = str(key)
+        results[str_key] = AttributionPatchingResult(
+            scores=scores,
+            layers=layers,
+            component=key.component,
+            method=key.method,
         )
     return results
 
@@ -73,8 +48,6 @@ def attribute_for_choice(
     mode: PatchingMode = "denoising",
 ) -> AttributionSummary:
     """Compute attribution scores for a contrastive pair.
-
-    Uses compute_trajectory_with_cache_and_grad for gradient computation.
 
     Args:
         runner: Model runner
@@ -91,20 +64,18 @@ def attribute_for_choice(
     metric = AttributionMetric.from_contrastive_pair(runner, pair, mode)
     layers = list(range(runner.n_layers))
 
-    raw_results = run_all_attribution_methods(
+    raw_results = run_attribution(
         runner=runner,
         pair=pair,
         metric=metric,
         mode=mode,
         methods=settings.methods,
         ig_steps=settings.ig_steps,
-        grad_at=settings.grad_at,
-        quadrature=settings.quadrature,
+        quadratures=settings.quadrature,
     )
 
-    results = _build_results(raw_results, layers)
+    results = _convert_to_results(raw_results, layers)
 
-    # Clean up GPU memory after processing
     clear_gpu_memory()
 
     return AttributionSummary(results=results, n_pairs=1, mode=mode)

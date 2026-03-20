@@ -13,22 +13,21 @@ from ..prompt import PromptDatasetConfig
 COARSE_PATCH: dict = {
     "enabled": False,
     "layer_steps": [1],
-    "pos_steps": [1],
-    "components": ["resid_pre", "resid_post", "attn_out", "mlp_out"],
+    "pos_steps": [10],
+    "components": ["resid_post", "attn_out", "mlp_out"],
 }
 
 # Default attribution patching settings (empty dict = skip)
 # methods: "standard", "eap", "eap_ig"
 # components: "resid_post", "attn_out", "mlp_out"
-# grad_at: ["clean"], ["corrupted"], or ["clean", "corrupted"]
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
+# Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
     "enabled": True,
-    "methods": ["eap_ig", "eap", "standard"],
+    "methods": ["standard", "eap_ig", "eap"],
     "components": ["mlp_out", "attn_out", "resid_post"],
-    "ig_steps": 20,
-    "grad_at": ["clean", "corrupted"],
-    "quadrature": ["gauss-chebyshev", "gauss-legendre", "midpoint"],
+    "ig_steps": 30,
+    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
 }
 
 # Default visualization settings

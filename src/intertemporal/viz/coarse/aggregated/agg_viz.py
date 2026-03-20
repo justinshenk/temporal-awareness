@@ -21,7 +21,7 @@ from .....activation_patching.act_patch_metrics import (
     PLOT_AGGREGATION_METHODS,
 )
 from .....common.choice.grouped_binary_choice import ForkAggregation
-from ...viz_config import CORE_SLICES, GENERATE_ALL_SLICES
+from ...slice_config import CORE_SLICES, GENERATE_ALL_SLICES
 from .analysis_slices import ANALYSIS_SLICES
 from .data_extraction import (
     extract_all_columns,

@@ -12,6 +12,11 @@ from ...activation_patching.coarse import (
     run_coarse_act_patching,
     CoarseActPatchAggregatedResults,
 )
+from ...activation_patching.fine import (
+    run_fine_patching,
+    FineConfig,
+    FinePatchingResults,
+)
 from ...attribution_patching import (
     attribute_pair,
     AttrPatchAggregatedResults,
@@ -27,6 +32,7 @@ from .processing import (
     detect_hub_regions,
     extract_circuit_hypothesis,
     rank_component_importance,
+    analyze_attribution_agreement,
 )
 
 from ..common import get_pref_dataset_dir
@@ -181,29 +187,52 @@ def step_coarse_activation_patching(
 def step_fine_activation_patching(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
-    """Run targeted activation patching on decomposed targets for each component."""
-    if try_loading_data and ctx.load_fine_agg():
-        log("[fine] Loaded cached aggregated results")
-        ctx.fine_agg.print_summary()
+    """Run fine-grained activation patching: head-level and neuron-level analysis.
+
+    Performs:
+    1. Head-level patching at key attention layers (L24, L21, L19, L29, L30)
+    2. MLP neuron analysis at key MLP layers (L31, L24, L28)
+    3. Attention pattern analysis for top heads
+
+    Configuration comes from ctx.cfg.fine_patch dict with keys:
+    - enabled: bool (default True)
+    - head_layers: list[int] (default [24, 21, 19, 29, 30])
+    - mlp_layers: list[int] (default [31, 24, 28])
+    - n_top_heads: int (default 5)
+    - n_top_neurons: int (default 20)
+    - source_positions: list[int] (default [86, 87, 88])
+    - destination_positions: list[int] (default [143, 144, 145])
+    """
+    fine_cfg = ctx.cfg.fine_patch if hasattr(ctx.cfg, "fine_patch") else {}
+    if not fine_cfg.get("enabled", False):
+        log("[fine] Fine patching disabled, skipping")
         return
 
-    ctx.fine_agg = ActPatchAggregatedResult()
-    for component in PATCHING_COMPONENTS:
-        target = ctx.get_union_target(component=component)
-        targets = target.decompose()
+    if try_loading_data and ctx.load_fine_agg():
+        log("[fine] Loaded cached aggregated results")
+        return
 
-        for pair_idx, pair in enumerate(ctx.pairs):
-            log(
-                f"[fine] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}",
-                gap=1,
-            )
-            pair_result = patch_pair(ctx.runner, pair, targets)
-            pair_result.sample_id = pair_idx
-            ctx.fine_patching[pair_idx] = pair_result
-            ctx.fine_agg.add(pair_result)
+    # Build FineConfig from config dict
+    config = FineConfig(
+        head_layers=fine_cfg.get("head_layers", [24, 21, 19, 29, 30]),
+        mlp_layers=fine_cfg.get("mlp_layers", [31, 24, 28]),
+        n_top_heads=fine_cfg.get("n_top_heads", 5),
+        n_top_neurons=fine_cfg.get("n_top_neurons", 20),
+        source_positions=fine_cfg.get("source_positions", [86, 87, 88]),
+        destination_positions=fine_cfg.get("destination_positions", [143, 144, 145]),
+    )
 
-    ctx.fine_agg.print_summary()
-    ctx.save_fine_agg()
+    ctx.fine_results: list[FinePatchingResults] = []
+
+    for pair_idx, pair in enumerate(ctx.pairs):
+        log_progress(pair_idx + 1, len(ctx.pairs), "[fine] Processing pair ")
+
+        result = run_fine_patching(ctx.runner, pair, config)
+        result.sample_id = pair_idx
+        ctx.fine_results.append(result)
+        result.print_summary()
+
+    log(f"[fine] Completed fine patching for {len(ctx.fine_results)} pairs")
 
 
 @profile("step_diffmeans")
@@ -386,6 +415,23 @@ def step_process_results(
         component_importance=importance,
         position_analysis=position_analysis,
     )
+
+    # Attribution method agreement analysis
+    if ctx.att_agg and (ctx.att_agg.denoising_agg or ctx.att_agg.noising_agg):
+        log("[process] Computing attribution method agreement...")
+        agreement_results = analyze_attribution_agreement(ctx.att_agg, top_k=20)
+
+        for mode, result in agreement_results.items():
+            # Convert to dict-based MethodAgreementResults for serialization
+            from .processing.results import MethodAgreementResults as ResultsMAR
+            ctx.processed_results.attribution_agreement[mode] = ResultsMAR(
+                pair_agreements=[pa.to_dict() for pa in result.pair_agreements],
+                mean_jaccard=result.mean_jaccard,
+                methods_analyzed=result.methods_analyzed,
+                top_k=result.top_k,
+                mode=result.mode,
+            )
+            log(f"  {mode}: {result.overall_agreement} agreement (Jaccard={result.mean_jaccard:.3f})")
 
     ctx.save_processed_results()
     log("[process] Done processing results")

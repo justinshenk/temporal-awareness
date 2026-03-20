@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ....common import profile
 from ....common.logging import log
-from ..viz_config import CORE_SLICES, GENERATE_ALL_SLICES
+from ..slice_config import CORE_SLICES, GENERATE_ALL_SLICES
 
 from .layer_scores import plot_aggregated_layer_attribution
 from .mode_comparison import plot_aggregated_mode_comparison

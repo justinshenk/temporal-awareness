@@ -82,19 +82,20 @@ def visualize_pair_results(
     section_markers = coloring.get_section_markers("clean") if coloring else None
 
     # Step 2: Attribution patching visualizations
+    # Plots are saved as {component}_{mode}.png directly in att_patching/
     if att_result is not None:
         att_dir = pair_out_dir / "att_patching"
         if att_result.result.denoising:
             visualize_att_patching(
                 att_result.result.denoising,
-                att_dir / "denoising",
+                att_dir,
                 position_labels,
                 section_markers,
             )
         if att_result.result.noising:
             visualize_att_patching(
                 att_result.result.noising,
-                att_dir / "noising",
+                att_dir,
                 position_labels,
                 section_markers,
             )

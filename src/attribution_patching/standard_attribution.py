@@ -25,6 +25,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _get_grad_at_for_mode(mode: PatchingMode) -> GradTarget:
+    """Determine gradient computation point from mode.
+
+    - noising: grad@clean (gradients at clean/source state)
+    - denoising: grad@corrupted (gradients at corrupted/source state)
+    """
+    return "clean" if mode == "noising" else "corrupted"
+
+
 def _compute_gradients(
     metric: "AttributionMetric",
     grad_logits: torch.Tensor,
@@ -73,9 +82,12 @@ def compute_attribution(
     metric: "AttributionMetric",
     mode: PatchingMode,
     component: str = "resid_post",
-    grad_at: GradTarget = "corrupted",
 ) -> np.ndarray:
     """Standard attribution patching: (clean - corrupted) * grad.
+
+    Gradient computation point is determined by mode:
+    - noising: grad@clean (gradients at clean/source state)
+    - denoising: grad@corrupted (gradients at corrupted/source state)
 
     Args:
         runner: Model runner
@@ -83,13 +95,13 @@ def compute_attribution(
         metric: Attribution metric
         mode: "denoising" or "noising"
         component: Component to analyze
-        grad_at: Where to compute gradients ("clean" or "corrupted")
 
     Returns:
         Attribution scores [n_layers, seq_len]
     """
     n_layers = runner.n_layers
     hook_filter = hook_filter_for_component(component)
+    grad_at = _get_grad_at_for_mode(mode)
 
     pos_mapping = (
         pair.position_mapping.inv()

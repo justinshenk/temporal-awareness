@@ -380,8 +380,10 @@ class IntervenedChoiceMetrics(BaseSchema):
         # Extract baseline logit diff for this fork
         baseline_logit_diff = 0.0
         if baseline is not None:
-            if isinstance(baseline, GroupedBinaryChoice) and fork_idx < baseline.n_forks:
-                fork = baseline.tree.forks[fork_idx]
+            # Use .forks property which safely returns () if tree.forks is None
+            baseline_forks = baseline.forks if isinstance(baseline, GroupedBinaryChoice) else ()
+            if fork_idx < len(baseline_forks):
+                fork = baseline_forks[fork_idx]
                 orig_lps = (float(fork.next_token_logprobs[0]), float(fork.next_token_logprobs[1]))
             else:
                 orig_lps = baseline.divergent_logprobs

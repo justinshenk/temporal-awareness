@@ -26,6 +26,15 @@ class TransformerLensBackend(Backend):
     def get_d_model(self) -> int:
         return self.runner._model.cfg.d_model
 
+    def get_n_heads(self) -> int:
+        return self.runner._model.cfg.n_heads
+
+    def get_d_head(self) -> int:
+        return self.runner._model.cfg.d_head
+
+    def get_d_mlp(self) -> int:
+        return self.runner._model.cfg.d_mlp
+
     def encode(
         self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
     ) -> torch.Tensor:

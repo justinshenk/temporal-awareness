@@ -41,6 +41,10 @@ CRITICAL_LAYER_RANGES = [(19, 24), (28, 34)]
 CRITICAL_LAYER_COLOR = "#CCCCCC"
 CRITICAL_LAYER_ALPHA = 0.3
 
+# Key layers to annotate on plots
+ANNOTATION_LAYERS = [19, 21, 24, 31, 34]
+ANNOTATION_COLOR = "#666666"
+
 # Position colors for multi-position plots
 POSITION_COLORS = [
     "#E91E63",  # P86 - Pink
@@ -72,6 +76,9 @@ def visualize_diffmeans(
 
     # Core plots (fixed versions)
     _plot_cosine_trajectory(agg, output_dir / "cosine_trajectory.png")
+    n_plots += 1
+
+    _plot_cosine_trajectory_zoomed(agg, output_dir / "cosine_trajectory_zoomed.png")
     n_plots += 1
 
     _plot_rotation_decomposition(agg, output_dir / "rotation_decomposition.png")
@@ -165,6 +172,30 @@ def _add_reference_lines(ax: plt.Axes, layers: list[int]) -> None:
         if layer in layers or (layers and min(layers) <= layer <= max(layers)):
             ax.axvline(
                 x=layer, color="#999999", linestyle="--", linewidth=1.0, alpha=0.7, zorder=1
+            )
+
+
+def _add_layer_annotations(ax: plt.Axes, layers: list[int], y_data: list[float] | None = None) -> None:
+    """Add text annotations at key layers."""
+    if not layers:
+        return
+    for layer in ANNOTATION_LAYERS:
+        if layer in layers or (min(layers) <= layer <= max(layers)):
+            # Get y position from data if available, otherwise use top of plot
+            if y_data and layer in layers:
+                idx = layers.index(layer)
+                y_pos = y_data[idx]
+            else:
+                y_pos = ax.get_ylim()[1] * 0.95
+            ax.annotate(
+                f"L{layer}",
+                xy=(layer, y_pos),
+                xytext=(0, 5),
+                textcoords="offset points",
+                fontsize=7,
+                color=ANNOTATION_COLOR,
+                ha="center",
+                va="bottom",
             )
 
 
@@ -375,6 +406,55 @@ def _plot_cosine_trajectory(
     ax.set_ylabel("Cosine Similarity (to next layer)")
     ax.set_title("Direction Stability Across Layers")
     ax.set_ylim(0, 1)  # Full 0-1 range (not zoomed in)
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_cosine_trajectory_zoomed(
+    agg: DiffMeansAggregatedResults,
+    output_path: Path,
+) -> None:
+    """Plot cosine trajectory with zoomed Y-axis (0.75-1.0) to show subtle dips.
+
+    This version makes mid-network instabilities (L4, L21) visible.
+    """
+    layers, means, stds = agg.get_mean_cosine_trajectory()
+    if not layers:
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=DPI)
+
+    _add_critical_layer_shading(ax)
+
+    means_arr = np.array(means)
+    stds_arr = np.array(stds)
+    ax.fill_between(
+        layers,
+        np.maximum(means_arr - stds_arr, 0.75),  # Clip to visible range
+        np.minimum(means_arr + stds_arr, 1.0),
+        color=COSINE_COLOR,
+        alpha=FILL_ALPHA,
+    )
+    ax.plot(
+        layers,
+        means,
+        color=COSINE_COLOR,
+        linewidth=MEAN_LINE_WIDTH,
+        alpha=MEAN_LINE_ALPHA,
+        marker=MEAN_MARKER,
+        markersize=MEAN_MARKER_SIZE,
+    )
+
+    # Add layer annotations
+    _add_layer_annotations(ax, list(layers), list(means))
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("Cosine Similarity (to next layer)")
+    ax.set_title("Direction Stability (Zoomed: 0.75-1.0)")
+    ax.set_ylim(0.75, 1.0)  # Zoomed range to see subtle dips
     _setup_grid(ax)
 
     plt.tight_layout()

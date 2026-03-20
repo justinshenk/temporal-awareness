@@ -12,6 +12,7 @@ from pathlib import Path
 
 from ....common.base_schema import BaseSchema
 from ....common.file_io import save_json
+from .method_agreement import MethodAgreementResults
 
 
 @dataclass
@@ -246,9 +247,13 @@ class ProcessedResults(BaseSchema):
 
     Attributes:
         component_comparison: Results keyed by component name
+        attribution_agreement: Method agreement for attribution patching
     """
 
     component_comparison: dict[str, ComponentComparisonResults] = field(
+        default_factory=dict
+    )
+    attribution_agreement: dict[str, MethodAgreementResults] = field(
         default_factory=dict
     )
 

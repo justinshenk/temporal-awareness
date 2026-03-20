@@ -15,7 +15,7 @@ from ..common.contrastive_pair import ContrastivePair
 from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import attribution_filter, hook_name
 from ..common.profiler import P, profile
-from ..common.patching_types import GradTarget, PatchingMode
+from ..common.patching_types import PatchingMode
 from ..inference.interventions import interpolate_embeddings
 
 from .trajectory_helpers import get_cache
@@ -67,7 +67,6 @@ def compute_eap_ig(
     mode: PatchingMode,
     n_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
-    grad_at: GradTarget = "corrupted",
     quadrature: QuadratureMethod = QuadratureMethod.MIDPOINT,
 ) -> dict[str, np.ndarray]:
     """Edge Attribution Patching with Integrated Gradients.
@@ -77,8 +76,8 @@ def compute_eap_ig(
 
     Formula: IG = (clean - corrupted) * integral(gradient at interpolated points)
 
-    Note: The grad_at parameter is accepted for API consistency but does not
-    affect EAP-IG computation, which integrates gradients along the full path.
+    Note: EAP-IG integrates gradients along the full interpolation path,
+    so no separate grad_at parameter is needed.
 
     Args:
         runner: Model runner
@@ -87,13 +86,11 @@ def compute_eap_ig(
         mode: "denoising" or "noising"
         n_steps: Integration steps (higher = more accurate but slower)
         padding_strategy: How to pad segments between anchors
-        grad_at: Accepted for API consistency (ignored for EAP-IG)
         quadrature: Quadrature method for numerical integration
 
     Returns:
         Dict with 'attn' and 'mlp' attribution arrays [n_layers, aligned_len]
     """
-    del grad_at  # Unused - EAP-IG integrates along full path
     n_layers = runner.n_layers
 
     logger.debug(f"EAP-IG: mode={mode}, n_steps={n_steps}, quadrature={quadrature}")
@@ -133,6 +130,7 @@ def compute_eap_ig(
         )
         from dataclasses import replace
         adjusted_metric = replace(metric, divergent_position=-1)
+    resid_scores = np.zeros((n_layers, aligned_len))
     attn_scores = np.zeros((n_layers, aligned_len))
     mlp_scores = np.zeros((n_layers, aligned_len))
 
@@ -158,7 +156,7 @@ def compute_eap_ig(
             metric_val = adjusted_metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
 
             # Collect activations for all components
-            components = ["attn_out", "mlp_out"]
+            components = ["resid_post", "attn_out", "mlp_out"]
             all_acts = []
             all_info = []  # (component, layer) tuples
 
@@ -177,7 +175,9 @@ def compute_eap_ig(
             )
 
             # Organize gradients by component
-            component_grads: dict[str, dict[int, torch.Tensor]] = {"attn_out": {}, "mlp_out": {}}
+            component_grads: dict[str, dict[int, torch.Tensor]] = {
+                "resid_post": {}, "attn_out": {}, "mlp_out": {}
+            }
             for (component, layer), grad in zip(all_info, grad_list):
                 if grad is not None:
                     component_grads[component][layer] = grad
@@ -189,6 +189,14 @@ def compute_eap_ig(
                     corr_orig = aligned.corrupted_pos_map[aligned_idx]
                     if clean_orig is None or corr_orig is None:
                         continue
+
+                    # Residual stream attribution
+                    resid_grad = component_grads["resid_post"].get(layer)
+                    if resid_grad is not None:
+                        resid_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
+                            clean_cache, corrupted_cache, resid_grad, layer, "resid_post",
+                            aligned_idx, clean_orig, corr_orig,
+                        )
 
                     # Attention attribution using attn_out gradient
                     attn_grad = component_grads["attn_out"].get(layer)
@@ -218,6 +226,7 @@ def compute_eap_ig(
     clear_gpu_memory()
 
     return {
+        "resid": resid_scores,
         "attn": attn_scores,
         "mlp": mlp_scores,
         "aligned_len": aligned_len,
