@@ -25,6 +25,7 @@ from ..viz.diffmeans_viz import visualize_diffmeans
 from ..viz.geo_viz import visualize_geo, visualize_geo_pair
 from .diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
 from .geo import GeoAggregatedResults, GeoPairResult
+from .processing import ProcessedResults
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
@@ -270,6 +271,7 @@ def generate_viz(
     diffmeans_patching: dict[int, DiffMeansPairResult] | None = None,
     geo_agg: GeoAggregatedResults | None = None,
     geo_patching: dict[int, GeoPairResult] | None = None,
+    processed_results: ProcessedResults | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
     pref_pairs: list["ContrastivePreferences"] | None = None,
@@ -296,6 +298,7 @@ def generate_viz(
         diffmeans_patching: In-memory per-pair diffmeans results
         geo_agg: In-memory aggregated geo results
         geo_patching: In-memory per-pair geo results
+        processed_results: Pre-computed analysis results from step_process_results
         pairs: List of contrastive pairs (for tokenization viz)
         pref_pairs: List of ContrastivePreferences for slice filtering
         runner: Model runner (for tokenization viz)
@@ -341,7 +344,13 @@ def generate_viz(
         log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
-        visualize_all_aggregated(coarse_agg_by_component, exp_dir / "agg_coarse", pref_pairs, exp_dir)
+        visualize_all_aggregated(
+            coarse_agg_by_component,
+            exp_dir / "agg_coarse",
+            pref_pairs,
+            exp_dir,
+            processed_results,
+        )
         log("[viz] Generated aggregated visualizations")
 
     if fine_agg:

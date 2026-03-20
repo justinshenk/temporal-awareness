@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .....activation_patching.coarse import CoarseActPatchResults
+from .....intertemporal.experiments.processing import ComponentComparisonResults
 from .constants import (
     COMPONENTS,
     SUBDIR_DECOMP,
@@ -24,6 +25,7 @@ def plot_all_component_comparisons(
     results_by_component: dict[str, CoarseActPatchResults],
     output_dir: Path,
     step_size: int = 1,
+    processed_results: ComponentComparisonResults | None = None,
 ) -> None:
     """Generate all multi-component comparison plots organized by category.
 
@@ -38,6 +40,7 @@ def plot_all_component_comparisons(
         results_by_component: Dict mapping component name to its results
         output_dir: Directory to save plots
         step_size: Step size to use for extracting data
+        processed_results: Pre-computed analysis results (optional)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -68,9 +71,9 @@ def plot_all_component_comparisons(
     # Generate plots by category
     plot_sanity_checks(layer_data, sanity_dir)
     plot_overview(layer_data, pos_data, results_by_component, overview_dir)
-    plot_decomposition(layer_data, pos_data, decomp_dir)
-    plot_redundancy(layer_data, pos_data, redundancy_dir)
-    plot_synthesis(layer_data, pos_data, synthesis_dir)
+    plot_decomposition(layer_data, pos_data, decomp_dir, processed_results)
+    plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results)
+    plot_synthesis(layer_data, pos_data, synthesis_dir, processed_results)
 
     # Generate README
     _generate_readme(output_dir)

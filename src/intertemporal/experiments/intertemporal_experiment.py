@@ -19,6 +19,15 @@ from ...attribution_patching import (
 )
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 from .geo import run_geo_analysis, GeoAggregatedResults
+from .processing import (
+    ComponentComparisonResults,
+    ProcessedResults,
+    compute_cumulative_recovery,
+    compute_redundancy_gaps,
+    detect_hub_regions,
+    extract_circuit_hypothesis,
+    rank_component_importance,
+)
 
 from ..common import get_pref_dataset_dir
 from ..preference import generate_preference_data, load_and_merge_preference_data
@@ -73,9 +82,10 @@ def step_attribution_patching(
 
     ctx.att_agg = AttrPatchAggregatedResults()
 
-    # Detect cached pairs first when loading from cache
+    # Detect cached pairs first when loading from cache (unless no_cache is set)
     cached_pair_indices = set()
-    if try_loading_data:
+    use_cache = try_loading_data and not att_cfg.get("no_cache", False)
+    if use_cache:
         cached_pair_indices = set(ctx.detect_cached_att_pairs())
 
     # Load all cached pairs
@@ -116,12 +126,15 @@ def step_coarse_activation_patching(
     components = coarse_cfg.get("components", [])
     computed_any = False
 
+    # Check if cache should be skipped for this step
+    use_cache = try_loading_data and not coarse_cfg.get("no_cache", False)
+
     for component in components:
         ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
 
         # Detect all cached pairs first when loading from cache
         cached_pair_indices = set()
-        if try_loading_data:
+        if use_cache:
             cached_pair_indices = set(ctx.detect_cached_coarse_pairs(component))
 
         # Load all cached pairs (may be more than len(ctx.pairs))
@@ -208,9 +221,10 @@ def step_diffmeans(
 
     ctx.diffmeans_agg = DiffMeansAggregatedResults()
 
-    # Detect cached pairs first
+    # Detect cached pairs first (unless no_cache is set)
     cached_pair_indices = set()
-    if try_loading_data:
+    use_cache = try_loading_data and not diffmeans_cfg.get("no_cache", False)
+    if use_cache:
         cached_pair_indices = set(ctx.detect_cached_diffmeans_pairs())
 
     # Load all cached pairs
@@ -260,9 +274,10 @@ def step_geo(
     layers = geo_cfg.get("layers", None)  # None = all layers
     n_components = geo_cfg.get("n_components", 3)
 
-    # Detect cached pairs first
+    # Detect cached pairs first (unless no_cache is set)
     cached_pair_indices = set()
-    if try_loading_data:
+    use_cache = try_loading_data and not geo_cfg.get("no_cache", False)
+    if use_cache:
         cached_pair_indices = set(ctx.detect_cached_geo_pairs())
 
     # Load all cached pairs
@@ -295,6 +310,85 @@ def step_geo(
     log(f"[geo] Geo: {n_loaded} loaded from cache, {n_total} total")
     ctx.geo_agg.print_summary()
     ctx.save_geo_agg()
+
+
+@profile("step_process_results")
+def step_process_results(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Process raw results into structured analysis results.
+
+    This step runs all algorithmic analysis (circuit extraction, redundancy
+    analysis, etc.) and stores the results in ctx.processed_results. The
+    visualization step then uses these pre-computed results.
+    """
+    # Try loading cached processed results
+    if try_loading_data and ctx.load_processed_results():
+        log("[process] Loaded cached processed results")
+        return
+
+    components = ctx.cfg.coarse_patch.get("components", ["resid_post"])
+
+    # Ensure we have aggregated results to process
+    if not ctx.coarse_agg_by_component and try_loading_data:
+        ctx.load_coarse_agg(components)
+
+    if not ctx.coarse_agg_by_component:
+        log("[process] No coarse results to process, skipping")
+        return
+
+    log("[process] Processing results...")
+    ctx.processed_results = ProcessedResults()
+
+    # Build layer_data and pos_data from ALL components
+    # This mirrors how viz code builds data in plot_all_component_comparisons
+    layer_data: dict = {}
+    pos_data: dict = {}
+
+    for component, agg in ctx.coarse_agg_by_component.items():
+        if not agg or agg.n_samples == 0:
+            continue
+        # Get the first sample's results (or aggregated mean if available)
+        if agg.by_sample:
+            first_sample = next(iter(agg.by_sample.values()))
+            layer_data[component] = first_sample.get_layer_results_for_step(1)
+            pos_data[component] = first_sample.get_position_results_for_step(1)
+
+    if not layer_data:
+        log("[process] No layer data available, skipping")
+        return
+
+    log(f"[process] Processing {len(layer_data)} components: {list(layer_data.keys())}")
+
+    # Run all analyses using combined data from all components
+    circuit = None
+    redundancy = None
+    cumulative = None
+    importance = None
+    position_analysis = None
+
+    if layer_data and pos_data:
+        circuit = extract_circuit_hypothesis(layer_data, pos_data)
+
+    if layer_data:
+        redundancy = compute_redundancy_gaps(layer_data)
+        cumulative = compute_cumulative_recovery(layer_data)
+        importance = rank_component_importance(layer_data)
+
+    if pos_data:
+        position_analysis = detect_hub_regions(pos_data)
+
+    # Store under "all" key since this uses data from all components
+    ctx.processed_results.component_comparison["all"] = ComponentComparisonResults(
+        circuit=circuit,
+        redundancy=redundancy,
+        cumulative=cumulative,
+        component_importance=importance,
+        position_analysis=position_analysis,
+    )
+
+    ctx.save_processed_results()
+    log("[process] Done processing results")
 
 
 @profile("step_visualize_results")
@@ -333,6 +427,7 @@ def step_visualize_results(
         diffmeans_patching=ctx.diffmeans_patching or None,
         geo_agg=ctx.geo_agg,
         geo_patching=ctx.geo_patching or None,
+        processed_results=ctx.processed_results,
         pairs=ctx.pairs if ctx._pairs else None,
         pref_pairs=ctx.pref_pairs if ctx._pref_pairs else None,
         runner=ctx.runner if ctx._runner else None,
@@ -368,6 +463,8 @@ def run_experiment(
     step_diffmeans(ctx, try_loading_data=try_loading_data)
 
     step_geo(ctx, try_loading_data=try_loading_data)
+
+    step_process_results(ctx, try_loading_data=try_loading_data)
 
     step_visualize_results(ctx, try_loading_data=try_loading_data)
 

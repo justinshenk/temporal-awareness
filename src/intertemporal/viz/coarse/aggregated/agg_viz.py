@@ -33,6 +33,7 @@ from .style import COLUMN_METRICS
 
 if TYPE_CHECKING:
     from ....common.contrastive_preferences import ContrastivePreferences
+    from ....experiments.processing import ProcessedResults
 
 
 def _get_n_labels(
@@ -372,6 +373,7 @@ def plot_all_aggregated_slices(
     output_dir: Path,
     pref_pairs: list["ContrastivePreferences"] | None = None,
     exp_dir: Path | None = None,
+    processed_results: "ProcessedResults | None" = None,
 ) -> None:
     """Create aggregated visualizations for all analysis slices and components.
 
@@ -391,6 +393,7 @@ def plot_all_aggregated_slices(
         output_dir: Base output directory (e.g., agg/)
         pref_pairs: List of ContrastivePreferences for slice filtering
         exp_dir: Experiment directory for loading cached horizon analysis
+        processed_results: Pre-computed analysis results from step_process_results
     """
     from ..component_comparison import plot_all_component_comparisons
 
@@ -455,6 +458,14 @@ def plot_all_aggregated_slices(
             if results_by_component:
                 comp_comparison_dir = slice_dir / "sweep_component_comparison"
                 comp_comparison_dir.mkdir(parents=True, exist_ok=True)
-                plot_all_component_comparisons(results_by_component, comp_comparison_dir)
+                # Get processed results for "all" key if available
+                comp_processed = None
+                if processed_results and processed_results.component_comparison:
+                    comp_processed = processed_results.component_comparison.get("all")
+                plot_all_component_comparisons(
+                    results_by_component,
+                    comp_comparison_dir,
+                    processed_results=comp_processed,
+                )
 
     print(f"[viz] All aggregated slices saved to {output_dir}")

@@ -159,6 +159,17 @@ def _visualize_summary_structured(
                 return comp
         return None
 
+    def find_method_for_component(component: str) -> str | None:
+        """Find a valid method for the given component."""
+        # Try default first
+        if get_result(default_method, component, default_grad_at, default_quadrature):
+            return default_method
+        # Try other methods (standard has all components, EAP only has attn/mlp)
+        for method in methods:
+            if get_result(method, component, default_grad_at, default_quadrature):
+                return method
+        return None
+
     def plot_single(attr_result, save_path: Path, title: str):
         if attr_result.scores.size == 0:
             return
@@ -190,14 +201,17 @@ def _visualize_summary_structured(
                     plot_single(attr_result, by_method_dir / f"{method}.png", title)
 
     # 2. By component (varying component, others default)
+    # Note: Standard has resid_post but EAP doesn't, so find a valid method for each component
     if "component" in ATT_VIZ_AXES and len(components) > 1:
         by_comp_dir = output_dir / "by_component"
         by_comp_dir.mkdir(parents=True, exist_ok=True)
         for component in components:
-            attr_result = get_result(default_method, component, default_grad_at, default_quadrature)
-            if attr_result:
-                title = f"{default_method} | {component}"
-                plot_single(attr_result, by_comp_dir / f"{component}.png", title)
+            method = find_method_for_component(component)
+            if method:
+                attr_result = get_result(method, component, default_grad_at, default_quadrature)
+                if attr_result:
+                    title = f"{method} | {component}"
+                    plot_single(attr_result, by_comp_dir / f"{component}.png", title)
 
     # 3. By grad_at (varying grad_at, others default)
     if "grad_at" in ATT_VIZ_AXES and len(grad_ats) > 1:
@@ -271,7 +285,7 @@ def visualize_all_att_aggregated_slices(
     # Generate plots for each analysis slice
     for analysis_slice in slices_to_generate:
         slice_name = analysis_slice.name
-        slice_dir = output_dir / slice_name / "att_patching"
+        slice_dir = output_dir / slice_name
 
         visualize_att_aggregated(agg, slice_dir, slice_name)
 

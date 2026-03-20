@@ -15,6 +15,7 @@ This module delegates to submodules in the `coarse/` package:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ...activation_patching.coarse import (
     CoarseActPatchAggregatedResults,
@@ -28,6 +29,9 @@ from .coarse.comparison import plot_comparison
 from .coarse.component_comparison import plot_all_component_comparisons
 from .coarse.redundancy import plot_redundancy
 from .coarse.sanity import plot_sanity_check
+
+if TYPE_CHECKING:
+    from ...intertemporal.experiments.processing import ProcessedResults
 from .coarse.sweep_plots import (
     ExtractionMode,
     get_multilabel_extraction_modes,
@@ -185,6 +189,7 @@ def visualize_all_aggregated(
     output_dir: Path,
     pref_pairs: list | None = None,
     exp_dir: Path | None = None,
+    processed_results: "ProcessedResults | None" = None,
 ) -> None:
     """Visualize all aggregated results with new folder structure.
 
@@ -204,6 +209,7 @@ def visualize_all_aggregated(
         output_dir: Base output directory (typically agg/)
         pref_pairs: Optional ContrastivePreferences list for slice filtering
         exp_dir: Optional experiment dir for loading cached horizon analysis
+        processed_results: Pre-computed analysis results from step_process_results
     """
     if not agg_by_component:
         print("[viz] No aggregated results to visualize")
@@ -212,4 +218,4 @@ def visualize_all_aggregated(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_all_aggregated_slices(agg_by_component, output_dir, pref_pairs, exp_dir)
+    plot_all_aggregated_slices(agg_by_component, output_dir, pref_pairs, exp_dir, processed_results)

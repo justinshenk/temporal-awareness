@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .....activation_patching.coarse import SweepStepResults
+from .....intertemporal.experiments.processing import ComponentComparisonResults
 from .constants import COMPONENTS, COMPONENT_COLORS
 from .utils import adjust_labels, create_figure, get_sqrt_colors, save_plot, setup_grid
 
@@ -17,6 +18,7 @@ def plot_decomposition(
     layer_data: dict[str, SweepStepResults | None],
     pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
+    processed_results: ComponentComparisonResults | None = None,
 ) -> None:
     """Generate all component decomposition plots."""
     _plot_attn_vs_mlp_scatter(layer_data, output_dir, "layer")

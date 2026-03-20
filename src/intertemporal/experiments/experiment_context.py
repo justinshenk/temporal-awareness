@@ -29,6 +29,7 @@ from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResu
 
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from .geo import GeoPairResult, GeoAggregatedResults
+from .processing import ProcessedResults
 from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
 from ..common.contrastive_preferences import ContrastivePreferences
@@ -78,6 +79,9 @@ class ExperimentContext:
     # Geo (PCA) results
     geo_patching: dict[int, GeoPairResult] = field(default_factory=dict)
     geo_agg: GeoAggregatedResults | None = None
+
+    # Processed results (computed in step_process_results)
+    processed_results: ProcessedResults | None = None
 
     @property
     def runner(self) -> BinaryChoiceRunner:
@@ -637,3 +641,30 @@ class ExperimentContext:
                     if (d / "coarse_results.json").exists():
                         components.append(comp)
         return components
+
+    # ─── Processed results save/load methods ───
+
+    def get_processed_results_path(self) -> Path:
+        """Get path for processed results JSON."""
+        return self.output_dir / "processed_results.json"
+
+    def save_processed_results(self) -> None:
+        """Save processed results to disk."""
+        if not self.processed_results:
+            return
+        path = self.get_processed_results_path()
+        log(f"[process] Saving processed results to {path}...")
+        save_json(self.processed_results.to_dict(), path)
+        log("[process] Saved.")
+
+    def load_processed_results(self) -> bool:
+        """Load processed results from disk.
+
+        Returns:
+            True if successfully loaded, False otherwise
+        """
+        path = self.get_processed_results_path()
+        if path.exists():
+            self.processed_results = ProcessedResults.from_json(path)
+            return True
+        return False
