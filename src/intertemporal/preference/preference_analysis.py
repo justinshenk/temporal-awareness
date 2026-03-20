@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from ...common.logging import log
+from ...common.time_value import parse_horizon_years
 
 if TYPE_CHECKING:
     from .preference_dataset import PreferenceDataset
@@ -127,20 +128,7 @@ class PreferenceAnalysis:
 
 def _get_horizon_years(sample: "PreferenceSample") -> float | None:
     """Extract horizon in years from sample."""
-    if sample.time_horizon is None:
-        return None
-    if isinstance(sample.time_horizon, dict):
-        # TimeValue stored as dict
-        value = sample.time_horizon.get("value", 0)
-        unit = sample.time_horizon.get("unit", "years")
-        if unit == "days":
-            return value / 365.25
-        if unit == "weeks":
-            return value / 52.18
-        if unit == "months":
-            return value / 12
-        return value  # assume years
-    return None
+    return parse_horizon_years(sample.time_horizon)
 
 
 def _bucket_horizon(horizon: float | None) -> float | None:

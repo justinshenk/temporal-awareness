@@ -9,6 +9,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from ...common.logging import log
+from ...common.time_value import parse_horizon_years
 from .contrastive_preferences import ContrastivePreferences
 
 
@@ -53,23 +54,9 @@ def _stat(n: int, total: int) -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _get_horizon_years(time_horizon: dict | None) -> float | None:
-    """Extract horizon in years from time_horizon dict."""
-    if time_horizon is None:
-        return None
-    if isinstance(time_horizon, dict):
-        value = time_horizon.get("value")
-        if value is None:
-            return None
-        unit = time_horizon.get("unit", "years")
-        if unit == "days":
-            return value / 365.25
-        if unit == "weeks":
-            return value / 52.18
-        if unit == "months":
-            return value / 12
-        return value
-    return None
+def _get_horizon_years(time_horizon) -> float | None:
+    """Extract horizon in years from time_horizon."""
+    return parse_horizon_years(time_horizon)
 
 
 def _has_horizon(time_horizon: dict | None) -> bool:

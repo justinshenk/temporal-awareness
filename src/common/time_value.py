@@ -146,9 +146,14 @@ class TimeValue(BaseSchema):
         - String: "5 years" or "5years"
         - Dict: {"value": 5, "unit": "years"}
         - TimeValue: returns as-is
+        - int/float: assumes years
         """
         if isinstance(time_data, TimeValue):
             return time_data
+
+        # Plain number assumes years
+        if isinstance(time_data, (int, float)):
+            return TimeValue(value=float(time_data), unit="years")
 
         if isinstance(time_data, list) and len(time_data) == 2:
             value, unit = float(time_data[0]), time_data[1]
@@ -171,3 +176,24 @@ class TimeValue(BaseSchema):
             raise ValueError(f"Unknown time format: {time_data}")
 
         return TimeValue(value=value, unit=canonicalize_unit(unit))
+
+
+def parse_horizon_years(horizon) -> float | None:
+    """Parse horizon to years, handling all formats including None.
+
+    Accepts:
+    - None: returns None
+    - int/float: assumes years, returns as float
+    - Dict with value=None: returns None
+    - Dict/str/list: parses via TimeValue and converts to years
+    """
+    if horizon is None:
+        return None
+    if isinstance(horizon, (int, float)):
+        return float(horizon)
+    if isinstance(horizon, dict) and horizon.get("value") is None:
+        return None
+    try:
+        return TimeValue.parse(horizon).to_years()
+    except (ValueError, KeyError, TypeError):
+        return None
