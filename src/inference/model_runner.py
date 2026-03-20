@@ -527,24 +527,41 @@ class ModelRunner:
         token_ids: list[int],
         intervention: Interventions | None = None,
         names_filter: Optional[callable] = None,
+        with_grad: bool = False,
     ) -> GeneratedTrajectory:
+        """Run forward with interventions and capture activations.
+
+        Args:
+            token_ids: Input token IDs
+            intervention: Intervention(s) to apply
+            names_filter: Filter for which hooks to cache
+            with_grad: If True, keep gradients enabled (required for EAP-IG)
+
+        Returns:
+            GeneratedTrajectory with internals cache
+        """
         input_ids = torch.tensor([token_ids], device=self.device)
 
         interventions = (
             [intervention] if isinstance(intervention, Intervention) else intervention
         )
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
-            logits_batch, internals_cache = (
-                self._backend.run_with_intervention_and_cache(
-                    input_ids, interventions, names_filter
-                )
-            )  # [1, seq_len, vocab_size]
+        def run_forward():
+            return self._backend.run_with_intervention_and_cache(
+                input_ids, interventions, names_filter
+            )
+
+        if with_grad:
+            # Keep gradients enabled for attribution
+            logits_batch, internals_cache = run_forward()
+        else:
+            ctx = (
+                torch.inference_mode()
+                if self._backend.supports_inference_mode
+                else torch.no_grad()
+            )
+            with ctx:
+                logits_batch, internals_cache = run_forward()
 
         logits = logits_batch[0]  # [seq_len, vocab_size]
         return GeneratedTrajectory.from_inference(

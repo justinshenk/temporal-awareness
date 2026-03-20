@@ -89,6 +89,10 @@ def run_geo_analysis(
             pca = PCA(n_components=n_comp)
             X_pca = pca.fit_transform(X)
 
+            # Replace NaN explained variance with 0 (happens when variance is near zero)
+            explained_variance = pca.explained_variance_ratio_.tolist()
+            explained_variance = [0.0 if (isinstance(v, float) and np.isnan(v)) else v for v in explained_variance]
+
             # Clean is sample 0, corrupted is sample 1
             clean_pc = X_pca[0].tolist()
             corrupted_pc = X_pca[1].tolist()
@@ -107,7 +111,7 @@ def run_geo_analysis(
 
             layer_results.append(GeoPCALayerResult(
                 layer=layer,
-                explained_variance_ratio=pca.explained_variance_ratio_.tolist(),
+                explained_variance_ratio=explained_variance,
                 clean_mean_pc=clean_pc,
                 corrupted_mean_pc=corrupted_pc,
                 separation_distance=separation_distance,

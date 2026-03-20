@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
+from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import attribution_filter, hook_name
 from ..common.profiler import P, profile
 from ..common.patching_types import GradTarget, PatchingMode
@@ -152,6 +153,7 @@ def compute_eap_ig(
 
             interp_traj = runner.compute_trajectory_with_intervention_and_cache(
                 [0] * aligned_len, [embed_intervention], names_filter=attribution_filter,
+                with_grad=True,
             )
             metric_val = adjusted_metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
 
@@ -204,10 +206,21 @@ def compute_eap_ig(
                             aligned_idx, clean_orig, corr_orig,
                         )
 
+            # Clean up intermediate trajectory each step
+            del interp_traj, component_grads
+
+    # Save values before cleanup
+    clean_pos_map = aligned.clean_pos_map
+    corrupted_pos_map = aligned.corrupted_pos_map
+
+    # Clean up GPU memory
+    del clean_cache, corrupted_cache, aligned
+    clear_gpu_memory()
+
     return {
         "attn": attn_scores,
         "mlp": mlp_scores,
         "aligned_len": aligned_len,
-        "clean_pos_map": aligned.clean_pos_map,
-        "corrupted_pos_map": aligned.corrupted_pos_map,
+        "clean_pos_map": clean_pos_map,
+        "corrupted_pos_map": corrupted_pos_map,
     }

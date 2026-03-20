@@ -11,7 +11,7 @@ from ..prompt import PromptDatasetConfig
 # Default coarse patching settings (empty dict or empty lists = skip)
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
-    "enabled": True,
+    "enabled": False,
     "layer_steps": [1],
     "pos_steps": [1],
     "components": ["resid_pre", "resid_post", "attn_out", "mlp_out"],
@@ -24,11 +24,11 @@ COARSE_PATCH: dict = {
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 ATT_PATCH: dict = {
     "enabled": True,
-    "methods": ["standard", "eap", "eap_ig"],
-    "components": ["resid_post", "attn_out", "mlp_out"],
+    "methods": ["eap_ig", "eap", "standard"],
+    "components": ["mlp_out", "attn_out", "resid_post"],
     "ig_steps": 20,
     "grad_at": ["clean", "corrupted"],
-    "quadrature": ["midpoint", "gauss-legendre", "gauss-chebyshev"],
+    "quadrature": ["gauss-chebyshev", "gauss-legendre", "midpoint"],
 }
 
 # Default visualization settings
@@ -40,10 +40,29 @@ VIZ: dict = {
 
 # Default geometric analysis settings (PCA of residual stream)
 GEO: dict = {
-    "enabled": False,
-    "layers": None,  # None = all layers, or list of specific layers
-    "positions": None,  # None = last token only, or list of positions
-    "n_components": 3,  # Number of PCA components to track
+    "enabled": True,
+    "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
+    "positions": [
+        28,
+        30,
+        32,
+        35,
+        44,
+        48,
+        52,
+        86,
+        87,
+        88,
+        103,
+        121,
+        122,
+        139,
+        140,
+        143,
+        144,
+        145,
+    ],
+    "n_components": 5,
 }
 
 # Default difference-in-means settings

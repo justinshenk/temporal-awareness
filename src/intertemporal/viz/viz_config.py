@@ -34,4 +34,4 @@ ATT_VIZ_COMPARISON = True
 ATT_DEFAULT_METHOD = "eap_ig"
 ATT_DEFAULT_COMPONENT = "resid_post"
 ATT_DEFAULT_GRAD_AT = "clean"
-ATT_DEFAULT_QUADRATURE = None  # None means use first available
+ATT_DEFAULT_QUADRATURE = "gauss-chebyshev"

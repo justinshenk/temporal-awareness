@@ -52,8 +52,14 @@ def _run_methods_for_grad_point(
     if "eap_ig" in methods:
         with P("eap_ig"):
             eap_ig = compute_eap_ig(
-                runner, pair, metric, mode, ig_steps, padding_strategy,
-                grad_at=grad_at, quadrature=quadrature
+                runner,
+                pair,
+                metric,
+                mode,
+                ig_steps,
+                padding_strategy,
+                grad_at=grad_at,
+                quadrature=quadrature,
             )
             results["eap_ig_attn"] = eap_ig["attn"]
             results["eap_ig_mlp"] = eap_ig["mlp"]
@@ -95,18 +101,25 @@ def run_all_attribution_methods(
         Keys are suffixed with "_clean" or "_corrupted" for grad_at variants.
     """
     if methods is None:
-        methods = ["standard", "eap"]
+        methods = ["eap-ig"]
     if grad_at is None:
-        grad_at = ["clean", "corrupted"]
+        grad_at = ["clean"]
     if quadrature is None:
-        quadrature = [QuadratureMethod.MIDPOINT]
+        quadrature = [QuadratureMethod.CHEBYSHEV]
 
     results = {}
     for point in grad_at:
         for quad in quadrature:
             point_results = _run_methods_for_grad_point(
-                runner, pair, metric, mode, methods, ig_steps,
-                padding_strategy, point, quad
+                runner,
+                pair,
+                metric,
+                mode,
+                methods,
+                ig_steps,
+                padding_strategy,
+                point,
+                quad,
             )
             # Build suffix based on variants
             suffix_parts = []
@@ -138,6 +151,10 @@ def find_top_attributions(
     """
     flat_indices = np.argsort(np.abs(scores).ravel())[::-1][:n_top]
     return [
-        (layers[idx // scores.shape[1]], idx % scores.shape[1], float(scores.ravel()[idx]))
+        (
+            layers[idx // scores.shape[1]],
+            idx % scores.shape[1],
+            float(scores.ravel()[idx]),
+        )
         for idx in flat_indices
     ]

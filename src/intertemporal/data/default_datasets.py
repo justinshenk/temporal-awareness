@@ -61,6 +61,8 @@ BINARY_HOR = [
     {"value": 50, "unit": "years"},  # Long horizon
 ]
 
+NONE_HORIZON = [None]
+
 SWEEP_HOR = [
     None,
     {"value": 1, "unit": "months"},
@@ -90,7 +92,7 @@ MULTINANO_CFG = {
     "name": "multinano",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": SWEEP_HOR,
+    "time_horizons": BINARY_HOR,
     "add_formatting_noise": True,
 }
 
@@ -114,12 +116,20 @@ REWARD_SWEEP_CFG = {
     "do_formatting_variation_grid": False,
 }
 
-# Time Horizon Sweep
 MINI_CFG = {
     "name": "mini",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": BINARY_HOR,
+    "add_formatting_noise": False,
+    "do_formatting_variation_grid": False,
+}
+
+SMALL_CFG = {
+    "name": "small",
+    "context": BASE_CONTEXT,
+    "options": OPTIONS_MANY,
+    "time_horizons": NONE_HORIZON,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
 }
@@ -149,7 +159,8 @@ MULTILABEL_CFG = {
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG
-# MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
 
-FULL_EXPERIMENT_DATASET_CONFIG = MULTINANO_CFG
+FULL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
+
+MULTILABEL_EXPERIMENT_DATASET_CONFIG = MULTILABEL_CFG

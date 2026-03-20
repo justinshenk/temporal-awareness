@@ -60,6 +60,14 @@ def visualize_geo(
 
     n_plots = 0
 
+    # Generate consolidated plots (all positions in one figure)
+    _plot_consolidated_separation(agg, output_dir / "separation_all_positions.png")
+    n_plots += 1
+    _plot_consolidated_variance(agg, output_dir / "variance_all_positions.png")
+    n_plots += 1
+    _plot_consolidated_alignment(agg, output_dir / "alignment_all_positions.png")
+    n_plots += 1
+
     # Generate plots for each position
     for position in agg.positions_analyzed:
         pos_dir = output_dir / f"pos_{position}"
@@ -424,6 +432,145 @@ def _plot_single_trajectory(
     ax.set_xlabel("Layer")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _get_position_colors(positions: list[int]) -> dict[int, str]:
+    """Generate distinct colors for each position."""
+    import matplotlib.cm as cm
+    n_positions = len(positions)
+    cmap = cm.get_cmap("tab20" if n_positions <= 20 else "viridis")
+    colors = {}
+    for i, pos in enumerate(sorted(positions)):
+        colors[pos] = cmap(i / max(1, n_positions - 1))
+    return colors
+
+
+def _plot_consolidated_separation(
+    agg: GeoAggregatedResults,
+    output_path: Path,
+) -> None:
+    """Plot separation trajectory for all positions on one figure."""
+    positions = agg.positions_analyzed
+    if not positions:
+        return
+
+    colors = _get_position_colors(positions)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=DPI)
+
+    for position in positions:
+        layers, means, _ = agg.get_mean_separation_trajectory(position)
+        if layers and means:
+            ax.plot(
+                layers, means,
+                color=colors[position],
+                linewidth=MEAN_LINE_WIDTH,
+                alpha=0.8,
+                marker=MEAN_MARKER,
+                markersize=MEAN_MARKER_SIZE - 2,
+                label=f"pos {position}",
+            )
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("Separation Distance (PC space)")
+    ax.set_title("Clean/Corrupted Separation - All Positions")
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_consolidated_variance(
+    agg: GeoAggregatedResults,
+    output_path: Path,
+) -> None:
+    """Plot PC1 variance trajectory for all positions on one figure."""
+    positions = agg.positions_analyzed
+    if not positions:
+        return
+
+    colors = _get_position_colors(positions)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=DPI)
+
+    for position in positions:
+        layers, means, _ = agg.get_mean_variance_trajectory(position, pc_idx=0)
+        if layers and means:
+            ax.plot(
+                layers, means,
+                color=colors[position],
+                linewidth=MEAN_LINE_WIDTH,
+                alpha=0.8,
+                marker=MEAN_MARKER,
+                markersize=MEAN_MARKER_SIZE - 2,
+                label=f"pos {position}",
+            )
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("PC1 Explained Variance Ratio")
+    ax.set_title("PC1 Variance Explained - All Positions")
+    ax.set_ylim(0, 1)
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
+    _setup_grid(ax)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_consolidated_alignment(
+    agg: GeoAggregatedResults,
+    output_path: Path,
+) -> None:
+    """Plot PC1 alignment with logit diff for all positions on one figure."""
+    positions = agg.positions_analyzed
+    if not positions:
+        return
+
+    colors = _get_position_colors(positions)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=DPI)
+    has_data = False
+
+    for position in positions:
+        # Collect alignments per layer
+        layer_alignments: dict[int, list[float]] = {}
+        for pr in agg.pair_results:
+            pos_result = pr.get_position_result(position)
+            if pos_result:
+                for lr in pos_result.layer_results:
+                    if lr.logit_diff_alignment is not None:
+                        if lr.layer not in layer_alignments:
+                            layer_alignments[lr.layer] = []
+                        layer_alignments[lr.layer].append(abs(lr.logit_diff_alignment))
+
+        if layer_alignments:
+            layers = sorted(layer_alignments.keys())
+            means = [float(np.mean(layer_alignments[l])) for l in layers]
+            ax.plot(
+                layers, means,
+                color=colors[position],
+                linewidth=MEAN_LINE_WIDTH,
+                alpha=0.8,
+                marker=MEAN_MARKER,
+                markersize=MEAN_MARKER_SIZE - 2,
+                label=f"pos {position}",
+            )
+            has_data = True
+
+    if not has_data:
+        plt.close()
+        return
+
+    ax.set_xlabel("Layer")
+    ax.set_ylabel("|Cosine Similarity|")
+    ax.set_title("PC1 Alignment with Logit Diff - All Positions")
+    ax.set_ylim(0, 1)
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
     _setup_grid(ax)
 
     plt.tight_layout()

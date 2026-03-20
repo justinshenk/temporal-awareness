@@ -28,9 +28,9 @@ class AttributionSettings(BaseSchema):
     components: list[PatchingComponent] = field(default_factory=lambda: ["resid_post"])
     methods: list[Method] = field(default_factory=lambda: ["eap_ig"])
     ig_steps: int = 10
-    grad_at: list[GradTarget] = field(default_factory=lambda: ["clean", "corrupted"])
+    grad_at: list[GradTarget] = field(default_factory=lambda: ["clean"])
     quadrature: list[QuadratureMethod] = field(
-        default_factory=lambda: [QuadratureMethod.MIDPOINT]
+        default_factory=lambda: [QuadratureMethod.CHEBYSHEV]
     )
 
     @classmethod

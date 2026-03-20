@@ -55,6 +55,8 @@ def visualize_att_aggregated(
             comparison.png
           noising/
             ...
+          matrix/
+            {component}_{method}_{grad_at}_{quadrature}_{mode}.png
 
     Args:
         agg: Aggregated attribution results
@@ -84,6 +86,10 @@ def visualize_att_aggregated(
             n_pairs=len(agg.noising),
             slice_name=slice_name,
         )
+
+    # Matrix: all combinations in a single folder
+    matrix_dir = output_dir / "matrix"
+    _generate_matrix_plots(agg, matrix_dir, slice_name)
 
     # Analysis plots (layer line plots, histograms, comparisons, top scores)
     analysis_dir = output_dir / "analysis"
@@ -250,6 +256,78 @@ def _visualize_summary_structured(
             )
 
     print(f"[viz] Attribution aggregated ({mode}) plots saved to {output_dir}")
+
+
+def _generate_matrix_plots(
+    agg: AttrPatchAggregatedResults,
+    matrix_dir: Path,
+    slice_name: str,
+) -> None:
+    """Generate all combination plots in matrix/ folder.
+
+    Creates:
+        matrix_dir/
+          {component}_{method}_{grad_at}_{quadrature}_{mode}.png
+
+    Args:
+        agg: Aggregated attribution results
+        matrix_dir: Directory to save matrix plots
+        slice_name: Analysis slice name for titles
+    """
+    matrix_dir.mkdir(parents=True, exist_ok=True)
+
+    for mode, summary, n_pairs in [
+        ("denoising", agg.denoising_agg, len(agg.denoising)),
+        ("noising", agg.noising_agg, len(agg.noising)),
+    ]:
+        if not summary or not summary.results:
+            continue
+
+        # Get common dimensions
+        first_result = next(iter(summary.results.values()))
+        layers = first_result.layers
+        n_positions = first_result.n_positions
+        pos_labels = [f"p{i}" for i in range(n_positions)]
+
+        mode_label = "Denoise" if mode == "denoising" else "Noise"
+
+        # Generate a plot for each result key
+        for key, attr_result in summary.results.items():
+            if attr_result.scores.size == 0:
+                continue
+
+            parsed = parse_result_key(key)
+            # Build filename: component_method_grad_at_quadrature_mode.png
+            parts = [parsed.component, parsed.method]
+            if parsed.grad_at:
+                parts.append(parsed.grad_at)
+            if parsed.quadrature:
+                parts.append(parsed.quadrature)
+            parts.append(mode)
+            filename = "_".join(parts) + ".png"
+
+            title = f"{mode_label} | {parsed.method} | {parsed.component}"
+            if parsed.grad_at:
+                title += f" | grad@{parsed.grad_at}"
+            if parsed.quadrature:
+                title += f" | {parsed.quadrature}"
+            title += f" | {slice_name} | n={n_pairs}"
+
+            config = PatchingHeatmapConfig(
+                title=title,
+                subtitle=f"{attr_result.n_layers} layers, {n_positions} positions",
+                cbar_label="Attribution Score",
+                cmap="RdBu_r",
+            )
+            plot_patching_heatmap(
+                attr_result.scores,
+                layers,
+                pos_labels,
+                config=config,
+                save_path=matrix_dir / filename,
+            )
+
+    print(f"[viz] Attribution matrix plots saved to {matrix_dir}")
 
 
 @profile

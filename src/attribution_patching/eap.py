@@ -9,6 +9,7 @@ import numpy as np
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
+from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import attribution_filter, hook_name
 from ..common.profiler import P, profile
 from ..common.token_positions import build_position_arrays
@@ -151,5 +152,9 @@ def compute_eap(
                     mlp_scores[layer] = compute_attribution_vectorized(
                         clean_mlp, corr_mlp, mlp_grad, clean_pos, corr_pos, valid
                     )
+
+    # Clean up GPU memory
+    del clean_cache, corr_cache, grad_cache, component_grads
+    clear_gpu_memory()
 
     return {"attn": attn_scores, "mlp": mlp_scores}

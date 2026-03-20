@@ -226,17 +226,25 @@ def main() -> int:
 
     # Apply JSON overrides, merging with defaults if key missing
     if args.coarse:
-        config_dict.setdefault("coarse_patch", COARSE_PATCH.copy()).update(json.loads(args.coarse))
+        config_dict.setdefault("coarse_patch", COARSE_PATCH.copy()).update(
+            json.loads(args.coarse)
+        )
     if args.attrib:
-        config_dict.setdefault("att_patch", ATT_PATCH.copy()).update(json.loads(args.attrib))
+        config_dict.setdefault("att_patch", ATT_PATCH.copy()).update(
+            json.loads(args.attrib)
+        )
     if args.viz:
         config_dict.setdefault("viz", VIZ.copy()).update(json.loads(args.viz))
     if args.diffmeans:
-        config_dict.setdefault("diffmeans", DIFFMEANS.copy()).update(json.loads(args.diffmeans))
+        config_dict.setdefault("diffmeans", DIFFMEANS.copy()).update(
+            json.loads(args.diffmeans)
+        )
     if args.geo:
         config_dict.setdefault("geo", GEO.copy()).update(json.loads(args.geo))
     if args.pair_req:
-        config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(json.loads(args.pair_req))
+        config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(
+            json.loads(args.pair_req)
+        )
 
     # Determine output directory
     output_dir = None

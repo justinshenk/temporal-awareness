@@ -314,17 +314,17 @@ def generate_viz(
         if not components and coarse_agg_by_component:
             components = list(coarse_agg_by_component.keys())
 
-    if not components:
-        log(f"[viz] No components found for {exp_dir}")
-        return
-
-    log(f"[viz] Processing components: {components}")
+    if components:
+        log(f"[viz] Processing components: {components}")
+    else:
+        log(f"[viz] No coarse components found, will process other viz types")
 
     # Rebuild aggregated data from per-pair results if not provided in-memory
     # This ensures all pairs are included (the agg file might be stale)
-    if coarse_agg_by_component is None:
+    if coarse_agg_by_component is None and components:
         coarse_agg_by_component = rebuild_coarse_aggregated(exp_dir, components)
-        log(f"[viz] Rebuilt aggregation from {coarse_agg_by_component[components[0]].n_samples if coarse_agg_by_component else 0} pairs")
+        if coarse_agg_by_component and components:
+            log(f"[viz] Rebuilt aggregation from {coarse_agg_by_component[components[0]].n_samples} pairs")
 
     # Load attribution patching aggregated results from cache if not provided
     if att_agg is None:
@@ -384,14 +384,16 @@ def generate_viz(
             break
 
         # Get coarse results from in-memory data or load from cache
-        if coarse_patching:
+        if coarse_patching and components:
             pair_coarse = {
                 comp: coarse_patching[(pair_idx, comp)]
                 for comp in components
                 if (pair_idx, comp) in coarse_patching
             }
-        else:
+        elif components:
             pair_coarse = load_coarse_results_for_pair(pair_dir, components)
+        else:
+            pair_coarse = {}
 
         pair = pairs[pair_idx] if pairs and pair_idx < len(pairs) else None
         # Try in-memory first, then load from cache

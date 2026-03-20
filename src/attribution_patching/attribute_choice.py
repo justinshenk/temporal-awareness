@@ -6,6 +6,7 @@ from typing import Literal
 
 import numpy as np
 
+from ..common.device_utils import clear_gpu_memory
 from ..common.patching_types import PatchingMode
 from ..common.profiler import profile
 from .attribution_metric import AttributionMetric
@@ -102,6 +103,10 @@ def attribute_for_choice(
     )
 
     results = _build_results(raw_results, layers)
+
+    # Clean up GPU memory after processing
+    clear_gpu_memory()
+
     return AttributionSummary(results=results, n_pairs=1, mode=mode)
 
 

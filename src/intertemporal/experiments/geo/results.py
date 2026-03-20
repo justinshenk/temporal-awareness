@@ -156,8 +156,17 @@ class GeoAggregatedResults(BaseSchema):
                         layer_variances[lr.layer].append(lr.explained_variance_ratio[pc_idx])
 
         layers = sorted(layer_variances.keys())
-        means = [float(np.mean(layer_variances[l])) for l in layers]
-        stds = [float(np.std(layer_variances[l])) for l in layers]
+        # Filter out string NaN values and compute stats
+        means = []
+        stds = []
+        for l in layers:
+            values = [v for v in layer_variances[l] if isinstance(v, (int, float)) and not np.isnan(v)]
+            if values:
+                means.append(float(np.mean(values)))
+                stds.append(float(np.std(values)))
+            else:
+                means.append(0.0)
+                stds.append(0.0)
         return layers, means, stds
 
     def save(self, output_dir: Path) -> None:
