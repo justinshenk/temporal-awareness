@@ -58,7 +58,9 @@ def _get_horizon_years(time_horizon: dict | None) -> float | None:
     if time_horizon is None:
         return None
     if isinstance(time_horizon, dict):
-        value = time_horizon.get("value", 0)
+        value = time_horizon.get("value")
+        if value is None:
+            return None
         unit = time_horizon.get("unit", "years")
         if unit == "days":
             return value / 365.25
@@ -68,6 +70,11 @@ def _get_horizon_years(time_horizon: dict | None) -> float | None:
             return value / 12
         return value
     return None
+
+
+def _has_horizon(time_horizon: dict | None) -> bool:
+    """Check if time_horizon has an actual value."""
+    return _get_horizon_years(time_horizon) is not None
 
 
 def _format_horizon(h: float | None) -> str:
@@ -141,19 +148,20 @@ def analyze_contrastive_pairs(
     confidences = []
 
     for pair in pairs:
-        # Horizon
-        if pair.both_horizon:
-            analysis.n_both_horizon += 1
-        if pair.neither_horizon:
-            analysis.n_neither_horizon += 1
-        if pair.same_horizon:
-            analysis.n_same_horizon += 1
-        if pair.both_horizon and not pair.same_horizon:
-            analysis.n_different_horizon += 1
-
-        # Horizon pair
+        # Horizon - use actual value extraction, not property checks
         h_short = _get_horizon_years(pair.short_term.time_horizon)
         h_long = _get_horizon_years(pair.long_term.time_horizon)
+        has_short = h_short is not None
+        has_long = h_long is not None
+
+        if has_short and has_long:
+            analysis.n_both_horizon += 1
+            if h_short == h_long:
+                analysis.n_same_horizon += 1
+            else:
+                analysis.n_different_horizon += 1
+        if not has_short and not has_long:
+            analysis.n_neither_horizon += 1
         key = (h_short, h_long)
         analysis.by_horizon_pair[key] = analysis.by_horizon_pair.get(key, 0) + 1
 
