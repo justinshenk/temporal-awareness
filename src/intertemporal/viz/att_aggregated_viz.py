@@ -148,6 +148,17 @@ def _visualize_summary_structured(
         key = _build_result_key(method, component, grad_at, quadrature)
         return summary.results.get(key)
 
+    def find_component_for_method(method: str) -> str | None:
+        """Find a valid component for the given method."""
+        # Try default first
+        if get_result(method, default_component, default_grad_at, default_quadrature):
+            return default_component
+        # Try other components
+        for comp in components:
+            if get_result(method, comp, default_grad_at, default_quadrature):
+                return comp
+        return None
+
     def plot_single(attr_result, save_path: Path, title: str):
         if attr_result.scores.size == 0:
             return
@@ -166,14 +177,17 @@ def _visualize_summary_structured(
         )
 
     # 1. By method (varying method, others default)
+    # Note: EAP methods don't have resid_post, so find a valid component for each method
     if "method" in ATT_VIZ_AXES and len(methods) > 1:
         by_method_dir = output_dir / "by_method"
         by_method_dir.mkdir(parents=True, exist_ok=True)
         for method in methods:
-            attr_result = get_result(method, default_component, default_grad_at, default_quadrature)
-            if attr_result:
-                title = f"{method} | {default_component}"
-                plot_single(attr_result, by_method_dir / f"{method}.png", title)
+            comp = find_component_for_method(method)
+            if comp:
+                attr_result = get_result(method, comp, default_grad_at, default_quadrature)
+                if attr_result:
+                    title = f"{method} | {comp}"
+                    plot_single(attr_result, by_method_dir / f"{method}.png", title)
 
     # 2. By component (varying component, others default)
     if "component" in ATT_VIZ_AXES and len(components) > 1:
