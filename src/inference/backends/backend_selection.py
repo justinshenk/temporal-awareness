@@ -82,4 +82,4 @@ def get_recommended_backend_interventions() -> ModelBackend:
     Returns:
         ModelBackend: Recommended backend for interventions
     """
-    return ModelBackend.HUGGINGFACE
+    return ModelBackend.TRANSFORMERLENS
