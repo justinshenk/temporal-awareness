@@ -258,20 +258,12 @@ class ModelRunner:
         Returns:
             GeneratedTrajectory with full logits (not just logprobs)
         """
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
 
         all_token_ids = list(token_ids)
         all_logits: list[torch.Tensor] = []
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-
-        with ctx:
+        with self._inference_context():
             for _ in range(max_new_tokens):
                 input_ids = torch.tensor([all_token_ids], device=self.device)
                 logits_batch = self._backend.run_with_intervention(
@@ -337,6 +329,49 @@ class ModelRunner:
 
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
+    def _pad_token_ids_batch(
+        self, token_ids_batch: list[list[int]]
+    ) -> torch.Tensor:
+        """Pad a batch of token ID sequences to the same length.
+
+        Args:
+            token_ids_batch: List of variable-length token ID sequences
+
+        Returns:
+            Padded tensor of shape [batch_size, max_seq_len]
+        """
+        max_len = max(len(ids) for ids in token_ids_batch)
+        pad_token = self._tokenizer.pad_token_id or 0
+        padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
+        return torch.tensor(padded, device=self.device)
+
+    def _inference_context(self):
+        """Return the appropriate inference context manager for the backend.
+
+        Returns:
+            torch.inference_mode() if supported, otherwise torch.no_grad()
+        """
+        if self._backend.supports_inference_mode:
+            return torch.inference_mode()
+        return torch.no_grad()
+
+    def _normalize_interventions(
+        self, intervention: Interventions | None
+    ) -> list[Intervention]:
+        """Normalize intervention(s) to a list.
+
+        Args:
+            intervention: Single intervention, list of interventions, or None
+
+        Returns:
+            List of interventions (empty list if None)
+        """
+        if intervention is None:
+            return []
+        if isinstance(intervention, Intervention):
+            return [intervention]
+        return intervention
+
     @profile
     def compute_trajectory(
         self,
@@ -367,24 +402,19 @@ class ModelRunner:
                 "compute_binary_choice_trajectories() method instead."
             )
 
-        max_len = max(len(ids) for ids in token_ids_batch)
-        pad_token = self._tokenizer.pad_token_id or 0
-        padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
-        input_ids_batch = torch.tensor(padded, device=self.device)
+        if not token_ids_batch:
+            return []
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+
+        with self._inference_context():
             logits_batch = self._backend.forward(
                 input_ids_batch
             )  # [batch, seq_len, vocab_size]
+
         trajs = calculate_trajectories_for_batch(
             token_ids_batch, logits_batch, self.device
         )
-        # Explicitly release large tensors
         del logits_batch, input_ids_batch
         return trajs
 
@@ -432,9 +462,7 @@ class ModelRunner:
         """
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
         return self._backend.run_with_intervention(input_ids, interventions)
 
     # Complex Interpretability APIs
@@ -450,9 +478,7 @@ class ModelRunner:
         """Run forward with intervention AND capture activations with gradients."""
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
         return self._backend.run_with_intervention_and_cache(
             input_ids, interventions, names_filter
         )
@@ -479,23 +505,104 @@ class ModelRunner:
         names_filter: Optional[callable] = None,
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
+        interventions = self._normalize_interventions(intervention)
 
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
-
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             logits_batch = self._backend.run_with_intervention(
                 input_ids, interventions
             )  # [1, seq_len, vocab_size]
 
         logits = logits_batch[0]  # [seq_len, vocab_size]
         return GeneratedTrajectory.from_inference(token_ids, logits, self.device)
+
+    @profile
+    def compute_trajectories_batch_with_intervention(
+        self,
+        token_ids_batch: list[list[int]],
+        intervention: Interventions | None = None,
+    ) -> list[GeneratedTrajectory]:
+        """Batch version of compute_trajectory_with_intervention.
+
+        Args:
+            token_ids_batch: List of token ID sequences
+            intervention: Intervention(s) to apply
+
+        Returns:
+            List of GeneratedTrajectory objects
+        """
+        if self.is_cloud_api:
+            raise NotImplementedError(
+                "Cloud API backends don't support batched intervention forward passes."
+            )
+
+        if not token_ids_batch:
+            return []
+
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+        interventions = self._normalize_interventions(intervention)
+
+        with self._inference_context():
+            logits_batch = self._backend.run_with_intervention(
+                input_ids_batch, interventions
+            )  # [batch, seq_len, vocab_size]
+
+        trajs = calculate_trajectories_for_batch(
+            token_ids_batch, logits_batch, self.device
+        )
+        del logits_batch, input_ids_batch
+        return trajs
+
+    @profile
+    def compute_trajectories_batch_with_intervention_and_cache(
+        self,
+        token_ids_batch: list[list[int]],
+        intervention: Interventions | None = None,
+        names_filter: Optional[callable] = None,
+    ) -> list[GeneratedTrajectory]:
+        """Batch version of compute_trajectory_with_intervention_and_cache.
+
+        Args:
+            token_ids_batch: List of token ID sequences
+            intervention: Intervention(s) to apply
+            names_filter: Filter for which hooks to cache
+
+        Returns:
+            List of GeneratedTrajectory objects with internals cache attached
+        """
+        if self.is_cloud_api:
+            raise NotImplementedError(
+                "Cloud API backends don't support batched intervention forward passes."
+            )
+
+        if not token_ids_batch:
+            return []
+
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+        interventions = self._normalize_interventions(intervention)
+
+        with self._inference_context():
+            logits_batch, internals_cache = self._backend.run_with_intervention_and_cache(
+                input_ids_batch, interventions, names_filter
+            )  # [batch, seq_len, vocab_size]
+
+        # Build trajectories with per-batch internals attached
+        results = []
+        for i, token_ids in enumerate(token_ids_batch):
+            seq_len = len(token_ids)
+            logits = logits_batch[i, :seq_len, :]
+            # Split cache by batch index - each cache tensor has shape [batch, seq_len, ...]
+            # Keep shape [1, seq_len, ...] to match sequential API
+            batch_cache = {
+                name: tensor[i : i + 1, :seq_len]
+                for name, tensor in internals_cache.items()
+            }
+            traj = GeneratedTrajectory.from_inference(
+                token_ids, logits, self.device, internals=batch_cache
+            )
+            results.append(traj)
+
+        del logits_batch, input_ids_batch
+        return results
 
     @profile
     def compute_trajectory_with_cache(
@@ -506,12 +613,7 @@ class ModelRunner:
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             logits_batch, internals_cache = self._backend.run_with_cache(
                 input_ids, names_filter, past_kv_cache
             )  # [1, seq_len, vocab_size]
@@ -541,10 +643,7 @@ class ModelRunner:
             GeneratedTrajectory with internals cache
         """
         input_ids = torch.tensor([token_ids], device=self.device)
-
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
 
         def run_forward():
             return self._backend.run_with_intervention_and_cache(
@@ -555,12 +654,7 @@ class ModelRunner:
             # Keep gradients enabled for attribution
             logits_batch, internals_cache = run_forward()
         else:
-            ctx = (
-                torch.inference_mode()
-                if self._backend.supports_inference_mode
-                else torch.no_grad()
-            )
-            with ctx:
+            with self._inference_context():
                 logits_batch, internals_cache = run_forward()
 
         logits = logits_batch[0]  # [seq_len, vocab_size]
@@ -665,12 +759,7 @@ class ModelRunner:
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             return self._backend.forward(input_ids)
 
     # KV Cache APIs
