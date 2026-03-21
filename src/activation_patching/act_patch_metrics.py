@@ -298,6 +298,17 @@ class IntervenedChoiceMetrics(BaseSchema):
                 metrics.fork_simpson = fork_metrics.fork_simpson
                 metrics.reciprocal_rank_short = fork_metrics.reciprocal_rank_a
                 metrics.reciprocal_rank_long = 1.0 - fork_metrics.reciprocal_rank_a + 0.5
+                # Logits
+                if fork_metrics.logits is not None:
+                    metrics.logit_short, metrics.logit_long = fork_metrics.logits
+                if fork_metrics.normalized_logits is not None:
+                    metrics.norm_logit_short, metrics.norm_logit_long = fork_metrics.normalized_logits
+                    metrics.norm_logit_diff = metrics.norm_logit_short - metrics.norm_logit_long
+                    metrics.effect_norm_logit_diff = (
+                        metrics.norm_logit_diff
+                        if metrics.mode == "denoising"
+                        else -metrics.norm_logit_diff
+                    )
             if tree.nodes and tree.nodes[0].analysis:
                 node_metrics = tree.nodes[0].analysis.metrics
                 metrics.vocab_entropy = node_metrics.vocab_entropy
@@ -315,6 +326,10 @@ class IntervenedChoiceMetrics(BaseSchema):
         fork_diversities = []
         fork_simpsons = []
         reciprocal_ranks = []
+        logits_short = []
+        logits_long = []
+        norm_logits_short = []
+        norm_logits_long = []
 
         for fork in tree.forks:
             if fork.analysis:
@@ -323,6 +338,12 @@ class IntervenedChoiceMetrics(BaseSchema):
                 fork_diversities.append(fm.fork_diversity)
                 fork_simpsons.append(fm.fork_simpson)
                 reciprocal_ranks.append(fm.reciprocal_rank_a)
+                if fm.logits is not None:
+                    logits_short.append(fm.logits[0])
+                    logits_long.append(fm.logits[1])
+                if fm.normalized_logits is not None:
+                    norm_logits_short.append(fm.normalized_logits[0])
+                    norm_logits_long.append(fm.normalized_logits[1])
 
         if fork_entropies:
             metrics.fork_entropy = sum(fork_entropies) / len(fork_entropies)
@@ -335,6 +356,20 @@ class IntervenedChoiceMetrics(BaseSchema):
                 metrics.reciprocal_rank_short
                 if metrics.mode == "denoising"
                 else metrics.reciprocal_rank_long
+            )
+
+        # Average logits across forks
+        if logits_short:
+            metrics.logit_short = sum(logits_short) / len(logits_short)
+            metrics.logit_long = sum(logits_long) / len(logits_long)
+        if norm_logits_short:
+            metrics.norm_logit_short = sum(norm_logits_short) / len(norm_logits_short)
+            metrics.norm_logit_long = sum(norm_logits_long) / len(norm_logits_long)
+            metrics.norm_logit_diff = metrics.norm_logit_short - metrics.norm_logit_long
+            metrics.effect_norm_logit_diff = (
+                metrics.norm_logit_diff
+                if metrics.mode == "denoising"
+                else -metrics.norm_logit_diff
             )
 
         # Node metrics - use first node (shared across forks)

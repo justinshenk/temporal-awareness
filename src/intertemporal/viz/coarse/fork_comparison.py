@@ -157,7 +157,7 @@ def plot_fork_comparison(
     # Save to by_fork directory
     by_fork_dir = output_dir / "by_fork"
     by_fork_dir.mkdir(parents=True, exist_ok=True)
-    save_path = by_fork_dir / f"fork_comparison_{clean_traj}_{step_size}.png"
+    save_path = by_fork_dir / f"fork_comparison_{clean_traj}_{sweep_type}_{step_size}.png"
     fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     print(f"Saved: {save_path}")
