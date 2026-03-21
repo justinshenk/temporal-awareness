@@ -49,6 +49,10 @@ class IntervenedChoice(BaseSchema):
     _cached_n_labels: int | None = field(default=None, repr=False)
     # Per-fork logprobs for multilabel: list of (lp_a, lp_b) per fork for each of clean/corrupted/intervened
     _cached_per_fork_logprobs: tuple[list[tuple[float, float]], list[tuple[float, float]], list[tuple[float, float]]] | None = field(default=None, repr=False)
+    # Per-fork metrics for intervened choice: list of dicts with fork analysis metrics
+    _cached_per_fork_metrics: list[dict] | None = field(default=None, repr=False)
+    # Vocab metrics from the intervened choice (shared across forks)
+    _cached_vocab_metrics: dict | None = field(default=None, repr=False)
 
     # Tell _canon to call to_dict() directly instead of processing fields
     _use_custom_to_dict: bool = True
@@ -76,6 +80,41 @@ class IntervenedChoice(BaseSchema):
             result.append((float(fork.next_token_logprobs[0]), float(fork.next_token_logprobs[1])))
         return result
 
+    def _extract_per_fork_metrics(self, choice: ChoiceType) -> list[dict]:
+        """Extract per-fork analysis metrics from a choice object."""
+        result = []
+        tree = choice.tree
+        if not tree.forks:
+            return result
+
+        for fork in tree.forks:
+            fork_data = {}
+            if fork.analysis and fork.analysis.metrics:
+                m = fork.analysis.metrics
+                fork_data["fork_entropy"] = m.fork_entropy
+                fork_data["fork_diversity"] = m.fork_diversity
+                fork_data["fork_simpson"] = m.fork_simpson
+                fork_data["reciprocal_rank_a"] = m.reciprocal_rank_a
+                if m.logits is not None:
+                    fork_data["logits"] = list(m.logits)
+                if m.normalized_logits is not None:
+                    fork_data["normalized_logits"] = list(m.normalized_logits)
+            result.append(fork_data)
+        return result
+
+    def _extract_vocab_metrics(self, choice: ChoiceType) -> dict:
+        """Extract vocab metrics from the first node of a choice."""
+        tree = choice.tree
+        if not tree.nodes or not tree.nodes[0].analysis:
+            return {}
+        m = tree.nodes[0].analysis.metrics
+        return {
+            "vocab_entropy": m.vocab_entropy,
+            "vocab_diversity": m.vocab_diversity,
+            "vocab_simpson": m.vocab_simpson,
+            "vocab_tcb": m.vocab_tcb,
+        }
+
     def to_dict(self, **kwargs) -> dict:
         """Convert to lightweight dict with only metrics, not full trees."""
         if self.baseline_clean is None:
@@ -99,6 +138,10 @@ class IntervenedChoice(BaseSchema):
                     "corrupted": [list(lps) for lps in self._cached_per_fork_logprobs[1]],
                     "intervened": [list(lps) for lps in self._cached_per_fork_logprobs[2]],
                 }
+            if self._cached_per_fork_metrics:
+                result["per_fork_metrics"] = self._cached_per_fork_metrics
+            if self._cached_vocab_metrics:
+                result["vocab_metrics"] = self._cached_vocab_metrics
             return result
 
         result = {
@@ -122,6 +165,17 @@ class IntervenedChoice(BaseSchema):
                 "corrupted": [list(lps) for lps in self._extract_per_fork_logprobs(self.baseline_corrupted)],
                 "intervened": [list(lps) for lps in self._extract_per_fork_logprobs(self.intervened)],
             }
+
+        # Add per-fork analysis metrics from intervened choice
+        per_fork_metrics = self._extract_per_fork_metrics(self.intervened)
+        if per_fork_metrics:
+            result["per_fork_metrics"] = per_fork_metrics
+
+        # Add vocab metrics from intervened choice
+        vocab_metrics = self._extract_vocab_metrics(self.intervened)
+        if vocab_metrics:
+            result["vocab_metrics"] = vocab_metrics
+
         return result
 
     @classmethod
@@ -158,6 +212,8 @@ class IntervenedChoice(BaseSchema):
                 ),
                 _cached_n_labels=d.get("n_labels", 1),
                 _cached_per_fork_logprobs=cached_per_fork,
+                _cached_per_fork_metrics=d.get("per_fork_metrics"),
+                _cached_vocab_metrics=d.get("vocab_metrics"),
             )
         return super().from_dict(d)
 

@@ -574,6 +574,46 @@ class IntervenedChoiceMetrics(BaseSchema):
                 else -metrics.rel_logit_delta
             )
 
+        # Extract cached per-fork metrics (fork entropy, logits, etc.)
+        if choice._cached_per_fork_metrics and fork_idx < len(choice._cached_per_fork_metrics):
+            fm = choice._cached_per_fork_metrics[fork_idx]
+            if "fork_entropy" in fm:
+                metrics.fork_entropy = fm["fork_entropy"]
+            if "fork_diversity" in fm:
+                metrics.fork_diversity = fm["fork_diversity"]
+            if "fork_simpson" in fm:
+                metrics.fork_simpson = fm["fork_simpson"]
+            if "reciprocal_rank_a" in fm:
+                metrics.reciprocal_rank_short = fm["reciprocal_rank_a"]
+                metrics.reciprocal_rank_long = 1.0 - fm["reciprocal_rank_a"] + 0.5
+                metrics.effect_reciprocal_rank = (
+                    metrics.reciprocal_rank_short
+                    if metrics.mode == "denoising"
+                    else metrics.reciprocal_rank_long
+                )
+            if "logits" in fm:
+                metrics.logit_short, metrics.logit_long = fm["logits"]
+            if "normalized_logits" in fm:
+                metrics.norm_logit_short, metrics.norm_logit_long = fm["normalized_logits"]
+                metrics.norm_logit_diff = metrics.norm_logit_short - metrics.norm_logit_long
+                metrics.effect_norm_logit_diff = (
+                    metrics.norm_logit_diff
+                    if metrics.mode == "denoising"
+                    else -metrics.norm_logit_diff
+                )
+
+        # Extract cached vocab metrics (shared across forks)
+        if choice._cached_vocab_metrics:
+            vm = choice._cached_vocab_metrics
+            if "vocab_entropy" in vm:
+                metrics.vocab_entropy = vm["vocab_entropy"]
+            if "vocab_diversity" in vm:
+                metrics.vocab_diversity = vm["vocab_diversity"]
+            if "vocab_simpson" in vm:
+                metrics.vocab_simpson = vm["vocab_simpson"]
+            if "vocab_tcb" in vm:
+                metrics.vocab_tcb = vm["vocab_tcb"]
+
         return metrics
 
     @classmethod
