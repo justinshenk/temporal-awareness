@@ -355,6 +355,7 @@ class IntervenedChoiceMetrics(BaseSchema):
         """Extract metrics for a specific fork.
 
         All metrics are internally consistent for that fork.
+        Handles both live choice objects and cached/loaded data.
         """
         from ..common.choice import GroupedBinaryChoice
 
@@ -364,6 +365,13 @@ class IntervenedChoiceMetrics(BaseSchema):
             if choice.mode == "denoising"
             else choice.baseline_clean
         )
+
+        # Check if we're working with cached data (no live choice objects)
+        is_cached = choice.baseline_clean is None
+
+        if is_cached:
+            # Use cached data
+            return cls._extract_per_fork_from_cached(choice, fork_idx, label_perspective)
 
         is_grouped = isinstance(intervened, GroupedBinaryChoice)
         actual_fork_idx = fork_idx if is_grouped else 0
@@ -484,6 +492,87 @@ class IntervenedChoiceMetrics(BaseSchema):
                 metrics.traj_inv_perplexity_short = traj_a.analysis.continuation_only.inv_perplexity
             if traj_b.analysis and traj_b.analysis.continuation_only:
                 metrics.traj_inv_perplexity_long = traj_b.analysis.continuation_only.inv_perplexity
+
+        return metrics
+
+    @classmethod
+    def _extract_per_fork_from_cached(
+        cls,
+        choice: IntervenedChoice,
+        fork_idx: int,
+        label_perspective: LabelPerspective,
+    ) -> IntervenedChoiceMetrics:
+        """Extract per-fork metrics from cached/loaded IntervenedChoice.
+
+        Used when choice.baseline_clean is None (data loaded from lightweight dict).
+        """
+        # Get per-fork recovery/disruption (these now use cached data internally)
+        n_labels = choice.n_labels
+        is_multilabel = n_labels > 1
+
+        if is_multilabel:
+            recovery = choice.get_recovery_for_fork(fork_idx)
+            disruption = choice.get_disruption_for_fork(fork_idx)
+        else:
+            recovery = choice.recovery
+            disruption = choice.disruption
+        effect = recovery if choice.mode == "denoising" else disruption
+
+        # Extract baseline logit diff for this fork from cached data
+        baseline_logit_diff = 0.0
+        if choice._cached_per_fork_logprobs and fork_idx < len(choice._cached_per_fork_logprobs[0]):
+            # Get baseline based on mode (corrupted for denoising, clean for noising)
+            baseline_idx = 1 if choice.mode == "denoising" else 0  # corrupted=1, clean=0
+            lps = choice._cached_per_fork_logprobs[baseline_idx][fork_idx]
+            baseline_logit_diff = lps[0] - lps[1]
+            if choice.switched:
+                baseline_logit_diff = -baseline_logit_diff
+        elif choice._cached_logprobs:
+            # Fall back to aggregated logprobs
+            baseline_idx = 1 if choice.mode == "denoising" else 0
+            lps = choice._cached_logprobs[baseline_idx]
+            baseline_logit_diff = lps[0] - lps[1]
+            if choice.switched:
+                baseline_logit_diff = -baseline_logit_diff
+
+        # Extract intervened logprobs for this fork
+        lp_short, lp_long = -10.0, -10.0
+        if choice._cached_per_fork_logprobs and fork_idx < len(choice._cached_per_fork_logprobs[2]):
+            lps = choice._cached_per_fork_logprobs[2][fork_idx]  # intervened=2
+            lp_short, lp_long = lps
+        elif choice._cached_logprobs:
+            lp_short, lp_long = choice._cached_logprobs[2]  # intervened=2
+
+        logit_diff = lp_short - lp_long
+
+        metrics = cls(
+            mode=choice.mode,
+            recovery=recovery,
+            disruption=disruption,
+            flipped=choice.flipped,
+            baseline_logit_diff=baseline_logit_diff,
+            effect=effect,
+            label_perspective=label_perspective,
+            n_labels=n_labels,
+            fork_idx=fork_idx if is_multilabel else None,
+            logprob_short=lp_short,
+            logprob_long=lp_long,
+            prob_short=math.exp(lp_short) if lp_short > -50 else 0.0,
+            prob_long=math.exp(lp_long) if lp_long > -50 else 0.0,
+            logit_diff=logit_diff,
+            effect_logit_diff=logit_diff if choice.mode == "denoising" else -logit_diff,
+        )
+
+        # Compute relative logit delta
+        if abs(metrics.baseline_logit_diff) > 1e-6:
+            metrics.rel_logit_delta = (
+                metrics.logit_diff - metrics.baseline_logit_diff
+            ) / abs(metrics.baseline_logit_diff)
+            metrics.effect_rel_logit_delta = (
+                metrics.rel_logit_delta
+                if metrics.mode == "denoising"
+                else -metrics.rel_logit_delta
+            )
 
         return metrics
 
