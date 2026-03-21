@@ -271,22 +271,21 @@ class BinaryChoiceRunner(ModelRunner):
         # ── Inference ────────────────────────────────────────────────────
 
         if intervention or with_cache:
-            # Non-batched path for interventions/caching
-            trajs = []
-            for token_ids in all_token_ids:
-                if intervention and with_cache:
-                    traj = self.compute_trajectory_with_intervention_and_cache(
-                        token_ids, intervention, names_filter
-                    )
-                elif intervention:
-                    traj = self.compute_trajectory_with_intervention(
-                        token_ids, intervention, names_filter
-                    )
-                else:
-                    traj = self.compute_trajectory_with_cache(
-                        token_ids, names_filter, past_kv_cache
-                    )
-                trajs.append(traj)
+            # Use batched methods for interventions/caching when possible
+            if intervention and with_cache:
+                trajs = self.compute_trajectories_batch_with_intervention_and_cache(
+                    all_token_ids, intervention, names_filter
+                )
+            elif intervention:
+                trajs = self.compute_trajectories_batch_with_intervention(
+                    all_token_ids, intervention
+                )
+            else:
+                # Cache-only path still uses sequential calls (no batched cache method)
+                trajs = [
+                    self.compute_trajectory_with_cache(t, names_filter, past_kv_cache)
+                    for t in all_token_ids
+                ]
         else:
             # Batched inference
             trajs = self.compute_trajectories_batch(all_token_ids)
