@@ -158,7 +158,7 @@ class PreferenceSample(BaseSchema):
     context_id: int | None = None
     matches_rational: bool | None = None
     matches_associated: bool | None = None
-    _short_term_first: bool | None = None  # True if short-term option appears first in prompt
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def choice_idx(self) -> int:
@@ -239,17 +239,6 @@ class PreferenceSample(BaseSchema):
         if term == "long_term":
             return True
         return False
-
-    @property
-    def short_term_first(self) -> bool | None:
-        """Check if short_term option appears first in the prompt.
-
-        Returns:
-            True if short_term appears first in prompt
-            False if long_term appears first in prompt
-            None if not available
-        """
-        return self._short_term_first
 
     @property
     def full_text(self) -> str:

@@ -254,7 +254,7 @@ class PreferenceQuerier:
                     context_id=sample.context_id,
                     matches_rational=matches_rational,
                     matches_associated=matches_associated,
-                    _short_term_first=sample.short_term_first,
+                    short_term_first=sample.short_term_first,
                 )
             )
 

@@ -28,11 +28,9 @@ FULL_EXPERIMENT_CONFIG = {
 # with both label orderings (A/B and B/A) and option orders, enabling multilabel pairs.
 # For multilabel, we require:
 # - different_labels: Fork 0 and Fork 1 have swapped labels (a)/b) vs b)/a))
-# - different_order: short-term option at different positions (position 1 vs position 2)
-#   This gives independent information: Fork 0 has positional bias toward pos 1,
-#   Fork 1 has positional bias toward pos 2
+# - same_order: short-term option appears first in both (isolates label effect from position effect)
 MULTILABEL_EXPERIMENT_CONFIG = {
     "model": DEFAULT_MODEL,
     "dataset_config": MULTILABEL_EXPERIMENT_DATASET_CONFIG,
-    "pair_req": {"different_labels": True, "different_order": True},
+    "pair_req": {"different_labels": True, "same_order": True},
 }
