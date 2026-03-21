@@ -25,9 +25,12 @@ FULL_EXPERIMENT_CONFIG = {
 }
 
 # Multilabel dataset: do_formatting_variation_grid=True creates samples
-# with both label orderings (A/B and B/A), enabling different_labels pairs
+# with both label orderings (A/B and B/A), enabling different_labels pairs.
+# For multilabel, we require:
+# - different_labels: Fork 0 and Fork 1 have swapped labels (a)/b) vs b)/a))
+# - same_order: short-term option appears first in both (consistent option ordering)
 MULTILABEL_EXPERIMENT_CONFIG = {
     "model": DEFAULT_MODEL,
     "dataset_config": MULTILABEL_EXPERIMENT_DATASET_CONFIG,
-    "pair_req": {"different_labels": True},
+    "pair_req": {"different_labels": True, "same_order": True},
 }
