@@ -117,6 +117,7 @@ class PromptSample(BaseSchema):
 
     formatting_id: int | None = None
     context_id: int | None = None
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -157,6 +158,7 @@ class PreferenceSample(BaseSchema):
     context_id: int | None = None
     matches_rational: bool | None = None
     matches_associated: bool | None = None
+    _short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def choice_idx(self) -> int:
@@ -240,32 +242,14 @@ class PreferenceSample(BaseSchema):
 
     @property
     def short_term_first(self) -> bool | None:
-        """Check if short_term option appears first (index 0) in the choice.
+        """Check if short_term option appears first in the prompt.
 
         Returns:
-            True if short_term label is at index 0
-            False if long_term label is at index 0
-            None if labels not available
+            True if short_term appears first in prompt
+            False if long_term appears first in prompt
+            None if not available
         """
-        if self.choice is None:
-            return None
-
-        # Handle both object (with .labels attribute) and dict (from JSON)
-        labels = None
-        if isinstance(self.choice, dict):
-            labels = self.choice.get("labels")
-        elif hasattr(self.choice, "labels"):
-            labels = self.choice.labels
-
-        if labels is None or len(labels) < 1:
-            return None
-
-        first_label = labels[0]
-        if first_label == self.short_term_label:
-            return True
-        if first_label == self.long_term_label:
-            return False
-        return None
+        return self._short_term_first
 
     @property
     def full_text(self) -> str:

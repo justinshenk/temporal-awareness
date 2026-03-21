@@ -421,6 +421,7 @@ class PromptDatasetGenerator:
             text=prompt_text,
             formatting_id=formatting_id,
             context_id=context_id,
+            short_term_first=short_on_left,
         )
 
     def generate_formatting_variation_grid(self):
