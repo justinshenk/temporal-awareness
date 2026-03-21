@@ -87,6 +87,12 @@ def print_summary(pref_dataset: PreferenceDataset) -> None:
     analysis = analyze_preferences(pref_dataset)
     print_analysis(analysis)
 
+    print(f"\n{'=' * 150}")
+    print(f"\n{'=' * 150}")
+    print(f"{'\n' * 20}")
+    print(f"\n{'=' * 150}")
+    print(f"\n{'=' * 150}")
+
 
 def main() -> int:
     args = get_args()
@@ -105,7 +111,6 @@ def main() -> int:
     print(f"Samples: {len(pref_dataset.preferences)}")
 
     print_summary(pref_dataset)
-    return 0
 
     best_only = args.best_only and not args.all_pairs
 
