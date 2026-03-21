@@ -6,9 +6,11 @@ import copy
 from typing import Any, Optional, Sequence
 
 import torch
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+# TransformerLens 3.0 renamed HookedTransformerKeyValueCache to TransformerLensKeyValueCache
+# and moved it from transformer_lens.past_key_value_caching to the top-level module
+from transformer_lens import TransformerLensKeyValueCache
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention, create_intervention_hook
 
 
@@ -24,8 +26,14 @@ class TransformerLensBackend(Backend):
     def get_d_model(self) -> int:
         return self.runner._model.cfg.d_model
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor.
+
+        Note: TransformerLens uses prepend_bos instead of add_special_tokens.
+        """
+        # TransformerLens handles BOS via prepend_bos, add_special_tokens is ignored
         return self.runner._model.to_tokens(text, prepend_bos=prepend_bos)
 
     def decode(self, token_ids: torch.Tensor) -> str:
@@ -39,7 +47,7 @@ class TransformerLensBackend(Backend):
         intervention: Optional[Intervention],
         past_kv_cache: Any = None,
     ) -> str:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         if past_kv_cache is not None:
@@ -52,7 +60,9 @@ class TransformerLensBackend(Backend):
             "do_sample": temperature > 0,
             "stop_at_eos": True,
             "verbose": False,
-            "use_past_kv_cache": True,
+            # Disable KV cache when intervention is active so each generation step
+            # processes the full sequence and interventions apply to all positions
+            "use_past_kv_cache": intervention is None,
         }
         if temperature > 0:
             gen_kwargs["temperature"] = temperature
@@ -63,7 +73,6 @@ class TransformerLensBackend(Backend):
                     intervention,
                     dtype=self.runner.dtype,
                     device=self.runner.device,
-                    tokenizer=self.get_tokenizer(),
                 )
                 with self.runner._model.hooks(
                     fwd_hooks=[(intervention.hook_name, hook)]
@@ -114,7 +123,7 @@ class TransformerLensBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)
@@ -129,7 +138,7 @@ class TransformerLensBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with torch.no_grad():
             logits = self.runner._model(input_ids, past_kv_cache=past_kv_cache)
         probs = torch.softmax(logits[0, -1, :], dim=-1)
@@ -147,9 +156,12 @@ class TransformerLensBackend(Backend):
         past_kv_cache: Any = None,
     ) -> tuple[torch.Tensor, dict]:
         with torch.no_grad():
-            return self.runner._model.run_with_cache(
+            logits, cache = self.runner._model.run_with_cache(
                 input_ids, names_filter=names_filter, past_kv_cache=past_kv_cache
             )
+        # Convert ActivationCache to dict for consistent API across backends
+        cache_dict = dict(cache)
+        return logits, cache_dict
 
     def run_with_cache_and_grad(
         self,
@@ -216,7 +228,7 @@ class TransformerLensBackend(Backend):
         return self.decode(torch.tensor(generated_ids))
 
     def init_kv_cache(self):
-        return HookedTransformerKeyValueCache.init_cache(
+        return TransformerLensKeyValueCache.init_cache(
             self.runner._model.cfg,
             device=self.runner.device,
             batch_size=1,
@@ -257,7 +269,11 @@ class TransformerLensBackend(Backend):
         interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
-        """Run forward with interventions AND capture activations with gradients."""
+        """Run forward with interventions AND capture activations with gradients.
+
+        Supports both layer-level and embedding-level interventions.
+        Embedding interventions use component="embed" and target hook_embed.
+        """
         cache = {}
 
         intervention_hooks = []
@@ -289,3 +305,110 @@ class TransformerLensBackend(Backend):
         logits = self.runner._model.run_with_hooks(input_ids, fwd_hooks=all_hooks)
 
         return logits, cache
+
+    def get_embeddings(self, token_ids: torch.Tensor) -> torch.Tensor:
+        """Get token embeddings from the model.
+
+        Args:
+            token_ids: Token IDs [batch, seq_len] or [seq_len]
+
+        Returns:
+            Embeddings tensor [batch, seq_len, d_model]
+        """
+        if token_ids.ndim == 1:
+            token_ids = token_ids.unsqueeze(0)
+
+        with torch.no_grad():
+            # TransformerLens: hook_embed captures W_E[tokens] + W_pos
+            embeds = None
+
+            def capture_embed(act, hook=None):
+                nonlocal embeds
+                embeds = act.clone()
+                return act
+
+            self.runner._model.run_with_hooks(
+                token_ids,
+                fwd_hooks=[("hook_embed", capture_embed)],
+                stop_at_layer=0,  # Stop after embedding, before layer 0
+            )
+
+        return embeds
+
+    def get_W_E(self) -> torch.Tensor:
+        """Get the token embedding matrix W_E.
+
+        Returns:
+            Embedding matrix of shape [vocab_size, d_model]
+        """
+        return self.runner._model.W_E
+
+    def get_W_U(self) -> torch.Tensor:
+        """Get the unembedding matrix W_U.
+
+        Returns:
+            Unembedding matrix of shape [d_model, vocab_size]
+        """
+        return self.runner._model.W_U
+
+    def get_b_U(self) -> torch.Tensor | None:
+        """Get the unembedding bias b_U.
+
+        Returns:
+            Unembedding bias of shape [vocab_size], or None if no bias
+        """
+        return getattr(self.runner._model, "b_U", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory with KV caching using TransformerLens."""
+        all_token_ids = list(token_ids)
+
+        # Initialize KV cache for efficient generation
+        kv_cache = self.init_kv_cache()
+
+        with torch.no_grad():
+            # First forward pass to populate cache and get initial logits
+            input_ids = torch.tensor([all_token_ids], device=self.runner.device)
+            logits = self.runner._model(input_ids, past_kv_cache=kv_cache)
+            next_logits = logits[0, -1, :]
+
+            # Compute logprobs for prefilled tokens from the forward pass
+            prefix_log_probs = torch.log_softmax(logits[0], dim=-1)
+
+        # For position i, get logprob of token[i+1]
+        all_logprobs: list[float] = [0.0]  # First token has no prior context
+        for i in range(len(token_ids) - 1):
+            next_token = token_ids[i + 1]
+            all_logprobs.append(prefix_log_probs[i, next_token].item())
+
+        with torch.no_grad():
+
+            for _ in range(max_new_tokens):
+                # Sample next token
+                if temperature > 0:
+                    probs = torch.softmax(next_logits / temperature, dim=-1)
+                    next_token = torch.multinomial(probs, 1).item()
+                else:
+                    next_token = next_logits.argmax().item()
+
+                # Compute logprob for selected token
+                log_probs = torch.log_softmax(next_logits, dim=-1)
+                token_logprob = log_probs[next_token].item()
+
+                all_token_ids.append(next_token)
+                all_logprobs.append(token_logprob)
+
+                if next_token == self.get_tokenizer().eos_token_id:
+                    break
+
+                # Forward pass with just the new token (using KV cache)
+                next_input = torch.tensor([[next_token]], device=self.runner.device)
+                logits = self.runner._model(next_input, past_kv_cache=kv_cache)
+                next_logits = logits[0, -1, :]
+
+        return all_token_ids, all_logprobs

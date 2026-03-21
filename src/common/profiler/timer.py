@@ -33,6 +33,7 @@ from typing import Optional
 @dataclass
 class TimingEntry:
     """Single timing entry."""
+
     name: str
     total: float = 0.0
     count: int = 0
@@ -131,7 +132,9 @@ class Profiler:
             prefix = "  " * indent
             avg_ms = entry.avg * 1000
             if entry.count > 1:
-                print(f"{prefix}{entry.name}: {ms:.1f}ms ({entry.count}x, avg {avg_ms:.1f}ms)")
+                print(
+                    f"{prefix}{entry.name}: {ms:.1f}ms ({entry.count}x, avg {avg_ms:.1f}ms)"
+                )
             else:
                 print(f"{prefix}{entry.name}: {ms:.1f}ms")
 
@@ -156,6 +159,36 @@ class Profiler:
         if name in self._entries:
             return self._entries[name].total * 1000
         return 0.0
+
+    def to_dict(self) -> dict:
+        """Return hierarchical timing data as dict."""
+        def entry_to_dict(entry: TimingEntry) -> dict:
+            d = {
+                "name": entry.name,
+                "total_ms": entry.total * 1000,
+                "count": entry.count,
+                "avg_ms": entry.avg * 1000,
+            }
+            if entry.children:
+                d["children"] = [
+                    entry_to_dict(self._entries[c])
+                    for c in entry.children
+                    if c in self._entries
+                ]
+            return d
+
+        roots = [e for e in self._entries.values() if e.parent is None]
+        return {
+            "entries": [entry_to_dict(r) for r in sorted(roots, key=lambda e: -e.total)],
+            "total_ms": sum(e.total * 1000 for e in roots),
+        }
+
+    def save(self, path: str) -> None:
+        """Save profiler data to JSON file."""
+        import json
+        from pathlib import Path
+
+        Path(path).write_text(json.dumps(self.to_dict(), indent=2))
 
 
 # Singleton instance

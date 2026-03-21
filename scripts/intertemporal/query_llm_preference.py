@@ -20,10 +20,7 @@ from src.intertemporal.common.project_paths import (
     get_pref_dataset_dir,
     get_query_configs_dir,
 )
-from src.intertemporal.data.default_configs import (
-    DEFAULT_MODEL,
-    TEST_PROMPT_DATASET_CONFIG,
-)
+from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 from src.intertemporal.preference import (
     PreferenceQuerier,
     PreferenceQueryConfig,
@@ -34,11 +31,12 @@ from src.intertemporal.prompt import (
     PromptDatasetGenerator,
     PromptDataset,
 )
+from src.intertemporal.common.contrastive_utils import get_contrastive_preferences
 
 
 # Default query config for querying models
 DEFAULT_QUERY_CONFIG = {
-    "models": [DEFAULT_MODEL],
+    "models": [FULL_EXPERIMENT_CONFIG["model"]],
     "internals": None,
     "subsample": 1.0,
     "batch_size": 4,
@@ -76,12 +74,14 @@ def get_args():
 
 def generate_test_dataset() -> str:
     """Generate a test dataset and return its ID."""
-    prompt_dataset_cfg = PromptDatasetConfig.from_dict(TEST_PROMPT_DATASET_CONFIG)
+    prompt_dataset_cfg = PromptDatasetConfig.from_dict(FULL_EXPERIMENT_CONFIG["dataset_config"])
     generator = PromptDatasetGenerator(prompt_dataset_cfg)
     dataset = generator.generate()
     dataset.save_as_json()
 
-    print("Using built-in TEST_PROMPT_DATASET_CONFIG")
+    print("Using FULL_EXPERIMENT_CONFIG:")
+    for key, value in FULL_EXPERIMENT_CONFIG.items():
+        print(f"  {key}: {value}")
     return dataset.dataset_id
 
 
@@ -107,7 +107,7 @@ def load_config(args) -> PreferenceQueryConfig:
         print("Using generate_test_dataset")
     if not config_dict.get("models") or len(config_dict["models"]) == 0:
         config_dict["models"] = DEFAULT_QUERY_CONFIG["models"]
-        print("Using DEFAULT_QUERY_CONFIG['models']")
+        print(f"Using FULL_EXPERIMENT_CONFIG model: {FULL_EXPERIMENT_CONFIG['model']}")
 
     return (
         PreferenceQueryConfig.from_dict(config_dict),
@@ -117,14 +117,12 @@ def load_config(args) -> PreferenceQueryConfig:
 
 
 def print_summary(pref_dataset: PreferenceDataset) -> None:
-    print("\n\n")
-    print(pref_dataset.to_string())
-    print("\n\n")
+    pref_dataset.print_all()
 
     # Print summary
-    short_count = sum(1 for p in pref_dataset.preferences if p.choice == "short_term")
-    long_count = sum(1 for p in pref_dataset.preferences if p.choice == "long_term")
-    print(f"  Total: {len(pref_dataset.preferences)}")
+    short_count = sum(1 for p in pref_dataset.preferences if p.chose_short_term)
+    long_count = sum(1 for p in pref_dataset.preferences if p.chose_long_term)
+    print(f"\n  Total: {len(pref_dataset.preferences)}")
     print(f"  Short-term: {short_count}, Long-term: {long_count}")
 
 
@@ -147,6 +145,12 @@ def main() -> int:
             output_path = output_dir / pref_dataset.get_filename()
             pref_dataset.save_as_json(output_path)
             print_summary(pref_dataset)
+
+            # Find contrastive preference pairs
+            contrastive_pairs = get_contrastive_preferences(pref_dataset)
+            print(f"\n  Contrastive pairs found: {len(contrastive_pairs)}")
+            for pair in contrastive_pairs:
+                print(f"    {pair}")
 
     return 0
 

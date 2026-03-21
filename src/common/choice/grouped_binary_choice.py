@@ -17,15 +17,15 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any
 
 import math
 
+from ..analysis import analyze_token_tree
 from ..token_tree import BinaryFork, TokenTree
 from .binary_choice import LabeledBinaryChoice
-from .simple_binary_choice import SimpleBinaryChoice
+from .simple_binary_choice import SimpleBinaryChoice, LabeledSimpleBinaryChoice
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -83,6 +83,47 @@ class GroupedBinaryChoice(SimpleBinaryChoice):
     def forks(self) -> tuple[BinaryFork, ...]:
         """Access BinaryFork objects from underlying tree."""
         return self.tree.forks or ()
+
+    # ── Per-fork Choices ──────────────────────────────────────────────────
+
+    def get_choice(self, fork_idx: int) -> LabeledSimpleBinaryChoice:
+        """Extract a LabeledSimpleBinaryChoice for a specific fork.
+
+        Args:
+            fork_idx: Index of the fork (0 to n_forks-1)
+
+        Returns:
+            LabeledSimpleBinaryChoice wrapping the two trajectories for this fork.
+        """
+        if fork_idx < 0 or fork_idx >= self.n_forks:
+            raise IndexError(f"Fork index {fork_idx} out of range [0, {self.n_forks})")
+
+        # Get trajectories for this fork (indices 2*fork_idx and 2*fork_idx+1)
+        # Copy trajectories and clear nodes_idx so subtree can build fresh indices
+        traj_a = replace(self.tree.trajs[2 * fork_idx], nodes_idx=None)
+        traj_b = replace(self.tree.trajs[2 * fork_idx + 1], nodes_idx=None)
+
+        # Build a mini-tree for just this pair
+        subtree = TokenTree.from_trajectories(
+            [traj_a, traj_b],
+            groups_per_traj=[[0], [1]],
+            fork_arms=[(0, 1)],
+        )
+
+        # Analyze the subtree (populates fork.analysis...)
+        analyze_token_tree(subtree)
+
+        # Get labels for this fork
+        labels = None
+        if self.label_pairs and fork_idx < len(self.label_pairs):
+            labels = self.label_pairs[fork_idx]
+
+        return LabeledSimpleBinaryChoice(tree=subtree, labels=labels)
+
+    @property
+    def choices(self) -> list[LabeledSimpleBinaryChoice]:
+        """List of LabeledSimpleBinaryChoice, one per fork/label pair."""
+        return [self.get_choice(i) for i in range(self.n_forks)]
 
     # ── Aggregated Decision ──────────────────────────────────────────────
 
@@ -149,8 +190,16 @@ class GroupedBinaryChoice(SimpleBinaryChoice):
 
     @property
     def n_forks(self) -> int:
-        """Number of forks (label pairs)."""
-        return len(self.forks)
+        """Number of forks (label pairs).
+
+        Returns the number of label pairs, which corresponds to the number
+        of trajectory pairs (trajs are organized as pair0_a, pair0_b, pair1_a, ...).
+        Falls back to physical tree forks if no label_pairs.
+        """
+        if self.label_pairs:
+            return len(self.label_pairs)
+        # Fallback: infer from trajectory count (2 trajs per fork)
+        return len(self.tree.trajs) // 2 if self.tree.trajs else 0
 
     def fork_choices(self) -> list[int]:
         """Choice index for each fork: 0, 1, or -1."""

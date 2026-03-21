@@ -11,15 +11,12 @@ from pathlib import Path
 from typing import Optional
 
 from ...common.file_io import ensure_dir
+from ...common.device_utils import clear_gpu_memory
 from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
-from .preference_querier import (
-    PreferenceQuerier,
-    PreferenceQueryConfig,
-    InternalsConfig,
-)
+from .preference_querier import PreferenceQuerier, PreferenceQueryConfig
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
-from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
+from ..data.default_configs import FULL_EXPERIMENT_CONFIG
 from ...common.profiler import P
 
 
@@ -27,17 +24,16 @@ def generate_preference_data(
     model: Optional[str] = None,
     dataset_config: Optional[dict] = None,
     temperature: float = 0.0,
-    max_new_tokens: int = 256,
+    max_new_tokens: int = 1024,
     max_samples: Optional[int] = None,
-    internals_config: Optional[InternalsConfig] = None,
-    save_data: bool = True,
+    save_data: bool = False,
     prompt_datasets_dir: Optional[Path] = None,
     pref_datasets_dir: Optional[Path] = None,
 ) -> PreferenceDataset:
     """Generate preference data on-the-fly by querying a model."""
 
-    model = model or DEFAULT_MODEL
-    config_dict = dataset_config or DEFAULT_PROMPT_DATASET_CONFIG
+    model = model or FULL_EXPERIMENT_CONFIG["model"]
+    config_dict = dataset_config or FULL_EXPERIMENT_CONFIG["dataset_config"]
 
     # Generate prompt dataset
     with P("generate_prompt_dataset"):
@@ -49,7 +45,6 @@ def generate_preference_data(
     if max_samples and max_samples > 0 and prompt_dataset.samples:
         subsample = min(1.0, max_samples / len(prompt_dataset.samples))
     query_config = PreferenceQueryConfig(
-        internals=internals_config,
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         subsample=subsample,
@@ -58,6 +53,10 @@ def generate_preference_data(
     # Query model
     with P("generate_preference_dataset"):
         pref_data = PreferenceQuerier(query_config).query_dataset(prompt_dataset, model)
+
+    # Strip heavy data (full_logits tensors) before saving to reduce file size
+    pref_data.pop_heavy()
+    clear_gpu_memory()
 
     # Save data
     if save_data:
@@ -72,7 +71,5 @@ def generate_preference_data(
             pref_data.save_as_json(
                 pref_datasets_dir / pref_data.get_filename(), with_internals=True
             )
-
-    pref_data.pop_heavy()
 
     return pref_data

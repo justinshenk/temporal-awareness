@@ -6,7 +6,7 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+from .model_backend import Backend
 from ..interventions import Intervention
 
 
@@ -61,10 +61,14 @@ class NNsightBackend(Backend):
         else:
             raise ValueError(f"Cannot find lm_head for model: {type(model)}")
 
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor."""
         tokenizer = self.get_tokenizer()
-        ids = tokenizer(text, return_tensors="pt").input_ids
+        ids = tokenizer(
+            text, return_tensors="pt", add_special_tokens=add_special_tokens
+        ).input_ids
         if prepend_bos:
             bos_id = tokenizer.bos_token_id
             if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
@@ -73,7 +77,7 @@ class NNsightBackend(Backend):
         return ids.to(self.runner.device)
 
     def decode(self, token_ids: torch.Tensor) -> str:
-        return self.get_tokenizer().decode(token_ids, skip_special_tokens=True)
+        return self.get_tokenizer().decode(token_ids, skip_special_tokens=False)
 
     def generate(
         self,
@@ -84,7 +88,7 @@ class NNsightBackend(Backend):
         past_kv_cache: Any = None,
     ) -> str:
         """Generate text with optional interventions using native NNsight generate."""
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         prompt_len = input_ids.shape[1]
 
         # Build generation kwargs
@@ -128,7 +132,7 @@ class NNsightBackend(Backend):
     def get_next_token_probs(
         self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
     ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with self.runner._model.trace(input_ids):
             logits = self._get_lm_head().output.save()
 
@@ -143,7 +147,7 @@ class NNsightBackend(Backend):
     def get_next_token_probs_by_id(
         self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
     ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
+        input_ids = self.encode(prompt)
         with self.runner._model.trace(input_ids):
             logits = self._get_lm_head().output.save()
 
@@ -260,24 +264,53 @@ class NNsightBackend(Backend):
                 )
                 target = intervention.target
                 mode = intervention.mode
+                alpha = intervention.alpha
                 component = intervention.component
+
+                target_values = None
+                if mode == "interpolate" and intervention.target_values is not None:
+                    target_values = torch.tensor(
+                        intervention.target_values,
+                        dtype=self.runner.dtype,
+                        device=self.runner.device,
+                    )
 
                 if component == "mlp_out":
                     out = module.output
                 else:
                     out = module.output[0]
 
-                if target.axis == "all":
+                if target.is_all_positions:
                     if mode == "add":
                         out[:, :] += values
                     elif mode == "set":
                         out[:, :] = values
                     elif mode == "mul":
                         out[:, :] *= values
-                elif target.axis == "position":
+                    elif mode == "interpolate" and target_values is not None:
+                        # Handle sequence length mismatch for 2D target_values
+                        if target_values.ndim == 2:
+                            if out.ndim == 3:
+                                seq_len = min(out.shape[1], target_values.shape[0])
+                                tv = target_values[:seq_len].unsqueeze(0)
+                                out[:, :seq_len, :] = out[:, :seq_len, :] + alpha * (tv - out[:, :seq_len, :])
+                            else:
+                                # out is 2D: [seq_len, d_model]
+                                seq_len = min(out.shape[0], target_values.shape[0])
+                                out[:seq_len, :] = out[:seq_len, :] + alpha * (target_values[:seq_len] - out[:seq_len, :])
+                        else:
+                            out[:, :] = out[:, :] + alpha * (target_values - out[:, :])
+                else:
                     seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
-                    for pos in target.positions:
+                    for i, pos in enumerate(target.positions):
                         if pos < seq_len:
+                            tv = None
+                            if target_values is not None:
+                                tv = (
+                                    target_values[i]
+                                    if target_values.ndim > 1 and i < len(target_values)
+                                    else target_values
+                                )
                             if out.ndim == 2:
                                 if mode == "add":
                                     out[pos, :] += values
@@ -285,6 +318,8 @@ class NNsightBackend(Backend):
                                     out[pos, :] = values
                                 elif mode == "mul":
                                     out[pos, :] *= values
+                                elif mode == "interpolate" and tv is not None:
+                                    out[pos, :] = out[pos, :] + alpha * (tv - out[pos, :])
                             else:
                                 if mode == "add":
                                     out[:, pos, :] += values
@@ -292,6 +327,8 @@ class NNsightBackend(Backend):
                                     out[:, pos, :] = values
                                 elif mode == "mul":
                                     out[:, pos, :] *= values
+                                elif mode == "interpolate" and tv is not None:
+                                    out[:, pos, :] = out[:, pos, :] + alpha * (tv - out[:, pos, :])
 
             logits = self._get_lm_head().output.save()
 
@@ -347,20 +384,36 @@ class NNsightBackend(Backend):
                         )
                         target = intervention.target
                         mode = intervention.mode
+                        alpha = intervention.alpha
 
-                        if target.axis == "all":
+                        target_values = None
+                        if mode == "interpolate" and intervention.target_values is not None:
+                            target_values = torch.tensor(
+                                intervention.target_values,
+                                dtype=self.runner.dtype,
+                                device=self.runner.device,
+                            )
+
+                        if target.is_all_positions:
                             if mode == "add":
                                 out[:, :] += values
                             elif mode == "set":
                                 out[:, :] = values
                             elif mode == "mul":
                                 out[:, :] *= values
-                            elif mode == "interpolate":
-                                out[:, :] = values
-                        elif target.axis == "position":
+                            elif mode == "interpolate" and target_values is not None:
+                                out[:, :] = out[:, :] + alpha * (target_values - out[:, :])
+                        else:
                             seq_len = out.shape[0] if out.ndim == 2 else out.shape[1]
-                            for pos in target.positions:
+                            for i, pos in enumerate(target.positions):
                                 if pos < seq_len:
+                                    tv = None
+                                    if target_values is not None:
+                                        tv = (
+                                            target_values[i]
+                                            if target_values.ndim > 1 and i < len(target_values)
+                                            else target_values
+                                        )
                                     if out.ndim == 2:
                                         if mode == "add":
                                             out[pos, :] += values
@@ -368,8 +421,8 @@ class NNsightBackend(Backend):
                                             out[pos, :] = values
                                         elif mode == "mul":
                                             out[pos, :] *= values
-                                        elif mode == "interpolate":
-                                            out[pos, :] = values
+                                        elif mode == "interpolate" and tv is not None:
+                                            out[pos, :] = out[pos, :] + alpha * (tv - out[pos, :])
                                     else:
                                         if mode == "add":
                                             out[:, pos, :] += values
@@ -377,8 +430,8 @@ class NNsightBackend(Backend):
                                             out[:, pos, :] = values
                                         elif mode == "mul":
                                             out[:, pos, :] *= values
-                                        elif mode == "interpolate":
-                                            out[:, pos, :] = values
+                                        elif mode == "interpolate" and tv is not None:
+                                            out[:, pos, :] = out[:, pos, :] + alpha * (tv - out[:, pos, :])
 
                     if should_cache:
                         name = f"blocks.{layer_idx}.hook_resid_post"
@@ -394,3 +447,62 @@ class NNsightBackend(Backend):
             result_cache[k] = v
 
         return logits.detach(), result_cache
+
+    def _get_embed_tokens(self):
+        """Get the token embedding module."""
+        model = self.runner._model
+        if self._layers_path == "transformer.h":
+            return model.transformer.wte  # GPT-2
+        elif self._layers_path == "gpt_neox.layers":
+            return model.gpt_neox.embed_in  # Pythia / GPT-NeoX
+        else:
+            return model.model.embed_tokens  # Llama / Mistral / Qwen
+
+    def get_W_E(self) -> torch.Tensor:
+        """Get the token embedding matrix W_E.
+
+        Returns:
+            Embedding matrix of shape [vocab_size, d_model]
+        """
+        embed = self._get_embed_tokens()
+        return embed.weight
+
+    def get_W_U(self) -> torch.Tensor:
+        """Get the unembedding matrix W_U.
+
+        Returns:
+            Unembedding matrix of shape [d_model, vocab_size]
+        """
+        lm_head = self._get_lm_head()
+        # lm_head.weight is [vocab_size, d_model], we need [d_model, vocab_size]
+        return lm_head.weight.T
+
+    def get_b_U(self) -> torch.Tensor | None:
+        """Get the unembedding bias b_U.
+
+        Returns:
+            Unembedding bias of shape [vocab_size], or None if no bias
+        """
+        lm_head = self._get_lm_head()
+        return getattr(lm_head, "bias", None)
+
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Not implemented for NNsight backend.
+
+        NNsight wraps models with a tracing API that doesn't expose HuggingFace's
+        KV cache. The underlying model uses meta tensors for lazy loading, making
+        direct access to generate() impossible. Using nnsight's trace() for each
+        token is actually slower than the baseline due to tracing overhead.
+
+        For efficient trajectory generation, use HuggingFace or MLX backends.
+        """
+        raise NotImplementedError(
+            "generate_trajectory not supported for NNsight backend. "
+            "NNsight's tracing API doesn't expose KV cache for efficient generation. "
+            "Use HuggingFace or MLX backend for trajectory generation."
+        )

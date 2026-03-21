@@ -37,6 +37,24 @@ class ContextConfig(BaseSchema):
         defaults = cls().to_dict()
         return super().from_dict(defaults | d)
 
+    def get_context_id(self) -> int:
+        """Get a deterministic context ID based on context fields.
+
+        Returns a positive integer ID that uniquely identifies this context
+        configuration (excluding labels, which are tracked by formatting_id).
+        """
+        # Hash all context fields except labels (which are formatting-related)
+        hashable = (
+            self.reward_unit,
+            self.role,
+            self.situation,
+            self.task_in_question,
+            self.reasoning_ask,
+            self.domain,
+            self.extra_situation,
+        )
+        return hash(hashable) & 0x7FFFFFFF  # Ensure positive
+
 
 @dataclass
 class OptionRangeConfig(BaseSchema):
@@ -57,8 +75,10 @@ class PromptDatasetConfig(BaseSchema):
     options: dict[str, OptionRangeConfig]
     time_horizons: list[TimeValue | None]
 
-    add_formatting_variations: bool = False
-    do_variation_grid: bool = False
+    add_formatting_noise: bool = False
+    do_formatting_variation_grid: bool = False
+    do_full_formatting_variation_grid: bool = False
+    do_context_variations: bool = False
     prompt_format: str = "default_prompt_format"
 
     @property

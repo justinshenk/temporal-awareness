@@ -64,6 +64,9 @@ def _canon(
             return f"{obj[:max_string_length]}...[{len(obj)} chars]"
         return obj
     if is_dataclass(obj):
+        # Check if object has custom to_dict that should bypass _canon processing
+        if getattr(obj, "_use_custom_to_dict", False):
+            return obj.to_dict()
         # Manually iterate fields to properly handle nested dataclasses with _to_dict_hook
         # (asdict() would convert them to dicts before we can call their hooks)
         result = {}
@@ -196,8 +199,18 @@ class BaseSchema:
             key_type, val_type = (
                 get_args(field_type) if get_args(field_type) else (None, None)
             )
-            if val_type and is_dataclass(val_type):
-                return {k: cls._convert_value(v, val_type) for k, v in val.items()}
+            result = {}
+            for k, v in val.items():
+                # Convert key type (JSON keys are always strings)
+                if key_type is int:
+                    k = int(k)
+                elif key_type is float:
+                    k = float(k)
+                # Convert value type
+                if val_type:
+                    v = cls._convert_value(v, val_type)
+                result[k] = v
+            return result
 
         return val
 

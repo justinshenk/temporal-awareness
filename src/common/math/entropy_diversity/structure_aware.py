@@ -26,7 +26,7 @@ from typing import Literal, Sequence, Union
 import torch
 
 from ..num_types import Num, Nums, is_tensor
-from .core import _EPS, probs_to_logprobs
+from .entropy_primitives import _EPS, probs_to_logprobs
 from .divergence import renyi_divergence
 from .entropy import shannon_entropy
 from .escort_distribution import escort_probs
@@ -581,5 +581,3 @@ def expected_orientation(
             result[i] += w * theta_list[i]
 
     return result
-
-

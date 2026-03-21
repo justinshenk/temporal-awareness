@@ -1,4 +1,4 @@
-"""Pyvene backend implementation."""
+"""Pyvene-based inference backend using IntervenableModel."""
 
 from __future__ import annotations
 
@@ -6,382 +6,259 @@ from typing import Any, Optional, Sequence
 
 import torch
 
-from .backend import Backend
+try:
+    import pyvene as pv
+    from pyvene import (
+        IntervenableConfig,
+        IntervenableModel,
+        RepresentationConfig,
+    )
+
+    PYVENE_AVAILABLE = True
+except ImportError:
+    PYVENE_AVAILABLE = False
+
+from .huggingface import HuggingFaceBackend
 from ..interventions import Intervention
 
 
-class PyveneBackend(Backend):
-    """Backend using pyvene for interventions."""
+class PyveneBackend(HuggingFaceBackend):
+    """Backend using pyvene's IntervenableModel for interventions.
 
-    def __init__(self, runner):
-        super().__init__(runner)
-        if hasattr(self.runner._model, "transformer"):
-            self._layers_attr = "transformer.h"
-            self._layers = self.runner._model.transformer.h
-            self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.n_embd
-        elif hasattr(self.runner._model, "gpt_neox"):
-            self._layers_attr = "gpt_neox.layers"
-            self._layers = self.runner._model.gpt_neox.layers
-            self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
-        elif hasattr(self.runner._model, "model") and hasattr(
-            self.runner._model.model, "layers"
-        ):
-            self._layers_attr = "model.layers"
-            self._layers = self.runner._model.model.layers
-            self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
-        else:
-            raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
+    Inherits from HuggingFaceBackend for all non-intervention functionality,
+    and overrides intervention methods to use pyvene's IntervenableModel.
+    """
 
-    def get_tokenizer(self):
-        return self.runner._tokenizer
+    def __init__(self, runner: Any, tokenizer: Any):
+        if not PYVENE_AVAILABLE:
+            raise ImportError(
+                "pyvene is required for PyveneBackend. "
+                "Install with: pip install pyvene"
+            )
+        super().__init__(runner, tokenizer)
 
-    def get_n_layers(self) -> int:
-        return self._n_layers
+    def _get_pyvene_component(self, layer_idx: int, component: str) -> str:
+        """Convert component name to pyvene component path."""
+        base = self._layers_attr
 
-    def get_d_model(self) -> int:
-        return self._d_model
-
-    def tokenize(self, text: str, prepend_bos: bool = False) -> torch.Tensor:
-        """Tokenize text into token IDs tensor."""
-        tokenizer = self.get_tokenizer()
-        ids = tokenizer(text, return_tensors="pt").input_ids
-        if prepend_bos:
-            bos_id = tokenizer.bos_token_id
-            if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
-                bos = torch.tensor([[bos_id]], dtype=ids.dtype)
-                ids = torch.cat([bos, ids], dim=1)
-        return ids.to(self.runner.device)
-
-    def decode(self, token_ids: torch.Tensor) -> str:
-        return self.get_tokenizer().decode(token_ids, skip_special_tokens=True)
-
-    def _get_component_module(self, layer_idx: int, component: str):
-        """Get the module for a specific component within a layer."""
-        layer = self._layers[layer_idx]
-        if component in ("resid_post", "resid_pre", "resid_mid"):
-            return layer
-        elif component == "attn_out":
-            if hasattr(layer, "attn"):
-                return layer.attn
-            elif hasattr(layer, "attention"):
-                return layer.attention
-            elif hasattr(layer, "self_attn"):
-                return layer.self_attn
-            else:
-                raise ValueError(
-                    f"Cannot find attention module in layer: {type(layer)}"
-                )
+        if component in ("resid_post", "resid_mid"):
+            return f"{base}[{layer_idx}].output"
+        elif component == "resid_pre":
+            return f"{base}[{layer_idx}].input"
         elif component == "mlp_out":
-            return layer.mlp
+            return f"{base}[{layer_idx}].mlp.output"
+        elif component == "attn_out":
+            if self._layers_attr == "transformer.h":
+                return f"{base}[{layer_idx}].attn.output"
+            elif self._layers_attr == "gpt_neox.layers":
+                return f"{base}[{layer_idx}].attention.output"
+            else:
+                return f"{base}[{layer_idx}].self_attn.output"
         else:
             raise ValueError(f"Unknown component: {component}")
 
-    def generate(
-        self,
-        prompt: str,
-        max_new_tokens: int,
-        temperature: float,
-        intervention: Optional[Intervention],
-        past_kv_cache: Any = None,
-    ) -> str:
-        input_ids = self.tokenize(prompt)
-        prompt_len = input_ids.shape[1]
+    def _create_intervenable_model(
+        self, interventions: Sequence[Intervention], seq_len: int
+    ) -> tuple[IntervenableModel, list]:
+        """Create an IntervenableModel configured for the given interventions.
 
-        if (
-            intervention is not None
-            and isinstance(intervention, Intervention)
-            and intervention.mode == "add"
-        ):
-            direction = torch.tensor(
+        Returns:
+            Tuple of (IntervenableModel, unit_locations for calling it)
+        """
+        configs = []
+        all_positions = []
+
+        for intervention in interventions:
+            component_path = self._get_pyvene_component(
+                intervention.layer, intervention.component
+            )
+
+            # Prepare the values tensor
+            values = torch.tensor(
                 intervention.scaled_values,
                 dtype=self.runner.dtype,
                 device=self.runner.device,
             )
-            layer_module = self._layers[intervention.layer]
 
-            def steering_hook(module, input, output):
-                if isinstance(output, tuple):
-                    hidden = output[0]
-                    steered = hidden + direction.unsqueeze(0).unsqueeze(0)
-                    return (steered,) + output[1:]
-                else:
-                    return output + direction.unsqueeze(0).unsqueeze(0)
+            # Determine positions
+            target = intervention.target
+            if target.is_all_positions:
+                positions = list(range(seq_len))
+            else:
+                positions = list(target.positions)
 
-            generated = input_ids.clone()
-            eos_id = self.get_tokenizer().eos_token_id
+            # Get hidden size for proper broadcasting
+            hidden_size = self.runner._model.config.hidden_size
 
-            for _ in range(max_new_tokens):
-                hook = layer_module.register_forward_hook(steering_hook)
-
-                with torch.no_grad():
-                    outputs = self.runner._model(generated)
-                    logits = outputs.logits
-
-                hook.remove()
-
-                if temperature > 0:
-                    probs = torch.softmax(logits[0, -1, :] / temperature, dim=-1)
-                    next_token = torch.multinomial(probs, 1).unsqueeze(0)
-                else:
-                    next_token = (
-                        logits[0, -1, :].argmax(dim=-1, keepdim=True).unsqueeze(0)
-                    )
-                generated = torch.cat([generated, next_token], dim=1)
-
-                if next_token.item() == eos_id:
-                    break
-        else:
-            gen_kwargs = {
-                "max_new_tokens": max_new_tokens,
-                "do_sample": temperature > 0,
-                # Override model's default generation config to ensure greedy decoding
-                "repetition_penalty": 1.0,
-                "num_beams": 1,
-            }
-            if temperature > 0:
-                gen_kwargs["temperature"] = temperature
-
-            with torch.no_grad():
-                output_ids = self.runner._model.generate(input_ids, **gen_kwargs)
-            generated = output_ids
-
-        return self.decode(generated[0, prompt_len:])
-
-    def get_next_token_probs(
-        self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
-    ) -> dict[str, float]:
-        input_ids = self.tokenize(prompt)
-        with torch.no_grad():
-            outputs = self.runner._model(input_ids)
-            logits = outputs.logits
-
-        probs = torch.softmax(logits[0, -1, :], dim=-1)
-        result = {}
-        tokenizer = self.get_tokenizer()
-        for token_str in target_tokens:
-            ids = tokenizer.encode(token_str, add_special_tokens=False)
-            result[token_str] = probs[ids[0]].item() if ids else 0.0
-        return result
-
-    def get_next_token_probs_by_id(
-        self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
-    ) -> dict[int, float]:
-        input_ids = self.tokenize(prompt)
-        with torch.no_grad():
-            outputs = self.runner._model(input_ids)
-            logits = outputs.logits
-
-        probs = torch.softmax(logits[0, -1, :], dim=-1)
-        result = {}
-        for tok_id in token_ids:
-            if tok_id is not None:
-                result[tok_id] = probs[tok_id].item()
-        return result
-
-    def run_with_cache(
-        self,
-        input_ids: torch.Tensor,
-        names_filter: Optional[callable],
-        past_kv_cache: Any = None,
-    ) -> tuple[torch.Tensor, dict]:
-        cache = {}
-        hooks = []
-
-        hooks_to_capture = []
-        for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
-                name = f"blocks.{i}.hook_{component}"
-                if names_filter is None or names_filter(name):
-                    hooks_to_capture.append((i, component, name))
-
-        for layer_idx, component, name in hooks_to_capture:
-            module = self._get_component_module(layer_idx, component)
-
-            def make_hook(hook_name):
-                def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0].detach()
-                    else:
-                        cache[hook_name] = out.detach()
-
-                return hook_fn
-
-            hooks.append(module.register_forward_hook(make_hook(name)))
-
-        try:
-            with torch.no_grad():
-                outputs = self.runner._model(input_ids)
-            logits = outputs.logits
-        finally:
-            for hook in hooks:
-                hook.remove()
-
-        return logits, cache
-
-    def run_with_cache_and_grad(
-        self,
-        input_ids: torch.Tensor,
-        names_filter: Optional[callable],
-    ) -> tuple[torch.Tensor, dict]:
-        """Run with gradients enabled for attribution patching."""
-        cache = {}
-        hooks = []
-
-        hooks_to_capture = []
-        for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
-                name = f"blocks.{i}.hook_{component}"
-                if names_filter is None or names_filter(name):
-                    hooks_to_capture.append((i, component, name))
-
-        for layer_idx, component, name in hooks_to_capture:
-            module = self._get_component_module(layer_idx, component)
-
-            def make_hook(hook_name):
-                def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0]
-                    else:
-                        cache[hook_name] = out
-
-                return hook_fn
-
-            hooks.append(module.register_forward_hook(make_hook(name)))
-
-        try:
-            outputs = self.runner._model(input_ids)
-            logits = outputs.logits
-        finally:
-            for hook in hooks:
-                hook.remove()
-
-        return logits, cache
-
-    def generate_from_cache(
-        self,
-        prefill_logits: torch.Tensor,
-        frozen_kv_cache: Any,
-        max_new_tokens: int,
-        temperature: float,
-    ) -> str:
-        """Generate using prefill logits and frozen KV cache."""
-        eos_token_id = self.get_tokenizer().eos_token_id
-        generated_ids = []
-
-        next_logits = prefill_logits[0, -1, :]
-
-        with torch.no_grad():
-            for _ in range(max_new_tokens):
-                if temperature > 0:
-                    probs = torch.softmax(next_logits / temperature, dim=-1)
-                    next_token = torch.multinomial(probs, 1)
-                else:
-                    next_token = next_logits.argmax().unsqueeze(0)
-
-                generated_ids.append(next_token.item())
-
-                if next_token.item() == eos_token_id:
-                    break
-
-                outputs = self.runner._model(
-                    next_token.unsqueeze(0),
-                    past_key_values=frozen_kv_cache,
-                    use_cache=True,
+            # Ensure values shape matches positions: [batch, num_pos, hidden]
+            # Pyvene expects source_representation with batch dimension for multi-position
+            if values.ndim == 0 or (values.ndim == 1 and values.shape[0] == 1):
+                # Scalar value - expand to full hidden size, then to all positions
+                scalar_val = values.item() if values.ndim == 0 else values[0].item()
+                values = torch.full(
+                    (len(positions), hidden_size),
+                    scalar_val,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
                 )
-                next_logits = outputs.logits[0, -1, :]
+            elif values.ndim == 1:
+                # Single vector [hidden] - repeat for each position
+                if values.shape[0] != hidden_size:
+                    # If not matching hidden size, expand to hidden size
+                    values = values.expand(hidden_size).contiguous()
+                values = values.unsqueeze(0).expand(len(positions), -1).contiguous()
+            elif values.ndim == 2:
+                # Adjust to match positions
+                if values.shape[0] > len(positions):
+                    values = values[: len(positions)]
+                elif values.shape[0] < len(positions):
+                    pad_size = len(positions) - values.shape[0]
+                    padding = values[-1:].expand(pad_size, -1)
+                    values = torch.cat([values, padding], dim=0)
 
-        return self.decode(torch.tensor(generated_ids))
+            # Add batch dimension: [num_pos, hidden] -> [1, num_pos, hidden]
+            values = values.unsqueeze(0)
 
-    def init_kv_cache(self):
-        """Initialize a KV cache wrapper for HF models."""
+            # Create config with unit="pos" for position-specific targeting
+            # Pass source_representation directly in RepresentationConfig for add/set
+            source_repr = None
+            if intervention.mode == "add":
+                intervention_type = pv.AdditionIntervention
+                source_repr = values
+            elif intervention.mode == "set":
+                intervention_type = pv.VanillaIntervention
+                source_repr = values
+            elif intervention.mode == "mul":
+                # Pyvene doesn't have built-in multiply, use custom
+                intervention_type = self._make_multiply_intervention(values)
+            elif intervention.mode == "interpolate":
+                target_values = torch.tensor(
+                    intervention.target_values,
+                    dtype=self.runner.dtype,
+                    device=self.runner.device,
+                )
+                if target_values.ndim == 1:
+                    target_values = (
+                        target_values.unsqueeze(0)
+                        .expand(len(positions), -1)
+                        .contiguous()
+                    )
+                elif target_values.shape[0] != len(positions):
+                    if target_values.shape[0] > len(positions):
+                        target_values = target_values[: len(positions)]
+                    else:
+                        pad_size = len(positions) - target_values.shape[0]
+                        padding = target_values[-1:].expand(pad_size, -1)
+                        target_values = torch.cat([target_values, padding], dim=0)
+                # Add batch dimension: [num_pos, hidden] -> [1, num_pos, hidden]
+                target_values = target_values.unsqueeze(0)
+                intervention_type = self._make_interpolate_intervention(
+                    target_values, intervention.alpha
+                )
+            else:
+                raise ValueError(f"Unknown intervention mode: {intervention.mode}")
 
-        class HFKVCache:
-            def __init__(self):
-                self.past_key_values = None
-                self._frozen = False
+            config = RepresentationConfig(
+                layer=intervention.layer,
+                component=component_path,
+                unit="pos",
+                intervention_type=intervention_type,
+                source_representation=source_repr,
+            )
+            configs.append(config)
+            all_positions.append(positions)
 
-            def freeze(self):
-                self._frozen = True
+        intervenable_config = IntervenableConfig(representations=configs)
+        intervenable = IntervenableModel(
+            intervenable_config, model=self.runner._model
+        )
 
-            def unfreeze(self):
-                self._frozen = False
+        return intervenable, all_positions
 
-            @property
-            def frozen(self):
-                return self._frozen
+    def _make_multiply_intervention(self, multiplier: torch.Tensor):
+        """Create a custom multiply intervention class.
 
-        return HFKVCache()
+        Args:
+            multiplier: Tensor with shape [1, num_positions, hidden] (batch dimension included)
+        """
+        mult_tensor = multiplier  # Capture in closure
 
-    def forward(
-        self,
-        input_ids: torch.Tensor,
-    ) -> torch.Tensor:
-        """Run forward pass and return logits."""
-        with torch.no_grad():
-            outputs = self.runner._model(input_ids)
-        return outputs.logits
+        # Inherit from LocalistRepresentationIntervention to prevent activation flattening
+        class MultiplyIntervention(
+            pv.SourcelessIntervention, pv.LocalistRepresentationIntervention
+        ):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.register_buffer("multiplier", mult_tensor)
+
+            def forward(self, base, source=None, subspaces=None):
+                # base: [batch, num_positions, hidden] when using unit="pos"
+                # multiplier: [1, num_positions, hidden] - already has batch dimension
+                return base * self.multiplier
+
+        return MultiplyIntervention
+
+    def _make_interpolate_intervention(
+        self, target_values: torch.Tensor, alpha: float
+    ):
+        """Create a custom interpolation intervention class.
+
+        Args:
+            target_values: Tensor with shape [1, num_positions, hidden] (batch dimension included)
+            alpha: Interpolation factor
+        """
+        target_tensor = target_values
+        alpha_val = alpha
+
+        # Inherit from LocalistRepresentationIntervention to prevent activation flattening
+        class InterpolateIntervention(
+            pv.SourcelessIntervention, pv.LocalistRepresentationIntervention
+        ):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.register_buffer("target_values", target_tensor)
+                self.alpha = alpha_val
+
+            def forward(self, base, source=None, subspaces=None):
+                # base: [batch, num_positions, hidden]
+                # target_values: [1, num_positions, hidden] - already has batch dimension
+                return base + self.alpha * (self.target_values - base)
+
+        return InterpolateIntervention
+
+    def _build_unit_locations(self, positions_list: list[list[int]]) -> dict:
+        """Build unit_locations dict for pyvene.
+
+        Pyvene expects unit_locations in format:
+        - For single intervention with single position: {"base": position} or {"base": [position]}
+        - For multiple interventions: {"base": [[[positions_0]], [[positions_1]], ...]}
+          where each element is triple-nested: [[[positions_for_batch]]]
+        """
+        # For multiple interventions, use the triple-nested format
+        # [[[positions_for_intervention_0]], [[positions_for_intervention_1]], ...]
+        return {"base": [[[p for p in pos]] for pos in positions_list]}
 
     def run_with_intervention(
         self,
         input_ids: torch.Tensor,
         interventions: Sequence[Intervention],
     ) -> torch.Tensor:
-        hooks = []
-        for intervention in interventions:
-            values = torch.tensor(
-                intervention.scaled_values,
-                dtype=self.runner.dtype,
-                device=self.runner.device,
-            )
-            target = intervention.target
-            mode = intervention.mode
-            module = self._get_component_module(
-                intervention.layer, intervention.component
-            )
+        """Run forward with interventions using pyvene's IntervenableModel."""
+        if not interventions:
+            return self.forward(input_ids)
 
-            def make_hook(values, target, mode):
-                def intervention_hook(mod, input, output):
-                    if isinstance(output, tuple):
-                        hidden = output[0]
-                    else:
-                        hidden = output
+        seq_len = input_ids.shape[1]
+        intervenable, positions_list = self._create_intervenable_model(
+            interventions, seq_len
+        )
 
-                    if target.axis == "all":
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                    elif target.axis == "position":
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = values[i] if values.ndim > 1 and i < len(values) else values
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-
-                    if isinstance(output, tuple):
-                        return (hidden,) + output[1:]
-                    return hidden
-
-                return intervention_hook
-
-            hook = module.register_forward_hook(make_hook(values, target, mode))
-            hooks.append(hook)
+        unit_locations = self._build_unit_locations(positions_list)
 
         with torch.no_grad():
-            outputs = self.runner._model(input_ids)
-
-        for hook in hooks:
-            hook.remove()
+            _, outputs = intervenable(
+                {"input_ids": input_ids},
+                unit_locations=unit_locations,
+            )
 
         return outputs.logits
 
@@ -391,89 +268,97 @@ class PyveneBackend(Backend):
         interventions: Sequence[Intervention],
         names_filter: Optional[callable],
     ) -> tuple[torch.Tensor, dict]:
-        """Run forward with interventions AND capture activations with gradients."""
+        """Run forward with interventions AND capture activations.
+
+        Note: Pyvene's IntervenableModel doesn't trigger standard PyTorch hooks,
+        so we run the model twice - once for caching (direct call) and once for
+        intervention (through pyvene). This is less efficient but necessary.
+        """
         cache = {}
         hooks = []
 
+        # Set up cache hooks
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
 
+        def make_cache_hook(name):
+            def hook(mod, input, output):
+                if isinstance(output, tuple):
+                    cache[name] = output[0].detach().clone()
+                else:
+                    cache[name] = output.detach().clone()
+
+            return hook
+
         for layer_idx, component, name in hooks_to_capture:
             module = self._get_component_module(layer_idx, component)
-
-            def make_cache_hook(hook_name):
-                def hook_fn(mod, inp, out):
-                    if isinstance(out, tuple):
-                        cache[hook_name] = out[0]
-                    else:
-                        cache[hook_name] = out
-
-                return hook_fn
-
-            hooks.append(module.register_forward_hook(make_cache_hook(name)))
-
-        for intervention in interventions:
-            values = torch.tensor(
-                intervention.scaled_values,
-                dtype=self.runner.dtype,
-                device=self.runner.device,
-            )
-            target = intervention.target
-            mode = intervention.mode
-            module = self._get_component_module(
-                intervention.layer, intervention.component
-            )
-
-            def make_intervention_hook(values, target, mode):
-                def intervention_hook(mod, input, output):
-                    if isinstance(output, tuple):
-                        hidden = output[0]
-                    else:
-                        hidden = output
-
-                    if target.axis == "all":
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                        elif mode == "interpolate":
-                            hidden = values.expand_as(hidden)
-                    elif target.axis == "position":
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                # values may be [n_positions, hidden_size] or [hidden_size]
-                                pos_values = values[i] if values.ndim > 1 and i < len(values) else values
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-                                elif mode == "interpolate":
-                                    hidden[:, pos, :] = values
-
-                    if isinstance(output, tuple):
-                        return (hidden,) + output[1:]
-                    return hidden
-
-                return intervention_hook
-
-            hook = module.register_forward_hook(
-                make_intervention_hook(values, target, mode)
-            )
+            hook = module.register_forward_hook(make_cache_hook(name))
             hooks.append(hook)
 
         try:
-            outputs = self.runner._model(input_ids)
-            logits = outputs.logits
+            # Run model directly to capture activations (pyvene doesn't trigger hooks)
+            with torch.no_grad():
+                outputs = self.runner._model(input_ids)
+
+            # Now run with intervention if needed
+            if interventions:
+                logits = self.run_with_intervention(input_ids, interventions)
+            else:
+                logits = outputs.logits
         finally:
             for hook in hooks:
                 hook.remove()
 
         return logits, cache
+
+    def generate(
+        self,
+        prompt: str,
+        max_new_tokens: int = 50,
+        temperature: float = 0.0,
+        intervention: Optional[Intervention] = None,
+        past_kv_cache: Any = None,
+    ) -> str:
+        """Generate text, optionally with intervention using pyvene.
+
+        Note: past_kv_cache is accepted for API compatibility but not used.
+        """
+        input_ids = self.encode(prompt)
+
+        if intervention is not None:
+            generated = input_ids.clone()
+            eos_id = self._tokenizer.eos_token_id
+
+            for _ in range(max_new_tokens):
+                seq_len = generated.shape[1]
+                intervenable, positions_list = self._create_intervenable_model(
+                    [intervention], seq_len
+                )
+                unit_locations = self._build_unit_locations(positions_list)
+
+                with torch.no_grad():
+                    _, outputs = intervenable(
+                        {"input_ids": generated},
+                        unit_locations=unit_locations,
+                    )
+                    logits = outputs.logits
+
+                if temperature > 0:
+                    probs = torch.softmax(logits[:, -1, :] / temperature, dim=-1)
+                    next_token = torch.multinomial(probs, num_samples=1)
+                else:
+                    next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+
+                generated = torch.cat([generated, next_token], dim=1)
+
+                if eos_id is not None and next_token.item() == eos_id:
+                    break
+
+            return self.decode(generated[0])
+        else:
+            # Use parent's generate for non-intervention case
+            return super().generate(prompt, max_new_tokens, temperature, None, past_kv_cache)

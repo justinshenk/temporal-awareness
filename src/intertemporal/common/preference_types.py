@@ -56,7 +56,6 @@ class Prompt(BaseSchema):
 
     preference_pair: PreferencePair
     time_horizon: Optional[TimeValue] = None
-    text: str = ""
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -114,8 +113,10 @@ class PromptSample(BaseSchema):
 
     sample_idx: int
     prompt: Prompt
+    text: str = ""
 
     formatting_id: int | None = None
+    context_id: int | None = None
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -153,6 +154,7 @@ class PreferenceSample(BaseSchema):
     decoding_mismatch: bool | None = None
 
     formatting_id: int | None = None
+    context_id: int | None = None
     matches_rational: bool | None = None
     matches_associated: bool | None = None
 
@@ -270,6 +272,15 @@ class PreferenceSample(BaseSchema):
             return None
         if hasattr(self.choice, "tree") and self.choice.tree is not None:
             return self.choice.tree.trunk_length
+        return None
+
+    @property
+    def divergent_position(self) -> int | None:
+        """Get the position where A vs B tokens first diverge in the choice."""
+        if self.choice is None:
+            return None
+        if hasattr(self.choice, "divergent_position"):
+            return self.choice.divergent_position
         return None
 
     def load_internals_from_disk(self) -> None:

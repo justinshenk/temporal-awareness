@@ -1,398 +1,335 @@
-"""ContrastivePair: two contrasting trajectories for analysis and intervention.
-
-A ContrastivePair stores two trajectories (short and long) along with their
-cached activations, supporting various use cases:
-- Activation patching (denoising/noising)
-- Steering vector extraction
-- Contrastive Activation Addition (CAA)
-- Choice analysis
-"""
+"""ContrastivePair: two contrasting trajectories for patching and steering."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
-import numpy as np
-
-from .base_schema import BaseSchema
-from .token_trajectory import TokenTrajectory
-from .token_positions import PositionMapping
 from ..inference.interventions import Intervention, InterventionTarget
+from .base_schema import BaseSchema
+from .choice import LabeledSimpleBinaryChoice
+from .hook_utils import hook_name
+from .patching_types import PatchingMode
+from .time_value import TimeValue
+from .token_positions import PositionMapping
+from .token_trajectory import TokenTrajectory
+
+DEBUG_INTERVENTIONS = False
 
 
 @dataclass
 class ContrastivePair(BaseSchema):
-    """A pair of contrasting trajectories.
-
-    Primary fields use short/long terminology (intertemporal domain).
-    Property aliases provide alternative access patterns for different use cases.
+    """A pair of contrasting trajectories for activation patching.
 
     Attributes:
-        short_traj: Trajectory for short-term choice
-        long_traj: Trajectory for long-term choice
-        position_mapping: Maps short positions to long positions for alignment
-
-    Aliases:
-        short/long: short_traj/long_traj
-        reference/counterfactual: short=reference, long=counterfactual
-        positive/negative: long=positive, short=negative
-        baseline/target: short=baseline, long=target
+        clean_traj: Clean trajectory (baseline/reference behavior)
+        corrupted_traj: Corrupted trajectory (target/counterfactual behavior)
+        position_mapping: Maps clean positions to corrupted positions
+        full_texts: (clean_text, corrupted_text) full prompt+response strings
+        clean_labels: (option_a, option_b) labels for clean trajectory
+        corrupted_labels: (option_a, option_b) labels for corrupted trajectory
+        choice_prefix: e.g. "I choose: "
+        sample_id: Unique identifier for this sample
+        prompt_token_counts: (clean_prompt_len, corrupted_prompt_len)
+        choice_divergent_positions: (clean_pos, corrupted_pos) where A/B diverge
     """
 
-    short_traj: TokenTrajectory
-    long_traj: TokenTrajectory
+    clean_traj: TokenTrajectory
+    corrupted_traj: TokenTrajectory
     position_mapping: PositionMapping = field(default_factory=PositionMapping)
+    full_texts: tuple[str, str] = ("", "")
+    prompt_texts: tuple[str, str] = ("", "")
+    clean_labels: tuple[str, str] | None = None
+    corrupted_labels: tuple[str, str] | None = None
+    choice_prefix: str = ""
+    sample_id: int = 0
+    prompt_token_counts: tuple[int, int] | None = None
+    choice_divergent_positions: tuple[int, int] | None = None
+    time_horizons: tuple[TimeValue, TimeValue] | None = None
 
-    # Metadata
-    full_texts: tuple[str, str] = ("", "")  # (short_text, long_text)
-    labels: tuple[str, str] | None = None  # (short_term_label, long_term_label)
-    choice_prefix: str = ""  # e.g. "I select: "
+    # =========================================================================
+    # Text and Label Properties
+    # =========================================================================
 
     @property
-    def short_text(self) -> str:
-        """Full text for short-term trajectory."""
+    def clean_text(self) -> str:
         return self.full_texts[0]
 
     @property
-    def long_text(self) -> str:
-        """Full text for long-term trajectory."""
+    def corrupted_text(self) -> str:
         return self.full_texts[1]
 
     @property
-    def short_label(self) -> str | None:
-        """Label for the short-term option."""
-        return self.labels[0] if self.labels else None
+    def clean_prompt(self) -> str:
+        return self.prompt_texts[0]
 
     @property
-    def long_label(self) -> str | None:
-        """Label for the long-term option."""
-        return self.labels[1] if self.labels else None
-
-    # =========================================================================
-    # Aliases: short / long
-    # =========================================================================
+    def corrupted_prompt(self) -> str:
+        return self.prompt_texts[1]
 
     @property
-    def short(self) -> TokenTrajectory:
-        """Alias for short_traj."""
-        return self.short_traj
+    def clean_divergent_position(self) -> int | None:
+        """Position where A/B tokens diverge in clean trajectory."""
+        if self.choice_divergent_positions is None:
+            return None
+        return self.choice_divergent_positions[0]
 
     @property
-    def long(self) -> TokenTrajectory:
-        """Alias for long_traj."""
-        return self.long_traj
+    def corrupted_divergent_position(self) -> int | None:
+        """Position where A/B tokens diverge in corrupted trajectory."""
+        if self.choice_divergent_positions is None:
+            return None
+        return self.choice_divergent_positions[1]
 
     # =========================================================================
-    # Aliases: reference / counterfactual
+    # Characteristics
     # =========================================================================
 
     @property
-    def reference(self) -> TokenTrajectory:
-        """Alias: short as reference."""
-        return self.short_traj
-
-    @property
-    def counterfactual(self) -> TokenTrajectory:
-        """Alias: long as counterfactual."""
-        return self.long_traj
+    def same_labels(self) -> bool:
+        if self.clean_labels is None or self.corrupted_labels is None:
+            return False
+        return self.clean_labels == self.corrupted_labels
 
     # =========================================================================
-    # Aliases: positive / negative (contrastive learning convention)
+    # Length Properties
     # =========================================================================
 
     @property
-    def positive(self) -> TokenTrajectory:
-        """Alias: long as positive (desired behavior)."""
-        return self.long_traj
+    def clean_length(self) -> int:
+        return self.clean_traj.n_sequence
 
     @property
-    def negative(self) -> TokenTrajectory:
-        """Alias: short as negative (baseline behavior)."""
-        return self.short_traj
+    def corrupted_length(self) -> int:
+        return self.corrupted_traj.n_sequence
+
+    @property
+    def max_length(self) -> int:
+        return max(self.clean_traj.n_sequence, self.corrupted_traj.n_sequence)
+
+    @property
+    def clean_prompt_length(self) -> int:
+        if self.prompt_token_counts:
+            return self.prompt_token_counts[0]
+        return 0
+
+    @property
+    def corrupted_prompt_length(self) -> int:
+        if self.prompt_token_counts:
+            return self.prompt_token_counts[1]
+        return 0
 
     # =========================================================================
-    # Aliases: baseline / target (patching convention)
+    # Trajectory Aliases
     # =========================================================================
 
     @property
-    def baseline(self) -> TokenTrajectory:
-        """Alias: short as baseline (starting behavior)."""
-        return self.short_traj
+    def clean(self) -> TokenTrajectory:
+        return self.clean_traj
 
     @property
-    def target(self) -> TokenTrajectory:
-        """Alias: long as target (goal behavior)."""
-        return self.long_traj
-
-    # =========================================================================
-    # Cache access
-    # =========================================================================
-
-    @property
-    def short_cache(self) -> dict:
-        """Get short activations from trajectory internals."""
-        if self.short_traj.has_internals():
-            return self.short_traj.internals
-        return {}
-
-    @property
-    def long_cache(self) -> dict:
-        """Get long activations from trajectory internals."""
-        if self.long_traj.has_internals():
-            return self.long_traj.internals
-        return {}
+    def corrupted(self) -> TokenTrajectory:
+        return self.corrupted_traj
 
     # =========================================================================
     # Interventions
     # =========================================================================
 
-    def get_noising_intervention(
+    def create_patching_intervention(
         self,
         target: InterventionTarget,
-        layer: int,
-        component: str = "resid_post",
-    ) -> Intervention:
-        """Create intervention to replace long activations with short ones.
-
-        Injects "short-term" activations into a long-term forward pass.
-        (In patching terms: corrupts the target behavior.)
-
-        Args:
-            target: Which positions/neurons to patch
-            layer: Which layer to patch
-            component: Which component (resid_pre, resid_post, etc.)
-
-        Returns:
-            Intervention that patches short values into long positions
-        """
-        hook_name = f"blocks.{layer}.hook_{component}"
-        long_acts = self._get_activation(self.long_cache, hook_name)
-        short_acts = self._get_activation(self.short_cache, hook_name)
-
-        if short_acts is None:
-            raise ValueError(f"No short activations found for {hook_name}")
-        if long_acts is None:
-            raise ValueError(f"No long activations found for {hook_name}")
-
-        if target.axis == "position" and target.positions:
-            # For noising: target.positions are LONG positions (base text)
-            # Reverse map LONG -> SHORT to get corresponding SHORT positions
-            short_positions = [
-                self.position_mapping.dst_to_src(p) or p for p in target.positions
-            ]
-            # Clamp to valid range (handle both negative and out-of-bounds)
-            short_positions = [max(0, min(p, len(short_acts) - 1)) for p in short_positions]
-            long_positions = [max(0, min(p, len(long_acts) - 1)) for p in target.positions]
-
-            short_at_pos = short_acts[short_positions]
-            long_at_pos = long_acts[long_positions]
-            values = short_at_pos - long_at_pos
-            # Patch at LONG positions (the base text positions)
-            patch_target = InterventionTarget.at_positions(long_positions)
-        elif target.axis == "all":
-            min_len = min(len(long_acts), len(short_acts))
-            diff = short_acts[:min_len] - long_acts[:min_len]
-            values = diff.mean(axis=0)
-            patch_target = InterventionTarget.all()
-        else:
-            values = short_acts - long_acts
-            patch_target = target
-
-        return Intervention(
-            layer=layer,
-            mode="add",
-            values=values,
-            target=patch_target,
-            component=component,
-        )
-
-    def get_denoising_intervention(
-        self,
-        target: InterventionTarget,
-        layer: int,
-        component: str = "resid_post",
-    ) -> Intervention:
-        """Create intervention to replace short activations with long ones.
-
-        Injects "long-term" activations into a short-term forward pass.
-        (In patching terms: recovers target behavior from baseline.)
-
-        Args:
-            target: Which positions/neurons to patch
-            layer: Which layer to patch
-            component: Which component (resid_pre, resid_post, etc.)
-
-        Returns:
-            Intervention that patches long values into short positions
-        """
-        hook_name = f"blocks.{layer}.hook_{component}"
-        long_acts = self._get_activation(self.long_cache, hook_name)
-        short_acts = self._get_activation(self.short_cache, hook_name)
-
-        if long_acts is None:
-            raise ValueError(f"No long activations found for {hook_name}")
-        if short_acts is None:
-            raise ValueError(f"No short activations found for {hook_name}")
-
-        if target.axis == "position" and target.positions:
-            # For denoising: target.positions are SHORT positions (base text)
-            # Map SHORT -> LONG to get corresponding LONG positions
-            long_positions = [
-                self.position_mapping.get(p, p) for p in target.positions
-            ]
-            # Clamp to valid range (handle both negative and out-of-bounds)
-            long_positions = [max(0, min(p, len(long_acts) - 1)) for p in long_positions]
-            short_positions = [max(0, min(p, len(short_acts) - 1)) for p in target.positions]
-
-            long_at_pos = long_acts[long_positions]
-            short_at_pos = short_acts[short_positions]
-            values = long_at_pos - short_at_pos
-            # Patch at SHORT positions (the base text positions)
-            patch_target = InterventionTarget.at_positions(short_positions)
-        elif target.axis == "all":
-            min_len = min(len(long_acts), len(short_acts))
-            diff = long_acts[:min_len] - short_acts[:min_len]
-            values = diff.mean(axis=0)
-            patch_target = InterventionTarget.all()
-        else:
-            values = long_acts - short_acts
-            patch_target = target
-
-        return Intervention(
-            layer=layer,
-            mode="add",
-            values=values,
-            target=patch_target,
-            component=component,
-        )
-
-    def get_intervention(
-        self,
-        target: InterventionTarget,
-        layer: int,
-        component: str = "resid_post",
-        mode: str = "denoising",
-    ) -> Intervention:
-        """Get intervention for the specified mode.
-
-        Args:
-            target: Which positions/neurons to patch
-            layer: Which layer to patch
-            component: Which component (resid_pre, resid_post, etc.)
-            mode: "denoising" or "noising"
-
-        Returns:
-            Intervention configured for the specified mode
-        """
-        if mode == "denoising":
-            return self.get_denoising_intervention(target, layer, component)
-        return self.get_noising_intervention(target, layer, component)
-
-    def get_interventions(
-        self,
-        target: InterventionTarget,
-        layers: list[int],
-        component: str = "resid_post",
-        mode: str = "denoising",
+        mode: PatchingMode,
+        clean_choice: LabeledSimpleBinaryChoice,
+        corrupted_choice: LabeledSimpleBinaryChoice,
+        alpha: float = 1.0,
     ) -> list[Intervention]:
-        """Get interventions across multiple layers for a single target.
+        """Create interventions for activation patching.
 
-        Skips layers where intervention creation fails.
+        Gets activations from the choice objects (computed via forward pass),
+        not from pre-cached trajectory activations.
+
+        Args:
+            target: InterventionTarget specifying layers/positions to patch
+            mode: "denoising" (inject clean into corrupted) or "noising" (inject corrupted into clean)
+            clean_choice: Result of runner.choose on clean prompt (has activations)
+            corrupted_choice: Result of runner.choose on corrupted prompt (has activations)
+            alpha: Interpolation strength (1.0 = full replacement)
+
+        Returns:
+            List of Intervention objects for each layer
         """
+        # Get activations from the choice trees
+        # Only the source choice needs internals (clean for denoising, corrupted for noising)
+        clean_internals = self._get_choice_internals(clean_choice)
+        corrupted_internals = self._get_choice_internals(corrupted_choice)
+
+        source_internals = (
+            clean_internals if mode == "denoising" else corrupted_internals
+        )
+        if not source_internals:
+            raise ValueError(f"Missing internals in source choice for {mode} mode")
+
+        # Resolve layers from source internals
+        available = self._get_available_layers(source_internals)
+        layers = target.resolve_layers(available)
+        component = target.component or "resid_post"
+
+        if DEBUG_INTERVENTIONS:
+            print(
+                f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}"
+            )
+
         interventions = []
         for layer in layers:
-            try:
-                interventions.append(
-                    self.get_intervention(target, layer, component, mode)
-                )
-            except ValueError:
-                continue
+            intervention = self._make_layer_intervention(
+                layer,
+                component,
+                target,
+                mode,
+                clean_internals,
+                corrupted_internals,
+                alpha,
+            )
+            if intervention:
+                interventions.append(intervention)
+
         return interventions
 
-    def get_steering_vector(
-        self,
-        layer: int,
-        component: str = "resid_post",
-    ) -> np.ndarray:
-        """Get steering vector (long - short) for this layer.
+    def _get_choice_internals(self, choice: LabeledSimpleBinaryChoice) -> dict:
+        """Extract internals from a choice object."""
+        if not choice.tree or not choice.tree.trajs:
+            return {}
+        # Use first trajectory's internals (shared prefix has same activations)
+        traj = choice.tree.trajs[0]
+        return traj.internals if traj.has_internals() else {}
 
-        Returns:
-            Mean activation difference [hidden_size]
-        """
-        hook_name = f"blocks.{layer}.hook_{component}"
-        long_acts = self._get_activation(self.long_cache, hook_name)
-        short_acts = self._get_activation(self.short_cache, hook_name)
+    def _get_available_layers(self, internals: dict) -> list[int]:
+        """Get available layers from internals dict."""
+        from .hook_utils import parse_hook_name
 
-        if long_acts is None or short_acts is None:
-            raise ValueError(f"Missing activations for {hook_name}")
-
-        min_len = min(len(long_acts), len(short_acts))
-        diff = long_acts[:min_len] - short_acts[:min_len]
-        return diff.mean(axis=0)
-
-    def _get_activation(self, cache: dict, hook_name: str) -> Optional[np.ndarray]:
-        """Extract activation from cache, converting to numpy if needed."""
-        if hook_name not in cache:
-            return None
-
-        act = cache[hook_name]
-
-        try:
-            import torch
-
-            if isinstance(act, torch.Tensor):
-                act = act.detach().cpu().numpy()
-        except ImportError:
-            pass
-
-        if act.ndim == 3 and act.shape[0] == 1:
-            act = act[0]
-
-        return act
-
-    # =========================================================================
-    # Properties
-    # =========================================================================
-
-    @property
-    def short_length(self) -> int:
-        """Length of the short trajectory."""
-        return self.short_traj.n_sequence
-
-    @property
-    def long_length(self) -> int:
-        """Length of the long trajectory."""
-        return self.long_traj.n_sequence
-
-    @property
-    def available_layers(self) -> list[int]:
-        """List of layers that have cached activations."""
         layers = set()
-        for hook_name in self.short_cache.keys():
-            if hook_name.startswith("blocks.") and ".hook_" in hook_name:
-                try:
-                    layer = int(hook_name.split(".")[1])
-                    layers.add(layer)
-                except (IndexError, ValueError):
-                    continue
+        for name in internals.keys():
+            parsed = parse_hook_name(name)
+            if parsed:
+                layers.add(parsed[0])
         return sorted(layers)
 
-    @property
-    def available_components(self) -> list[str]:
-        """List of components that have cached activations."""
-        components = set()
-        for hook_name in self.short_cache.keys():
-            if ".hook_" in hook_name:
-                try:
-                    comp = hook_name.split(".hook_")[1]
-                    components.add(comp)
-                except IndexError:
-                    continue
-        return sorted(components)
+    def _make_layer_intervention(
+        self,
+        layer: int,
+        component: str,
+        target: InterventionTarget,
+        mode: PatchingMode,
+        clean_internals: dict,
+        corrupted_internals: dict,
+        alpha: float,
+    ) -> Intervention | None:
+        """Create intervention for a single layer."""
+        hook = hook_name(layer, component)
+
+        # Get source activations (only source needs internals)
+        if mode == "denoising":
+            patch_acts = clean_internals.get(hook)
+            running_len = self.corrupted_length  # Destination sequence length
+        else:
+            patch_acts = corrupted_internals.get(hook)
+            running_len = self.clean_length  # Destination sequence length
+
+        if patch_acts is None:
+            return None
+
+        # Squeeze batch dimension if present: [1, seq, hidden] -> [seq, hidden]
+        if patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)
+
+        positions = target.positions
+
+        if mode == "denoising":
+            # Running corrupted context, inject clean activations
+            if positions:
+                patch_positions = [
+                    self.position_mapping.dst_to_src_interpolated(p) for p in positions
+                ]
+            else:
+                patch_positions = [
+                    self.position_mapping.dst_to_src_interpolated(p)
+                    for p in range(running_len)
+                ]
+        else:
+            # Running clean context, inject corrupted activations
+            if positions:
+                patch_positions = [self.position_mapping.get(p, p) for p in positions]
+            else:
+                patch_positions = [
+                    self.position_mapping.get(p, p) for p in range(running_len)
+                ]
+
+        # Clamp positions to valid range
+        patch_positions = [
+            max(0, min(int(p), len(patch_acts) - 1)) for p in patch_positions
+        ]
+        patch_vals = patch_acts[patch_positions]
+
+        # Properly convert tensor to numpy array
+        if hasattr(patch_vals, "detach"):
+            patch_vals = patch_vals.detach()
+        if hasattr(patch_vals, "cpu"):
+            patch_vals = patch_vals.cpu()
+        if hasattr(patch_vals, "numpy"):
+            patch_vals = patch_vals.numpy()
+
+        patch_target = (
+            InterventionTarget.at_positions(positions)
+            if positions
+            else InterventionTarget.all()
+        )
+
+        if DEBUG_INTERVENTIONS and layer == 0:
+            print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
+            print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
+            print(
+                f"[intervention]   running_len={running_len}, target.positions={positions}"
+            )
+            print(
+                f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}"
+            )
+            print(f"[intervention]   patch_vals.shape={patch_vals.shape}")
+            print(f"[intervention]   patch_target={patch_target}")
+
+        # Use set mode for full replacement, interpolate for partial
+        if alpha >= 1.0:
+            return Intervention(
+                layer=layer,
+                mode="set",
+                values=patch_vals,
+                target=patch_target,
+                component=component,
+            )
+        else:
+            return Intervention(
+                layer=layer,
+                mode="interpolate",
+                values=patch_vals,  # Required but unused for interpolate mode
+                target_values=patch_vals,
+                alpha=alpha,
+                target=patch_target,
+                component=component,
+            )
 
     def print_summary(self) -> None:
-        layers = self.available_layers
-        layers_str = f"{layers[:5]}..." if len(layers) > 5 else str(layers)
-        print(f"Short: {self.short_length} tokens, Long: {self.long_length} tokens")
-        print(f"Layers: {layers_str}")
+        print(f"Clean: {self.clean_length}, Corrupted: {self.corrupted_length}")
+
+    def print_position_mapping_debug(self, prefix: str = "[debug]") -> None:
+        """Print debug info about position mapping."""
+        pm = self.position_mapping
+        print(f"{prefix} Position mapping: src_len={pm.src_len}, dst_len={pm.dst_len}")
+        print(
+            f"{prefix} Anchors ({len(pm.anchors)}): {list(zip(pm.anchors, pm.anchor_texts))}"
+        )
+        print(
+            f"{prefix} First interesting: {pm.first_interesting_marker} -> pos={pm.first_interesting_pos}"
+        )
+        if pm.anchors:
+            for (src_pos, dst_pos), text in zip(pm.anchors[:3], pm.anchor_texts[:3]):
+                print(
+                    f"{prefix}   Anchor '{text}': src={src_pos} -> dst={dst_pos}, mapping[{src_pos}]={pm.mapping.get(src_pos)}"
+                )

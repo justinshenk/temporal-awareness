@@ -14,7 +14,11 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.neighbors import NearestNeighbors
 
-from .sae_plots import plot_cluster_distribution, plot_embedding, plot_gradient_embedding
+from .sae_plots import (
+    plot_cluster_distribution,
+    plot_embedding,
+    plot_gradient_embedding,
+)
 
 
 # =============================================================================
@@ -32,7 +36,9 @@ def compute_purity(cluster_labels: np.ndarray, true_labels: np.ndarray) -> float
         mask = cluster_labels == cid
         if mask.sum() > 0:
             labels_in_cluster = true_labels[mask]
-            correct += (labels_in_cluster == np.bincount(labels_in_cluster).argmax()).sum()
+            correct += (
+                labels_in_cluster == np.bincount(labels_in_cluster).argmax()
+            ).sum()
     return correct / n
 
 
@@ -50,7 +56,9 @@ def compute_cluster_balance(cluster_dist: list[int]) -> float:
     return entropy / max_entropy if max_entropy > 0 else 0.0
 
 
-def compute_clustering_metrics(labels: np.ndarray, n_clusters: int, sentences: list[dict]) -> dict:
+def compute_clustering_metrics(
+    labels: np.ndarray, n_clusters: int, sentences: list[dict]
+) -> dict:
     """Compute NMI, ARI, purity for horizon and choice labels."""
     horizon = np.array([s["time_horizon_bucket"] for s in sentences])
     choice = np.array([s["llm_choice"] for s in sentences])
@@ -59,12 +67,24 @@ def compute_clustering_metrics(labels: np.ndarray, n_clusters: int, sentences: l
     valid_c = choice >= 0
 
     result = {
-        "horizon_nmi": normalized_mutual_info_score(horizon[valid_h], labels[valid_h]) if valid_h.sum() > 0 else 0.0,
-        "horizon_ari": adjusted_rand_score(horizon[valid_h], labels[valid_h]) if valid_h.sum() > 0 else 0.0,
-        "horizon_purity": compute_purity(labels[valid_h], horizon[valid_h]) if valid_h.sum() > 0 else 0.0,
-        "choice_nmi": normalized_mutual_info_score(choice[valid_c], labels[valid_c]) if valid_c.sum() > 0 else 0.0,
-        "choice_ari": adjusted_rand_score(choice[valid_c], labels[valid_c]) if valid_c.sum() > 0 else 0.0,
-        "choice_purity": compute_purity(labels[valid_c], choice[valid_c]) if valid_c.sum() > 0 else 0.0,
+        "horizon_nmi": normalized_mutual_info_score(horizon[valid_h], labels[valid_h])
+        if valid_h.sum() > 0
+        else 0.0,
+        "horizon_ari": adjusted_rand_score(horizon[valid_h], labels[valid_h])
+        if valid_h.sum() > 0
+        else 0.0,
+        "horizon_purity": compute_purity(labels[valid_h], horizon[valid_h])
+        if valid_h.sum() > 0
+        else 0.0,
+        "choice_nmi": normalized_mutual_info_score(choice[valid_c], labels[valid_c])
+        if valid_c.sum() > 0
+        else 0.0,
+        "choice_ari": adjusted_rand_score(choice[valid_c], labels[valid_c])
+        if valid_c.sum() > 0
+        else 0.0,
+        "choice_purity": compute_purity(labels[valid_c], choice[valid_c])
+        if valid_c.sum() > 0
+        else 0.0,
     }
 
     cluster_dist = np.bincount(labels, minlength=n_clusters).tolist()
@@ -93,7 +113,9 @@ def _patch_pacmap_annoy():
         n_MN = min(n_MN, n - 1)
 
         metric = "minkowski" if distance == "euclidean" else distance
-        nn = NearestNeighbors(n_neighbors=n_neighbors_extra + 1, metric=metric, algorithm="auto")
+        nn = NearestNeighbors(
+            n_neighbors=n_neighbors_extra + 1, metric=metric, algorithm="auto"
+        )
         nn.fit(X)
         knn_distances, indices = nn.kneighbors(X)
         nbrs = indices[:, 1:].astype(np.int32)
@@ -108,8 +130,12 @@ def _patch_pacmap_annoy():
             pair_MN = _pm.sample_MN_pair(X, n_MN, option)
             pair_FP = _pm.sample_FP_pair(X, pair_neighbors, n_neighbors, n_FP)
         else:
-            pair_MN = _pm.sample_MN_pair_deterministic(X, n_MN, _pm._RANDOM_STATE, option)
-            pair_FP = _pm.sample_FP_pair_deterministic(X, pair_neighbors, n_neighbors, n_FP, _pm._RANDOM_STATE)
+            pair_MN = _pm.sample_MN_pair_deterministic(
+                X, n_MN, _pm._RANDOM_STATE, option
+            )
+            pair_FP = _pm.sample_FP_pair_deterministic(
+                X, pair_neighbors, n_neighbors, n_FP, _pm._RANDOM_STATE
+            )
 
         return pair_neighbors, pair_MN, pair_FP, None
 
@@ -125,17 +151,23 @@ def compute_embeddings(features: np.ndarray) -> dict[str, np.ndarray]:
     embeddings = {}
 
     try:
-        embeddings["umap"] = umap.UMAP(n_components=2, n_neighbors=min(15, n - 1), random_state=42).fit_transform(features)
+        embeddings["umap"] = umap.UMAP(
+            n_components=2, n_neighbors=min(15, n - 1), random_state=42
+        ).fit_transform(features)
     except Exception:
         pass
 
     try:
-        embeddings["tsne"] = TSNE(n_components=2, random_state=42, perplexity=min(30, n - 1)).fit_transform(features)
+        embeddings["tsne"] = TSNE(
+            n_components=2, random_state=42, perplexity=min(30, n - 1)
+        ).fit_transform(features)
     except Exception:
         pass
 
     try:
-        embeddings["pacmap"] = pacmap.PaCMAP(n_components=2, n_neighbors=min(10, n - 1), random_state=42).fit_transform(features)
+        embeddings["pacmap"] = pacmap.PaCMAP(
+            n_components=2, n_neighbors=min(10, n - 1), random_state=42
+        ).fit_transform(features)
     except Exception:
         pass
 
@@ -190,10 +222,16 @@ def build_colorings(sentences: list[dict], labels: np.ndarray) -> dict[str, list
         "time_horizon": [format_horizon(s["time_horizon_months"]) for s in sentences],
         "source": [s["source"] for s in sentences],
         "section": [s["section"] for s in sentences],
-        "formatting_id": [format_formatting_id(s.get("formatting_id")) for s in sentences],
-        "formatting_id_sign": [format_formatting_sign(s.get("formatting_id")) for s in sentences],
+        "formatting_id": [
+            format_formatting_id(s.get("formatting_id")) for s in sentences
+        ],
+        "formatting_id_sign": [
+            format_formatting_sign(s.get("formatting_id")) for s in sentences
+        ],
         "matches_rational": [format_bool(s.get("matches_rational")) for s in sentences],
-        "matches_associated": [format_bool(s.get("matches_associated")) for s in sentences],
+        "matches_associated": [
+            format_bool(s.get("matches_associated")) for s in sentences
+        ],
     }
 
 
@@ -227,7 +265,9 @@ def generate_plots(
         for method, coords in embeddings.items():
             title = f"{method.upper()}{' — ' + title_prefix if title_prefix else ''} — {name}"
             try:
-                plot_embedding(coords, color_labels, title, coloring_dir / f"{method}.png")
+                plot_embedding(
+                    coords, color_labels, title, coloring_dir / f"{method}.png"
+                )
             except Exception:
                 pass
 
@@ -238,7 +278,9 @@ def generate_plots(
         for method, coords in embeddings.items():
             title = f"{method.upper()}{' — ' + title_prefix if title_prefix else ''} — {name}"
             try:
-                plot_gradient_embedding(coords, values, title, coloring_dir / f"{method}.png")
+                plot_gradient_embedding(
+                    coords, values, title, coloring_dir / f"{method}.png"
+                )
             except Exception:
                 pass
 
@@ -248,7 +290,9 @@ def generate_plots(
 # =============================================================================
 
 
-def cluster_analysis(sentences: list[dict], features: torch.Tensor, analysis_dir: str) -> dict:
+def cluster_analysis(
+    sentences: list[dict], features: torch.Tensor, analysis_dir: str
+) -> dict:
     """Run cluster analysis on SAE features."""
     path = Path(analysis_dir)
     path.mkdir(parents=True, exist_ok=True)
@@ -262,7 +306,11 @@ def cluster_analysis(sentences: list[dict], features: torch.Tensor, analysis_dir
         json.dump(result, f, indent=2)
 
     try:
-        plot_cluster_distribution(result["cluster_distribution"], f"Cluster Distribution ({len(sentences)} sentences)", path / "cluster_distribution.png")
+        plot_cluster_distribution(
+            result["cluster_distribution"],
+            f"Cluster Distribution ({len(sentences)} sentences)",
+            path / "cluster_distribution.png",
+        )
     except Exception:
         pass
 
@@ -271,7 +319,9 @@ def cluster_analysis(sentences: list[dict], features: torch.Tensor, analysis_dir
     except Exception:
         pass
 
-    print(f"    Horizon NMI: {result['horizon_nmi']:.4f}, Choice NMI: {result['choice_nmi']:.4f}, Active: {result['active_clusters']}/{n_clusters}")
+    print(
+        f"    Horizon NMI: {result['horizon_nmi']:.4f}, Choice NMI: {result['choice_nmi']:.4f}, Active: {result['active_clusters']}/{n_clusters}"
+    )
     return result
 
 
@@ -294,7 +344,9 @@ def _spherical_kmeans(X: np.ndarray, k: int) -> np.ndarray:
 
 
 def _agglomerative(X: np.ndarray, k: int) -> np.ndarray:
-    return AgglomerativeClustering(n_clusters=k, metric="cosine", linkage="average").fit_predict(X)
+    return AgglomerativeClustering(
+        n_clusters=k, metric="cosine", linkage="average"
+    ).fit_predict(X)
 
 
 def _pca_kmeans(X: np.ndarray, k: int) -> np.ndarray:
@@ -303,7 +355,9 @@ def _pca_kmeans(X: np.ndarray, k: int) -> np.ndarray:
     return KMeans(n_clusters=k, n_init="auto", random_state=42).fit_predict(X_reduced)
 
 
-def baseline_cluster_analysis(X: np.ndarray, sentences: list[dict], n_clusters: int, analysis_dir: str) -> dict:
+def baseline_cluster_analysis(
+    X: np.ndarray, sentences: list[dict], n_clusters: int, analysis_dir: str
+) -> dict:
     """Run baseline clustering methods."""
     path = Path(analysis_dir)
     path.mkdir(parents=True, exist_ok=True)
@@ -324,13 +378,19 @@ def baseline_cluster_analysis(X: np.ndarray, sentences: list[dict], n_clusters: 
         metrics["method"] = method_key
         results[method_key] = metrics
 
-        print(f"Horizon NMI: {metrics['horizon_nmi']:.4f}, Choice NMI: {metrics['choice_nmi']:.4f}, Active: {metrics['active_clusters']}/{n_clusters}")
+        print(
+            f"Horizon NMI: {metrics['horizon_nmi']:.4f}, Choice NMI: {metrics['choice_nmi']:.4f}, Active: {metrics['active_clusters']}/{n_clusters}"
+        )
 
         method_dir = path / method_key
         method_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            plot_cluster_distribution(metrics["cluster_distribution"], f"{label} ({len(sentences)} sentences)", method_dir / "cluster_distribution.png")
+            plot_cluster_distribution(
+                metrics["cluster_distribution"],
+                f"{label} ({len(sentences)} sentences)",
+                method_dir / "cluster_distribution.png",
+            )
         except Exception:
             pass
 
