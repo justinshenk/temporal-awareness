@@ -16,6 +16,11 @@ from .geo_viz_analysis import EmbeddingResult, LinearProbeResult, PCAResult
 from .geo_viz_config import GeoVizConfig
 from .geo_viz_data import ActivationData, get_time_horizon_months
 
+
+def _months_to_years(months: float) -> float:
+    """Convert months to years."""
+    return months / 12.0
+
 logger = logging.getLogger(__name__)
 
 # Color scheme
@@ -45,12 +50,12 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
     """Get all available coloring schemes from the data."""
     schemes = []
 
-    # Time horizon
-    horizons = np.array([get_time_horizon_months(s) for s in data.samples])
+    # Time horizon (in years)
+    horizons = np.array([_months_to_years(get_time_horizon_months(s)) for s in data.samples])
     schemes.append(
         ColoringScheme(
             name="horizon",
-            label="Time Horizon (months)",
+            label="Time Horizon (years)",
             values=horizons,
             use_log=True,
         )
@@ -58,11 +63,11 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
 
     # Choice-based schemes
     if data.choices:
-        chosen_times = np.array([c.chosen_time_months for c in data.choices])
+        chosen_times = np.array([_months_to_years(c.chosen_time_months) for c in data.choices])
         schemes.append(
             ColoringScheme(
                 name="chosen_time",
-                label="Chosen Delivery Time (months)",
+                label="Chosen Delivery Time (years)",
                 values=chosen_times,
                 use_log=True,
             )
@@ -103,10 +108,10 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
 
 
 def _get_horizons(data: ActivationData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extract horizon arrays from data."""
-    horizons = np.array([get_time_horizon_months(s) for s in data.samples])
-    log_horizons = np.log10(horizons + 1)
-    buckets = np.digitize(horizons, [12, 60, 120])
+    """Extract horizon arrays from data (in years)."""
+    horizons = np.array([_months_to_years(get_time_horizon_months(s)) for s in data.samples])
+    log_horizons = np.log10(horizons + 0.1)  # Small offset to handle values < 1 year
+    buckets = np.digitize(horizons, [1, 5, 10])  # 1yr, 5yr, 10yr thresholds
     return horizons, log_horizons, buckets
 
 
@@ -174,7 +179,7 @@ def plot_linear_probe_summary(
             "r--",
             alpha=0.5,
         )
-        ax.set_xlabel("Actual log₁₀(months)")
+        ax.set_xlabel("Actual log₁₀(years)")
         ax.set_ylabel("Predicted")
         ax.set_title(f"{target_key}\nR²={result.r2_mean:.3f}")
 
@@ -261,7 +266,7 @@ def plot_target_pca(
     ax = axes[1, 1]
     _scatter_with_scheme(ax, X_pca[:, best_pc_idx], schemes[0].values, schemes[0])
     ax.set_xlabel(f"PC{best_pc_idx}")
-    ax.set_ylabel("Time Horizon (months)")
+    ax.set_ylabel("Time Horizon (years)")
     if schemes[0].use_log:
         ax.set_yscale("log")
     ax.set_title(f"PC{best_pc_idx} vs Horizon")
