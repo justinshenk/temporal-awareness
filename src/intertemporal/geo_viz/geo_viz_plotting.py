@@ -489,6 +489,233 @@ def plot_target_3d(
 
 
 # =============================================================================
+# Helper Functions
+# =============================================================================
+
+
+def _parse_target_key(target_key: str) -> tuple[str, str]:
+    """Parse target key into (base_key, position).
+
+    E.g., "L19_mlp_out_Pdest" -> ("L19_mlp_out", "dest")
+    """
+    if target_key.endswith("_Pdest"):
+        return target_key[:-6], "dest"
+    elif target_key.endswith("_Psource"):
+        return target_key[:-8], "source"
+    else:
+        return target_key, "unknown"
+
+
+def _group_targets_by_base(target_keys: list[str]) -> dict[str, dict[str, str]]:
+    """Group target keys by their base (layer+component).
+
+    Returns: {base_key: {position: full_target_key}}
+    """
+    groups = {}
+    for key in target_keys:
+        base, pos = _parse_target_key(key)
+        if base not in groups:
+            groups[base] = {}
+        groups[base][pos] = key
+    return groups
+
+
+def plot_cross_layer_summary(
+    linear_probe_results: dict[str, LinearProbeResult],
+    pca_results: dict[str, PCAResult],
+    schemes: list[ColoringScheme],
+    output_dir: Path,
+):
+    """Generate cross-layer comparison plots showing all layers/positions together."""
+    # Parse all targets
+    targets_by_pos = {"dest": [], "source": []}
+    for key in linear_probe_results.keys():
+        base, pos = _parse_target_key(key)
+        if pos in targets_by_pos:
+            targets_by_pos[pos].append((key, base))
+
+    # Sort by layer number
+    def extract_layer(item):
+        match = re.search(r"L(\d+)", item[1])
+        return int(match.group(1)) if match else 0
+
+    for pos in targets_by_pos:
+        targets_by_pos[pos].sort(key=extract_layer)
+
+    # Cross-layer R² comparison
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    for idx, (pos, targets) in enumerate(targets_by_pos.items()):
+        if not targets:
+            continue
+        ax = axes[idx]
+        labels = [t[1] for t in targets]  # base keys
+        r2_scores = [linear_probe_results[t[0]].r2_mean for t in targets]
+        colors = ["#4CAF50" if pos == "dest" else "#F44336"] * len(targets)
+
+        bars = ax.barh(range(len(labels)), r2_scores, color=colors, alpha=0.8)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=9)
+        ax.set_xlabel("R² Score")
+        ax.set_title(f"{pos.upper()} Position\nAcross Layers")
+        ax.set_xlim(-0.1, 1.1)
+        ax.axvline(0, color="black", linewidth=0.5)
+
+        for i, r2 in enumerate(r2_scores):
+            ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=8)
+
+    plt.suptitle("Linear Probe R² by Layer and Position", fontsize=14)
+    plt.tight_layout()
+    plt.savefig(output_dir / "cross_layer_r2.png", dpi=150)
+    plt.close()
+
+    # Cross-layer PCA grid (dest only, showing time_scale coloring)
+    dest_targets = targets_by_pos.get("dest", [])
+    if dest_targets and len(schemes) > 0:
+        n_targets = len(dest_targets)
+        n_cols = min(3, n_targets)
+        n_rows = (n_targets + n_cols - 1) // n_cols
+
+        # Use time_scale scheme if available, else first scheme
+        scheme = next((s for s in schemes if s.name == "time_scale"), schemes[0])
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4.5 * n_rows))
+        axes = np.atleast_2d(axes)
+
+        for idx, (target_key, base_key) in enumerate(dest_targets):
+            row, col = idx // n_cols, idx % n_cols
+            ax = axes[row, col]
+
+            if target_key in pca_results:
+                pca_result = pca_results[target_key]
+                X_pca = pca_result.transformed
+                best_pc_idx = pca_result.pc_correlations[0][0]
+                best_corr = pca_result.pc_correlations[0][1]
+
+                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False)
+                ax.set_xlabel("PC0")
+                ax.set_ylabel(f"PC{best_pc_idx}")
+                ax.set_title(f"{base_key}\nr={best_corr:.2f}")
+
+        # Hide empty subplots
+        for idx in range(len(dest_targets), n_rows * n_cols):
+            row, col = idx // n_cols, idx % n_cols
+            axes[row, col].axis("off")
+
+        plt.suptitle(f"PCA Across Layers (DEST) - {scheme.label}", fontsize=14)
+        plt.tight_layout()
+        plt.savefig(output_dir / "cross_layer_pca_dest.png", dpi=150)
+        plt.close()
+
+        # Same for source if available
+        source_targets = targets_by_pos.get("source", [])
+        if source_targets:
+            n_targets = len(source_targets)
+            n_cols = min(3, n_targets)
+            n_rows = (n_targets + n_cols - 1) // n_cols
+
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4.5 * n_rows))
+            axes = np.atleast_2d(axes)
+
+            for idx, (target_key, base_key) in enumerate(source_targets):
+                row, col = idx // n_cols, idx % n_cols
+                ax = axes[row, col]
+
+                if target_key in pca_results:
+                    pca_result = pca_results[target_key]
+                    X_pca = pca_result.transformed
+                    best_pc_idx = pca_result.pc_correlations[0][0]
+                    best_corr = pca_result.pc_correlations[0][1]
+
+                    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False)
+                    ax.set_xlabel("PC0")
+                    ax.set_ylabel(f"PC{best_pc_idx}")
+                    ax.set_title(f"{base_key}\nr={best_corr:.2f}")
+
+            for idx in range(len(source_targets), n_rows * n_cols):
+                row, col = idx // n_cols, idx % n_cols
+                axes[row, col].axis("off")
+
+            plt.suptitle(f"PCA Across Layers (SOURCE) - {scheme.label}", fontsize=14)
+            plt.tight_layout()
+            plt.savefig(output_dir / "cross_layer_pca_source.png", dpi=150)
+            plt.close()
+
+
+def plot_position_comparison(
+    base_key: str,
+    position_targets: dict[str, str],
+    linear_probe_results: dict[str, LinearProbeResult],
+    pca_results: dict[str, PCAResult],
+    schemes: list[ColoringScheme],
+    output_dir: Path,
+):
+    """Generate comparison plots for dest vs source positions."""
+    if len(position_targets) < 2:
+        return
+
+    # Comparison of R² scores
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # R² comparison bar chart
+    ax = axes[0]
+    positions = list(position_targets.keys())
+    r2_scores = [linear_probe_results[position_targets[p]].r2_mean for p in positions]
+    colors = ["#4CAF50" if p == "dest" else "#F44336" for p in positions]
+    ax.bar(positions, r2_scores, color=colors, alpha=0.8)
+    ax.set_ylabel("R² Score")
+    ax.set_title(f"{base_key}\nLinear Probe R² by Position")
+    ax.set_ylim(-0.1, 1.1)
+    for i, (pos, r2) in enumerate(zip(positions, r2_scores)):
+        ax.text(i, max(r2, 0) + 0.05, f"{r2:.3f}", ha="center", fontsize=11)
+
+    # PCA correlation comparison
+    ax = axes[1]
+    for pos in positions:
+        target_key = position_targets[pos]
+        if target_key in pca_results:
+            pca_result = pca_results[target_key]
+            corrs = [c[1] for c in pca_result.pc_correlations[:10]]
+            color = "#4CAF50" if pos == "dest" else "#F44336"
+            ax.plot(range(len(corrs)), [abs(c) for c in corrs],
+                   marker='o', label=pos, color=color, alpha=0.8)
+    ax.set_xlabel("PC Index (sorted by correlation)")
+    ax.set_ylabel("|Correlation with log(horizon)|")
+    ax.set_title("PCA Correlation by Position")
+    ax.legend()
+    ax.set_ylim(0, 1)
+
+    plt.suptitle(f"{base_key} - Position Comparison", fontsize=14)
+    plt.tight_layout()
+    plt.savefig(output_dir / "position_comparison.png", dpi=150)
+    plt.close()
+
+    # Side-by-side PCA scatter for each coloring scheme
+    for scheme in schemes[:3]:  # Just first 3 schemes for comparison
+        fig, axes = plt.subplots(1, len(positions), figsize=(6 * len(positions), 5))
+        if len(positions) == 1:
+            axes = [axes]
+
+        for idx, pos in enumerate(positions):
+            target_key = position_targets[pos]
+            if target_key in pca_results:
+                pca_result = pca_results[target_key]
+                X_pca = pca_result.transformed
+                best_pc_idx = pca_result.pc_correlations[0][0]
+
+                ax = axes[idx]
+                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme)
+                ax.set_xlabel("PC0")
+                ax.set_ylabel(f"PC{best_pc_idx}")
+                ax.set_title(f"{pos.upper()}")
+
+        plt.suptitle(f"{base_key} - {scheme.label}", fontsize=12)
+        plt.tight_layout()
+        plt.savefig(output_dir / f"comparison_{scheme.name}.png", dpi=150)
+        plt.close()
+
+
+# =============================================================================
 # Main Entry Point
 # =============================================================================
 
@@ -500,7 +727,24 @@ def generate_all_plots(
     embedding_results: dict[str, EmbeddingResult],
     config: GeoVizConfig,
 ):
-    """Generate all plots with organized directory structure."""
+    """Generate all plots with organized directory structure.
+
+    Structure:
+        plots/
+        ├── linear_probe_summary.png
+        ├── linear_probe_scatter.png
+        └── targets/
+            └── L19_mlp_out/
+                ├── position_comparison.png
+                ├── comparison_*.png
+                └── by_position/
+                    ├── dest/
+                    │   ├── pca/
+                    │   ├── embeddings/
+                    │   └── 3d/
+                    └── source/
+                        └── ...
+    """
     output_dir = config.output_dir / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -511,20 +755,41 @@ def generate_all_plots(
     logger.info("Generating summary plots...")
     plot_linear_probe_summary(data, linear_probe_results, output_dir)
 
-    # Per-target plots
+    # Cross-layer comparison plots
+    logger.info("Generating cross-layer plots...")
+    plot_cross_layer_summary(linear_probe_results, pca_results, schemes, output_dir)
+
+    # Group targets by base (layer+component)
+    target_groups = _group_targets_by_base(list(pca_results.keys()))
+
     targets_dir = output_dir / "targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
 
-    for target_key in pca_results.keys():
-        logger.info(f"  Plotting {target_key}...")
-        target_dir = targets_dir / target_key
-        target_dir.mkdir(parents=True, exist_ok=True)
+    for base_key, position_targets in target_groups.items():
+        logger.info(f"  Processing {base_key}...")
+        base_dir = targets_dir / base_key
+        base_dir.mkdir(parents=True, exist_ok=True)
 
-        plot_target_pca(target_key, pca_results[target_key], schemes, target_dir)
+        # Generate comparison plots at base level
+        plot_position_comparison(
+            base_key, position_targets, linear_probe_results,
+            pca_results, schemes, base_dir
+        )
 
-        if target_key in embedding_results:
-            plot_target_embeddings(target_key, embedding_results[target_key], schemes, target_dir)
+        # Generate per-position plots
+        by_position_dir = base_dir / "by_position"
+        by_position_dir.mkdir(parents=True, exist_ok=True)
 
-        plot_target_3d(target_key, pca_results[target_key], schemes, target_dir)
+        for pos, target_key in position_targets.items():
+            logger.info(f"    Plotting {pos}...")
+            pos_dir = by_position_dir / pos
+            pos_dir.mkdir(parents=True, exist_ok=True)
+
+            plot_target_pca(target_key, pca_results[target_key], schemes, pos_dir)
+
+            if target_key in embedding_results:
+                plot_target_embeddings(target_key, embedding_results[target_key], schemes, pos_dir)
+
+            plot_target_3d(target_key, pca_results[target_key], schemes, pos_dir)
 
     logger.info(f"All plots saved to {output_dir}")
