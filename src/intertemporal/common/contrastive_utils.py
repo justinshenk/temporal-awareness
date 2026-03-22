@@ -243,68 +243,107 @@ SmartReduceMode = Literal["balanced", "diverse", "minimal"]
 SelectionStrategy = Literal["greedy", "round_robin"]
 
 
+@dataclass
+class PrefPairSubsampleStrategy(BaseSchema):
+    """Strategy for subsampling/reducing contrastive preference pairs.
+
+    Controls how pairs are grouped, deduplicated, and reduced to a manageable size.
+    All fields have sensible defaults for the common case (group_by="choice").
+    """
+
+    # Grouping mode
+    group_by: GroupByMode = "choice"
+    """How to group samples before pairing:
+    - "choice": No grouping - pair any short-chooser with any long-chooser (default)
+    - "horizon": Group by horizon value - pairs share same horizon
+    - "content": Group by reward/time values - pairs share same content
+    """
+
+    # Deduplication
+    deduplicate: bool = False
+    """Remove duplicate content×horizon pairs within each group."""
+
+    best_only: bool = False
+    """Keep only the single best pair per group (highest confidence)."""
+
+    # Confidence filtering
+    min_confidence: float = 0.0
+    """Minimum choice probability threshold (0.0-1.0)."""
+
+    # Per-dimension limits (applied in order: horizon -> ratio -> confidence -> sample)
+    max_per_sample: int | None = None
+    """Maximum pairs each sample can participate in. Core reduction mechanism."""
+
+    max_per_horizon_pair: int | None = None
+    """Maximum pairs per (short_horizon, long_horizon) combination."""
+
+    max_per_reward_ratio: int | None = None
+    """Maximum pairs per reward ratio (long/short)."""
+
+    max_per_confidence_bucket: int | None = None
+    """Maximum pairs per confidence bucket ([0.5-0.6), [0.6-0.7), etc.)."""
+
+    # Convenience presets
+    smart_reduce: SmartReduceMode | None = "minimal"
+    """Preset that sets max_per_sample:
+    - "minimal": max_per_sample=1 (~25 pairs) [DEFAULT]
+    - "diverse": max_per_sample=2 (~50 pairs)
+    - "balanced": max_per_sample=3 (~75 pairs)
+    """
+
+    # Prioritization
+    prefer_different_horizon: bool = False
+    """Sort different-horizon pairs first before applying limits."""
+
+    # Target-based reduction
+    target_pairs: int | None = None
+    """Target number of output pairs. Auto-calculates max_per_sample."""
+
+    # Selection strategy
+    selection_strategy: SelectionStrategy = "greedy"
+    """How to select pairs when applying limits:
+    - "greedy": Take highest confidence pairs first (default)
+    - "round_robin": Cycle through horizon combinations for diversity
+    """
+
+    def apply_smart_reduce(self) -> "PrefPairSubsampleStrategy":
+        """Apply smart_reduce preset to max_per_sample if not already set."""
+        if self.max_per_sample is not None:
+            return self  # Don't override explicit setting
+
+        if self.smart_reduce == "balanced":
+            return PrefPairSubsampleStrategy(
+                **{**self.to_dict(), "max_per_sample": 3}
+            )
+        elif self.smart_reduce == "diverse":
+            return PrefPairSubsampleStrategy(
+                **{**self.to_dict(), "max_per_sample": 2}
+            )
+        elif self.smart_reduce == "minimal":
+            return PrefPairSubsampleStrategy(
+                **{**self.to_dict(), "max_per_sample": 1}
+            )
+        return self
+
+
 def get_contrastive_preferences(
     dataset: PreferenceDataset,
     req: PrefPairRequirement | None = None,
-    group_by: GroupByMode = "choice",
-    deduplicate: bool = False,
-    best_only: bool = False,
-    min_confidence: float = 0.0,
-    max_per_sample: int | None = None,
-    max_per_horizon_pair: int | None = None,
-    max_per_reward_ratio: int | None = None,
-    max_per_confidence_bucket: int | None = None,
-    smart_reduce: SmartReduceMode | None = None,
-    prefer_different_horizon: bool = False,
-    target_pairs: int | None = None,
-    selection_strategy: SelectionStrategy = "greedy",
+    subsample: PrefPairSubsampleStrategy | None = None,
+    **kwargs,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples with different choices for contrastive analysis.
-
-    Grouping modes:
-    - "content": Group by reward/time values. Pairs share same content but differ
-      in horizon. Isolates the horizon effect.
-    - "horizon": Group by horizon value. Pairs share same horizon but may differ
-      in rewards/times. Isolates reward/time sensitivity.
-    - "choice": No grouping - pair any short-chooser with any long-chooser.
-      Maximum volume for PCA, noisier but reveals dominant separating direction.
 
     Args:
         dataset: PreferenceDataset containing samples to search
         req: Optional PrefPairRequirement specifying filtering requirements
-        group_by: Grouping mode ("content", "horizon", or "choice")
-        deduplicate: If True, keep only one pair per unique content×horizon
-            combination within each group. Reduces redundancy from formatting
-            variations. Recommended for geometry analysis.
-        best_only: If True, only keep the single best pair per group (highest
-            confidence short + highest confidence long). Creates one high-quality
-            pair per content/horizon group instead of all pairwise combinations.
-        min_confidence: Minimum choice probability threshold. Pairs where either
-            sample has choice_prob below this are filtered out.
-        max_per_sample: Maximum number of pairs each sample can participate in.
-            When set, pairs are selected greedily (highest confidence first) while
-            respecting this limit. Ensures balanced coverage without explosion.
-            Useful with group_by="choice" to reduce 975 pairs to ~50-100.
-        max_per_horizon_pair: Maximum pairs per (short_horizon, long_horizon) combo.
-            Ensures diversity across horizon combinations. Applied before
-            max_per_sample for stratified reduction.
-        max_per_reward_ratio: Maximum pairs per reward ratio (long/short).
-            Ensures diversity across different preference strengths.
-        max_per_confidence_bucket: Maximum pairs per confidence bucket.
-            Buckets are [0.5-0.6), [0.6-0.7), [0.7-0.8), [0.8-0.9), [0.9-1.0].
-            Ensures pairs span different confidence levels, not just the highest.
-        smart_reduce: Convenience presets for balanced reduction:
-            - "balanced": ~60-80 pairs, good signal diversity
-            - "diverse": ~40-60 pairs, maximizes dimension coverage
-            - "minimal": ~20-30 pairs, aggressive reduction
-        prefer_different_horizon: If True, prioritize pairs where short and long
-            choosers have different horizons (clearer activation patching signal).
-        target_pairs: Target number of output pairs. Auto-calculates max_per_sample
-            to achieve this target. Useful when you know how many pairs you want
-            rather than tuning max_per_sample manually.
-        selection_strategy: How to select pairs when applying limits:
-            - "greedy": Take highest confidence pairs first (default)
-            - "round_robin": Cycle through horizon combinations to maximize diversity
+        subsample: Optional PrefPairSubsampleStrategy for reduction settings.
+            If not provided, can pass individual kwargs (legacy interface).
+        **kwargs: Legacy interface - individual subsample strategy fields.
+            Supported: group_by, deduplicate, best_only, min_confidence,
+            max_per_sample, max_per_horizon_pair, max_per_reward_ratio,
+            max_per_confidence_bucket, smart_reduce, prefer_different_horizon,
+            target_pairs, selection_strategy
 
     Returns:
         List of ContrastivePreferences pairs sorted by confidence
@@ -313,18 +352,19 @@ def get_contrastive_preferences(
         req = PrefPairRequirement()
     req.verify()
 
-    # Apply smart_reduce presets (only set parameters not already specified)
-    # These are applied sequentially: horizon -> ratio -> sample
-    # Use only max_per_sample for simpler, more predictable reduction
-    if smart_reduce == "balanced":
-        # Target ~60-80 pairs: each sample used ~3x
-        max_per_sample = max_per_sample or 3
-    elif smart_reduce == "diverse":
-        # Target ~40-50 pairs: each sample used ~2x
-        max_per_sample = max_per_sample or 2
-    elif smart_reduce == "minimal":
-        # Target ~25 pairs: each sample used once
-        max_per_sample = max_per_sample or 1
+    # Build strategy from subsample or kwargs
+    if subsample is not None:
+        strat = subsample
+    elif kwargs:
+        strat = PrefPairSubsampleStrategy.from_dict(kwargs)
+    else:
+        strat = PrefPairSubsampleStrategy()
+
+    # Apply smart_reduce preset
+    strat = strat.apply_smart_reduce()
+
+    # Extract strategy fields for convenience
+    max_per_sample = strat.max_per_sample
 
     # Collect samples by choice (needed early for target_pairs calculation)
     short_choosers: list[PreferenceSample] = []
@@ -336,7 +376,7 @@ def get_contrastive_preferences(
             long_choosers.append(pref)
 
     # Target pairs: auto-calculate max_per_sample to achieve target
-    if target_pairs is not None and target_pairs > 0 and max_per_sample is None:
+    if strat.target_pairs is not None and strat.target_pairs > 0 and max_per_sample is None:
         n_short = len(short_choosers)
         n_long = len(long_choosers)
         n_total = n_short + n_long
@@ -347,20 +387,20 @@ def get_contrastive_preferences(
             # Solve: target = min(n_short, n_long) * k => k = target / min(n_short, n_long)
             min_side = min(n_short, n_long)
             if min_side > 0:
-                estimated_k = max(1, int(target_pairs / min_side + 0.5))
+                estimated_k = max(1, int(strat.target_pairs / min_side + 0.5))
                 max_per_sample = estimated_k
                 log.info(
-                    f"Target pairs ({target_pairs}): estimated max_per_sample={max_per_sample} "
+                    f"Target pairs ({strat.target_pairs}): estimated max_per_sample={max_per_sample} "
                     f"(n_short={n_short}, n_long={n_long})"
                 )
 
     # Build groups based on mode
-    if group_by == "choice":
+    if strat.group_by == "choice":
         # No grouping - all samples in one group
         groups: dict[tuple, tuple[list[PreferenceSample], list[PreferenceSample]]] = {
             (): (short_choosers, long_choosers)
         }
-    elif group_by == "horizon":
+    elif strat.group_by == "horizon":
         # Group by horizon value
         horizon_groups: dict[
             float | None, tuple[list[PreferenceSample], list[PreferenceSample]]
@@ -410,12 +450,12 @@ def get_contrastive_preferences(
     total_passed = 0
 
     for group_key, (group_short, group_long) in groups.items():
-        if best_only:
+        if strat.best_only:
             # Only pair the best (highest confidence) short with best long
             sorted_short = sorted(
-                group_short, key=lambda s: s.choice_prob, reverse=True
+                group_short, key=lambda sample: sample.choice_prob, reverse=True
             )
-            sorted_long = sorted(group_long, key=lambda s: s.choice_prob, reverse=True)
+            sorted_long = sorted(group_long, key=lambda sample: sample.choice_prob, reverse=True)
             if sorted_short and sorted_long:
                 total_candidates += 1
                 candidate = ContrastivePreferences(
@@ -424,7 +464,7 @@ def get_contrastive_preferences(
                 )
                 if (
                     req.passes(candidate)
-                    and candidate.min_choice_prob >= min_confidence
+                    and candidate.min_choice_prob >= strat.min_confidence
                 ):
                     total_passed += 1
                     pairs.append(candidate)
@@ -439,13 +479,13 @@ def get_contrastive_preferences(
                     )
                     if (
                         req.passes(candidate)
-                        and candidate.min_choice_prob >= min_confidence
+                        and candidate.min_choice_prob >= strat.min_confidence
                     ):
                         total_passed += 1
                         pairs.append(candidate)
 
     # Deduplication: keep one pair per unique content×horizon combination
-    if deduplicate and not best_only:  # best_only already gives one per group
+    if strat.deduplicate and not strat.best_only:  # best_only already gives one per group
         seen: set[tuple] = set()
         unique_pairs: list[ContrastivePreferences] = []
         for p in pairs:
@@ -468,7 +508,7 @@ def get_contrastive_preferences(
         pairs = unique_pairs
 
     # Prefer different horizon: sort so different-horizon pairs come first
-    if prefer_different_horizon:
+    if strat.prefer_different_horizon:
         from ...common.time_value import parse_horizon_years
 
         def horizon_priority(p: ContrastivePreferences) -> tuple:
@@ -488,7 +528,7 @@ def get_contrastive_preferences(
         log.info(f"Prefer different horizon: {n_different}/{len(pairs)} pairs have different horizons")
 
     # Max per horizon pair: stratified selection by horizon combination
-    if max_per_horizon_pair is not None and max_per_horizon_pair > 0:
+    if strat.max_per_horizon_pair is not None and strat.max_per_horizon_pair > 0:
         from ...common.time_value import parse_horizon_years
 
         # Sort by confidence first
@@ -504,18 +544,18 @@ def get_contrastive_preferences(
             key = (h_short, h_long)
 
             count = horizon_pair_counts.get(key, 0)
-            if count < max_per_horizon_pair:
+            if count < strat.max_per_horizon_pair:
                 stratified_pairs.append(p)
                 horizon_pair_counts[key] = count + 1
 
         log.info(
-            f"Max per horizon pair ({max_per_horizon_pair}): {len(pairs)} -> {len(stratified_pairs)} pairs "
+            f"Max per horizon pair ({strat.max_per_horizon_pair}): {len(pairs)} -> {len(stratified_pairs)} pairs "
             f"({len(horizon_pair_counts)} horizon combinations)"
         )
         pairs = stratified_pairs
 
     # Max per reward ratio: stratified selection by preference strength
-    if max_per_reward_ratio is not None and max_per_reward_ratio > 0:
+    if strat.max_per_reward_ratio is not None and strat.max_per_reward_ratio > 0:
         pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
 
         ratio_counts: dict[float, int] = {}
@@ -530,18 +570,18 @@ def get_contrastive_preferences(
                 ratio = 0.0
 
             count = ratio_counts.get(ratio, 0)
-            if count < max_per_reward_ratio:
+            if count < strat.max_per_reward_ratio:
                 ratio_pairs.append(p)
                 ratio_counts[ratio] = count + 1
 
         log.info(
-            f"Max per reward ratio ({max_per_reward_ratio}): {len(pairs)} -> {len(ratio_pairs)} pairs "
+            f"Max per reward ratio ({strat.max_per_reward_ratio}): {len(pairs)} -> {len(ratio_pairs)} pairs "
             f"({len(ratio_counts)} reward ratios)"
         )
         pairs = ratio_pairs
 
     # Max per confidence bucket: ensure diversity across confidence levels
-    if max_per_confidence_bucket is not None and max_per_confidence_bucket > 0:
+    if strat.max_per_confidence_bucket is not None and strat.max_per_confidence_bucket > 0:
         # Define buckets: [0.5, 0.6), [0.6, 0.7), [0.7, 0.8), [0.8, 0.9), [0.9, 1.0]
         def get_confidence_bucket(conf: float) -> float:
             if conf < 0.6:
@@ -568,12 +608,12 @@ def get_contrastive_preferences(
         for p in pairs:
             bucket = get_confidence_bucket(p.min_choice_prob)
             count = bucket_counts.get(bucket, 0)
-            if count < max_per_confidence_bucket:
+            if count < strat.max_per_confidence_bucket:
                 bucket_pairs.append(p)
                 bucket_counts[bucket] = count + 1
 
         log.info(
-            f"Max per confidence bucket ({max_per_confidence_bucket}): {len(pairs)} -> {len(bucket_pairs)} pairs "
+            f"Max per confidence bucket ({strat.max_per_confidence_bucket}): {len(pairs)} -> {len(bucket_pairs)} pairs "
             f"(buckets: {dict(sorted(bucket_counts.items()))})"
         )
         pairs = bucket_pairs
@@ -606,7 +646,7 @@ def get_contrastive_preferences(
         pairs = limited_pairs
 
     # Apply selection strategy for final ordering
-    if selection_strategy == "round_robin" and len(pairs) > 0:
+    if strat.selection_strategy == "round_robin" and len(pairs) > 0:
         from ...common.time_value import parse_horizon_years
 
         # Group pairs by horizon combination
@@ -646,7 +686,7 @@ def get_contrastive_preferences(
         pairs = round_robin_pairs
 
     log.info(
-        f"Contrastive pairs (group_by={group_by}, best_only={best_only}): "
+        f"Contrastive pairs (group_by={strat.group_by}, best_only={strat.best_only}): "
         f"{len(short_choosers)} short, {len(long_choosers)} long, "
         f"{total_candidates} candidates, {total_passed} passed, {len(pairs)} final"
     )

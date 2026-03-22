@@ -9,6 +9,8 @@ import torch.nn as nn
 
 from ...common.device_utils import get_device
 from .sae_activations import Sentence
+
+
 # ── Constants ───────────────────────────────────────────────────────────────
 
 DECODER_NORM_EPS = 1e-5
@@ -21,15 +23,29 @@ DEFAULT_LR_SCALE_FACTOR = 2**14
 
 @dataclass
 class SAESpec:
-    """Lightweight SAE specification before d_in is known."""
+    """Lightweight SAE specification before d_in is known.
+
+    Attributes:
+        layer: Transformer layer index
+        component: Hook type (resid_pre, resid_post, mlp_out, attn_out)
+        position_name: Named position (source, dest, secondary_source)
+        num_latents: Number of SAE latent features
+        k: Top-k sparsity constraint
+    """
 
     layer: int
+    component: str
+    position_name: str
     num_latents: int
     k: int
 
     def get_name(self) -> str:
         """Canonical name for this SAE config, used for file/dir naming."""
-        return f"L{self.layer}_k{self.num_latents}_t{self.k}"
+        return f"L{self.layer}_{self.component}_P{self.position_name}_k{self.num_latents}_t{self.k}"
+
+    def get_target_key(self) -> str:
+        """Get key for the (layer, component, position) tuple."""
+        return f"L{self.layer}_{self.component}_P{self.position_name}"
 
 
 class SAE(nn.Module):
@@ -39,6 +55,14 @@ class SAE(nn.Module):
         Encoder: Linear(d_in -> num_latents) with bias
         Sparsity: Keep only top-k activations
         Decoder: Weighted sum of k decoder columns + bias (unit-norm columns)
+
+    Attributes:
+        d_in: Input dimension (model hidden size)
+        num_latents: Number of latent features
+        k: Top-k sparsity constraint
+        layer: Transformer layer index (set after init)
+        component: Hook type (resid_pre, resid_post, mlp_out, attn_out)
+        position_name: Named position (source, dest, secondary_source)
     """
 
     def __init__(self, d_in: int, num_latents: int, k: int = 3):
@@ -46,6 +70,11 @@ class SAE(nn.Module):
         self.d_in = d_in
         self.num_latents = num_latents
         self.k = k
+
+        # These are set after initialization
+        self.layer: int = -1
+        self.component: str = ""
+        self.position_name: str = ""
 
         self.encoder = nn.Linear(d_in, num_latents, bias=True)
         self.encoder.bias.data.zero_()
@@ -81,7 +110,13 @@ class SAE(nn.Module):
 
     def get_name(self) -> str:
         """Canonical name for this SAE config, used for file/dir naming."""
+        if self.component and self.position_name:
+            return f"L{self.layer}_{self.component}_P{self.position_name}_k{self.num_latents}_t{self.k}"
         return f"L{self.layer}_k{self.num_latents}_t{self.k}"
+
+    def get_target_key(self) -> str:
+        """Get key for the (layer, component, position) tuple."""
+        return f"L{self.layer}_{self.component}_P{self.position_name}"
 
     def get_all_activations(self, x: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
@@ -92,6 +127,9 @@ class SAE(nn.Module):
             "d_in": self.d_in,
             "num_latents": self.num_latents,
             "k": self.k,
+            "layer": self.layer,
+            "component": self.component,
+            "position_name": self.position_name,
             "encoder_weight": self.encoder.weight.data.cpu(),
             "encoder_bias": self.encoder.bias.data.cpu(),
             "W_dec": self.W_dec.data.cpu(),
@@ -109,6 +147,9 @@ class SAE(nn.Module):
         sae.encoder.bias.data = checkpoint["encoder_bias"]
         sae.W_dec.data = checkpoint["W_dec"]
         sae.b_dec.data = checkpoint["b_dec"]
+        sae.layer = checkpoint.get("layer", -1)
+        sae.component = checkpoint.get("component", "")
+        sae.position_name = checkpoint.get("position_name", "")
         return sae.to(device)
 
 
@@ -241,14 +282,27 @@ def train_single_sae(
 
 
 def initialize_sae_models(state) -> list[SAESpec]:
-    """Create SAE specs for all (layer, cluster_size, topk) configurations."""
+    """Create SAE specs for all (layer, component, position, cluster_size, topk) configurations."""
     specs = []
+    components = getattr(state.config, "components", ["resid_post"])
+    position_names = getattr(state.config, "position_names", ["dest"])
+
     for layer in state.config.layers:
-        for n_clusters in state.config.num_time_horizons_bins:
-            for topk in state.config.topk_values:
-                if n_clusters <= topk:
-                    continue
-                specs.append(SAESpec(layer=layer, num_latents=n_clusters, k=topk))
+        for component in components:
+            for position_name in position_names:
+                for n_clusters in state.config.num_time_horizons_bins:
+                    for topk in state.config.topk_values:
+                        if n_clusters <= topk:
+                            continue
+                        specs.append(
+                            SAESpec(
+                                layer=layer,
+                                component=component,
+                                position_name=position_name,
+                                num_latents=n_clusters,
+                                k=topk,
+                            )
+                        )
     print(f"  Initialized {len(specs)} SAE configurations")
     return specs
 
@@ -258,23 +312,33 @@ def load_sae_models(state, sae_dir: str) -> list[SAE]:
     sae_path = Path(sae_dir)
     device = get_device()
     models = []
+    components = getattr(state.config, "components", ["resid_post"])
+    position_names = getattr(state.config, "position_names", ["dest"])
+
     for layer in state.config.layers:
-        for n_clusters in state.config.num_time_horizons_bins:
-            for topk in state.config.topk_values:
-                if n_clusters <= topk:
-                    continue
-                spec = SAESpec(layer=layer, num_latents=n_clusters, k=topk)
-                path = sae_path / f"{spec.get_name()}.pt"
-                if path.exists():
-                    sae = SAE.load_checkpoint(path, device)
-                    sae.layer = layer
-                    models.append(sae)
-                else:
-                    # No checkpoint yet, create a spec for fresh training
-                    print(
-                        f"\n\nload_sae_models cannot find {path}. Creating fresh. \n\n"
-                    )
-                    models.append(spec)
+        for component in components:
+            for position_name in position_names:
+                for n_clusters in state.config.num_time_horizons_bins:
+                    for topk in state.config.topk_values:
+                        if n_clusters <= topk:
+                            continue
+                        spec = SAESpec(
+                            layer=layer,
+                            component=component,
+                            position_name=position_name,
+                            num_latents=n_clusters,
+                            k=topk,
+                        )
+                        path = sae_path / f"{spec.get_name()}.pt"
+                        if path.exists():
+                            sae = SAE.load_checkpoint(path, device)
+                            models.append(sae)
+                        else:
+                            # No checkpoint yet, create a spec for fresh training
+                            print(
+                                f"\n\nload_sae_models cannot find {path}. Creating fresh. \n\n"
+                            )
+                            models.append(spec)
     print(f"  Loaded {len(models)} SAE models/specs")
     return models
 
@@ -285,7 +349,7 @@ def save_sae_model(sae_dir: str, sae: SAE) -> None:
     sae_path.mkdir(parents=True, exist_ok=True)
     name = sae.get_name()
     path = sae_path / f"{name}.pt"
-    sae.save_checkpoint(path, {"layer": sae.layer})
+    sae.save_checkpoint(path)
     print(f"    Saved {name} -> {path}")
 
 
@@ -299,13 +363,13 @@ def train_sae(
     tb_prefix: str = "",
     tb_global_step: int = 0,
 ) -> tuple[SAE, dict]:
-    """Train a single SAE on section-centered activation data.
+    """Train a single SAE on position-specific activation data.
 
     Accepts either an existing SAE model (for continued training) or an
     SAESpec (for fresh training).
 
     Args:
-        x_norm: Activation matrix already centered by section means.
+        x_norm: Activation matrix (n_samples, d_in) for training.
         tb_global_step: Global step offset for TensorBoard logging so that
             online-SGD iterations produce a continuous loss curve.
 
@@ -313,6 +377,8 @@ def train_sae(
     """
     device = get_device()
     layer = sae.layer
+    component = getattr(sae, "component", "")
+    position_name = getattr(sae, "position_name", "")
     n_clusters = sae.num_latents
     topk = sae.k
     name = sae.get_name()
@@ -320,7 +386,11 @@ def train_sae(
     # initialize sae if needed
     if isinstance(sae, SAESpec):
         d_in = x_norm.shape[1]
-        sae = SAE(d_in, n_clusters, k=topk).to(device)
+        new_sae = SAE(d_in, n_clusters, k=topk).to(device)
+        new_sae.layer = layer
+        new_sae.component = component
+        new_sae.position_name = position_name
+        sae = new_sae
 
     lr = DEFAULT_LR_BASE / (n_clusters / DEFAULT_LR_SCALE_FACTOR) ** 0.5
 
@@ -337,6 +407,8 @@ def train_sae(
         tb_global_step=tb_global_step,
     )
     trained.layer = layer
+    trained.component = component
+    trained.position_name = position_name
 
     final_metric = history[-1] if history else {}
     dead_pct = final_metric.get("dead_latent_ratio", 0) * 100
@@ -347,6 +419,8 @@ def train_sae(
     results = {
         "name": name,
         "layer": layer,
+        "component": component,
+        "position_name": position_name,
         "n_clusters": n_clusters,
         "topk": topk,
         "loss": loss,

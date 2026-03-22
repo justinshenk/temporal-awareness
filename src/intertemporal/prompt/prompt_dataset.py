@@ -101,6 +101,9 @@ class PromptDataset:
                     sample_idx=s["sample_idx"],
                     prompt=prompt,
                     text=s.get("text", ""),
+                    formatting_id=s.get("formatting_id"),
+                    context_id=s.get("context_id"),
+                    short_term_first=s.get("short_term_first"),
                 )
             )
 

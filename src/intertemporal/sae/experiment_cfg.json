@@ -1,12 +1,15 @@
 {
-  "model": "Qwen/Qwen3-4B-Instruct-2507",
   "samples_per_iter": 128,
   "max_iterations": 1000,
   "batch_size": 128,
   "max_epochs": 1,
   "patience": 1000,
-  "layers": [12, 16, 20],
+  "seed": 29,
+
+  "layers": [21, 31, 24, 19, 34, 25],
+  "components": ["resid_post", "mlp_out", "attn_out", "resid_pre"],
+  "position_names": ["dest", "source", "secondary_source"],
+
   "num_time_horizons_bins": [4, 16, 32],
-  "topk_values": [1, 3, 6],
-  "seed": 29
+  "topk_values": [1, 3, 6]
 }
