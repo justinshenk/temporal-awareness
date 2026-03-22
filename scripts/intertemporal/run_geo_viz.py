@@ -13,6 +13,7 @@ Key findings from initial analysis:
 Usage:
     uv run python scripts/intertemporal/run_geo_viz.py
     uv run python scripts/intertemporal/run_geo_viz.py --cache
+    uv run python scripts/intertemporal/run_geo_viz.py --only-viz  # regenerate plots from cached data
 """
 
 import argparse
@@ -75,6 +76,11 @@ def parse_args() -> argparse.Namespace:
         help="Use cached data if available",
     )
     parser.add_argument(
+        "--only-viz",
+        action="store_true",
+        help="Only run visualization (load cached data, skip extraction)",
+    )
+    parser.add_argument(
         "--skip-extraction",
         action="store_true",
         help="Skip sample generation and extraction (requires cache)",
@@ -127,11 +133,15 @@ def main():
     for t in config.targets:
         logger.info(f"    - {t}")
 
+    # Handle --only-viz (implies --cache and --skip-extraction)
+    use_cache = args.cache or args.only_viz
+    skip_extraction = args.skip_extraction or args.only_viz
+
     # Run pipeline
     results = run_geo_viz_pipeline(
         config,
-        use_cache=args.cache,
-        skip_extraction=args.skip_extraction,
+        use_cache=use_cache,
+        skip_extraction=skip_extraction,
     )
 
     # Print final summary
