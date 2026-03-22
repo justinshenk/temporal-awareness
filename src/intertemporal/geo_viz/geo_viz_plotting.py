@@ -493,30 +493,51 @@ def plot_target_3d(
 # =============================================================================
 
 
-def _parse_target_key(target_key: str) -> tuple[str, str]:
-    """Parse target key into (base_key, position).
+def _parse_target_key(target_key: str) -> tuple[str, str, str]:
+    """Parse target key into (base_key, position, position_type).
 
-    E.g., "L19_mlp_out_Pdest" -> ("L19_mlp_out", "dest")
+    E.g., "L19_mlp_out_Pdest" -> ("L19_mlp_out", "dest", "dst")
+          "L19_mlp_out_Pshort_term_time" -> ("L19_mlp_out", "short_term_time", "src")
+
+    Returns:
+        (base_key, position_name, position_type) where position_type is "dst" or "src"
     """
-    if target_key.endswith("_Pdest"):
-        return target_key[:-6], "dest"
-    elif target_key.endswith("_Psource"):
-        return target_key[:-8], "source"
+    # Named positions that are in source (prompt)
+    source_positions = {"time_horizon", "short_term_time", "short_term_reward",
+                       "long_term_time", "long_term_reward", "source"}
+    # Named positions that are in dest (response)
+    dest_positions = {"response", "dest"}
+
+    # Find the _P marker
+    p_idx = target_key.rfind("_P")
+    if p_idx == -1:
+        return target_key, "unknown", "unknown"
+
+    base_key = target_key[:p_idx]
+    position = target_key[p_idx + 2:]  # Skip "_P"
+
+    if position in source_positions:
+        pos_type = "src"
+    elif position in dest_positions:
+        pos_type = "dst"
     else:
-        return target_key, "unknown"
+        pos_type = "unknown"
+
+    return base_key, position, pos_type
 
 
-def _group_targets_by_base(target_keys: list[str]) -> dict[str, dict[str, str]]:
-    """Group target keys by their base (layer+component).
+def _group_targets_by_base(target_keys: list[str]) -> dict[str, dict[str, dict[str, str]]]:
+    """Group target keys by their base (layer+component) and position type.
 
-    Returns: {base_key: {position: full_target_key}}
+    Returns: {base_key: {"dst": {pos: key}, "src": {pos: key}}}
     """
     groups = {}
     for key in target_keys:
-        base, pos = _parse_target_key(key)
+        base, pos, pos_type = _parse_target_key(key)
         if base not in groups:
-            groups[base] = {}
-        groups[base][pos] = key
+            groups[base] = {"dst": {}, "src": {}}
+        if pos_type in groups[base]:
+            groups[base][pos_type][pos] = key
     return groups
 
 
@@ -527,12 +548,15 @@ def plot_cross_layer_summary(
     output_dir: Path,
 ):
     """Generate cross-layer comparison plots showing all layers/positions together."""
-    # Parse all targets
+    # Parse all targets and group by position type (dst/src)
     targets_by_pos = {"dest": [], "source": []}
     for key in linear_probe_results.keys():
-        base, pos = _parse_target_key(key)
-        if pos in targets_by_pos:
-            targets_by_pos[pos].append((key, base))
+        base, pos, pos_type = _parse_target_key(key)
+        # Map to legacy names for this function
+        if pos_type == "dst":
+            targets_by_pos["dest"].append((key, base))
+        elif pos_type == "src":
+            targets_by_pos["source"].append((key, base))
 
     # Sort by layer number
     def extract_layer(item):
@@ -642,6 +666,12 @@ def plot_cross_layer_summary(
             plt.close()
 
 
+def _get_pos_color(pos: str) -> str:
+    """Get color for a position name (green for dest/response, red for source positions)."""
+    dest_positions = {"response", "dest"}
+    return "#4CAF50" if pos in dest_positions else "#F44336"
+
+
 def plot_position_comparison(
     base_key: str,
     position_targets: dict[str, str],
@@ -661,7 +691,7 @@ def plot_position_comparison(
     ax = axes[0]
     positions = list(position_targets.keys())
     r2_scores = [linear_probe_results[position_targets[p]].r2_mean for p in positions]
-    colors = ["#4CAF50" if p == "dest" else "#F44336" for p in positions]
+    colors = [_get_pos_color(p) for p in positions]
     ax.bar(positions, r2_scores, color=colors, alpha=0.8)
     ax.set_ylabel("R² Score")
     ax.set_title(f"{base_key}\nLinear Probe R² by Position")
@@ -676,7 +706,7 @@ def plot_position_comparison(
         if target_key in pca_results:
             pca_result = pca_results[target_key]
             corrs = [c[1] for c in pca_result.pc_correlations[:10]]
-            color = "#4CAF50" if pos == "dest" else "#F44336"
+            color = _get_pos_color(pos)
             ax.plot(range(len(corrs)), [abs(c) for c in corrs],
                    marker='o', label=pos, color=color, alpha=0.8)
     ax.set_xlabel("PC Index (sorted by correlation)")
@@ -732,18 +762,17 @@ def generate_all_plots(
     Structure:
         plots/
         ├── linear_probe_summary.png
-        ├── linear_probe_scatter.png
+        ├── cross_layer_*.png
         └── targets/
             └── L19_mlp_out/
                 ├── position_comparison.png
                 ├── comparison_*.png
-                └── by_position/
-                    ├── dest/
-                    │   ├── pca/
-                    │   ├── embeddings/
-                    │   └── 3d/
-                    └── source/
-                        └── ...
+                ├── dst/              # Aggregated dest position plots
+                ├── src/              # Aggregated source position plots
+                └── by_position/      # Per named position (when available)
+                    ├── short_term_time/
+                    ├── long_term_reward/
+                    └── response/
     """
     output_dir = config.output_dir / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -759,37 +788,61 @@ def generate_all_plots(
     logger.info("Generating cross-layer plots...")
     plot_cross_layer_summary(linear_probe_results, pca_results, schemes, output_dir)
 
-    # Group targets by base (layer+component)
+    # Group targets by base (layer+component) and position type
     target_groups = _group_targets_by_base(list(pca_results.keys()))
 
     targets_dir = output_dir / "targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
 
-    for base_key, position_targets in target_groups.items():
+    for base_key, pos_type_targets in target_groups.items():
         logger.info(f"  Processing {base_key}...")
         base_dir = targets_dir / base_key
         base_dir.mkdir(parents=True, exist_ok=True)
 
+        # Flatten for comparison plots (combine dst and src)
+        all_positions = {}
+        for pos_type, positions in pos_type_targets.items():
+            all_positions.update(positions)
+
         # Generate comparison plots at base level
-        plot_position_comparison(
-            base_key, position_targets, linear_probe_results,
-            pca_results, schemes, base_dir
-        )
+        if len(all_positions) > 1:
+            plot_position_comparison(
+                base_key, all_positions, linear_probe_results,
+                pca_results, schemes, base_dir
+            )
 
-        # Generate per-position plots
-        by_position_dir = base_dir / "by_position"
-        by_position_dir.mkdir(parents=True, exist_ok=True)
+        # Generate plots for each position type (dst/, src/)
+        for pos_type in ["dst", "src"]:
+            positions = pos_type_targets.get(pos_type, {})
+            if not positions:
+                continue
 
-        for pos, target_key in position_targets.items():
-            logger.info(f"    Plotting {pos}...")
-            pos_dir = by_position_dir / pos
-            pos_dir.mkdir(parents=True, exist_ok=True)
+            # Create dst/ or src/ directory for aggregated position type
+            type_dir = base_dir / pos_type
+            type_dir.mkdir(parents=True, exist_ok=True)
 
-            plot_target_pca(target_key, pca_results[target_key], schemes, pos_dir)
+            # If only one position of this type (e.g., just "dest"), put plots directly in type_dir
+            if len(positions) == 1:
+                pos, target_key = list(positions.items())[0]
+                logger.info(f"    Plotting {pos_type}/{pos}...")
 
-            if target_key in embedding_results:
-                plot_target_embeddings(target_key, embedding_results[target_key], schemes, pos_dir)
+                plot_target_pca(target_key, pca_results[target_key], schemes, type_dir)
+                if target_key in embedding_results:
+                    plot_target_embeddings(target_key, embedding_results[target_key], schemes, type_dir)
+                plot_target_3d(target_key, pca_results[target_key], schemes, type_dir)
+            else:
+                # Multiple positions of this type - use by_position/
+                by_position_dir = base_dir / "by_position"
+                by_position_dir.mkdir(parents=True, exist_ok=True)
 
-            plot_target_3d(target_key, pca_results[target_key], schemes, pos_dir)
+                for pos, target_key in positions.items():
+                    logger.info(f"    Plotting by_position/{pos}...")
+                    pos_dir = by_position_dir / pos
+                    pos_dir.mkdir(parents=True, exist_ok=True)
+
+                    plot_target_pca(target_key, pca_results[target_key], schemes, pos_dir)
+                    if target_key in embedding_results:
+                        plot_target_embeddings(target_key, embedding_results[target_key], schemes, pos_dir)
+                    plot_target_3d(target_key, pca_results[target_key], schemes, pos_dir)
 
     logger.info(f"All plots saved to {output_dir}")

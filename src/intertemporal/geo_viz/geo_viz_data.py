@@ -23,22 +23,41 @@ logger = logging.getLogger(__name__)
 class ResolvedPositions:
     """Resolved token positions for a specific sample.
 
-    Supports multiple source/dest positions for different analysis needs.
+    Supports named position groups for different analysis needs.
     """
 
-    source: list[int] = field(default_factory=list)
-    dest: list[int] = field(default_factory=list)
+    # Named position groups
+    named_positions: dict[str, list[int]] = field(default_factory=dict)
     prompt_len: int = 0
     full_len: int = 0
 
+    # Legacy fields for backwards compatibility
+    source: list[int] = field(default_factory=list)
+    dest: list[int] = field(default_factory=list)
+
     def get(self, pos_name: str) -> int:
-        """Get first position index by name (for backwards compat)."""
+        """Get first position index by name."""
+        # Check named positions first
+        if pos_name in self.named_positions:
+            positions = self.named_positions[pos_name]
+            return positions[0] if positions else 0
+
+        # Legacy fallbacks
         if pos_name == "source":
             return self.source[0] if self.source else 0
         elif pos_name == "dest":
             return self.dest[0] if self.dest else self.prompt_len
-        elif pos_name == "secondary_source":
-            return self.source[1] if len(self.source) > 1 else self.get("source") + 1
+        else:
+            raise ValueError(f"Unknown position name: {pos_name}")
+
+    def get_all(self, pos_name: str) -> list[int]:
+        """Get all position indices for a named position."""
+        if pos_name in self.named_positions:
+            return self.named_positions[pos_name]
+        elif pos_name == "source":
+            return self.source
+        elif pos_name == "dest":
+            return self.dest
         else:
             raise ValueError(f"Unknown position name: {pos_name}")
 
@@ -150,16 +169,13 @@ def resolve_positions(
         pref: PreferenceSample with token info from model query
         runner: Model runner with tokenizer
 
-    Source positions (in prompt):
-    - time_horizon tokens (numeric value + unit separately)
-    - short_term time tokens (numeric value + unit separately)
-    - long_term time tokens (numeric value + unit separately)
-    - short_term reward tokens (numeric value + unit separately)
-    - long_term reward tokens (numeric value + unit separately)
-
-    Dest positions (in response):
-    - choice_prefix tokens ("I choose: ")
-    - all answer tokens
+    Returns named positions:
+    - time_horizon: time horizon tokens
+    - short_term_time: short-term delivery time tokens
+    - short_term_reward: short-term reward tokens
+    - long_term_time: long-term delivery time tokens
+    - long_term_reward: long-term reward tokens
+    - response: all response tokens
     """
     # Get token info from PreferenceSample
     prompt_len = pref.prompt_token_count
@@ -170,9 +186,9 @@ def resolve_positions(
     # Reconstruct text from tokens (matches token positions)
     prompt_tokens_decoded = tokens[:prompt_len]
     prompt_text = "".join(prompt_tokens_decoded)
-    source_positions = []
 
     pair = sample.prompt.preference_pair
+    named_positions = {}
 
     if verbose:
         print(f"\n{'=' * 60}")
@@ -185,68 +201,65 @@ def resolve_positions(
     if sample.prompt.time_horizon is not None:
         if verbose:
             print(f"  time_horizon: {sample.prompt.time_horizon}")
-        source_positions.extend(
-            _find_time_value_positions(
-                prompt_tokens_decoded, prompt_text, sample.prompt.time_horizon, verbose
-            )
+        named_positions["time_horizon"] = _find_time_value_positions(
+            prompt_tokens_decoded, prompt_text, sample.prompt.time_horizon, verbose
         )
 
-    # Short-term option: time (value + unit) and reward (value + unit)
+    # Short-term option: time and reward
     if verbose:
         print(f"  short_term.time: {pair.short_term.time}")
-    source_positions.extend(
-        _find_time_value_positions(
-            prompt_tokens_decoded, prompt_text, pair.short_term.time, verbose
-        )
+    named_positions["short_term_time"] = _find_time_value_positions(
+        prompt_tokens_decoded, prompt_text, pair.short_term.time, verbose
     )
+
     if verbose:
         print(f"  short_term.reward: {pair.short_term.reward}")
-    source_positions.extend(
-        _find_reward_value_positions(
-            prompt_tokens_decoded, prompt_text, pair.short_term.reward, verbose
-        )
+    named_positions["short_term_reward"] = _find_reward_value_positions(
+        prompt_tokens_decoded, prompt_text, pair.short_term.reward, verbose
     )
 
-    # Long-term option: time (value + unit) and reward (value + unit)
+    # Long-term option: time and reward
     if verbose:
         print(f"  long_term.time: {pair.long_term.time}")
-    source_positions.extend(
-        _find_time_value_positions(
-            prompt_tokens_decoded, prompt_text, pair.long_term.time, verbose
-        )
+    named_positions["long_term_time"] = _find_time_value_positions(
+        prompt_tokens_decoded, prompt_text, pair.long_term.time, verbose
     )
+
     if verbose:
         print(f"  long_term.reward: {pair.long_term.reward}")
-    source_positions.extend(
-        _find_reward_value_positions(
-            prompt_tokens_decoded, prompt_text, pair.long_term.reward, verbose
-        )
+    named_positions["long_term_reward"] = _find_reward_value_positions(
+        prompt_tokens_decoded, prompt_text, pair.long_term.reward, verbose
     )
 
-    # Dedupe and sort
+    # Response tokens
+    named_positions["response"] = list(range(prompt_len, full_len))
+
+    # Clamp all positions to valid range
+    for key in named_positions:
+        named_positions[key] = [max(0, min(p, full_len - 1)) for p in named_positions[key]]
+
+    # Build legacy source/dest for backwards compat
+    source_positions = []
+    for key in ["time_horizon", "short_term_time", "short_term_reward",
+                "long_term_time", "long_term_reward"]:
+        if key in named_positions:
+            source_positions.extend(named_positions[key])
     source_positions = sorted(set(source_positions))
 
-    # Fallback if no source positions found
     if not source_positions:
         source_positions.append(int(prompt_len * 0.6))
 
-    # Dest positions: all response tokens (choice_prefix + answer)
-    dest_positions = list(range(prompt_len, full_len))
-
-    # Clamp all positions to valid range
-    source_positions = [max(0, min(p, full_len - 1)) for p in source_positions]
-    dest_positions = [max(0, min(p, full_len - 1)) for p in dest_positions]
+    dest_positions = named_positions.get("response", [])
 
     if verbose:
-        print("\n  Summary:")
-        print(f"    source ({len(source_positions)} positions): {source_positions}")
-        src_toks = [repr(tokens[p]) for p in source_positions]
-        print(f"    source tokens: {src_toks}")
-        print(f"    dest ({len(dest_positions)} positions): {dest_positions}")
-        dst_toks = [repr(tokens[p]) for p in dest_positions]
-        print(f"    dest tokens: {dst_toks}")
+        print("\n  Named positions:")
+        for key, positions in named_positions.items():
+            if positions:
+                pos_toks = [repr(tokens[p]) for p in positions[:3]]
+                print(f"    {key}: {positions[:5]}{'...' if len(positions) > 5 else ''} = {pos_toks}")
 
     return ResolvedPositions(
+        named_positions=named_positions,
         source=source_positions,
         dest=dest_positions,
         prompt_len=prompt_len,

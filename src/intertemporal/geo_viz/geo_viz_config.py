@@ -4,6 +4,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+# Named position types
+NAMED_POSITIONS = {
+    # Source positions (in prompt)
+    "time_horizon",
+    "short_term_time",
+    "short_term_reward",
+    "long_term_time",
+    "long_term_reward",
+    # Dest positions (in response)
+    "response",
+    # Legacy aggregate positions
+    "source",  # All source positions combined
+    "dest",    # Same as response
+}
+
+
 @dataclass
 class TargetSpec:
     """Specification for an activation extraction target.
@@ -11,7 +27,7 @@ class TargetSpec:
     Attributes:
         layer: Transformer layer index
         component: Component type (resid_pre, resid_post, mlp_out, attn_out)
-        position: Token position type (dest, source, secondary_source)
+        position: Token position type (see NAMED_POSITIONS)
     """
 
     layer: int
@@ -20,12 +36,11 @@ class TargetSpec:
 
     def __post_init__(self):
         valid_components = {"resid_pre", "resid_post", "mlp_out", "attn_out"}
-        valid_positions = {"dest", "source", "secondary_source"}
 
         if self.component not in valid_components:
             raise ValueError(f"Invalid component: {self.component}")
-        if self.position not in valid_positions:
-            raise ValueError(f"Invalid position: {self.position}")
+        if self.position not in NAMED_POSITIONS:
+            raise ValueError(f"Invalid position: {self.position}. Valid: {NAMED_POSITIONS}")
 
     @property
     def key(self) -> str:
