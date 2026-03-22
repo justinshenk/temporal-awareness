@@ -127,8 +127,6 @@ class GeoVizConfig:
         seed: Random seed for reproducibility
         max_samples: Maximum number of samples to use (None = all)
         n_pca_components: Number of PCA components to compute
-        umap_n_neighbors: UMAP n_neighbors parameter
-        umap_min_dist: UMAP min_dist parameter
 
         # Memory optimization settings
         extraction_buffer_size: Samples to buffer before flushing to disk
@@ -141,8 +139,6 @@ class GeoVizConfig:
     seed: int = 42
     max_samples: int | None = None
     n_pca_components: int = 50
-    umap_n_neighbors: int = 30
-    umap_min_dist: float = 0.1
 
     # Memory optimization settings
     extraction_buffer_size: int = EXTRACTION_BUFFER_SIZE
@@ -165,8 +161,6 @@ class GeoVizConfig:
             seed=d.get("seed", 42),
             max_samples=d.get("max_samples"),
             n_pca_components=d.get("n_pca_components", 50),
-            umap_n_neighbors=d.get("umap_n_neighbors", 30),
-            umap_min_dist=d.get("umap_min_dist", 0.1),
             extraction_buffer_size=d.get("extraction_buffer_size", EXTRACTION_BUFFER_SIZE),
             use_compressed_storage=d.get("use_compressed_storage", USE_COMPRESSED_STORAGE),
         )
@@ -183,8 +177,6 @@ class GeoVizConfig:
             "seed": self.seed,
             "max_samples": self.max_samples,
             "n_pca_components": self.n_pca_components,
-            "umap_n_neighbors": self.umap_n_neighbors,
-            "umap_min_dist": self.umap_min_dist,
             "extraction_buffer_size": self.extraction_buffer_size,
             "use_compressed_storage": self.use_compressed_storage,
         }

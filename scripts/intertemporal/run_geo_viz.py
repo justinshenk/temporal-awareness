@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 # Layers to analyze (based on circuit analysis)
 ANALYSIS_LAYERS = [
-    0,   # baseline embedding
+    0,  # baseline embedding
     13,  # mid-network, before circuit
     18,  # just before circuit onset
     19,  # circuit onset
@@ -70,17 +70,21 @@ DEST_POSITIONS = ["response"]
 ABSOLUTE_POSITIONS = ["P86", "P87", "P88", "P144", "P145", "P50", "P121", "P140"]
 
 
-def build_targets(layers: list[int], components: list[str], positions: list[str]) -> list[dict]:
+def build_targets(
+    layers: list[int], components: list[str], positions: list[str]
+) -> list[dict]:
     """Build target specifications for all layer/component/position combinations."""
     targets = []
     for layer in layers:
         for component in components:
             for position in positions:
-                targets.append({
-                    "layer": layer,
-                    "component": component,
-                    "position": position,
-                })
+                targets.append(
+                    {
+                        "layer": layer,
+                        "component": component,
+                        "position": position,
+                    }
+                )
     return targets
 
 
@@ -94,8 +98,6 @@ DEFAULT_GEO_VIZ_CFG = {
     "model": DEFAULT_MODEL,
     "seed": 42,
     "n_pca_components": 50,
-    "umap_n_neighbors": 30,
-    "umap_min_dist": 0.1,
 }
 
 
@@ -199,10 +201,14 @@ def main():
 
     logger.info(f"\nResults saved to: {config.output_dir}")
     logger.info("Key outputs:")
-    logger.info(f"  - {config.output_dir}/plots/linear_probe_summary.png")
-    logger.info(f"  - {config.output_dir}/plots/pca_*.png")
-    logger.info(f"  - {config.output_dir}/plots/embeddings_*.png")
-    logger.info(f"  - {config.output_dir}/plots/3d_*.html")
+    logger.info(f"  - {config.output_dir}/plots/01_dashboard/")
+    logger.info(f"  - {config.output_dir}/plots/02_linear_probe/")
+    logger.info(f"  - {config.output_dir}/plots/03_decision_boundary/")
+    logger.info(f"  - {config.output_dir}/plots/04_trajectories/")
+    logger.info(f"  - {config.output_dir}/plots/05_direction_alignment/")
+    logger.info(f"  - {config.output_dir}/plots/06_scree/")
+    logger.info(f"  - {config.output_dir}/plots/07_component_decomp/")
+    logger.info(f"  - {config.output_dir}/plots/08_targets/")
     logger.info(f"  - {config.output_dir}/summary.json")
 
 

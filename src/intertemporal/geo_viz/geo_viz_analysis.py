@@ -136,21 +136,15 @@ class PCAResult:
 
 @dataclass(slots=True)
 class EmbeddingResult:
-    """Results from dimensionality reduction. Uses __slots__."""
+    """Results from PCA dimensionality reduction. Uses __slots__."""
 
     target_key: str
-    umap_embedding: np.ndarray | None
-    tsne_embedding: np.ndarray | None
     pca_embedding: np.ndarray
 
     def save(self, path: Path):
         """Save to disk."""
         path.mkdir(parents=True, exist_ok=True)
         np.save(path / "pca_embedding.npy", self.pca_embedding.astype(ACTIVATION_DTYPE))
-        if self.umap_embedding is not None:
-            np.save(path / "umap_embedding.npy", self.umap_embedding.astype(ACTIVATION_DTYPE))
-        if self.tsne_embedding is not None:
-            np.save(path / "tsne_embedding.npy", self.tsne_embedding.astype(ACTIVATION_DTYPE))
         with open(path / "metadata.json", "w") as f:
             json.dump({"target_key": self.target_key}, f)
 
@@ -160,14 +154,9 @@ class EmbeddingResult:
         with open(path / "metadata.json") as f:
             metadata = json.load(f)
 
-        umap_path = path / "umap_embedding.npy"
-        tsne_path = path / "tsne_embedding.npy"
-
         return cls(
             target_key=metadata["target_key"],
             pca_embedding=np.load(path / "pca_embedding.npy"),
-            umap_embedding=np.load(umap_path) if umap_path.exists() else None,
-            tsne_embedding=np.load(tsne_path) if tsne_path.exists() else None,
         )
 
 
@@ -309,55 +298,19 @@ def _embeddings_single(
     pca_result: PCAResult,
     config: GeoVizConfig,
 ) -> EmbeddingResult:
-    """Compute embeddings for a single target."""
+    """Compute PCA 2D embedding for a single target."""
     X_pca = pca_result.transformed
     n_samples = X_pca.shape[0]
-    n_pcs = min(20, X_pca.shape[1])
 
     # Check for degenerate activations
-    variance = np.var(X_pca[:, :n_pcs])
-    if variance < 1e-10:
-        return EmbeddingResult(
-            target_key=target_key,
-            pca_embedding=X_pca[:, :2] if X_pca.shape[1] >= 2 else np.zeros((n_samples, 2), dtype=ACTIVATION_DTYPE),
-            umap_embedding=None,
-            tsne_embedding=None,
-        )
-
-    pca_2d = X_pca[:, :2] if X_pca.shape[1] >= 2 else np.zeros((n_samples, 2), dtype=ACTIVATION_DTYPE)
-
-    # UMAP
-    umap_2d = None
-    try:
-        import umap
-        n_neighbors = min(config.umap_n_neighbors, n_samples - 1)
-        if n_neighbors >= 2:
-            reducer = umap.UMAP(
-                n_components=2,
-                n_neighbors=n_neighbors,
-                min_dist=config.umap_min_dist,
-                random_state=config.seed,
-            )
-            umap_2d = reducer.fit_transform(X_pca[:, :n_pcs]).astype(ACTIVATION_DTYPE)
-    except Exception:
-        pass
-
-    # t-SNE
-    tsne_2d = None
-    try:
-        from sklearn.manifold import TSNE
-        perplexity = min(30, max(5, n_samples // 4))
-        if n_samples > perplexity * 3:
-            tsne = TSNE(n_components=2, perplexity=perplexity, random_state=config.seed)
-            tsne_2d = tsne.fit_transform(X_pca[:, :n_pcs]).astype(ACTIVATION_DTYPE)
-    except Exception:
-        pass
+    if X_pca.shape[1] < 2 or np.var(X_pca[:, :2]) < 1e-10:
+        pca_2d = np.zeros((n_samples, 2), dtype=ACTIVATION_DTYPE)
+    else:
+        pca_2d = X_pca[:, :2].astype(ACTIVATION_DTYPE)
 
     return EmbeddingResult(
         target_key=target_key,
         pca_embedding=pca_2d,
-        umap_embedding=umap_2d,
-        tsne_embedding=tsne_2d,
     )
 
 

@@ -366,8 +366,7 @@ def plot_trajectory(
     horizons_years = horizons_months / 12.0
     log_horizons = np.log10(horizons_years + 0.1)
 
-    traj_dir = output_dir / "trajectories"
-    traj_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     for key_id, layer_data in target_info.items():
         layers = sorted(layer_data.keys())
@@ -416,10 +415,10 @@ def plot_trajectory(
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(traj_dir / f"trajectory_{key_id}.png", dpi=150)
+        plt.savefig(output_dir / f"trajectory_{key_id}.png", dpi=150)
         plt.close()
 
-    logger.info(f"Saved trajectory plots to {traj_dir}")
+    logger.info(f"Saved trajectory plots to {output_dir}")
 
 
 def plot_component_decomposition(
@@ -452,8 +451,7 @@ def plot_component_decomposition(
             "r2": linear_probe_results.get(key, None),
         }
 
-    decomp_dir = output_dir / "component_decomposition"
-    decomp_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     components_order = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
 
@@ -494,10 +492,10 @@ def plot_component_decomposition(
 
         plt.suptitle(f"Component Decomposition: {layer_pos_key}", fontsize=12)
         plt.tight_layout()
-        plt.savefig(decomp_dir / f"decomp_{layer_pos_key}.png", dpi=150)
+        plt.savefig(output_dir / f"decomp_{layer_pos_key}.png", dpi=150)
         plt.close()
 
-    logger.info(f"Saved component decomposition plots to {decomp_dir}")
+    logger.info(f"Saved component decomposition plots to {output_dir}")
 
 
 def plot_direction_alignment(
@@ -680,8 +678,7 @@ def plot_scree(
     output_dir: Path,
 ):
     """Plot scree plots showing variance explained by each PC."""
-    scree_dir = output_dir / "scree"
-    scree_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     key_targets = []
     for key in pca_results.keys():
@@ -721,7 +718,7 @@ def plot_scree(
         plt.tight_layout()
 
         safe_name = target_key.replace("/", "_")
-        plt.savefig(scree_dir / f"scree_{safe_name}.png", dpi=150)
+        plt.savefig(output_dir / f"scree_{safe_name}.png", dpi=150)
         plt.close()
 
     # Summary scree
@@ -747,7 +744,7 @@ def plot_scree(
     plt.savefig(output_dir / "scree_comparison.png", dpi=150)
     plt.close()
 
-    logger.info(f"Saved scree plots to {scree_dir}")
+    logger.info(f"Saved scree plots to {output_dir}")
 
 
 # =============================================================================
@@ -955,60 +952,24 @@ def plot_target_embeddings(
     schemes: list[ColoringScheme],
     target_dir: Path,
 ):
-    """Generate embedding plots for a single target."""
-    emb_dir = target_dir / "embeddings"
+    """Generate PCA 2D embedding plots for a single target."""
+    emb_dir = target_dir / "pca_2d"
+    emb_dir.mkdir(parents=True, exist_ok=True)
 
-    embeddings = {}
-    if embedding_result.pca_embedding is not None:
-        embeddings["pca"] = embedding_result.pca_embedding
-    if embedding_result.umap_embedding is not None:
-        embeddings["umap"] = embedding_result.umap_embedding
-    if embedding_result.tsne_embedding is not None:
-        embeddings["tsne"] = embedding_result.tsne_embedding
-
-    if not embeddings:
+    coords = embedding_result.pca_embedding
+    if coords is None or len(coords) == 0:
         return
 
+    # One plot per coloring scheme
     for scheme in schemes:
-        scheme_dir = emb_dir / scheme.name
-        scheme_dir.mkdir(parents=True, exist_ok=True)
-
-        for method, coords in embeddings.items():
-            fig, ax = plt.subplots(figsize=(8, 7))
-            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, n_samples=coords.shape[0])
-            ax.set_xlabel(f"{method.upper()} 1")
-            ax.set_ylabel(f"{method.upper()} 2")
-            ax.set_title(f"{method.upper()} - {scheme.label}")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            plt.tight_layout()
-            plt.savefig(scheme_dir / f"{method}.png", dpi=150)
-            plt.close()
-
-    # Combined overview
-    n_methods = len(embeddings)
-    n_schemes = len(schemes)
-    fig, axes = plt.subplots(n_schemes, n_methods, figsize=(4 * n_methods, 4 * n_schemes))
-    if n_methods == 1:
-        axes = axes.reshape(-1, 1)
-    if n_schemes == 1:
-        axes = axes.reshape(1, -1)
-
-    for row, scheme in enumerate(schemes):
-        for col, (method, coords) in enumerate(embeddings.items()):
-            ax = axes[row, col]
-            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, add_colorbar=False, n_samples=coords.shape[0])
-            ax.set_xticks([])
-            ax.set_yticks([])
-            if row == 0:
-                ax.set_title(method.upper())
-            if col == 0:
-                ax.set_ylabel(scheme.name, fontsize=10)
-
-    plt.suptitle(f"{target_key} - Embeddings Overview", fontsize=14)
-    plt.tight_layout()
-    plt.savefig(emb_dir / "overview.png", dpi=150)
-    plt.close()
+        fig, ax = plt.subplots(figsize=(8, 7))
+        _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, n_samples=coords.shape[0])
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2")
+        ax.set_title(f"PCA 2D - {scheme.label}")
+        plt.tight_layout()
+        plt.savefig(emb_dir / f"{scheme.name}.png", dpi=150)
+        plt.close()
 
 
 def plot_target_3d(
@@ -1151,7 +1112,21 @@ def generate_all_plots(
 ):
     """Generate all plots with memory-efficient processing.
 
-    Processes in batches with explicit cleanup after each major section.
+    Folder structure:
+        plots/
+        ├── 01_dashboard/           # Summary heatmaps
+        ├── 02_linear_probe/        # Linear probe summary
+        ├── 03_decision_boundary/   # Choice prediction
+        ├── 04_trajectories/        # PC1 across layers
+        ├── 05_direction_alignment/ # Cosine similarity
+        ├── 06_scree/               # Variance explained
+        ├── 07_component_decomp/    # 2x2 component plots
+        └── 08_targets/             # Per-target plots
+            └── {base_key}/
+                └── {pos_type}/
+                    ├── pca/
+                    ├── pca_2d/
+                    └── 3d/
     """
     output_dir = config.output_dir / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1159,44 +1134,58 @@ def generate_all_plots(
     schemes = get_coloring_schemes(data)
     logger.info(f"Using {len(schemes)} coloring schemes: {[s.name for s in schemes]}")
 
-    # Priority 1: Summary dashboard (uses only metrics, not raw data)
+    # Priority 1: Summary dashboard
+    dashboard_dir = output_dir / "01_dashboard"
+    dashboard_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating summary dashboard heatmaps...")
-    plot_summary_dashboard(linear_probe_results, pca_results, output_dir)
+    plot_summary_dashboard(linear_probe_results, pca_results, dashboard_dir)
     gc.collect()
 
-    # Priority 2: Trajectory plots
-    logger.info("Generating trajectory plots...")
-    plot_trajectory(data, pca_results, output_dir)
+    # Priority 2: Linear probe summary
+    linear_dir = output_dir / "02_linear_probe"
+    linear_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Generating linear probe summary...")
+    plot_linear_probe_summary(data, linear_probe_results, linear_dir)
     gc.collect()
 
-    # Priority 3: Component decomposition
-    logger.info("Generating component decomposition plots...")
-    plot_component_decomposition(linear_probe_results, pca_results, schemes, output_dir)
-    gc.collect()
-
-    # Priority 4: Direction alignment
-    logger.info("Generating direction alignment plots...")
-    plot_direction_alignment(pca_results, output_dir)
-    gc.collect()
-
-    # Priority 5: Decision boundary
+    # Priority 3: Decision boundary
+    boundary_dir = output_dir / "03_decision_boundary"
+    boundary_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating decision boundary plot...")
-    plot_decision_boundary(data, linear_probe_results, output_dir)
+    plot_decision_boundary(data, linear_probe_results, boundary_dir)
+    gc.collect()
+
+    # Priority 4: Trajectory plots
+    traj_dir = output_dir / "04_trajectories"
+    traj_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Generating trajectory plots...")
+    plot_trajectory(data, pca_results, traj_dir)
+    gc.collect()
+
+    # Priority 5: Direction alignment
+    align_dir = output_dir / "05_direction_alignment"
+    align_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Generating direction alignment plots...")
+    plot_direction_alignment(pca_results, align_dir)
     gc.collect()
 
     # Priority 6: Scree plots
+    scree_dir = output_dir / "06_scree"
+    scree_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating scree plots...")
-    plot_scree(pca_results, output_dir)
+    plot_scree(pca_results, scree_dir)
     gc.collect()
 
-    # Summary plots
-    logger.info("Generating linear probe summary...")
-    plot_linear_probe_summary(data, linear_probe_results, output_dir)
+    # Priority 7: Component decomposition
+    decomp_dir = output_dir / "07_component_decomp"
+    decomp_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Generating component decomposition plots...")
+    plot_component_decomposition(linear_probe_results, pca_results, schemes, decomp_dir)
     gc.collect()
 
     # Per-target plots (process in batches)
     logger.info("Generating per-target plots...")
-    targets_dir = output_dir / "targets"
+    targets_dir = output_dir / "08_targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
 
     target_groups = _group_targets_by_base(list(pca_results.keys()))
