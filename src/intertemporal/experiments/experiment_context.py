@@ -171,6 +171,15 @@ class ExperimentContext:
         ensure_dir(d)
         return d
 
+    @property
+    def pairs_dir(self) -> Path:
+        """Get the directory containing all pair subdirectories."""
+        return self.output_dir / "pairs"
+
+    def get_pair_dir(self, pair_idx: int) -> Path:
+        """Get the directory for a specific pair."""
+        return self.pairs_dir / f"pair_{pair_idx}"
+
     def get_union_target(self, component: str = "resid_post") -> InterventionTarget:
         """Get union target from attribution or coarse patching aggregates."""
         if self.att_agg:
@@ -225,8 +234,7 @@ class ExperimentContext:
 
     def get_coarse_pair_path(self, pair_idx: int, component: str) -> Path:
         return (
-            self.output_dir
-            / f"pair_{pair_idx}"
+            self.get_pair_dir(pair_idx)
             / f"sweep_{component}"
             / "coarse_results.json"
         )
@@ -342,7 +350,7 @@ class ExperimentContext:
 
     def get_att_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair attribution results."""
-        return self.output_dir / f"pair_{pair_idx}" / "att_patching"
+        return self.get_pair_dir(pair_idx) / "att_patching"
 
     def get_att_pair_path(self, pair_idx: int) -> Path:
         """Get path for per-pair attribution results JSON."""
@@ -368,7 +376,9 @@ class ExperimentContext:
     def detect_cached_att_pairs_legacy(self) -> list[int]:
         """Detect which pairs have cached attribution results (legacy path)."""
         cached = []
-        for pair_dir in self.output_dir.glob("pair_*"):
+        if not self.pairs_dir.exists():
+            return cached
+        for pair_dir in self.pairs_dir.glob("pair_*"):
             att_path = pair_dir / "att_patching" / "att_results.json"
             if att_path.exists():
                 pair_idx = int(pair_dir.name.split("_")[1])
@@ -377,7 +387,7 @@ class ExperimentContext:
 
     def get_contrastive_pref_path(self, pair_idx: int) -> Path:
         """Get path for per-pair contrastive preference JSON."""
-        return self.output_dir / f"pair_{pair_idx}" / "contrastive_preference.json"
+        return self.get_pair_dir(pair_idx) / "contrastive_preference.json"
 
     def save_contrastive_pref(self, pair_idx: int) -> None:
         """Save contrastive preference summary for a pair.
@@ -419,7 +429,7 @@ class ExperimentContext:
 
     def get_diffmeans_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair diffmeans results."""
-        return self.output_dir / f"pair_{pair_idx}" / "diffmeans"
+        return self.get_pair_dir(pair_idx) / "diffmeans"
 
     def get_diffmeans_pair_path(self, pair_idx: int) -> Path:
         """Get path for per-pair diffmeans results JSON."""
@@ -473,7 +483,7 @@ class ExperimentContext:
         cached = []
         pair_idx = 0
         while True:
-            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
             if self.get_diffmeans_pair_path(pair_idx).exists():
@@ -485,7 +495,7 @@ class ExperimentContext:
 
     def get_geo_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair geo results."""
-        return self.output_dir / f"pair_{pair_idx}" / "geo"
+        return self.get_pair_dir(pair_idx) / "geo"
 
     def get_geo_pair_path(self, pair_idx: int) -> Path:
         """Get path for per-pair geo results JSON."""
@@ -536,7 +546,7 @@ class ExperimentContext:
         cached = []
         pair_idx = 0
         while True:
-            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
             if self.get_geo_pair_path(pair_idx).exists():
@@ -598,7 +608,7 @@ class ExperimentContext:
         cached = []
         pair_idx = 0
         while True:
-            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
             results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
@@ -616,7 +626,7 @@ class ExperimentContext:
         cached = []
         pair_idx = 0
         while True:
-            pair_dir = self.output_dir / f"pair_{pair_idx}"
+            pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
             # Check for att_patching subdirectory with any results
@@ -633,7 +643,7 @@ class ExperimentContext:
             List of component names with cached results
         """
         components = []
-        pair_0 = self.output_dir / "pair_0"
+        pair_0 = self.get_pair_dir(0)
         if pair_0.exists():
             for d in pair_0.iterdir():
                 if d.is_dir() and d.name.startswith("sweep_"):

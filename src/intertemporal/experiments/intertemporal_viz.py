@@ -36,6 +36,16 @@ if TYPE_CHECKING:
     from ..common.contrastive_preferences import ContrastivePreferences
 
 
+def get_pairs_dir(exp_dir: Path) -> Path:
+    """Get the pairs directory for an experiment."""
+    return exp_dir / "pairs"
+
+
+def get_pair_dir(exp_dir: Path, pair_idx: int) -> Path:
+    """Get the directory for a specific pair."""
+    return get_pairs_dir(exp_dir) / f"pair_{pair_idx}"
+
+
 def detect_cached_components(exp_dir: Path) -> list[str]:
     """Detect which components have cached coarse patching results.
 
@@ -49,7 +59,7 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
     When using ExperimentContext, prefer ctx.detect_cached_components().
     """
     components = []
-    pair_0 = exp_dir / "pair_0"
+    pair_0 = get_pair_dir(exp_dir, 0)
     if pair_0.exists():
         for d in pair_0.iterdir():
             if d.is_dir() and d.name.startswith("sweep_"):
@@ -164,7 +174,7 @@ def rebuild_coarse_aggregated(
     # Find all pair directories
     pair_idx = 0
     while True:
-        pair_dir = exp_dir / f"pair_{pair_idx}"
+        pair_dir = get_pair_dir(exp_dir, pair_idx)
         if not pair_dir.exists():
             break
 
@@ -426,7 +436,7 @@ def generate_viz(
     # Generate per-pair visualizations
     pair_idx = 0
     while True:
-        pair_dir = exp_dir / f"pair_{pair_idx}"
+        pair_dir = get_pair_dir(exp_dir, pair_idx)
         if not pair_dir.exists():
             break
 
@@ -489,10 +499,10 @@ def regenerate_all_visualizations(experiments_dir: Path) -> None:
         log(f"[viz] Experiments directory does not exist: {experiments_dir}")
         return
 
-    # Find all experiment directories (those with pair_0 subdirectory)
+    # Find all experiment directories (those with pairs/pair_0 subdirectory)
     exp_dirs = []
     for d in experiments_dir.iterdir():
-        if d.is_dir() and (d / "pair_0").exists():
+        if d.is_dir() and get_pair_dir(d, 0).exists():
             exp_dirs.append(d)
 
     if not exp_dirs:
