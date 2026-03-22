@@ -109,6 +109,7 @@ class ActivationPatching(Patching):
                  technique_type=Technique.DENOISING):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
+        self.metric_type = metric_type
         self.technique_type = technique_type
 
         # Define answer_token_indices needed for logit_metric function
@@ -169,6 +170,7 @@ class ActivationPatching(Patching):
             batched_clean_logits = []
             batched_corrupted_logits = []
 
+            # Try run without cache
             for i in range(0, num_prompts):
                 clean_logits, clean_cache = self.model.run_with_cache(self.clean_tokens[i])
                 del clean_cache
@@ -177,11 +179,11 @@ class ActivationPatching(Patching):
                 batched_clean_logits.append(clean_logits)
             if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
                 self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS):
-                self.clean_baseline, self.anti_clean_baseline = self.inner_metric(torch.cat(batched_clean_logits))
-                self.clean_baseline = self.clean_baseline.item()
-                self.anti_clean_baseline = self.anti_clean_baseline.item()
+                self.clean_clean_baseline, self.clean_corrupted_baseline = self.inner_metric(torch.cat(batched_clean_logits))
+                self.clean_clean_baseline = self.clean_clean_baseline.item()
+                self.clean_corrupted_baseline = self.clean_corrupted_baseline.item()
             else:
-                self.clean_baseline = self.inner_metric(torch.cat(batched_clean_logits)).item()
+                self.clean_clean_baseline = self.inner_metric(torch.cat(batched_clean_logits)).item()
             del batched_clean_logits
             gc.collect()
 
@@ -193,11 +195,11 @@ class ActivationPatching(Patching):
                 batched_corrupted_logits.append(corrupted_logits)
             if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
                 self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS):
-                self.corrupted_baseline, self.anti_corrupted_baseline = self.inner_metric(torch.cat(batched_corrupted_logits))
-                self.corrupted_baseline = self.corrupted_baseline.item()
-                self.anti_corrupted_baseline = self.anti_corrupted_baseline.item()
+                self.corrupted_clean_baseline, self.corrupted_corrupted_baseline = self.inner_metric(torch.cat(batched_corrupted_logits))
+                self.corrupted_clean_baseline = self.corrupted_clean_baseline.item()
+                self.corrupted_corrupted_baseline = self.corrupted_corrupted_baseline.item()
             else:      
-                self.corrupted_baseline = self.inner_metric(torch.cat(batched_corrupted_logits)).item()
+                self.corrupted_clean_baseline = self.inner_metric(torch.cat(batched_corrupted_logits)).item()
             del batched_corrupted_logits
             gc.collect()
 
@@ -209,8 +211,8 @@ class ActivationPatching(Patching):
         print()
         print()
         
-        print(f"Clean logit diff: {self.clean_baseline:.4f}")
-        print(f"Corrupted logit diff: {self.corrupted_baseline:.4f}")
+        print(f"Clean logit diff: {self.clean_clean_baseline:.4f}")
+        print(f"Corrupted logit diff: {self.corrupted_clean_baseline:.4f}")
 
         if not self.caches_and_baselines_ready:
             __, self.clean_cache = self.model.run_with_cache(self.clean_tokens)
@@ -225,15 +227,15 @@ class ActivationPatching(Patching):
         if (self.technique_type == self.Technique.DENOISING):
             # for batch..
             def __inner_logit_metric__(logits):
-                return (self.inner_metric(logits) - self.corrupted_baseline) / (
-                    self.clean_baseline - self.corrupted_baseline
+                return (self.inner_metric(logits) - self.corrupted_clean_baseline) / (
+                    self.clean_clean_baseline - self.corrupted_clean_baseline
                 )
             act_patch_result = layer_specific_algorithm(
                 self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
         elif (self.technique_type == self.Technique.DENOISING_CUSTOM):
             # for batch..
             def __inner_logit_metric__(logits):
-                return (self.inner_metric(logits) - self.corrupted_baseline)
+                return (self.inner_metric(logits) - self.corrupted_clean_baseline)
 
             act_patch_result = layer_specific_algorithm(
                 self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
@@ -243,52 +245,85 @@ class ActivationPatching(Patching):
             # We need to inject corrupted patches into clean run.
             # Metric: how much clean answer is broken. The more it severed,
             #         the more layer was needed for it.
-            def __inner_logit_metric__(logits):
-                return (self.clean_baseline - self.inner_metric(logits)) / (
-                    self.clean_baseline - self.corrupted_baseline
-                )
-            act_patch_result = layer_specific_algorithm(
-                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
+            # Version #2 with plots looking downwards if logprob decreases.
+            if (self.metric_type == ActivationPatching.Metric.LOGIT_DIFF):
+                def __inner_logit_metric__(logits):
+                    return (self.clean_clean_baseline - self.inner_metric(logits)) / (
+                        self.clean_clean_baseline - self.corrupted_clean_baseline
+                    )
+                act_patch_result = layer_specific_algorithm(
+                    self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
+            else:
+                def __inner_logit_metric__(logits):
+                    return (self.inner_metric(logits) - self.corrupted_clean_baseline) / (
+                        self.clean_clean_baseline - self.corrupted_clean_baseline
+                    )
+                act_patch_result = layer_specific_algorithm(
+                    self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
         elif (self.technique_type == self.Technique.NOISING_CUSTOM):
             # Clean prompt has a positive difference.
             # Corrupted prompt has a negative difference.
-            def __inner_logit_metric__(logits):
-                return (self.clean_baseline - self.inner_metric(logits))
-
-            act_patch_result = layer_specific_algorithm(
-                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
+            # Version #2 with plots looking downwards if logprob decreases.
+            if (self.metric_type == ActivationPatching.Metric.LOGIT_DIFF):
+                def __inner_logit_metric__(logits):
+                    return (self.clean_clean_baseline - self.inner_metric(logits))
+                act_patch_result = layer_specific_algorithm(
+                    self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
+            else:
+                def __inner_logit_metric__(logits):
+                    return (self.inner_metric(logits) - self.corrupted_clean_baseline)
+                act_patch_result = layer_specific_algorithm(
+                    self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
         elif (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS):
-            def __inner_logit_metric__(logits):
-                return (self.inner_metric(logits)[0] - self.corrupted_baseline) / (
-                    self.clean_baseline - self.corrupted_baseline
+            # def __inner_logit_metric__(logits):
+            #     return (self.inner_metric(logits)[0] - self.corrupted_baseline) / (
+            #         self.clean_baseline - self.corrupted_baseline
+            #     )
+            # def __anti_inner_logit_metric__(logits):
+            #     return (self.inner_metric(logits)[1] - self.anti_corrupted_baseline) / (
+            #         self.anti_clean_baseline - self.anti_corrupted_baseline
+            #     )
+            # Version #2 to show downwards contribution if logprob decreases
+            def __inner_logit_metric_for_clean__(logits):
+                return (self.inner_metric(logits)[0] - self.corrupted_clean_baseline) / (
+                    self.clean_clean_baseline - self.corrupted_clean_baseline
                 )
-            def __anti_inner_logit_metric__(logits):
-                return (self.inner_metric(logits)[1] - self.anti_corrupted_baseline) / (
-                    self.anti_clean_baseline - self.anti_corrupted_baseline
+            def __inner_logit_metric_for_corrupted__(logits):
+                return (self.clean_corrupted_baseline - self.inner_metric(logits)[1]) / (
+                    self.clean_corrupted_baseline - self.corrupted_corrupted_baseline
                 )
-            act_patch_result = layer_specific_algorithm(
-                self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric__)
-            act_patch_result_df = pd.DataFrame(act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
-            act_patch_result_anti = layer_specific_algorithm(
-                self.model, self.corrupted_tokens, self.clean_cache, __anti_inner_logit_metric__)
-            act_patch_result_anti_df = pd.DataFrame(act_patch_result_anti.cpu(), columns=self.first_prompt_as_ticks)
-            return act_patch_result_df, act_patch_result_anti_df
+            act_patch_result_clean_logprob = layer_specific_algorithm(
+                self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric_for_clean__)
+            act_patch_result_clean_logprob_df = pd.DataFrame(act_patch_result_clean_logprob.cpu(), columns=self.first_prompt_as_ticks)
+            act_patch_result_corr_logprob = layer_specific_algorithm(
+                self.model, self.corrupted_tokens, self.clean_cache, __inner_logit_metric_for_corrupted__)
+            act_patch_result_corr_logprob_df = pd.DataFrame(act_patch_result_corr_logprob.cpu(), columns=self.first_prompt_as_ticks)
+            return act_patch_result_clean_logprob_df, act_patch_result_corr_logprob_df
         elif (self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS):
-            def __inner_logit_metric__(logits):
-                return (self.clean_baseline - self.inner_metric(logits)[0]) / (
-                    self.clean_baseline - self.corrupted_baseline
+            # def __inner_logit_metric__(logits):
+            #     return (self.clean_baseline - self.inner_metric(logits)[0]) / (
+            #         self.clean_baseline - self.corrupted_baseline
+            #     )
+            # def __anti_inner_logit_metric__(logits):
+            #     return (self.anti_clean_baseline - self.inner_metric(logits)[1]) / (
+            #         self.anti_clean_baseline - self.anti_corrupted_baseline
+            #     )
+            # Version #2 to show downwards contribution if logprob decreases
+            def __inner_logit_metric_for_clean__(logits):
+                return (self.inner_metric(logits)[0] - self.corrupted_clean_baseline) / (
+                    self.clean_clean_baseline - self.corrupted_clean_baseline
                 )
-            def __anti_inner_logit_metric__(logits):
-                return (self.anti_clean_baseline - self.inner_metric(logits)[1]) / (
-                    self.anti_clean_baseline - self.anti_corrupted_baseline
+            def __inner_logit_metric_for_corrupted__(logits):
+                return (self.clean_corrupted_baseline - self.inner_metric(logits)[1]) / (
+                    self.clean_corrupted_baseline - self.corrupted_corrupted_baseline
                 )
-            act_patch_result = layer_specific_algorithm(
-                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
-            act_patch_result_df = pd.DataFrame(act_patch_result.cpu(), columns=self.first_prompt_as_ticks)
-            act_patch_result_anti = layer_specific_algorithm(
-                self.model, self.clean_tokens, self.corrupted_cache, __anti_inner_logit_metric__)
-            act_patch_result_anti_df = pd.DataFrame(act_patch_result_anti.cpu(), columns=self.first_prompt_as_ticks)
-            return act_patch_result_df, act_patch_result_anti_df
+            act_patch_result_clean_logprob = layer_specific_algorithm(
+                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric_for_clean__)
+            act_patch_result_clean_logprob_df = pd.DataFrame(act_patch_result_clean_logprob.cpu(), columns=self.first_prompt_as_ticks)
+            act_patch_result_corr_logprob = layer_specific_algorithm(
+                self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric_for_corrupted__)
+            act_patch_result_corr_logprob_df = pd.DataFrame(act_patch_result_corr_logprob.cpu(), columns=self.first_prompt_as_ticks)
+            return act_patch_result_clean_logprob_df, act_patch_result_corr_logprob_df
         else:
             raise Exception("Unknown patching technique type is sent!")
 
