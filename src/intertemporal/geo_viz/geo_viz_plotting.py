@@ -287,10 +287,22 @@ def _scatter_with_scheme(
                 ax.scatter(x[mask], y[mask], c=color, s=15, alpha=0.7, label=label)
         ax.legend(markerscale=2, fontsize=8)
     else:
-        vmin = max(1, scheme.values.min()) if scheme.use_log else scheme.values.min()
-        vmax = scheme.values.max()
-        norm = LogNorm(vmin=vmin, vmax=vmax) if scheme.use_log else None
-        sc = ax.scatter(x, y, c=scheme.values, cmap=CMAP_GRADIENT, s=15, alpha=0.7, norm=norm)
+        values = scheme.values
+        vmin = values.min()
+        vmax = values.max()
+
+        # Handle edge cases for log normalization
+        if scheme.use_log:
+            vmin = max(0.01, vmin)  # Ensure positive for log
+            vmax = max(vmin * 1.1, vmax)  # Ensure vmax > vmin
+            norm = LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            # Ensure vmax > vmin for linear norm
+            if vmax <= vmin:
+                vmax = vmin + 1
+            norm = None
+
+        sc = ax.scatter(x, y, c=values, cmap=CMAP_GRADIENT, s=15, alpha=0.7, norm=norm)
         if add_colorbar:
             plt.colorbar(sc, ax=ax, label=scheme.label, shrink=0.8)
 

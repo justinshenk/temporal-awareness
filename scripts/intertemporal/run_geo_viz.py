@@ -36,23 +36,51 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Default configuration with recommended targets based on our analysis
+# Layers to analyze (based on circuit analysis)
+ANALYSIS_LAYERS = [
+    0,   # baseline embedding
+    13,  # mid-network, before circuit
+    18,  # just before circuit onset
+    19,  # circuit onset
+    21,  # integration point
+    24,  # top attention layer
+    28,  # secondary MLP processor
+    31,  # most reliable MLP
+    34,  # final processing
+    35,  # after last layer
+]
+
+# Components at each layer
+COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
+
+# Named positions (dynamically computed from prompt structure)
+SOURCE_POSITIONS = [
+    "time_horizon",
+    "short_term_time",
+    "short_term_reward",
+    "long_term_time",
+    "long_term_reward",
+]
+DEST_POSITIONS = ["response"]
+
+
+def build_targets(layers: list[int], components: list[str], positions: list[str]) -> list[dict]:
+    """Build target specifications for all layer/component/position combinations."""
+    targets = []
+    for layer in layers:
+        for component in components:
+            for position in positions:
+                targets.append({
+                    "layer": layer,
+                    "component": component,
+                    "position": position,
+                })
+    return targets
+
+
+# Default configuration with comprehensive targets
 DEFAULT_GEO_VIZ_CFG = {
-    "targets": [
-        # Best performers for time decoding (dest positions)
-        # These showed R² > 0.97 in linear probe analysis
-        {"layer": 24, "component": "resid_pre", "position": "dest"},
-        {"layer": 21, "component": "resid_post", "position": "dest"},
-        {"layer": 21, "component": "attn_out", "position": "dest"},
-        {"layer": 19, "component": "mlp_out", "position": "dest"},
-        {"layer": 31, "component": "mlp_out", "position": "dest"},
-        # Early layer for comparison (should show weaker signal)
-        {"layer": 12, "component": "resid_post", "position": "dest"},
-        # Source positions for comparison (should show no time signal)
-        {"layer": 21, "component": "attn_out", "position": "source"},
-        {"layer": 21, "component": "resid_post", "position": "source"},
-        {"layer": 19, "component": "mlp_out", "position": "source"},
-    ],
+    "targets": build_targets(ANALYSIS_LAYERS, COMPONENTS, SOURCE_POSITIONS + DEST_POSITIONS),
     "output_dir": "out/geo_viz",
     "model": DEFAULT_MODEL,
     "seed": 42,
