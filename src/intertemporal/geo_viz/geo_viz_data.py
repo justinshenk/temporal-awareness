@@ -9,7 +9,7 @@ import numpy as np
 
 from ...common.time_value import TimeValue
 from ..common.preference_types import PreferenceSample, PromptSample, RewardValue
-from .geo_viz_config import GeoVizConfig, TargetSpec
+from .geo_viz_config import GeoVizConfig, TargetSpec, is_absolute_position, parse_absolute_position
 
 logger = logging.getLogger(__name__)
 
@@ -35,23 +35,42 @@ class ResolvedPositions:
     source: list[int] = field(default_factory=list)
     dest: list[int] = field(default_factory=list)
 
-    def get(self, pos_name: str) -> int:
-        """Get first position index by name."""
+    def get(self, pos_name: str) -> int | None:
+        """Get first position index by name or absolute index.
+
+        Returns None if position doesn't exist for this sample.
+        """
+        # Handle absolute positions (P86, P145, etc.)
+        if is_absolute_position(pos_name):
+            idx = parse_absolute_position(pos_name)
+            # Clamp to valid range
+            return max(0, min(idx, self.full_len - 1))
+
         # Check named positions first
         if pos_name in self.named_positions:
             positions = self.named_positions[pos_name]
-            return positions[0] if positions else 0
+            return positions[0] if positions else None
 
         # Legacy fallbacks
         if pos_name == "source":
             return self.source[0] if self.source else 0
         elif pos_name == "dest":
             return self.dest[0] if self.dest else self.prompt_len
+        elif pos_name == "response":
+            # response is same as dest
+            return self.dest[0] if self.dest else self.prompt_len
         else:
-            raise ValueError(f"Unknown position name: {pos_name}")
+            # Position doesn't exist for this sample
+            return None
 
     def get_all(self, pos_name: str) -> list[int]:
-        """Get all position indices for a named position."""
+        """Get all position indices for a named position or absolute index."""
+        # Handle absolute positions (P86, P145, etc.)
+        if is_absolute_position(pos_name):
+            idx = parse_absolute_position(pos_name)
+            # Clamp to valid range and return single position
+            return [max(0, min(idx, self.full_len - 1))]
+
         if pos_name in self.named_positions:
             return self.named_positions[pos_name]
         elif pos_name == "source":
@@ -379,7 +398,11 @@ def collect_samples() -> "PromptDataset":
 def extract_activations(
     dataset: "PromptDataset", targets: list[TargetSpec], config: GeoVizConfig
 ) -> ActivationData:
-    """Extract activations at specified positions for all samples."""
+    """Extract activations at specified positions for all samples.
+
+    Memory-efficient: saves activations incrementally to disk and offloads.
+    """
+    import gc
     from ..formatting.prompt_formats import find_prompt_format_config
     from ..preference import PreferenceQuerier, PreferenceQueryConfig
 
@@ -396,17 +419,26 @@ def extract_activations(
         logger.info(f"Limited to {config.max_samples} samples")
 
     hook_names = list({t.hook_name for t in targets})
-    activations = {t.key: [] for t in targets}
+
+    # Setup incremental save directory
+    cache_dir = config.output_dir / "data" / "incremental"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # Track which targets we can actually extract (some positions may not exist)
+    valid_targets = []
+    activations = {}
     choices = []
-
-    logger.info(f"Extracting activations for {len(samples)} samples...")
-
     valid_samples = []
     skipped = 0
 
+    # Batch size for incremental saves
+    SAVE_BATCH_SIZE = 50
+
+    logger.info(f"Extracting activations for {len(samples)} samples...")
+
     for i, sample in enumerate(samples):
-        if i % 100 == 0:
-            logger.info(f"  Processing sample {i}/{len(samples)} (skipped: {skipped})")
+        if i % 20 == 0:
+            logger.info(f"  Processing sample {i}/{len(samples)} (skipped: {skipped}, valid: {len(valid_samples)})")
 
         # Get choice_prefix from sample's prompt format config
         prompt_format = find_prompt_format_config(sample.formatting_id)
@@ -426,11 +458,31 @@ def extract_activations(
             # Resolve positions using PreferenceSample's token info
             positions = resolve_positions(sample, pref, runner, verbose=False)
 
+            # Extract activations for each target
+            sample_activations = {}
             for target in targets:
-                pos_idx = positions.get(target.position)
-                # CapturedInternals already removes batch dim and moves to CPU
-                act = pref.internals.activations[target.hook_name][pos_idx, :].numpy()
-                activations[target.key].append(act)
+                try:
+                    pos_idx = positions.get(target.position)
+                    if pos_idx is None:
+                        # Position doesn't exist for this sample
+                        continue
+                    # CapturedInternals already removes batch dim and moves to CPU
+                    act = pref.internals.activations[target.hook_name][pos_idx, :].numpy()
+                    sample_activations[target.key] = act
+                except (ValueError, KeyError, IndexError) as e:
+                    # Error extracting - skip this target
+                    continue
+
+            # Only include sample if we got at least some activations
+            if not sample_activations:
+                skipped += 1
+                continue
+
+            # Add to running collection
+            for key, act in sample_activations.items():
+                if key not in activations:
+                    activations[key] = []
+                activations[key].append(act)
 
             # Capture choice info
             pair = sample.prompt.preference_pair
@@ -452,6 +504,23 @@ def extract_activations(
             )
             valid_samples.append(sample)
 
+            # Clear internals immediately to free memory
+            pref.internals = None
+
+            # Incremental save and offload
+            if len(valid_samples) % SAVE_BATCH_SIZE == 0 and len(valid_samples) > 0:
+                batch_num = len(valid_samples) // SAVE_BATCH_SIZE
+                logger.info(f"  Saving batch {batch_num} to disk...")
+
+                # Save current batch
+                batch_file = cache_dir / f"batch_{batch_num:04d}.npz"
+                batch_acts = {k: np.stack(v[-SAVE_BATCH_SIZE:]) for k, v in activations.items() if len(v) >= SAVE_BATCH_SIZE}
+                if batch_acts:
+                    np.savez_compressed(batch_file, **batch_acts)
+
+                # Force garbage collection
+                gc.collect()
+
         except Exception as e:
             logger.warning(f"  Skipping sample {i}: {e}")
             skipped += 1
@@ -459,13 +528,21 @@ def extract_activations(
 
     logger.info(f"Processed {len(valid_samples)} valid samples (skipped {skipped})")
 
-    activations = {k: np.stack(v) for k, v in activations.items()}
+    # Stack all activations
+    if not activations:
+        raise ValueError("No activations were extracted. Check position names.")
 
-    logger.info(f"Extracted activations: {list(activations.keys())}")
+    final_activations = {}
     for k, v in activations.items():
-        logger.info(f"  {k}: {v.shape}")
+        if v:  # Only include targets with data
+            final_activations[k] = np.stack(v)
+            logger.info(f"  {k}: {final_activations[k].shape}")
 
-    return ActivationData(samples=valid_samples, activations=activations, choices=choices)
+    # Clear intermediate data
+    activations = None
+    gc.collect()
+
+    return ActivationData(samples=valid_samples, activations=final_activations, choices=choices)
 
 
 # =============================================================================

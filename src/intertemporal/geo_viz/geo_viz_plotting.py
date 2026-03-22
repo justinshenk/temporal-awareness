@@ -180,6 +180,627 @@ def _get_horizons(data: ActivationData) -> tuple[np.ndarray, np.ndarray, np.ndar
 
 
 # =============================================================================
+# Summary Dashboard and Heatmaps
+# =============================================================================
+
+
+def plot_summary_dashboard(
+    linear_probe_results: dict[str, "LinearProbeResult"],
+    pca_results: dict[str, "PCAResult"],
+    output_dir: Path,
+):
+    """Plot summary dashboard heatmaps showing R² scores across layers and positions.
+
+    Creates 4 heatmaps (one per component) with:
+    - Rows = positions
+    - Columns = layers
+    - Cell color = R² score (separation/decodability)
+    """
+    # Parse all targets to extract layer, component, position
+    target_info = {}
+    for key in linear_probe_results.keys():
+        # Parse key like "L19_mlp_out_Presponse"
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+        base = parts[0]  # "L19_mlp_out"
+        position = parts[1]  # "response"
+
+        # Parse layer and component from base
+        layer_match = re.match(r"L(\d+)_(.+)", base)
+        if not layer_match:
+            continue
+        layer = int(layer_match.group(1))
+        component = layer_match.group(2)
+
+        target_info[key] = {
+            "layer": layer,
+            "component": component,
+            "position": position,
+            "r2": linear_probe_results[key].r2_mean,
+            "corr": abs(pca_results[key].pc_correlations[0][1]) if key in pca_results else 0,
+        }
+
+    if not target_info:
+        logger.warning("No valid targets for summary dashboard")
+        return
+
+    # Get unique layers, components, positions
+    layers = sorted(set(t["layer"] for t in target_info.values()))
+    components = sorted(set(t["component"] for t in target_info.values()))
+    positions = sorted(set(t["position"] for t in target_info.values()))
+
+    # Order positions: source positions first, then dest
+    source_positions = ["time_horizon", "short_term_time", "short_term_reward",
+                       "long_term_time", "long_term_reward", "source"]
+    dest_positions = ["response", "dest"]
+    ordered_positions = [p for p in source_positions if p in positions]
+    ordered_positions += [p for p in dest_positions if p in positions]
+    ordered_positions += [p for p in positions if p not in ordered_positions]
+    positions = ordered_positions
+
+    # Create heatmap for each component
+    for component in components:
+        fig, ax = plt.subplots(figsize=(max(8, len(layers) * 0.8), max(5, len(positions) * 0.5)))
+
+        # Build data matrix
+        data = np.full((len(positions), len(layers)), np.nan)
+        for key, info in target_info.items():
+            if info["component"] == component:
+                row_idx = positions.index(info["position"]) if info["position"] in positions else -1
+                col_idx = layers.index(info["layer"]) if info["layer"] in layers else -1
+                if row_idx >= 0 and col_idx >= 0:
+                    data[row_idx, col_idx] = info["r2"]
+
+        # Plot heatmap
+        im = ax.imshow(data, cmap="RdYlGn", vmin=-0.1, vmax=1.0, aspect="auto")
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+        cbar.set_label("R² Score", fontsize=10)
+
+        # Add text annotations
+        for i in range(len(positions)):
+            for j in range(len(layers)):
+                val = data[i, j]
+                if not np.isnan(val):
+                    color = "white" if val < 0.5 else "black"
+                    ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                           color=color, fontsize=8)
+
+        # Labels
+        ax.set_xticks(range(len(layers)))
+        ax.set_xticklabels([f"L{l}" for l in layers], fontsize=9)
+        ax.set_yticks(range(len(positions)))
+        ax.set_yticklabels(positions, fontsize=9)
+        ax.set_xlabel("Layer")
+        ax.set_ylabel("Position")
+        ax.set_title(f"Linear Probe R² - {component}\n(Green=high decodability, Red=low)")
+
+        plt.tight_layout()
+        plt.savefig(output_dir / f"dashboard_{component}.png", dpi=150)
+        plt.close()
+
+    # Combined dashboard with all components
+    n_components = len(components)
+    fig, axes = plt.subplots(1, n_components, figsize=(4 * n_components + 2, max(5, len(positions) * 0.5)))
+    if n_components == 1:
+        axes = [axes]
+
+    for idx, component in enumerate(components):
+        ax = axes[idx]
+
+        # Build data matrix
+        data = np.full((len(positions), len(layers)), np.nan)
+        for key, info in target_info.items():
+            if info["component"] == component:
+                row_idx = positions.index(info["position"]) if info["position"] in positions else -1
+                col_idx = layers.index(info["layer"]) if info["layer"] in layers else -1
+                if row_idx >= 0 and col_idx >= 0:
+                    data[row_idx, col_idx] = info["r2"]
+
+        im = ax.imshow(data, cmap="RdYlGn", vmin=-0.1, vmax=1.0, aspect="auto")
+
+        # Annotations
+        for i in range(len(positions)):
+            for j in range(len(layers)):
+                val = data[i, j]
+                if not np.isnan(val):
+                    color = "white" if val < 0.5 else "black"
+                    ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                           color=color, fontsize=7)
+
+        ax.set_xticks(range(len(layers)))
+        ax.set_xticklabels([f"L{l}" for l in layers], fontsize=8, rotation=45)
+        if idx == 0:
+            ax.set_yticks(range(len(positions)))
+            ax.set_yticklabels(positions, fontsize=8)
+        else:
+            ax.set_yticks([])
+        ax.set_title(component, fontsize=10)
+
+    # Add single colorbar
+    fig.colorbar(im, ax=axes, shrink=0.6, label="R² Score")
+
+    plt.suptitle("Summary Dashboard: Linear Probe R² by Layer, Position, Component", fontsize=12)
+    plt.tight_layout()
+    plt.savefig(output_dir / "dashboard_combined.png", dpi=150)
+    plt.close()
+
+    logger.info(f"Saved summary dashboards to {output_dir}")
+
+
+def plot_trajectory(
+    data: "ActivationData",
+    pca_results: dict[str, "PCAResult"],
+    output_dir: Path,
+):
+    """Plot PC1 trajectory across layers for each sample.
+
+    Shows how the time-correlated PC1 projection evolves across layers.
+    Each line = one sample, colored by time horizon.
+    Handles positions with different sample counts by using the minimum common count.
+    """
+    # Group targets by position, component - need consistent layers
+    target_info = {}
+    for key, pca_result in pca_results.items():
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+        base = parts[0]
+        position = parts[1]
+
+        layer_match = re.match(r"L(\d+)_(.+)", base)
+        if not layer_match:
+            continue
+        layer = int(layer_match.group(1))
+        component = layer_match.group(2)
+
+        key_id = f"{component}_P{position}"
+        if key_id not in target_info:
+            target_info[key_id] = {}
+        target_info[key_id][layer] = {
+            "key": key,
+            "pca": pca_result,
+            "n_samples": pca_result.transformed.shape[0],
+        }
+
+    if not target_info:
+        logger.warning("No trajectory data available")
+        return
+
+    # Get time horizons for coloring (full set)
+    horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
+    horizons_years = horizons_months / 12.0
+    log_horizons = np.log10(horizons_years + 0.1)
+
+    traj_dir = output_dir / "trajectories"
+    traj_dir.mkdir(parents=True, exist_ok=True)
+
+    for key_id, layer_data in target_info.items():
+        layers = sorted(layer_data.keys())
+        if len(layers) < 2:
+            continue
+
+        # Find minimum sample count across all layers for this trajectory
+        n_samples = min(layer_data[layer]["n_samples"] for layer in layers)
+        if n_samples < 2:
+            logger.warning(f"  Skipping trajectory {key_id}: too few samples")
+            continue
+
+        # Use subset of horizons matching the sample count
+        log_horizons_subset = log_horizons[:n_samples]
+        color_vals = (log_horizons_subset - log_horizons_subset.min()) / (log_horizons_subset.max() - log_horizons_subset.min() + 1e-6)
+
+        # Extract PC1 projection for best correlated PC at each layer
+        trajectories = np.zeros((n_samples, len(layers)))
+        for i, layer in enumerate(layers):
+            pca_result = layer_data[layer]["pca"]
+            best_pc_idx = pca_result.pc_correlations[0][0]
+            # Use only the first n_samples
+            trajectories[:, i] = pca_result.transformed[:n_samples, best_pc_idx]
+
+        # Normalize trajectories
+        for i in range(len(layers)):
+            col = trajectories[:, i]
+            std = col.std()
+            if std > 1e-10:
+                trajectories[:, i] = (col - col.mean()) / std
+            else:
+                trajectories[:, i] = 0
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Plot each sample's trajectory
+        for sample_idx in range(min(n_samples, 200)):  # Limit samples for clarity
+            color = plt.cm.plasma(color_vals[sample_idx])
+            ax.plot(range(len(layers)), trajectories[sample_idx],
+                   color=color, alpha=0.3, linewidth=0.8)
+
+        # Add colorbar
+        sm = plt.cm.ScalarMappable(cmap="plasma",
+                                   norm=plt.Normalize(vmin=log_horizons_subset.min(), vmax=log_horizons_subset.max()))
+        cbar = plt.colorbar(sm, ax=ax)
+        cbar.set_label("log₁₀(time horizon in years)", fontsize=10)
+
+        ax.set_xticks(range(len(layers)))
+        ax.set_xticklabels([f"L{l}" for l in layers])
+        ax.set_xlabel("Layer")
+        ax.set_ylabel("Normalized PC projection")
+        ax.set_title(f"Trajectory: {key_id}\n(Best time-correlated PC at each layer, n={n_samples})")
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.savefig(traj_dir / f"trajectory_{key_id}.png", dpi=150)
+        plt.close()
+
+    logger.info(f"Saved trajectory plots to {traj_dir}")
+
+
+def plot_component_decomposition(
+    linear_probe_results: dict[str, "LinearProbeResult"],
+    pca_results: dict[str, "PCAResult"],
+    schemes: list["ColoringScheme"],
+    output_dir: Path,
+):
+    """Plot 2x2 component decomposition showing resid_pre, attn_out, mlp_out, resid_post.
+
+    For key layer/position combinations, shows how information flows through components.
+    """
+    # Parse targets
+    target_info = {}
+    for key in pca_results.keys():
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+        base = parts[0]
+        position = parts[1]
+
+        layer_match = re.match(r"L(\d+)_(.+)", base)
+        if not layer_match:
+            continue
+        layer = int(layer_match.group(1))
+        component = layer_match.group(2)
+
+        layer_pos_key = f"L{layer}_P{position}"
+        if layer_pos_key not in target_info:
+            target_info[layer_pos_key] = {}
+        target_info[layer_pos_key][component] = {
+            "key": key,
+            "pca": pca_results[key],
+            "r2": linear_probe_results.get(key, None),
+        }
+
+    decomp_dir = output_dir / "component_decomposition"
+    decomp_dir.mkdir(parents=True, exist_ok=True)
+
+    components_order = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
+
+    # Use first non-categorical scheme
+    scheme = next((s for s in schemes if not s.is_categorical), schemes[0] if schemes else None)
+    if scheme is None:
+        return
+
+    for layer_pos_key, comp_data in target_info.items():
+        available_components = [c for c in components_order if c in comp_data]
+        if len(available_components) < 2:
+            continue
+
+        n_cols = 2
+        n_rows = (len(available_components) + 1) // 2
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 5 * n_rows))
+        axes = np.atleast_2d(axes)
+
+        for idx, component in enumerate(available_components):
+            row, col = idx // 2, idx % 2
+            ax = axes[row, col]
+
+            pca_result = comp_data[component]["pca"]
+            X_pca = pca_result.transformed
+            best_pc_idx = pca_result.pc_correlations[0][0]
+            best_corr = pca_result.pc_correlations[0][1]
+
+            r2_info = comp_data[component]["r2"]
+            r2_val = r2_info.r2_mean if r2_info else 0
+
+            _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False, n_samples=X_pca.shape[0])
+            ax.set_xlabel("PC0")
+            ax.set_ylabel(f"PC{best_pc_idx}")
+            ax.set_title(f"{component}\nR²={r2_val:.3f}, corr={best_corr:.3f}")
+
+        # Hide unused axes
+        for idx in range(len(available_components), n_rows * n_cols):
+            row, col = idx // 2, idx % 2
+            axes[row, col].axis("off")
+
+        plt.suptitle(f"Component Decomposition: {layer_pos_key}", fontsize=12)
+        plt.tight_layout()
+        plt.savefig(decomp_dir / f"decomp_{layer_pos_key}.png", dpi=150)
+        plt.close()
+
+    logger.info(f"Saved component decomposition plots to {decomp_dir}")
+
+
+def plot_direction_alignment(
+    pca_results: dict[str, "PCAResult"],
+    output_dir: Path,
+):
+    """Plot direction alignment heatmaps showing cosine similarity between PC1 directions.
+
+    Shows how the time-encoding direction aligns across layers and positions.
+    """
+    # Parse targets and extract PC1 directions
+    directions = {}
+    for key, pca_result in pca_results.items():
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+
+        # Get direction of best correlated PC
+        best_pc_idx = pca_result.pc_correlations[0][0]
+        direction = pca_result.components[best_pc_idx]  # d_model dimensional
+        direction = direction / (np.linalg.norm(direction) + 1e-10)  # Normalize
+        directions[key] = direction
+
+    if len(directions) < 2:
+        logger.warning("Not enough targets for direction alignment")
+        return
+
+    keys = sorted(directions.keys())
+    n = len(keys)
+
+    # Compute cosine similarity matrix
+    similarity = np.zeros((n, n))
+    for i, key_i in enumerate(keys):
+        for j, key_j in enumerate(keys):
+            similarity[i, j] = abs(np.dot(directions[key_i], directions[key_j]))
+
+    # Plot full heatmap
+    fig, ax = plt.subplots(figsize=(max(10, n * 0.3), max(8, n * 0.25)))
+    im = ax.imshow(similarity, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+
+    # Labels (abbreviated)
+    labels = []
+    for key in keys:
+        parts = key.split("_P")
+        base = parts[0].replace("_", "")
+        pos = parts[1][:4] if len(parts) > 1 else ""
+        labels.append(f"{base[:6]}_{pos}")
+
+    if n <= 30:
+        ax.set_xticks(range(n))
+        ax.set_xticklabels(labels, fontsize=6, rotation=90)
+        ax.set_yticks(range(n))
+        ax.set_yticklabels(labels, fontsize=6)
+
+    plt.colorbar(im, ax=ax, shrink=0.6, label="|cosine similarity|")
+    ax.set_title("Direction Alignment: PC1 Cosine Similarity Across Targets")
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "direction_alignment.png", dpi=150)
+    plt.close()
+
+    # Create per-position alignment plots
+    position_groups = {}
+    for key in keys:
+        parts = key.split("_P")
+        if len(parts) == 2:
+            pos = parts[1]
+            if pos not in position_groups:
+                position_groups[pos] = []
+            position_groups[pos].append(key)
+
+    for pos, pos_keys in position_groups.items():
+        if len(pos_keys) < 2:
+            continue
+
+        n_pos = len(pos_keys)
+        sim_pos = np.zeros((n_pos, n_pos))
+        for i, key_i in enumerate(pos_keys):
+            for j, key_j in enumerate(pos_keys):
+                sim_pos[i, j] = abs(np.dot(directions[key_i], directions[key_j]))
+
+        fig, ax = plt.subplots(figsize=(max(6, n_pos * 0.5), max(5, n_pos * 0.4)))
+        im = ax.imshow(sim_pos, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+
+        labels_pos = [k.split("_P")[0] for k in pos_keys]
+        ax.set_xticks(range(n_pos))
+        ax.set_xticklabels(labels_pos, fontsize=8, rotation=45)
+        ax.set_yticks(range(n_pos))
+        ax.set_yticklabels(labels_pos, fontsize=8)
+
+        plt.colorbar(im, ax=ax, shrink=0.8, label="|cos sim|")
+        ax.set_title(f"Direction Alignment: Position={pos}")
+
+        plt.tight_layout()
+        plt.savefig(output_dir / f"direction_alignment_{pos}.png", dpi=150)
+        plt.close()
+
+    logger.info(f"Saved direction alignment plots to {output_dir}")
+
+
+def plot_decision_boundary(
+    data: "ActivationData",
+    linear_probe_results: dict[str, "LinearProbeResult"],
+    output_dir: Path,
+):
+    """Plot decision boundary accuracy across layers.
+
+    Shows how well a linear classifier can separate short-term vs long-term choices.
+    """
+    if not data.choices:
+        logger.warning("No choice data for decision boundary plot")
+        return
+
+    # Get binary labels
+    chose_long = np.array([1 if c.chose_long_term else 0 for c in data.choices])
+
+    # Skip if all same choice
+    if len(set(chose_long)) < 2:
+        logger.warning("All samples have same choice, skipping decision boundary")
+        return
+
+    # Parse targets by layer
+    layer_accuracy = {}
+    for key, result in linear_probe_results.items():
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+        base = parts[0]
+        position = parts[1]
+
+        layer_match = re.match(r"L(\d+)_(.+)", base)
+        if not layer_match:
+            continue
+        layer = int(layer_match.group(1))
+        component = layer_match.group(2)
+
+        # Use predictions to compute choice accuracy
+        # Higher prediction = longer horizon = should choose long-term
+        predictions = result.predictions
+        n_samples = len(predictions)
+        # Handle different sample counts (some positions don't exist in all prompts)
+        target_chose_long = chose_long[:n_samples] if n_samples < len(chose_long) else chose_long
+        median_pred = np.median(predictions)
+        predicted_choice = (predictions > median_pred).astype(int)
+        accuracy = (predicted_choice == target_chose_long).mean()
+
+        layer_key = f"L{layer}_{component}_P{position}"
+        layer_accuracy[layer_key] = {
+            "layer": layer,
+            "component": component,
+            "position": position,
+            "accuracy": accuracy,
+        }
+
+    # Plot by layer (aggregated across components and positions)
+    layers_set = sorted(set(info["layer"] for info in layer_accuracy.values()))
+
+    # Group by position type
+    dest_positions = {"response", "dest"}
+    src_positions = {"time_horizon", "short_term_time", "short_term_reward",
+                    "long_term_time", "long_term_reward", "source"}
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    for ax, (pos_type, pos_set) in zip(axes, [("Dest", dest_positions), ("Source", src_positions)]):
+        layer_acc = {layer: [] for layer in layers_set}
+        for key, info in layer_accuracy.items():
+            if info["position"] in pos_set:
+                layer_acc[info["layer"]].append(info["accuracy"])
+
+        layers_with_data = [l for l in layers_set if layer_acc[l]]
+        if not layers_with_data:
+            ax.text(0.5, 0.5, f"No {pos_type} data", transform=ax.transAxes, ha="center")
+            continue
+
+        mean_acc = [np.mean(layer_acc[l]) for l in layers_with_data]
+        std_acc = [np.std(layer_acc[l]) for l in layers_with_data]
+
+        ax.errorbar(layers_with_data, mean_acc, yerr=std_acc,
+                   marker="o", linewidth=2, capsize=5, color="#2196F3" if pos_type == "Dest" else "#F44336")
+        ax.axhline(0.5, color="gray", linestyle="--", alpha=0.5, label="Chance")
+        ax.set_xlabel("Layer")
+        ax.set_ylabel("Choice Prediction Accuracy")
+        ax.set_title(f"Decision Boundary: {pos_type} Positions")
+        ax.set_ylim(0.3, 1.0)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    plt.suptitle("Linear Probe Accuracy for Predicting Choice (Short vs Long Term)", fontsize=12)
+    plt.tight_layout()
+    plt.savefig(output_dir / "decision_boundary.png", dpi=150)
+    plt.close()
+
+    logger.info(f"Saved decision boundary plot to {output_dir}")
+
+
+def plot_scree(
+    pca_results: dict[str, "PCAResult"],
+    output_dir: Path,
+):
+    """Plot scree plots showing variance explained by each PC.
+
+    Shows which PCs capture the most variance at each layer/position.
+    """
+    scree_dir = output_dir / "scree"
+    scree_dir.mkdir(parents=True, exist_ok=True)
+
+    # Individual scree plots for key targets
+    key_targets = []
+    for key in pca_results.keys():
+        if "response" in key or "dest" in key:
+            key_targets.append(key)
+
+    # Also include some source targets
+    for key in pca_results.keys():
+        if key not in key_targets:
+            key_targets.append(key)
+        if len(key_targets) >= 12:
+            break
+
+    for target_key in key_targets:
+        pca_result = pca_results[target_key]
+
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+        # Scree plot
+        ax = axes[0]
+        n_show = min(20, len(pca_result.explained_variance))
+        ax.bar(range(n_show), pca_result.explained_variance[:n_show], color="#2196F3", alpha=0.7)
+        ax.set_xlabel("Principal Component")
+        ax.set_ylabel("Explained Variance Ratio")
+        ax.set_title("Variance Explained")
+
+        # Cumulative variance
+        ax = axes[1]
+        cumsum = np.cumsum(pca_result.explained_variance[:n_show])
+        ax.plot(range(n_show), cumsum, marker="o", color="#4CAF50", linewidth=2)
+        ax.axhline(0.9, color="red", linestyle="--", alpha=0.5, label="90%")
+        ax.axhline(0.95, color="orange", linestyle="--", alpha=0.5, label="95%")
+        ax.set_xlabel("Number of Components")
+        ax.set_ylabel("Cumulative Variance")
+        ax.set_title("Cumulative Variance Explained")
+        ax.legend()
+        ax.set_ylim(0, 1.05)
+
+        plt.suptitle(f"Scree Plot: {target_key}", fontsize=11)
+        plt.tight_layout()
+
+        # Clean filename
+        safe_name = target_key.replace("/", "_")
+        plt.savefig(scree_dir / f"scree_{safe_name}.png", dpi=150)
+        plt.close()
+
+    # Summary scree comparing key targets
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    colors = plt.cm.tab10.colors
+    for idx, target_key in enumerate(key_targets[:8]):
+        pca_result = pca_results[target_key]
+        cumsum = np.cumsum(pca_result.explained_variance[:20])
+        # Abbreviated label
+        parts = target_key.split("_P")
+        label = f"{parts[0][-8:]}_P{parts[1][:4]}" if len(parts) == 2 else target_key[:15]
+        ax.plot(range(len(cumsum)), cumsum, marker=".", color=colors[idx % len(colors)],
+               linewidth=1.5, alpha=0.8, label=label)
+
+    ax.axhline(0.9, color="gray", linestyle="--", alpha=0.5)
+    ax.set_xlabel("Number of Components")
+    ax.set_ylabel("Cumulative Variance Explained")
+    ax.set_title("Scree Comparison: Key Targets")
+    ax.legend(fontsize=8, loc="lower right")
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(output_dir / "scree_comparison.png", dpi=150)
+    plt.close()
+
+    logger.info(f"Saved scree plots to {scree_dir}")
+
+
+# =============================================================================
 # Summary Plots (go in plots/ root)
 # =============================================================================
 
@@ -229,17 +850,21 @@ def plot_linear_probe_summary(
         row, col = idx // n_cols, idx % n_cols
         ax = axes[row, col]
 
+        # Handle different sample counts (some positions don't exist in all prompts)
+        n_samples = len(result.predictions)
+        target_log_horizons = log_horizons[:n_samples] if n_samples < len(log_horizons) else log_horizons
+
         ax.scatter(
-            log_horizons,
+            target_log_horizons,
             result.predictions,
-            c=log_horizons,
+            c=target_log_horizons,
             cmap=CMAP_GRADIENT,
             s=10,
             alpha=0.6,
         )
         ax.plot(
-            [log_horizons.min(), log_horizons.max()],
-            [log_horizons.min(), log_horizons.max()],
+            [target_log_horizons.min(), target_log_horizons.max()],
+            [target_log_horizons.min(), target_log_horizons.max()],
             "r--",
             alpha=0.5,
         )
@@ -267,8 +892,23 @@ def _scatter_with_scheme(
     y: np.ndarray,
     scheme: ColoringScheme,
     add_colorbar: bool = True,
+    n_samples: int | None = None,
 ) -> None:
-    """Scatter plot with a coloring scheme."""
+    """Scatter plot with a coloring scheme.
+
+    Args:
+        ax: Matplotlib axes
+        x: X coordinates
+        y: Y coordinates
+        scheme: Coloring scheme with values for all samples
+        add_colorbar: Whether to add colorbar
+        n_samples: Number of samples to use (slice scheme.values if different)
+    """
+    # Slice scheme values to match number of samples if needed
+    values = scheme.values
+    if n_samples is not None and n_samples < len(values):
+        values = values[:n_samples]
+
     if scheme.is_categorical:
         # Use time scale colors for time_scale scheme, otherwise default colors
         if scheme.name == "time_scale":
@@ -277,17 +917,16 @@ def _scatter_with_scheme(
             colors = ["#2196F3", "#F44336", "#4CAF50", "#FF9800"]  # Extend if needed
 
         categories = scheme.categories or [str(i) for i in range(len(colors))]
-        unique_vals = sorted(set(scheme.values.astype(int)))
+        unique_vals = sorted(set(values.astype(int)))
 
         for val in unique_vals:
             color = colors[val % len(colors)]
             label = categories[val] if val < len(categories) else str(val)
-            mask = scheme.values == val
+            mask = values == val
             if mask.sum() > 0:
                 ax.scatter(x[mask], y[mask], c=color, s=15, alpha=0.7, label=label)
         ax.legend(markerscale=2, fontsize=8)
     else:
-        values = scheme.values
         vmin = values.min()
         vmax = values.max()
 
@@ -344,13 +983,14 @@ def plot_target_pca(
     ax.axvline(0, color="black", linewidth=0.5)
 
     ax = axes[1, 0]
-    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], schemes[0])
+    n_samples = X_pca.shape[0]
+    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], schemes[0], n_samples=n_samples)
     ax.set_xlabel(f"PC0 ({pca_result.explained_variance[0]*100:.1f}%)")
     ax.set_ylabel(f"PC{best_pc_idx} (r={best_corr:.2f})")
     ax.set_title("PC0 vs Best Time-Correlated PC")
 
     ax = axes[1, 1]
-    _scatter_with_scheme(ax, X_pca[:, best_pc_idx], schemes[0].values, schemes[0])
+    _scatter_with_scheme(ax, X_pca[:, best_pc_idx], schemes[0].values[:n_samples], schemes[0], n_samples=n_samples)
     ax.set_xlabel(f"PC{best_pc_idx}")
     ax.set_ylabel("Time Horizon (years)")
     if schemes[0].use_log:
@@ -365,7 +1005,7 @@ def plot_target_pca(
     # Per-coloring plots
     for scheme in schemes:
         fig, ax = plt.subplots(figsize=(8, 7))
-        _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme)
+        _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, n_samples=n_samples)
         ax.set_xlabel(f"PC0 ({pca_result.explained_variance[0]*100:.1f}%)")
         ax.set_ylabel(f"PC{best_pc_idx} (r={best_corr:.2f})")
         ax.set_title(f"{scheme.label}")
@@ -402,7 +1042,7 @@ def plot_target_embeddings(
 
         for method, coords in embeddings.items():
             fig, ax = plt.subplots(figsize=(8, 7))
-            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme)
+            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, n_samples=coords.shape[0])
             ax.set_xlabel(f"{method.upper()} 1")
             ax.set_ylabel(f"{method.upper()} 2")
             ax.set_title(f"{method.upper()} - {scheme.label}")
@@ -424,7 +1064,7 @@ def plot_target_embeddings(
     for row, scheme in enumerate(schemes):
         for col, (method, coords) in enumerate(embeddings.items()):
             ax = axes[row, col]
-            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, add_colorbar=False)
+            _scatter_with_scheme(ax, coords[:, 0], coords[:, 1], scheme, add_colorbar=False, n_samples=coords.shape[0])
             ax.set_xticks([])
             ax.set_yticks([])
             if row == 0:
@@ -505,14 +1145,20 @@ def plot_target_3d(
 # =============================================================================
 
 
+def _is_absolute_position(pos: str) -> bool:
+    """Check if position is an absolute index (e.g., 86, 145)."""
+    return pos.isdigit()
+
+
 def _parse_target_key(target_key: str) -> tuple[str, str, str]:
     """Parse target key into (base_key, position, position_type).
 
     E.g., "L19_mlp_out_Pdest" -> ("L19_mlp_out", "dest", "dst")
           "L19_mlp_out_Pshort_term_time" -> ("L19_mlp_out", "short_term_time", "src")
+          "L19_mlp_out_P86" -> ("L19_mlp_out", "86", "absolute")
 
     Returns:
-        (base_key, position_name, position_type) where position_type is "dst" or "src"
+        (base_key, position_name, position_type) where position_type is "dst", "src", or "absolute"
     """
     # Named positions that are in source (prompt)
     source_positions = {"time_horizon", "short_term_time", "short_term_reward",
@@ -532,6 +1178,8 @@ def _parse_target_key(target_key: str) -> tuple[str, str, str]:
         pos_type = "src"
     elif position in dest_positions:
         pos_type = "dst"
+    elif _is_absolute_position(position):
+        pos_type = "absolute"
     else:
         pos_type = "unknown"
 
@@ -541,13 +1189,13 @@ def _parse_target_key(target_key: str) -> tuple[str, str, str]:
 def _group_targets_by_base(target_keys: list[str]) -> dict[str, dict[str, dict[str, str]]]:
     """Group target keys by their base (layer+component) and position type.
 
-    Returns: {base_key: {"dst": {pos: key}, "src": {pos: key}}}
+    Returns: {base_key: {"dst": {pos: key}, "src": {pos: key}, "absolute": {pos: key}}}
     """
     groups = {}
     for key in target_keys:
         base, pos, pos_type = _parse_target_key(key)
         if base not in groups:
-            groups[base] = {"dst": {}, "src": {}}
+            groups[base] = {"dst": {}, "src": {}, "absolute": {}}
         if pos_type in groups[base]:
             groups[base][pos_type][pos] = key
     return groups
@@ -560,8 +1208,8 @@ def plot_cross_layer_summary(
     output_dir: Path,
 ):
     """Generate cross-layer comparison plots showing all layers/positions together."""
-    # Parse all targets and group by position type (dst/src)
-    targets_by_pos = {"dest": [], "source": []}
+    # Parse all targets and group by position type (dst/src/absolute)
+    targets_by_pos = {"dest": [], "source": [], "absolute": []}
     for key in linear_probe_results.keys():
         base, pos, pos_type = _parse_target_key(key)
         # Map to legacy names for this function
@@ -569,6 +1217,8 @@ def plot_cross_layer_summary(
             targets_by_pos["dest"].append((key, base))
         elif pos_type == "src":
             targets_by_pos["source"].append((key, base))
+        elif pos_type == "absolute":
+            targets_by_pos["absolute"].append((key, base))
 
     # Sort by layer number
     def extract_layer(item):
@@ -579,26 +1229,37 @@ def plot_cross_layer_summary(
         targets_by_pos[pos].sort(key=extract_layer)
 
     # Cross-layer R² comparison
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    n_pos_types = sum(1 for pos in targets_by_pos.values() if pos)
+    fig, axes = plt.subplots(1, max(2, n_pos_types), figsize=(6 * max(2, n_pos_types), 6))
+    if n_pos_types <= 2:
+        axes = [axes[0], axes[1]] if hasattr(axes, '__len__') else [axes]
 
-    for idx, (pos, targets) in enumerate(targets_by_pos.items()):
+    pos_colors = {"dest": "#4CAF50", "source": "#F44336", "absolute": "#2196F3"}
+    ax_idx = 0
+    for pos, targets in targets_by_pos.items():
         if not targets:
             continue
-        ax = axes[idx]
+        ax = axes[ax_idx] if ax_idx < len(axes) else axes[-1]
+        ax_idx += 1
+
         labels = [t[1] for t in targets]  # base keys
         r2_scores = [linear_probe_results[t[0]].r2_mean for t in targets]
-        colors = ["#4CAF50" if pos == "dest" else "#F44336"] * len(targets)
+        colors = [pos_colors.get(pos, "#666666")] * len(targets)
 
-        bars = ax.barh(range(len(labels)), r2_scores, color=colors, alpha=0.8)
+        ax.barh(range(len(labels)), r2_scores, color=colors, alpha=0.8)
         ax.set_yticks(range(len(labels)))
         ax.set_yticklabels(labels, fontsize=9)
         ax.set_xlabel("R² Score")
-        ax.set_title(f"{pos.upper()} Position\nAcross Layers")
+        ax.set_title(f"{pos.upper()} Positions\nAcross Layers")
         ax.set_xlim(-0.1, 1.1)
         ax.axvline(0, color="black", linewidth=0.5)
 
         for i, r2 in enumerate(r2_scores):
             ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=8)
+
+    # Hide unused axes
+    for idx in range(ax_idx, len(axes)):
+        axes[idx].axis("off")
 
     plt.suptitle("Linear Probe R² by Layer and Position", fontsize=14)
     plt.tight_layout()
@@ -628,7 +1289,7 @@ def plot_cross_layer_summary(
                 best_pc_idx = pca_result.pc_correlations[0][0]
                 best_corr = pca_result.pc_correlations[0][1]
 
-                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False)
+                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False, n_samples=X_pca.shape[0])
                 ax.set_xlabel("PC0")
                 ax.set_ylabel(f"PC{best_pc_idx}")
                 ax.set_title(f"{base_key}\nr={best_corr:.2f}")
@@ -663,7 +1324,7 @@ def plot_cross_layer_summary(
                     best_pc_idx = pca_result.pc_correlations[0][0]
                     best_corr = pca_result.pc_correlations[0][1]
 
-                    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False)
+                    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False, n_samples=X_pca.shape[0])
                     ax.set_xlabel("PC0")
                     ax.set_ylabel(f"PC{best_pc_idx}")
                     ax.set_title(f"{base_key}\nr={best_corr:.2f}")
@@ -677,11 +1338,55 @@ def plot_cross_layer_summary(
             plt.savefig(output_dir / "cross_layer_pca_source.png", dpi=150)
             plt.close()
 
+        # Same for absolute positions if available
+        absolute_targets = targets_by_pos.get("absolute", [])
+        if absolute_targets:
+            n_targets = len(absolute_targets)
+            n_cols = min(4, n_targets)
+            n_rows = (n_targets + n_cols - 1) // n_cols
+
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4.5 * n_rows))
+            axes = np.atleast_2d(axes)
+
+            for idx, (target_key, base_key) in enumerate(absolute_targets):
+                row, col = idx // n_cols, idx % n_cols
+                ax = axes[row, col]
+
+                if target_key in pca_results:
+                    pca_result = pca_results[target_key]
+                    X_pca = pca_result.transformed
+                    best_pc_idx = pca_result.pc_correlations[0][0]
+                    best_corr = pca_result.pc_correlations[0][1]
+
+                    _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False, n_samples=X_pca.shape[0])
+                    ax.set_xlabel("PC0")
+                    ax.set_ylabel(f"PC{best_pc_idx}")
+                    ax.set_title(f"{base_key}\nr={best_corr:.2f}")
+
+            for idx in range(len(absolute_targets), n_rows * n_cols):
+                row, col = idx // n_cols, idx % n_cols
+                axes[row, col].axis("off")
+
+            plt.suptitle(f"PCA Across Layers (ABSOLUTE POSITIONS) - {scheme.label}", fontsize=14)
+            plt.tight_layout()
+            plt.savefig(output_dir / "cross_layer_pca_absolute.png", dpi=150)
+            plt.close()
+
 
 def _get_pos_color(pos: str) -> str:
-    """Get color for a position name (green for dest/response, red for source positions)."""
+    """Get color for a position name (green for dest/response, red for source, blue for absolute)."""
     dest_positions = {"response", "dest"}
-    return "#4CAF50" if pos in dest_positions else "#F44336"
+    if pos in dest_positions:
+        return "#4CAF50"  # Green for dest
+    elif _is_absolute_position(pos):
+        # Absolute positions: use a gradient from blue (low idx) to purple (high idx)
+        idx = int(pos)
+        if idx >= 140:  # Near response positions
+            return "#9C27B0"  # Purple for high indices (likely dest area)
+        else:
+            return "#2196F3"  # Blue for lower indices (likely source area)
+    else:
+        return "#F44336"  # Red for named source positions
 
 
 def plot_position_comparison(
@@ -746,7 +1451,7 @@ def plot_position_comparison(
                 best_pc_idx = pca_result.pc_correlations[0][0]
 
                 ax = axes[idx]
-                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme)
+                _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, n_samples=X_pca.shape[0])
                 ax.set_xlabel("PC0")
                 ax.set_ylabel(f"PC{best_pc_idx}")
                 ax.set_title(f"{pos.upper()}")
@@ -773,8 +1478,15 @@ def generate_all_plots(
 
     Structure:
         plots/
+        ├── dashboard_*.png           # Summary heatmaps by component
         ├── linear_probe_summary.png
         ├── cross_layer_*.png
+        ├── decision_boundary.png
+        ├── direction_alignment*.png
+        ├── scree_comparison.png
+        ├── trajectories/             # PC projection across layers
+        ├── scree/                    # Individual scree plots
+        ├── component_decomposition/  # 2x2 component breakdowns
         └── targets/
             └── L19_mlp_out/
                 ├── position_comparison.png
@@ -792,8 +1504,32 @@ def generate_all_plots(
     schemes = get_coloring_schemes(data)
     logger.info(f"Using {len(schemes)} coloring schemes: {[s.name for s in schemes]}")
 
-    # Summary plots in root
-    logger.info("Generating summary plots...")
+    # Priority 1: Summary dashboard heatmaps
+    logger.info("Generating summary dashboard heatmaps...")
+    plot_summary_dashboard(linear_probe_results, pca_results, output_dir)
+
+    # Priority 2: Trajectory plots
+    logger.info("Generating trajectory plots...")
+    plot_trajectory(data, pca_results, output_dir)
+
+    # Priority 3: Component decomposition 2x2 grids
+    logger.info("Generating component decomposition plots...")
+    plot_component_decomposition(linear_probe_results, pca_results, schemes, output_dir)
+
+    # Priority 4: Direction alignment heatmaps
+    logger.info("Generating direction alignment plots...")
+    plot_direction_alignment(pca_results, output_dir)
+
+    # Priority 5: Decision boundary accuracy
+    logger.info("Generating decision boundary plot...")
+    plot_decision_boundary(data, linear_probe_results, output_dir)
+
+    # Priority 6: Scree plots
+    logger.info("Generating scree plots...")
+    plot_scree(pca_results, output_dir)
+
+    # Original summary plots
+    logger.info("Generating linear probe summary...")
     plot_linear_probe_summary(data, linear_probe_results, output_dir)
 
     # Cross-layer comparison plots
@@ -823,13 +1559,13 @@ def generate_all_plots(
                 pca_results, schemes, base_dir
             )
 
-        # Generate plots for each position type (dst/, src/)
-        for pos_type in ["dst", "src"]:
+        # Generate plots for each position type (dst/, src/, absolute/)
+        for pos_type in ["dst", "src", "absolute"]:
             positions = pos_type_targets.get(pos_type, {})
             if not positions:
                 continue
 
-            # Create dst/ or src/ directory for aggregated position type
+            # Create dst/, src/, or absolute/ directory
             type_dir = base_dir / pos_type
             type_dir.mkdir(parents=True, exist_ok=True)
 

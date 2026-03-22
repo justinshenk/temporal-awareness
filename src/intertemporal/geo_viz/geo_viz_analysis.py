@@ -54,6 +54,7 @@ def linear_probe_analysis(
     """Run linear probe analysis for time horizon decoding.
 
     Tests whether log(time_horizon) can be linearly decoded from activations.
+    Handles targets with different sample counts (e.g., absolute positions beyond prompt length).
 
     Args:
         data: Activation data
@@ -64,19 +65,46 @@ def linear_probe_analysis(
     """
     logger.info("Running linear probe analysis...")
 
-    # Get target variable
-    horizons = np.array([get_time_horizon_months(s) for s in data.samples])
-    log_horizons = np.log10(horizons + 1)
+    # Get target variable for all samples
+    all_horizons = np.array([get_time_horizon_months(s) for s in data.samples])
+    all_log_horizons = np.log10(all_horizons + 1)
+
+    # Find the common sample count (most targets will have this)
+    n_samples_full = len(data.samples)
 
     results = {}
 
     for target_key, X in data.activations.items():
+        n_samples = X.shape[0]
         logger.info(f"  {target_key}: {X.shape}")
+
+        # Use matching subset of target variable if sample counts differ
+        if n_samples != n_samples_full:
+            # This target has fewer samples (e.g., absolute position beyond prompt length)
+            # Use only the first n_samples (they should match)
+            log_horizons = all_log_horizons[:n_samples]
+            logger.info(f"    Using {n_samples}/{n_samples_full} samples")
+        else:
+            log_horizons = all_log_horizons
+
+        # Skip if too few samples for CV
+        if n_samples < 10:
+            logger.warning(f"    Skipping: too few samples ({n_samples})")
+            results[target_key] = LinearProbeResult(
+                target_key=target_key,
+                r2_mean=0.0,
+                r2_std=0.0,
+                correlation=0.0,
+                predictions=np.zeros(n_samples),
+                coefficients=np.zeros(X.shape[1]),
+            )
+            continue
 
         # Cross-validated R² score
         ridge = Ridge(alpha=1.0)
         try:
-            scores = cross_val_score(ridge, X, log_horizons, cv=5, scoring="r2")
+            cv_folds = min(5, n_samples // 2)  # Adjust folds for small sample counts
+            scores = cross_val_score(ridge, X, log_horizons, cv=cv_folds, scoring="r2")
             r2_mean = scores.mean()
             r2_std = scores.std()
         except Exception as e:
@@ -85,9 +113,16 @@ def linear_probe_analysis(
             r2_std = 0.0
 
         # Fit full model for predictions and coefficients
-        ridge.fit(X, log_horizons)
-        predictions = ridge.predict(X)
-        correlation = np.corrcoef(predictions, log_horizons)[0, 1]
+        try:
+            ridge.fit(X, log_horizons)
+            predictions = ridge.predict(X)
+            correlation = np.corrcoef(predictions, log_horizons)[0, 1]
+            if np.isnan(correlation):
+                correlation = 0.0
+        except Exception as e:
+            logger.warning(f"    Fit failed: {e}")
+            predictions = np.zeros(n_samples)
+            correlation = 0.0
 
         results[target_key] = LinearProbeResult(
             target_key=target_key,
@@ -95,7 +130,7 @@ def linear_probe_analysis(
             r2_std=r2_std,
             correlation=correlation,
             predictions=predictions,
-            coefficients=ridge.coef_,
+            coefficients=ridge.coef_ if hasattr(ridge, 'coef_') else np.zeros(X.shape[1]),
         )
 
         logger.info(f"    R²={r2_mean:.3f}±{r2_std:.3f}, corr={correlation:.3f}")
@@ -108,6 +143,8 @@ def pca_correlation_analysis(
 ) -> dict[str, PCAResult]:
     """Run PCA and correlate components with time horizon.
 
+    Handles targets with different sample counts.
+
     Args:
         data: Activation data
         config: Configuration
@@ -117,27 +154,47 @@ def pca_correlation_analysis(
     """
     logger.info("Running PCA correlation analysis...")
 
-    horizons = np.array([get_time_horizon_months(s) for s in data.samples])
-    log_horizons = np.log10(horizons + 1)
+    # Get target variable for all samples
+    all_horizons = np.array([get_time_horizon_months(s) for s in data.samples])
+    all_log_horizons = np.log10(all_horizons + 1)
+    n_samples_full = len(data.samples)
 
     results = {}
 
     for target_key, X in data.activations.items():
-        logger.info(f"  {target_key}")
+        n_samples = X.shape[0]
+        logger.info(f"  {target_key}: {X.shape}")
+
+        # Use matching subset of target variable if sample counts differ
+        if n_samples != n_samples_full:
+            log_horizons = all_log_horizons[:n_samples]
+        else:
+            log_horizons = all_log_horizons
 
         # Fit PCA
-        n_components = min(config.n_pca_components, X.shape[0], X.shape[1])
+        n_components = min(config.n_pca_components, X.shape[0] - 1, X.shape[1])
+        if n_components < 1:
+            logger.warning(f"    Skipping: not enough samples for PCA")
+            continue
+
         pca = PCA(n_components=n_components, random_state=config.seed)
         X_pca = pca.fit_transform(X)
 
         # Correlate each PC with log horizon
         pc_correlations = []
         for i in range(n_components):
-            corr, pval = spearmanr(X_pca[:, i], log_horizons)
+            try:
+                corr, pval = spearmanr(X_pca[:, i], log_horizons)
+                if np.isnan(corr):
+                    corr = 0.0
+                    pval = 1.0
+            except Exception:
+                corr = 0.0
+                pval = 1.0
             pc_correlations.append((i, corr, pval))
 
         # Sort by absolute correlation
-        pc_correlations.sort(key=lambda x: abs(x[1]), reverse=True)
+        pc_correlations.sort(key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, reverse=True)
 
         # Log top correlations
         top_pcs = pc_correlations[:3]

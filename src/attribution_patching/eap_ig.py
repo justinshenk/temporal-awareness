@@ -52,6 +52,12 @@ def _compute_edge_attribution(
     if clean_act is None or corr_act is None:
         return 0.0
 
+    # Bounds check to prevent IndexError
+    clean_seq_len = clean_act.shape[1] if clean_act.ndim == 3 else clean_act.shape[0]
+    corr_seq_len = corr_act.shape[1] if corr_act.ndim == 3 else corr_act.shape[0]
+    if clean_orig >= clean_seq_len or corr_orig >= corr_seq_len:
+        return 0.0
+
     c = _get_activation_at_position(clean_act, clean_orig)
     r = _get_activation_at_position(corr_act, corr_orig)
     g = grad[0, aligned_idx, :] if grad.ndim == 3 else grad[aligned_idx, :]

@@ -20,6 +20,18 @@ NAMED_POSITIONS = {
 }
 
 
+def is_absolute_position(pos: str) -> bool:
+    """Check if position is an absolute index (e.g., P86, P145)."""
+    return pos.startswith("P") and pos[1:].isdigit()
+
+
+def parse_absolute_position(pos: str) -> int:
+    """Parse absolute position string to index (e.g., P86 -> 86)."""
+    if not is_absolute_position(pos):
+        raise ValueError(f"Not an absolute position: {pos}")
+    return int(pos[1:])
+
+
 @dataclass
 class TargetSpec:
     """Specification for an activation extraction target.
@@ -39,8 +51,9 @@ class TargetSpec:
 
         if self.component not in valid_components:
             raise ValueError(f"Invalid component: {self.component}")
-        if self.position not in NAMED_POSITIONS:
-            raise ValueError(f"Invalid position: {self.position}. Valid: {NAMED_POSITIONS}")
+        # Allow named positions OR absolute positions (P86, P145, etc.)
+        if self.position not in NAMED_POSITIONS and not is_absolute_position(self.position):
+            raise ValueError(f"Invalid position: {self.position}. Valid: {NAMED_POSITIONS} or absolute (P86, P145, etc.)")
 
     @property
     def key(self) -> str:

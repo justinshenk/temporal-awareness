@@ -7,6 +7,11 @@ from __future__ import annotations
 ######### SHARED ##########
 ###########################
 
+
+###########################
+######### OPTIONS #########
+###########################
+
 BASE_CONTEXT = {
     "reward_unit": "housing units",
     "role": "the city administration",
@@ -70,6 +75,32 @@ OPTIONS_FEW = {"short_term": SHORT_FEW, "long_term": LONG_FEW}
 OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 
+OPTIONS_GEO = {
+    "short_term": {
+        "reward_range": [1000, 2500],
+        "time_range": [
+            {"value": 1, "unit": "days"},
+            {"value": 5, "unit": "years"},
+        ],
+        "reward_steps": [5, "linear"],
+        "time_steps": [5, "linear"],
+    },
+    "long_term": {
+        "reward_range": [30000, 100000],
+        "time_range": [
+            {"value": 10, "unit": "years"},
+            {"value": 70, "unit": "years"},
+        ],
+        "reward_steps": [5, "linear"],
+        "time_steps": [5, "linear"],
+    },
+}
+
+###########################
+######### HORIZON #########
+###########################
+
+
 HOR_NONE = [None]
 
 HOR_BINARY = [
@@ -96,7 +127,7 @@ HOR_COARSE_SWEEP = [
 ]
 
 
-HOR_FINE_SWEEP = [
+HOR_GEO = [
     None,
     {"value": 1, "unit": "seconds"},
     {"value": 1, "unit": "hours"},
@@ -113,8 +144,10 @@ HOR_FINE_SWEEP = [
     {"value": 3, "unit": "decades"},
     {"value": 5, "unit": "decades"},
     {"value": 1, "unit": "centuries"},
-    {"value": 10, "unit": "centuries"},
+    {"value": 2, "unit": "centuries"},
+    {"value": 5, "unit": "centuries"},
     {"value": 1, "unit": "millenia"},
+    {"value": 5, "unit": "millenia"},
     {"value": 10, "unit": "millenia"},
 ]
 
@@ -189,9 +222,11 @@ MULTILABEL_CFG = {
 GEO_VIZ_CFG = {
     "name": "geo_viz",
     "context": BASE_CONTEXT,
-    "options": OPTIONS_MANY,
-    "time_horizons": HOR_FINE_SWEEP,
+    "options": OPTIONS_GEO,
+    "time_horizons": HOR_GEO,
     "add_formatting_noise": False,
+    "do_formatting_variation_grid": False,
+    "do_context_variations": True,
 }
 
 ###########################

@@ -13,9 +13,9 @@ from ..prompt import PromptDatasetConfig
 COARSE_PATCH: dict = {
     "enabled": True,
     "layer_steps": [1],
-    "pos_steps": [10],
-    # "components": ["resid_post", "attn_out", "mlp_out"],
-    "components": ["resid_post"],
+    "pos_steps": [5],
+    "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
+    # "components": ["resid_post"],
 }
 
 # Default attribution patching settings (empty dict = skip)
@@ -25,13 +25,13 @@ COARSE_PATCH: dict = {
 # Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
     "enabled": True,
-    "ig_steps": 15,
-    # "methods": ["standard", "eap_ig", "eap"],
-    # "components": ["mlp_out", "attn_out", "resid_post"],
-    # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
-    "methods": ["standard"],
-    "components": ["mlp_out"],
-    "quadrature": ["midpoint"],
+    "ig_steps": 30,
+    "methods": ["standard", "eap_ig", "eap"],
+    "components": ["mlp_out", "attn_out", "resid_post"],
+    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    # "methods": ["standard"],
+    # "components": ["mlp_out"],
+    # "quadrature": ["midpoint"],
 }
 
 

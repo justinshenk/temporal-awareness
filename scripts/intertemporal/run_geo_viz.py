@@ -63,6 +63,12 @@ SOURCE_POSITIONS = [
 ]
 DEST_POSITIONS = ["response"]
 
+# Absolute positions from circuit analysis
+# Source hub: P86 (bottleneck), P87 (primary read), P88 (backup)
+# Dest hub: P144 (critical bottleneck), P145 (ultimate output)
+# Controls: P50 (irrelevant), P121 (minor contributor), P140 (denoising waypoint)
+ABSOLUTE_POSITIONS = ["P86", "P87", "P88", "P144", "P145", "P50", "P121", "P140"]
+
 
 def build_targets(layers: list[int], components: list[str], positions: list[str]) -> list[dict]:
     """Build target specifications for all layer/component/position combinations."""
@@ -79,8 +85,11 @@ def build_targets(layers: list[int], components: list[str], positions: list[str]
 
 
 # Default configuration with comprehensive targets
+# Includes both named positions (for interpretability) and absolute positions (for circuit analysis)
+ALL_POSITIONS = SOURCE_POSITIONS + DEST_POSITIONS + ABSOLUTE_POSITIONS
+
 DEFAULT_GEO_VIZ_CFG = {
-    "targets": build_targets(ANALYSIS_LAYERS, COMPONENTS, SOURCE_POSITIONS + DEST_POSITIONS),
+    "targets": build_targets(ANALYSIS_LAYERS, COMPONENTS, ALL_POSITIONS),
     "output_dir": "out/geo_viz",
     "model": DEFAULT_MODEL,
     "seed": 42,
