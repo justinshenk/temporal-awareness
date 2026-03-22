@@ -28,6 +28,22 @@ CMAP_GRADIENT = "plasma"
 CMAP_BUCKETS = ["#2196F3", "#4CAF50", "#FF9800", "#F44336"]
 BUCKET_LABELS = ["<1yr", "1-5yr", "5-10yr", ">10yr"]
 
+# Time scale colors and labels (weeks, months, years, decades)
+TIME_SCALE_COLORS = ["#9C27B0", "#2196F3", "#4CAF50", "#FF9800"]  # purple, blue, green, orange
+TIME_SCALE_LABELS = ["Weeks", "Months", "Years", "Decades"]
+
+
+def _get_time_scale(months: float) -> int:
+    """Classify time horizon into scale: 0=weeks, 1=months, 2=years, 3=decades."""
+    if months < 1:  # Less than 1 month = weeks
+        return 0
+    elif months < 12:  # Less than 1 year = months
+        return 1
+    elif months < 120:  # Less than 10 years = years
+        return 2
+    else:  # 10+ years = decades
+        return 3
+
 
 # =============================================================================
 # Coloring Schemes
@@ -51,13 +67,26 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
     schemes = []
 
     # Time horizon (in years)
-    horizons = np.array([_months_to_years(get_time_horizon_months(s)) for s in data.samples])
+    horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
+    horizons = np.array([_months_to_years(m) for m in horizons_months])
     schemes.append(
         ColoringScheme(
             name="horizon",
             label="Time Horizon (years)",
             values=horizons,
             use_log=True,
+        )
+    )
+
+    # Time scale categories (weeks, months, years, decades)
+    time_scales = np.array([_get_time_scale(m) for m in horizons_months])
+    schemes.append(
+        ColoringScheme(
+            name="time_scale",
+            label="Time Scale",
+            values=time_scales,
+            is_categorical=True,
+            categories=TIME_SCALE_LABELS,
         )
     )
 
@@ -206,8 +235,18 @@ def _scatter_with_scheme(
 ) -> None:
     """Scatter plot with a coloring scheme."""
     if scheme.is_categorical:
-        colors = ["#2196F3", "#F44336"]
-        for val, color, label in zip([0, 1], colors, scheme.categories or ["0", "1"]):
+        # Use time scale colors for time_scale scheme, otherwise default colors
+        if scheme.name == "time_scale":
+            colors = TIME_SCALE_COLORS
+        else:
+            colors = ["#2196F3", "#F44336", "#4CAF50", "#FF9800"]  # Extend if needed
+
+        categories = scheme.categories or [str(i) for i in range(len(colors))]
+        unique_vals = sorted(set(scheme.values.astype(int)))
+
+        for val in unique_vals:
+            color = colors[val % len(colors)]
+            label = categories[val] if val < len(categories) else str(val)
             mask = scheme.values == val
             if mask.sum() > 0:
                 ax.scatter(x[mask], y[mask], c=color, s=15, alpha=0.7, label=label)
@@ -374,8 +413,13 @@ def plot_target_3d(
 
     for scheme in schemes:
         if scheme.is_categorical:
-            colors = ["blue" if v == 0 else "red" for v in scheme.values]
-            hover_text = [scheme.categories[int(v)] if scheme.categories else str(int(v)) for v in scheme.values]
+            # Map categorical values to colors
+            if scheme.name == "time_scale":
+                color_map = {0: "purple", 1: "blue", 2: "green", 3: "orange"}
+            else:
+                color_map = {0: "blue", 1: "red", 2: "green", 3: "orange"}
+            colors = [color_map.get(int(v), "gray") for v in scheme.values]
+            hover_text = [scheme.categories[int(v)] if scheme.categories and int(v) < len(scheme.categories) else str(int(v)) for v in scheme.values]
             marker = dict(size=4, color=colors, opacity=0.8)
         else:
             color_vals = np.log10(scheme.values + 1) if scheme.use_log else scheme.values
