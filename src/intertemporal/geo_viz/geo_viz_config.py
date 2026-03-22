@@ -3,8 +3,40 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 
-# Named position types
+
+# =============================================================================
+# Memory Optimization Constants
+# =============================================================================
+
+# Data type for activations (float32 = 50% memory savings vs float64)
+ACTIVATION_DTYPE = np.float32
+
+# Buffer size for streaming extraction (samples to accumulate before flushing to disk)
+# Higher = fewer disk writes but more memory; Lower = more disk writes but less memory
+EXTRACTION_BUFFER_SIZE = 100
+
+# Buffer size for streaming analysis (targets to process before GC)
+ANALYSIS_GC_INTERVAL = 50
+
+# Number of PCA components to store (reduces disk usage)
+# Set to None to store all computed components
+MAX_STORED_PCA_COMPONENTS = 20
+
+# Whether to use compressed numpy storage (.npz vs .npy)
+# Compressed is smaller on disk but slower to load
+USE_COMPRESSED_STORAGE = False
+
+# Plotting batch sizes
+PLOT_GC_INTERVAL = 20  # GC after every N target groups
+MAX_TRAJECTORY_SAMPLES = 200  # Max samples to plot in trajectory (for clarity)
+
+
+# =============================================================================
+# Named Position Types
+# =============================================================================
+
 NAMED_POSITIONS = {
     # Source positions (in prompt)
     "time_horizon",
@@ -32,9 +64,15 @@ def parse_absolute_position(pos: str) -> int:
     return int(pos[1:])
 
 
-@dataclass
+# =============================================================================
+# Target Specification
+# =============================================================================
+
+@dataclass(slots=True)
 class TargetSpec:
     """Specification for an activation extraction target.
+
+    Uses __slots__ for reduced memory overhead.
 
     Attributes:
         layer: Transformer layer index
@@ -51,7 +89,6 @@ class TargetSpec:
 
         if self.component not in valid_components:
             raise ValueError(f"Invalid component: {self.component}")
-        # Allow named positions OR absolute positions (P86, P145, etc.)
         if self.position not in NAMED_POSITIONS and not is_absolute_position(self.position):
             raise ValueError(f"Invalid position: {self.position}. Valid: {NAMED_POSITIONS} or absolute (P86, P145, etc.)")
 
@@ -75,6 +112,10 @@ class TargetSpec:
         return self.key
 
 
+# =============================================================================
+# Pipeline Configuration
+# =============================================================================
+
 @dataclass
 class GeoVizConfig:
     """Configuration for geometric visualization pipeline.
@@ -85,9 +126,13 @@ class GeoVizConfig:
         model: Model identifier
         seed: Random seed for reproducibility
         max_samples: Maximum number of samples to use (None = all)
-        n_pca_components: Number of PCA components
+        n_pca_components: Number of PCA components to compute
         umap_n_neighbors: UMAP n_neighbors parameter
         umap_min_dist: UMAP min_dist parameter
+
+        # Memory optimization settings
+        extraction_buffer_size: Samples to buffer before flushing to disk
+        use_compressed_storage: Use compressed .npz files (slower but smaller)
     """
 
     targets: list[TargetSpec] = field(default_factory=list)
@@ -98,6 +143,10 @@ class GeoVizConfig:
     n_pca_components: int = 50
     umap_n_neighbors: int = 30
     umap_min_dist: float = 0.1
+
+    # Memory optimization settings
+    extraction_buffer_size: int = EXTRACTION_BUFFER_SIZE
+    use_compressed_storage: bool = USE_COMPRESSED_STORAGE
 
     def __post_init__(self):
         if isinstance(self.output_dir, str):
@@ -118,6 +167,8 @@ class GeoVizConfig:
             n_pca_components=d.get("n_pca_components", 50),
             umap_n_neighbors=d.get("umap_n_neighbors", 30),
             umap_min_dist=d.get("umap_min_dist", 0.1),
+            extraction_buffer_size=d.get("extraction_buffer_size", EXTRACTION_BUFFER_SIZE),
+            use_compressed_storage=d.get("use_compressed_storage", USE_COMPRESSED_STORAGE),
         )
 
     def to_dict(self) -> dict:
@@ -134,10 +185,15 @@ class GeoVizConfig:
             "n_pca_components": self.n_pca_components,
             "umap_n_neighbors": self.umap_n_neighbors,
             "umap_min_dist": self.umap_min_dist,
+            "extraction_buffer_size": self.extraction_buffer_size,
+            "use_compressed_storage": self.use_compressed_storage,
         }
 
 
-# Recommended targets based on our analysis
+# =============================================================================
+# Recommended Targets
+# =============================================================================
+
 RECOMMENDED_TARGETS = [
     # Best performers for time decoding (dest positions)
     TargetSpec(24, "resid_pre", "dest"),

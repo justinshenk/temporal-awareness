@@ -82,8 +82,8 @@ OPTIONS_GEO = {
             {"value": 1, "unit": "days"},
             {"value": 5, "unit": "years"},
         ],
-        "reward_steps": [5, "linear"],
-        "time_steps": [5, "linear"],
+        "reward_steps": [3, "linear"],
+        "time_steps": [3, "linear"],
     },
     "long_term": {
         "reward_range": [30000, 100000],
@@ -91,8 +91,8 @@ OPTIONS_GEO = {
             {"value": 10, "unit": "years"},
             {"value": 70, "unit": "years"},
         ],
-        "reward_steps": [5, "linear"],
-        "time_steps": [5, "linear"],
+        "reward_steps": [4, "linear"],
+        "time_steps": [4, "linear"],
     },
 }
 
@@ -226,7 +226,7 @@ GEO_VIZ_CFG = {
     "time_horizons": HOR_GEO,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
-    "do_context_variations": True,
+    "do_context_variations": False,
 }
 
 ###########################
