@@ -66,17 +66,9 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
     """Get all available coloring schemes from the data."""
     schemes = []
 
-    # Time horizon (in years)
+    # Get raw time values
     horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
     horizons = np.array([_months_to_years(m) for m in horizons_months])
-    schemes.append(
-        ColoringScheme(
-            name="horizon",
-            label="Time Horizon (years)",
-            values=horizons,
-            use_log=True,
-        )
-    )
 
     # Time scale categories (weeks, months, years, decades)
     time_scales = np.array([_get_time_scale(m) for m in horizons_months])
@@ -87,6 +79,49 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
             values=time_scales,
             is_categorical=True,
             categories=TIME_SCALE_LABELS,
+        )
+    )
+
+    # Time in different units (for log-scale coloring)
+    # Weeks
+    horizons_weeks = horizons_months * (30.44 / 7)  # ~4.35 weeks per month
+    schemes.append(
+        ColoringScheme(
+            name="horizon_weeks",
+            label="Time Horizon (weeks)",
+            values=horizons_weeks,
+            use_log=True,
+        )
+    )
+
+    # Months
+    schemes.append(
+        ColoringScheme(
+            name="horizon_months",
+            label="Time Horizon (months)",
+            values=horizons_months,
+            use_log=True,
+        )
+    )
+
+    # Years (already have horizons in years)
+    schemes.append(
+        ColoringScheme(
+            name="horizon_years",
+            label="Time Horizon (years)",
+            values=horizons,
+            use_log=True,
+        )
+    )
+
+    # Decades
+    horizons_decades = horizons / 10.0
+    schemes.append(
+        ColoringScheme(
+            name="horizon_decades",
+            label="Time Horizon (decades)",
+            values=horizons_decades,
+            use_log=True,
         )
     )
 
