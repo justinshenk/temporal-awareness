@@ -312,12 +312,20 @@ def stage_analyze(
         except ValueError:
             continue
 
-        # Build sentence-like dicts for cluster_analysis (minimal adaptation)
+        # Build sentence-like dicts for cluster_analysis with all available fields
         filtered = [
             {
                 "sample_idx": samples[i].get("sample_idx"),
                 "time_horizon_bucket": samples[i].get("time_horizon_bucket", -1),
+                "time_horizon_months": samples[i].get("time_horizon_months"),
                 "llm_choice": samples[i].get("llm_choice", -1),
+                "llm_choice_time_months": samples[i].get("llm_choice_time_months"),
+                "formatting_id": samples[i].get("formatting_id"),
+                "short_term_first": samples[i].get("short_term_first"),
+                "short_term_label": samples[i].get("short_term_label"),
+                "long_term_label": samples[i].get("long_term_label"),
+                "short_term_time_months": samples[i].get("short_term_time_months"),
+                "long_term_time_months": samples[i].get("long_term_time_months"),
                 "activations": {sae.get_target_key(): X[j]},
             }
             for j, i in enumerate(indices)

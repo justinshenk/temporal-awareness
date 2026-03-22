@@ -70,21 +70,21 @@ OPTIONS_FEW = {"short_term": SHORT_FEW, "long_term": LONG_FEW}
 OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 
-NONE_HOR = [None]
+HOR_NONE = [None]
 
-BINARY_HOR = [
+HOR_BINARY = [
     {"value": 1, "unit": "months"},  # Short horizon
     {"value": 50, "unit": "years"},  # Long horizon
 ]
 
-FEW_HOR = [
+HOR_FEW = [
     None,
     {"value": 1, "unit": "years"},
     {"value": 7, "unit": "years"},
     {"value": 15, "unit": "years"},
 ]
 
-SWEEP_HOR = [
+HOR_COARSE_SWEEP = [
     None,
     {"value": 1, "unit": "months"},
     {"value": 6, "unit": "months"},
@@ -93,6 +93,29 @@ SWEEP_HOR = [
     {"value": 10, "unit": "years"},
     {"value": 30, "unit": "years"},
     {"value": 50, "unit": "years"},
+]
+
+
+HOR_FINE_SWEEP = [
+    None,
+    {"value": 1, "unit": "seconds"},
+    {"value": 1, "unit": "hours"},
+    {"value": 1, "unit": "days"},
+    {"value": 1, "unit": "week"},
+    {"value": 1, "unit": "months"},
+    {"value": 2, "unit": "months"},
+    {"value": 4, "unit": "months"},
+    {"value": 8, "unit": "months"},
+    {"value": 1, "unit": "years"},
+    {"value": 3, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 1, "unit": "decades"},
+    {"value": 3, "unit": "decades"},
+    {"value": 5, "unit": "decades"},
+    {"value": 1, "unit": "centuries"},
+    {"value": 10, "unit": "centuries"},
+    {"value": 1, "unit": "millenia"},
+    {"value": 10, "unit": "millenia"},
 ]
 
 ###########################
@@ -104,14 +127,14 @@ NANO_CFG = {
     "name": "nano",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": BINARY_HOR,
+    "time_horizons": HOR_BINARY,
 }
 
 MULTINANO_CFG = {
     "name": "multinano",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": BINARY_HOR,
+    "time_horizons": HOR_BINARY,
     "add_formatting_noise": True,
 }
 
@@ -120,7 +143,7 @@ HORIZON_SWEEP_CFG = {
     "name": "horizon_sweep",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": SWEEP_HOR,
+    "time_horizons": HOR_COARSE_SWEEP,
 }
 
 
@@ -128,21 +151,21 @@ REWARD_SWEEP_CFG = {
     "name": "reward_sweep",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": BINARY_HOR,
+    "time_horizons": HOR_BINARY,
 }
 
 MINI_CFG = {
     "name": "mini",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": BINARY_HOR,
+    "time_horizons": HOR_BINARY,
 }
 
 SMALL_CFG = {
     "name": "small",
     "context": BASE_CONTEXT,
     "options": OPTIONS_FEW,
-    "time_horizons": FEW_HOR,
+    "time_horizons": HOR_FEW,
 }
 
 
@@ -150,7 +173,7 @@ GRANDE_CFG = {
     "name": "grande",
     "context": BASE_CONTEXT,
     "options": OPTIONS_MANY,
-    "time_horizons": SWEEP_HOR,
+    "time_horizons": HOR_COARSE_SWEEP,
 }
 
 
@@ -158,9 +181,17 @@ MULTILABEL_CFG = {
     "name": "multilabel",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
-    "time_horizons": BINARY_HOR,
+    "time_horizons": HOR_BINARY,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": True,
+}
+
+GEO_VIZ_CFG = {
+    "name": "geo_viz",
+    "context": BASE_CONTEXT,
+    "options": OPTIONS_MANY,
+    "time_horizons": HOR_FINE_SWEEP,
+    "add_formatting_noise": False,
 }
 
 ###########################

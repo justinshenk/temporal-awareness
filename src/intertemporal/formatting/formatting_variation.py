@@ -39,34 +39,6 @@ MORE_LABEL_STYLES: list[tuple[str, str]] = [
 FULL_LABEL_STYLES: list[tuple[str, str]] = SIMPLE_LABEL_STYLES + MORE_LABEL_STYLES
 
 
-def get_formatting_id(label_a: str, label_b: str) -> int:
-    """
-    Get a formatting ID from label pair.
-
-    The ID is deterministic: same labels always produce the same ID.
-    Swapped labels produce the negated ID: (a, b) -> +N, (b, a) -> -N.
-
-    Args:
-        label_a: First label
-        label_b: Second label
-
-    Returns:
-        Signed integer ID (positive for canonical order, negative for swapped)
-    """
-    # Create canonical ordering (alphabetically first label comes first)
-    if label_a <= label_b:
-        canonical = (label_a, label_b)
-        sign = 1
-    else:
-        canonical = (label_b, label_a)
-        sign = -1
-
-    # Hash the canonical pair to get a positive ID
-    base_id = hash(canonical) & 0x7FFFFFFF  # Ensure positive by masking sign bit
-
-    return sign * base_id
-
-
 def get_random_labels(from_full: bool = True) -> tuple[str, str]:
     """Get a random label pair."""
     if from_full:

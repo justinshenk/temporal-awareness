@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ...common.file_io import load_json
-from ...common.logging import log, log_kv
+from ...common.logging import log
 from ...inference import InternalsConfig, CapturedInternals
 from ..common.preference_types import PreferenceSample
 from ...inference.interventions import (
@@ -119,6 +119,125 @@ class PreferenceQuerier:
         # Use specific config
         return internals.get_names()
 
+    def query_sample(
+        self,
+        sample: "PromptSample",
+        runner: BinaryChoiceRunner,
+        choice_prefix: str,
+        activation_names: list[str] | None = None,
+        intervention: Optional[Intervention] = None,
+    ) -> PreferenceSample:
+        """Query a single sample and return the preference result.
+
+        Args:
+            sample: The prompt sample to query
+            runner: The model runner to use
+            choice_prefix: Response prefix before the choice (e.g., "I choose: ")
+            activation_names: Hook names for activation capture (optional)
+            intervention: Optional intervention to apply
+
+        Returns:
+            PreferenceSample with choice and metadata
+        """
+
+        sample_idx = sample.sample_idx
+        time_horizon = (
+            sample.prompt.time_horizon.to_years()
+            if sample.prompt.time_horizon
+            else None
+        )
+        prompt_text = sample.text
+
+        pair = sample.prompt.preference_pair
+        short_label = pair.short_term.label
+        long_label = pair.long_term.label
+        short_time = pair.short_term.time.to_years()
+        long_time = pair.long_term.time.to_years()
+        short_reward = pair.short_term.reward.value
+        long_reward = pair.long_term.reward.value
+
+        decoding_mismatch = False
+
+        # Step 1: Query choice prob based on format
+        choice = runner.choose(prompt_text, choice_prefix, (short_label, long_label))
+
+        # Step 2: Generate response (or skip if skip_generation=True)
+        if not self.config.skip_generation:
+            generated_response = runner.generate(
+                prompt_text,
+                max_new_tokens=self.config.max_new_tokens,
+                temperature=self.config.temperature,
+                intervention=intervention,
+                prefilling=runner.skip_thinking_prefix,
+            )
+            decoding_mismatch = verify_greedy_generation(
+                choice,
+                generated_response,
+                short_label,
+                long_label,
+                choice_prefix,
+                runner=runner,
+                prompt=prompt_text,
+            )
+            functional_response = generated_response
+        else:
+            generated_response = ""
+            functional_response = choice.response_texts[choice.choice_idx]
+
+        # Step 3: Capture internals (only if requested)
+        captured_internals = None
+        if activation_names:
+            _, cache = runner.run_with_cache(
+                prompt_text + functional_response,
+                names_filter=lambda name: name in activation_names,
+            )
+            captured_internals = CapturedInternals.from_activation_names(
+                activation_names, cache
+            )
+
+        # Compute matches_rational and matches_associated
+        choice_idx = choice.choice_idx
+        expected_rational = sample.expected_rational_choice
+        associated = sample.associated_choice
+
+        matches_rational = (
+            (choice_idx == expected_rational) if expected_rational is not None else None
+        )
+        matches_associated = (
+            (choice_idx == associated) if associated is not None else None
+        )
+
+        # Clear heavy data from choice tree before storing
+        choice.pop_heavy()
+        clear_gpu_memory()
+
+        return PreferenceSample(
+            # Choice
+            choice=choice,
+            # Sample Info
+            sample_idx=sample_idx,
+            time_horizon=time_horizon,
+            prompt_text=prompt_text,
+            response_text=generated_response,
+            # Other Choice Info
+            short_term_label=short_label,
+            long_term_label=long_label,
+            short_term_time=short_time,
+            long_term_time=long_time,
+            short_term_reward=short_reward,
+            long_term_reward=long_reward,
+            choice_prefix=choice_prefix,
+            # Extra Info
+            internals=captured_internals,
+            internals_paths=None,
+            decoding_mismatch=decoding_mismatch,
+            formatting_id=sample.formatting_id,
+            context_id=sample.context_id,
+            matches_rational=matches_rational,
+            matches_associated=matches_associated,
+            short_term_first=sample.short_term_first,
+        )
+
     def query_dataset(
         self, prompt_dataset: PromptDataset, model_name: str
     ) -> PreferenceDataset:
@@ -153,110 +272,10 @@ class PreferenceQuerier:
         )
         for i, sample in enumerate(samples):
             tracker.step(i)
-
-            sample_idx = sample.sample_idx
-            time_horizon = (
-                sample.prompt.time_horizon.to_years()
-                if sample.prompt.time_horizon
-                else None
+            pref = self.query_sample(
+                sample, runner, choice_prefix, activation_names, intervention
             )
-            prompt_text = sample.text
-
-            pair = sample.prompt.preference_pair
-            short_label = pair.short_term.label
-            long_label = pair.long_term.label
-            short_time = pair.short_term.time.to_years()
-            long_time = pair.long_term.time.to_years()
-            short_reward = pair.short_term.reward.value
-            long_reward = pair.long_term.reward.value
-
-            decoding_mismatch = False
-
-            # Step 1: Query choice prob based on format
-            choice = runner.choose(
-                prompt_text, choice_prefix, (short_label, long_label)
-            )
-
-            # Step 2: Generate response (or skip if skip_generation=True)
-            if not self.config.skip_generation:
-                generated_response = runner.generate(
-                    prompt_text,
-                    max_new_tokens=self.config.max_new_tokens,
-                    temperature=self.config.temperature,
-                    intervention=intervention,
-                    prefilling=runner.skip_thinking_prefix,
-                )
-                decoding_mismatch = verify_greedy_generation(
-                    choice,
-                    generated_response,
-                    short_label,
-                    long_label,
-                    choice_prefix,
-                    runner=runner,
-                    prompt=prompt_text,
-                )
-                functional_response = generated_response
-            else:
-                generated_response = ""
-                functional_response = choice.response_texts[choice.choice_idx]
-
-            # Step 3: Capture internals (only if requested)
-            captured_internals = None
-            if activation_names:
-                _, cache = runner.run_with_cache(
-                    prompt_text + functional_response,
-                    names_filter=lambda name: name in activation_names,
-                )
-                captured_internals = CapturedInternals.from_activation_names(
-                    activation_names, cache
-                )
-
-            # Compute matches_rational and matches_associated
-            choice_idx = choice.choice_idx
-            expected_rational = sample.expected_rational_choice
-            associated = sample.associated_choice
-
-            matches_rational = (
-                (choice_idx == expected_rational)
-                if expected_rational is not None
-                else None
-            )
-            matches_associated = (
-                (choice_idx == associated) if associated is not None else None
-            )
-
-            # Clear heavy data from choice tree before storing
-            choice.pop_heavy()
-            clear_gpu_memory()
-
-            preferences.append(
-                PreferenceSample(
-                    # Choice
-                    choice=choice,
-                    # Sample Info
-                    sample_idx=sample_idx,
-                    time_horizon=time_horizon,
-                    prompt_text=prompt_text,
-                    response_text=generated_response,
-                    # Other Choice Info
-                    short_term_label=short_label,
-                    long_term_label=long_label,
-                    short_term_time=short_time,
-                    long_term_time=long_time,
-                    short_term_reward=short_reward,
-                    long_term_reward=long_reward,
-                    choice_prefix=choice_prefix,
-                    # Extra Info
-                    internals=captured_internals,
-                    internals_paths=None,
-                    decoding_mismatch=decoding_mismatch,
-                    formatting_id=sample.formatting_id,
-                    context_id=sample.context_id,
-                    matches_rational=matches_rational,
-                    matches_associated=matches_associated,
-                    short_term_first=sample.short_term_first,
-                )
-            )
+            preferences.append(pref)
 
         return PreferenceDataset(
             prompt_dataset_id=prompt_dataset.dataset_id,

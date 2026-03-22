@@ -1,0 +1,479 @@
+"""Data collection and caching for geometric visualization."""
+
+import json
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import numpy as np
+
+from ...common.time_value import TimeValue
+from ..common.preference_types import PreferenceSample, PromptSample, RewardValue
+from .geo_viz_config import GeoVizConfig, TargetSpec
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Position Resolution
+# =============================================================================
+
+
+@dataclass
+class ResolvedPositions:
+    """Resolved token positions for a specific sample.
+
+    Supports multiple source/dest positions for different analysis needs.
+    """
+
+    source: list[int] = field(default_factory=list)
+    dest: list[int] = field(default_factory=list)
+    prompt_len: int = 0
+    full_len: int = 0
+
+    def get(self, pos_name: str) -> int:
+        """Get first position index by name (for backwards compat)."""
+        if pos_name == "source":
+            return self.source[0] if self.source else 0
+        elif pos_name == "dest":
+            return self.dest[0] if self.dest else self.prompt_len
+        elif pos_name == "secondary_source":
+            return self.source[1] if len(self.source) > 1 else self.get("source") + 1
+        else:
+            raise ValueError(f"Unknown position name: {pos_name}")
+
+
+def _find_substring_token_range(
+    tokens: list[str], text: str, substring: str
+) -> list[int]:
+    """Find all token positions spanning a substring in text.
+
+    Returns list of token indices that cover the substring.
+    """
+    char_idx = text.find(substring)
+    if char_idx == -1:
+        return []
+
+    char_end = char_idx + len(substring)
+    positions = []
+
+    # Map character range to token indices
+    char_count = 0
+    for i, tok in enumerate(tokens):
+        tok_start = char_count
+        tok_end = char_count + len(tok)
+        char_count = tok_end
+
+        # Token overlaps with substring
+        if tok_end > char_idx and tok_start < char_end:
+            positions.append(i)
+
+        if tok_end >= char_end:
+            break
+
+    return positions
+
+
+def _print_positions(
+    label: str, search_str: str, positions: list[int], tokens: list[str]
+) -> None:
+    """Print position info in a readable format."""
+    if not positions:
+        print(f"       {label:12} '{search_str}' -> (not found)")
+        return
+    tok_strs = [repr(tokens[p]) for p in positions]
+    print(f"       {label:12} '{search_str}' -> pos {positions} = {tok_strs}")
+
+
+def _find_time_value_positions(
+    tokens: list[str], text: str, time_val: TimeValue, verbose: bool = False
+) -> list[int]:
+    """Find token positions for a TimeValue's numeric value and unit separately."""
+    positions = []
+    prompt_tokens = tokens
+
+    # Use TimeValue's own __str__ formatting, then split to get value and unit
+    formatted = str(time_val)
+    parts = formatted.split(" ", 1)
+    value_str = parts[0]
+    unit_str = parts[1] if len(parts) > 1 else time_val.unit
+
+    value_positions = _find_substring_token_range(prompt_tokens, text, value_str)
+    positions.extend(value_positions)
+    if verbose:
+        _print_positions("value", value_str, value_positions, tokens)
+
+    unit_positions = _find_substring_token_range(prompt_tokens, text, unit_str)
+    positions.extend(unit_positions)
+    if verbose:
+        _print_positions("unit", unit_str, unit_positions, tokens)
+
+    return positions
+
+
+def _find_reward_value_positions(
+    tokens: list[str], text: str, reward_val: RewardValue, verbose: bool = False
+) -> list[int]:
+    """Find token positions for a RewardValue's numeric value and unit separately."""
+    positions = []
+    prompt_tokens = tokens
+
+    # Format numeric value with commas (e.g., "1,750") - use RewardValue's own formatting
+    value_str = str(RewardValue(reward_val.value))
+    value_positions = _find_substring_token_range(prompt_tokens, text, value_str)
+    positions.extend(value_positions)
+    if verbose:
+        _print_positions("value", value_str, value_positions, tokens)
+
+    # Unit (if present)
+    if reward_val.unit:
+        unit_positions = _find_substring_token_range(
+            prompt_tokens, text, reward_val.unit
+        )
+        positions.extend(unit_positions)
+        if verbose:
+            _print_positions("unit", reward_val.unit, unit_positions, tokens)
+
+    return positions
+
+
+def resolve_positions(
+    sample: PromptSample,
+    pref: PreferenceSample,
+    runner,
+    verbose: bool = True,
+) -> ResolvedPositions:
+    """Resolve token positions using exact sample structure.
+
+    Args:
+        sample: PromptSample with structured TimeValue/RewardValue data
+        pref: PreferenceSample with token info from model query
+        runner: Model runner with tokenizer
+
+    Source positions (in prompt):
+    - time_horizon tokens (numeric value + unit separately)
+    - short_term time tokens (numeric value + unit separately)
+    - long_term time tokens (numeric value + unit separately)
+    - short_term reward tokens (numeric value + unit separately)
+    - long_term reward tokens (numeric value + unit separately)
+
+    Dest positions (in response):
+    - choice_prefix tokens ("I choose: ")
+    - all answer tokens
+    """
+    # Get token info from PreferenceSample
+    prompt_len = pref.prompt_token_count
+    full_tokens = pref.chosen_traj.token_ids
+    tokens = [runner._tokenizer.decode([t]) for t in full_tokens]
+
+    full_len = len(tokens)
+    # Reconstruct text from tokens (matches token positions)
+    prompt_tokens_decoded = tokens[:prompt_len]
+    prompt_text = "".join(prompt_tokens_decoded)
+    source_positions = []
+
+    pair = sample.prompt.preference_pair
+
+    if verbose:
+        print(f"\n{'=' * 60}")
+        print(
+            f"Sample {sample.sample_idx} | prompt_len={prompt_len} | full_len={full_len}"
+        )
+        print(f"{'=' * 60}")
+
+    # Time horizon (numeric value + unit)
+    if sample.prompt.time_horizon is not None:
+        if verbose:
+            print(f"  time_horizon: {sample.prompt.time_horizon}")
+        source_positions.extend(
+            _find_time_value_positions(
+                prompt_tokens_decoded, prompt_text, sample.prompt.time_horizon, verbose
+            )
+        )
+
+    # Short-term option: time (value + unit) and reward (value + unit)
+    if verbose:
+        print(f"  short_term.time: {pair.short_term.time}")
+    source_positions.extend(
+        _find_time_value_positions(
+            prompt_tokens_decoded, prompt_text, pair.short_term.time, verbose
+        )
+    )
+    if verbose:
+        print(f"  short_term.reward: {pair.short_term.reward}")
+    source_positions.extend(
+        _find_reward_value_positions(
+            prompt_tokens_decoded, prompt_text, pair.short_term.reward, verbose
+        )
+    )
+
+    # Long-term option: time (value + unit) and reward (value + unit)
+    if verbose:
+        print(f"  long_term.time: {pair.long_term.time}")
+    source_positions.extend(
+        _find_time_value_positions(
+            prompt_tokens_decoded, prompt_text, pair.long_term.time, verbose
+        )
+    )
+    if verbose:
+        print(f"  long_term.reward: {pair.long_term.reward}")
+    source_positions.extend(
+        _find_reward_value_positions(
+            prompt_tokens_decoded, prompt_text, pair.long_term.reward, verbose
+        )
+    )
+
+    # Dedupe and sort
+    source_positions = sorted(set(source_positions))
+
+    # Fallback if no source positions found
+    if not source_positions:
+        source_positions.append(int(prompt_len * 0.6))
+
+    # Dest positions: all response tokens (choice_prefix + answer)
+    dest_positions = list(range(prompt_len, full_len))
+
+    # Clamp all positions to valid range
+    source_positions = [max(0, min(p, full_len - 1)) for p in source_positions]
+    dest_positions = [max(0, min(p, full_len - 1)) for p in dest_positions]
+
+    if verbose:
+        print("\n  Summary:")
+        print(f"    source ({len(source_positions)} positions): {source_positions}")
+        src_toks = [repr(tokens[p]) for p in source_positions]
+        print(f"    source tokens: {src_toks}")
+        print(f"    dest ({len(dest_positions)} positions): {dest_positions}")
+        dst_toks = [repr(tokens[p]) for p in dest_positions]
+        print(f"    dest tokens: {dst_toks}")
+
+    return ResolvedPositions(
+        source=source_positions,
+        dest=dest_positions,
+        prompt_len=prompt_len,
+        full_len=full_len,
+    )
+
+
+# =============================================================================
+# Activation Data
+# =============================================================================
+
+
+@dataclass
+class ChoiceInfo:
+    """Choice information for a single sample."""
+
+    chose_long_term: bool
+    chosen_time_months: float
+    chosen_reward: float
+    choice_prob: float
+
+    def to_dict(self) -> dict:
+        return {
+            "chose_long_term": self.chose_long_term,
+            "chosen_time_months": self.chosen_time_months,
+            "chosen_reward": self.chosen_reward,
+            "choice_prob": self.choice_prob,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ChoiceInfo":
+        return cls(
+            chose_long_term=data["chose_long_term"],
+            chosen_time_months=data["chosen_time_months"],
+            chosen_reward=data["chosen_reward"],
+            choice_prob=data["choice_prob"],
+        )
+
+
+@dataclass
+class ActivationData:
+    """Container for activations and metadata."""
+
+    samples: list[PromptSample]
+    activations: dict[str, np.ndarray]  # target_key -> (n_samples, d_model)
+    choices: list[ChoiceInfo] | None = None  # Choice info per sample
+
+    def save(self, path: Path):
+        """Save to disk."""
+        path.mkdir(parents=True, exist_ok=True)
+
+        samples_data = [s.to_dict() for s in self.samples]
+        with open(path / "samples.json", "w") as f:
+            json.dump(samples_data, f, indent=2)
+
+        if self.choices:
+            choices_data = [c.to_dict() for c in self.choices]
+            with open(path / "choices.json", "w") as f:
+                json.dump(choices_data, f, indent=2)
+
+        np.savez_compressed(path / "activations.npz", **self.activations)
+        logger.info(f"Saved {len(self.samples)} samples to {path}")
+
+    @classmethod
+    def load(cls, path: Path) -> "ActivationData":
+        """Load from disk."""
+        with open(path / "samples.json") as f:
+            samples_data = json.load(f)
+        samples = [PromptSample.from_dict(s) for s in samples_data]
+
+        choices = None
+        choices_path = path / "choices.json"
+        if choices_path.exists():
+            with open(choices_path) as f:
+                choices_data = json.load(f)
+            choices = [ChoiceInfo.from_dict(c) for c in choices_data]
+
+        activations_file = np.load(path / "activations.npz")
+        activations = {k: activations_file[k] for k in activations_file.files}
+
+        logger.info(f"Loaded {len(samples)} samples from {path}")
+        return cls(samples=samples, activations=activations, choices=choices)
+
+
+# =============================================================================
+# Sample Collection
+# =============================================================================
+
+
+def get_time_horizon_months(sample: PromptSample) -> float:
+    """Get time horizon in months from a PromptSample."""
+    if sample.prompt.time_horizon is None:
+        return 60.0  # Default to 5 years for None
+    return sample.prompt.time_horizon.to_months()
+
+
+def collect_samples() -> "PromptDataset":
+    """Generate samples with diverse time horizons using GEO_VIZ_CFG.
+
+    Returns PromptDataset with samples and config (including format info).
+    """
+    from ..data.default_datasets import GEO_VIZ_CFG
+    from ..prompt import PromptDatasetConfig, PromptDatasetGenerator
+
+    dataset_config = PromptDatasetConfig.from_dict(GEO_VIZ_CFG)
+    dataset = PromptDatasetGenerator(dataset_config).generate()
+
+    logger.info(f"Generated {len(dataset.samples)} samples")
+    return dataset
+
+
+# =============================================================================
+# Activation Extraction
+# =============================================================================
+
+
+def extract_activations(
+    dataset: "PromptDataset", targets: list[TargetSpec], config: GeoVizConfig
+) -> ActivationData:
+    """Extract activations at specified positions for all samples."""
+    from ..formatting.prompt_formats import find_prompt_format_config
+    from ..preference import PreferenceQuerier, PreferenceQueryConfig
+
+    logger.info(f"Loading model {config.model}...")
+
+    # Use PreferenceQuerier for consistent model handling
+    query_config = PreferenceQueryConfig(skip_generation=True)
+    querier = PreferenceQuerier(query_config)
+    runner = querier._load_model(config.model)
+
+    samples = dataset.samples
+    if config.max_samples is not None and len(samples) > config.max_samples:
+        samples = samples[: config.max_samples]
+        logger.info(f"Limited to {config.max_samples} samples")
+
+    hook_names = list({t.hook_name for t in targets})
+    activations = {t.key: [] for t in targets}
+    choices = []
+
+    logger.info(f"Extracting activations for {len(samples)} samples...")
+
+    valid_samples = []
+    skipped = 0
+
+    for i, sample in enumerate(samples):
+        if i % 100 == 0:
+            logger.info(f"  Processing sample {i}/{len(samples)} (skipped: {skipped})")
+
+        # Get choice_prefix from sample's prompt format config
+        prompt_format = find_prompt_format_config(sample.formatting_id)
+        choice_prefix = prompt_format.get_response_prefix_before_choice()
+
+        # Query sample with activation capture
+        try:
+            pref = querier.query_sample(
+                sample, runner, choice_prefix, activation_names=hook_names
+            )
+
+            # Skip samples with invalid trajectories
+            if pref.chosen_traj is None:
+                skipped += 1
+                continue
+
+            # Resolve positions using PreferenceSample's token info
+            positions = resolve_positions(sample, pref, runner, verbose=False)
+
+            for target in targets:
+                pos_idx = positions.get(target.position)
+                # CapturedInternals already removes batch dim and moves to CPU
+                act = pref.internals.activations[target.hook_name][pos_idx, :].numpy()
+                activations[target.key].append(act)
+
+            # Capture choice info
+            pair = sample.prompt.preference_pair
+            chose_long = pref.chose_long_term
+            if chose_long:
+                chosen_time = pair.long_term.time.to_months()
+                chosen_reward = pair.long_term.reward.value
+            else:
+                chosen_time = pair.short_term.time.to_months()
+                chosen_reward = pair.short_term.reward.value
+
+            choices.append(
+                ChoiceInfo(
+                    chose_long_term=chose_long,
+                    chosen_time_months=chosen_time,
+                    chosen_reward=chosen_reward,
+                    choice_prob=pref.choice_prob,
+                )
+            )
+            valid_samples.append(sample)
+
+        except Exception as e:
+            logger.warning(f"  Skipping sample {i}: {e}")
+            skipped += 1
+            continue
+
+    logger.info(f"Processed {len(valid_samples)} valid samples (skipped {skipped})")
+
+    activations = {k: np.stack(v) for k, v in activations.items()}
+
+    logger.info(f"Extracted activations: {list(activations.keys())}")
+    for k, v in activations.items():
+        logger.info(f"  {k}: {v.shape}")
+
+    return ActivationData(samples=valid_samples, activations=activations, choices=choices)
+
+
+# =============================================================================
+# Caching
+# =============================================================================
+
+
+def load_cached_data(config: GeoVizConfig) -> ActivationData | None:
+    """Load cached data if available."""
+    cache_path = config.output_dir / "data"
+    if (cache_path / "samples.json").exists() and (
+        cache_path / "activations.npz"
+    ).exists():
+        try:
+            return ActivationData.load(cache_path)
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}")
+    return None
+
+
+def save_data(data: ActivationData, config: GeoVizConfig):
+    """Save data to cache."""
+    cache_path = config.output_dir / "data"
+    data.save(cache_path)

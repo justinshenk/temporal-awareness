@@ -17,7 +17,6 @@ from itertools import product
 from ..formatting.formatting_variation import (
     FormattingVariation,
     apply_time_variation,
-    get_formatting_id,
 )
 from .prompt_dataset_config import PromptDatasetConfig, ContextConfig, StepType
 from .prompt_dataset_variations import get_context_variations, apply_context_variation
@@ -409,9 +408,6 @@ class PromptDatasetGenerator:
             time_horizon=time_horizon,
         )
 
-        # Compute formatting_id based on which label is assigned to short_term
-        formatting_id = get_formatting_id(short_term_label, long_term_label)
-
         # Compute context_id from the context config
         context_id = ctx.get_context_id()
 
@@ -419,7 +415,7 @@ class PromptDatasetGenerator:
             sample_idx=sample_idx,
             prompt=prompt,
             text=prompt_text,
-            formatting_id=formatting_id,
+            formatting_id=self.dataset_config.prompt_format,
             context_id=context_id,
             short_term_first=short_on_left,
         )

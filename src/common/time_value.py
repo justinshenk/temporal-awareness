@@ -98,10 +98,16 @@ class TimeValue(BaseSchema):
 
     def convert(self, target_unit: str) -> TimeValue:
         """Return a new TimeValue converted to the target unit."""
-        return TimeValue(value=self.to_unit(target_unit), unit=canonicalize_unit(target_unit))
+        return TimeValue(
+            value=self.to_unit(target_unit), unit=canonicalize_unit(target_unit)
+        )
 
     def __str__(self) -> str:
-        val_str = str(int(self.value)) if self.value == int(self.value) else f"{self.value:.1f}"
+        val_str = (
+            str(int(self.value))
+            if self.value == int(self.value)
+            else f"{self.value:.1f}"
+        )
         unit = self.unit
         if self.value == 1:
             if unit.endswith("ies"):
