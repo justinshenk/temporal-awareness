@@ -615,7 +615,13 @@ def generate_viz(
             if mlp_result:
                 visualize_mlp_pair(mlp_result, pair_dir / "mlp_analysis")
             if attn_result:
-                visualize_attn_pair(attn_result, pair_dir / "attn_analysis")
+                # Pass runner for OV/QK analysis (plots 7-8) if TransformerLens backend
+                visualize_attn_pair(
+                    attn_result,
+                    pair_dir / "attn_analysis",
+                    runner=runner,
+                    diffmeans_direction=None,  # TODO: Extract from diffmeans_result
+                )
             if fine_grained_result:
                 visualize_fine_grained(fine_grained_result, pair_dir / "fine_grained")
 
