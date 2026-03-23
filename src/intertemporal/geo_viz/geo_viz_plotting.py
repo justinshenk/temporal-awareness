@@ -384,6 +384,9 @@ def plot_trajectory(
         for i, layer in enumerate(layers):
             pca_result = layer_data[layer]["pca"]
             best_pc_idx = pca_result.pc_correlations[0][0]
+            # Clamp to stored components (may be less than computed due to MAX_STORED_PCA_COMPONENTS)
+            n_stored = pca_result.transformed.shape[1]
+            best_pc_idx = min(best_pc_idx, n_stored - 1)
             trajectories[:, i] = pca_result.transformed[:n_samples, best_pc_idx]
 
         # Normalize
@@ -476,6 +479,7 @@ def plot_component_decomposition(
             pca_result = comp_data[component]["pca"]
             X_pca = pca_result.transformed
             best_pc_idx = pca_result.pc_correlations[0][0]
+            best_pc_idx = min(best_pc_idx, X_pca.shape[1] - 1)  # Clamp to stored
             best_corr = pca_result.pc_correlations[0][1]
 
             r2_info = comp_data[component]["r2"]
@@ -498,6 +502,131 @@ def plot_component_decomposition(
     logger.info(f"Saved component decomposition plots to {output_dir}")
 
 
+def plot_component_decomposition_3d(
+    linear_probe_results: dict[str, "LinearProbeResult"],
+    pca_results: dict[str, "PCAResult"],
+    schemes: list["ColoringScheme"],
+    output_dir: Path,
+):
+    """Plot interactive 3D component decomposition showing all 4 components."""
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError:
+        logger.warning("Plotly not available, skipping 3D component decomposition")
+        return
+
+    target_info = {}
+    for key in pca_results.keys():
+        parts = key.split("_P")
+        if len(parts) != 2:
+            continue
+        base = parts[0]
+        position = parts[1]
+
+        layer_match = re.match(r"L(\d+)_(.+)", base)
+        if not layer_match:
+            continue
+        layer = int(layer_match.group(1))
+        component = layer_match.group(2)
+
+        layer_pos_key = f"L{layer}_P{position}"
+        if layer_pos_key not in target_info:
+            target_info[layer_pos_key] = {}
+        target_info[layer_pos_key][component] = {
+            "key": key,
+            "pca": pca_results[key],
+            "r2": linear_probe_results.get(key, None),
+        }
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    components_order = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
+    component_colors = {"resid_pre": "blue", "attn_out": "green", "mlp_out": "orange", "resid_post": "red"}
+
+    # Use first continuous scheme for coloring
+    scheme = next((s for s in schemes if not s.is_categorical), schemes[0] if schemes else None)
+    if scheme is None:
+        return
+
+    for layer_pos_key, comp_data in target_info.items():
+        available_components = [c for c in components_order if c in comp_data]
+        if len(available_components) < 2:
+            continue
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            specs=[[{"type": "scatter3d"}, {"type": "scatter3d"}],
+                   [{"type": "scatter3d"}, {"type": "scatter3d"}]],
+            subplot_titles=[c if c in available_components else "" for c in components_order],
+            horizontal_spacing=0.02,
+            vertical_spacing=0.08,
+        )
+
+        for idx, component in enumerate(components_order):
+            if component not in comp_data:
+                continue
+
+            row, col = idx // 2 + 1, idx % 2 + 1
+            pca_result = comp_data[component]["pca"]
+            X_pca = pca_result.transformed
+            n_samples = X_pca.shape[0]
+
+            # Get top 3 PCs by correlation, clamped to stored components
+            n_stored = X_pca.shape[1]
+            top_pcs = [min(c[0], n_stored - 1) for c in pca_result.pc_correlations[:3]]
+            if len(top_pcs) < 3:
+                top_pcs = list(range(min(3, n_stored)))
+
+            r2_info = comp_data[component]["r2"]
+            r2_val = r2_info.r2_mean if r2_info else 0
+
+            # Color by time horizon
+            values = scheme.values[:n_samples] if n_samples < len(scheme.values) else scheme.values
+            color_vals = np.log10(values + 1) if scheme.use_log else values
+
+            fig.add_trace(
+                go.Scatter3d(
+                    x=X_pca[:, top_pcs[0]],
+                    y=X_pca[:, top_pcs[1]],
+                    z=X_pca[:, top_pcs[2]] if len(top_pcs) > 2 else np.zeros(n_samples),
+                    mode="markers",
+                    marker=dict(
+                        size=3,
+                        color=color_vals,
+                        colorscale="Plasma",
+                        opacity=0.7,
+                    ),
+                    name=f"{component} (R²={r2_val:.3f})",
+                    hovertemplate=f"{component}<br>R²={r2_val:.3f}<br>%{{text}}<extra></extra>",
+                    text=[f"{scheme.label}: {v:.1f}" for v in values],
+                ),
+                row=row, col=col,
+            )
+
+        fig.update_layout(
+            title=f"3D Component Decomposition: {layer_pos_key}",
+            height=900,
+            width=1200,
+            showlegend=True,
+        )
+
+        # Update all scenes
+        for i in range(1, 5):
+            scene_name = f"scene{i}" if i > 1 else "scene"
+            fig.update_layout(**{
+                scene_name: dict(
+                    xaxis_title="PC (best)",
+                    yaxis_title="PC (2nd)",
+                    zaxis_title="PC (3rd)",
+                )
+            })
+
+        fig.write_html(output_dir / f"decomp_3d_{layer_pos_key}.html")
+
+    logger.info(f"Saved 3D component decomposition plots to {output_dir}")
+
+
 def plot_direction_alignment(
     pca_results: dict[str, "PCAResult"],
     output_dir: Path,
@@ -510,6 +639,7 @@ def plot_direction_alignment(
             continue
 
         best_pc_idx = pca_result.pc_correlations[0][0]
+        best_pc_idx = min(best_pc_idx, pca_result.components.shape[0] - 1)  # Clamp to stored
         direction = pca_result.components[best_pc_idx]
         direction = direction / (np.linalg.norm(direction) + 1e-10)
         directions[key] = direction
@@ -756,42 +886,47 @@ def plot_linear_probe_summary(
     data: ActivationData,
     results: dict[str, LinearProbeResult],
     output_dir: Path,
+    top_n: int = 30,
 ):
-    """Plot linear probe summary bar chart."""
+    """Plot linear probe summary bar chart showing top N targets."""
     horizons, log_horizons, _ = _get_horizons(data)
 
-    fig, ax = plt.subplots(figsize=(12, 6))
-
-    targets = sorted(results.keys(), key=lambda k: results[k].r2_mean, reverse=True)
+    # Sort and take top N
+    all_targets = sorted(results.keys(), key=lambda k: results[k].r2_mean, reverse=True)
+    targets = all_targets[:top_n]
     r2_values = [results[t].r2_mean for t in targets]
     r2_stds = [results[t].r2_std for t in targets]
 
     colors = ["#4CAF50" if "Pdest" in t or "Presponse" in t else "#F44336" for t in targets]
 
+    fig, ax = plt.subplots(figsize=(12, max(6, len(targets) * 0.25)))
+
     ax.barh(range(len(targets)), r2_values, xerr=r2_stds, color=colors, alpha=0.8)
     ax.set_yticks(range(len(targets)))
-    ax.set_yticklabels(targets)
+    ax.set_yticklabels(targets, fontsize=9)
     ax.set_xlabel("R² Score (5-fold CV)")
-    ax.set_title("Linear Probe for Time Horizon Decoding\n(Green=Dest, Red=Source)")
+    ax.set_title(f"Linear Probe for Time Horizon Decoding (Top {len(targets)})\n(Green=Dest, Red=Source)")
     ax.axvline(0, color="black", linewidth=0.5)
     ax.set_xlim(-0.1, 1.1)
+    ax.invert_yaxis()  # Best at top
 
     for i, (t, r2) in enumerate(zip(targets, r2_values)):
-        ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=9)
+        ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=8)
 
     plt.tight_layout()
     plt.savefig(output_dir / "linear_probe_summary.png", dpi=150)
     plt.close()
 
-    # Scatter plots
-    n_targets = len(results)
+    # Scatter plots for top 16 only
+    scatter_targets = all_targets[:16]
+    n_targets = len(scatter_targets)
     n_cols = min(4, n_targets)
     n_rows = (n_targets + n_cols - 1) // n_cols
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows))
     axes = np.atleast_2d(axes)
 
-    for idx, target_key in enumerate(sorted(results.keys())):
+    for idx, target_key in enumerate(scatter_targets):
         result = results[target_key]
         row, col = idx // n_cols, idx % n_cols
         ax = axes[row, col]
@@ -815,9 +950,9 @@ def plot_linear_probe_summary(
         )
         ax.set_xlabel("Actual log₁₀(years)")
         ax.set_ylabel("Predicted")
-        ax.set_title(f"{target_key}\nR²={result.r2_mean:.3f}")
+        ax.set_title(f"{target_key}\nR²={result.r2_mean:.3f}", fontsize=9)
 
-    for idx in range(len(results), n_rows * n_cols):
+    for idx in range(len(scatter_targets), n_rows * n_cols):
         row, col = idx // n_cols, idx % n_cols
         axes[row, col].axis("off")
 
@@ -891,6 +1026,8 @@ def plot_target_pca(
     best_pc_idx = pca_result.pc_correlations[0][0]
     best_corr = pca_result.pc_correlations[0][1]
     X_pca = pca_result.transformed
+    # Clamp to stored components
+    best_pc_idx = min(best_pc_idx, X_pca.shape[1] - 1)
 
     # Main summary plot
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
@@ -990,7 +1127,8 @@ def plot_target_3d(
 
     X_pca = pca_result.transformed
     n_samples = X_pca.shape[0]
-    top_pcs = [c[0] for c in pca_result.pc_correlations[:3]]
+    n_stored = X_pca.shape[1]
+    top_pcs = [min(c[0], n_stored - 1) for c in pca_result.pc_correlations[:3]]
     corrs = [pca_result.pc_correlations[i][1] for i in range(min(3, len(pca_result.pc_correlations)))]
 
     for scheme in schemes:
@@ -1120,8 +1258,9 @@ def generate_all_plots(
         ├── 04_trajectories/        # PC1 across layers
         ├── 05_direction_alignment/ # Cosine similarity
         ├── 06_scree/               # Variance explained
-        ├── 07_component_decomp/    # 2x2 component plots
-        └── 08_targets/             # Per-target plots
+        ├── 07_component_decomp/    # 2x2 component plots (2D)
+        ├── 08_component_decomp_3d/ # Interactive 3D component plots
+        └── 09_targets/             # Per-target plots
             └── {base_key}/
                 └── {pos_type}/
                     ├── pca/
@@ -1176,16 +1315,23 @@ def generate_all_plots(
     plot_scree(pca_results, scree_dir)
     gc.collect()
 
-    # Priority 7: Component decomposition
+    # Priority 7: Component decomposition (2D)
     decomp_dir = output_dir / "07_component_decomp"
     decomp_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating component decomposition plots...")
     plot_component_decomposition(linear_probe_results, pca_results, schemes, decomp_dir)
     gc.collect()
 
+    # Priority 8: Component decomposition (3D)
+    decomp_3d_dir = output_dir / "08_component_decomp_3d"
+    decomp_3d_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Generating 3D component decomposition plots...")
+    plot_component_decomposition_3d(linear_probe_results, pca_results, schemes, decomp_3d_dir)
+    gc.collect()
+
     # Per-target plots (process in batches)
     logger.info("Generating per-target plots...")
-    targets_dir = output_dir / "08_targets"
+    targets_dir = output_dir / "09_targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
 
     target_groups = _group_targets_by_base(list(pca_results.keys()))

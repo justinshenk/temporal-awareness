@@ -188,16 +188,14 @@ def main():
     logger.info("FINAL SUMMARY")
     logger.info("=" * 60)
 
-    logger.info("\nLinear Probe R² (ability to decode time horizon):")
-    for key, result in sorted(
-        results["linear_probe"].items(),
-        key=lambda x: x[1].r2_mean,
-        reverse=True,
-    ):
-        pos = "DEST" if "Pdest" in key else "SRC"
-        logger.info(
-            f"  [{pos}] {key}: R²={result.r2_mean:.3f} (corr={result.correlation:.3f})"
-        )
+    summary = results.get("summary", {})
+    linear_probe = summary.get("linear_probe", {})
+    if linear_probe:
+        logger.info("\nTop Linear Probe R² (ability to decode time horizon):")
+        sorted_items = sorted(linear_probe.items(), key=lambda x: x[1]["r2"], reverse=True)[:15]
+        for key, data in sorted_items:
+            pos = "DEST" if "Presponse" in key or "P14" in key else "SRC"
+            logger.info(f"  [{pos}] {key}: R²={data['r2']:.3f} (corr={data['corr']:.3f})")
 
     logger.info(f"\nResults saved to: {config.output_dir}")
     logger.info("Key outputs:")
@@ -208,7 +206,8 @@ def main():
     logger.info(f"  - {config.output_dir}/plots/05_direction_alignment/")
     logger.info(f"  - {config.output_dir}/plots/06_scree/")
     logger.info(f"  - {config.output_dir}/plots/07_component_decomp/")
-    logger.info(f"  - {config.output_dir}/plots/08_targets/")
+    logger.info(f"  - {config.output_dir}/plots/08_component_decomp_3d/")
+    logger.info(f"  - {config.output_dir}/plots/09_targets/")
     logger.info(f"  - {config.output_dir}/summary.json")
 
 
