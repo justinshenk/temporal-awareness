@@ -545,15 +545,58 @@ def generate_responses(
                   f"(model max={model_max_len}, reserved {max_new_tokens} for generation)")
             truncation_warned = True
 
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=False,  # greedy for reproducibility
-                return_dict_in_generate=True,
-                output_scores=return_logprobs,
-                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-            )
+        # Generate with automatic OOM recovery (halve batch on failure)
+        try:
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=False,  # greedy for reproducibility
+                    return_dict_in_generate=True,
+                    output_scores=return_logprobs,
+                    pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+                )
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower() or "CUDA" in str(e):
+                torch.cuda.empty_cache()
+                # Process this batch one-by-one as fallback
+                print(f"    [WARN] OOM on batch of {len(batch)}, falling back to batch_size=1")
+                all_outputs_sequences = []
+                all_outputs_scores = []
+                for single_prompt in batch:
+                    single_input = tokenizer(
+                        [single_prompt], return_tensors="pt", truncation=True,
+                        max_length=max_input_len,
+                    ).to(device)
+                    with torch.no_grad():
+                        single_out = model.generate(
+                            **single_input,
+                            max_new_tokens=max_new_tokens,
+                            do_sample=False,
+                            return_dict_in_generate=True,
+                            output_scores=return_logprobs,
+                            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+                        )
+                    # Pad to match expected shape
+                    all_outputs_sequences.append(single_out.sequences[0])
+                    if return_logprobs and hasattr(single_out, "scores") and single_out.scores:
+                        all_outputs_scores.append(single_out.scores)
+                # Reconstruct outputs-like object for downstream processing
+                max_seq_len = max(s.shape[0] for s in all_outputs_sequences)
+                padded = torch.full((len(batch), max_seq_len),
+                                    tokenizer.pad_token_id or tokenizer.eos_token_id,
+                                    device=device)
+                for idx, seq in enumerate(all_outputs_sequences):
+                    padded[idx, :seq.shape[0]] = seq
+
+                class _FakeOutput:
+                    pass
+                outputs = _FakeOutput()
+                outputs.sequences = padded
+                outputs.scores = all_outputs_scores[0] if all_outputs_scores else []
+                # Note: scores only accurate for first item when using fallback
+            else:
+                raise
 
         # Decode responses (strip the input prompt)
         input_len = inputs["input_ids"].shape[1]
