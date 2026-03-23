@@ -503,15 +503,15 @@ def visualize_attn_pair(
     result: AttnPairResult,
     output_dir: Path,
     runner: "BinaryChoiceRunner | None" = None,
-    diffmeans_direction: np.ndarray | None = None,
 ) -> None:
     """Generate attention analysis visualizations for a single pair.
 
     Args:
         result: Attention analysis results for one pair
         output_dir: Directory to save plots
-        runner: Optional model runner for OV/QK analysis (plots 7-8)
-        diffmeans_direction: Optional logit direction for OV projection analysis
+        runner: Optional model runner for QK analysis (plot 8)
+
+    Note: OV projection analysis (plot 7) has been moved to diffmeans_viz.py
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -556,19 +556,13 @@ def visualize_attn_pair(
         _plot_pair_layer_summary(result, output_dir / "attn_pair_summary.png")
         n_plots += 1
 
-    # Plot 7 & 8: OV/QK analysis (requires TransformerLens backend)
+    # Plot 8: QK analysis (requires TransformerLens backend)
+    # Note: Plot 7 (OV projection) moved to diffmeans_viz.py where logit direction is computed
     if runner is not None:
         try:
-            # Plot 7: OV projection analysis
-            if diffmeans_direction is not None:
-                n_plots += visualize_ov_projection(
-                    runner, result, diffmeans_direction, output_dir
-                )
-
-            # Plot 8: QK analysis
             n_plots += visualize_qk_analysis(runner, result, output_dir)
         except Exception as e:
-            log(f"[attn_viz] OV/QK analysis skipped: {e}")
+            log(f"[attn_viz] QK analysis skipped: {e}")
 
     if n_plots > 0:
         log(f"[attn_viz] Generated {n_plots} pair plots in {output_dir}")
@@ -1008,118 +1002,9 @@ def _plot_pair_attention_patterns(result: AttnPairResult, output_path: Path) -> 
 
 
 # =============================================================================
-# Plot 7: OV Projection Analysis
-# =============================================================================
-
-def visualize_ov_projection(
-    runner: "BinaryChoiceRunner",
-    result: AttnPairResult,
-    diffmeans_direction: np.ndarray,
-    output_dir: Path,
-    top_heads: list[tuple[int, int]] | None = None,
-    source_positions: list[int] | None = None,
-) -> int:
-    """Plot 7: OV projection analysis for top heads.
-
-    For each top head: computes W_OV = W_V @ W_O and projects source position
-    activations through it. Measures alignment with difference-in-means direction.
-
-    Args:
-        runner: Model runner with backend
-        result: Attention analysis results for the pair
-        diffmeans_direction: The task-relevant direction at destination [d_model]
-        output_dir: Output directory for plots
-        top_heads: List of (layer, head) tuples to analyze
-        source_positions: Source positions to analyze
-
-    Returns:
-        Number of plots generated
-    """
-    try:
-        # Check if backend supports weight matrix access
-        _ = runner._backend.get_W_OV(0, 0)
-    except NotImplementedError:
-        log("[attn_viz] OV projection requires TransformerLens backend")
-        return 0
-
-    if top_heads is None:
-        # Use top heads from layer results
-        all_heads = []
-        for lr in result.layer_results:
-            for hr in lr.head_results:
-                all_heads.append((lr.layer, hr.head_idx, hr.attn_to_source))
-        all_heads.sort(key=lambda x: x[2], reverse=True)
-        top_heads = [(layer, head) for layer, head, _ in all_heads[:10]]
-
-    if source_positions is None:
-        source_positions = result.source_positions[:5] if result.source_positions else [86, 87, 88]
-
-    if not top_heads:
-        return 0
-
-    # Get source position activations
-    from src.intertemporal.patching.binary_choice_runner import BinaryChoiceRunner
-    token_ids = runner._backend.get_tokenizer().encode(
-        runner._backend.decode(torch.tensor(result.source_positions[:1])),
-        add_special_tokens=False
-    )
-
-    # Build data for plotting
-    head_labels = []
-    alignments = []
-
-    for layer, head in top_heads:
-        try:
-            W_OV = runner._backend.get_W_OV(layer, head)  # [d_model, d_model]
-
-            # Project diffmeans direction through OV circuit
-            # This tells us what the head outputs when it reads from positions
-            # containing the diffmeans direction
-            ov_output = W_OV @ torch.tensor(diffmeans_direction, device=W_OV.device, dtype=W_OV.dtype)
-            ov_output = ov_output / (ov_output.norm() + 1e-10)
-
-            # Compute alignment with diffmeans direction (at destination)
-            alignment = float(torch.dot(
-                ov_output,
-                torch.tensor(diffmeans_direction, device=ov_output.device, dtype=ov_output.dtype)
-            ).item())
-
-            head_labels.append(f"L{layer}.H{head}")
-            alignments.append(alignment)
-
-        except Exception as e:
-            log(f"[attn_viz] Error computing OV for L{layer}.H{head}: {e}")
-            continue
-
-    if not alignments:
-        return 0
-
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    colors = ['green' if a > 0 else 'red' for a in alignments]
-    bars = ax.bar(range(len(alignments)), alignments, color=colors, alpha=0.7, edgecolor='black')
-
-    ax.set_xticks(range(len(head_labels)))
-    ax.set_xticklabels(head_labels, rotation=45, ha='right')
-    ax.set_xlabel('Head')
-    ax.set_ylabel('Cosine Similarity with Logit Direction')
-    ax.set_title('Plot 7: OV Projection Alignment with Logit Direction\n(Green = pushes toward correct answer)')
-    ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
-    ax.grid(True, alpha=0.3, axis='y')
-
-    plt.tight_layout()
-    output_path = output_dir / 'attn_ov_projection.png'
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
-
-    print(f"Saved: {output_path}")
-    return 1
-
-
-# =============================================================================
 # Plot 8: QK Analysis
 # =============================================================================
+# Note: Plot 7 (OV Projection Analysis) has been moved to diffmeans_viz.py
 
 def visualize_qk_analysis(
     runner: "BinaryChoiceRunner",

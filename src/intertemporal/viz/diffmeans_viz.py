@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 from ...common.logging import log
 from ..experiments.diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
+
+if TYPE_CHECKING:
+    from ...binary_choice import BinaryChoiceRunner
+    from ...common.contrastive_pair import ContrastivePair
 
 
 # Plot styling constants
@@ -109,12 +115,16 @@ def visualize_diffmeans(
 def visualize_diffmeans_pair(
     result: DiffMeansPairResult,
     output_dir: Path,
+    runner: "BinaryChoiceRunner | None" = None,
+    pair: "ContrastivePair | None" = None,
 ) -> None:
     """Generate diffmeans visualizations for a single pair.
 
     Args:
         result: Per-pair diffmeans results
         output_dir: Directory to save plots
+        runner: Optional model runner for OV projection analysis
+        pair: Optional contrastive pair for OV projection analysis
     """
     if not result.layer_results:
         return
@@ -151,6 +161,10 @@ def visualize_diffmeans_pair(
         _plot_single_cosine_to_initial(
             layers_init, cosines_init, output_dir / "cosine_to_initial.png"
         )
+
+    # OV projection analysis (requires TransformerLens backend)
+    if runner is not None and pair is not None:
+        visualize_ov_projection(runner, pair, output_dir)
 
 
 def _setup_grid(ax: plt.Axes) -> None:
@@ -871,3 +885,162 @@ def _plot_diff_norm_by_position(
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
     plt.close()
+
+
+# =============================================================================
+# OV Projection Analysis (requires TransformerLens backend)
+# =============================================================================
+
+
+def visualize_ov_projection(
+    runner: "BinaryChoiceRunner",
+    pair: "ContrastivePair",
+    output_dir: Path,
+    layers: list[int] | None = None,
+    top_n_heads: int = 10,
+) -> int:
+    """Visualize OV projection alignment with logit direction.
+
+    For top heads (by attention to source positions), computes W_OV = W_V @ W_O
+    and measures how much the head's output aligns with the logit direction.
+    This shows which heads amplify vs suppress the task-relevant signal.
+
+    Args:
+        runner: Model runner with TransformerLens backend
+        pair: Contrastive pair (for logit direction computation)
+        output_dir: Output directory for plots
+        layers: Layers to analyze (default: [19, 21, 24, 31, 34])
+        top_n_heads: Number of top heads to show
+
+    Returns:
+        Number of plots generated
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if backend supports weight matrix access
+    try:
+        _ = runner._backend.get_W_OV(0, 0)
+    except (NotImplementedError, AttributeError):
+        log("[diffmeans_viz] OV projection requires TransformerLens backend")
+        return 0
+
+    if layers is None:
+        layers = [19, 21, 24, 31, 34]
+
+    # Compute logit direction
+    logit_direction = _compute_logit_direction_tensor(runner, pair)
+    if logit_direction is None:
+        log("[diffmeans_viz] Could not compute logit direction for OV analysis")
+        return 0
+
+    # Get number of heads
+    try:
+        n_heads = runner._backend.get_n_heads()
+    except (NotImplementedError, AttributeError):
+        n_heads = 32  # Default for Qwen3-4B
+
+    # Compute OV alignment for all heads in target layers
+    head_data = []
+    for layer in layers:
+        if layer >= runner.n_layers:
+            continue
+        for head in range(n_heads):
+            try:
+                W_OV = runner._backend.get_W_OV(layer, head)  # [d_model, d_model]
+
+                # Project logit direction through OV circuit
+                # This tells us: if this head attends to a position containing
+                # the logit direction, what does it output?
+                ov_output = W_OV @ logit_direction
+                ov_output = ov_output / (ov_output.norm() + 1e-10)
+
+                # Compute alignment with logit direction
+                alignment = float(torch.dot(ov_output, logit_direction).item())
+                head_data.append((layer, head, alignment))
+            except Exception as e:
+                log(f"[diffmeans_viz] Error computing OV for L{layer}.H{head}: {e}")
+
+    if not head_data:
+        return 0
+
+    # Sort by absolute alignment and take top N
+    head_data.sort(key=lambda x: abs(x[2]), reverse=True)
+    top_heads = head_data[:top_n_heads]
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    labels = [f"L{l}.H{h}" for l, h, _ in top_heads]
+    alignments = [a for _, _, a in top_heads]
+    colors = ["#2ECC71" if a > 0 else "#E74C3C" for a in alignments]
+
+    bars = ax.bar(range(len(alignments)), alignments, color=colors, alpha=0.8, edgecolor="black")
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
+    ax.set_xlabel("Head (Layer.Head)")
+    ax.set_ylabel("OV Alignment with Logit Direction")
+    ax.set_title(
+        "OV Projection Analysis: Head Output Alignment with Answer Direction\n"
+        "(Green = amplifies correct answer, Red = suppresses)"
+    )
+    ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5)
+    ax.grid(True, alpha=0.3, axis="y")
+
+    # Add value labels on bars
+    for bar, val in zip(bars, alignments):
+        height = bar.get_height()
+        ax.annotate(
+            f"{val:.3f}",
+            xy=(bar.get_x() + bar.get_width() / 2, height),
+            xytext=(0, 3 if height >= 0 else -12),
+            textcoords="offset points",
+            ha="center",
+            va="bottom" if height >= 0 else "top",
+            fontsize=8,
+        )
+
+    plt.tight_layout()
+    output_path = output_dir / "ov_projection.png"
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+    log(f"[diffmeans_viz] Saved OV projection: {output_path}")
+    return 1
+
+
+def _compute_logit_direction_tensor(
+    runner: "BinaryChoiceRunner",
+    pair: "ContrastivePair",
+) -> torch.Tensor | None:
+    """Compute normalized logit direction as tensor."""
+    W_U = runner.W_U
+    if W_U is None:
+        return None
+
+    clean_div_pos = pair.clean_divergent_position
+    corrupted_div_pos = pair.corrupted_divergent_position
+
+    if clean_div_pos is None or corrupted_div_pos is None:
+        clean_token = pair.clean_traj.token_ids[-1]
+        corrupted_token = pair.corrupted_traj.token_ids[-1]
+    else:
+        clean_token = pair.clean_traj.token_ids[clean_div_pos]
+        corrupted_token = pair.corrupted_traj.token_ids[corrupted_div_pos]
+
+    if clean_token == corrupted_token:
+        return None
+
+    # Get direction from W_U
+    if W_U.shape[0] > W_U.shape[1]:
+        # [vocab_size, d_model]
+        clean_vec = W_U[clean_token]
+        corrupted_vec = W_U[corrupted_token]
+    else:
+        # [d_model, vocab_size]
+        clean_vec = W_U[:, clean_token]
+        corrupted_vec = W_U[:, corrupted_token]
+
+    direction = clean_vec - corrupted_vec
+    return direction / (direction.norm() + 1e-10)

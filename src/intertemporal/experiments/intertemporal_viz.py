@@ -23,7 +23,7 @@ from ..viz import (
     visualize_pair_results,
 )
 from ..viz.attn_analysis_viz import visualize_attn_analysis, visualize_attn_pair
-from ..viz.diffmeans_viz import visualize_diffmeans
+from ..viz.diffmeans_viz import visualize_diffmeans, visualize_diffmeans_pair
 from ..viz.geo_viz import visualize_geo, visualize_geo_pair
 from ..viz.mlp_analysis_viz import visualize_mlp_analysis, visualize_mlp_pair
 from .attn_analysis import AttnAggregatedResults, AttnPairResult
@@ -615,12 +615,19 @@ def generate_viz(
             if mlp_result:
                 visualize_mlp_pair(mlp_result, pair_dir / "mlp_analysis")
             if attn_result:
-                # Pass runner for OV/QK analysis (plots 7-8) if TransformerLens backend
+                # Pass runner for QK analysis (plot 8) if TransformerLens backend
                 visualize_attn_pair(
                     attn_result,
                     pair_dir / "attn_analysis",
                     runner=runner,
-                    diffmeans_direction=None,  # TODO: Extract from diffmeans_result
+                )
+            if diffmeans_result:
+                # OV projection (plot 7) is in diffmeans_viz - requires runner and pair
+                visualize_diffmeans_pair(
+                    diffmeans_result,
+                    pair_dir / "diffmeans",
+                    runner=runner,
+                    pair=pair,
                 )
             if fine_grained_result:
                 visualize_fine_grained(fine_grained_result, pair_dir / "fine_grained")
