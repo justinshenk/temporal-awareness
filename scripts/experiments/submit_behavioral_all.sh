@@ -40,16 +40,24 @@ TIME_MAP[Qwen2.5-3B-Instruct]="24:00:00"
 TIME_MAP[Llama-3.1-8B-Instruct]="24:00:00"
 
 # GPU constraints per model (ensure enough VRAM)
-# gpt2/pythia: ~1-2GB VRAM, any GPU works
-# gemma-2-2b: ~5GB fp32 weights + activations at rep 100, need 24GB
-# Qwen 3B: ~7GB fp16, need 24GB for long seqs at rep 100
-# Llama 8B: ~16GB fp16 weights + activations for long seqs at rep 100, need 40GB+
+# gpt2/pythia: ~1-2GB VRAM, 1 GPU, any type
+# gemma-2-2b: ~5GB fp32 weights, 2 GPUs for headroom at rep 100
+# Qwen 3B: ~7GB fp16, 2 GPUs for long seqs at rep 100
+# Llama 8B: ~16GB fp16, 2 GPUs to spread model across
 declare -A GPU_CONSTRAINT
 GPU_CONSTRAINT[gpt2]=""
 GPU_CONSTRAINT[pythia-70m]=""
-GPU_CONSTRAINT[gemma-2-2b]="GPU_MEM:24GB"
-GPU_CONSTRAINT[Qwen2.5-3B-Instruct]="GPU_MEM:24GB"
-GPU_CONSTRAINT[Llama-3.1-8B-Instruct]="GPU_MEM:40GB"
+GPU_CONSTRAINT[gemma-2-2b]=""
+GPU_CONSTRAINT[Qwen2.5-3B-Instruct]=""
+GPU_CONSTRAINT[Llama-3.1-8B-Instruct]=""
+
+# Number of GPUs per model
+declare -A NUM_GPUS
+NUM_GPUS[gpt2]=1
+NUM_GPUS[pythia-70m]=1
+NUM_GPUS[gemma-2-2b]=2
+NUM_GPUS[Qwen2.5-3B-Instruct]=2
+NUM_GPUS[Llama-3.1-8B-Instruct]=2
 
 if [ "$QUICK" -eq 1 ]; then
     for m in "${MODELS[@]}"; do
@@ -64,12 +72,14 @@ for model in "${MODELS[@]}"; do
     mem=${MEM_MAP[$model]}
     time=${TIME_MAP[$model]}
     constraint=${GPU_CONSTRAINT[$model]}
+    ngpus=${NUM_GPUS[$model]}
 
     # Build sbatch command
     SBATCH_CMD="sbatch"
     SBATCH_CMD="$SBATCH_CMD --job-name=behav-${model}"
     SBATCH_CMD="$SBATCH_CMD --mem=$mem"
     SBATCH_CMD="$SBATCH_CMD --time=$time"
+    SBATCH_CMD="$SBATCH_CMD --gres=gpu:${ngpus}"
     SBATCH_CMD="$SBATCH_CMD --export=MODEL=$model,QUICK=$QUICK"
 
     # Add GPU constraint only for models that need it
@@ -81,11 +91,7 @@ for model in "${MODELS[@]}"; do
 
     job_id=$(eval $SBATCH_CMD | awk '{print $4}')
 
-    if [ -n "$constraint" ]; then
-        echo "  $model: job $job_id (mem=$mem, time=$time, gpu=$constraint)"
-    else
-        echo "  $model: job $job_id (mem=$mem, time=$time, gpu=any)"
-    fi
+    echo "  $model: job $job_id (mem=$mem, time=$time, gpus=$ngpus)"
 done
 
 echo ""
