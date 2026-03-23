@@ -24,6 +24,12 @@ from ...attribution_patching import (
 )
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 from .geo import run_geo_analysis, GeoAggregatedResults
+from .mlp_analysis import run_mlp_analysis, MLPAggregatedResults
+from .attn_analysis import run_attn_analysis, AttnAggregatedResults
+from .fine_grained import (
+    FineGrainedConfig,
+    run_fine_grained_analysis,
+)
 from .processing import (
     ProcessedResults,
     process_attribution_agreement,
@@ -196,21 +202,18 @@ def step_fine_activation_patching(
     3. Attention pattern analysis for top heads
 
     Configuration comes from ctx.cfg.fine_patch dict with keys:
-    - enabled: bool (default True)
+    - enabled: bool (default False)
     - head_layers: list[int] (default [24, 21, 19, 29, 30])
     - mlp_layers: list[int] (default [31, 24, 28])
     - n_top_heads: int (default 5)
     - n_top_neurons: int (default 20)
     - source_positions: list[int] (default [86, 87, 88])
     - destination_positions: list[int] (default [143, 144, 145])
+    - no_cache: bool (default False)
     """
-    fine_cfg = ctx.cfg.fine_patch if hasattr(ctx.cfg, "fine_patch") else {}
+    fine_cfg = ctx.cfg.fine_patch
     if not fine_cfg.get("enabled", False):
         log("[fine] Fine patching disabled, skipping")
-        return
-
-    if try_loading_data and ctx.load_fine_agg():
-        log("[fine] Loaded cached aggregated results")
         return
 
     # Build FineConfig from config dict
@@ -223,17 +226,31 @@ def step_fine_activation_patching(
         destination_positions=fine_cfg.get("destination_positions", [143, 144, 145]),
     )
 
-    ctx.fine_results: list[FinePatchingResults] = []
+    # Detect cached pairs first (unless no_cache is set)
+    cached_pair_indices = set()
+    use_cache = try_loading_data and not fine_cfg.get("no_cache", False)
+    if use_cache:
+        cached_pair_indices = set(ctx.detect_cached_fine_pairs())
 
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_fine_pair(pair_idx):
+            log(f"[fine] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
     for pair_idx, pair in enumerate(ctx.pairs):
-        log_progress(pair_idx + 1, len(ctx.pairs), "[fine] Processing pair ")
+        if pair_idx in cached_pair_indices:
+            continue
 
+        log_progress(pair_idx + 1, len(ctx.pairs), "[fine] Processing pair ")
         result = run_fine_patching(ctx.runner, pair, config)
         result.sample_id = pair_idx
-        ctx.fine_results.append(result)
-        result.print_summary()
+        ctx.fine_patching[pair_idx] = result
+        ctx.save_fine_pair(pair_idx)
 
-    log(f"[fine] Completed fine patching for {len(ctx.fine_results)} pairs")
+    n_loaded = len(cached_pair_indices)
+    n_total = len(ctx.fine_patching)
+    log(f"[fine] Fine patching: {n_loaded} loaded from cache, {n_total} total")
 
 
 @profile("step_diffmeans")
@@ -342,6 +359,187 @@ def step_geo(
     ctx.save_geo_agg()
 
 
+@profile("step_mlp_analysis")
+def step_mlp_analysis(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Run MLP neuron analysis at key layers.
+
+    Analyzes which neurons fire differently between clean/corrupted prompts
+    and computes per-neuron logit contributions via W_out projection.
+
+    Configuration comes from ctx.cfg.mlp_analysis dict with keys:
+    - enabled: bool (default False)
+    - layers: list[int] (default [35, 31, 28, 19])
+    - n_top_neurons: int (default 50)
+    - no_cache: bool (default False)
+    """
+    mlp_cfg = ctx.cfg.mlp_analysis
+    if not mlp_cfg.get("enabled", False):
+        log("[mlp] MLP analysis disabled, skipping")
+        return
+
+    layers = mlp_cfg.get("layers", [35, 31, 28, 19])
+    n_top_neurons = mlp_cfg.get("n_top_neurons", 50)
+
+    ctx.mlp_agg = MLPAggregatedResults(layers_analyzed=layers)
+
+    # Detect cached pairs first (unless no_cache is set)
+    cached_pair_indices = set()
+    use_cache = try_loading_data and not mlp_cfg.get("no_cache", False)
+    if use_cache:
+        cached_pair_indices = set(ctx.detect_cached_mlp_analysis_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_mlp_analysis_pair(pair_idx):
+            result = ctx.mlp_analysis[pair_idx]
+            ctx.mlp_agg.add(result)
+            log(f"[mlp] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
+    for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue
+
+        log_progress(pair_idx + 1, len(ctx.pairs), "[mlp] Processing pair ")
+        result = run_mlp_analysis(
+            ctx.runner,
+            pair,
+            pair_idx=pair_idx,
+            layers=layers,
+            n_top_neurons=n_top_neurons,
+        )
+        ctx.mlp_analysis[pair_idx] = result
+        ctx.mlp_agg.add(result)
+        ctx.save_mlp_analysis_pair(pair_idx)
+
+    n_loaded = len(cached_pair_indices)
+    n_total = ctx.mlp_agg.n_pairs
+    log(f"[mlp] MLP Analysis: {n_loaded} loaded from cache, {n_total} total")
+    ctx.mlp_agg.print_summary()
+    ctx.save_mlp_agg()
+
+
+@profile("step_attn_analysis")
+def step_attn_analysis(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Run attention pattern analysis at key layers.
+
+    Analyzes per-head attention patterns, identifying which heads attend to
+    source positions (horizon tokens) and which show dynamic attention changes.
+
+    Configuration comes from ctx.cfg.attn_analysis dict with keys:
+    - enabled: bool (default False)
+    - layers: list[int] (default [19, 21, 24])
+    - store_patterns: bool (default False) - whether to store full attention patterns
+    - dynamic_threshold: float (default 0.1) - threshold for dynamic head detection
+    - no_cache: bool (default False)
+    """
+    attn_cfg = ctx.cfg.attn_analysis
+    if not attn_cfg.get("enabled", False):
+        log("[attn] Attention analysis disabled, skipping")
+        return
+
+    layers = attn_cfg.get("layers", [19, 21, 24])
+    store_patterns = attn_cfg.get("store_patterns", False)
+    dynamic_threshold = attn_cfg.get("dynamic_threshold", 0.1)
+
+    ctx.attn_agg = AttnAggregatedResults(layers_analyzed=layers)
+
+    # Detect cached pairs first (unless no_cache is set)
+    cached_pair_indices = set()
+    use_cache = try_loading_data and not attn_cfg.get("no_cache", False)
+    if use_cache:
+        cached_pair_indices = set(ctx.detect_cached_attn_analysis_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_attn_analysis_pair(pair_idx):
+            result = ctx.attn_analysis[pair_idx]
+            ctx.attn_agg.add(result)
+            log(f"[attn] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
+    for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue
+
+        log_progress(pair_idx + 1, len(ctx.pairs), "[attn] Processing pair ")
+        result = run_attn_analysis(
+            ctx.runner,
+            pair,
+            pair_idx=pair_idx,
+            layers=layers,
+            store_patterns=store_patterns,
+            dynamic_threshold=dynamic_threshold,
+        )
+        ctx.attn_analysis[pair_idx] = result
+        ctx.attn_agg.add(result)
+        ctx.save_attn_analysis_pair(pair_idx)
+
+    n_loaded = len(cached_pair_indices)
+    n_total = ctx.attn_agg.n_pairs
+    log(f"[attn] Attention Analysis: {n_loaded} loaded from cache, {n_total} total")
+    ctx.attn_agg.print_summary()
+    ctx.save_attn_agg()
+
+
+@profile("step_fine_grained_patching")
+def step_fine_grained_patching(
+    ctx: ExperimentContext, try_loading_data: bool = False
+) -> None:
+    """Run comprehensive fine-grained patching analysis.
+
+    Generates data for plots 17-26:
+    - Head-level patching sweep (denoising/noising)
+    - Position-level patching for top heads
+    - Path patching (head-to-MLP, head-to-head)
+    - Multi-site interaction patching
+    - Neuron-level ablation
+    - Layer-position fine heatmap
+
+    Configuration comes from ctx.cfg.fine_grained dict with keys:
+    - enabled: bool (default False)
+    - head_patching_enabled, position_patching_enabled, etc.
+    - See FineGrainedConfig for full list
+    """
+    fine_cfg = ctx.cfg.fine_grained
+    if not fine_cfg.get("enabled", False):
+        log("[fine_grained] Fine-grained patching disabled, skipping")
+        return
+
+    # Build config from dict
+    config = FineGrainedConfig.from_dict(fine_cfg)
+
+    # Detect cached pairs first (unless no_cache is set)
+    cached_pair_indices = set()
+    use_cache = try_loading_data and not fine_cfg.get("no_cache", False)
+    if use_cache:
+        cached_pair_indices = set(ctx.detect_cached_fine_grained_pairs())
+
+    # Load all cached pairs
+    for pair_idx in sorted(cached_pair_indices):
+        if ctx.load_fine_grained_pair(pair_idx):
+            log(f"[fine_grained] Loaded cached pair {pair_idx + 1}")
+
+    # Process any new pairs that aren't cached
+    for pair_idx, pair in enumerate(ctx.pairs):
+        if pair_idx in cached_pair_indices:
+            continue
+
+        log_progress(pair_idx + 1, len(ctx.pairs), "[fine_grained] Processing pair ")
+        result = run_fine_grained_analysis(ctx.runner, pair, config)
+        result.sample_id = pair_idx
+        ctx.fine_grained_patching[pair_idx] = result
+        ctx.save_fine_grained_pair(pair_idx)
+
+    n_loaded = len(cached_pair_indices)
+    n_total = len(ctx.fine_grained_patching)
+    log(f"[fine_grained] Fine-grained: {n_loaded} loaded from cache, {n_total} total")
+
+
 @profile("step_process_results")
 def step_process_results(ctx: ExperimentContext) -> None:
     """Process raw results into structured analysis results.
@@ -407,6 +605,7 @@ def step_visualize_results(
         diffmeans_patching=ctx.diffmeans_patching or None,
         geo_agg=ctx.geo_agg,
         geo_patching=ctx.geo_patching or None,
+        fine_grained_patching=ctx.fine_grained_patching or None,
         processed_results=ctx.processed_results,
         pairs=ctx.pairs if ctx._pairs else None,
         pref_pairs=ctx.pref_pairs if ctx._pref_pairs else None,
@@ -440,9 +639,17 @@ def run_experiment(
 
     step_coarse_activation_patching(ctx, try_loading_data=try_loading_data)
 
+    step_fine_activation_patching(ctx, try_loading_data=try_loading_data)
+
     step_diffmeans(ctx, try_loading_data=try_loading_data)
 
     step_geo(ctx, try_loading_data=try_loading_data)
+
+    step_mlp_analysis(ctx, try_loading_data=try_loading_data)
+
+    step_attn_analysis(ctx, try_loading_data=try_loading_data)
+
+    step_fine_grained_patching(ctx, try_loading_data=try_loading_data)
 
     step_process_results(ctx)
 

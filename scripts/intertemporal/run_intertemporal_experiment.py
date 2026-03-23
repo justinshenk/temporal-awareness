@@ -71,6 +71,10 @@ from src.intertemporal.experiments.experiment_config import (
     DIFFMEANS,
     GEO,
     PAIR_REQ,
+    FINE_PATCH,
+    MLP_ANALYSIS,
+    ATTN_ANALYSIS,
+    FINE_GRAINED,
 )
 from src.intertemporal.viz.coarse.component_comparison.comp_constants import COMPONENTS
 
@@ -175,6 +179,34 @@ def parse_args() -> argparse.Namespace:
         help="Override pair requirements as JSON, e.g. '{\"different_labels\": true}' for multilabel",
     )
     parser.add_argument(
+        "--fine",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override fine patching settings as JSON, e.g. '{\"enabled\": true}'",
+    )
+    parser.add_argument(
+        "--mlp",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override MLP analysis settings as JSON, e.g. '{\"enabled\": true, \"layers\": [35, 31]}'",
+    )
+    parser.add_argument(
+        "--attn",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override attention analysis settings as JSON, e.g. '{\"enabled\": true, \"layers\": [19, 21, 24]}'",
+    )
+    parser.add_argument(
+        "--fine_grained",
+        type=str,
+        default=None,
+        metavar="JSON",
+        help="Override fine-grained patching settings (plots 17-26), e.g. '{\"enabled\": true}'",
+    )
+    parser.add_argument(
         "--disable",
         action="store_true",
         help="Disable all steps except those explicitly enabled via flags",
@@ -222,6 +254,10 @@ def main() -> int:
         config_dict["att_patch"] = {**ATT_PATCH, "enabled": False}
         config_dict["diffmeans"] = {**DIFFMEANS, "enabled": False}
         config_dict["geo"] = {**GEO, "enabled": False}
+        config_dict["fine_patch"] = {**FINE_PATCH, "enabled": False}
+        config_dict["mlp_analysis"] = {**MLP_ANALYSIS, "enabled": False}
+        config_dict["attn_analysis"] = {**ATTN_ANALYSIS, "enabled": False}
+        config_dict["fine_grained"] = {**FINE_GRAINED, "enabled": False}
         config_dict["viz"] = {**VIZ, "enabled": False}
 
     # Apply JSON overrides, merging with defaults if key missing
@@ -245,6 +281,22 @@ def main() -> int:
         config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(
             json.loads(args.pair_req)
         )
+    if args.fine:
+        config_dict.setdefault("fine_patch", FINE_PATCH.copy()).update(
+            json.loads(args.fine)
+        )
+    if args.mlp:
+        mlp_config = config_dict.setdefault("mlp_analysis", MLP_ANALYSIS.copy())
+        mlp_config["enabled"] = True  # Auto-enable when --mlp is passed
+        mlp_config.update(json.loads(args.mlp))
+    if args.attn:
+        attn_config = config_dict.setdefault("attn_analysis", ATTN_ANALYSIS.copy())
+        attn_config["enabled"] = True  # Auto-enable when --attn is passed
+        attn_config.update(json.loads(args.attn))
+    if args.fine_grained:
+        fine_grained_config = config_dict.setdefault("fine_grained", FINE_GRAINED.copy())
+        fine_grained_config["enabled"] = True  # Auto-enable when --fine_grained is passed
+        fine_grained_config.update(json.loads(args.fine_grained))
 
     # Determine output directory
     output_dir = None

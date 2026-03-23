@@ -22,10 +22,15 @@ from ..viz import (
     visualize_fine_patching,
     visualize_pair_results,
 )
+from ..viz.attn_analysis_viz import visualize_attn_analysis, visualize_attn_pair
 from ..viz.diffmeans_viz import visualize_diffmeans
 from ..viz.geo_viz import visualize_geo, visualize_geo_pair
+from ..viz.mlp_analysis_viz import visualize_mlp_analysis, visualize_mlp_pair
+from .attn_analysis import AttnAggregatedResults, AttnPairResult
 from .diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult
 from .geo import GeoAggregatedResults, GeoPairResult
+from .mlp_analysis import MLPAggregatedResults, MLPPairResult
+from .fine_grained import FineGrainedResults, visualize_fine_grained
 from .processing import ProcessedResults
 
 if TYPE_CHECKING:
@@ -314,6 +319,86 @@ def load_geo_pair(pair_dir: Path) -> GeoPairResult | None:
     return None
 
 
+def load_mlp_agg(exp_dir: Path) -> MLPAggregatedResults | None:
+    """Load aggregated MLP analysis results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        MLPAggregatedResults or None if not found
+    """
+    path = exp_dir / "agg_mlp" / "mlp_analysis_agg.json"
+    if path.exists():
+        return MLPAggregatedResults.from_json(path)
+    return None
+
+
+def load_mlp_pair(pair_dir: Path) -> MLPPairResult | None:
+    """Load per-pair MLP analysis results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        MLPPairResult or None if not found
+    """
+    path = pair_dir / "mlp_analysis" / "mlp_analysis.json"
+    if path.exists():
+        return MLPPairResult.from_json(path)
+    return None
+
+
+def load_attn_agg(exp_dir: Path) -> AttnAggregatedResults | None:
+    """Load aggregated attention analysis results from cache.
+
+    Args:
+        exp_dir: Path to experiment directory
+
+    Returns:
+        AttnAggregatedResults or None if not found
+    """
+    # Try current location (matches experiment_context.py save location)
+    path = exp_dir / "agg_attn_patterns" / "attn_analysis_agg.json"
+    if path.exists():
+        return AttnAggregatedResults.from_json(path)
+    # Fallback to alternative name
+    path = exp_dir / "agg_attn" / "attn_analysis_agg.json"
+    if path.exists():
+        return AttnAggregatedResults.from_json(path)
+    return None
+
+
+def load_attn_pair(pair_dir: Path) -> AttnPairResult | None:
+    """Load per-pair attention analysis results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        AttnPairResult or None if not found
+    """
+    path = pair_dir / "attn_analysis" / "attn_analysis.json"
+    if path.exists():
+        return AttnPairResult.from_json(path)
+    return None
+
+
+def load_fine_grained_pair(pair_dir: Path) -> FineGrainedResults | None:
+    """Load per-pair fine-grained patching results from cache.
+
+    Args:
+        pair_dir: Path to pair directory (e.g., exp_dir/pair_0)
+
+    Returns:
+        FineGrainedResults or None if not found
+    """
+    path = pair_dir / "fine_grained" / "fine_grained.json"
+    if path.exists():
+        return FineGrainedResults.from_json(path)
+    return None
+
+
 def generate_viz(
     exp_dir: Path,
     *,
@@ -328,6 +413,11 @@ def generate_viz(
     diffmeans_patching: dict[int, DiffMeansPairResult] | None = None,
     geo_agg: GeoAggregatedResults | None = None,
     geo_patching: dict[int, GeoPairResult] | None = None,
+    mlp_agg: MLPAggregatedResults | None = None,
+    mlp_patching: dict[int, MLPPairResult] | None = None,
+    attn_agg: AttnAggregatedResults | None = None,
+    attn_patching: dict[int, AttnPairResult] | None = None,
+    fine_grained_patching: dict[int, FineGrainedResults] | None = None,
     processed_results: ProcessedResults | None = None,
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
@@ -355,6 +445,10 @@ def generate_viz(
         diffmeans_patching: In-memory per-pair diffmeans results
         geo_agg: In-memory aggregated geo results
         geo_patching: In-memory per-pair geo results
+        mlp_agg: In-memory aggregated MLP analysis results
+        mlp_patching: In-memory per-pair MLP analysis results
+        attn_agg: In-memory aggregated attention analysis results
+        attn_patching: In-memory per-pair attention analysis results
         processed_results: Pre-computed analysis results from step_process_results
         pairs: List of contrastive pairs (for tokenization viz)
         pref_pairs: List of ContrastivePreferences for slice filtering
@@ -427,6 +521,26 @@ def generate_viz(
         visualize_geo(geo_agg, exp_dir / "agg_geo", pref_pairs=pref_pairs)
         log("[viz] Generated geo visualizations")
 
+    # Load MLP analysis aggregated results from cache if not provided
+    if mlp_agg is None:
+        mlp_agg = load_mlp_agg(exp_dir)
+        if mlp_agg:
+            log("[viz] Loaded MLP analysis aggregated results from cache")
+
+    if mlp_agg:
+        visualize_mlp_analysis(mlp_agg, exp_dir / "agg_mlp")
+        log("[viz] Generated MLP analysis visualizations")
+
+    # Load attention analysis aggregated results from cache if not provided
+    if attn_agg is None:
+        attn_agg = load_attn_agg(exp_dir)
+        if attn_agg:
+            log("[viz] Loaded attention analysis aggregated results from cache")
+
+    if attn_agg:
+        visualize_attn_analysis(attn_agg, exp_dir / "agg_attn_patterns")
+        log("[viz] Generated attention analysis visualizations")
+
     # Skip per-pair visualizations if only_agg is True
     if only_agg:
         log(f"[viz] Skipping per-pair visualizations (only_agg=True)")
@@ -466,8 +580,23 @@ def generate_viz(
             if geo_patching
             else load_geo_pair(pair_dir)
         )
+        mlp_result = (
+            mlp_patching.get(pair_idx)
+            if mlp_patching
+            else load_mlp_pair(pair_dir)
+        )
+        attn_result = (
+            attn_patching.get(pair_idx)
+            if attn_patching
+            else load_attn_pair(pair_dir)
+        )
+        fine_grained_result = (
+            fine_grained_patching.get(pair_idx)
+            if fine_grained_patching
+            else load_fine_grained_pair(pair_dir)
+        )
 
-        if pair_coarse or att_result or fine_result or diffmeans_result or geo_result:
+        if pair_coarse or att_result or fine_result or diffmeans_result or geo_result or mlp_result or attn_result or fine_grained_result:
             visualize_pair_results(
                 pair_idx=pair_idx,
                 pair_out_dir=pair_dir,
@@ -481,6 +610,15 @@ def generate_viz(
                 try_loading_cache=True,
                 save_token_trees_fn=save_token_trees_fn,
             )
+
+            # MLP and attention per-pair visualizations
+            if mlp_result:
+                visualize_mlp_pair(mlp_result, pair_dir / "mlp_analysis")
+            if attn_result:
+                visualize_attn_pair(attn_result, pair_dir / "attn_analysis")
+            if fine_grained_result:
+                visualize_fine_grained(fine_grained_result, pair_dir / "fine_grained")
+
             log(f"[viz] Generated pair {pair_idx} visualizations")
 
         pair_idx += 1

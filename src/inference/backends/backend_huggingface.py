@@ -196,6 +196,20 @@ class HuggingFaceBackend(Backend):
                 result[tok_id] = probs[tok_id].item()
         return result
 
+    def _get_mlp_act_fn(self, layer_idx: int):
+        """Get the activation function module from an MLP layer.
+
+        Works with Qwen, Llama, and similar architectures that use
+        gate_proj, up_proj, down_proj structure.
+        """
+        layer = self._layers[layer_idx]
+        mlp = layer.mlp
+        if hasattr(mlp, "act_fn"):
+            return mlp.act_fn
+        elif hasattr(mlp, "activation_fn"):
+            return mlp.activation_fn
+        return None
+
     def run_with_cache(
         self,
         input_ids: torch.Tensor,
@@ -207,13 +221,25 @@ class HuggingFaceBackend(Backend):
 
         hooks_to_capture = []
         for i in range(self._n_layers):
+            # Standard component hooks
             for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
 
+            # MLP neuron activation hook (mlp.hook_post)
+            mlp_post_name = f"blocks.{i}.mlp.hook_post"
+            if names_filter is None or names_filter(mlp_post_name):
+                hooks_to_capture.append((i, "mlp_post", mlp_post_name))
+
         for layer_idx, component, name in hooks_to_capture:
-            module = self._get_component_module(layer_idx, component)
+            if component == "mlp_post":
+                # Hook the activation function to get neuron activations
+                module = self._get_mlp_act_fn(layer_idx)
+                if module is None:
+                    continue
+            else:
+                module = self._get_component_module(layer_idx, component)
 
             def make_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):
@@ -249,13 +275,24 @@ class HuggingFaceBackend(Backend):
 
         hooks_to_capture = []
         for i in range(self._n_layers):
+            # Standard component hooks
             for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
 
+            # MLP neuron activation hook (mlp.hook_post)
+            mlp_post_name = f"blocks.{i}.mlp.hook_post"
+            if names_filter is None or names_filter(mlp_post_name):
+                hooks_to_capture.append((i, "mlp_post", mlp_post_name))
+
         for layer_idx, component, name in hooks_to_capture:
-            module = self._get_component_module(layer_idx, component)
+            if component == "mlp_post":
+                module = self._get_mlp_act_fn(layer_idx)
+                if module is None:
+                    continue
+            else:
+                module = self._get_component_module(layer_idx, component)
 
             def make_hook(hook_name, use_input=False):
                 def hook_fn(mod, inp, out):

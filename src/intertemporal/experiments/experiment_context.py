@@ -25,10 +25,14 @@ from ...activation_patching.coarse import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
 )
+from ...activation_patching.fine import FinePatchingResults
 from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
 
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from .geo import GeoPairResult, GeoAggregatedResults
+from .mlp_analysis import MLPPairResult, MLPAggregatedResults
+from .attn_analysis import AttnPairResult, AttnAggregatedResults
+from .fine_grained import FineGrainedResults
 from .processing import ProcessedResults
 from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
@@ -79,6 +83,17 @@ class ExperimentContext:
     # Geo (PCA) results
     geo_patching: dict[int, GeoPairResult] = field(default_factory=dict)
     geo_agg: GeoAggregatedResults | None = None
+
+    # MLP neuron analysis results
+    mlp_analysis: dict[int, MLPPairResult] = field(default_factory=dict)
+    mlp_agg: MLPAggregatedResults | None = None
+
+    # Attention pattern analysis results
+    attn_analysis: dict[int, AttnPairResult] = field(default_factory=dict)
+    attn_agg: AttnAggregatedResults | None = None
+
+    # Fine-grained patching results (comprehensive: plots 17-26)
+    fine_grained_patching: dict[int, FineGrainedResults] = field(default_factory=dict)
 
     # Processed results (computed in step_process_results)
     processed_results: ProcessedResults | None = None
@@ -425,6 +440,44 @@ class ExperimentContext:
             return True
         return False
 
+    def get_fine_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair fine patching results."""
+        return self.get_pair_dir(pair_idx) / "fine_patching"
+
+    def get_fine_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair fine patching results JSON."""
+        return self.get_fine_pair_dir(pair_idx) / "fine_results.json"
+
+    def save_fine_pair(self, pair_idx: int) -> None:
+        """Save per-pair fine patching results."""
+        if pair_idx not in self.fine_patching:
+            return
+        result = self.fine_patching[pair_idx]
+        path = self.get_fine_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(result.to_dict(), path)
+
+    def load_fine_pair(self, pair_idx: int) -> bool:
+        """Load per-pair fine patching results."""
+        path = self.get_fine_pair_path(pair_idx)
+        if path.exists():
+            self.fine_patching[pair_idx] = FinePatchingResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_fine_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached fine patching results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.get_pair_dir(pair_idx)
+            if not pair_dir.exists():
+                break
+            if self.get_fine_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
+
     # ─── Diffmeans save/load methods ───
 
     def get_diffmeans_pair_dir(self, pair_idx: int) -> Path:
@@ -666,3 +719,171 @@ class ExperimentContext:
         log(f"[process] Saving processed results to {path}...")
         save_json(self.processed_results.to_dict(), path)
         log("[process] Saved.")
+
+    # ─── MLP Analysis save/load methods ───
+
+    def get_mlp_analysis_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair MLP analysis results."""
+        return self.get_pair_dir(pair_idx) / "mlp_analysis"
+
+    def get_mlp_analysis_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair MLP analysis results JSON."""
+        return self.get_mlp_analysis_pair_dir(pair_idx) / "mlp_analysis.json"
+
+    def save_mlp_analysis_pair(self, pair_idx: int) -> None:
+        """Save per-pair MLP analysis results."""
+        if pair_idx not in self.mlp_analysis:
+            return
+        result = self.mlp_analysis[pair_idx]
+        path = self.get_mlp_analysis_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(result.to_dict(), path)
+
+    def load_mlp_analysis_pair(self, pair_idx: int) -> bool:
+        """Load per-pair MLP analysis results."""
+        path = self.get_mlp_analysis_pair_path(pair_idx)
+        if path.exists():
+            self.mlp_analysis[pair_idx] = MLPPairResult.from_json(path)
+            return True
+        return False
+
+    def get_mlp_agg_dir(self) -> Path:
+        """Get directory for aggregated MLP analysis results."""
+        return self.output_dir / "agg_mlp"
+
+    def save_mlp_agg(self) -> None:
+        """Save aggregated MLP analysis results."""
+        if not self.mlp_agg:
+            return
+        agg_dir = self.get_mlp_agg_dir()
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        path = agg_dir / "mlp_analysis_agg.json"
+        log(f"[mlp] Saving aggregated results to {path}...")
+        save_json(self.mlp_agg.to_dict(), path)
+        log("[mlp] Saved.")
+
+    def load_mlp_agg(self) -> bool:
+        """Load aggregated MLP analysis results."""
+        path = self.get_mlp_agg_dir() / "mlp_analysis_agg.json"
+        if path.exists():
+            self.mlp_agg = MLPAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_mlp_analysis_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached MLP analysis results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.get_pair_dir(pair_idx)
+            if not pair_dir.exists():
+                break
+            if self.get_mlp_analysis_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
+
+    # ─── Attention Analysis save/load methods ───
+
+    def get_attn_analysis_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair attention analysis results."""
+        return self.get_pair_dir(pair_idx) / "attn_analysis"
+
+    def get_attn_analysis_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair attention analysis results JSON."""
+        return self.get_attn_analysis_pair_dir(pair_idx) / "attn_analysis.json"
+
+    def save_attn_analysis_pair(self, pair_idx: int) -> None:
+        """Save per-pair attention analysis results."""
+        if pair_idx not in self.attn_analysis:
+            return
+        result = self.attn_analysis[pair_idx]
+        path = self.get_attn_analysis_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Pop heavy data before saving
+        result.pop_heavy()
+        save_json(result.to_dict(), path)
+
+    def load_attn_analysis_pair(self, pair_idx: int) -> bool:
+        """Load per-pair attention analysis results."""
+        path = self.get_attn_analysis_pair_path(pair_idx)
+        if path.exists():
+            self.attn_analysis[pair_idx] = AttnPairResult.from_json(path)
+            return True
+        return False
+
+    def get_attn_agg_dir(self) -> Path:
+        """Get directory for aggregated attention analysis results."""
+        return self.output_dir / "agg_attn_patterns"
+
+    def save_attn_agg(self) -> None:
+        """Save aggregated attention analysis results."""
+        if not self.attn_agg:
+            return
+        agg_dir = self.get_attn_agg_dir()
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        path = agg_dir / "attn_analysis_agg.json"
+        log(f"[attn] Saving aggregated results to {path}...")
+        save_json(self.attn_agg.to_dict(), path)
+        log("[attn] Saved.")
+
+    def load_attn_agg(self) -> bool:
+        """Load aggregated attention analysis results."""
+        path = self.get_attn_agg_dir() / "attn_analysis_agg.json"
+        if path.exists():
+            self.attn_agg = AttnAggregatedResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_attn_analysis_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached attention analysis results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.get_pair_dir(pair_idx)
+            if not pair_dir.exists():
+                break
+            if self.get_attn_analysis_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
+
+    # ---- Fine-grained patching save/load methods ----
+
+    def get_fine_grained_pair_dir(self, pair_idx: int) -> Path:
+        """Get directory for per-pair fine-grained patching results."""
+        return self.get_pair_dir(pair_idx) / "fine_grained"
+
+    def get_fine_grained_pair_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair fine-grained patching results JSON."""
+        return self.get_fine_grained_pair_dir(pair_idx) / "fine_grained.json"
+
+    def save_fine_grained_pair(self, pair_idx: int) -> None:
+        """Save per-pair fine-grained patching results."""
+        if pair_idx not in self.fine_grained_patching:
+            return
+        result = self.fine_grained_patching[pair_idx]
+        path = self.get_fine_grained_pair_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(result.to_dict(), path)
+
+    def load_fine_grained_pair(self, pair_idx: int) -> bool:
+        """Load per-pair fine-grained patching results."""
+        path = self.get_fine_grained_pair_path(pair_idx)
+        if path.exists():
+            self.fine_grained_patching[pair_idx] = FineGrainedResults.from_json(path)
+            return True
+        return False
+
+    def detect_cached_fine_grained_pairs(self) -> list[int]:
+        """Detect all pair indices that have cached fine-grained results."""
+        cached = []
+        pair_idx = 0
+        while True:
+            pair_dir = self.get_pair_dir(pair_idx)
+            if not pair_dir.exists():
+                break
+            if self.get_fine_grained_pair_path(pair_idx).exists():
+                cached.append(pair_idx)
+            pair_idx += 1
+        return cached
