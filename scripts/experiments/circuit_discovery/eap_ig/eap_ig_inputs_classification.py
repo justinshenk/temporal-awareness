@@ -149,6 +149,14 @@ def resolve_quadrature(config: dict) -> str:
     return quadrature
 
 
+def find_subsequence(sequence: list[int], subsequence: list[int]) -> int:
+    """Return the start index of ``subsequence`` in ``sequence``."""
+    for i in range(len(sequence) - len(subsequence) + 1):
+        if sequence[i : i + len(subsequence)] == subsequence:
+            return i
+    raise ValueError("Subsequence not found")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run EAP Integrated Gradients on clean vs corrupted prompts"
@@ -261,6 +269,12 @@ def main() -> None:
     )
 
     baseline_token = tokenizer.eos_token_id
+    user_tag_ids = tokenizer.tokenizer.encode(
+        "<|im_start|>user", add_special_tokens=False
+    )
+    assistant_tag_ids = tokenizer.tokenizer.encode(
+        "<|im_start|>assistant", add_special_tokens=False
+    )
 
     n_layers = model.config.num_hidden_layers
 
@@ -334,9 +348,21 @@ def main() -> None:
                     for k, v in tokenized_clean[i].items()
                 }
                 corrupted_inputs = {
-                    k: torch.full_like(v, baseline_token) if k == "input_ids" else v
+                    k: v.clone() if isinstance(v, torch.Tensor) else v
                     for k, v in tokenized_clean[i].items()
                 }
+                corrupted_input_ids = corrupted_inputs["input_ids"]
+                for row_idx in range(corrupted_input_ids.shape[0]):
+                    row_tokens = corrupted_input_ids[row_idx].tolist()
+                    user_tag_start = find_subsequence(row_tokens, user_tag_ids)
+                    assistant_tag_start = find_subsequence(
+                        row_tokens, assistant_tag_ids
+                    )
+                    content_start = user_tag_start + len(user_tag_ids) + 1  # skip \n after user tag
+                    content_end = assistant_tag_start - 2  # skip <|im_end|>\n before assistant tag
+                    corrupted_input_ids[row_idx, content_start:content_end] = (
+                        baseline_token
+                    )
 
                 eap_ig_scores, (clean_logits, corrupted_logits) = (
                     eap_integrated_gradients(  # (batch, pos) | (batch, pos, n_head) | (batch, pos, neuron)
