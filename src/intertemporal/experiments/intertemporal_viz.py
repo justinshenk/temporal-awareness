@@ -66,11 +66,21 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
     components = []
     pair_0 = get_pair_dir(exp_dir, 0)
     if pair_0.exists():
-        for d in pair_0.iterdir():
-            if d.is_dir() and d.name.startswith("sweep_"):
-                comp = d.name.replace("sweep_", "")
-                if (d / "coarse_results.json").exists():
-                    components.append(comp)
+        # Check new structure: coarse/sweep_*
+        coarse_dir = pair_0 / "coarse"
+        if coarse_dir.exists():
+            for d in coarse_dir.iterdir():
+                if d.is_dir() and d.name.startswith("sweep_"):
+                    comp = d.name.replace("sweep_", "")
+                    if (d / "coarse_results.json").exists():
+                        components.append(comp)
+        # Fallback to legacy structure: sweep_* at root
+        if not components:
+            for d in pair_0.iterdir():
+                if d.is_dir() and d.name.startswith("sweep_"):
+                    comp = d.name.replace("sweep_", "")
+                    if (d / "coarse_results.json").exists():
+                        components.append(comp)
     return components
 
 
@@ -121,7 +131,11 @@ def load_coarse_results_for_pair(
 
     coarse_results = {}
     for component in components:
-        results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
+        # Try new structure first
+        results_path = pair_dir / "coarse" / f"sweep_{component}" / "coarse_results.json"
+        # Fallback to legacy structure
+        if not results_path.exists():
+            results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
         if results_path.exists():
             result = CoarseActPatchResults.from_json(results_path)
             # Add label_pairs if not already present
@@ -192,7 +206,11 @@ def rebuild_coarse_aggregated(
 
         # Load and add results for each component
         for component in components:
-            results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
+            # Try new structure first
+            results_path = pair_dir / "coarse" / f"sweep_{component}" / "coarse_results.json"
+            # Fallback to legacy structure
+            if not results_path.exists():
+                results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
             if results_path.exists():
                 result = CoarseActPatchResults.from_json(results_path)
                 result.sample_id = pair_idx
@@ -378,9 +396,14 @@ def load_attn_pair(pair_dir: Path) -> AttnPairResult | None:
     Returns:
         AttnPairResult or None if not found
     """
-    path = pair_dir / "attn_analysis" / "attn_analysis.json"
+    # Try new path first
+    path = pair_dir / "attn" / "attn_analysis.json"
     if path.exists():
         return AttnPairResult.from_json(path)
+    # Fallback to legacy path
+    legacy_path = pair_dir / "attn_analysis" / "attn_analysis.json"
+    if legacy_path.exists():
+        return AttnPairResult.from_json(legacy_path)
     return None
 
 
@@ -605,6 +628,7 @@ def generate_viz(
                 att_result=att_result,
                 coarse_results=pair_coarse if pair_coarse else None,
                 fine_result=fine_result,
+                fine_grained_result=fine_grained_result,
                 diffmeans_result=diffmeans_result,
                 geo_result=geo_result,
                 try_loading_cache=True,
@@ -618,7 +642,7 @@ def generate_viz(
                 # Pass runner for QK analysis (plot 8) if TransformerLens backend
                 visualize_attn_pair(
                     attn_result,
-                    pair_dir / "attn_analysis",
+                    pair_dir / "attn",
                     runner=runner,
                 )
             if diffmeans_result:

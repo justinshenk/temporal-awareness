@@ -107,7 +107,7 @@ PAIR_REQ: dict = {}
 
 # Default fine-grained patching settings (comprehensive analysis: plots 17-26)
 FINE_GRAINED: dict = {
-    "enabled": False,
+    "enabled": True,
     # Head patching sweep
     "head_patching_enabled": True,
     "head_layers": None,  # None = layers in second half of network

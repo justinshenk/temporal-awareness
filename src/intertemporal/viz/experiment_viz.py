@@ -18,6 +18,7 @@ from .tokenization_viz import (
     visualize_tokenization,
     visualize_tokenization_from_cache,
 )
+from ..experiments.fine_grained import visualize_fine_grained
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchResult
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from ...attribution_patching import AttrPatchResult
     from ...common.contrastive_pair import ContrastivePair
     from ..experiments.diffmeans import DiffMeansPairResult
+    from ..experiments.fine_grained import FineGrainedResults
     from ..experiments.geo import GeoPairResult
 
 
@@ -37,6 +39,7 @@ def visualize_pair_results(
     att_result: "AttrPatchResult | None" = None,
     coarse_results: dict[str, "CoarseActPatchResult"] | None = None,
     fine_result: "ActPatchResult | None" = None,
+    fine_grained_result: "FineGrainedResults | None" = None,
     diffmeans_result: "DiffMeansPairResult | None" = None,
     geo_result: "GeoPairResult | None" = None,
     try_loading_cache: bool = False,
@@ -56,6 +59,7 @@ def visualize_pair_results(
         att_result: Attribution patching result for this pair
         coarse_results: Dict mapping component name to coarse patching result
         fine_result: Fine activation patching result for this pair
+        fine_grained_result: Fine-grained patching results (plots 17-26)
         diffmeans_result: Difference-in-means result for this pair
         geo_result: Geometric (PCA) analysis result for this pair
         try_loading_cache: If True, try loading tokenization from cache
@@ -103,18 +107,18 @@ def visualize_pair_results(
     # Step 3: Coarse patching per component
     if coarse_results:
         for component, result in coarse_results.items():
-            sweep_dir = pair_out_dir / f"sweep_{component}"
+            sweep_dir = pair_out_dir / "coarse" / f"sweep_{component}"
             visualize_coarse_patching(result, sweep_dir, coloring, pair=pair)
 
     # Step 4: Fine patching
     if fine_result is not None:
-        visualize_fine_patching([fine_result], pair_out_dir / "fine_patching")
+        visualize_fine_patching([fine_result], pair_out_dir / "fine")
 
     # Step 5: Component comparison
     if coarse_results and len(coarse_results) > 0:
         visualize_component_comparison(
             coarse_results,
-            pair_out_dir / "sweep_component_comparison",
+            pair_out_dir / "coarse" / "component_comparison",
         )
 
     # Step 6: Diffmeans visualization
@@ -124,6 +128,10 @@ def visualize_pair_results(
     # Step 7: Geo visualization
     if geo_result is not None and geo_result.position_results:
         visualize_geo_pair(geo_result, pair_out_dir / "geo")
+
+    # Step 8: Fine-grained patching visualization (plots 17-26)
+    if fine_grained_result is not None:
+        visualize_fine_grained(fine_grained_result, pair_out_dir / "fine_grained")
 
 
 def _ensure_tokenization_and_get_coloring(
