@@ -259,11 +259,17 @@ def _get_attention_data(
         - attn_patterns: {layer: attention[n_heads, seq_len]} from dest_position
         - head_outputs: {layer: {head_idx: output[d_model]}} at dest_position
     """
-    # Build hook filter - try both TransformerLens-style and standard hooks
+    # Build hook filter - try multiple TransformerLens hook name variants
+    # Different TL versions/models use different names:
+    # - hook_attn: older TL versions
+    # - hook_pattern: Qwen3 and newer models (attention probabilities after softmax)
+    # - hook_z: per-head outputs before final projection
     hooks = set()
     for layer in layers:
-        hooks.add(f"blocks.{layer}.attn.hook_attn")  # TransformerLens attention patterns
-        hooks.add(f"blocks.{layer}.attn.hook_result")  # TransformerLens per-head outputs
+        hooks.add(f"blocks.{layer}.attn.hook_attn")  # Older TL attention patterns
+        hooks.add(f"blocks.{layer}.attn.hook_pattern")  # Qwen3/newer TL attention patterns
+        hooks.add(f"blocks.{layer}.attn.hook_result")  # Older TL per-head outputs
+        hooks.add(f"blocks.{layer}.attn.hook_z")  # Qwen3/newer TL per-head outputs
         hooks.add(f"blocks.{layer}.hook_attn_out")  # Standard attn_out hook
 
     names_filter = lambda name: name in hooks
@@ -278,24 +284,28 @@ def _get_attention_data(
     attn_outputs = {}  # For standard backend fallback
 
     for layer in layers:
-        # Try TransformerLens attention patterns first: [batch, n_heads, seq_q, seq_k]
-        attn_key = f"blocks.{layer}.attn.hook_attn"
-        if attn_key in cache:
-            attn = cache[attn_key][0]  # [n_heads, seq_q, seq_k]
-            dest_pos = min(dest_position, attn.shape[1] - 1)
-            attn_patterns[layer] = attn[:, dest_pos, :]  # [n_heads, seq_k]
+        # Try TransformerLens attention patterns: [batch, n_heads, seq_q, seq_k]
+        # Check both hook_attn (older) and hook_pattern (Qwen3/newer)
+        for attn_key in [f"blocks.{layer}.attn.hook_pattern", f"blocks.{layer}.attn.hook_attn"]:
+            if attn_key in cache:
+                attn = cache[attn_key][0]  # [n_heads, seq_q, seq_k]
+                dest_pos = min(dest_position, attn.shape[1] - 1)
+                attn_patterns[layer] = attn[:, dest_pos, :]  # [n_heads, seq_k]
+                break
 
         # Try TransformerLens head outputs: [batch, pos, n_heads, d_head]
-        result_key = f"blocks.{layer}.attn.hook_result"
-        if result_key in cache:
-            result = cache[result_key][0]  # [pos, n_heads, d_head]
-            dest_pos = min(dest_position, result.shape[0] - 1)
-            n_heads = result.shape[1]
+        # Check both hook_result (older) and hook_z (Qwen3/newer)
+        for result_key in [f"blocks.{layer}.attn.hook_z", f"blocks.{layer}.attn.hook_result"]:
+            if result_key in cache:
+                result = cache[result_key][0]  # [pos, n_heads, d_head]
+                dest_pos = min(dest_position, result.shape[0] - 1)
+                n_heads = result.shape[1]
 
-            head_outputs[layer] = {}
-            for head_idx in range(n_heads):
-                head_out = result[dest_pos, head_idx, :]  # [d_head]
-                head_outputs[layer][head_idx] = head_out
+                head_outputs[layer] = {}
+                for head_idx in range(n_heads):
+                    head_out = result[dest_pos, head_idx, :]  # [d_head]
+                    head_outputs[layer][head_idx] = head_out
+                break
 
         # Fallback: standard attn_out hook [batch, seq, d_model]
         attn_out_key = f"blocks.{layer}.hook_attn_out"
