@@ -1,0 +1,27 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 64
+  dtype: "bfloat16"
+  granularity: "fine"
+  quadrature: "gauss-chebyshev"
+  task: "classification"
+
+paths:
+  data_loc: "./data/raw/refined_datasets"
+  save_loc: "./results/node_wise/short"
+
+input:
+  data_file: "temporal_scope_explicit_classification_strict.json"
+  template: "{}"
+  option_keys: [ "short", "long" ]
+  prompt_suffix: ""
+  horizon: [ "ST", "LT" ]
+
+output:
+  filename: "classification_explicit"
+
+parameters:
+  system_prompt: "Identify the time horizon of the given statement as long or short. Reply with a single word"
+  steps: [ 20 ]
+  metric_type: "option-logit"
