@@ -48,13 +48,14 @@ const vertexShader = `
     if (vIsSelected > 0.5) scale = hoverScale * 1.5;
     else if (vIsHovered > 0.5) scale = hoverScale;
 
-    // Scale points based on distance - closer = bigger
-    // Use moderate perspective scaling so zooming in makes points larger but not too much
-    float distanceScale = 80.0 / max(-mvPosition.z, 1.0);
+    // Scale points based on distance using sqrt for gentler scaling
+    // sqrt prevents extreme growth when zoomed in very close
+    float dist = max(-mvPosition.z, 1.0);
+    float distanceScale = 15.0 / sqrt(dist);
     gl_PointSize = size * scale * distanceScale;
 
-    // Clamp to reasonable range - smaller max for cleaner look
-    gl_PointSize = clamp(gl_PointSize, 1.5, 20.0);
+    // Clamp to reasonable range
+    gl_PointSize = clamp(gl_PointSize, 2.0, 12.0);
 
     gl_Position = projectionMatrix * mvPosition;
   }
