@@ -40,8 +40,17 @@ cd "$PROJECT_ROOT"
 uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" --dev &
 BACKEND_PID=$!
 
-# Wait for backend to start
-sleep 2
+# Wait for backend to be ready (check health endpoint)
+echo "Waiting for backend to be ready..."
+for i in {1..30}; do
+    if curl -s http://localhost:8000/api/config > /dev/null 2>&1; then
+        echo -e "${GREEN}Backend is ready!${NC}"
+        break
+    fi
+    sleep 1
+    echo -n "."
+done
+echo ""
 
 # Start frontend dev server
 echo -e "${GREEN}Starting frontend dev server...${NC}"
