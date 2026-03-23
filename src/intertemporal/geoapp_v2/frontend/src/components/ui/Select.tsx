@@ -45,6 +45,7 @@ export const Select: React.FC<SelectProps> = ({
 
   const handleSelect = useCallback(
     (optionValue: string) => {
+      console.log('[Select] handleSelect called with:', optionValue);
       onChange?.(optionValue);
       setIsOpen(false);
       setSearchQuery('');

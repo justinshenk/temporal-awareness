@@ -34,6 +34,9 @@ function App() {
   // Selection state
   const [selectedSampleIdx, setSelectedSampleIdx] = useState<number | null>(null);
 
+  // Debug logging for state changes
+  console.log('[App] Current state:', { layer, component, position, method, colorBy });
+
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
 

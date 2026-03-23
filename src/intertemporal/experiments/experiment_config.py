@@ -97,7 +97,7 @@ MLP_ANALYSIS: dict = {
 ATTN_ANALYSIS: dict = {
     "enabled": True,
     "layers": [19, 21, 24],  # Key attention layers for horizon processing
-    "store_patterns": False,  # Whether to store full attention patterns (heavy)
+    "store_patterns": True,  # Whether to store full attention patterns
     "dynamic_threshold": 0.1,  # Threshold for detecting dynamic attention changes
 }
 

@@ -334,9 +334,11 @@ def run_neuron_patching(
     pair: ContrastivePair,
     config: FineGrainedConfig,
 ) -> list[NeuronPatchingResult]:
-    """Run neuron-level ablation at target layer.
+    """Run neuron-level attribution at target layer.
 
-    Ablates each neuron individually and measures effect on correct logit.
+    Uses gradient-based attribution to efficiently measure each neuron's
+    contribution to the model's decision. This is much faster than individual
+    ablations while providing meaningful per-neuron importance scores.
 
     Args:
         runner: Model runner
@@ -344,44 +346,127 @@ def run_neuron_patching(
         config: Fine-grained config
 
     Returns:
-        List of NeuronPatchingResult for each neuron
+        List of NeuronPatchingResult for top neurons by importance
     """
-    results = []
     layer = config.neuron_target_layer
-
-    # For neuron-level analysis, we measure the full MLP layer effect first
-    mlp_target = InterventionTarget.at(
-        layers=[layer],
-        component="mlp_out",
-    )
-
-    # Get baseline MLP effect
-    dn_mlp = patch_for_choice(runner, pair, mlp_target, "denoising", clear_memory=True)
-    mlp_total_effect = dn_mlp.recovery
-
-    # For efficiency, we approximate neuron importance using gradient-based attribution
-    # rather than individual ablations (which would be too expensive)
     d_mlp = runner._backend.get_d_mlp()
 
-    # Create approximate neuron effects based on MLP total effect
-    # In practice, this should use proper neuron-level hooks
-    for neuron_idx in range(min(d_mlp, 200)):  # Limit to first 200 neurons
-        # Approximate effect as fraction of total (placeholder)
-        effect = mlp_total_effect / d_mlp
+    # Hook name for MLP post activations (after activation function)
+    hook_post_name = f"blocks.{layer}.mlp.hook_post"
+    names_filter = lambda name: name == hook_post_name
 
-        results.append(NeuronPatchingResult(
-            layer=layer,
-            neuron_idx=neuron_idx,
-            effect=effect,
-            activation_mean=0.0,
-        ))
+    # Get divergent position for metric computation
+    clean_div_pos, corrupted_div_pos = pair.choice_divergent_positions
+    metric_pos = corrupted_div_pos - 1  # Position before divergence
 
-    # Sort by effect and keep top N
+    # Run clean trajectory with cache
+    clean_choice = runner.choose(
+        pair.clean_prompt,
+        pair.choice_prefix,
+        pair.clean_labels,
+        with_cache=True,
+        names_filter=names_filter,
+    )
+    clean_cache = clean_choice.cache
+
+    # Run corrupted trajectory with cache
+    corrupted_choice = runner.choose(
+        pair.corrupted_prompt,
+        pair.choice_prefix,
+        pair.corrupted_labels,
+        with_cache=True,
+        names_filter=names_filter,
+    )
+    corrupted_cache = corrupted_choice.cache
+
+    # Get MLP post activations
+    clean_post = clean_cache.get(hook_post_name)
+    corrupted_post = corrupted_cache.get(hook_post_name)
+
+    results = []
+
+    if clean_post is not None and corrupted_post is not None:
+        # Clamp metric_pos to valid range
+        clean_seq_len = clean_post.shape[1]
+        corrupted_seq_len = corrupted_post.shape[1]
+        clean_metric_pos = min(metric_pos, clean_seq_len - 1)
+        corrupted_metric_pos = min(metric_pos, corrupted_seq_len - 1)
+
+        # Get activations at metric position: [d_mlp]
+        clean_acts = clean_post[0, clean_metric_pos, :].detach().cpu()
+        corrupted_acts = corrupted_post[0, corrupted_metric_pos, :].detach().cpu()
+
+        # Activation difference per neuron
+        act_diff = clean_acts - corrupted_acts  # [d_mlp]
+
+        # Get W_out matrix to compute each neuron's contribution to logit direction
+        # W_out: [d_mlp, d_model] transforms neuron activations to residual stream
+        W_out = _get_mlp_w_out_for_runner(runner, layer)
+
+        # Get logit direction (difference between choice A and B logits)
+        W_U = runner.W_U  # [d_model, vocab_size]
+        labels = pair.clean_labels
+        label_a_id = runner.encode_ids(labels[0], add_special_tokens=False)[0]
+        label_b_id = runner.encode_ids(labels[1], add_special_tokens=False)[0]
+        logit_direction = W_U[:, label_a_id] - W_U[:, label_b_id]  # [d_model]
+        logit_direction = logit_direction / torch.norm(logit_direction)
+        logit_direction = logit_direction.detach().cpu()
+
+        if W_out is not None:
+            W_out = W_out.detach().cpu()
+            # For each neuron, compute: act_diff[i] * (W_out[i] @ logit_direction)
+            # This gives the neuron's contribution to changing the logit difference
+            for neuron_idx in range(d_mlp):
+                neuron_contribution = W_out[neuron_idx] @ logit_direction
+                effect = (act_diff[neuron_idx] * neuron_contribution).item()
+                activation_mean = ((clean_acts[neuron_idx] + corrupted_acts[neuron_idx]) / 2).item()
+
+                results.append(NeuronPatchingResult(
+                    layer=layer,
+                    neuron_idx=neuron_idx,
+                    effect=effect,
+                    activation_mean=activation_mean,
+                ))
+        else:
+            # Fallback: use activation difference magnitude as proxy for importance
+            for neuron_idx in range(d_mlp):
+                effect = act_diff[neuron_idx].item()
+                activation_mean = ((clean_acts[neuron_idx] + corrupted_acts[neuron_idx]) / 2).item()
+
+                results.append(NeuronPatchingResult(
+                    layer=layer,
+                    neuron_idx=neuron_idx,
+                    effect=effect,
+                    activation_mean=activation_mean,
+                ))
+    else:
+        # No activation data available - return empty results
+        log(f"[neuron_patching] Warning: MLP post activations not available for layer {layer}")
+
+    # Sort by effect magnitude and keep top N
     results = sorted(results, key=lambda x: abs(x.effect), reverse=True)
     results = results[:config.n_top_neurons]
 
+    # Cleanup
+    clean_choice.pop_heavy()
+    corrupted_choice.pop_heavy()
     clear_gpu_memory()
+
     return results
+
+
+def _get_mlp_w_out_for_runner(runner: "BinaryChoiceRunner", layer: int) -> torch.Tensor | None:
+    """Get the MLP output projection matrix W_out for a layer."""
+    try:
+        if hasattr(runner, "_model") and hasattr(runner._model, "blocks"):
+            return runner._model.blocks[layer].mlp.W_out.detach()
+        if hasattr(runner, "_backend"):
+            model = getattr(runner._backend, "_model", None)
+            if model is not None and hasattr(model, "blocks"):
+                return model.blocks[layer].mlp.W_out.detach()
+    except (AttributeError, IndexError):
+        pass
+    return None
 
 
 @profile

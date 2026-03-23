@@ -66,6 +66,20 @@ def visualize_mlp_analysis(
         )
         n_plots += 1
 
+        # 11. Neuron consistency across pairs
+        if agg.n_pairs > 1:
+            _plot_neuron_consistency_across_pairs(
+                agg, output_dir / "neuron_consistency_across_pairs.png"
+            )
+            n_plots += 1
+
+        # 15. Cross-layer neuron patterns
+        if len(agg.layers_analyzed) > 1:
+            _plot_cross_layer_neuron_patterns(
+                agg, output_dir / "cross_layer_neuron_patterns.png"
+            )
+            n_plots += 1
+
     log(f"[mlp_viz] Generated {n_plots} plots in {output_dir}")
 
 
@@ -687,6 +701,194 @@ def _plot_neuron_activation_scatter_2d(
     # Make plot square
     ax.set_aspect('equal', adjustable='datalim')
 
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_neuron_consistency_across_pairs(
+    agg: MLPAggregatedResults, output_path: Path, n_top: int = 30
+) -> None:
+    """Plot 11: Neuron consistency across pairs.
+
+    Shows which neurons are consistently important (appear in top-N) across
+    multiple contrastive pairs. Higher bars indicate more consistent importance.
+
+    X-axis: neuron index
+    Y-axis: number of pairs where this neuron appears in top-N
+    Color: mean activation difference across pairs
+    """
+    if agg.n_pairs < 2:
+        return
+
+    layers = agg.layers_analyzed
+    if not layers:
+        return
+
+    # Count how often each neuron appears in top neurons across pairs
+    # Use the target layer for this analysis
+    neuron_counts: dict[int, int] = {}
+    neuron_mean_diffs: dict[int, list[float]] = {}
+
+    for pr in agg.pair_results:
+        lr = pr.get_layer_result(TARGET_LAYER)
+        if not lr or not lr.top_neurons:
+            continue
+        for ni in lr.top_neurons:
+            if ni.neuron_idx not in neuron_counts:
+                neuron_counts[ni.neuron_idx] = 0
+                neuron_mean_diffs[ni.neuron_idx] = []
+            neuron_counts[ni.neuron_idx] += 1
+            neuron_mean_diffs[ni.neuron_idx].append(ni.activation_diff)
+
+    if not neuron_counts:
+        return
+
+    # Sort by count (consistency) and take top N
+    sorted_neurons = sorted(neuron_counts.items(), key=lambda x: x[1], reverse=True)[:n_top]
+    neuron_indices = [n[0] for n in sorted_neurons]
+    counts = [n[1] for n in sorted_neurons]
+    mean_diffs = [np.mean(neuron_mean_diffs[n]) for n in neuron_indices]
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    x = np.arange(len(neuron_indices))
+
+    # Color by mean activation difference
+    norm = plt.Normalize(vmin=min(mean_diffs), vmax=max(mean_diffs))
+    cmap = plt.cm.RdBu_r
+    colors = [cmap(norm(d)) for d in mean_diffs]
+
+    bars = ax.bar(x, counts, color=colors, alpha=BAR_ALPHA, edgecolor='black', linewidth=0.5)
+
+    # Add colorbar
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax)
+    cbar.set_label('Mean Activation Diff (clean - corrupted)', fontsize=10)
+
+    ax.set_xlabel('Neuron Index', fontsize=12)
+    ax.set_ylabel(f'Pairs where neuron is in top-{len(agg.pair_results[0].layer_results[0].top_neurons) if agg.pair_results and agg.pair_results[0].layer_results else "N"}', fontsize=12)
+    ax.set_title(f'Neuron Consistency Across {agg.n_pairs} Pairs (L{TARGET_LAYER})\nHigher = More Consistent Importance', fontsize=14)
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(n) for n in neuron_indices], rotation=90, fontsize=8)
+    ax.set_ylim(0, agg.n_pairs + 0.5)
+    ax.axhline(y=agg.n_pairs / 2, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='50% threshold')
+    ax.grid(axis='y', alpha=GRID_ALPHA)
+    ax.legend(loc='upper right')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_cross_layer_neuron_patterns(
+    agg: MLPAggregatedResults, output_path: Path, n_top: int = 10
+) -> None:
+    """Plot 15: Cross-layer neuron patterns.
+
+    Shows correlation/patterns between top neuron activations across different
+    layers. Each panel compares activation differences between two layers.
+
+    This helps identify if certain neurons are co-activated across layers,
+    suggesting possible information flow pathways.
+    """
+    layers = agg.layers_analyzed
+    if len(layers) < 2:
+        return
+
+    # Get top neurons per layer across all pairs
+    layer_neuron_data: dict[int, dict[int, list[float]]] = {}  # layer -> neuron -> [act_diffs]
+
+    for layer in layers:
+        layer_neuron_data[layer] = {}
+        for pr in agg.pair_results:
+            lr = pr.get_layer_result(layer)
+            if not lr or not lr.top_neurons:
+                continue
+            for ni in lr.top_neurons[:n_top]:
+                if ni.neuron_idx not in layer_neuron_data[layer]:
+                    layer_neuron_data[layer][ni.neuron_idx] = []
+                layer_neuron_data[layer][ni.neuron_idx].append(ni.activation_diff)
+
+    # Create correlation matrix between layers based on mean activation patterns
+    n_layers = len(layers)
+    corr_matrix = np.zeros((n_layers, n_layers))
+
+    for i, layer_i in enumerate(layers):
+        for j, layer_j in enumerate(layers):
+            if i == j:
+                corr_matrix[i, j] = 1.0
+                continue
+
+            # Get mean activation per pair for each layer
+            vals_i = []
+            vals_j = []
+            for pr in agg.pair_results:
+                lr_i = pr.get_layer_result(layer_i)
+                lr_j = pr.get_layer_result(layer_j)
+                if lr_i and lr_j:
+                    vals_i.append(lr_i.total_logit_contribution)
+                    vals_j.append(lr_j.total_logit_contribution)
+
+            if len(vals_i) > 1:
+                corr = np.corrcoef(vals_i, vals_j)[0, 1]
+                corr_matrix[i, j] = corr if not np.isnan(corr) else 0
+
+    # Create figure with two panels
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Panel 1: Layer contribution correlation matrix
+    im1 = ax1.imshow(corr_matrix, cmap='RdBu_r', aspect='auto', vmin=-1, vmax=1)
+    cbar1 = plt.colorbar(im1, ax=ax1)
+    cbar1.set_label('Correlation', fontsize=10)
+
+    ax1.set_xticks(np.arange(n_layers))
+    ax1.set_yticks(np.arange(n_layers))
+    ax1.set_xticklabels([f'L{l}' for l in layers])
+    ax1.set_yticklabels([f'L{l}' for l in layers])
+    ax1.set_xlabel('Layer', fontsize=12)
+    ax1.set_ylabel('Layer', fontsize=12)
+    ax1.set_title('Layer Contribution Correlations\nAcross Pairs', fontsize=12)
+
+    # Add text annotations
+    for i in range(n_layers):
+        for j in range(n_layers):
+            val = corr_matrix[i, j]
+            color = 'white' if abs(val) > 0.5 else 'black'
+            ax1.text(j, i, f'{val:.2f}', ha='center', va='center', color=color, fontsize=8)
+
+    # Panel 2: Top neuron activation pattern across layers
+    # For the target layer, show how its top neurons' importance varies across layers
+    target_neurons = _get_top_neurons_for_layer(agg, TARGET_LAYER, n=n_top)
+    if target_neurons:
+        neuron_indices = [n[0] for n in target_neurons]
+
+        # Build matrix: for each top neuron, see if it's also important at other layers
+        pattern_matrix = np.zeros((len(neuron_indices), n_layers))
+
+        for j, layer in enumerate(layers):
+            layer_top = _get_top_neurons_for_layer(agg, layer, n=100)
+            layer_map = {n[0]: n[1] for n in layer_top}  # neuron_idx -> mean_act_diff
+
+            for i, neuron_idx in enumerate(neuron_indices):
+                pattern_matrix[i, j] = layer_map.get(neuron_idx, 0)
+
+        vmax = max(abs(pattern_matrix.min()), abs(pattern_matrix.max())) if pattern_matrix.size > 0 else 1
+        im2 = ax2.imshow(pattern_matrix, cmap='RdBu_r', aspect='auto', vmin=-vmax, vmax=vmax)
+        cbar2 = plt.colorbar(im2, ax=ax2)
+        cbar2.set_label('Mean Activation Diff', fontsize=10)
+
+        ax2.set_xticks(np.arange(n_layers))
+        ax2.set_yticks(np.arange(len(neuron_indices)))
+        ax2.set_xticklabels([f'L{l}' for l in layers])
+        ax2.set_yticklabels([f'N{n}' for n in neuron_indices])
+        ax2.set_xlabel('Layer', fontsize=12)
+        ax2.set_ylabel(f'Neuron (top {n_top} from L{TARGET_LAYER})', fontsize=12)
+        ax2.set_title(f'Top Neuron Patterns Across Layers\n(Neurons selected from L{TARGET_LAYER})', fontsize=12)
+
+    fig.suptitle('Cross-Layer MLP Neuron Patterns', fontsize=14, y=1.02)
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
     plt.close()
