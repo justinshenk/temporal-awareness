@@ -477,7 +477,7 @@ def step_attn_analysis(
         )
         ctx.attn_analysis[pair_idx] = result
         ctx.attn_agg.add(result)
-        ctx.save_attn_analysis_pair(pair_idx)
+        ctx.save_attn_analysis_pair(pair_idx, store_patterns=store_patterns)
 
     n_loaded = len(cached_pair_indices)
     n_total = ctx.attn_agg.n_pairs

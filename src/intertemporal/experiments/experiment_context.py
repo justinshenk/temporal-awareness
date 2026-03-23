@@ -793,15 +793,21 @@ class ExperimentContext:
         """Get path for per-pair attention analysis results JSON."""
         return self.get_attn_analysis_pair_dir(pair_idx) / "attn_analysis.json"
 
-    def save_attn_analysis_pair(self, pair_idx: int) -> None:
-        """Save per-pair attention analysis results."""
+    def save_attn_analysis_pair(self, pair_idx: int, store_patterns: bool = False) -> None:
+        """Save per-pair attention analysis results.
+
+        Args:
+            pair_idx: Index of the pair
+            store_patterns: If True, keep attention patterns in saved file (large)
+        """
         if pair_idx not in self.attn_analysis:
             return
         result = self.attn_analysis[pair_idx]
         path = self.get_attn_analysis_pair_path(pair_idx)
         path.parent.mkdir(parents=True, exist_ok=True)
-        # Pop heavy data before saving
-        result.pop_heavy()
+        # Pop heavy data before saving unless store_patterns=True
+        if not store_patterns:
+            result.pop_heavy()
         save_json(result.to_dict(), path)
 
     def load_attn_analysis_pair(self, pair_idx: int) -> bool:

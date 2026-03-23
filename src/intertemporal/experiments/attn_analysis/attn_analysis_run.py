@@ -139,9 +139,13 @@ def run_attn_analysis(
             logit_contribution = 0.0
             output_norm = 0.0
             if head_idx in clean_outs and logit_direction is not None:
-                head_out = clean_outs[head_idx]  # [d_model]
+                head_out = clean_outs[head_idx]  # [d_head] or [d_model]
                 output_norm = float(torch.norm(head_out))
-                logit_contribution = float(torch.dot(head_out, logit_direction))
+                # Check dimensions - if head_out is [d_head], we can't directly
+                # compute logit contribution (would need W_O projection)
+                if head_out.shape[0] == logit_direction.shape[0]:
+                    logit_contribution = float(torch.dot(head_out, logit_direction))
+                # else: head_out is [d_head], skip logit contribution for now
 
             # Compare clean vs corrupted attention
             attn_pattern_diff = 0.0
