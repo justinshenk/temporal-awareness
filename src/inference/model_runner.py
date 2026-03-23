@@ -827,13 +827,73 @@ class ModelRunner:
         from transformer_lens import HookedTransformer
 
         print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
-        # Use from_pretrained_no_processing to avoid weight centering/folding
-        # that changes raw logit values (though softmax output is the same)
-        self._model = HookedTransformer.from_pretrained_no_processing(
-            self.model_name, device=self.device, dtype=self.dtype
-        )
+
+        # Check if model is directly supported by TransformerLens
+        # If not, try loading via HuggingFace wrapper with compatible base model
+        base_model_name = self._get_transformerlens_base_model(self.model_name)
+
+        if base_model_name and base_model_name != self.model_name:
+            # Model not directly supported, but has compatible architecture
+            # Load HuggingFace model and wrap with TransformerLens
+            print(f"  Using HF wrapper: {self.model_name} -> {base_model_name} config")
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
+            hf_model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                torch_dtype=self.dtype,
+                trust_remote_code=True,
+            )
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name, trust_remote_code=True
+            )
+            self._model = HookedTransformer.from_pretrained_no_processing(
+                base_model_name,
+                hf_model=hf_model,
+                tokenizer=tokenizer,
+                device=self.device,
+                dtype=self.dtype,
+            )
+        else:
+            # Model is directly supported or no mapping exists
+            # Use from_pretrained_no_processing to avoid weight centering/folding
+            # that changes raw logit values (though softmax output is the same)
+            self._model = HookedTransformer.from_pretrained_no_processing(
+                self.model_name, device=self.device, dtype=self.dtype
+            )
         self._model.eval()
         self._backend = TransformerLensBackend(self)
+
+    def _get_transformerlens_base_model(self, model_name: str) -> str | None:
+        """Get the TransformerLens-compatible base model name for a given model.
+
+        For models not directly supported by TransformerLens but with compatible
+        architecture (e.g., instruct variants), returns the base model name.
+
+        Returns:
+            Base model name if mapping exists, original name if directly supported,
+            None if not supported at all.
+        """
+        # Mapping from unsupported model names to their compatible base models
+        # These models share the same architecture, just different weights
+        MODEL_MAPPINGS = {
+            # Qwen3 instruct variants -> base models
+            "Qwen/Qwen3-4B-Instruct-2507": "Qwen/Qwen3-4B",
+            "Qwen/Qwen3-8B-Instruct-2507": "Qwen/Qwen3-8B",
+            "Qwen/Qwen3-14B-Instruct-2507": "Qwen/Qwen3-14B",
+            "Qwen/Qwen3-1.7B-Instruct-2507": "Qwen/Qwen3-1.7B",
+            "Qwen/Qwen3-0.6B-Instruct-2507": "Qwen/Qwen3-0.6B",
+        }
+
+        if model_name in MODEL_MAPPINGS:
+            return MODEL_MAPPINGS[model_name]
+
+        # Check if model is directly supported by TransformerLens
+        try:
+            from transformer_lens.loading_from_pretrained import get_official_model_name
+            get_official_model_name(model_name)
+            return model_name  # Directly supported
+        except ValueError:
+            return None  # Not supported
 
     def _init_nnsight(self) -> None:
         from nnsight import LanguageModel
