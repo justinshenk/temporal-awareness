@@ -1,0 +1,335 @@
+\documentclass{article}
+
+\usepackage{neurips_2026}
+
+% Override Helvetica with Computer Modern Sans (helvetic not installed)
+\renewcommand{\sfdefault}{cmss}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+\title{Causal and Geometric Analysis of Temporal Preference Circuits in a Large Language Model}
+
+\author{%
+  Anonymous Author(s) \\
+  Anonymous Institution \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We investigate how a transformer language model (Qwen3-4B) processes temporal information to make intertemporal choices. Using two independent methodologies---structured forced-choice prompting with explicit time horizons and open-form contrastive activation addition (CAA)---we establish that both converge on the same critical layers (L19--L24), pointing to a general temporal reasoning subnetwork rather than a task-specific artifact. We characterize this circuit through activation patching across 500+ prompt variants as a \textbf{Read-Refine-Decide} pipeline: attention in L19--L24 reads temporal magnitude from source tokens and integrates redundant signals at L21, followed by distributed MLP processing in L28--L35 that collapses a continuous temporal representation into a binary decision. The circuit exhibits asymmetric redundancy---the model over-reads from source positions (multiple sufficient pathways) while funneling to a single destination bottleneck. Geometric analysis reveals the model encodes time as both a continuous magnitude ($r = -0.93$ with log-time on PC0) and discrete time-scale categories (weeks/months/years/decades), producing a representation richer than the binary task demands. L24 marks the crystallization point where the continuous gradient bifurcates into stable decision bands. We document the model's default preference for long-term options when no constraint is specified and trace it to competing circuits at L19: the MLP encodes the long-term default while attention reads the horizon constraint that may override it.
+\end{abstract}
+
+\section{Introduction}
+
+Intertemporal choice---selecting between outcomes at different time points---is fundamental to economic decision-making. Humans show well-documented biases: hyperbolic discounting, present bias, preference reversals \citep{laibson1997golden, frederick2002time}. As LLMs are deployed for planning and decision support, understanding how they process temporal information is both scientifically interesting and practically important.
+
+No prior mechanistic interpretability work addresses preference-based reasoning, connects circuit mechanisms to behavioral economics, or validates findings across independent elicitation methods. Existing circuit analyses---indirect object identification \citep{wang2022interpretability}, greater-than comparisons \citep{hanna2023does}, factual recall \citep{meng2022locating}---focus on factual or syntactic tasks, not value-laden decisions. This leaves open questions about whether LLMs have genuine temporal preference circuits and, if so, how these circuits encode and process temporal information.
+
+We address this gap through a multi-pronged approach. First, we establish behavioral robustness by showing that two independent methodologies---structured forced-choice prompting and open-form contrastive activation addition---converge on the same behavioral patterns and identify the same critical layers. This convergence suggests a genuine internal circuit rather than surface-level pattern matching.
+
+Second, we identify the complete circuit through activation patching (both noising and denoising), revealing a two-hub architecture: information is read from source positions via redundant attention heads in L19--L24, compressed at an integration layer (L21), and transformed into decisions by MLPs in L28--L35. The architecture exhibits asymmetric redundancy: the model over-reads from source as a robustness strategy while funneling to a non-redundant output bottleneck.
+
+Third, we characterize the geometry of temporal encoding. The model maintains a multi-dimensional representation---continuous magnitude, categorical scale, and binary choice---in partially overlapping but distinct dimensions. L24 marks a ``crystallization point'' where the continuous gradient bifurcates into stable decision bands. Notably, the task-relevant features are processed in a subspace orthogonal to the output logit direction until a dramatic late rotation.
+
+Fourth, we document the model's default preference for long-term options and trace it to competing circuits at L19, where the MLP encodes the default while attention reads the constraint that may override it. This suggests the model has internalized a temporal preference during training.
+
+\paragraph{Contributions.} (1) Parallel methodology where structured intertemporal choice and open-form CAA converge on the same circuit, establishing a general temporal reasoning module. (2) Complete circuit identification as a Read-Refine-Decide pipeline with quantified redundancy structure, competing circuits, and a crystallization point. (3) Geometric analysis uncovering multi-dimensional temporal encoding and the model's default preference location in activation space. (4) Behavioral characterization mapping the model's temporal reasoning onto economic theory.
+
+\section{Related Work}
+
+\paragraph{Mechanistic interpretability.} Activation patching and causal tracing have been used to localize factual knowledge \citep{meng2022locating} and identify circuits for specific tasks \citep{wang2022interpretability, conmy2023towards}. Edge attribution patching (EAP) and its integrated gradients variant (EAP-IG) provide finer-grained attribution \citep{syed2023attribution}. The distinction between noising (necessity) and denoising (sufficiency) has been formalized \citep{chan2022causal, geiger2021causal}, though few works systematically compare both.
+
+\paragraph{Representation geometry.} Linear probes reveal structured representations in neural networks \citep{belinkov2022probing}. The logit lens \citep{nostalgebraist2020logit} and tuned lens \citep{belrose2023eliciting} track how predictions emerge across layers. PCA and SVD analyses reveal low-dimensional structure in residual streams \citep{elhage2022toy}.
+
+\paragraph{LLM decision-making.} LLMs can act as economic agents with measurable preferences \citep{horton2023large, brand2023using}. Contrastive activation addition (CAA) enables behavioral steering by adding or subtracting activation directions \citep{turner2023activation, rimsky2023steering}.
+
+\section{Methods}
+
+\subsection{Task: Intertemporal Choice Framework}
+
+We present prompts with a binary choice between options differing in timing: a small-soon reward (option a) and a large-later reward (option b), with strict output format (``I choose : a )'' or ``I choose : b )''). The key manipulation is the time horizon constraint $H$: ``You are primarily concerned about outcomes in $H$''.
+
+We vary $H$ across $\{$None, 1 month, 6 months, 1 year, 3 years, 7 years, 15 years, 50 years$\}$, along with reward magnitudes and delivery times, producing 500+ prompt variants. Contrastive pairs swap prompts where the model chose a) vs b), with horizon as the primary difference. Position alignment uses interpolation anchored on structural markers to handle variable-length tokenization.
+
+\subsection{Parallel Method: Open-Form CAA}
+
+Independent of the intertemporal framework, we construct 50 contrastive pairs in simple A/B format (e.g., ``focus on: (A) immediate fix (B) lasting value''). These contain no rewards, delivery times, or economic framing---just temporal preference cues. We apply EAP-IG with multiple quadrature rules for fine-grained attribution. This method tests whether the same circuit mediates temporal preference in a completely different task format.
+
+\subsection{Activation Patching}
+
+We perform both noising (corrupt clean $\rightarrow$ observe disruption) and denoising (restore clean into corrupted $\rightarrow$ observe recovery) across all components: \texttt{resid\_pre}, \texttt{attn\_out}, \texttt{mlp\_out}, \texttt{resid\_post}. Layer and position sweeps identify the circuit's spatial and depth structure.
+
+\paragraph{Metrics.} We track logit difference ($\ell_a - \ell_b$), probability, recovery rate (fraction of clean-corrupted gap closed), fork entropy, and vocabulary diversity. The \textbf{redundancy gap} (noising effect $-$ denoising effect) distinguishes necessary from sufficient components: large positive gaps indicate components that are sufficient but not necessary (redundant pathways); components where noising $\approx$ denoising are both necessary and sufficient (bottlenecks).
+
+\subsection{Geometric Analysis}
+
+We apply PCA, UMAP, and t-SNE to activations across all 500+ variants at key positions (source and destination). Linear probes (5-fold CV) decode: (1) continuous time horizon (measured by $R^2$) and (2) binary choice (measured by accuracy). Decision boundary classifiers at each layer track when choice becomes linearly separable.
+
+Difference-in-means analysis between clean and corrupted activations tracks: norm growth across layers, direction stability (layer-to-layer cosine similarity), rotation decomposition (attention vs MLP contributions), and alignment to the logit-difference direction ($W_U[:, a] - W_U[:, b]$).
+
+\section{Results}
+
+\subsection{Behavioral Profile}
+
+\begin{table}[h]
+\caption{Model choice behavior as a function of time horizon constraint. Without a constraint, the model always chooses long-term. The 7-year horizon marks the decision boundary with lowest confidence.}
+\label{tab:behavioral}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Horizon & Short-term choice & Long-term choice & Confidence \\
+\midrule
+Short ($<$1yr) & 100\% & 0\% & $\sim$100\% \\
+Medium ($\sim$7yr) & 56\% & 44\% & 94--100\% \\
+Long ($>$15yr) & 0\% & 100\% & $\sim$100\% \\
+No horizon & 0\% & 100\% & $\sim$100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The model shows a clear crossover between 1 year and 15 years, with 7 years marking the decision boundary where confidence is lowest. Critically, when no horizon constraint is specified, the model always chooses the long-term option (16/16 cases) with near-certainty, regardless of reward magnitude or delivery time. This ``default preference'' becomes important when we trace its circuit-level origin.
+
+Reward magnitude has minimal effect on choice; delivery times have moderate effect. This pattern---horizon-sensitivity with reward-insensitivity---differs from standard economic models but may reflect training data where temporal framing dominates.
+
+\subsection{The Read-Refine-Decide Circuit}
+
+The circuit operates through two spatial hubs and three functional phases:
+
+\paragraph{Read (Source Hub, $\sim$P73--P88).} The model reads temporal constraints from the prompt. Multiple attention heads independently read the source tokens encoding the horizon (e.g., ``1 month'' vs ``50 years''), creating \textbf{asymmetric redundancy}: individual heads achieve high denoising recovery (sufficient) but cause low noising disruption (not necessary). The model ``over-reads'' from the source as a robustness strategy---information flows through multiple parallel pathways, any one of which suffices.
+
+P86 carries the numeric token (e.g., ``1'' vs ``5'')---the core quantitative signal. P87 carries the unit/continuation token (``months'' vs ``0'')---a confirmatory signal. P88 carries additional context as a backup route.
+
+\paragraph{Refine (L19--L24, Routing and Integration).} Attention heads in L19--L24 route temporal information from source to destination and integrate it into the residual stream at the response position.
+
+L21 acts as a \textbf{paradoxical integration layer}: its individual inputs (\texttt{resid\_pre}, \texttt{attn\_out}) are each sufficient but not necessary, while its output (\texttt{resid\_post}) is necessary but not sufficient. L21 compresses redundant signals into a consolidated, non-redundant representation.
+
+L24 attention is the \textbf{critical bottleneck}---the single most important individual component (denoising 0.36, noising 0.41) and the only one that individually flips the model's decision (recovery rate $\approx 1.0$).
+
+\paragraph{Decide (L28--L35, MLP Processing).} Distributed MLP processing transforms the continuous temporal representation into a binary choice. No individual MLP achieves recovery rate $> 0.50$---the decision emerges from cumulative small transformations, not a single bottleneck.
+
+L31 MLP is the most reliable component (smallest noising-denoising gap, highest linear probe $R^2 = 0.993$). L35 MLP is \#2 overall and performs the final $\sim$80° rotation into logit space, explaining its prominence in patching metrics.
+
+\paragraph{Destination Hub ($\sim$P128--P145).} The final choice is written here. Unlike the source, this is a \textbf{hard bottleneck} with noising disruption approaching 1.0. No redundancy---information must converge to the single output position.
+
+\begin{table}[h]
+\caption{Top components by activation patching importance ($n=25$ contrastive pairs). Agreement indicates whether noising and denoising metrics converge.}
+\label{tab:components}
+\centering
+\begin{tabular}{clccc}
+\toprule
+Rank & Component & Denoising & Noising & Agreement \\
+\midrule
+1 & L24\_attn & 0.36 & 0.41 & Strong \\
+2 & L35\_mlp & 0.27 & 0.26 & Strong \\
+3 & L21\_attn & 0.21 & 0.15 & Moderate \\
+4 & L24\_mlp & 0.21 & 0.15 & Moderate \\
+5 & L31\_mlp & 0.17 & 0.21 & Strong \\
+6 & L19\_attn & 0.13 & --- & Weak \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Approximately 8 components are needed for 80\% cumulative recovery. Denoising systematically overstates attention importance by 2--5$\times$ relative to noising, while MLP estimates show better agreement between methods.
+
+\subsection{Cross-Method Convergence}
+
+The CAA methodology (different prompts, different metrics, EAP-IG) independently identifies the same layers:
+
+\begin{table}[h]
+\caption{Cross-method agreement between intertemporal patching and CAA (EAP-IG). Both methods identify the same critical layers and the same competing-circuit structure.}
+\label{tab:crossmethod}
+\centering
+\begin{tabular}{lll}
+\toprule
+Layer & Intertemporal Patching & CAA (EAP-IG) \\
+\midrule
+L19 & MLP counterproductive, Attn important & MLP highest entropy \\
+L21 & Integration/paradox layer & Attn negative attribution \\
+L24 & \#1 component, sufficient both directions & High attribution, sufficient both directions \\
+L25--L27 & MLP processing begins & Top positive MLP scores \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two independent approaches---different tasks, formats, corruption methods, and metrics---converge on the same subnetwork. This points to a \textbf{general temporal reasoning module} in the Qwen3 architecture, analogous to induction heads for in-context learning or name mover heads for indirect object identification.
+
+Both methods also detect \textbf{competing circuits}: early attention with negative attribution opposing late MLPs with positive attribution, matching the L19 antagonism described below.
+
+\subsection{Geometry of Temporal Encoding}
+
+\subsubsection{Multi-Dimensional Temporal Encoding}
+
+PCA at L24 (destination position) reveals three layers of temporal information:
+
+\begin{itemize}
+    \item \textbf{Continuous magnitude (PC0):} Correlates with $\log_{10}(\text{time horizon})$ at $r = -0.93$. Encodes ``how long?'' as a smooth gradient.
+    \item \textbf{Categorical scale (PC2--PC3):} Correlates at $r = -0.32, -0.29$. UMAP reveals discrete clusters for weeks, months, years, decades that PCA smooths over.
+    \item \textbf{Binary choice:} Perfectly separable from L13 onward. A downstream threshold on the continuous dimension.
+\end{itemize}
+
+The representation is at least 3-dimensional and \textbf{richer than the binary task demands}. Scree plots confirm the feature is not rank-1: PC1 explains 47--76\% depending on component, and 3--5 PCs are needed for 90\%. The model builds a general temporal reasoning module and applies a task-specific decision rule on top.
+
+\subsubsection{Attention is 2D, Residual Stream is 1D}
+
+At L24, \texttt{resid\_pre}/\texttt{mlp\_out}/\texttt{resid\_post} show clean 1D gradients along PC0 ($R^2 = 0.98$--$0.99$). But \texttt{attn\_out} is 2D---points spread across PC0 and PC1, forming clusters rather than a smooth gradient (correlation 0.79). Multiple attention heads contribute distinct directions that collapse to a 1D gradient when summed. This demands head-level decomposition to understand the distinct roles.
+
+\subsubsection{The L24 Crystallization}
+
+Tracking MLP output projections across layers: before L24, lines oscillate with interleaved colors (no stable encoding). At L24, they bifurcate into two stable bands---long horizons above, short below. Intermediate horizons (7 years, pink/magenta) gradually sort between L24 and L35.
+
+This is the \textbf{continuous-to-binary transition}: the graded temporal representation gets thresholded into a discrete choice across the late MLP layers. L24 marks the crystallization point where the model commits to a decision direction.
+
+\subsubsection{Linear Probes}
+
+\texttt{L31\_mlp\_out} at the response position achieves $R^2 = 0.993$ for time-horizon decoding. All top-30 entries are at the response position; no source positions appear. Attention outputs rank below MLP outputs, consistent with the 2D geometry that a 1D probe cannot fully capture.
+
+P121 (a minor contributor in patching) carries the information with slightly less fidelity ($\sim$0.985), showing information is broadcast widely but only causally matters at specific positions.
+
+\subsubsection{Direction Stability and Rotation}
+
+Layer-to-layer cosine similarity stays high ($\sim$0.85--0.95) with dips at L4 and L21 (the integration layer---lowest stability in the L15--L32 range at 0.83). MLP rotates more per layer ($\sim$20--30°) than attention ($\sim$10--20°). Combined rotation is less than the sum, indicating partially constructive interference.
+
+At L34--L35, a \textbf{catastrophic 80° MLP-driven rotation} projects the representation into logit space, explaining L35\_mlp's prominence. The model separates ``processing space'' from ``output space''---temporal features are computed in a representation that doesn't directly encode the answer until the very last step.
+
+\subsection{Default Preference and Competing Circuits}
+
+\subsubsection{The Default}
+
+Without a horizon constraint, the model chooses long-term in 100\% of cases (16/16), with near-certainty. This holds regardless of reward magnitude or delivery time. The model has a \textbf{default temporal preference} that emerges when no explicit constraint is provided.
+
+\subsubsection{Competing Circuits at L19}
+
+L19 attention helps recovery (+0.13) but L19 MLP hurts it ($-0.10$). The EAP-IG work independently finds L19 MLP has the highest entropy. This converging evidence suggests:
+
+\begin{itemize}
+    \item \textbf{L19 MLP} encodes the default preference (favoring long-term)
+    \item \textbf{L19 attention} reads the horizon constraint (which may favor short-term)
+    \item When a short horizon is specified, attention must override the MLP's default
+    \item When no horizon or a long horizon is given, default and constraint agree---no competition
+\end{itemize}
+
+This predicts an asymmetry: short-horizon choices require more circuit activation than long-horizon choices. The model has internalized a default temporal preference during training, likely reflecting the distribution of temporal reasoning in instructional/advisory training data that tends to favor long-term thinking.
+
+\section{Discussion}
+
+\paragraph{A general temporal reasoning module.} The cross-method convergence is our strongest evidence. Two completely independent approaches---structured economic choice and simple A/B temporal preference---identify the same layers, the same phasing, the same competing-circuit structure. This suggests L19--L24 is a reusable subnetwork for temporal reasoning, not a task artifact.
+
+\paragraph{The Read-Refine-Decide pipeline.} The circuit is not a simple relay. Source positions carry the raw input feature; attention in L19--L24 integrates and routes it; L21 compresses redundant signals; L24 crystallizes the continuous representation; MLPs in L28--L35 threshold it into a binary decision. The asymmetric redundancy (over-reading at source, hard bottleneck at destination) is an architecturally sensible robustness strategy.
+
+\paragraph{Multi-dimensional encoding.} The model's temporal representation encodes continuous magnitude + categorical scale + binary choice in partially overlapping but distinct dimensions. This is richer than needed for the binary task and consistent with the superposition hypothesis: general features built during pre-training, repurposed for specific tasks during instruction tuning.
+
+\paragraph{Default preferences and competing circuits.} The L19 antagonism (MLP encoding default, attention reading constraint) mirrors dual-process models in behavioral economics. The model has an intrinsic long-term preference that explicit constraints must override. This is relevant to AI alignment---these hidden default preferences shape outputs when prompts are ambiguous or unconstrained.
+
+\paragraph{Limitations.} We study a single model family (Qwen3-4B). LayerNorm-corrected logit lens has not yet been computed; the near-zero cosine to logit direction may be an artifact. Contrastive pairs partially confound horizon with reward/delivery-time variation. Head-level decomposition and path patching remain future work. The competing-circuits hypothesis at L19 needs direct validation via ablation.
+
+\section{Future Work}
+
+Key extensions include: head-level decomposition at L24 (the 2D attention geometry demands it); neuron analysis at L31 and L35 MLPs; path patching to map circuit edges (L24 attn $\rightarrow$ L31/L35 MLP); L19 MLP ablation (does removing it improve short-horizon accuracy?); no-horizon geometric projection into PCA space; cross-model validation (Qwen3-8B, Llama, GPT-family); steering experiments using the identified circuit; and sparse autoencoder analysis for interpretable features.
+
+\begin{ack}
+Acknowledgments omitted for anonymous submission.
+\end{ack}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+\section{Extended Circuit Analysis}
+
+\subsection{Redundancy Architecture}
+
+The circuit exhibits a characteristic redundancy pattern:
+\begin{itemize}
+    \item \textbf{Source:} Redundant (multiple parallel readers)
+    \item \textbf{Processing:} Moderately redundant (several attention layers carry overlapping information)
+    \item \textbf{Destination:} Non-redundant (single output point)
+\end{itemize}
+
+This fan-out at source $\rightarrow$ converge at destination pattern is architecturally sensible. Cumulative recovery exceeds 2.0$\times$ the clean-corrupted gap, confirming substantial overlap between components.
+
+\subsection{Methodological Note: Noising vs Denoising}
+
+Our systematic comparison reveals:
+\begin{itemize}
+    \item Attention layers: consistently inflated by denoising (sufficient but not necessary)
+    \item MLP layers: better agreement (L31 gap $< 0.05$)
+    \item \texttt{resid\_post}: closest to diagonal (most trustworthy aggregate signal)
+\end{itemize}
+
+We recommend always running both methods: trust noising for bottleneck identification, denoising for sufficiency mapping.
+
+\section{Behavioral Economics Connections}
+
+\subsection{Discount Function}
+
+Measuring $P(\text{patient choice})$ as a function of delay, the model's behavior can be fit to:
+\begin{itemize}
+    \item Exponential discounting: $\delta^t$ (rational benchmark)
+    \item Hyperbolic discounting: $\frac{1}{1+kt}$ (behavioral economics standard)
+    \item Quasi-hyperbolic ($\beta$-$\delta$): $\beta\delta^t$ for $t>0$ (present bias model)
+\end{itemize}
+
+The sharp crossover at $\sim$7 years suggests threshold-like behavior rather than smooth discounting, consistent with the discrete MLP transformation we observe in the circuit.
+
+\subsection{Anomalies}
+
+The model shows several departures from standard economic rationality:
+\begin{itemize}
+    \item Reward-insensitivity: magnitude has minimal effect
+    \item Strong horizon-sensitivity: framing dominates reward structure
+    \item Default long-term preference: when unconstrained, always chooses patient option
+\end{itemize}
+
+These patterns likely reflect training data biases rather than emergent economic reasoning.
+
+\section{Prompt Templates}
+
+\subsection{Intertemporal Choice Format}
+
+\begin{verbatim}
+You are making a financial decision. [Context about scenario]
+
+You are primarily concerned about outcomes in [HORIZON].
+
+Choose one:
+a) [Small-soon option]
+b) [Large-later option]
+
+Respond exactly: "I choose : a )" or "I choose : b )"
+\end{verbatim}
+
+\subsection{CAA Contrastive Pairs}
+
+Example pairs (no economic framing):
+\begin{verbatim}
+Pair 1:
+A: "Focus on: immediate fix"
+B: "Focus on: lasting value"
+
+Pair 2:
+A: "Priority: quick results"
+B: "Priority: sustainable growth"
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\input{checklist.tex}
+
+\end{document}
