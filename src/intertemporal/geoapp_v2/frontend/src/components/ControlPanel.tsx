@@ -1,5 +1,4 @@
 import React from 'react';
-import { Slider } from './ui/Slider';
 import { Select } from './ui/Select';
 import { Toggle } from './ui/Toggle';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
@@ -8,7 +7,7 @@ import { Tabs } from './ui/Tabs';
 interface ControlPanelProps {
   // Layer controls
   layer: number;
-  maxLayer: number;
+  layers: number[];
   onLayerChange: (layer: number) => void;
 
   // Component controls
@@ -57,7 +56,7 @@ const methodLabels: Record<string, string> = {
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   layer,
-  maxLayer,
+  layers,
   onLayerChange,
   component,
   components,
@@ -106,29 +105,26 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     label: c.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
   }));
 
+  // Convert layers to select options
+  const layerOptions = layers.map((l) => ({
+    value: l.toString(),
+    label: `Layer ${l}`,
+  }));
+
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       {/* Layer Control */}
       <Card padding="sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center justify-between">
-            <span>Layer</span>
-            <span className="text-lg font-bold text-gradient">{layer}</span>
-          </CardTitle>
+          <CardTitle className="text-sm">Layer</CardTitle>
         </CardHeader>
         <CardContent className="py-2">
-          <Slider
-            min={0}
-            max={maxLayer}
-            step={1}
-            value={layer}
-            onChange={onLayerChange}
-            formatTooltip={(v) => `Layer ${v}`}
+          <Select
+            options={layerOptions}
+            value={layer.toString()}
+            onChange={(val) => onLayerChange(parseInt(val, 10))}
+            placeholder="Select layer..."
           />
-          <div className="flex justify-between text-xs text-[#4a3f5c]/50 mt-1">
-            <span>0</span>
-            <span>{maxLayer}</span>
-          </div>
         </CardContent>
       </Card>
 

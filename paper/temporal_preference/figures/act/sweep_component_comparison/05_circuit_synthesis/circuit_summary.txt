@@ -1,0 +1,78 @@
+# Circuit Summary
+
+This document summarizes the inferred circuit from activation patching analysis.
+Scores shown as: noising_disruption / denoising_recovery
+
+## Key Finding: Two-Phase Architecture
+
+The circuit operates in two phases:
+1. **Attention phase**: Attention heads read from source positions and route information
+2. **MLP phase**: MLP layers transform and write to destination positions
+
+## Source Positions (Early)
+
+Found 4 key source positions (1 have backup pathways):
+  - P83: 0.963/0.016 (important)
+  - P78: 0.787/-0.049 (important)
+  - P73: 0.752/0.931 (REDUNDANT - has backups)
+  - P98: 0.053/-0.001 (important)
+
+Interpretation: Redundant positions have denoising > noising, meaning
+the model can recover even when these positions are corrupted (backup pathways exist).
+
+## Attention Layers
+
+Top attention layers (ranked by noising disruption):
+  - L24: 0.414/0.364 ★ MULTI-FUNCTION
+  - L30: 0.165/0.152
+  - L29: 0.162/0.137
+  - L23: 0.157/0.198
+  - L21: 0.153/0.209
+
+These layers read from source positions and route information.
+Multi-function layers (L24) appear in both attention AND MLP top lists,
+suggesting they do double-duty processing.
+
+## MLP Layers
+
+Top MLP layers (ranked by noising disruption):
+  - L35: 0.262/0.266
+  - L31: 0.208/0.174
+  - L24: 0.151/0.208 ★ MULTI-FUNCTION
+  - L34: 0.148/0.095
+  - L27: 0.088/0.064
+
+These layers transform information and write to destination positions.
+
+## Destination Positions (Late) - THE BOTTLENECK
+
+Found 4 key destination positions:
+  - P138: 1.000/0.000 (★ BOTTLENECK)
+  - P118: 0.186/0.000 (secondary)
+  - P133: 0.171/0.000 (secondary)
+  - P103: 0.024/-0.001 (secondary)
+
+CRITICAL: 1 position(s) are true bottlenecks (noising > 0.5).
+Corrupting these positions severely disrupts the model's output.
+This is where the final answer is computed.
+
+## Layer-Position Bindings
+
+These show which layers act at which positions (the actual circuit edges):
+
+  - L21-L30 attention reads from P73-P98
+  - L24-L35 MLP writes to P103-P138
+
+## Methodology Notes
+
+- **Noising** (disruption): Replace clean activation with corrupted → measures necessity
+- **Denoising** (recovery): Replace corrupted activation with clean → measures sufficiency
+- High noising + low denoising = necessary but has backups (OR relationship)
+- High noising + high denoising = necessary AND sufficient (AND relationship)
+- The redundancy gap (noising - denoising) indicates how replaceable a component is
+- **Denoising-only positions filtered**: Positions where denoising >> noising are excluded
+  as they indicate artifacts rather than true circuit components
+
+## Circuit Diagram
+
+See information_flow_diagram.png for a visual representation.

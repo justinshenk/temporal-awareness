@@ -249,7 +249,7 @@ class GeoVizDataLoader:
                 n_components=n_components,
                 perplexity=effective_perplexity,
                 random_state=42,
-                n_iter=1000,
+                max_iter=1000,
                 init="pca",
             )
             result = tsne.fit_transform(activations).astype(np.float32)

@@ -131,7 +131,7 @@ function App() {
 
   // Derived state
   const isLoading = configLoading || embeddingLoading || metadataLoading;
-  const maxLayer = config?.layers ? Math.max(...config.layers) : 35;
+  const layers = config?.layers || [DEFAULT_LAYER];
   const components = config?.components || [DEFAULT_COMPONENT];
   const positions_options = config?.positions || [DEFAULT_POSITION];
   const methods = config?.methods || [DEFAULT_METHOD];
@@ -155,7 +155,7 @@ function App() {
         <aside className="w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-white/40 bg-white/30 backdrop-blur-sm">
           <ControlPanel
             layer={layer}
-            maxLayer={maxLayer}
+            layers={layers}
             onLayerChange={setLayer}
             component={component}
             components={components}
