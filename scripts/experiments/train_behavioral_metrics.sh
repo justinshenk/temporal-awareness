@@ -18,7 +18,12 @@ set -euo pipefail
 
 # Load Python 3.12 and activate sae-env
 module load python/3.12.1
-source ~/sae-env/bin/activate
+# Try multiple env locations
+if [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
+    source /home/groups/barbarae/molofsky/ml-env/bin/activate
+elif [ -f ~/sae-env/bin/activate ]; then
+    source ~/sae-env/bin/activate
+fi
 
 # HuggingFace token for gated models (gemma, llama)
 # Reads from ~/.huggingface_token file — create with:
@@ -30,8 +35,9 @@ fi
 # Force unbuffered output so logs stream in real time
 export PYTHONUNBUFFERED=1
 
-# Cache HF models to shared storage (avoids re-download per node)
-export HF_HOME="$HOME/.cache/huggingface"
+# Cache HF models on SCRATCH (100TB, shared across nodes, avoids HOME disk full)
+export HF_HOME="$SCRATCH/.cache/huggingface"
+mkdir -p "$HF_HOME"
 
 # Defaults
 MODEL=${MODEL:-gemma-2-2b}

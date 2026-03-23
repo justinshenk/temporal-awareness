@@ -733,10 +733,13 @@ def run_behavioral_experiment(
         )
     else:
         from transformers import AutoModelForCausalLM, AutoTokenizer
+        import warnings
+        warnings.filterwarnings("ignore", message=".*right-padding was detected.*")
         hf_name = config["hf_name"]
         tokenizer = AutoTokenizer.from_pretrained(hf_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = "left"  # correct for decoder-only generation
         load_kwargs = {"device_map": device if device != "cpu" else None}
         if config.get("is_instruct"):
             load_kwargs["torch_dtype"] = torch.float16
@@ -764,8 +767,14 @@ def run_behavioral_experiment(
 
         task_type = dataset["task_type"]
         examples = dataset["examples"]
-        max_tokens = config["max_new_tokens"]
         is_instruct = config.get("is_instruct", False)
+
+        # MCQ tasks need very few tokens (just a letter + brief explanation)
+        # Code generation needs more tokens for full functions
+        if task_type == "code_generation":
+            max_tokens = config["max_new_tokens"]  # 256-512
+        else:
+            max_tokens = 64  # plenty for MCQ: "The answer is A" etc.
 
         prev_responses = None  # for repetition rate computation
         rep_metrics_list = []
