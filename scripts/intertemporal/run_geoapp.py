@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Run the GeoViz Explorer v2 interactive app.
+"""Run the GeoViz Explorer interactive app.
 
 Usage:
     # Development mode (backend only, run frontend separately):
-    uv run python scripts/intertemporal/run_geoapp_v2.py --dev
+    uv run python scripts/intertemporal/run_geoapp.py --dev
 
     # Production mode (serves built frontend from FastAPI):
-    uv run python scripts/intertemporal/run_geoapp_v2.py
+    uv run python scripts/intertemporal/run_geoapp.py
 
     # Custom data directory:
-    uv run python scripts/intertemporal/run_geoapp_v2.py --data-dir out/geo_test
+    uv run python scripts/intertemporal/run_geoapp.py --data-dir out/geo_test
 
     # Custom port:
-    uv run python scripts/intertemporal/run_geoapp_v2.py --port 8080
+    uv run python scripts/intertemporal/run_geoapp.py --port 8080
+
+    # Or use the shell script to run everything:
+    ./scripts/intertemporal/run_geoapp.sh
 """
 
 import argparse
@@ -31,7 +34,7 @@ FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp_v2" / "frontend"
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run GeoViz Explorer v2 - Interactive 3D visualization with React frontend",
+        description="Run GeoViz Explorer - Interactive 3D visualization with React frontend",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -75,7 +78,7 @@ def main():
     if args.dev:
         # Development mode
         print("=" * 60)
-        print("GeoViz Explorer v2 - DEVELOPMENT MODE")
+        print("GeoViz Explorer - DEVELOPMENT MODE")
         print("=" * 60)
         print()
         print(f"Backend API: http://{args.host}:{args.port}")
@@ -89,7 +92,7 @@ def main():
         print("  npm install  # (first time only)")
         print("  npm run dev")
         print()
-        print("The frontend will be available at http://localhost:5173")
+        print("The frontend will be available at http://localhost:3000")
         print("-" * 60)
         print()
 
@@ -118,7 +121,7 @@ def main():
             sys.exit(1)
 
         print("=" * 60)
-        print("GeoViz Explorer v2 - PRODUCTION MODE")
+        print("GeoViz Explorer - PRODUCTION MODE")
         print("=" * 60)
         print()
         print(f"App URL:  http://{args.host}:{args.port}")
