@@ -120,9 +120,15 @@ def run_head_patching(
             continue
 
         # clean_result: [batch, pos, n_heads, d_model]
+        # Clamp metric_pos to be within bounds of the actual sequence length
+        clean_seq_len = clean_result.shape[1]
+        corrupted_seq_len = corrupted_result.shape[1]
+        clean_metric_pos = min(metric_pos, clean_seq_len - 1)
+        corrupted_metric_pos = min(metric_pos, corrupted_seq_len - 1)
+
         # Get at metric position
-        clean_at_pos = clean_result[0, metric_pos, :, :]  # [n_heads, d_model]
-        corrupted_at_pos = corrupted_result[0, metric_pos, :, :]  # [n_heads, d_model]
+        clean_at_pos = clean_result[0, clean_metric_pos, :, :]  # [n_heads, d_model]
+        corrupted_at_pos = corrupted_result[0, corrupted_metric_pos, :, :]  # [n_heads, d_model]
 
         head_results = []
         for head in range(n_heads):

@@ -108,12 +108,7 @@ def visualize_pair_results(
 
     # Step 4: Fine patching
     if fine_result is not None:
-        visualize_fine_patching(
-            fine_result,
-            pair_out_dir,
-            position_labels,
-            section_markers,
-        )
+        visualize_fine_patching([fine_result], pair_out_dir / "fine_patching")
 
     # Step 5: Component comparison
     if coarse_results and len(coarse_results) > 0:

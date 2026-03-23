@@ -134,6 +134,24 @@ class SimpleBinaryChoice(BinaryChoice):
             return None
         return self.tree.forks[0].next_token_logits
 
+    @property
+    def cache(self) -> dict[str, Any]:
+        """Get activation cache from trajectories.
+
+        Returns the internals from the first trajectory. When running with
+        with_cache=True, this contains the hook outputs captured during
+        the forward pass.
+
+        For binary choices, both trajectories share the same prompt prefix,
+        so activations up to the fork point are identical.
+        """
+        if not self.tree.trajs:
+            return {}
+        traj = self.tree.trajs[0]
+        if hasattr(traj, "internals"):
+            return traj.internals
+        return {}
+
     def pop_heavy(self):
         self.tree.pop_heavy()
 
