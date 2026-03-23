@@ -904,6 +904,8 @@ class ModelRunner:
             device_map=self.device,
             dtype=self.dtype,
             trust_remote_code=True,
+            dispatch=True,  # Efficient lazy loading
+            attn_implementation="eager",  # Required for attention pattern capture
         )
         self._backend = NNsightBackend(self)
 
