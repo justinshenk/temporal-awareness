@@ -2,7 +2,7 @@
 # Submit behavioral metrics jobs for all 5 models on Sherlock
 #
 # Usage:
-#   bash scripts/experiments/submit_behavioral_all.sh          # full runs (200 examples)
+#   bash scripts/experiments/submit_behavioral_all.sh          # full runs (500 examples, reps 1-100)
 #   bash scripts/experiments/submit_behavioral_all.sh --quick   # quick validation (20 examples)
 
 set -euo pipefail
@@ -31,13 +31,13 @@ MEM_MAP[gemma-2-2b]="32G"
 MEM_MAP[Qwen2.5-3B-Instruct]="48G"
 MEM_MAP[Llama-3.1-8B-Instruct]="64G"
 
-# Time limits (generous -- 200 examples should finish well within these)
+# Time limits (extended for 500 examples × 10 rep levels including 30/50/100)
 declare -A TIME_MAP
-TIME_MAP[gpt2]="4:00:00"
-TIME_MAP[pythia-70m]="4:00:00"
-TIME_MAP[gemma-2-2b]="8:00:00"
-TIME_MAP[Qwen2.5-3B-Instruct]="12:00:00"
-TIME_MAP[Llama-3.1-8B-Instruct]="12:00:00"
+TIME_MAP[gpt2]="12:00:00"
+TIME_MAP[pythia-70m]="8:00:00"
+TIME_MAP[gemma-2-2b]="18:00:00"
+TIME_MAP[Qwen2.5-3B-Instruct]="24:00:00"
+TIME_MAP[Llama-3.1-8B-Instruct]="24:00:00"
 
 # GPU constraints per model (ensure enough VRAM)
 # gpt2/pythia: ~1-2GB VRAM, any GPU works

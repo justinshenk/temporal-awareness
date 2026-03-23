@@ -120,8 +120,8 @@ MODEL_CONFIGS = {
     },
 }
 
-REPETITION_COUNTS = [1, 3, 5, 8, 12, 16, 20]
-QUICK_REPETITION_COUNTS = [1, 5, 12]
+REPETITION_COUNTS = [1, 3, 5, 8, 12, 16, 20, 30, 50, 100]
+QUICK_REPETITION_COUNTS = [1, 5, 20]
 
 # Filler templates (same as patience_degradation.py for consistency)
 FILLER_TEMPLATES = [
@@ -523,14 +523,27 @@ def generate_responses(
     """
     results = []
 
+    # Determine model's max context window (input + output must fit)
+    model_max_len = getattr(model.config, "max_position_embeddings",
+                            getattr(model.config, "n_positions", 1024))
+    # Reserve space for generation — truncate input to fit
+    max_input_len = model_max_len - max_new_tokens
+
+    truncation_warned = False
     for i in range(0, len(prompts), batch_size):
         batch = prompts[i:i + batch_size]
 
-        # Tokenize
+        # Tokenize — truncate to leave room for generation within context window
         inputs = tokenizer(
             batch, return_tensors="pt", padding=True, truncation=True,
-            max_length=1024,
+            max_length=max_input_len,
         ).to(device)
+
+        # Warn once if truncation is actually happening
+        if not truncation_warned and inputs["input_ids"].shape[1] >= max_input_len:
+            print(f"    [WARN] Input truncated to {max_input_len} tokens "
+                  f"(model max={model_max_len}, reserved {max_new_tokens} for generation)")
+            truncation_warned = True
 
         with torch.no_grad():
             outputs = model.generate(

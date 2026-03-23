@@ -42,7 +42,7 @@ mkdir -p "$HF_HOME"
 # Defaults
 MODEL=${MODEL:-gemma-2-2b}
 QUICK=${QUICK:-0}
-MAX_EXAMPLES=${MAX_EXAMPLES:-200}
+MAX_EXAMPLES=${MAX_EXAMPLES:-500}
 STAKES=${STAKES:-""}
 WANDB_PROJECT=${WANDB_PROJECT:-patience-degradation}
 
