@@ -1,0 +1,205 @@
+"""FastAPI server for GeoViz visualization backend."""
+
+import os
+from pathlib import Path
+
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from ..geoapp.data_loader import GeoVizDataLoader
+
+from .routes import create_router
+
+# Default paths
+DEFAULT_DATA_DIR = Path("out/geo_viz")
+DEFAULT_FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
+
+
+def create_app(
+    data_dir: Path | str | None = None,
+    frontend_dir: Path | str | None = None,
+    enable_cors: bool = True,
+    warmup: bool = False,
+) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        data_dir: Directory containing geo_viz output data. Defaults to out/geo_viz.
+        frontend_dir: Directory containing built React frontend. Defaults to frontend/dist.
+        enable_cors: Enable CORS for local development. Defaults to True.
+        warmup: Pre-compute embeddings on startup. Defaults to False.
+
+    Returns:
+        Configured FastAPI application instance.
+    """
+    # Resolve data directory
+    if data_dir is None:
+        data_dir = DEFAULT_DATA_DIR
+    data_dir = Path(data_dir)
+
+    # Resolve frontend directory
+    if frontend_dir is None:
+        frontend_dir = DEFAULT_FRONTEND_DIR
+    frontend_dir = Path(frontend_dir)
+
+    # Create data loader
+    data_loader = GeoVizDataLoader(data_dir)
+
+    # Warmup if requested
+    if warmup:
+        print("Pre-computing embeddings...")
+        count = data_loader.warmup(
+            methods=["pca"],
+            progress_callback=lambda cur, tot, desc: print(f"  [{cur}/{tot}] {desc}"),
+        )
+        print(f"Cached {count} embeddings")
+
+    # Create FastAPI app
+    app = FastAPI(
+        title="GeoViz API",
+        description="API for exploring embedding visualizations of transformer activations",
+        version="2.0.0",
+    )
+
+    # Add CORS middleware for local development
+    if enable_cors:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+    # Create and include API router
+    api_router = create_router(data_loader)
+    app.include_router(api_router)
+
+    # Mount static files for frontend if directory exists
+    if frontend_dir.exists():
+        app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+    return app
+
+
+def app_factory() -> FastAPI:
+    """Factory function for uvicorn reload mode.
+
+    Reads configuration from environment variables set by run_app.
+    """
+    data_dir = os.environ.get("GEOVIZ_DATA_DIR")
+    frontend_dir = os.environ.get("GEOVIZ_FRONTEND_DIR")
+    warmup = os.environ.get("GEOVIZ_WARMUP") == "1"
+
+    return create_app(
+        data_dir=data_dir,
+        frontend_dir=frontend_dir,
+        enable_cors=True,
+        warmup=warmup,
+    )
+
+
+def run_app(
+    data_dir: Path | str | None = None,
+    frontend_dir: Path | str | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    warmup: bool = False,
+    reload: bool = False,
+) -> None:
+    """Run the FastAPI application with uvicorn.
+
+    Args:
+        data_dir: Directory containing geo_viz output data.
+        frontend_dir: Directory containing built React frontend.
+        host: Host to bind to. Defaults to 127.0.0.1.
+        port: Port to bind to. Defaults to 8000.
+        warmup: Pre-compute embeddings on startup. Defaults to False.
+        reload: Enable auto-reload for development. Defaults to False.
+    """
+    # Store config in environment for factory function
+    if data_dir:
+        os.environ["GEOVIZ_DATA_DIR"] = str(data_dir)
+    if frontend_dir:
+        os.environ["GEOVIZ_FRONTEND_DIR"] = str(frontend_dir)
+    if warmup:
+        os.environ["GEOVIZ_WARMUP"] = "1"
+
+    print(f"Starting GeoViz API server at http://{host}:{port}")
+    print(f"Data directory: {data_dir or DEFAULT_DATA_DIR}")
+    print(f"API docs: http://{host}:{port}/docs")
+
+    # Use import string for reload mode, direct app otherwise
+    if reload:
+        uvicorn.run(
+            "src.intertemporal.geoapp_v2.server:app_factory",
+            host=host,
+            port=port,
+            reload=reload,
+            factory=True,
+        )
+    else:
+        app = create_app(
+            data_dir=data_dir,
+            frontend_dir=frontend_dir,
+            enable_cors=True,
+            warmup=warmup,
+        )
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+        )
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run GeoViz API server")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=None,
+        help="Directory containing geo_viz output data",
+    )
+    parser.add_argument(
+        "--frontend-dir",
+        type=str,
+        default=None,
+        help="Directory containing built React frontend",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to",
+    )
+    parser.add_argument(
+        "--warmup",
+        action="store_true",
+        help="Pre-compute embeddings on startup",
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development",
+    )
+
+    args = parser.parse_args()
+
+    run_app(
+        data_dir=args.data_dir,
+        frontend_dir=args.frontend_dir,
+        host=args.host,
+        port=args.port,
+        warmup=args.warmup,
+        reload=args.reload,
+    )

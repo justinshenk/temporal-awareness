@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Run the GeoViz Explorer v2 interactive app.
+
+Usage:
+    # Development mode (backend only, run frontend separately):
+    uv run python scripts/intertemporal/run_geoapp_v2.py --dev
+
+    # Production mode (serves built frontend from FastAPI):
+    uv run python scripts/intertemporal/run_geoapp_v2.py
+
+    # Custom data directory:
+    uv run python scripts/intertemporal/run_geoapp_v2.py --data-dir out/geo_test
+
+    # Custom port:
+    uv run python scripts/intertemporal/run_geoapp_v2.py --port 8080
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.intertemporal.geoapp_v2 import run_app
+
+# Frontend directory location
+FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp_v2" / "frontend"
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run GeoViz Explorer v2 - Interactive 3D visualization with React frontend",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="out/geo_viz",
+        help="Path to geo_viz output directory (default: out/geo_viz)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for backend server (default: 8000)",
+    )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Development mode: run backend only, frontend runs separately",
+    )
+    parser.add_argument(
+        "--warmup",
+        action="store_true",
+        help="Pre-compute embeddings on startup",
+    )
+
+    args = parser.parse_args()
+
+    data_dir = Path(args.data_dir)
+    if not data_dir.exists():
+        print(f"Error: Data directory not found: {data_dir}")
+        print("Run the geo_viz pipeline first to generate data.")
+        sys.exit(1)
+
+    if args.dev:
+        # Development mode
+        print("=" * 60)
+        print("GeoViz Explorer v2 - DEVELOPMENT MODE")
+        print("=" * 60)
+        print()
+        print(f"Backend API: http://{args.host}:{args.port}")
+        print(f"API Docs:    http://{args.host}:{args.port}/docs")
+        print(f"Data:        {data_dir}")
+        print()
+        print("-" * 60)
+        print("To run the frontend development server:")
+        print()
+        print(f"  cd {FRONTEND_DIR}")
+        print("  npm install  # (first time only)")
+        print("  npm run dev")
+        print()
+        print("The frontend will be available at http://localhost:5173")
+        print("-" * 60)
+        print()
+
+        # Run backend without serving static files
+        run_app(
+            data_dir=data_dir,
+            frontend_dir=None,  # Don't serve frontend in dev mode
+            host=args.host,
+            port=args.port,
+            warmup=args.warmup,
+            reload=True,  # Enable auto-reload in dev mode
+        )
+    else:
+        # Production mode
+        frontend_dist = FRONTEND_DIR / "dist"
+
+        if not frontend_dist.exists():
+            print("Error: Frontend build not found!")
+            print()
+            print("To build the frontend:")
+            print(f"  cd {FRONTEND_DIR}")
+            print("  npm install")
+            print("  npm run build")
+            print()
+            print("Or use --dev mode to run frontend separately.")
+            sys.exit(1)
+
+        print("=" * 60)
+        print("GeoViz Explorer v2 - PRODUCTION MODE")
+        print("=" * 60)
+        print()
+        print(f"App URL:  http://{args.host}:{args.port}")
+        print(f"API Docs: http://{args.host}:{args.port}/docs")
+        print(f"Data:     {data_dir}")
+        print()
+
+        run_app(
+            data_dir=data_dir,
+            frontend_dir=frontend_dist,
+            host=args.host,
+            port=args.port,
+            warmup=args.warmup,
+            reload=False,
+        )
+
+
+if __name__ == "__main__":
+    main()
