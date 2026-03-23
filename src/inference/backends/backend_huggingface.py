@@ -14,31 +14,56 @@ class HuggingFaceBackend(Backend):
     """Backend using HuggingFace Transformers for model inference and interventions.
 
     This backend uses raw PyTorch hooks for activation caching and interventions.
+    Supports per-head attention pattern capture and weight matrix access for
+    Qwen3, Llama, and similar architectures.
     """
 
     def __init__(self, runner: Any, tokenizer: Any):
         super().__init__(runner)
         self._tokenizer = tokenizer
+        config = self.runner._model.config
+
         # Detect model architecture and cache layer references
         if hasattr(self.runner._model, "transformer"):
             self._layers_attr = "transformer.h"
             self._layers = self.runner._model.transformer.h
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.n_embd
+            self._d_model = config.n_embd
+            self._n_heads = config.n_head
+            self._d_head = self._d_model // self._n_heads
+            self._n_kv_heads = getattr(config, "n_head", self._n_heads)
+            self._arch_type = "gpt2"
         elif hasattr(self.runner._model, "gpt_neox"):
             self._layers_attr = "gpt_neox.layers"
             self._layers = self.runner._model.gpt_neox.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
+            self._d_model = config.hidden_size
+            self._n_heads = config.num_attention_heads
+            self._d_head = self._d_model // self._n_heads
+            self._n_kv_heads = getattr(
+                config, "num_key_value_heads", self._n_heads
+            )
+            self._arch_type = "gpt_neox"
         elif hasattr(self.runner._model, "model") and hasattr(
             self.runner._model.model, "layers"
         ):
             self._layers_attr = "model.layers"
             self._layers = self.runner._model.model.layers
             self._n_layers = len(self._layers)
-            self._d_model = self.runner._model.config.hidden_size
+            self._d_model = config.hidden_size
+            self._n_heads = config.num_attention_heads
+            self._d_head = getattr(
+                config, "head_dim", self._d_model // self._n_heads
+            )
+            self._n_kv_heads = getattr(
+                config, "num_key_value_heads", self._n_heads
+            )
+            self._arch_type = "llama"  # Covers Llama, Qwen3, Mistral, etc.
         else:
             raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
+
+        # Calculate GQA group size
+        self._n_kv_groups = self._n_heads // self._n_kv_heads
 
     def get_tokenizer(self):
         return self._tokenizer
@@ -48,6 +73,16 @@ class HuggingFaceBackend(Backend):
 
     def get_d_model(self) -> int:
         return self._d_model
+
+    def get_n_heads(self) -> int:
+        return self._n_heads
+
+    def get_d_head(self) -> int:
+        return self._d_head
+
+    def get_n_kv_heads(self) -> int:
+        """Get the number of key-value heads (for GQA models)."""
+        return self._n_kv_heads
 
     def encode(
         self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
@@ -210,6 +245,107 @@ class HuggingFaceBackend(Backend):
             return mlp.activation_fn
         return None
 
+    def _get_attn_module(self, layer_idx: int):
+        """Get the self-attention module for a layer."""
+        layer = self._layers[layer_idx]
+        if hasattr(layer, "self_attn"):
+            return layer.self_attn  # Llama, Qwen3, Mistral
+        elif hasattr(layer, "attn"):
+            return layer.attn  # GPT-2
+        elif hasattr(layer, "attention"):
+            return layer.attention  # GPT-NeoX
+        raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
+
+    def _register_attention_pattern_hook(
+        self, attn_module, layer_idx: int, cache: dict
+    ):
+        """Register a hook to capture attention patterns from Q and K.
+
+        This manually computes attention patterns because SDPA doesn't support
+        output_attentions=True. We hook into the attention module and compute:
+        attn_weights = softmax(Q @ K^T / sqrt(d_head))
+
+        For GQA models, K is expanded to match Q head count before computing patterns.
+        """
+
+        def attention_hook(module, args, kwargs, output):
+            # For Llama/Qwen3/Mistral style attention, we need to intercept
+            # the hidden_states input and compute Q, K ourselves
+            hidden_states = args[0] if args else kwargs.get("hidden_states")
+            if hidden_states is None:
+                return
+
+            batch_size, seq_len, _ = hidden_states.shape
+
+            # Compute Q, K projections
+            if hasattr(module, "q_proj"):
+                # Llama/Qwen3/Mistral style
+                q = module.q_proj(hidden_states)
+                k = module.k_proj(hidden_states)
+
+                # Reshape to [batch, n_heads, seq, d_head]
+                q = q.view(batch_size, seq_len, self._n_heads, self._d_head)
+                q = q.transpose(1, 2)  # [batch, n_heads, seq, d_head]
+
+                k = k.view(batch_size, seq_len, self._n_kv_heads, self._d_head)
+                k = k.transpose(1, 2)  # [batch, n_kv_heads, seq, d_head]
+
+                # Apply Q/K normalization if present (Qwen3 uses this)
+                if hasattr(module, "q_norm"):
+                    q = module.q_norm(q)
+                if hasattr(module, "k_norm"):
+                    k = module.k_norm(k)
+
+                # Expand K for GQA
+                if self._n_kv_heads != self._n_heads:
+                    k = k.repeat_interleave(self._n_kv_groups, dim=1)
+
+                # Compute attention scores: Q @ K^T / sqrt(d_head)
+                scale = self._d_head ** -0.5
+                attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale
+
+                # Apply causal mask
+                causal_mask = torch.triu(
+                    torch.ones(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device),
+                    diagonal=1,
+                )
+                attn_weights = attn_weights.masked_fill(causal_mask, float("-inf"))
+
+                # Softmax to get attention probabilities
+                attn_weights = torch.nn.functional.softmax(
+                    attn_weights, dim=-1, dtype=torch.float32
+                ).to(hidden_states.dtype)
+
+                # Store in cache
+                cache[f"blocks.{layer_idx}.attn.hook_pattern"] = attn_weights.detach()
+
+            elif hasattr(module, "c_attn"):
+                # GPT-2 style combined projection
+                qkv = module.c_attn(hidden_states)
+                q, k, v = qkv.chunk(3, dim=-1)
+
+                q = q.view(batch_size, seq_len, self._n_heads, self._d_head)
+                q = q.transpose(1, 2)
+                k = k.view(batch_size, seq_len, self._n_heads, self._d_head)
+                k = k.transpose(1, 2)
+
+                scale = self._d_head ** -0.5
+                attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale
+
+                causal_mask = torch.triu(
+                    torch.ones(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device),
+                    diagonal=1,
+                )
+                attn_weights = attn_weights.masked_fill(causal_mask, float("-inf"))
+
+                attn_weights = torch.nn.functional.softmax(
+                    attn_weights, dim=-1, dtype=torch.float32
+                ).to(hidden_states.dtype)
+
+                cache[f"blocks.{layer_idx}.attn.hook_pattern"] = attn_weights.detach()
+
+        return attn_module.register_forward_hook(attention_hook, with_kwargs=True)
+
     def run_with_cache(
         self,
         input_ids: torch.Tensor,
@@ -232,34 +368,83 @@ class HuggingFaceBackend(Backend):
             if names_filter is None or names_filter(mlp_post_name):
                 hooks_to_capture.append((i, "mlp_post", mlp_post_name))
 
+            # Attention pattern hooks (TransformerLens-compatible naming)
+            attn_pattern_name = f"blocks.{i}.attn.hook_pattern"
+            if names_filter is None or names_filter(attn_pattern_name):
+                hooks_to_capture.append((i, "attn_pattern", attn_pattern_name))
+
+            # Per-head attention output (hook_z)
+            attn_z_name = f"blocks.{i}.attn.hook_z"
+            if names_filter is None or names_filter(attn_z_name):
+                hooks_to_capture.append((i, "attn_z", attn_z_name))
+
         for layer_idx, component, name in hooks_to_capture:
             if component == "mlp_post":
                 # Hook the activation function to get neuron activations
                 module = self._get_mlp_act_fn(layer_idx)
                 if module is None:
                     continue
+
+                def make_hook(hook_name, use_input=False):
+                    def hook_fn(mod, inp, out):
+                        if use_input:
+                            val = inp[0] if isinstance(inp, tuple) else inp
+                        else:
+                            val = out[0] if isinstance(out, tuple) else out
+                        cache[hook_name] = val.detach()
+
+                    return hook_fn
+
+                hooks.append(module.register_forward_hook(make_hook(name, False)))
+
+            elif component in ("attn_pattern", "attn_z"):
+                # These are handled via output_attentions below
+                pass
+
             else:
                 module = self._get_component_module(layer_idx, component)
 
-            def make_hook(hook_name, use_input=False):
-                def hook_fn(mod, inp, out):
-                    if use_input:
-                        val = inp[0] if isinstance(inp, tuple) else inp
-                    else:
-                        val = out[0] if isinstance(out, tuple) else out
-                    cache[hook_name] = val.detach()
+                def make_hook(hook_name, use_input=False):
+                    def hook_fn(mod, inp, out):
+                        if use_input:
+                            val = inp[0] if isinstance(inp, tuple) else inp
+                        else:
+                            val = out[0] if isinstance(out, tuple) else out
+                        cache[hook_name] = val.detach()
 
-                return hook_fn
+                    return hook_fn
 
-            use_input = component == "resid_pre"
-            hooks.append(module.register_forward_hook(make_hook(name, use_input)))
+                use_input = component == "resid_pre"
+                hooks.append(module.register_forward_hook(make_hook(name, use_input)))
+
+        # Check if we need attention patterns
+        need_attn_patterns = any(
+            c in ("attn_pattern", "attn_z") for _, c, _ in hooks_to_capture
+        )
+
+        # Set up attention pattern hooks if needed
+        # We hook into the attention module to capture Q, K and compute patterns manually
+        # This is needed because SDPA doesn't support output_attentions
+        attn_hooks = []
+        if need_attn_patterns:
+            for layer_idx in range(self._n_layers):
+                pattern_name = f"blocks.{layer_idx}.attn.hook_pattern"
+                if names_filter is None or names_filter(pattern_name):
+                    attn_module = self._get_attn_module(layer_idx)
+                    hook = self._register_attention_pattern_hook(
+                        attn_module, layer_idx, cache
+                    )
+                    attn_hooks.append(hook)
 
         try:
             with torch.no_grad():
                 outputs = self.runner._model(input_ids)
             logits = outputs.logits
+
         finally:
             for hook in hooks:
+                hook.remove()
+            for hook in attn_hooks:
                 hook.remove()
 
         return logits, cache
@@ -286,32 +471,69 @@ class HuggingFaceBackend(Backend):
             if names_filter is None or names_filter(mlp_post_name):
                 hooks_to_capture.append((i, "mlp_post", mlp_post_name))
 
+            # Attention pattern hooks
+            attn_pattern_name = f"blocks.{i}.attn.hook_pattern"
+            if names_filter is None or names_filter(attn_pattern_name):
+                hooks_to_capture.append((i, "attn_pattern", attn_pattern_name))
+
         for layer_idx, component, name in hooks_to_capture:
             if component == "mlp_post":
                 module = self._get_mlp_act_fn(layer_idx)
                 if module is None:
                     continue
+
+                def make_hook(hook_name):
+                    def hook_fn(mod, inp, out):
+                        val = out[0] if isinstance(out, tuple) else out
+                        cache[hook_name] = val
+
+                    return hook_fn
+
+                hooks.append(module.register_forward_hook(make_hook(name)))
+
+            elif component == "attn_pattern":
+                # Handled via output_attentions
+                pass
+
             else:
                 module = self._get_component_module(layer_idx, component)
 
-            def make_hook(hook_name, use_input=False):
-                def hook_fn(mod, inp, out):
-                    if use_input:
-                        val = inp[0] if isinstance(inp, tuple) else inp
-                    else:
-                        val = out[0] if isinstance(out, tuple) else out
-                    cache[hook_name] = val
+                def make_hook(hook_name, use_input=False):
+                    def hook_fn(mod, inp, out):
+                        if use_input:
+                            val = inp[0] if isinstance(inp, tuple) else inp
+                        else:
+                            val = out[0] if isinstance(out, tuple) else out
+                        cache[hook_name] = val
 
-                return hook_fn
+                    return hook_fn
 
-            use_input = component == "resid_pre"
-            hooks.append(module.register_forward_hook(make_hook(name, use_input)))
+                use_input = component == "resid_pre"
+                hooks.append(module.register_forward_hook(make_hook(name, use_input)))
+
+        # Check if we need attention patterns
+        need_attn_patterns = any(c == "attn_pattern" for _, c, _ in hooks_to_capture)
+
+        # Set up attention pattern hooks if needed
+        attn_hooks = []
+        if need_attn_patterns:
+            for layer_idx in range(self._n_layers):
+                pattern_name = f"blocks.{layer_idx}.attn.hook_pattern"
+                if names_filter is None or names_filter(pattern_name):
+                    attn_module = self._get_attn_module(layer_idx)
+                    hook = self._register_attention_pattern_hook(
+                        attn_module, layer_idx, cache
+                    )
+                    attn_hooks.append(hook)
 
         try:
             outputs = self.runner._model(input_ids)
             logits = outputs.logits
+
         finally:
             for hook in hooks:
+                hook.remove()
+            for hook in attn_hooks:
                 hook.remove()
 
         return logits, cache
@@ -782,3 +1004,204 @@ class HuggingFaceBackend(Backend):
             all_logprobs.append(log_probs[token_id].item())
 
         return all_token_ids, all_logprobs
+
+    def _get_qkv_proj_weights(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Get Q, K, V projection weights for a layer.
+
+        Returns weights in TransformerLens format: [n_heads, d_model, d_head]
+        Handles both separate q/k/v projections and combined qkv projections.
+        Also handles GQA where K/V may have fewer heads than Q.
+        """
+        attn = self._get_attn_module(layer_idx)
+
+        if self._arch_type == "llama":
+            # Llama, Qwen3, Mistral use separate projections
+            # q_proj: [n_heads * d_head, d_model]
+            # k_proj: [n_kv_heads * d_head, d_model]
+            # v_proj: [n_kv_heads * d_head, d_model]
+            q_weight = attn.q_proj.weight  # [n_heads * d_head, d_model]
+            k_weight = attn.k_proj.weight  # [n_kv_heads * d_head, d_model]
+            v_weight = attn.v_proj.weight  # [n_kv_heads * d_head, d_model]
+
+            # Reshape to [n_heads, d_head, d_model] then transpose to [n_heads, d_model, d_head]
+            W_Q = q_weight.view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_K = k_weight.view(self._n_kv_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_V = v_weight.view(self._n_kv_heads, self._d_head, self._d_model).transpose(1, 2)
+
+            # Expand K, V for GQA to match Q head count
+            if self._n_kv_heads != self._n_heads:
+                W_K = W_K.repeat_interleave(self._n_kv_groups, dim=0)
+                W_V = W_V.repeat_interleave(self._n_kv_groups, dim=0)
+
+            return W_Q, W_K, W_V
+
+        elif self._arch_type == "gpt2":
+            # GPT-2 uses combined c_attn projection
+            # c_attn.weight: [d_model, 3 * n_heads * d_head]
+            c_attn_weight = attn.c_attn.weight  # [d_model, 3 * d_model]
+            qkv = c_attn_weight.chunk(3, dim=1)  # 3 x [d_model, n_heads * d_head]
+
+            W_Q = qkv[0].T.view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_K = qkv[1].T.view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_V = qkv[2].T.view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+
+            return W_Q, W_K, W_V
+
+        elif self._arch_type == "gpt_neox":
+            # GPT-NeoX uses combined query_key_value projection
+            qkv_weight = attn.query_key_value.weight  # [3 * n_heads * d_head, d_model]
+            qkv = qkv_weight.chunk(3, dim=0)  # 3 x [n_heads * d_head, d_model]
+
+            W_Q = qkv[0].view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_K = qkv[1].view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+            W_V = qkv[2].view(self._n_heads, self._d_head, self._d_model).transpose(1, 2)
+
+            return W_Q, W_K, W_V
+
+        raise ValueError(f"Unknown architecture type: {self._arch_type}")
+
+    def _get_o_proj_weight(self, layer_idx: int) -> torch.Tensor:
+        """Get output projection weight for a layer.
+
+        Returns weight in TransformerLens format: [n_heads, d_head, d_model]
+        """
+        attn = self._get_attn_module(layer_idx)
+
+        if self._arch_type == "llama":
+            # o_proj: [d_model, n_heads * d_head]
+            o_weight = attn.o_proj.weight  # [d_model, n_heads * d_head]
+            # Reshape to [d_model, n_heads, d_head] then permute to [n_heads, d_head, d_model]
+            W_O = o_weight.view(self._d_model, self._n_heads, self._d_head)
+            W_O = W_O.permute(1, 2, 0)  # [n_heads, d_head, d_model]
+            return W_O
+
+        elif self._arch_type == "gpt2":
+            # c_proj: [n_heads * d_head, d_model]
+            c_proj_weight = attn.c_proj.weight  # [n_heads * d_head, d_model]
+            W_O = c_proj_weight.view(self._n_heads, self._d_head, self._d_model)
+            return W_O
+
+        elif self._arch_type == "gpt_neox":
+            # dense: [d_model, n_heads * d_head]
+            dense_weight = attn.dense.weight  # [d_model, n_heads * d_head]
+            W_O = dense_weight.view(self._d_model, self._n_heads, self._d_head)
+            W_O = W_O.permute(1, 2, 0)  # [n_heads, d_head, d_model]
+            return W_O
+
+        raise ValueError(f"Unknown architecture type: {self._arch_type}")
+
+    def get_W_Q(self, layer: int | None = None) -> torch.Tensor:
+        """Get query weight matrix W_Q.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is not None:
+            W_Q, _, _ = self._get_qkv_proj_weights(layer)
+            return W_Q
+
+        all_W_Q = []
+        for i in range(self._n_layers):
+            W_Q, _, _ = self._get_qkv_proj_weights(i)
+            all_W_Q.append(W_Q)
+        return torch.stack(all_W_Q)
+
+    def get_W_K(self, layer: int | None = None) -> torch.Tensor:
+        """Get key weight matrix W_K.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is not None:
+            _, W_K, _ = self._get_qkv_proj_weights(layer)
+            return W_K
+
+        all_W_K = []
+        for i in range(self._n_layers):
+            _, W_K, _ = self._get_qkv_proj_weights(i)
+            all_W_K.append(W_K)
+        return torch.stack(all_W_K)
+
+    def get_W_V(self, layer: int | None = None) -> torch.Tensor:
+        """Get value weight matrix W_V.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is not None:
+            _, _, W_V = self._get_qkv_proj_weights(layer)
+            return W_V
+
+        all_W_V = []
+        for i in range(self._n_layers):
+            _, _, W_V = self._get_qkv_proj_weights(i)
+            all_W_V.append(W_V)
+        return torch.stack(all_W_V)
+
+    def get_W_O(self, layer: int | None = None) -> torch.Tensor:
+        """Get output weight matrix W_O.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_head, d_model]
+            If layer specified: [n_heads, d_head, d_model]
+        """
+        if layer is not None:
+            return self._get_o_proj_weight(layer)
+
+        all_W_O = []
+        for i in range(self._n_layers):
+            W_O = self._get_o_proj_weight(i)
+            all_W_O.append(W_O)
+        return torch.stack(all_W_O)
+
+    def get_W_OV(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined OV matrix for a specific head.
+
+        W_OV = W_V @ W_O projects input through value and output matrices.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_OV matrix of shape [d_model, d_model]
+        """
+        _, _, W_V = self._get_qkv_proj_weights(layer)
+        W_O = self._get_o_proj_weight(layer)
+
+        # W_V[head]: [d_model, d_head]
+        # W_O[head]: [d_head, d_model]
+        return W_V[head] @ W_O[head]  # [d_model, d_model]
+
+    def get_W_QK(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined QK matrix for a specific head.
+
+        W_QK = W_Q @ W_K^T determines attention pattern computation.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_QK matrix of shape [d_model, d_model]
+        """
+        W_Q, W_K, _ = self._get_qkv_proj_weights(layer)
+
+        # W_Q[head]: [d_model, d_head]
+        # W_K[head]: [d_model, d_head]
+        return W_Q[head] @ W_K[head].T  # [d_model, d_model]
