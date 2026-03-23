@@ -41,14 +41,14 @@ TIME_MAP[Llama-3.1-8B-Instruct]="24:00:00"
 
 # GPU constraints per model (ensure enough VRAM)
 # gpt2/pythia: ~1-2GB VRAM, any GPU works
-# gemma-2-2b: ~5GB fp32 weights + activations, need 16GB with batch=8 and 500 examples
-# Qwen 3B: ~7GB fp16, need at least 16GB
+# gemma-2-2b: ~5GB fp32 weights + activations at rep 100, need 24GB
+# Qwen 3B: ~7GB fp16, need 24GB for long seqs at rep 100
 # Llama 8B: ~16GB fp16 weights + activations for long seqs at rep 100, need 40GB+
 declare -A GPU_CONSTRAINT
 GPU_CONSTRAINT[gpt2]=""
 GPU_CONSTRAINT[pythia-70m]=""
-GPU_CONSTRAINT[gemma-2-2b]="GPU_MEM:16GB"
-GPU_CONSTRAINT[Qwen2.5-3B-Instruct]="GPU_MEM:16GB"
+GPU_CONSTRAINT[gemma-2-2b]="GPU_MEM:24GB"
+GPU_CONSTRAINT[Qwen2.5-3B-Instruct]="GPU_MEM:24GB"
 GPU_CONSTRAINT[Llama-3.1-8B-Instruct]="GPU_MEM:40GB"
 
 if [ "$QUICK" -eq 1 ]; then
