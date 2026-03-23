@@ -5,7 +5,7 @@ from typing import Literal
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 
-from ..geoapp.data_loader import GeoVizDataLoader
+from .data_loader import GeoVizDataLoader
 
 from .models import (
     ColorValues,

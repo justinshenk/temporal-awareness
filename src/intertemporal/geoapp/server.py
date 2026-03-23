@@ -134,7 +134,7 @@ def run_app(
     # Use import string for reload mode, direct app otherwise
     if reload:
         uvicorn.run(
-            "src.intertemporal.geoapp_v2.server:app_factory",
+            "src.intertemporal.geoapp.server:app_factory",
             host=host,
             port=port,
             reload=reload,

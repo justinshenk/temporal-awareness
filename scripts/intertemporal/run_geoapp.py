@@ -26,10 +26,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.intertemporal.geoapp_v2 import run_app
+from src.intertemporal.geoapp import run_app
 
 # Frontend directory location
-FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp_v2" / "frontend"
+FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp" / "frontend"
 
 
 def main():

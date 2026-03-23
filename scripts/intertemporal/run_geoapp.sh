@@ -9,7 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-FRONTEND_DIR="$PROJECT_ROOT/src/intertemporal/geoapp_v2/frontend"
+FRONTEND_DIR="$PROJECT_ROOT/src/intertemporal/geoapp/frontend"
 
 # Default data directory
 DATA_DIR="${1:-out/geometry}"
