@@ -71,7 +71,7 @@ def load_prompts(
         data = json.load(f)
 
     clean_prompts = []
-    pairs = data.get("pairs", [])
+    pairs = data.get("data", [])
 
     # Accept either raw prompt strings or dict records containing a question field.
     for pair in pairs:
