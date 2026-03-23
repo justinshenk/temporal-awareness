@@ -796,11 +796,20 @@ def run_behavioral_experiment(
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "left"  # correct for decoder-only generation
-        load_kwargs = {"device_map": device if device != "cpu" else None}
-        if config.get("is_instruct"):
+        # Use "auto" device_map when multiple GPUs available, otherwise pin to device
+        n_gpus = torch.cuda.device_count() if device != "cpu" else 0
+        if n_gpus > 1:
+            load_kwargs = {"device_map": "auto"}
+            print(f"  Using {n_gpus} GPUs with device_map='auto'")
+        elif device != "cpu":
+            load_kwargs = {"device_map": device}
+        else:
+            load_kwargs = {}
+        # Always use fp16 for models > 1B params to save VRAM
+        if config.get("is_instruct") or model_name in ("gemma-2-2b",):
             load_kwargs["torch_dtype"] = torch.float16
         model = AutoModelForCausalLM.from_pretrained(hf_name, **load_kwargs)
-        if device == "cpu" or load_kwargs.get("device_map") is None:
+        if device == "cpu" or "device_map" not in load_kwargs:
             model = model.to(device)
 
         def generate_fn(prompts, max_tokens):
