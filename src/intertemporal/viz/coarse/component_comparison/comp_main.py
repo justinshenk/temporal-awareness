@@ -39,7 +39,7 @@ def plot_all_component_comparisons(
     Args:
         results_by_component: Dict mapping component name to its results
         output_dir: Directory to save plots
-        step_size: Step size to use for extracting data
+        step_size: Step size to use for extracting layer data (position step size is auto-detected)
         processed_results: Pre-computed analysis results (optional)
     """
     output_dir = Path(output_dir)
@@ -55,6 +55,15 @@ def plot_all_component_comparisons(
     for d in [sanity_dir, overview_dir, decomp_dir, redundancy_dir, synthesis_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
+    # Detect position step size from the data (may differ from layer step size)
+    pos_step_size = step_size
+    for comp in COMPONENTS:
+        if comp in results_by_component:
+            result = results_by_component[comp]
+            if result.position_step_sizes:
+                pos_step_size = result.position_step_sizes[0]
+                break
+
     # Extract layer and position data for each component
     layer_data = {}
     pos_data = {}
@@ -62,7 +71,7 @@ def plot_all_component_comparisons(
         if comp in results_by_component:
             result = results_by_component[comp]
             layer_data[comp] = result.get_layer_results_for_step(step_size)
-            pos_data[comp] = result.get_position_results_for_step(step_size)
+            pos_data[comp] = result.get_position_results_for_step(pos_step_size)
 
     if not layer_data:
         print("[viz] No component data available for comparison plots")

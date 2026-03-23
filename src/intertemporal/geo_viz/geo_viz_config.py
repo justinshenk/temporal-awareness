@@ -94,7 +94,14 @@ class TargetSpec:
 
     @property
     def key(self) -> str:
-        """Unique key for this target."""
+        """Unique key for this target.
+
+        For named positions: L21_resid_post_Pdest
+        For absolute positions (P86): L21_resid_post_P86 (no double P)
+        """
+        if is_absolute_position(self.position):
+            # Position is already "P86", so just use the numeric part
+            return f"L{self.layer}_{self.component}_{self.position}"
         return f"L{self.layer}_{self.component}_P{self.position}"
 
     @property

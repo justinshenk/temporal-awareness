@@ -10,7 +10,11 @@ import gc
 import json
 import logging
 
-from .geo_viz_analysis import run_streaming_analysis
+from .geo_viz_analysis import (
+    compute_continuous_time_probe,
+    compute_cross_position_similarity,
+    run_streaming_analysis,
+)
 from .geo_viz_config import GeoVizConfig
 from .geo_viz_data import (
     collect_samples,
@@ -18,7 +22,8 @@ from .geo_viz_data import (
     load_cached_data,
     save_data,
 )
-from .geo_viz_plotting import generate_all_plots
+from .geo_viz_logit_lens import LogitLensResult, run_logit_lens_from_cache
+from .geo_viz_plotting import generate_all_plots, plot_logit_lens
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,10 @@ def run_geo_viz_pipeline(
     config: GeoVizConfig,
     use_cache: bool = True,
     skip_extraction: bool = False,
+    run_cross_position_similarity: bool = True,
+    run_continuous_time_probe: bool = True,
+    run_logit_lens: bool = False,
+    logit_lens_runner=None,
 ) -> dict:
     """Run the full geometric visualization pipeline.
 
@@ -39,6 +48,14 @@ def run_geo_viz_pipeline(
         config: Pipeline configuration
         use_cache: Whether to use cached data if available
         skip_extraction: Skip sample generation and extraction (requires cache)
+        run_cross_position_similarity: Run cross-position cosine similarity analysis
+            (compares PC0 directions at source vs destination positions)
+        run_continuous_time_probe: Run continuous time horizon regression
+            (predicts time_horizon_months from source position activations)
+        run_logit_lens: Run logit lens analysis with LayerNorm correction.
+            Requires logit_lens_runner to be provided.
+        logit_lens_runner: ModelRunner with TransformerLens backend for logit lens.
+            Required if run_logit_lens is True.
 
     Returns:
         Dictionary with summary (not full results to save memory)
@@ -95,6 +112,44 @@ def run_geo_viz_pipeline(
     logger.info("=" * 60)
     linear_probe_results, pca_results, embedding_results = run_streaming_analysis(data, config)
 
+    # Force GC before additional analyses
+    gc.collect()
+
+    # Step 2b: Run continuous time probe on source positions (optional)
+    continuous_time_results = None
+    if run_continuous_time_probe:
+        logger.info("\n" + "=" * 60)
+        logger.info("Running Continuous Time Probe (Source Positions)")
+        logger.info("=" * 60)
+        continuous_time_results = compute_continuous_time_probe(data, config)
+
+    # Step 2c: Compute cross-position similarity (optional)
+    cross_position_results = None
+    if run_cross_position_similarity:
+        logger.info("\n" + "=" * 60)
+        logger.info("Computing Cross-Position Similarity")
+        logger.info("=" * 60)
+        cross_position_results = compute_cross_position_similarity(pca_results, config)
+
+    # Step 2d: Run logit lens analysis (optional)
+    logit_lens_result = None
+    if run_logit_lens:
+        if logit_lens_runner is None:
+            logger.warning("run_logit_lens=True but no runner provided, skipping logit lens")
+        else:
+            logger.info("\n" + "=" * 60)
+            logger.info("Running Logit Lens Analysis (with LayerNorm)")
+            logger.info("=" * 60)
+            logit_lens_result = run_logit_lens_from_cache(
+                logit_lens_runner, data, config,
+                token_a_str="a", token_b_str="b"
+            )
+            if logit_lens_result is not None:
+                # Save logit lens results
+                logit_lens_dir = config.output_dir / "results" / "logit_lens"
+                logit_lens_result.save(logit_lens_dir)
+                logger.info(f"Saved logit lens results to {logit_lens_dir}")
+
     # Force GC before plotting
     gc.collect()
 
@@ -103,8 +158,16 @@ def run_geo_viz_pipeline(
     logger.info("Generating Plots")
     logger.info("=" * 60)
     generate_all_plots(
-        data, linear_probe_results, pca_results, embedding_results, config
+        data, linear_probe_results, pca_results, embedding_results, config,
+        cross_position_results=cross_position_results,
+        continuous_time_results=continuous_time_results,
     )
+
+    # Step 3b: Generate logit lens plots (if available)
+    if logit_lens_result is not None:
+        logger.info("Generating logit lens plots...")
+        logit_lens_plot_dir = config.output_dir / "plots" / "12_logit_lens"
+        plot_logit_lens(logit_lens_result, logit_lens_plot_dir)
 
     # Build summary (minimal memory)
     summary = {
@@ -124,6 +187,21 @@ def run_geo_viz_pipeline(
         },
     }
 
+    if continuous_time_results:
+        summary["continuous_time_probe"] = {
+            k: {"r2": v.r2_mean, "r2_std": v.r2_std, "corr": v.correlation}
+            for k, v in continuous_time_results.items()
+        }
+
+    if cross_position_results:
+        summary["cross_position_similarity"] = {
+            k: {"best_sim": v.best_similarity, "mean_sim": v.mean_similarity}
+            for k, v in cross_position_results.items()
+        }
+
+    if logit_lens_result is not None:
+        summary["logit_lens"] = logit_lens_result.to_dict()
+
     with open(config.output_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
@@ -134,20 +212,45 @@ def run_geo_viz_pipeline(
     logger.info(f"Samples: {len(data.samples)}")
     logger.info(f"Targets: {len(available_targets)}")
 
-    # Top R² scores
-    logger.info("\nTop 10 Linear Probe R² Scores:")
+    # Top R² scores (destination positions - binary choice decoding)
+    logger.info("\nTop 10 Linear Probe R² Scores (Destination):")
     sorted_results = sorted(
         linear_probe_results.items(), key=lambda x: x[1].r2_mean, reverse=True
     )[:10]
     for k, v in sorted_results:
-        pos_type = "DEST" if "Presponse" in k or "P14" in k else "SRC"
+        pos_type = "DEST" if "Presponse" in k or "Pdest" in k else "SRC"
         logger.info(f"  [{pos_type}] {k}: R²={v.r2_mean:.3f}")
+
+    # Top R² scores for continuous time probe (source positions)
+    if continuous_time_results:
+        logger.info("\nTop 10 Continuous Time Probe R² Scores (Source):")
+        sorted_continuous = sorted(
+            continuous_time_results.items(), key=lambda x: x[1].r2_mean, reverse=True
+        )[:10]
+        for k, v in sorted_continuous:
+            logger.info(f"  [SRC] {k}: R²={v.r2_mean:.3f}")
+
+    # Logit lens summary
+    if logit_lens_result is not None:
+        logger.info("\nLogit Lens Summary:")
+        final_layer = logit_lens_result.layers[-1]
+        final_logit_diff_mean = logit_lens_result.logit_diffs[-1].mean()
+        final_cosine_sim_mean = logit_lens_result.cosine_sims[-1].mean()
+        logger.info(f"  Final layer L{final_layer}:")
+        logger.info(f"    Mean logit diff: {final_logit_diff_mean:.3f}")
+        logger.info(f"    Mean cosine sim: {final_cosine_sim_mean:.3f}")
 
     logger.info(f"\nResults saved to {config.output_dir}")
 
     # Clear results from memory (they're on disk)
     data.clear_cache()
     del linear_probe_results, pca_results, embedding_results
+    if continuous_time_results is not None:
+        del continuous_time_results
+    if cross_position_results is not None:
+        del cross_position_results
+    if logit_lens_result is not None:
+        del logit_lens_result
     gc.collect()
 
     return {"summary": summary}

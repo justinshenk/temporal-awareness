@@ -71,13 +71,13 @@ GEO: dict = {
 
 # Default difference-in-means settings
 DIFFMEANS: dict = {
-    "enabled": False,
+    "enabled": True,
     "n_components": 10,  # Number of SVD components to track
 }
 
 # Default fine-grained activation patching settings
 FINE_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "head_layers": [24, 21, 19, 29, 30],  # Key attention layers
     "mlp_layers": [31, 24, 28],  # Key MLP layers
     "n_top_heads": 5,  # Number of top heads to analyze
@@ -88,14 +88,14 @@ FINE_PATCH: dict = {
 
 # Default MLP neuron analysis settings
 MLP_ANALYSIS: dict = {
-    "enabled": False,
+    "enabled": True,
     "layers": [35, 31, 28, 19],  # Key MLP layers for horizon processing
     "n_top_neurons": 50,  # Number of top neurons to track per layer
 }
 
 # Default attention pattern analysis settings
 ATTN_ANALYSIS: dict = {
-    "enabled": False,
+    "enabled": True,
     "layers": [19, 21, 24],  # Key attention layers for horizon processing
     "store_patterns": False,  # Whether to store full attention patterns (heavy)
     "dynamic_threshold": 0.1,  # Threshold for detecting dynamic attention changes

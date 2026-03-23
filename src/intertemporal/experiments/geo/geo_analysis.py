@@ -69,8 +69,21 @@ def run_geo_analysis(
     corrupted_acts = _get_resid_post_activations(runner, pair.corrupted_traj.token_ids)
 
     position_results = []
+    clean_len = len(pair.clean_traj.token_ids)
+    corrupted_len = len(pair.corrupted_traj.token_ids)
+
     for pos in positions:
         layer_results = []
+
+        # Map position from clean to corrupted using position mapping
+        # position_mapping convention: src = clean, dst = corrupted
+        corrupted_pos = pair.position_mapping.get(pos, pos)
+        # Clamp to valid range
+        corrupted_pos = max(0, min(int(corrupted_pos), corrupted_len - 1))
+
+        # Skip if clean position is out of bounds
+        if pos < 0 or pos >= clean_len:
+            continue
 
         for layer in layers:
             if layer not in clean_acts or layer not in corrupted_acts:
@@ -78,7 +91,7 @@ def run_geo_analysis(
 
             # Get activations at this position
             clean_vec = clean_acts[layer][pos]
-            corrupted_vec = corrupted_acts[layer][pos]
+            corrupted_vec = corrupted_acts[layer][corrupted_pos]
 
             # Stack for PCA (2 samples in this single-pair case)
             # For aggregated analysis, we'd stack across pairs

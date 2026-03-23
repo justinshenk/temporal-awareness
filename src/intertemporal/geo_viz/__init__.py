@@ -32,8 +32,28 @@ from .geo_viz_analysis import (
     pca_correlation_analysis,
     compute_embeddings,
     run_streaming_analysis,
+    # New optional analyses
+    CrossPositionSimilarityResult,
+    ContinuousTimeProbeResult,
+    compute_cross_position_similarity,
+    compute_continuous_time_probe,
+    # No-horizon projection analysis
+    NoHorizonProjectionResult,
+    run_no_horizon_analysis,
 )
-from .geo_viz_plotting import generate_all_plots
+from .geo_viz_plotting import (
+    generate_all_plots,
+    plot_cross_position_similarity,
+    plot_continuous_time_probe,
+    plot_logit_lens,
+    plot_no_horizon_projection,
+)
+from .geo_viz_logit_lens import (
+    LogitLensResult,
+    compute_logit_lens,
+    run_logit_lens_analysis,
+    run_logit_lens_from_cache,
+)
 from .geo_viz_pipeline import run_geo_viz_pipeline
 
 __all__ = [
@@ -61,8 +81,25 @@ __all__ = [
     "pca_correlation_analysis",
     "compute_embeddings",
     "run_streaming_analysis",
+    # New optional analyses
+    "CrossPositionSimilarityResult",
+    "ContinuousTimeProbeResult",
+    "compute_cross_position_similarity",
+    "compute_continuous_time_probe",
+    # No-horizon projection analysis
+    "NoHorizonProjectionResult",
+    "run_no_horizon_analysis",
     # Plotting
     "generate_all_plots",
+    "plot_cross_position_similarity",
+    "plot_continuous_time_probe",
+    "plot_logit_lens",
+    "plot_no_horizon_projection",
+    # Logit Lens
+    "LogitLensResult",
+    "compute_logit_lens",
+    "run_logit_lens_analysis",
+    "run_logit_lens_from_cache",
     # Pipeline
     "run_geo_viz_pipeline",
 ]

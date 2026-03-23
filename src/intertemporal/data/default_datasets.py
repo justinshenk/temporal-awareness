@@ -104,6 +104,7 @@ OPTIONS_GEO = {
 HOR_NONE = [None]
 
 HOR_BINARY = [
+    None,
     {"value": 1, "unit": "months"},  # Short horizon
     {"value": 50, "unit": "years"},  # Long horizon
 ]
@@ -135,8 +136,7 @@ HOR_GEO = [
     {"value": 1, "unit": "week"},
     {"value": 1, "unit": "months"},
     {"value": 2, "unit": "months"},
-    {"value": 4, "unit": "months"},
-    {"value": 8, "unit": "months"},
+    {"value": 6, "unit": "months"},
     {"value": 1, "unit": "years"},
     {"value": 3, "unit": "years"},
     {"value": 5, "unit": "years"},
@@ -163,7 +163,7 @@ NANO_CFG = {
     "time_horizons": HOR_BINARY,
 }
 
-MULTINANO_CFG = {
+MULTIFORMAT_NANO_CFG = {
     "name": "multinano",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
@@ -233,7 +233,7 @@ GEO_VIZ_CFG = {
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
 
 FULL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
 
