@@ -42,15 +42,33 @@ BACKEND_PID=$!
 
 # Wait for backend to be ready (check health endpoint)
 echo "Waiting for backend to be ready..."
-for i in {1..30}; do
+BACKEND_READY=false
+for i in {1..60}; do
     if curl -s http://localhost:8000/api/config > /dev/null 2>&1; then
+        echo ""
         echo -e "${GREEN}Backend is ready!${NC}"
+        BACKEND_READY=true
         break
     fi
-    sleep 1
+    # Check if backend process died
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        echo ""
+        echo -e "\033[0;31mError: Backend process died unexpectedly${NC}"
+        exit 1
+    fi
+    sleep 0.5
     echo -n "."
 done
-echo ""
+
+if [ "$BACKEND_READY" = false ]; then
+    echo ""
+    echo -e "\033[0;31mError: Backend failed to start within 30 seconds${NC}"
+    kill $BACKEND_PID 2>/dev/null || true
+    exit 1
+fi
+
+# Small buffer after backend ready
+sleep 1
 
 # Start frontend dev server
 echo -e "${GREEN}Starting frontend dev server...${NC}"
@@ -58,8 +76,19 @@ cd "$FRONTEND_DIR"
 npm run dev &
 FRONTEND_PID=$!
 
-# Wait for frontend to start
-sleep 3
+# Wait for frontend to start and verify
+echo "Waiting for frontend to be ready..."
+FRONTEND_READY=false
+for i in {1..30}; do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        echo -e "${GREEN}Frontend is ready!${NC}"
+        FRONTEND_READY=true
+        break
+    fi
+    sleep 0.5
+    echo -n "."
+done
+echo ""
 
 # Open browser
 echo -e "${GREEN}Opening browser...${NC}"
