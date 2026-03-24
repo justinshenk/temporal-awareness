@@ -162,7 +162,9 @@ def main() -> None:
     input_file_path = data_loc / data_file
     save_loc.mkdir(parents=True, exist_ok=True)
 
-    with open("../data/selected_nodes/QnA_sufficient(200).pkl", "rb") as f:
+    with open(
+        "/content/temporal-awareness/data/selected_nodes/QnA_sufficient(200).pkl", "rb"
+    ) as f:
         qna_nodes = pickle.load(f)
 
     from mech_interp_toolkit.activation_utils import (
@@ -243,6 +245,8 @@ def main() -> None:
                 base_acts[(layer, component)][:, :, node] * 2
             )
 
+    base_acts.merge_heads()
+
     _, patch_logits = patch_activations(
         model,
         input_dict,
@@ -253,9 +257,18 @@ def main() -> None:
 
     patch_metric = (patch_logits[:, -1, token_a], patch_logits[:, -1, token_b])  # type: ignore
 
-    plt.scatter(base_metric[0], base_metric[1], label="Base")
-    plt.scatter(patch_metric[0], patch_metric[1], label="Patch")
+    plt.scatter(
+        base_metric[0].cpu().float(), base_metric[1].cpu().float(), label="Base"
+    )
+    plt.xlabel("logit_A")
+    plt.ylabel("logit_B")
+    plt.axhline(0, color="black")
+    plt.axvline(0, color="black")
+    plt.scatter(
+        patch_metric[0].cpu().float(), patch_metric[1].cpu().float(), label="Patch"
+    )
     plt.legend()
+    plt.savefig("/content/temporal-awareness/fig.png")
     plt.show()
 
 
