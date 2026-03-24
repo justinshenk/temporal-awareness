@@ -99,10 +99,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     };
   });
 
+  // Human-readable labels for color options
+  const colorByLabels: Record<string, string> = {
+    'time_horizon': 'Time Horizon',
+    'log_time_horizon': 'Time Horizon (Gradient)',
+    'long_term_delay': 'Long-term Delay',
+    'has_horizon': 'Has Horizon',
+    'short_term_first': 'Order (ST/LT First)',
+    'context_id': 'Context',
+    'formatting_id': 'Formatting',
+    'sample_idx': 'Sample Index',
+  };
+
   // Convert colorBy to select options
   const colorBySelectOptions = colorByOptions.map((c) => ({
     value: c,
-    label: c.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+    label: colorByLabels[c] || c.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
   }));
 
   // Convert layers to select options

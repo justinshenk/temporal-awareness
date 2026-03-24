@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Header, ControlPanel, InfoPanel, ScatterPlot3D } from './components';
+import { Header, ControlPanel, InfoPanel, ScatterPlot3D, Legend, LegendItem } from './components';
 import { PointData } from './components/PointCloud';
 import {
   useConfig,
@@ -47,6 +47,9 @@ function App() {
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading } = useMetadata(colorBy);
 
+  // Fetch has_horizon metadata for filtering
+  const { data: hasHorizonMeta } = useMetadata('has_horizon');
+
   // Fetch selected sample details
   const { data: selectedSample, isLoading: sampleLoading } = useSample(
     selectedSampleIdx
@@ -62,15 +65,41 @@ function App() {
     config?.layers || []
   );
 
-  // Compute positions Float32Array
+  // Compute filter mask for no-horizon samples
+  const filterMask = useMemo(() => {
+    if (!hasHorizonMeta?.values || showNoHorizon) {
+      return null; // No filtering needed
+    }
+    // Filter out samples where has_horizon = 0 (no horizon)
+    return hasHorizonMeta.values.map(v => v === 1);
+  }, [hasHorizonMeta?.values, showNoHorizon]);
+
+  // Compute positions Float32Array (with filtering)
   const positions = useMemo(() => {
     if (!embedding?.positions) {
       return new Float32Array(0);
     }
-    return toFloat32Array(embedding.positions);
-  }, [embedding?.positions]);
+    if (!filterMask) {
+      return toFloat32Array(embedding.positions);
+    }
+    // Filter positions
+    const filtered: number[] = [];
+    for (let i = 0; i < filterMask.length; i++) {
+      if (filterMask[i]) {
+        filtered.push(
+          embedding.positions[i * 3],
+          embedding.positions[i * 3 + 1],
+          embedding.positions[i * 3 + 2]
+        );
+      }
+    }
+    return new Float32Array(filtered);
+  }, [embedding?.positions, filterMask]);
 
-  // Compute colors Float32Array
+  // Fields that should always use gradient coloring
+  const GRADIENT_FIELDS = ['log_time_horizon', 'long_term_delay', 'sample_idx'];
+
+  // Compute colors Float32Array (with filtering)
   const colors = useMemo(() => {
     if (!metadata?.values || metadata.values.length === 0) {
       // Default gradient colors if no metadata
@@ -86,25 +115,122 @@ function App() {
       return defaultColors;
     }
 
-    // Check if categorical or continuous
-    const uniqueValues = new Set(metadata.values);
-    const isCategorical = uniqueValues.size <= 10;
+    // Apply filter mask if needed
+    const filteredValues = filterMask
+      ? metadata.values.filter((_, i) => filterMask[i])
+      : metadata.values;
+
+    // Check if categorical or continuous (force gradient for certain fields)
+    const uniqueValues = new Set(filteredValues);
+    const forceGradient = GRADIENT_FIELDS.includes(colorBy);
+    const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
-      return categoricalColors(metadata.values, uniqueValues.size);
+      return categoricalColors(filteredValues, uniqueValues.size);
     } else {
-      return valuesToColors(metadata.values, metadata.min, metadata.max, 'viridis');
+      return valuesToColors(filteredValues, metadata.min, metadata.max, 'viridis');
     }
-  }, [metadata, positions.length]);
+  }, [metadata, filterMask, positions.length, colorBy]);
 
-  // Create point data array
+  // Create point data array (with filtering)
   const pointData = useMemo<PointData[]>(() => {
     if (!embedding?.indices) return [];
-    return embedding.indices.map((idx) => ({
-      sampleIdx: idx,
-      // Additional data can be added from metadata
-    }));
-  }, [embedding?.indices]);
+    if (!filterMask) {
+      return embedding.indices.map((idx) => ({
+        sampleIdx: idx,
+      }));
+    }
+    // Filter point data
+    return embedding.indices
+      .filter((_, i) => filterMask[i])
+      .map((idx) => ({
+        sampleIdx: idx,
+      }));
+  }, [embedding?.indices, filterMask]);
+
+  // Human-readable labels for color options
+  const COLOR_LABELS: Record<string, string> = {
+    'time_horizon': 'Time Horizon',
+    'log_time_horizon': 'Time Horizon (Gradient)',
+    'long_term_delay': 'Long-term Delay',
+    'has_horizon': 'Has Horizon',
+    'short_term_first': 'Order',
+    'context_id': 'Context',
+    'formatting_id': 'Formatting',
+    'sample_idx': 'Sample Index',
+  };
+
+  // Generate legend data
+  const legendData = useMemo(() => {
+    if (!metadata?.values || metadata.values.length === 0) {
+      return null;
+    }
+
+    const uniqueValues = new Set(metadata.values);
+    const forceGradient = GRADIENT_FIELDS.includes(colorBy);
+    const isCategorical = !forceGradient && uniqueValues.size <= 10;
+
+    if (isCategorical) {
+      // Categorical palette matching categoricalColors function
+      const palette = [
+        '#c778de', // Primary purple
+        '#ff6b9e', // Primary pink
+        '#57b5c2', // Primary cyan
+        '#faba02', // Yellow
+        '#4db04f', // Green
+        '#f08080', // Light red
+        '#9696cc', // Light purple
+        '#ffa666', // Orange
+      ];
+
+      const items: LegendItem[] = [];
+      const sortedValues = [...uniqueValues].sort((a, b) => Number(a) - Number(b));
+
+      sortedValues.forEach((value, idx) => {
+        let label: string;
+        if (colorBy === 'has_horizon') {
+          label = value === 1 ? 'Has horizon' : 'No horizon';
+        } else if (colorBy === 'short_term_first') {
+          label = value === 1 ? 'Short-term first' : 'Long-term first';
+        } else if (colorBy === 'time_horizon') {
+          label = value === 0 ? 'No horizon' : `${value} month${Number(value) !== 1 ? 's' : ''}`;
+        } else {
+          label = String(value);
+        }
+        items.push({
+          label,
+          color: palette[idx % palette.length],
+        });
+      });
+
+      return { type: 'categorical' as const, items };
+    } else {
+      // Gradient legend for continuous values
+      let minLabel = String(Math.round(metadata.min * 10) / 10);
+      let maxLabel = String(Math.round(metadata.max * 10) / 10);
+
+      // Better labels for specific fields
+      if (colorBy === 'log_time_horizon') {
+        minLabel = '1 mo';
+        maxLabel = '10+ mo';
+      } else if (colorBy === 'long_term_delay') {
+        minLabel = `${Math.round(metadata.min)} days`;
+        maxLabel = `${Math.round(metadata.max)} days`;
+      }
+
+      return {
+        type: 'gradient' as const,
+        gradient: {
+          minLabel,
+          maxLabel,
+          colors: ['#440154', '#31688e', '#35b779', '#fde725'], // Viridis
+        },
+      };
+    }
+  }, [metadata, colorBy]);
+
+  // Get human-readable color label
+  const colorByLabel = COLOR_LABELS[colorBy] || colorBy.replace(/_/g, ' ');
 
   // Handle point selection
   const handlePointSelect = useCallback(
@@ -238,6 +364,15 @@ function App() {
                   <span className="text-sm text-[#4a3f5c]/70">Updating...</span>
                 </div>
               </div>
+            )}
+
+            {/* Legend */}
+            {legendData && (
+              <Legend
+                title={colorByLabel}
+                items={legendData.type === 'categorical' ? legendData.items : undefined}
+                gradient={legendData.type === 'gradient' ? legendData.gradient : undefined}
+              />
             )}
           </div>
         </main>
