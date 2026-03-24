@@ -265,11 +265,12 @@ def create_router(data_loader: GeoVizDataLoader) -> APIRouter:
                 if metric == "r2":
                     probe_data = data_loader.load_linear_probe_metrics(layer, component, position)
                     if probe_data:
-                        value = probe_data.get("test_r2")
+                        # Try r2_mean first (newer format), then test_r2 (older format)
+                        value = probe_data.get("r2_mean") or probe_data.get("test_r2")
                 elif metric == "accuracy":
                     probe_data = data_loader.load_linear_probe_metrics(layer, component, position)
                     if probe_data:
-                        value = probe_data.get("test_accuracy")
+                        value = probe_data.get("accuracy") or probe_data.get("test_accuracy")
                 elif metric == "variance":
                     pca_data = data_loader.load_pca_metrics(layer, component, position)
                     if pca_data and pca_data.get("explained_variance_ratio"):
