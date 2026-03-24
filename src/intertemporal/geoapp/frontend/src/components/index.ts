@@ -26,3 +26,5 @@ export { InfoPanel } from './InfoPanel';
 export { Header } from './Header';
 export { Legend } from './Legend';
 export type { LegendItem, LegendProps } from './Legend';
+export { Heatmap } from './Heatmap';
+export type { HeatmapProps } from './Heatmap';

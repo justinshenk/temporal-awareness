@@ -288,8 +288,9 @@ class GeoVizDataLoader:
             for s in self._samples:
                 th = s.get("time_horizon_months")
                 if th is None:
-                    th = self._extract_nested(s, "prompt.time_horizon.value", 1)
-                vals.append(th if th is not None else 1)
+                    th = self._extract_nested(s, "prompt.time_horizon.value", None)
+                # Use 0 for no-horizon samples -> log10(0+1) = 0, distinct from others
+                vals.append(th if th is not None else 0)
             return np.log10(np.array(vals) + 1)
         elif color_by == "time_scale":
             return np.array([s.get("time_scale", "unknown") for s in self._samples])

@@ -260,11 +260,37 @@ function viridis(t: number): [number, number, number] {
 }
 
 function plasma(t: number): [number, number, number] {
-  // Simplified plasma colormap
-  const r = Math.max(0, Math.min(1, 0.05 + t * (1.1 - 0.3 * t)));
-  const g = Math.max(0, Math.min(1, t * t * 0.8));
-  const b = Math.max(0, Math.min(1, 0.53 + t * (-0.8 + 0.6 * t)));
-  return [r, g, b];
+  // Accurate Plasma colormap from matplotlib
+  // Interpolated from official plasma color stops
+  const stops = [
+    [0.050383, 0.029803, 0.527975],
+    [0.254627, 0.013882, 0.615419],
+    [0.417642, 0.000564, 0.658390],
+    [0.562738, 0.051545, 0.641509],
+    [0.692840, 0.165141, 0.564522],
+    [0.798216, 0.280197, 0.469538],
+    [0.881443, 0.392529, 0.383229],
+    [0.949217, 0.517763, 0.295662],
+    [0.988260, 0.652325, 0.211364],
+    [0.988648, 0.809579, 0.145357],
+    [0.940015, 0.975158, 0.131326],
+  ];
+
+  const idx = t * (stops.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+
+  if (i >= stops.length - 1) return stops[stops.length - 1] as [number, number, number];
+  if (i < 0) return stops[0] as [number, number, number];
+
+  const c0 = stops[i];
+  const c1 = stops[i + 1];
+
+  return [
+    c0[0] + f * (c1[0] - c0[0]),
+    c0[1] + f * (c1[1] - c0[1]),
+    c0[2] + f * (c1[2] - c0[2]),
+  ];
 }
 
 function turbo(t: number): [number, number, number] {
@@ -303,6 +329,135 @@ export function categoricalColors(
   }
 
   return colors;
+}
+
+// Special coloring for log_time_horizon with gray for no-horizon samples (value 0)
+export function logTimeHorizonColors(
+  values: number[],
+  min: number,
+  max: number
+): Float32Array {
+  const colors = new Float32Array(values.length * 3);
+  // No-horizon samples have log value of 0 (log10(0+1) = 0)
+  // Gray for no-horizon, plasma gradient for the rest
+  const noHorizonThreshold = 0.01; // log10(1+1) = 0.301, so 0 is definitely no-horizon
+
+  // Get range excluding no-horizon for proper scaling
+  const horizonValues = values.filter(v => v > noHorizonThreshold);
+  const actualMin = horizonValues.length > 0 ? Math.min(...horizonValues) : min;
+  const actualMax = horizonValues.length > 0 ? Math.max(...horizonValues) : max;
+  const range = actualMax - actualMin || 1;
+
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] <= noHorizonThreshold) {
+      // Gray for no-horizon
+      colors[i * 3] = 0.4;
+      colors[i * 3 + 1] = 0.4;
+      colors[i * 3 + 2] = 0.4;
+    } else {
+      // Plasma gradient for horizon samples
+      const t = (values[i] - actualMin) / range;
+      const [r, g, b] = plasmaColor(t);
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = g;
+      colors[i * 3 + 2] = b;
+    }
+  }
+
+  return colors;
+}
+
+// Helper function for plasma color (reuse the implementation)
+function plasmaColor(t: number): [number, number, number] {
+  const stops = [
+    [0.050383, 0.029803, 0.527975],
+    [0.254627, 0.013882, 0.615419],
+    [0.417642, 0.000564, 0.658390],
+    [0.562738, 0.051545, 0.641509],
+    [0.692840, 0.165141, 0.564522],
+    [0.798216, 0.280197, 0.469538],
+    [0.881443, 0.392529, 0.383229],
+    [0.949217, 0.517763, 0.295662],
+    [0.988260, 0.652325, 0.211364],
+    [0.988648, 0.809579, 0.145357],
+    [0.940015, 0.975158, 0.131326],
+  ];
+
+  t = Math.max(0, Math.min(1, t));
+  const idx = t * (stops.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+
+  if (i >= stops.length - 1) return stops[stops.length - 1] as [number, number, number];
+  if (i < 0) return stops[0] as [number, number, number];
+
+  const c0 = stops[i];
+  const c1 = stops[i + 1];
+
+  return [
+    c0[0] + f * (c1[0] - c0[0]),
+    c0[1] + f * (c1[1] - c0[1]),
+    c0[2] + f * (c1[2] - c0[2]),
+  ];
+}
+
+// Special coloring for time_horizon with gray for no-horizon samples
+export function timeHorizonColors(values: number[]): Float32Array {
+  const colors = new Float32Array(values.length * 3);
+
+  // Gray for no-horizon (value 0), then plasma-inspired colors for horizons
+  const horizonPalette: Record<number, [number, number, number]> = {
+    0: [0.4, 0.4, 0.4],     // Gray - no horizon
+    1: [0.05, 0.03, 0.53],  // Deep purple - 1 month
+    2: [0.42, 0.00, 0.66],  // Purple - 2 months
+    3: [0.69, 0.17, 0.56],  // Magenta - 3 months
+    4: [0.88, 0.39, 0.38],  // Salmon - 4 months
+    5: [0.95, 0.52, 0.30],  // Orange - 5 months
+    8: [0.99, 0.81, 0.15],  // Yellow - 8 months
+    10: [0.94, 0.98, 0.13], // Bright yellow - 10 months
+  };
+
+  // Default color for unknown values
+  const defaultColor: [number, number, number] = [0.5, 0.5, 0.5];
+
+  for (let i = 0; i < values.length; i++) {
+    const value = Math.round(values[i]);
+    const color = horizonPalette[value] || defaultColor;
+    colors[i * 3] = color[0];
+    colors[i * 3 + 1] = color[1];
+    colors[i * 3 + 2] = color[2];
+  }
+
+  return colors;
+}
+
+// Heatmap types
+export interface HeatmapCell {
+  layer: number;
+  position: string;
+  value: number | null;
+}
+
+export interface HeatmapData {
+  metric: string;
+  component: string;
+  layers: number[];
+  positions: string[];
+  cells: HeatmapCell[];
+  min_value: number | null;
+  max_value: number | null;
+}
+
+// Hook to fetch heatmap data
+export function useHeatmap(component: string, metric: string = 'r2') {
+  return useQuery({
+    queryKey: ['heatmap', component, metric],
+    queryFn: async (): Promise<HeatmapData> => {
+      return api.get<HeatmapData>(`/heatmap/${component}?metric=${metric}`);
+    },
+    enabled: !!component,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 }
 
 // Prefetching hook for background loading

@@ -11,6 +11,8 @@ from .models import (
     ColorValues,
     ConfigResponse,
     EmbeddingResponse,
+    HeatmapCell,
+    HeatmapResponse,
     MetricsResponse,
     PCAMetrics,
     Point3D,
@@ -231,6 +233,65 @@ def create_router(data_loader: GeoVizDataLoader) -> APIRouter:
             position=position,
             linear_probe=linear_probe,
             pca=pca,
+        )
+
+    @router.get("/heatmap/{component}", response_model=HeatmapResponse)
+    async def get_heatmap(
+        component: str,
+        metric: Literal["r2", "accuracy", "variance"] = Query(default="r2", description="Metric to display"),
+    ) -> HeatmapResponse:
+        """Get heatmap data for linear probe R² across layers and positions.
+
+        Args:
+            component: Activation component (resid_pre, attn_out, mlp_out, resid_post).
+            metric: Metric to display (r2, accuracy, or variance).
+
+        Returns:
+            Heatmap data with values for each layer/position combination.
+        """
+        if component not in data_loader.get_components():
+            raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        layers = data_loader.get_layers()
+        positions = data_loader.get_positions()
+
+        cells = []
+        values = []
+
+        for layer in layers:
+            for position in positions:
+                value = None
+
+                if metric == "r2":
+                    probe_data = data_loader.load_linear_probe_metrics(layer, component, position)
+                    if probe_data:
+                        value = probe_data.get("test_r2")
+                elif metric == "accuracy":
+                    probe_data = data_loader.load_linear_probe_metrics(layer, component, position)
+                    if probe_data:
+                        value = probe_data.get("test_accuracy")
+                elif metric == "variance":
+                    pca_data = data_loader.load_pca_metrics(layer, component, position)
+                    if pca_data and pca_data.get("explained_variance_ratio"):
+                        # Sum of first 3 components
+                        ratios = pca_data["explained_variance_ratio"][:3]
+                        value = sum(ratios)
+
+                cells.append(HeatmapCell(layer=layer, position=position, value=value))
+                if value is not None:
+                    values.append(value)
+
+        min_val = min(values) if values else None
+        max_val = max(values) if values else None
+
+        return HeatmapResponse(
+            metric=metric,
+            component=component,
+            layers=layers,
+            positions=positions,
+            cells=cells,
+            min_value=min_val,
+            max_value=max_val,
         )
 
     return router

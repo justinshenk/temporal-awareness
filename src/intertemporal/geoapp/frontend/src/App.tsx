@@ -10,6 +10,8 @@ import {
   toFloat32Array,
   valuesToColors,
   categoricalColors,
+  timeHorizonColors,
+  logTimeHorizonColors,
 } from './hooks/useEmbeddings';
 
 // Default values matching available data
@@ -126,9 +128,17 @@ function App() {
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
+      // Special handling for time_horizon: use gray for no-horizon (value 0)
+      if (colorBy === 'time_horizon') {
+        return timeHorizonColors(filteredValues);
+      }
       return categoricalColors(filteredValues, uniqueValues.size);
     } else {
-      return valuesToColors(filteredValues, metadata.min, metadata.max, 'viridis');
+      // For log_time_horizon, use special coloring with gray for no-horizon (value 0)
+      if (colorBy === 'log_time_horizon') {
+        return logTimeHorizonColors(filteredValues, metadata.min, metadata.max);
+      }
+      return valuesToColors(filteredValues, metadata.min, metadata.max, 'plasma');
     }
   }, [metadata, filterMask, positions.length, colorBy]);
 
@@ -171,8 +181,20 @@ function App() {
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
-      // Categorical palette matching categoricalColors function
-      const palette = [
+      // Time horizon uses special plasma-inspired palette with gray for no-horizon
+      const timeHorizonPalette: Record<number, string> = {
+        0: '#666666',  // Gray - no horizon
+        1: '#0d0887',  // Deep purple - 1 month
+        2: '#6a00a8',  // Purple - 2 months
+        3: '#b12a90',  // Magenta - 3 months
+        4: '#e16462',  // Salmon - 4 months
+        5: '#f38d27',  // Orange - 5 months
+        8: '#fccf25',  // Yellow - 8 months
+        10: '#f0fa21', // Bright yellow - 10 months
+      };
+
+      // Default categorical palette
+      const defaultPalette = [
         '#c778de', // Primary purple
         '#ff6b9e', // Primary pink
         '#57b5c2', // Primary cyan
@@ -188,19 +210,22 @@ function App() {
 
       sortedValues.forEach((value, idx) => {
         let label: string;
+        let color: string;
+
         if (colorBy === 'has_horizon') {
           label = value === 1 ? 'Has horizon' : 'No horizon';
+          color = defaultPalette[idx % defaultPalette.length];
         } else if (colorBy === 'short_term_first') {
           label = value === 1 ? 'Short-term first' : 'Long-term first';
+          color = defaultPalette[idx % defaultPalette.length];
         } else if (colorBy === 'time_horizon') {
           label = value === 0 ? 'No horizon' : `${value} month${Number(value) !== 1 ? 's' : ''}`;
+          color = timeHorizonPalette[Number(value)] || '#888888';
         } else {
           label = String(value);
+          color = defaultPalette[idx % defaultPalette.length];
         }
-        items.push({
-          label,
-          color: palette[idx % palette.length],
-        });
+        items.push({ label, color });
       });
 
       return { type: 'categorical' as const, items };
@@ -211,8 +236,13 @@ function App() {
 
       // Better labels for specific fields
       if (colorBy === 'log_time_horizon') {
-        minLabel = '1 mo';
-        maxLabel = '10+ mo';
+        // Convert log10 values back to months: 10^min - 1 and 10^max - 1
+        // min ~0.3 -> 10^0.3 - 1 = 1 month, max ~1.04 -> 10^1.04 - 1 = 10 months
+        // But we also have no-horizon at 0 -> show as "No horizon" to actual range
+        const actualMinMonths = Math.round(Math.pow(10, metadata.min) - 1);
+        const actualMaxMonths = Math.round(Math.pow(10, metadata.max) - 1);
+        minLabel = actualMinMonths <= 0 ? 'No horizon' : `${actualMinMonths} mo`;
+        maxLabel = `${actualMaxMonths} mo`;
       } else if (colorBy === 'long_term_delay') {
         minLabel = `${Math.round(metadata.min)} days`;
         maxLabel = `${Math.round(metadata.max)} days`;
@@ -223,7 +253,7 @@ function App() {
         gradient: {
           minLabel,
           maxLabel,
-          colors: ['#440154', '#31688e', '#35b779', '#fde725'], // Viridis
+          colors: ['#0d0887', '#7e03a8', '#cc4778', '#f89540', '#f0f921'], // Plasma
         },
       };
     }

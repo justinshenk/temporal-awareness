@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge, BadgeGroup } from './ui/Badge';
+import { Heatmap } from './Heatmap';
+import { useHeatmap } from '../hooks/useEmbeddings';
 
 interface SampleInfo {
   idx: number;
@@ -88,6 +90,13 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
   className = '',
 }) => {
   const [copied, setCopied] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Fetch heatmap data for current component
+  const { data: heatmapData, isLoading: heatmapLoading } = useHeatmap(
+    component || 'resid_post',
+    'r2'
+  );
 
   const handleCopy = async () => {
     if (selectedSample?.text) {
@@ -183,6 +192,31 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* R² Heatmap Card */}
+      <Card padding="sm">
+        <CardHeader className="pb-2 flex items-center justify-between">
+          <CardTitle className="text-sm">R² Heatmap</CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            className="!p-1 text-xs"
+          >
+            {showHeatmap ? 'Hide' : 'Show'}
+          </Button>
+        </CardHeader>
+        {showHeatmap && (
+          <CardContent className="py-2">
+            <Heatmap
+              data={heatmapData || null}
+              isLoading={heatmapLoading}
+              selectedCell={layer !== undefined ? { layer, position: 'response' } : null}
+              className="max-h-64 overflow-auto"
+            />
+          </CardContent>
+        )}
+      </Card>
 
       {/* Selected Sample Card */}
       <Card padding="sm" className="flex-1">

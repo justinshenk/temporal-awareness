@@ -86,3 +86,23 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(description="Error message")
     detail: str | None = Field(default=None, description="Additional error details")
+
+
+class HeatmapCell(BaseModel):
+    """A single cell in a heatmap."""
+
+    layer: int = Field(description="Layer number")
+    position: str = Field(description="Position identifier")
+    value: float | None = Field(description="Metric value (null if not available)")
+
+
+class HeatmapResponse(BaseModel):
+    """Response for /api/heatmap endpoint."""
+
+    metric: str = Field(description="Metric being displayed")
+    component: str = Field(description="Component used")
+    layers: list[int] = Field(description="Layers in order")
+    positions: list[str] = Field(description="Positions in order")
+    cells: list[HeatmapCell] = Field(description="Heatmap cell data")
+    min_value: float | None = Field(default=None, description="Minimum value for color scale")
+    max_value: float | None = Field(default=None, description="Maximum value for color scale")
