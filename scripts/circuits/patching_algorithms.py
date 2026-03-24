@@ -287,7 +287,7 @@ class ActivationPatching(Patching):
                 else:
                     def __inner_logit_metric__(logits):
                         return - (self.inner_metric(logits) - self.clean_q_clean_a_bsl) / (
-                            self.corruped_q_clean_a_bsl - self.clean_q_clean_a_bsl
+                            self.corrupted_q_clean_a_bsl - self.clean_q_clean_a_bsl
                         )
                     act_patch_result = layer_specific_algorithm(
                         self.model, self.clean_tokens, self.corrupted_cache, __inner_logit_metric__)
