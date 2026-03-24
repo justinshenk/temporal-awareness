@@ -24,15 +24,28 @@ echo -e "${BLUE}   GeoViz Explorer - Starting...${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo
 
+# Kill any existing processes from previous runs
+echo "Cleaning up any existing processes..."
+pkill -f "run_geoapp.py" 2>/dev/null || true
+pkill -f "vite.*geoapp" 2>/dev/null || true
+# Also kill by port
+lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+sleep 1
+
 # Cleanup function to kill background processes on exit
 cleanup() {
     echo
     echo -e "${BLUE}Shutting down...${NC}"
     kill $BACKEND_PID 2>/dev/null || true
     kill $FRONTEND_PID 2>/dev/null || true
+    pkill -f "run_geoapp.py" 2>/dev/null || true
+    pkill -f "vite.*geoapp" 2>/dev/null || true
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:3000 | xargs kill -9 2>/dev/null || true
     exit 0
 }
-trap cleanup SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
 # Start backend server
 echo -e "${GREEN}Starting backend server...${NC}"
