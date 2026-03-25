@@ -13,6 +13,7 @@ import sys
 import threading
 import warnings
 from pathlib import Path
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -22,17 +23,6 @@ from huggingface_hub import HfApi
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
-
-subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "git+https://github.com/SD-interp/mech-interp-toolkit.git",
-    ],
-    check=True,
-)
 
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
@@ -123,6 +113,23 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def ensure_mech_interp_toolkit_installed() -> None:
+    """Install ``mech_interp_toolkit`` into the active environment if needed."""
+    try:
+        import mech_interp_toolkit  # noqa: F401
+    except ImportError:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "git+https://github.com/SD-interp/mech-interp-toolkit.git",
+            ],
+            check=True,
+        )
+
+
 def extract_alnum(s: str) -> str:
     """Extract the first alphanumeric character from a string.
 
@@ -174,20 +181,120 @@ def resolve_quadrature(config: dict) -> str:
     return quadrature
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Run EAP Integrated Gradients on clean vs corrupted prompts"
-    )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        required=True,
-        help="Path to config YAML file (e.g., step_numbers.yaml)",
+def resolve_config_path(config_path: Path) -> Path:
+    """Resolve config paths relative to the local config directory by default."""
+    if config_path.is_absolute():
+        return config_path
+    if config_path.exists():
+        return config_path
+    return CONFIG_PATH / config_path
+
+
+def build_layer_components(
+    n_layers: int,
+    granularity: str,
+    layer_components: list[list[Any]] | list[tuple[Any, ...]] | None,
+) -> list[tuple[int, str]]:
+    """Build or normalize the requested layer/component list."""
+    if layer_components is None:
+        if granularity == "coarse":
+            return [
+                (layer, component)
+                for layer in range(n_layers)
+                for component in ("attn", "mlp")
+            ]
+        if granularity == "fine":
+            return [
+                (layer, component)
+                for layer in range(n_layers)
+                for component in ("z", "mlp_hidden")
+            ]
+        raise ValueError(f"Invalid granularity: {granularity}")
+
+    return [tuple(lc) for lc in layer_components]  # type: ignore[misc]
+
+
+def maybe_start_upload_worker(
+    save_to_hf: bool,
+    hf_repo_id: str,
+    hf_repo_type: str,
+) -> tuple[
+    queue.Queue[tuple[Path, str] | None] | None,
+    threading.Thread | None,
+    Callable[[Path, str], None],
+]:
+    """Start the background Hub uploader when enabled."""
+    if not save_to_hf:
+        return None, None, lambda _local_file, _path_in_repo: None
+
+    hf_token = os.getenv("HF_TOKEN")
+    if not hf_token:
+        raise ValueError("HF_TOKEN environment variable is required for Hub uploads.")
+
+    hf_api = HfApi(token=hf_token)
+    resolved_repo_id = resolve_hf_repo_id(hf_api, hf_repo_id)
+    hf_api.create_repo(repo_id=resolved_repo_id, repo_type=hf_repo_type, exist_ok=True)
+    print(
+        f"[HF upload] Using repo_id={resolved_repo_id} repo_type={hf_repo_type}",
+        flush=True,
     )
 
-    args = parser.parse_args()
+    upload_queue: queue.Queue[tuple[Path, str] | None] = queue.Queue()
 
-    config = load_config(CONFIG_PATH / args.config)
+    def _upload_worker() -> None:
+        while True:
+            item = upload_queue.get()
+            if item is None:
+                upload_queue.task_done()
+                break
+            local_file, path_in_repo = item
+            file_size = local_file.stat().st_size
+            print(
+                f"[HF upload] Starting file={local_file.name} "
+                f"local_path={local_file} repo_path={path_in_repo} "
+                f"size_gb={file_size / (1024**3):.2f}",
+                flush=True,
+            )
+            hf_api.upload_file(
+                path_or_fileobj=str(local_file),
+                path_in_repo=path_in_repo,
+                repo_id=resolved_repo_id,
+                repo_type=hf_repo_type,
+                commit_message=f"Upload {path_in_repo}",
+            )
+            print(
+                f"[HF upload] Completed file={local_file.name}",
+                flush=True,
+            )
+            upload_queue.task_done()
+
+    upload_thread = threading.Thread(target=_upload_worker, daemon=True)
+    upload_thread.start()
+
+    def _enqueue_upload(local_file: Path, path_in_repo: str) -> None:
+        upload_queue.put((local_file, path_in_repo))
+
+    return upload_queue, upload_thread, _enqueue_upload
+
+
+def run_eap_ig(
+    config_path: Path,
+    model=None,
+    tokenizer=None,
+    *,
+    save_to_hf: bool = True,
+) -> None:
+    """Run Q&A EAP-IG from Python or notebooks.
+
+    Args:
+        config_path: Config path, either absolute or relative to ``CONFIG_PATH``.
+        model: Optional pre-loaded model to reuse across calls.
+        tokenizer: Optional pre-loaded tokenizer to reuse across calls.
+        save_to_hf: Whether to upload generated NPZ files to the Hub.
+
+    """
+    ensure_mech_interp_toolkit_installed()
+    config = load_config(resolve_config_path(config_path))
 
     model_name: str = config["setup"]["model"]
     seed: int = config["setup"]["seed"]
@@ -216,51 +323,11 @@ def main() -> None:
 
     input_file_path = data_loc / data_file
     save_loc.mkdir(parents=True, exist_ok=True)
-    hf_token = os.getenv("HF_TOKEN")
-    if not hf_token:
-        raise ValueError("HF_TOKEN environment variable is required for Hub uploads.")
-    hf_api = HfApi(token=hf_token)
-    hf_repo_id = resolve_hf_repo_id(hf_api, hf_repo_id)
-    hf_api.create_repo(repo_id=hf_repo_id, repo_type=hf_repo_type, exist_ok=True)
-    print(
-        f"[HF upload] Using repo_id={hf_repo_id} repo_type={hf_repo_type}",
-        flush=True,
+    upload_queue, upload_thread, enqueue_upload = maybe_start_upload_worker(
+        save_to_hf=save_to_hf,
+        hf_repo_id=hf_repo_id,
+        hf_repo_type=hf_repo_type,
     )
-
-    upload_queue: queue.Queue[tuple[Path, str] | None] = queue.Queue()
-
-    def _upload_worker() -> None:
-        while True:
-            item = upload_queue.get()
-            if item is None:
-                upload_queue.task_done()
-                break
-            local_file, path_in_repo = item
-            file_size = local_file.stat().st_size
-            print(
-                f"[HF upload] Starting file={local_file.name} "
-                f"local_path={local_file} repo_path={path_in_repo} "
-                f"size_gb={file_size / (1024**3):.2f}",
-                flush=True,
-            )
-            hf_api.upload_file(
-                path_or_fileobj=str(local_file),
-                path_in_repo=path_in_repo,
-                repo_id=hf_repo_id,
-                repo_type=hf_repo_type,
-                commit_message=f"Upload {path_in_repo}",
-            )
-            print(
-                f"[HF upload] Completed file={local_file.name}",
-                flush=True,
-            )
-            upload_queue.task_done()
-
-    upload_thread = threading.Thread(target=_upload_worker, daemon=True)
-    upload_thread.start()
-
-    def _enqueue_upload(local_file: Path, path_in_repo: str) -> None:
-        upload_queue.put((local_file, path_in_repo))
 
     from mech_interp_toolkit.activation_dict import expand_mask
     from mech_interp_toolkit.gradient_based_attribution import (
@@ -273,34 +340,23 @@ def main() -> None:
 
     set_global_seed(seed)
 
-    # Suffix prompts the model to complete with option character
-    model, tokenizer, _ = load_model_tokenizer_config(
-        model_name=model_name,
-        suffix=prompt_suffix,
-        system_prompt=system_prompt,
-        attn_type="eager",
-        dtype=dtype,
-    )
+    if model is None or tokenizer is None:
+        # Suffix prompts the model to complete with option character
+        model, tokenizer, _ = load_model_tokenizer_config(
+            model_name=model_name,
+            suffix=prompt_suffix,
+            system_prompt=system_prompt,
+            attn_type="eager",
+            dtype=dtype,
+        )
 
     n_layers = model.config.num_hidden_layers
 
-    if layer_components is None:
-        if granularity == "coarse":
-            layer_components = [
-                (layer, component)
-                for layer in range(n_layers)
-                for component in ("attn", "mlp")
-            ]
-        elif granularity == "fine":
-            layer_components = [
-                (layer, component)
-                for layer in range(n_layers)
-                for component in ("z", "mlp_hidden")
-            ]
-        else:
-            raise ValueError(f"Invalid granularity: {granularity}")
-    else:
-        layer_components = [tuple(lc) for lc in layer_components]
+    layer_components = build_layer_components(
+        n_layers=n_layers,
+        granularity=granularity,
+        layer_components=layer_components,
+    )
 
     system_prompt_length = (
         len(tokenizer.tokenizer.encode(system_prompt, add_special_tokens=False)) + 1
@@ -472,10 +528,24 @@ def main() -> None:
                     ).as_posix()
                 except ValueError:
                     path_in_repo = output_file.name
-                _enqueue_upload(output_file_abs, path_in_repo)
+                enqueue_upload(output_file_abs, path_in_repo)
 
-    upload_queue.put(None)
-    upload_thread.join()
+    if upload_queue is not None and upload_thread is not None:
+        upload_queue.put(None)
+        upload_thread.join()
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Run EAP Integrated Gradients on clean vs corrupted prompts"
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to config YAML file (e.g., step_numbers.yaml)",
+    )
+    args = parser.parse_args()
+    run_eap_ig(args.config)
 
 
 if __name__ == "__main__":
