@@ -118,6 +118,20 @@ MODEL_CONFIGS = {
         "max_new_tokens": 512,
         "is_instruct": True,
     },
+    "Qwen3-8B": {
+        "hf_name": "Qwen/Qwen3-8B",
+        "default_layers": [4, 10, 16, 22, 28, 34],
+        "quick_layers": [16],
+        "max_new_tokens": 512,
+        "is_instruct": True,
+    },
+    "Qwen3-30B-A3B": {
+        "hf_name": "Qwen/Qwen3-30B-A3B",
+        "default_layers": [4, 12, 20, 28, 36, 44],
+        "quick_layers": [20],
+        "max_new_tokens": 512,
+        "is_instruct": True,
+    },
 }
 
 REPETITION_COUNTS = [1, 3, 5, 8, 12, 16, 20, 30, 50, 100]
@@ -251,7 +265,14 @@ def build_repetitive_prompt(base_prompt: str, n_reps: int) -> str:
 
 def format_instruct_prompt(prompt: str, model_name: str) -> str:
     """Wrap prompt in chat template for instruct models."""
-    if "Qwen" in model_name:
+    if "Qwen3" in model_name:
+        # Qwen3 has thinking mode enabled by default — disable it with /no_think
+        # so we measure direct task performance, not chain-of-thought reasoning
+        return (
+            f"<|im_start|>system\n/no_think<|im_end|>\n"
+            f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+        )
+    elif "Qwen" in model_name:
         return f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
     elif "Llama" in model_name:
         return (
