@@ -8,19 +8,19 @@ setup:
 
 paths:
   data_loc: "./data/raw/refined_datasets"
-  save_loc: "./results/node_wise/explicit/[A]"
+  save_loc: "./results/node_wise/explicit/(dot)"
 
 input:
   data_file: "temporal_scope_explicit_expanded_500_debiased.json"
   template: "{}\n\n{}\n{}"
-  option_keys: [ "[A]", "[B]" ]
-  prompt_suffix: "["
+  option_keys: [ "(●)", "(■)" ]
+  prompt_suffix: "("
   horizon: [ "ST", "LT" ]
 
 output:
-  filename: "[A]_explicit"
+  filename: "(dot)_explicit"
 
 parameters:
-  system_prompt: "Recommend an approach for the given scenario. Reply only with [A] or [B]"
+  system_prompt: "Recommend an approach for the given scenario. Reply only with (●) or (■)"
   steps: [ 20 ]
   metric_type: "option-logit"

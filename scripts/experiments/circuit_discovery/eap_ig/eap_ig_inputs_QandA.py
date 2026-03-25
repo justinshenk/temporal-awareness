@@ -135,9 +135,12 @@ def extract_alnum(s: str) -> str:
     Raises:
         ValueError: If no alphanumeric character is found
     """
+    out = []
     for c in s:
         if c.isalnum():
-            return c
+            out.append(c)
+    if out:
+        return "".join(out)
     raise ValueError(f"malformed option string {s}")
 
 
@@ -237,7 +240,7 @@ def main() -> None:
             print(
                 f"[HF upload] Starting file={local_file.name} "
                 f"local_path={local_file} repo_path={path_in_repo} "
-                f"size_gb={file_size / (1024 ** 3):.2f}",
+                f"size_gb={file_size / (1024**3):.2f}",
                 flush=True,
             )
             hf_api.upload_file(
@@ -303,12 +306,18 @@ def main() -> None:
         len(tokenizer.tokenizer.encode(system_prompt, add_special_tokens=False)) + 1
     )  # For <|im_end|>
 
-    token_a = tokenizer.tokenizer.encode(
-        extract_alnum(option_keys[0]), add_special_tokens=False
-    )[0]
-    token_b = tokenizer.tokenizer.encode(
-        extract_alnum(option_keys[1]), add_special_tokens=False
-    )[0]
+    token_a_str = extract_alnum(option_keys[0])
+    token_b_str = extract_alnum(option_keys[1])
+
+    token_a = tokenizer.tokenizer.encode(token_a_str, add_special_tokens=False)
+    token_b = tokenizer.tokenizer.encode(token_b_str, add_special_tokens=False)
+
+    if len(token_a) != 1 or len(token_b) != 1:
+        raise ValueError(
+            f"Token A tokenizes to {token_a}\nToken B tokenizes to {token_b}\nOptionkeys must tokenize to single token each."
+        )
+    token_a = token_a[0]
+    token_b = token_b[0]
 
     metrics = {
         "logit_A": lambda logits: logits[:, -1, token_a].mean(),
@@ -427,9 +436,9 @@ def main() -> None:
                     eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
 
                     for key, value in eap_ig_scores.items():
-                        batch_outputs[i][
-                            f"step_{num_steps}__{key[1]}__{key[0]}"
-                        ] = tensor_to_numpy(value)
+                        batch_outputs[i][f"step_{num_steps}__{key[1]}__{key[0]}"] = (
+                            tensor_to_numpy(value)
+                        )
 
                     batch_outputs[i][f"step_{num_steps}__clean_logits"] = (
                         clean_logits_cpu.float().numpy()
@@ -464,7 +473,6 @@ def main() -> None:
                 except ValueError:
                     path_in_repo = output_file.name
                 _enqueue_upload(output_file_abs, path_in_repo)
-
 
     upload_queue.put(None)
     upload_thread.join()
