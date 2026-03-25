@@ -733,7 +733,7 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     if not top_heads:
         return
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
 
     # Create a flow diagram showing attention from dest to source
     dest_pos = result.dest_position
@@ -751,13 +751,15 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     ax.scatter(result.source_positions, [y_positions['src']] * len(result.source_positions),
                s=100, c=src_colors, marker='o', zorder=5, label='Source Positions')
 
-    # Draw attention lines for top heads
+    # Draw attention lines for top heads and collect legend handles
     colors = LAYER_COLORS[:len(top_heads)]
+    legend_handles = []
     for idx, (layer, head, attn_to_src, top_pos, top_weights) in enumerate(top_heads):
         color = colors[idx % len(colors)]
         label = f'L{layer}.H{head} ({attn_to_src:.3f})'
 
         # Draw lines to top attended positions
+        first_line = True
         if top_pos and top_weights:
             for pos, weight in zip(top_pos[:3], top_weights[:3]):  # Top 3
                 if pos in result.source_positions or weight > 0.05:
@@ -766,10 +768,10 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
                                 xytext=(dest_pos, y_positions['dest']),
                                 arrowprops=dict(arrowstyle='->', color=color,
                                                lw=weight * 10 + 0.5, alpha=0.6))
+                    first_line = False
 
-        # Add head label
-        ax.text(dest_pos + (idx - 2) * 3, y_positions['dest'] + 0.05, label,
-               fontsize=8, ha='center', color=color)
+        # Create legend handle for this head
+        legend_handles.append(mpatches.Patch(color=color, label=label))
 
     ax.set_xlim(min(result.source_positions) - 10 if result.source_positions else 0,
                 dest_pos + 10)
@@ -780,6 +782,10 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     ax.set_yticks([y_positions['src'], y_positions['dest']])
     ax.set_yticklabels(['Source\n(Key)', 'Dest\n(Query)'])
     ax.grid(axis='x', alpha=GRID_ALPHA)
+
+    # Add legend outside the plot area
+    ax.legend(handles=legend_handles, loc='upper left', bbox_to_anchor=(1.02, 1),
+              fontsize=9, framealpha=0.9)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
