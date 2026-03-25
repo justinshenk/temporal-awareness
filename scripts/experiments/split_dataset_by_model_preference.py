@@ -65,47 +65,62 @@ def save_split(pairs: list[dict], path: Path, metadata: dict) -> None:
         json.dump({"metadata": metadata, "pairs": pairs}, f, indent=2)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Split a dataset by model token preference"
-    )
-    parser.add_argument(
-        "--config",
-        type=Path,
-        required=True,
-        help="Path to config YAML file (e.g., step_numbers.yaml)",
-    )
-    args = parser.parse_args()
+def load_model_for_config(config: dict, model=None, tokenizer=None):
+    """Load model and tokenizer, reusing existing instances if already loaded.
 
-    config = load_config(CONFIG_PATH / args.config)
+    Args:
+        config: Parsed config dict
+        model: Existing model instance, or None to load fresh
+        tokenizer: Existing tokenizer instance, or None to load fresh
+
+    Returns:
+        Tuple of (model, tokenizer)
+    """
+    model_name: str = config["setup"]["model"]
+    prompt_suffix: str = config["input"]["prompt_suffix"]
+    system_prompt: str = config["parameters"]["system_prompt"]
+    dtype = config["setup"].get("dtype", None)
+
+    if model is None or tokenizer is None:
+        model, tokenizer, _ = load_model_tokenizer_config(
+            model_name=model_name,
+            suffix=prompt_suffix,
+            system_prompt=system_prompt,
+            attn_type="sdpa",
+            dtype=dtype,
+        )
+
+    return model, tokenizer
+
+
+def run_split(config_path: Path, model=None, tokenizer=None):
+    """Run the dataset split for a single config file.
+
+    Args:
+        config_path: Path to the YAML config file (absolute or relative to CONFIG_PATH)
+        model: Optional pre-loaded model to reuse across calls
+        tokenizer: Optional pre-loaded tokenizer to reuse across calls
+
+    Returns:
+        Tuple of (model, tokenizer) so the caller can reuse them
+    """
+    config = load_config(CONFIG_PATH / config_path)
 
     model_name: str = config["setup"]["model"]
     batch_size: int = config["setup"]["batch_size"]
-    dtype = config["setup"].get("dtype", None)
 
     data_loc: Path = Path(config["paths"]["data_loc"])
-
     data_file: str = config["input"]["data_file"]
     template: str = config["input"]["template"]
     option_keys: list[str] = config["input"]["option_keys"]
-    prompt_suffix: str = config["input"]["prompt_suffix"]
     option_a_horizon, option_b_horizon = config["input"]["horizon"]
-
-    system_prompt: str = config["parameters"]["system_prompt"]
 
     input_file_path = data_loc / data_file
     save_loc = data_loc.parent.parent / "stratified_dataset"
 
     torch.set_grad_enabled(False)
 
-    # Suffix prompts the model to complete with option character
-    model, tokenizer, _ = load_model_tokenizer_config(
-        model_name=model_name,
-        suffix=prompt_suffix,
-        system_prompt=system_prompt,
-        attn_type="sdpa",
-        dtype=dtype,
-    )
+    model, tokenizer = load_model_for_config(config, model=model, tokenizer=tokenizer)
 
     token_a = tokenizer.tokenizer.encode(
         extract_alnum(option_keys[0]), add_special_tokens=False
@@ -117,7 +132,6 @@ def main() -> None:
     def extract_preference(logits: torch.Tensor) -> tuple[bool, bool]:
         logit_a_preferred = (logits[token_a] > logits[token_b]).item()
         clear_preference = torch.abs(logits[token_a] - logits[token_b]) > 1.0
-
         return logit_a_preferred, clear_preference  # type: ignore
 
     all_pairs, all_clean_prompts = load_pairs_and_prompts(
@@ -163,33 +177,45 @@ def main() -> None:
         "option_b_horizon": option_b_horizon,
     }
 
-    base_fp = (save_loc / args.config.stem)
+    base_fp = save_loc / config_path.stem
 
     def make_path(suffix):
         return base_fp.parent / f"{base_fp.name}_{suffix}.json"
 
-    save_name_a = make_path(option_a_horizon)
-    save_name_b = make_path(option_b_horizon)
-    save_name_ambig = make_path("ambig")
-
     if a_preferred:
         save_split(
             a_preferred,
-            save_name_a,
+            make_path(option_a_horizon),
             {**base_metadata, "split": option_a_horizon, "n_pairs": len(a_preferred)},
         )
     if b_preferred:
         save_split(
             b_preferred,
-            save_name_b,
+            make_path(option_b_horizon),
             {**base_metadata, "split": option_b_horizon, "n_pairs": len(b_preferred)},
         )
     if ambiguous:
         save_split(
             ambiguous,
-            save_name_ambig,
+            make_path("ambig"),
             {**base_metadata, "split": "ambiguous", "n_pairs": len(ambiguous)},
         )
+
+    return model, tokenizer
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Split a dataset by model token preference"
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to config YAML file (e.g., step_numbers.yaml)",
+    )
+    args = parser.parse_args()
+    run_split(args.config)
 
 
 if __name__ == "__main__":
