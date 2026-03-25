@@ -40,24 +40,24 @@ TIME_MAP[Qwen2.5-3B-Instruct]="24:00:00"
 TIME_MAP[Llama-3.1-8B-Instruct]="24:00:00"
 
 # GPU constraints per model (ensure enough VRAM)
-# gpt2/pythia: ~1-2GB VRAM, 1 GPU, any type
-# gemma-2-2b: ~5GB fp32 weights, 2 GPUs for headroom at rep 100
-# Qwen 3B: ~7GB fp16, 2 GPUs for long seqs at rep 100
-# Llama 8B: ~16GB fp16, 2 GPUs to spread model across
+# gpt2/pythia: ~1-2GB VRAM, any GPU works
+# gemma-2-2b: ~2.5GB fp16, need 24GB+ for code gen at rep 100
+# Qwen 3B: ~7GB fp16, need 24GB+ for long seqs at rep 100
+# Llama 8B: ~16GB fp16, need 48GB+ (L40S) for code gen at rep 100
 declare -A GPU_CONSTRAINT
 GPU_CONSTRAINT[gpt2]=""
 GPU_CONSTRAINT[pythia-70m]=""
-GPU_CONSTRAINT[gemma-2-2b]=""
-GPU_CONSTRAINT[Qwen2.5-3B-Instruct]=""
-GPU_CONSTRAINT[Llama-3.1-8B-Instruct]=""
+GPU_CONSTRAINT[gemma-2-2b]="GPU_MEM:32GB"
+GPU_CONSTRAINT[Qwen2.5-3B-Instruct]="GPU_MEM:32GB"
+GPU_CONSTRAINT[Llama-3.1-8B-Instruct]="GPU_SKU:L40S"
 
-# Number of GPUs per model
+# Number of GPUs per model (1 GPU each with proper VRAM)
 declare -A NUM_GPUS
 NUM_GPUS[gpt2]=1
 NUM_GPUS[pythia-70m]=1
-NUM_GPUS[gemma-2-2b]=2
-NUM_GPUS[Qwen2.5-3B-Instruct]=2
-NUM_GPUS[Llama-3.1-8B-Instruct]=2
+NUM_GPUS[gemma-2-2b]=1
+NUM_GPUS[Qwen2.5-3B-Instruct]=1
+NUM_GPUS[Llama-3.1-8B-Instruct]=1
 
 if [ "$QUICK" -eq 1 ]; then
     for m in "${MODELS[@]}"; do

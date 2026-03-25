@@ -559,10 +559,8 @@ def generate_responses(
         except RuntimeError as e:
             if "out of memory" in str(e).lower() or "CUDA" in str(e):
                 torch.cuda.empty_cache()
-                # Process this batch one-by-one as fallback
+                # Process this batch one-by-one as fallback, building results directly
                 print(f"    [WARN] OOM on batch of {len(batch)}, falling back to batch_size=1")
-                all_outputs_sequences = []
-                all_outputs_scores = []
                 for single_prompt in batch:
                     single_input = tokenizer(
                         [single_prompt], return_tensors="pt", truncation=True,
@@ -577,24 +575,31 @@ def generate_responses(
                             output_scores=return_logprobs,
                             pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
                         )
-                    # Pad to match expected shape
-                    all_outputs_sequences.append(single_out.sequences[0])
+                    single_input_len = single_input["input_ids"].shape[1]
+                    gen_ids = single_out.sequences[0, single_input_len:]
+                    # Remove padding and EOS
+                    gen_ids = gen_ids[gen_ids != (tokenizer.pad_token_id or -1)]
+                    if tokenizer.eos_token_id is not None:
+                        eos_mask = gen_ids == tokenizer.eos_token_id
+                        if eos_mask.any():
+                            gen_ids = gen_ids[:eos_mask.nonzero()[0].item()]
+                    response_text = tokenizer.decode(gen_ids, skip_special_tokens=True)
+                    n_tokens = len(gen_ids)
+                    # Extract logprobs (batch dim = 0 since single item)
+                    token_logprobs = []
                     if return_logprobs and hasattr(single_out, "scores") and single_out.scores:
-                        all_outputs_scores.append(single_out.scores)
-                # Reconstruct outputs-like object for downstream processing
-                max_seq_len = max(s.shape[0] for s in all_outputs_sequences)
-                padded = torch.full((len(batch), max_seq_len),
-                                    tokenizer.pad_token_id or tokenizer.eos_token_id,
-                                    device=device)
-                for idx, seq in enumerate(all_outputs_sequences):
-                    padded[idx, :seq.shape[0]] = seq
-
-                class _FakeOutput:
-                    pass
-                outputs = _FakeOutput()
-                outputs.sequences = padded
-                outputs.scores = all_outputs_scores[0] if all_outputs_scores else []
-                # Note: scores only accurate for first item when using fallback
+                        for t_idx in range(min(n_tokens, len(single_out.scores))):
+                            logits = single_out.scores[t_idx][0]
+                            log_probs = torch.log_softmax(logits, dim=-1)
+                            token_id = gen_ids[t_idx].item()
+                            token_logprobs.append(log_probs[token_id].item())
+                    results.append({
+                        "response": response_text,
+                        "logprobs": token_logprobs,
+                        "n_tokens": n_tokens,
+                    })
+                    torch.cuda.empty_cache()
+                continue  # skip the normal decode loop below
             else:
                 raise
 

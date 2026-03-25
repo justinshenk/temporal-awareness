@@ -35,6 +35,9 @@ fi
 # Force unbuffered output so logs stream in real time
 export PYTHONUNBUFFERED=1
 
+# Reduce CUDA memory fragmentation (helps avoid OOM on long code generation)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # Cache HF models on SCRATCH (100TB, shared across nodes, avoids HOME disk full)
 export HF_HOME="$SCRATCH/.cache/huggingface"
 mkdir -p "$HF_HOME"
