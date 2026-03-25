@@ -116,8 +116,8 @@ def main() -> None:
 
     def extract_preference(logits: torch.Tensor) -> tuple[bool, bool]:
         logit_a_preferred = (logits[token_a] > logits[token_b]).item()
-        top_token = logits.argmax()
-        clear_preference = ((top_token == token_a) | (top_token == token_b)).item()
+        clear_preference = torch.abs(logits[token_a] - logits[token_b]) > 1.0
+
         return logit_a_preferred, clear_preference  # type: ignore
 
     all_pairs, all_clean_prompts = load_pairs_and_prompts(
@@ -163,7 +163,7 @@ def main() -> None:
         "option_b_horizon": option_b_horizon,
     }
 
-    base_fp = (save_loc / data_file).with_suffix("")
+    base_fp = (save_loc / args.config.stem)
 
     def make_path(suffix):
         return base_fp.parent / f"{base_fp.name}_{suffix}.json"
