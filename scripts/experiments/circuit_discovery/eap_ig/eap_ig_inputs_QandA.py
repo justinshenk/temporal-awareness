@@ -283,7 +283,7 @@ def run_eap_ig(
     tokenizer=None,
     *,
     save_to_hf: bool = True,
-) -> None:
+) -> tuple[Any, Any]:
     """Run Q&A EAP-IG from Python or notebooks.
 
     Args:
@@ -291,6 +291,9 @@ def run_eap_ig(
         model: Optional pre-loaded model to reuse across calls.
         tokenizer: Optional pre-loaded tokenizer to reuse across calls.
         save_to_hf: Whether to upload generated NPZ files to the Hub.
+
+    Returns:
+        Tuple of (model, tokenizer) so the caller can reuse them.
 
     """
     ensure_mech_interp_toolkit_installed()
@@ -428,8 +431,10 @@ def run_eap_ig(
         tokenized_corrupted = [tokenizer(b) for b in chunked_corrupted_prompts]
 
         for metric_label, metric_fn in metrics.items():
-            batch_outputs: list[dict[str, np.ndarray]] = []
-            for _ in range(len(tokenized_clean)):
+            for i in tqdm(
+                range(len(tokenized_clean)),
+                desc=f"[{order_label}/{metric_label}] Batches",
+            ):
                 batch_output: dict[str, np.ndarray] = {}
                 batch_output["metadata__config_json"] = np.array(
                     json.dumps(config), dtype=np.str_
@@ -440,14 +445,10 @@ def run_eap_ig(
                 batch_output["metadata__metric_type"] = np.array(
                     metric_type, dtype=np.str_
                 )
-                batch_outputs.append(batch_output)
 
-            for num_steps in tqdm(
-                steps, desc=f"[{order_label}/{metric_label}] Processing step counts"
-            ):
-                for i in tqdm(
-                    range(len(tokenized_clean)),
-                    desc=f"Batches (steps={num_steps})",
+                for num_steps in tqdm(
+                    steps,
+                    desc=f"Step counts (batch={i})",
                     leave=False,
                 ):
                     # Deep-copy tensors to prevent get_embeddings_dict from mutating the
@@ -492,14 +493,14 @@ def run_eap_ig(
                     eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
 
                     for key, value in eap_ig_scores.items():
-                        batch_outputs[i][f"step_{num_steps}__{key[1]}__{key[0]}"] = (
+                        batch_output[f"step_{num_steps}__{key[1]}__{key[0]}"] = (
                             tensor_to_numpy(value)
                         )
 
-                    batch_outputs[i][f"step_{num_steps}__clean_logits"] = (
+                    batch_output[f"step_{num_steps}__clean_logits"] = (
                         clean_logits_cpu.float().numpy()
                     )
-                    batch_outputs[i][f"step_{num_steps}__corrupted_logits"] = (
+                    batch_output[f"step_{num_steps}__corrupted_logits"] = (
                         corrupted_logits_cpu.float().numpy()
                     )
 
@@ -515,12 +516,11 @@ def run_eap_ig(
                         torch.cuda.empty_cache()
                     gc.collect()
 
-            for batch_idx, output_arrays in enumerate(batch_outputs):
                 output_file = save_loc / (
-                    f"{filename}_{order_label}_{metric_label}_batch_{batch_idx:05d}.npz"
+                    f"{filename}_{order_label}_{metric_label}_batch_{i:05d}.npz"
                 )
                 output_file.parent.mkdir(parents=True, exist_ok=True)
-                np.savez_compressed(output_file, **output_arrays)
+                np.savez_compressed(output_file, **batch_output)
                 output_file_abs = output_file.resolve()
                 try:
                     path_in_repo = output_file_abs.relative_to(
@@ -533,6 +533,8 @@ def run_eap_ig(
     if upload_queue is not None and upload_thread is not None:
         upload_queue.put(None)
         upload_thread.join()
+
+    return model, tokenizer
 
 def main() -> None:
     parser = argparse.ArgumentParser(
