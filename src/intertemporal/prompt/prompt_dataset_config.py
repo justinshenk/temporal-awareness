@@ -80,6 +80,8 @@ class PromptDatasetConfig(BaseSchema):
     do_full_formatting_variation_grid: bool = False
     do_context_variations: bool = False
     prompt_format: str = "default_prompt_format"
+    round_time_units: bool = False
+    round_reward_units: bool = False
 
     @property
     def prompt_format_config(self):

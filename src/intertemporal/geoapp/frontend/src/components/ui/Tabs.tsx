@@ -103,14 +103,14 @@ export const Tabs: React.FC<TabsProps> = ({
           bg-white/50 backdrop-blur-md
           border border-white/60
           rounded-xl p-1
-          shadow-lg shadow-purple-500/5
+          shadow-lg shadow-[#faf8f5]0/5
         "
       >
         {/* Animated indicator */}
         <div
           className="
             absolute bottom-1 h-1 rounded-full
-            bg-gradient-to-r from-[#C678DD] to-[#FF6B9D]
+            bg-gradient-to-r from-[#D97757] to-[#348296]
             transition-all duration-300 ease-out
           "
           style={{
@@ -137,12 +137,12 @@ export const Tabs: React.FC<TabsProps> = ({
               text-sm font-medium
               rounded-lg
               transition-all duration-200
-              focus:outline-none focus:ring-2 focus:ring-pink-400/50 focus:ring-inset
+              focus:outline-none focus:ring-2 focus:ring-[#D97757]/50 focus:ring-inset
               ${tab.disabled
-                ? 'opacity-50 cursor-not-allowed text-[#4a3f5c]/40'
+                ? 'opacity-50 cursor-not-allowed text-[#1a1613]/40'
                 : activeTab === tab.id
-                ? 'text-[#4a3f5c]'
-                : 'text-[#4a3f5c]/60 hover:text-[#4a3f5c] hover:bg-white/50'
+                ? 'text-[#1a1613]'
+                : 'text-[#1a1613]/60 hover:text-[#1a1613] hover:bg-white/50'
               }
             `}
           >

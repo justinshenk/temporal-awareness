@@ -1,11 +1,19 @@
-"""Data collection and caching for geometric visualization.
+"""Data collection and extraction for geometric visualization.
 
-Memory-optimized implementation:
-- Activations stored as float32 (half the memory of float64)
-- Each target saved to separate file during extraction
-- StreamingActivationData loads targets on-demand
-- Explicit memory clearing after each sample
-- Configurable buffer sizes and compression
+Structure:
+    data/
+        samples.json              - PromptSample list
+        choices.json              - ChoiceInfo list
+        metadata.json             - Dataset metadata
+        sample_position_mapping.json - Maps abs_pos -> format_pos per sample
+        prompt_dataset.json       - Full PromptDataset
+        preference_dataset.json   - Full PreferenceDataset
+        targets/
+            sample_0/
+                L35_resid_post_129.npy  - Activation at position 129
+                L35_resid_post_130.npy
+            sample_1/
+                ...
 """
 
 import gc
@@ -16,195 +24,14 @@ from pathlib import Path
 
 import numpy as np
 
-from ...common.time_value import TimeValue
-from ..common.preference_types import PreferenceSample, PromptSample, RewardValue
-from .geo_viz_config import (
-    GeoVizConfig,
-    TargetSpec,
-    is_absolute_position,
-    parse_absolute_position,
-    ACTIVATION_DTYPE,
-    EXTRACTION_BUFFER_SIZE,
-    USE_COMPRESSED_STORAGE,
+from ..common.preference_types import PromptSample
+from ..common.sample_position_mapping import (
+    DatasetPositionMapping,
+    SamplePositionMapping,
 )
+from .geo_viz_config import GeoVizConfig, TargetSpec, ACTIVATION_DTYPE
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Position Resolution
-# =============================================================================
-
-
-@dataclass(slots=True)
-class ResolvedPositions:
-    """Resolved token positions for a specific sample.
-
-    Uses __slots__ for reduced memory overhead.
-    """
-
-    named_positions: dict[str, list[int]]
-    prompt_len: int
-    full_len: int
-    source: list[int]
-    dest: list[int]
-
-    def get(self, pos_name: str) -> int | None:
-        """Get first position index by name or absolute index.
-
-        Returns None if position doesn't exist for this sample.
-        """
-        if is_absolute_position(pos_name):
-            idx = parse_absolute_position(pos_name)
-            if idx >= self.full_len:
-                return None
-            return idx
-
-        if pos_name in self.named_positions:
-            positions = self.named_positions[pos_name]
-            return positions[0] if positions else None
-
-        if pos_name == "source":
-            return self.source[0] if self.source else 0
-        elif pos_name in ("dest", "response"):
-            return self.dest[0] if self.dest else self.prompt_len
-        return None
-
-    def get_all(self, pos_name: str) -> list[int]:
-        """Get all position indices for a named position or absolute index."""
-        if is_absolute_position(pos_name):
-            idx = parse_absolute_position(pos_name)
-            if idx >= self.full_len:
-                return []
-            return [idx]
-
-        if pos_name in self.named_positions:
-            return self.named_positions[pos_name]
-        elif pos_name == "source":
-            return self.source
-        elif pos_name == "dest":
-            return self.dest
-        raise ValueError(f"Unknown position name: {pos_name}")
-
-
-def _find_substring_token_range(
-    tokens: list[str], text: str, substring: str
-) -> list[int]:
-    """Find all token positions spanning a substring in text."""
-    char_idx = text.find(substring)
-    if char_idx == -1:
-        return []
-
-    char_end = char_idx + len(substring)
-    positions = []
-
-    char_count = 0
-    for i, tok in enumerate(tokens):
-        tok_start = char_count
-        tok_end = char_count + len(tok)
-        char_count = tok_end
-
-        if tok_end > char_idx and tok_start < char_end:
-            positions.append(i)
-
-        if tok_end >= char_end:
-            break
-
-    return positions
-
-
-def _find_time_value_positions(
-    tokens: list[str], text: str, time_val: TimeValue
-) -> list[int]:
-    """Find token positions for a TimeValue's numeric value and unit."""
-    positions = []
-
-    formatted = str(time_val)
-    parts = formatted.split(" ", 1)
-    value_str = parts[0]
-    unit_str = parts[1] if len(parts) > 1 else time_val.unit
-
-    positions.extend(_find_substring_token_range(tokens, text, value_str))
-    positions.extend(_find_substring_token_range(tokens, text, unit_str))
-
-    return positions
-
-
-def _find_reward_value_positions(
-    tokens: list[str], text: str, reward_val: RewardValue
-) -> list[int]:
-    """Find token positions for a RewardValue's numeric value and unit."""
-    positions = []
-
-    value_str = str(RewardValue(reward_val.value))
-    positions.extend(_find_substring_token_range(tokens, text, value_str))
-
-    if reward_val.unit:
-        positions.extend(_find_substring_token_range(tokens, text, reward_val.unit))
-
-    return positions
-
-
-def resolve_positions(
-    sample: PromptSample,
-    pref: PreferenceSample,
-    runner,
-) -> ResolvedPositions:
-    """Resolve token positions using exact sample structure."""
-    prompt_len = pref.prompt_token_count
-    full_tokens = pref.chosen_traj.token_ids
-    tokens = [runner._tokenizer.decode([t]) for t in full_tokens]
-
-    full_len = len(tokens)
-    prompt_tokens_decoded = tokens[:prompt_len]
-    prompt_text = "".join(prompt_tokens_decoded)
-
-    pair = sample.prompt.preference_pair
-    named_positions = {}
-
-    if sample.prompt.time_horizon is not None:
-        named_positions["time_horizon"] = _find_time_value_positions(
-            prompt_tokens_decoded, prompt_text, sample.prompt.time_horizon
-        )
-
-    named_positions["short_term_time"] = _find_time_value_positions(
-        prompt_tokens_decoded, prompt_text, pair.short_term.time
-    )
-    named_positions["short_term_reward"] = _find_reward_value_positions(
-        prompt_tokens_decoded, prompt_text, pair.short_term.reward
-    )
-    named_positions["long_term_time"] = _find_time_value_positions(
-        prompt_tokens_decoded, prompt_text, pair.long_term.time
-    )
-    named_positions["long_term_reward"] = _find_reward_value_positions(
-        prompt_tokens_decoded, prompt_text, pair.long_term.reward
-    )
-    named_positions["response"] = list(range(prompt_len, full_len))
-
-    # Clamp all positions
-    for key in named_positions:
-        named_positions[key] = [max(0, min(p, full_len - 1)) for p in named_positions[key]]
-
-    # Build legacy source/dest
-    source_positions = []
-    for key in ["time_horizon", "short_term_time", "short_term_reward",
-                "long_term_time", "long_term_reward"]:
-        if key in named_positions:
-            source_positions.extend(named_positions[key])
-    source_positions = sorted(set(source_positions))
-
-    if not source_positions:
-        source_positions.append(int(prompt_len * 0.6))
-
-    dest_positions = named_positions.get("response", [])
-
-    return ResolvedPositions(
-        named_positions=named_positions,
-        source=source_positions,
-        dest=dest_positions,
-        prompt_len=prompt_len,
-        full_len=full_len,
-    )
 
 
 # =============================================================================
@@ -214,7 +41,7 @@ def resolve_positions(
 
 @dataclass(slots=True)
 class ChoiceInfo:
-    """Choice information for a single sample. Uses __slots__."""
+    """Choice information for a single sample."""
 
     chose_long_term: bool
     chosen_time_months: float
@@ -240,12 +67,12 @@ class ChoiceInfo:
 
 
 # =============================================================================
-# File I/O Utilities
+# File I/O
 # =============================================================================
 
 
 def _save_array(path: Path, arr: np.ndarray, compressed: bool = False):
-    """Save numpy array, optionally compressed."""
+    """Save numpy array."""
     if compressed:
         np.savez_compressed(path.with_suffix(".npz"), data=arr)
     else:
@@ -266,69 +93,157 @@ def _load_array(path: Path) -> np.ndarray:
         raise FileNotFoundError(f"No array file found: {path}")
 
 
-def _array_exists(path: Path) -> bool:
-    """Check if array file exists (either .npy or .npz)."""
-    return path.with_suffix(".npy").exists() or path.with_suffix(".npz").exists()
-
-
-def _safe_filename(key: str) -> str:
-    """Convert target key to safe filename."""
-    return key.replace("/", "_").replace("\\", "_")
-
-
 # =============================================================================
-# Streaming Activation Data (Memory-Efficient)
+# Activation Data Container
 # =============================================================================
 
 
 @dataclass
 class ActivationData:
-    """Memory-efficient container for activations.
+    """Container for extracted activations.
 
-    Activations are stored on disk in per-target files.
-    Load targets on-demand using load_target() or iterate with iter_targets().
+    New structure: per-sample folders with absolute position filenames.
+    Use sample_position_mapping.json to map abs_pos -> format_pos.
     """
 
     samples: list[PromptSample]
     choices: list[ChoiceInfo] | None = None
+    position_mappings: DatasetPositionMapping | None = None
+    n_samples: int = 0
     _data_dir: Path | None = None
-    _target_keys: list[str] = field(default_factory=list)
-    _sample_counts: dict[str, int] = field(default_factory=dict)
-    _cache: dict[str, np.ndarray] = field(default_factory=dict)
     _compressed: bool = False
+    _target_keys: list[str] = field(default_factory=list)
+    _cache: dict[str, np.ndarray] = field(default_factory=dict)
 
-    @property
-    def activations(self) -> dict[str, np.ndarray]:
-        """Legacy property - loads ALL activations. Use load_target() instead."""
-        if not self._cache or len(self._cache) < len(self._target_keys):
-            logger.warning("Loading ALL activations - consider using load_target()")
-            for key in self._target_keys:
-                if key not in self._cache:
-                    self.load_target(key)
-        return self._cache
+    def get_sample_dir(self, sample_idx: int) -> Path:
+        """Get path to sample's activation folder."""
+        if self._data_dir is None:
+            raise ValueError("Data directory not set")
+        return self._data_dir / "targets" / f"sample_{sample_idx}"
+
+    def load_activation(
+        self, sample_idx: int, layer: int, component: str, abs_pos: int
+    ) -> np.ndarray:
+        """Load activation for a specific (sample, layer, component, position)."""
+        sample_dir = self.get_sample_dir(sample_idx)
+        filename = f"L{layer}_{component}_{abs_pos}"
+        return _load_array(sample_dir / filename)
+
+    def load_activations_by_format_pos(
+        self, layer: int, component: str, format_pos: str
+    ) -> np.ndarray:
+        """Load activations for all samples at a given format position.
+
+        Uses position mappings to find the absolute position for each sample.
+        Returns: (n_samples, hidden_dim) array
+        """
+        if self.position_mappings is None:
+            raise ValueError("Position mappings not loaded")
+
+        activations = []
+        for sample_idx in range(self.n_samples):
+            mapping = self.position_mappings.get(sample_idx)
+            if mapping is None:
+                continue
+
+            # Find abs_pos for this format_pos
+            abs_positions = mapping.named_positions.get(format_pos, [])
+            if not abs_positions:
+                continue
+
+            abs_pos = abs_positions[0]  # Use first position
+            try:
+                act = self.load_activation(sample_idx, layer, component, abs_pos)
+                activations.append(act)
+            except FileNotFoundError:
+                continue
+
+        if not activations:
+            raise ValueError(f"No activations found for {format_pos}")
+
+        return np.stack(activations)
+
+    # =========================================================================
+    # Compatibility layer for analysis pipeline
+    # =========================================================================
 
     def get_target_keys(self) -> list[str]:
-        """Get list of available target keys."""
-        return self._target_keys.copy()
+        """Get list of available target keys (for analysis compatibility).
 
-    def get_sample_count(self, target_key: str) -> int:
-        """Get sample count for a specific target."""
-        return self._sample_counts.get(target_key, len(self.samples))
+        Target key format: L{layer}_{component}_{format_pos}
+        """
+        if self._target_keys:
+            return self._target_keys.copy()
+
+        # Build target keys from what's actually available
+        if self.position_mappings is None or self.n_samples == 0:
+            return []
+
+        # Get all format positions from first sample's mapping
+        first_mapping = self.position_mappings.get(0)
+        if first_mapping is None:
+            return []
+
+        # Scan sample_0 folder for available (layer, component) combinations
+        sample_dir = self.get_sample_dir(0)
+        if not sample_dir.exists():
+            return []
+
+        layer_components = set()
+        for f in sample_dir.glob("*.npy"):
+            parts = f.stem.split("_")
+            if len(parts) >= 3:
+                layer = parts[0]  # L35
+                component = "_".join(parts[1:-1])  # resid_post
+                layer_components.add((layer, component))
+
+        # Build target keys for each (layer, component, format_pos)
+        target_keys = []
+        for layer, component in sorted(layer_components):
+            for format_pos in first_mapping.named_positions.keys():
+                target_keys.append(f"{layer}_{component}_{format_pos}")
+
+        self._target_keys = target_keys
+        return target_keys.copy()
 
     def load_target(self, target_key: str) -> np.ndarray:
-        """Load a single target's activations from disk."""
+        """Load activations for a target key (for analysis compatibility).
+
+        Target key format: L{layer}_{component}_{format_pos}
+        Returns: (n_samples, hidden_dim) array
+        """
         if target_key in self._cache:
             return self._cache[target_key]
 
-        if self._data_dir is None:
-            raise ValueError("Data directory not set")
+        # Parse target key
+        parts = target_key.split("_")
+        layer = int(parts[0][1:])  # L35 -> 35
+        component = "_".join(parts[1:-1])  # resid_post, mlp_out, etc.
+        format_pos = parts[-1]  # response_choice, time_horizon, etc.
 
-        target_path = self._data_dir / "targets" / _safe_filename(target_key)
-        self._cache[target_key] = _load_array(target_path)
-        return self._cache[target_key]
+        # Handle multi-word format_pos
+        # Target key might be L35_resid_post_response_choice_prefix
+        # We need to figure out where component ends and format_pos starts
+        # Try progressively longer format_pos
+        for i in range(2, len(parts)):
+            potential_component = "_".join(parts[1:i])
+            potential_format_pos = "_".join(parts[i:])
+            if self.position_mappings and self.position_mappings.get(0):
+                if potential_format_pos in self.position_mappings.get(0).named_positions:
+                    component = potential_component
+                    format_pos = potential_format_pos
+                    break
+
+        activations = self.load_activations_by_format_pos(layer, component, format_pos)
+        self._cache[target_key] = activations
+        return activations
+
+    def get_sample_count(self, target_key: str) -> int:
+        """Get sample count for a target (for analysis compatibility)."""
+        return self.n_samples
 
     def unload_target(self, target_key: str):
-        """Remove a target from the cache to free memory."""
+        """Remove target from cache."""
         if target_key in self._cache:
             del self._cache[target_key]
 
@@ -338,57 +253,50 @@ class ActivationData:
         gc.collect()
 
     def iter_targets(self):
-        """Iterate over targets, loading one at a time. Memory efficient."""
-        for key in self._target_keys:
-            activations = self.load_target(key)
-            yield key, activations
-            self.unload_target(key)
+        """Iterate over targets (for analysis compatibility)."""
+        for key in self.get_target_keys():
+            try:
+                activations = self.load_target(key)
+                yield key, activations
+                self.unload_target(key)
+            except (ValueError, FileNotFoundError):
+                continue
         gc.collect()
 
-    def save(self, path: Path, compressed: bool | None = None):
-        """Save to disk with per-target files."""
-        if compressed is None:
-            compressed = self._compressed
-
+    def save(self, path: Path):
+        """Save metadata (activations already saved during extraction)."""
         path.mkdir(parents=True, exist_ok=True)
-        targets_dir = path / "targets"
-        targets_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save samples (compact JSON)
+        # Save samples
         samples_data = [s.to_dict() for s in self.samples]
         with open(path / "samples.json", "w") as f:
-            json.dump(samples_data, f, separators=(",", ":"))
+            json.dump(samples_data, f, indent=4)
 
         # Save choices
         if self.choices:
             choices_data = [c.to_dict() for c in self.choices]
             with open(path / "choices.json", "w") as f:
-                json.dump(choices_data, f, separators=(",", ":"))
+                json.dump(choices_data, f, indent=2)
 
         # Save metadata
         metadata = {
-            "target_keys": self._target_keys,
-            "sample_counts": self._sample_counts,
-            "compressed": compressed,
+            "n_samples": self.n_samples,
+            "compressed": self._compressed,
         }
         with open(path / "metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
-        # Save targets (if in cache)
-        for key in self._target_keys:
-            if key in self._cache:
-                target_path = targets_dir / _safe_filename(key)
-                _save_array(target_path, self._cache[key], compressed=compressed)
-
-        logger.info(f"Saved {len(self.samples)} samples, {len(self._target_keys)} targets to {path}")
+        logger.info(f"Saved {self.n_samples} samples to {path}")
 
     @classmethod
     def load(cls, path: Path) -> "ActivationData":
-        """Load from disk (lazy - doesn't load activations until requested)."""
+        """Load from disk."""
+        # Load samples
         with open(path / "samples.json") as f:
             samples_data = json.load(f)
         samples = [PromptSample.from_dict(s) for s in samples_data]
 
+        # Load choices
         choices = None
         choices_path = path / "choices.json"
         if choices_path.exists():
@@ -401,44 +309,29 @@ class ActivationData:
         if metadata_path.exists():
             with open(metadata_path) as f:
                 metadata = json.load(f)
-            target_keys = metadata.get("target_keys", [])
-            sample_counts = metadata.get("sample_counts", {})
+            n_samples = metadata.get("n_samples", len(samples))
             compressed = metadata.get("compressed", False)
         else:
-            # Legacy format
-            target_keys, sample_counts = _scan_legacy_format(path)
+            n_samples = len(samples)
             compressed = False
+
+        # Load position mappings
+        position_mappings = None
+        mapping_path = path / "sample_position_mapping.json"
+        if mapping_path.exists():
+            position_mappings = DatasetPositionMapping.load(mapping_path)
 
         data = cls(
             samples=samples,
             choices=choices,
+            position_mappings=position_mappings,
+            n_samples=n_samples,
             _data_dir=path,
-            _target_keys=target_keys,
-            _sample_counts=sample_counts,
             _compressed=compressed,
         )
 
-        logger.info(f"Loaded metadata: {len(samples)} samples, {len(target_keys)} targets")
+        logger.info(f"Loaded {n_samples} samples from {path}")
         return data
-
-
-def _scan_legacy_format(path: Path) -> tuple[list[str], dict[str, int]]:
-    """Scan legacy format and return target info."""
-    activations_file = path / "activations.npz"
-    if activations_file.exists():
-        with np.load(activations_file) as f:
-            return list(f.files), {k: f[k].shape[0] for k in f.files}
-
-    targets_dir = path / "targets"
-    if targets_dir.exists():
-        target_keys = []
-        for f in targets_dir.glob("*.npy"):
-            target_keys.append(f.stem)
-        for f in targets_dir.glob("*.npz"):
-            target_keys.append(f.stem)
-        return target_keys, {}
-
-    return [], {}
 
 
 # =============================================================================
@@ -453,8 +346,21 @@ def get_time_horizon_months(sample: PromptSample) -> float:
     return sample.prompt.time_horizon.to_months()
 
 
-def collect_samples() -> "PromptDataset":
-    """Generate samples with diverse time horizons using GEO_VIZ_CFG."""
+def _format_prompt_sample(sample: PromptSample) -> str:
+    """Format a prompt sample for logging."""
+    pair = sample.prompt.preference_pair
+    horizon = sample.prompt.time_horizon
+    horizon_str = str(horizon) if horizon else "None"
+    return (
+        f"  idx={sample.sample_idx} | "
+        f"short={pair.short_term.reward.value:,} in {pair.short_term.time} | "
+        f"long={pair.long_term.reward.value:,} in {pair.long_term.time} | "
+        f"horizon={horizon_str}"
+    )
+
+
+def collect_samples(output_dir: Path | None = None) -> "PromptDataset":
+    """Generate samples with diverse time horizons."""
     from ..data.default_datasets import GEO_VIZ_CFG
     from ..prompt import PromptDatasetConfig, PromptDatasetGenerator
 
@@ -462,28 +368,47 @@ def collect_samples() -> "PromptDataset":
     dataset = PromptDatasetGenerator(dataset_config).generate()
 
     logger.info(f"Generated {len(dataset.samples)} samples")
+
+    # Print first few prompt samples
+    n_preview = min(5, len(dataset.samples))
+    logger.info(f"First {n_preview} prompt samples:")
+    for sample in dataset.samples[:n_preview]:
+        logger.info(_format_prompt_sample(sample))
+    if len(dataset.samples) > n_preview:
+        logger.info(f"  ... and {len(dataset.samples) - n_preview} more")
+
+    # Print full text of first sample
+    if dataset.samples:
+        logger.info("First sample prompt text:")
+        for line in dataset.samples[0].text.split("\n"):
+            logger.info(f"  | {line}")
+
+    if output_dir is not None:
+        data_dir = output_dir / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        dataset.save_as_json(data_dir / "prompt_dataset.json")
+        logger.info(f"Saved prompt dataset to {data_dir / 'prompt_dataset.json'}")
+
     return dataset
 
 
 # =============================================================================
-# Streaming Activation Extraction
+# Activation Extraction
 # =============================================================================
 
 
 def extract_activations(
     dataset: "PromptDataset", targets: list[TargetSpec], config: GeoVizConfig
 ) -> ActivationData:
-    """Extract activations with minimal memory footprint.
+    """Extract activations organized by sample with absolute positions.
 
-    Memory optimizations:
-    1. Each target saved to separate file as samples are processed
-    2. Uses float32 (half memory)
-    3. Clears model internals immediately
-    4. Periodic garbage collection
-    5. Configurable buffer size
+    Output structure:
+        targets/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
+
+    Use sample_position_mapping.json to map abs_pos -> format_pos.
     """
     from ..formatting.prompt_formats import find_prompt_format_config
-    from ..preference import PreferenceQuerier, PreferenceQueryConfig
+    from ..preference import PreferenceDataset, PreferenceQuerier, PreferenceQueryConfig
 
     logger.info(f"Loading model {config.model}...")
 
@@ -498,28 +423,25 @@ def extract_activations(
 
     hook_names = list({t.hook_name for t in targets})
 
-    # Setup streaming save
+    # Setup output
     data_dir = config.output_dir / "data"
     targets_dir = data_dir / "targets"
     targets_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get buffer size from config
-    buffer_size = config.extraction_buffer_size
     compressed = config.use_compressed_storage
 
-    # Preallocate buffers (more efficient than list append)
-    target_buffers: dict[str, list[np.ndarray]] = {t.key: [] for t in targets}
-    target_counts: dict[str, int] = {t.key: 0 for t in targets}
-
     valid_samples = []
+    valid_preferences = []
     choices = []
+    position_mappings = DatasetPositionMapping()
     skipped = 0
+    valid_idx = 0
 
-    logger.info(f"Extracting activations (buffer_size={buffer_size}, compressed={compressed})...")
+    logger.info(f"Extracting activations (per-sample, compressed={compressed})...")
 
     for i, sample in enumerate(samples):
         if i % 50 == 0:
-            logger.info(f"  Sample {i}/{len(samples)} | valid: {len(valid_samples)} | skipped: {skipped}")
+            logger.info(f"  Sample {i}/{len(samples)} | valid: {valid_idx} | skipped: {skipped}")
 
         prompt_format = find_prompt_format_config(sample.formatting_id)
         choice_prefix = prompt_format.get_response_prefix_before_choice()
@@ -533,32 +455,40 @@ def extract_activations(
                 skipped += 1
                 continue
 
-            positions = resolve_positions(sample, pref, runner)
+            # Build position mapping (this gives us abs_pos -> format_pos)
+            pos_mapping = SamplePositionMapping.build(sample, pref, runner)
 
+            # Create sample folder
+            sample_dir = targets_dir / f"sample_{valid_idx}"
+            sample_dir.mkdir(parents=True, exist_ok=True)
+
+            # Extract and save activations
             sample_has_data = False
             for target in targets:
-                try:
-                    pos_idx = positions.get(target.position)
-                    if pos_idx is None:
-                        continue
+                abs_positions = pos_mapping.named_positions.get(target.position, [])
+                if not abs_positions:
+                    continue
 
-                    # Extract and convert to float32
-                    act = pref.internals.activations[target.hook_name][pos_idx, :]
+                abs_pos = abs_positions[0]  # Use first position
+
+                try:
+                    act = pref.internals.activations[target.hook_name][abs_pos, :]
                     act_np = act.numpy().astype(ACTIVATION_DTYPE)
 
-                    target_buffers[target.key].append(act_np)
+                    filename = f"L{target.layer}_{target.component}_{abs_pos}"
+                    _save_array(sample_dir / filename, act_np, compressed=compressed)
                     sample_has_data = True
 
                 except (ValueError, KeyError, IndexError):
                     continue
 
             if not sample_has_data:
+                sample_dir.rmdir()
                 skipped += 1
                 pref.internals = None
-                del pref
                 continue
 
-            # Capture choice info
+            # Record choice info
             pair = sample.prompt.preference_pair
             chose_long = pref.chose_long_term
             if chose_long:
@@ -568,23 +498,30 @@ def extract_activations(
                 chosen_time = pair.short_term.time.to_months()
                 chosen_reward = pair.short_term.reward.value
 
-            choices.append(
-                ChoiceInfo(
-                    chose_long_term=chose_long,
-                    chosen_time_months=chosen_time,
-                    chosen_reward=chosen_reward,
-                    choice_prob=pref.choice_prob,
-                )
-            )
+            choices.append(ChoiceInfo(
+                chose_long_term=chose_long,
+                chosen_time_months=chosen_time,
+                chosen_reward=chosen_reward,
+                choice_prob=pref.choice_prob,
+            ))
+
             valid_samples.append(sample)
-
-            # Clear internals immediately
+            position_mappings.add(pos_mapping)
             pref.internals = None
-            del pref
+            valid_preferences.append(pref)
 
-            # Flush buffers periodically
-            if len(valid_samples) % buffer_size == 0:
-                _flush_buffers(target_buffers, target_counts, targets_dir, compressed)
+            # Log first few preference samples
+            if valid_idx < 5:
+                choice_str = "long_term" if chose_long else "short_term"
+                logger.info(
+                    f"  Preference sample {valid_idx}: "
+                    f"chose={choice_str} ({pref.choice_prob:.2%}) | "
+                    f"reward={chosen_reward:,.0f} in {chosen_time:.1f}mo"
+                )
+
+            valid_idx += 1
+
+            if valid_idx % 100 == 0:
                 gc.collect()
 
         except Exception as e:
@@ -592,66 +529,41 @@ def extract_activations(
             skipped += 1
             continue
 
-    # Final flush
-    _flush_buffers(target_buffers, target_counts, targets_dir, compressed)
-    del target_buffers
     gc.collect()
+    logger.info(f"Extracted {valid_idx} valid samples (skipped {skipped})")
 
-    logger.info(f"Extracted {len(valid_samples)} valid samples (skipped {skipped})")
-
-    # Build sample counts
-    sample_counts = {k: v for k, v in target_counts.items() if v > 0}
-    for key, count in list(sample_counts.items())[:5]:
-        logger.info(f"  {key}: {count} samples")
-    if len(sample_counts) > 5:
-        logger.info(f"  ... and {len(sample_counts) - 5} more targets")
-
-    # Create ActivationData
+    # Create data container
     data = ActivationData(
         samples=valid_samples,
         choices=choices,
+        position_mappings=position_mappings,
+        n_samples=valid_idx,
         _data_dir=data_dir,
-        _target_keys=list(sample_counts.keys()),
-        _sample_counts=sample_counts,
         _compressed=compressed,
     )
 
-    # Save metadata
-    data.save(data_dir, compressed=compressed)
+    # Save everything
+    data.save(data_dir)
+
+    # Save position mappings
+    position_mappings.save(data_dir / "sample_position_mapping.json")
+    logger.info(f"Saved position mappings to {data_dir / 'sample_position_mapping.json'}")
+
+    # Save preference dataset
+    pref_dataset = PreferenceDataset(
+        prompt_dataset_id=dataset.dataset_id,
+        model=config.model,
+        preferences=valid_preferences,
+        prompt_dataset_name=dataset.config.name,
+    )
+    pref_dataset.save_as_json(data_dir / "preference_dataset.json", with_internals=False)
+    logger.info(f"Saved preference dataset to {data_dir / 'preference_dataset.json'}")
 
     return data
 
 
-def _flush_buffers(
-    buffers: dict[str, list[np.ndarray]],
-    counts: dict[str, int],
-    targets_dir: Path,
-    compressed: bool,
-):
-    """Flush activation buffers to disk."""
-    for key, buffer in buffers.items():
-        if not buffer:
-            continue
-
-        target_path = targets_dir / _safe_filename(key)
-        new_data = np.stack(buffer)
-
-        # Check if file exists and append
-        if _array_exists(target_path):
-            existing = _load_array(target_path)
-            combined = np.concatenate([existing, new_data], axis=0)
-            _save_array(target_path, combined, compressed=compressed)
-            del existing, combined
-        else:
-            _save_array(target_path, new_data, compressed=compressed)
-
-        counts[key] += len(buffer)
-        buffer.clear()
-        del new_data
-
-
 # =============================================================================
-# Caching
+# Cache Loading
 # =============================================================================
 
 
@@ -659,78 +571,11 @@ def load_cached_data(config: GeoVizConfig) -> ActivationData | None:
     """Load cached data if available."""
     cache_path = config.output_dir / "data"
 
-    # Check for new format
-    if (cache_path / "samples.json").exists() and (cache_path / "metadata.json").exists():
-        try:
-            return ActivationData.load(cache_path)
-        except Exception as e:
-            logger.warning(f"Failed to load cache: {e}")
-            return None
+    if not (cache_path / "samples.json").exists():
+        return None
 
-    # Check for legacy format
-    if (cache_path / "samples.json").exists() and (cache_path / "activations.npz").exists():
-        try:
-            return _convert_legacy_cache(cache_path, config.use_compressed_storage)
-        except Exception as e:
-            logger.warning(f"Failed to convert legacy cache: {e}")
-            return None
-
-    return None
-
-
-def _convert_legacy_cache(path: Path, compressed: bool) -> ActivationData:
-    """Convert legacy activations.npz to per-target files."""
-    logger.info("Converting legacy cache to streaming format...")
-
-    with open(path / "samples.json") as f:
-        samples_data = json.load(f)
-    samples = [PromptSample.from_dict(s) for s in samples_data]
-
-    choices = None
-    choices_path = path / "choices.json"
-    if choices_path.exists():
-        with open(choices_path) as f:
-            choices_data = json.load(f)
-        choices = [ChoiceInfo.from_dict(c) for c in choices_data]
-
-    # Convert activations
-    targets_dir = path / "targets"
-    targets_dir.mkdir(parents=True, exist_ok=True)
-
-    target_keys = []
-    sample_counts = {}
-
-    with np.load(path / "activations.npz") as activations_file:
-        for key in activations_file.files:
-            arr = activations_file[key].astype(ACTIVATION_DTYPE)
-            target_path = targets_dir / _safe_filename(key)
-            _save_array(target_path, arr, compressed=compressed)
-            target_keys.append(key)
-            sample_counts[key] = arr.shape[0]
-            logger.info(f"  Converted {key}: {arr.shape}")
-            del arr
-            gc.collect()
-
-    # Save metadata
-    metadata = {
-        "target_keys": target_keys,
-        "sample_counts": sample_counts,
-        "compressed": compressed,
-    }
-    with open(path / "metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    return ActivationData(
-        samples=samples,
-        choices=choices,
-        _data_dir=path,
-        _target_keys=target_keys,
-        _sample_counts=sample_counts,
-        _compressed=compressed,
-    )
-
-
-def save_data(data: ActivationData, config: GeoVizConfig):
-    """Save data to cache."""
-    cache_path = config.output_dir / "data"
-    data.save(cache_path, compressed=config.use_compressed_storage)
+    try:
+        return ActivationData.load(cache_path)
+    except Exception as e:
+        logger.warning(f"Failed to load cache: {e}")
+        return None

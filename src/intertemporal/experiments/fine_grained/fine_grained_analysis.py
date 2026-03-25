@@ -127,15 +127,11 @@ def run_position_patching(
     """
     results = []
 
-    # Determine position range
-    clean_div, corrupted_div = pair.choice_divergent_positions
-    start_pos = pair.position_mapping.first_interesting_pos
-    if config.position_range:
-        start_pos, end_pos = config.position_range
+    # Use specific positions if provided, otherwise combine source + destination
+    if config.positions:
+        positions = config.positions
     else:
-        end_pos = min(clean_div, corrupted_div)
-
-    positions = list(range(start_pos, end_pos))
+        positions = config.source_positions + config.destination_positions
 
     for head_result in top_heads[:config.n_top_heads_for_position]:
         layer = head_result.layer
@@ -495,11 +491,11 @@ def run_layer_position_patching(
         n_layers = runner.n_layers
         layers = list(range(n_layers // 2, n_layers))
 
-    # Determine positions
-    clean_div, corrupted_div = pair.choice_divergent_positions
-    start_pos = pair.position_mapping.first_interesting_pos
-    end_pos = min(clean_div, corrupted_div)
-    positions = list(range(start_pos, end_pos, 3))  # Sample every 3rd position
+    # Use specific positions if provided, otherwise combine source + destination
+    if config.layer_position_positions:
+        positions = config.layer_position_positions
+    else:
+        positions = config.source_positions + config.destination_positions
 
     for component in config.layer_position_components:
         log(f"[fine] Layer-position patching for {component}")
@@ -580,20 +576,55 @@ def run_fine_grained_analysis(
         neuron_target_layer=config.neuron_target_layer,
     )
 
-    # 1. Head-level patching sweep
-    if config.head_patching_enabled:
-        log("[fine] Running head patching sweep...")
-        results.head_sweep = run_head_patching_sweep(runner, pair, config)
-        log(f"[fine] Head sweep complete: {len(results.head_sweep.results)} heads")
-
-    # Get top heads for subsequent analyses
+    # 1. Head-level causal patching at specified layers
     top_heads = []
-    if results.head_sweep:
-        top_heads = results.head_sweep.get_top_heads(max(
+    if config.head_patching_enabled:
+        head_layers = config.head_layers
+        if head_layers is None:
+            head_layers = [24, 21, 19, 29, 30]
+
+        n_heads = config.n_heads
+        total = len(head_layers) * n_heads
+        log(f"[fine] Running head patching: {len(head_layers)} layers × {n_heads} heads = {total} sweeps")
+
+        all_head_results = []
+        count = 0
+        for layer in head_layers:
+            for head in range(n_heads):
+                count += 1
+                log_progress(count, total, prefix="[fine] Head sweep ")
+
+                target = InterventionTarget.at(
+                    layers=[layer],
+                    component="attn_out",
+                )
+
+                dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
+                ns = patch_for_choice(runner, pair, target, "noising", clear_memory=True)
+
+                all_head_results.append(HeadPatchingResult(
+                    layer=layer,
+                    head=head,
+                    denoising_recovery=dn.recovery,
+                    noising_disruption=ns.disruption,
+                ))
+
+        results.head_sweep = HeadSweepResults(
+            n_layers=config.n_layers,
+            n_heads=config.n_heads,
+            results=all_head_results,
+            layers_analyzed=head_layers,
+        )
+        results.head_sweep.build_matrices()
+        log(f"[fine] Head patching complete: {len(all_head_results)} heads")
+
+        # Get top heads for subsequent analyses
+        n_top = max(
             config.n_top_heads_for_position,
             config.n_top_source_heads,
             config.n_components_multi_site,
-        ))
+        )
+        top_heads = results.head_sweep.get_top_heads(n_top)
 
     # 2. Position-level patching for top heads
     if config.position_patching_enabled and top_heads:
@@ -613,10 +644,31 @@ def run_fine_grained_analysis(
         log("[fine] Running multi-site patching...")
         results.multi_site = run_multi_site_patching(runner, pair, top_heads, config)
 
-    # 5. Neuron-level ablation
+    # 5. MLP-level causal patching at specified layers
     if config.neuron_patching_enabled:
-        log("[fine] Running neuron patching...")
-        results.neuron_results = run_neuron_patching(runner, pair, config)
+        mlp_layers = config.mlp_layers
+
+        log(f"[fine] Running neuron patching: {len(mlp_layers)} layers")
+        neuron_results = []
+
+        for layer in mlp_layers:
+            target = InterventionTarget.at(
+                layers=[layer],
+                component="mlp_out",
+            )
+
+            dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
+            ns = patch_for_choice(runner, pair, target, "noising", clear_memory=True)
+
+            neuron_results.append(NeuronPatchingResult(
+                layer=layer,
+                neuron_idx=-1,  # Layer-level, not individual neuron
+                effect=dn.recovery,
+                activation_mean=ns.disruption,
+            ))
+
+        results.neuron_results = neuron_results
+        log(f"[fine] Neuron patching complete: {len(neuron_results)} layers")
 
     # 6. Layer-position fine heatmap
     if config.layer_position_enabled:

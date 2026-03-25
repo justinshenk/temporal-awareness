@@ -60,6 +60,24 @@ def visualize_mlp_analysis(
     # Check if we have neuron-level data for the target layer
     has_neuron_data = _has_neuron_data(agg, TARGET_LAYER)
     if has_neuron_data:
+        # Differential logit contribution bar chart (top neurons by task relevance)
+        _plot_differential_logit_contribution(
+            agg, output_dir / "mlp_differential_logit_contrib.png"
+        )
+        n_plots += 1
+
+        # Cumulative neuron contribution curve
+        _plot_cumulative_neuron_contribution(
+            agg, output_dir / "mlp_cumulative_contribution.png"
+        )
+        n_plots += 1
+
+        # Clean vs corrupted neuron activation scatter
+        _plot_neuron_clean_vs_corrupted(
+            agg, output_dir / "mlp_clean_vs_corrupted.png"
+        )
+        n_plots += 1
+
         # 10. Neuron activation difference heatmap across layers
         _plot_neuron_activation_heatmap_across_layers(
             agg, output_dir / "neuron_activation_heatmap_layers.png"
@@ -84,39 +102,63 @@ def visualize_mlp_analysis(
 
 
 def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> None:
-    """Plot mean layer contributions as a bar chart."""
+    """Plot mean layer contributions as grouped bar chart showing clean vs corrupted.
+
+    Shows three bars per layer:
+    - Clean: contribution from clean-run activations
+    - Corrupted: contribution from corrupted-run activations
+    - Difference: clean - corrupted (the task-relevant signal)
+    """
     layers = agg.layers_analyzed
     if not layers:
         return
 
-    # Compute mean contribution per layer
-    mean_contribs = []
-    std_contribs = []
+    # Compute mean contributions per layer (clean, corrupted, difference)
+    mean_clean_contribs = []
+    mean_corrupt_contribs = []
+    mean_diff_contribs = []
+
     for layer in layers:
-        contribs = []
+        clean_contribs = []
+        corrupt_contribs = []
+        diff_contribs = []
+
         for pr in agg.pair_results:
             lr = pr.get_layer_result(layer)
             if lr:
-                contribs.append(lr.total_logit_contribution)
-        if contribs:
-            mean_contribs.append(np.mean(contribs))
-            std_contribs.append(np.std(contribs) if len(contribs) > 1 else 0)
-        else:
-            mean_contribs.append(0)
-            std_contribs.append(0)
+                # Sum neuron-level contributions
+                # clean_contrib = sum(activation * w_out_alignment)
+                layer_clean = sum(
+                    n.clean_activation * n.w_out_logit_alignment
+                    for n in lr.top_neurons
+                )
+                layer_corrupt = sum(
+                    n.corrupted_activation * n.w_out_logit_alignment
+                    for n in lr.top_neurons
+                )
+                clean_contribs.append(layer_clean)
+                corrupt_contribs.append(layer_corrupt)
+                diff_contribs.append(lr.total_logit_contribution)
 
-    # Create figure
-    fig, ax = plt.subplots(figsize=(10, 6))
+        mean_clean_contribs.append(np.mean(clean_contribs) if clean_contribs else 0)
+        mean_corrupt_contribs.append(np.mean(corrupt_contribs) if corrupt_contribs else 0)
+        mean_diff_contribs.append(np.mean(diff_contribs) if diff_contribs else 0)
+
+    # Create figure with grouped bars
+    fig, ax = plt.subplots(figsize=(12, 6))
 
     x = np.arange(len(layers))
-    colors = [POSITIVE_COLOR if c >= 0 else NEGATIVE_COLOR for c in mean_contribs]
+    width = 0.25
 
-    bars = ax.bar(x, mean_contribs, color=colors, alpha=BAR_ALPHA,
-                  yerr=std_contribs if agg.n_pairs > 1 else None,
-                  capsize=3, ecolor='gray')
+    bars_clean = ax.bar(x - width, mean_clean_contribs, width,
+                        label='Clean Run', color=CLEAN_COLOR, alpha=BAR_ALPHA)
+    bars_corrupt = ax.bar(x, mean_corrupt_contribs, width,
+                          label='Corrupted Run', color=CORRUPTED_COLOR, alpha=BAR_ALPHA)
+    bars_diff = ax.bar(x + width, mean_diff_contribs, width,
+                       label='Difference (Clean - Corrupted)', color='steelblue', alpha=BAR_ALPHA)
 
-    # Add value labels on bars
-    for i, (bar, val) in enumerate(zip(bars, mean_contribs)):
+    # Add value labels on difference bars only (to avoid clutter)
+    for bar, val in zip(bars_diff, mean_diff_contribs):
         height = bar.get_height()
         sign = "+" if val >= 0 else ""
         ax.annotate(f'{sign}{val:.2f}',
@@ -124,23 +166,230 @@ def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> N
                     xytext=(0, 3 if height >= 0 else -12),
                     textcoords="offset points",
                     ha='center', va='bottom' if height >= 0 else 'top',
-                    fontsize=9)
+                    fontsize=8)
 
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Logit Contribution', fontsize=12)
-    ax.set_title(f'MLP Layer Contributions to Decision\n({agg.n_pairs} pairs)', fontsize=14)
+    ax.set_title(f'MLP Layer Contributions: Clean vs Corrupted\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}, top neurons only)',
+                 fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{l}' for l in layers])
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
     ax.grid(axis='y', alpha=GRID_ALPHA)
+    ax.legend(loc='best')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_differential_logit_contribution(agg: MLPAggregatedResults, output_path: Path,
+                                           layer: int = TARGET_LAYER, top_n: int = 30) -> None:
+    """Plot differential logit contribution bar chart for neurons.
+
+    Shows: (clean_activation - corrupted_activation) × W_out_alignment
+    sorted by absolute value. This is the single most important metric
+    for identifying which neurons actually drive the task.
+
+    Args:
+        agg: Aggregated MLP results
+        output_path: Where to save the plot
+        layer: Layer to analyze
+        top_n: Number of top neurons to show
+    """
+    # Collect neuron contributions across pairs
+    neuron_contribs: dict[int, list[float]] = {}
+
+    for pr in agg.pair_results:
+        lr = pr.get_layer_result(layer)
+        if not lr or not lr.top_neurons:
+            continue
+        for ni in lr.top_neurons:
+            if ni.neuron_idx not in neuron_contribs:
+                neuron_contribs[ni.neuron_idx] = []
+            neuron_contribs[ni.neuron_idx].append(ni.logit_contribution)
+
+    if not neuron_contribs:
+        return
+
+    # Compute mean contribution per neuron and sort by absolute value
+    neuron_means = [
+        (idx, np.mean(contribs), np.std(contribs) if len(contribs) > 1 else 0)
+        for idx, contribs in neuron_contribs.items()
+    ]
+    neuron_means.sort(key=lambda x: abs(x[1]), reverse=True)
+    neuron_means = neuron_means[:top_n]
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, max(6, len(neuron_means) * 0.25)))
+
+    indices = [n[0] for n in neuron_means]
+    means = [n[1] for n in neuron_means]
+    stds = [n[2] for n in neuron_means]
+
+    y = np.arange(len(indices))
+    colors = [POSITIVE_COLOR if m >= 0 else NEGATIVE_COLOR for m in means]
+
+    bars = ax.barh(y, means, xerr=stds if agg.n_pairs > 1 else None,
+                   color=colors, alpha=BAR_ALPHA, capsize=3, ecolor='gray')
+
+    # Add value labels
+    for i, (bar, val) in enumerate(zip(bars, means)):
+        width = bar.get_width()
+        sign = "+" if val >= 0 else ""
+        x_pos = width + (0.01 * max(abs(m) for m in means)) if val >= 0 else width - (0.01 * max(abs(m) for m in means))
+        ax.text(x_pos, bar.get_y() + bar.get_height() / 2,
+                f'{sign}{val:.3f}', va='center', ha='left' if val >= 0 else 'right',
+                fontsize=8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([f'N{idx}' for idx in indices])
+    ax.set_xlabel('Differential Logit Contribution\n(clean_act - corrupt_act) × W_out_alignment', fontsize=11)
+    ax.set_ylabel(f'Neuron (L{layer})', fontsize=12)
+    ax.set_title(f'Top {len(neuron_means)} Neurons by Differential Logit Contribution\n'
+                 f'L{layer} ({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
+    ax.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
+    ax.grid(axis='x', alpha=GRID_ALPHA)
 
     # Add legend
-    from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor=POSITIVE_COLOR, alpha=BAR_ALPHA, label='Supports clean prediction'),
         Patch(facecolor=NEGATIVE_COLOR, alpha=BAR_ALPHA, label='Opposes clean prediction')
     ]
-    ax.legend(handles=legend_elements, loc='best')
+    ax.legend(handles=legend_elements, loc='lower right')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_neuron_clean_vs_corrupted(agg: MLPAggregatedResults, output_path: Path,
+                                     layer: int = TARGET_LAYER, top_n: int = 20) -> None:
+    """Plot clean vs corrupted activation for top neurons.
+
+    Scatter plot showing which neurons are more active on clean vs corrupted.
+    """
+    # Collect neuron activations
+    neuron_data: dict[int, tuple[list[float], list[float]]] = {}
+    for pr in agg.pair_results:
+        lr = pr.get_layer_result(layer)
+        if not lr or not lr.top_neurons:
+            continue
+        for ni in lr.top_neurons:
+            if ni.neuron_idx not in neuron_data:
+                neuron_data[ni.neuron_idx] = ([], [])
+            neuron_data[ni.neuron_idx][0].append(ni.clean_activation)
+            neuron_data[ni.neuron_idx][1].append(ni.corrupted_activation)
+
+    if not neuron_data:
+        return
+
+    # Get top neurons by activation difference
+    neuron_stats = []
+    for idx, (clean_acts, corrupt_acts) in neuron_data.items():
+        mean_clean = np.mean(clean_acts)
+        mean_corrupt = np.mean(corrupt_acts)
+        diff = abs(mean_clean - mean_corrupt)
+        neuron_stats.append((idx, mean_clean, mean_corrupt, diff))
+
+    neuron_stats.sort(key=lambda x: x[3], reverse=True)
+    neuron_stats = neuron_stats[:top_n]
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    clean_vals = [n[1] for n in neuron_stats]
+    corrupt_vals = [n[2] for n in neuron_stats]
+    indices = [n[0] for n in neuron_stats]
+
+    # Scatter plot
+    scatter = ax.scatter(corrupt_vals, clean_vals, c=range(len(neuron_stats)),
+                        cmap='viridis', s=100, alpha=0.7)
+
+    # Add diagonal line (y=x)
+    lims = [min(min(clean_vals), min(corrupt_vals)) - 0.1,
+            max(max(clean_vals), max(corrupt_vals)) + 0.1]
+    ax.plot(lims, lims, 'k--', alpha=0.5, label='y=x (no difference)')
+
+    # Label points
+    for i, (idx, clean, corrupt, _) in enumerate(neuron_stats):
+        ax.annotate(f'N{idx}', (corrupt, clean), fontsize=8,
+                   xytext=(3, 3), textcoords='offset points')
+
+    ax.set_xlabel('Corrupted Activation', fontsize=12)
+    ax.set_ylabel('Clean Activation', fontsize=12)
+    ax.set_title(f'Neuron Activations: Clean vs Corrupted (L{layer})\n'
+                 f'Top {len(neuron_stats)} neurons by |difference|', fontsize=14)
+    ax.legend(loc='upper left')
+    ax.grid(alpha=GRID_ALPHA)
+
+    # Color bar for ranking
+    cbar = plt.colorbar(scatter, ax=ax)
+    cbar.set_label('Rank by |clean - corrupted|')
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_cumulative_neuron_contribution(agg: MLPAggregatedResults, output_path: Path,
+                                          layer: int = TARGET_LAYER) -> None:
+    """Plot cumulative neuron contribution curve.
+
+    Shows fraction of total effect recovered by top-N neurons.
+    Tells you if it's a 5-neuron or 500-neuron story.
+    """
+    # Collect neuron contributions
+    neuron_contribs: dict[int, list[float]] = {}
+    for pr in agg.pair_results:
+        lr = pr.get_layer_result(layer)
+        if not lr or not lr.top_neurons:
+            continue
+        for ni in lr.top_neurons:
+            if ni.neuron_idx not in neuron_contribs:
+                neuron_contribs[ni.neuron_idx] = []
+            neuron_contribs[ni.neuron_idx].append(abs(ni.logit_contribution))
+
+    if not neuron_contribs:
+        return
+
+    # Sort by mean absolute contribution
+    neuron_means = [(idx, np.mean(contribs)) for idx, contribs in neuron_contribs.items()]
+    neuron_means.sort(key=lambda x: x[1], reverse=True)
+
+    # Compute cumulative sum
+    total = sum(m[1] for m in neuron_means)
+    if total == 0:
+        return
+
+    cumsum = np.cumsum([m[1] for m in neuron_means])
+    fractions = cumsum / total * 100
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    x = np.arange(1, len(fractions) + 1)
+    ax.plot(x, fractions, 'b-', linewidth=2, marker='o', markersize=3)
+    ax.fill_between(x, fractions, alpha=0.3)
+
+    # Add reference lines
+    for thresh in [50, 80, 90, 95]:
+        ax.axhline(y=thresh, color='gray', linestyle='--', alpha=0.5)
+        # Find first neuron to cross threshold
+        idx = np.searchsorted(fractions, thresh)
+        if idx < len(fractions):
+            ax.axvline(x=idx+1, color='red', linestyle=':', alpha=0.5)
+            ax.annotate(f'{thresh}% @ N={idx+1}', xy=(idx+1, thresh),
+                       xytext=(idx+5, thresh-5), fontsize=9,
+                       arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
+
+    ax.set_xlabel('Top N Neurons', fontsize=12)
+    ax.set_ylabel('Cumulative Contribution (%)', fontsize=12)
+    ax.set_title(f'Cumulative Neuron Contribution (L{layer})\n'
+                 f'{agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}', fontsize=14)
+    ax.set_xlim(1, min(len(fractions), 100))
+    ax.set_ylim(0, 105)
+    ax.grid(alpha=GRID_ALPHA)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')

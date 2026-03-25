@@ -41,8 +41,8 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="out/geo_viz",
-        help="Path to geo_viz output directory (default: out/geo_viz)",
+        default="out/geometry",
+        help="Path to geo_viz output directory (default: out/geometry)",
     )
     parser.add_argument(
         "--host",

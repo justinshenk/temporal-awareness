@@ -262,3 +262,100 @@ def random_direction(d_model: int, seed: Optional[int] = None) -> np.ndarray:
         np.random.seed(seed)
     vec = np.random.randn(d_model).astype(np.float32)
     return vec / np.linalg.norm(vec)
+
+
+def zero_ablation_intervention(
+    layer: int,
+    d_model: int,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+) -> Intervention:
+    """Create zero ablation intervention (set activations to 0).
+
+    Used for testing circuit necessity: if ablating a component significantly
+    affects behavior, that component is necessary for the circuit.
+
+    Args:
+        layer: Layer to intervene on
+        d_model: Model hidden dimension
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+
+    Returns:
+        Intervention that sets activations to zero
+    """
+    return Intervention(
+        layer=layer,
+        mode="set",
+        values=np.zeros(d_model, dtype=np.float32),
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )
+
+
+def mean_ablation_intervention(
+    layer: int,
+    mean_activations: np.ndarray,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+) -> Intervention:
+    """Create mean ablation intervention (set to pre-computed mean).
+
+    Used for testing circuit necessity while preserving approximate activation
+    magnitude. This is often preferred over zero ablation as it's less disruptive
+    to downstream computations.
+
+    Args:
+        layer: Layer to intervene on
+        mean_activations: Pre-computed mean activations [d_model]
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+
+    Returns:
+        Intervention that sets activations to mean values
+    """
+    return Intervention(
+        layer=layer,
+        mode="set",
+        values=np.array(mean_activations, dtype=np.float32),
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )
+
+
+def gaussian_noise_intervention(
+    layer: int,
+    d_model: int,
+    sigma: float = 1.0,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+    seed: Optional[int] = None,
+) -> Intervention:
+    """Create Gaussian noise injection intervention (add N(0, sigma) noise).
+
+    Used for robustness testing: if adding noise to a component doesn't
+    significantly affect behavior, that component may have redundant pathways.
+
+    Args:
+        layer: Layer to intervene on
+        d_model: Model hidden dimension
+        sigma: Standard deviation of noise
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+        seed: Optional random seed for reproducibility
+
+    Returns:
+        Intervention that adds Gaussian noise to activations
+    """
+    rng = np.random.default_rng(seed)
+    noise = rng.normal(0, sigma, size=d_model).astype(np.float32)
+    return Intervention(
+        layer=layer,
+        mode="add",
+        values=noise,
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )

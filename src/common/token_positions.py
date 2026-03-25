@@ -11,7 +11,7 @@ from .token_trajectory import TokenTrajectory
 
 
 @dataclass
-class PositionMapping(BaseSchema):
+class PairPositionMapping(BaseSchema):
     """Mapping between positions in two token sequences.
 
     Maps source positions to destination positions, with metadata.
@@ -37,7 +37,7 @@ class PositionMapping(BaseSchema):
     first_interesting_marker: str | None = None
 
     @classmethod
-    def from_lengths(cls, src_len: int, dst_len: int) -> "PositionMapping":
+    def from_lengths(cls, src_len: int, dst_len: int) -> "PairPositionMapping":
         """Create linear mapping from sequence lengths (no anchors)."""
         mapping = interpolate_positions([], src_len, dst_len)
         return cls(mapping=mapping, src_len=src_len, dst_len=dst_len, anchors=[])
@@ -129,8 +129,8 @@ class PositionMapping(BaseSchema):
         ratio = dst_pos / self.dst_len
         return int(ratio * self.src_len)
 
-    def switch(self) -> "PositionMapping":
-        """Return a new PositionMapping with src and dst swapped.
+    def switch(self) -> "PairPositionMapping":
+        """Return a new PairPositionMapping with src and dst swapped.
 
         Inverts the mapping direction: if original maps clean→corrupted,
         switched maps corrupted→clean.
@@ -145,14 +145,14 @@ class PositionMapping(BaseSchema):
             that switch().switch() may not equal the original mapping in such cases.
 
         Returns:
-            A new PositionMapping with source and destination swapped.
+            A new PairPositionMapping with source and destination swapped.
         """
         # Note: For non-injective mappings (where multiple src positions map to
         # the same dst position), the inversion will only preserve one of the
         # original source positions. This is inherent to dict-based inversion.
         switched_anchors = [(dst, src) for src, dst in self.anchors]
 
-        return PositionMapping(
+        return PairPositionMapping(
             mapping=self.inv(),
             src_len=self.dst_len,
             dst_len=self.src_len,
@@ -436,7 +436,7 @@ def build_position_mapping(
     src_traj: TokenTrajectory,
     dst_traj: TokenTrajectory,
     anchor_texts: list[str] | None = None,
-) -> PositionMapping:
+) -> PairPositionMapping:
     """Build mapping from source positions to destination positions.
 
     Uses semantic matching via anchor texts, then interpolation for unmatched.
@@ -448,7 +448,7 @@ def build_position_mapping(
         anchor_texts: Text markers to find in both sequences for alignment
 
     Returns:
-        PositionMapping with mapping dict and metadata
+        PairPositionMapping with mapping dict and metadata
     """
     src_tokens = decode_token_ids(tokenizer, src_traj.token_ids)
     dst_tokens = decode_token_ids(tokenizer, dst_traj.token_ids)
@@ -460,7 +460,7 @@ def build_position_mapping(
         anchor_points, src_traj.n_sequence, dst_traj.n_sequence
     )
 
-    return PositionMapping(
+    return PairPositionMapping(
         mapping=mapping,
         src_len=src_traj.n_sequence,
         dst_len=dst_traj.n_sequence,

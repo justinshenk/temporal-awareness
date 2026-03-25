@@ -241,6 +241,25 @@ class PreferenceSample(BaseSchema):
         return False
 
     @property
+    def match_largest_reward(self) -> bool | None:
+        """Whether the chosen option has the largest reward.
+
+        Returns:
+            True if chosen option has larger reward
+            False if chosen option has smaller reward
+            None if rewards are equal or missing
+        """
+        if self.short_term_reward is None or self.long_term_reward is None:
+            return None
+        if self.short_term_reward == self.long_term_reward:
+            return None
+
+        larger_is_long_term = self.long_term_reward > self.short_term_reward
+        if larger_is_long_term:
+            return self.chose_long_term
+        return self.chose_short_term
+
+    @property
     def full_text(self) -> str:
         """Full text: prompt + response."""
         return (self.prompt_text or "") + (self.response_text or "")

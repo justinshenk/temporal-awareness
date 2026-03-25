@@ -192,7 +192,7 @@ def _plot_source_attention_by_layer(agg: AttnAggregatedResults, output_path: Pat
 
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Mean Attention to Source Positions', fontsize=12)
-    ax.set_title(f'Attention to Source (Horizon) Positions\n({agg.n_pairs} pairs)', fontsize=14)
+    ax.set_title(f'Attention to Source (Horizon) Positions\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{l}' for l in layers])
     ax.grid(axis='y', alpha=GRID_ALPHA)
@@ -339,7 +339,7 @@ def _plot_attention_to_source_summary(agg: AttnAggregatedResults, output_path: P
 
     ax.set_xlabel('Head', fontsize=12)
     ax.set_ylabel('Attention to Source Positions', fontsize=12)
-    ax.set_title(f'Top Attention Heads: Dest -> Source\nLayers {layers} ({agg.n_pairs} pairs)', fontsize=14)
+    ax.set_title(f'Top Attention Heads: Dest -> Source\nLayers {layers} ({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
     ax.grid(axis='y', alpha=GRID_ALPHA)
@@ -414,7 +414,7 @@ def _plot_head_importance_vs_shift(agg: AttnAggregatedResults, output_path: Path
 
     ax.set_xlabel('Mean Attention to Source Positions', fontsize=12)
     ax.set_ylabel('Mean Attention Pattern Difference\n(Clean vs Corrupted)', fontsize=12)
-    ax.set_title(f'Head Importance vs Attention Shift\n({agg.n_pairs} pairs)', fontsize=14)
+    ax.set_title(f'Head Importance vs Attention Shift\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
     ax.legend(loc='upper right')
     ax.grid(alpha=GRID_ALPHA)
 
@@ -484,7 +484,7 @@ def _plot_cross_layer_consistency(agg: AttnAggregatedResults, output_path: Path)
 
     ax.set_xlabel('Head', fontsize=12)
     ax.set_ylabel('Attention Pattern Difference\n(Clean vs Corrupted)', fontsize=12)
-    ax.set_title(f'Attention Consistency: Top Dynamic Heads\n({agg.n_pairs} pairs)', fontsize=14)
+    ax.set_title(f'Attention Consistency: Top Dynamic Heads\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
     ax.grid(axis='y', alpha=GRID_ALPHA)
@@ -1077,6 +1077,9 @@ def visualize_qk_analysis(
 
         try:
             W_QK = runner._backend.get_W_QK(layer, head)  # [d_model, d_model]
+
+            # Cast to float32 for SVD compatibility (some backends use bfloat16)
+            W_QK = W_QK.float()
 
             # Compute SVD to understand the low-rank structure
             U, S, Vh = torch.linalg.svd(W_QK)

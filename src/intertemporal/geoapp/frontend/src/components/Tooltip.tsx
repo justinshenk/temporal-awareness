@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, useId } from 'react';
 
 export interface TooltipData {
   sampleIdx: number;
@@ -18,9 +18,15 @@ interface TooltipProps {
 
 export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const [adjustedPosition, setAdjustedPosition] = useState({ x: 0, y: 0 });
+  const tooltipId = useId();
+  // Initialize with mouse position to avoid flash at (0,0)
+  const [adjustedPosition, setAdjustedPosition] = useState(() => ({
+    x: mousePosition.x + 16,
+    y: mousePosition.y + 16,
+  }));
 
-  useEffect(() => {
+  // Use useLayoutEffect to calculate position before paint, avoiding visual flash
+  useLayoutEffect(() => {
     if (!tooltipRef.current || !visible) return;
 
     const tooltip = tooltipRef.current;
@@ -48,7 +54,7 @@ export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
     y = Math.max(8, Math.min(y, viewportHeight - rect.height - 8));
 
     setAdjustedPosition({ x, y });
-  }, [mousePosition, visible]);
+  }, [mousePosition, visible, data]); // Added data dependency for size changes
 
   if (!visible || !data) return null;
 
@@ -75,12 +81,15 @@ export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
   return (
     <div
       ref={tooltipRef}
+      id={tooltipId}
+      role="tooltip"
+      aria-hidden={!visible}
       className="tooltip-container"
       style={{
         position: 'fixed',
         left: adjustedPosition.x,
         top: adjustedPosition.y,
-        zIndex: 1000,
+        zIndex: 10000, // Higher z-index to ensure visibility above all overlays
         pointerEvents: 'none',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(4px)',
@@ -104,7 +113,7 @@ export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
           style={{
             fontSize: '11px',
             fontWeight: 600,
-            color: '#C678DD',
+            color: '#D97757',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '8px',
@@ -140,10 +149,15 @@ export function Tooltip({ data, mousePosition, visible }: TooltipProps) {
                 <span
                   style={{
                     fontSize: '12px',
-                    color: '#4a3f5c',
+                    color: '#1a1613',
                     fontWeight: 600,
                     fontFamily: 'monospace',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '150px',
                   }}
+                  title={formatValue(key, value)} // Show full value on hover for truncated text
                 >
                   {formatValue(key, value)}
                 </span>

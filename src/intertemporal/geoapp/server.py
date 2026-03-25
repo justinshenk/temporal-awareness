@@ -1,6 +1,7 @@
 """FastAPI server for GeoViz visualization backend."""
 
 import os
+import threading
 from pathlib import Path
 
 import uvicorn
@@ -13,7 +14,7 @@ from ..geoapp.data_loader import GeoVizDataLoader
 from .routes import create_router
 
 # Default paths
-DEFAULT_DATA_DIR = Path("out/geo_viz")
+DEFAULT_DATA_DIR = Path("out/geometry")
 DEFAULT_FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
 
 
@@ -47,14 +48,36 @@ def create_app(
     # Create data loader
     data_loader = GeoVizDataLoader(data_dir)
 
-    # Warmup if requested
-    if warmup:
-        print("Pre-computing embeddings...")
-        count = data_loader.warmup(
+    # NON-BLOCKING WARMUP: Compute embeddings in background after server starts
+    def background_warmup():
+        import time
+        # Small delay to let server start first
+        time.sleep(0.5)
+        print("\n[Background] Starting embedding warmup...")
+
+        pca_count = data_loader.warmup(
             methods=["pca"],
-            progress_callback=lambda cur, tot, desc: print(f"  [{cur}/{tot}] {desc}"),
+            components=["resid_pre", "resid_post", "attn_out", "mlp_out"],
+            positions=None,
         )
-        print(f"Cached {count} embeddings")
+        print(f"[Background] PCA: {pca_count} cached")
+
+        umap_count = data_loader.warmup(
+            methods=["umap"],
+            components=["resid_pre", "resid_post", "attn_out", "mlp_out"],
+            positions=None,
+        )
+        print(f"[Background] UMAP: {umap_count} cached")
+
+        tsne_count = data_loader.warmup(
+            methods=["tsne"],
+            components=["resid_pre", "resid_post"],
+            positions=None,
+        )
+        print(f"[Background] t-SNE: {tsne_count} cached")
+        print(f"[Background] Warmup complete: {pca_count + umap_count + tsne_count} total")
+
+    threading.Thread(target=background_warmup, daemon=True).start()
 
     # Create FastAPI app
     app = FastAPI(

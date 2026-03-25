@@ -76,14 +76,34 @@ DIFFMEANS: dict = {
 }
 
 # Default fine-grained activation patching settings
+# Uses FAST attribution for heads/neurons (not sweeps), then causal patching for position/path/multi-site
 FINE_PATCH: dict = {
     "enabled": True,
-    "head_layers": [24, 21, 19, 29, 30],  # Key attention layers
-    "mlp_layers": [31, 24, 28],  # Key MLP layers
-    "n_top_heads": 5,  # Number of top heads to analyze
-    "n_top_neurons": 20,  # Number of top neurons per layer
-    "source_positions": [86, 87, 88],  # Source positions for patching
-    "destination_positions": [143, 144, 145],  # Destination positions
+    # Head attribution (fast - uses specified layers, not sweep)
+    "head_patching_enabled": True,
+    "head_layers": [24, 21, 19, 29, 30],  # Key attention layers (fast attribution)
+    # Position patching for top heads (causal)
+    "position_patching_enabled": True,
+    "n_top_heads_for_position": 5,
+    "position_range": None,  # (start, end) or auto
+    # Path patching (causal)
+    "path_patching_enabled": True,
+    "source_layers": [19, 21, 24],
+    "dest_mlp_layers": [28, 31, 34],
+    "dest_head_layers": [28, 29, 30, 31],
+    "n_top_source_heads": 5,
+    # Multi-site interaction (causal)
+    "multi_site_enabled": True,
+    "n_components_multi_site": 10,
+    # Neuron attribution (fast - uses specified layer, not sweep)
+    "neuron_patching_enabled": True,
+    "neuron_target_layer": 31,
+    "mlp_layers": [31, 24, 28],  # Key MLP layers (fast attribution)
+    "n_top_neurons": 50,
+    # Layer-position fine heatmap (causal)
+    "layer_position_enabled": True,
+    "layer_position_components": ["attn_out", "mlp_out"],
+    "layer_position_layers": None,  # None = layers 15-35
 }
 
 # Default MLP neuron analysis settings
@@ -104,35 +124,6 @@ ATTN_ANALYSIS: dict = {
 # Default pair requirement settings (empty = no requirements, allows all valid pairs)
 # Set "different_labels": True for multilabel experiments
 PAIR_REQ: dict = {}
-
-# Default fine-grained patching settings (comprehensive analysis: plots 17-26)
-FINE_GRAINED: dict = {
-    "enabled": True,
-    # Head patching sweep
-    "head_patching_enabled": True,
-    "head_layers": None,  # None = layers in second half of network
-    # Position patching for top heads
-    "position_patching_enabled": True,
-    "n_top_heads_for_position": 5,
-    "position_range": None,  # (start, end) or auto
-    # Path patching
-    "path_patching_enabled": True,
-    "source_layers": [19, 21, 24],
-    "dest_mlp_layers": [28, 31, 34],
-    "dest_head_layers": [28, 29, 30, 31],
-    "n_top_source_heads": 5,
-    # Multi-site interaction
-    "multi_site_enabled": True,
-    "n_components_multi_site": 10,
-    # Neuron patching
-    "neuron_patching_enabled": True,
-    "neuron_target_layer": 31,
-    "n_top_neurons": 50,
-    # Layer-position fine heatmap
-    "layer_position_enabled": True,
-    "layer_position_components": ["attn_out", "mlp_out"],
-    "layer_position_layers": None,  # None = layers 15-35
-}
 
 
 @dataclass
@@ -168,9 +159,6 @@ class ExperimentConfig(BaseSchema):
 
     # Attention pattern analysis settings
     attn_analysis: dict = field(default_factory=lambda: ATTN_ANALYSIS.copy())
-
-    # Fine-grained patching settings (comprehensive: plots 17-26)
-    fine_grained: dict = field(default_factory=lambda: FINE_GRAINED.copy())
 
     # Pair requirements (filtering criteria for contrastive pairs)
     pair_req: dict = field(default_factory=lambda: PAIR_REQ.copy())

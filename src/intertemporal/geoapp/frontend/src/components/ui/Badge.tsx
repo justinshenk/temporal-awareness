@@ -27,12 +27,12 @@ const variantClasses: Record<BadgeVariant, string> = {
     border border-gray-200
   `,
   primary: `
-    bg-gradient-to-r from-[#C678DD]/20 to-[#FF6B9D]/20
-    text-[#4a3f5c]
-    border border-[#C678DD]/30
+    bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20
+    text-[#1a1613]
+    border border-[#D97757]/30
   `,
   secondary: `
-    bg-purple-50 text-purple-700
+    bg-[#faf8f5] text-purple-700
     border border-purple-200
   `,
   success: `
@@ -55,8 +55,8 @@ const variantClasses: Record<BadgeVariant, string> = {
 
 const dotColors: Record<BadgeVariant, string> = {
   default: 'bg-gray-500',
-  primary: 'bg-gradient-to-r from-[#C678DD] to-[#FF6B9D]',
-  secondary: 'bg-purple-500',
+  primary: 'bg-gradient-to-r from-[#D97757] to-[#348296]',
+  secondary: 'bg-[#faf8f5]0',
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   error: 'bg-rose-500',

@@ -21,11 +21,11 @@ from .geo_viz_config import (
 )
 from .geo_viz_data import (
     ActivationData,
+    ChoiceInfo,
     collect_samples,
     extract_activations,
     get_time_horizon_months,
     load_cached_data,
-    save_data,
 )
 from .geo_viz_analysis import (
     linear_probe_analysis,
@@ -71,11 +71,11 @@ __all__ = [
     "MAX_TRAJECTORY_SAMPLES",
     # Data
     "ActivationData",
+    "ChoiceInfo",
     "collect_samples",
     "extract_activations",
     "get_time_horizon_months",
     "load_cached_data",
-    "save_data",
     # Analysis
     "linear_probe_analysis",
     "pca_correlation_analysis",

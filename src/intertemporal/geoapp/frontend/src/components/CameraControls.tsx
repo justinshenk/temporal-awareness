@@ -7,16 +7,36 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 interface CameraPreset {
   name: string;
   label: string;
-  position: [number, number, number];
-  target: [number, number, number];
 }
 
-const CAMERA_PRESETS: CameraPreset[] = [
-  { name: 'iso', label: 'Iso', position: [5, 5, 5], target: [0, 0, 0] },
-  { name: 'top', label: 'Top', position: [0, 8, 0], target: [0, 0, 0] },
-  { name: 'front', label: 'Front', position: [0, 0, 8], target: [0, 0, 0] },
-  { name: 'side', label: 'Side', position: [8, 0, 0], target: [0, 0, 0] },
+const CAMERA_PRESET_NAMES: CameraPreset[] = [
+  { name: 'iso', label: 'Iso' },
+  { name: 'top', label: 'Top' },
+  { name: 'front', label: 'Front' },
+  { name: 'side', label: 'Side' },
 ];
+
+// Helper to compute preset position based on center and distance
+export function getPresetPosition(
+  presetName: string,
+  center: [number, number, number],
+  distance: number
+): [number, number, number] {
+  switch (presetName) {
+    case 'iso': {
+      const offset = distance / Math.sqrt(3);
+      return [center[0] + offset, center[1] + offset, center[2] + offset];
+    }
+    case 'top':
+      return [center[0], center[1] + distance, center[2]];
+    case 'front':
+      return [center[0], center[1], center[2] + distance];
+    case 'side':
+      return [center[0] + distance, center[1], center[2]];
+    default:
+      return [center[0] + distance, center[1] + distance, center[2] + distance];
+  }
+}
 
 interface CameraControlsInnerProps {
   enableDamping?: boolean;
@@ -34,6 +54,8 @@ interface CameraControlsInnerProps {
     startPosition: THREE.Vector3;
     startTarget: THREE.Vector3;
   }>;
+  /** Initial look-at target (center of data) */
+  initialTarget?: [number, number, number];
 }
 
 // Inner component that must be inside Canvas
@@ -46,9 +68,20 @@ function CameraControlsInner({
   maxDistance = 50,
   onCameraChange,
   cameraStateRef,
+  initialTarget = [0, 0, 0],
 }: CameraControlsInnerProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
+  const hasSetInitialTarget = useRef(false);
+
+  // Set initial target on first render
+  useEffect(() => {
+    if (controlsRef.current && !hasSetInitialTarget.current) {
+      controlsRef.current.target.set(...initialTarget);
+      controlsRef.current.update();
+      hasSetInitialTarget.current = true;
+    }
+  }, [initialTarget]);
 
   // Smooth camera animation
   useFrame(() => {
@@ -89,6 +122,8 @@ function CameraControlsInner({
   return (
     <OrbitControls
       ref={controlsRef}
+      makeDefault
+      enabled={true}
       enableDamping={enableDamping}
       dampingFactor={dampingFactor}
       autoRotate={autoRotate}
@@ -98,11 +133,10 @@ function CameraControlsInner({
       enablePan={true}
       enableZoom={true}
       enableRotate={true}
-      mouseButtons={{
-        LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
-        RIGHT: THREE.MOUSE.PAN,
-      }}
+      screenSpacePanning={true}
+      zoomSpeed={1}
+      rotateSpeed={1}
+      panSpeed={1}
     />
   );
 }
@@ -126,15 +160,19 @@ export interface CameraControlsProps {
 
 // External controls UI component (must be OUTSIDE Canvas)
 export interface CameraControlsUIProps {
-  onPresetClick: (preset: CameraPreset) => void;
+  onPresetClick: (position: [number, number, number], target: [number, number, number]) => void;
   onResetClick: () => void;
   currentPreset?: string;
+  center: [number, number, number];
+  cameraDistance: number;
 }
 
 export function CameraControlsUI({
   onPresetClick,
   onResetClick,
   currentPreset,
+  center,
+  cameraDistance,
 }: CameraControlsUIProps) {
   return (
     <div
@@ -155,10 +193,10 @@ export function CameraControlsUI({
         zIndex: 100,
       }}
     >
-      {CAMERA_PRESETS.map((preset) => (
+      {CAMERA_PRESET_NAMES.map((preset) => (
         <button
           key={preset.name}
-          onClick={() => onPresetClick(preset)}
+          onClick={() => onPresetClick(getPresetPosition(preset.name, center, cameraDistance), center)}
           style={{
             padding: '6px 12px',
             fontSize: '12px',
@@ -169,9 +207,9 @@ export function CameraControlsUI({
             transition: 'all 150ms ease',
             background:
               currentPreset === preset.name
-                ? 'linear-gradient(135deg, #C678DD 0%, #61AFEF 100%)'
+                ? 'linear-gradient(135deg, #D97757 0%, #61AFEF 100%)'
                 : 'rgba(248, 244, 255, 0.8)',
-            color: currentPreset === preset.name ? '#fff' : '#4a3f5c',
+            color: currentPreset === preset.name ? '#fff' : '#1a1613',
             boxShadow:
               currentPreset === preset.name
                 ? '0 2px 8px rgba(198, 120, 221, 0.3)'
@@ -258,9 +296,10 @@ export function useCameraControls(
   );
 
   const handlePresetClick = useCallback(
-    (preset: CameraPreset) => {
-      setCurrentPreset(preset.name);
-      animateTo(preset.position, preset.target);
+    (position: [number, number, number], target: [number, number, number]) => {
+      // Note: We don't track preset name anymore since positions are dynamic
+      setCurrentPreset(undefined);
+      animateTo(position, target);
     },
     [animateTo]
   );
@@ -279,6 +318,6 @@ export function useCameraControls(
   };
 }
 
-export { CameraControlsInner, CAMERA_PRESETS };
+export { CameraControlsInner, CAMERA_PRESET_NAMES };
 export type { CameraPreset };
 export default CameraControlsUI;

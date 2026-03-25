@@ -1,6 +1,8 @@
-// 3D Scatter Plot Components
+// Scatter Plot Components
 export { ScatterPlot3D } from './ScatterPlot3D';
 export type { ScatterPlot3DProps } from './ScatterPlot3D';
+export { ScatterPlot2D } from './ScatterPlot2D';
+export type { ScatterPlot2DProps } from './ScatterPlot2D';
 
 export { PointCloud } from './PointCloud';
 export type { PointData } from './PointCloud';
@@ -9,7 +11,8 @@ export {
   CameraControlsUI,
   CameraControlsInner,
   useCameraControls,
-  CAMERA_PRESETS,
+  CAMERA_PRESET_NAMES,
+  getPresetPosition,
 } from './CameraControls';
 export type {
   CameraControlsProps,
@@ -28,3 +31,6 @@ export { Legend } from './Legend';
 export type { LegendItem, LegendProps } from './Legend';
 export { Heatmap } from './Heatmap';
 export type { HeatmapProps } from './Heatmap';
+export { PositionSelector } from './PositionSelector';
+export { TrajectoryPlot } from './TrajectoryPlot';
+export type { TrajectoryPlotProps } from './TrajectoryPlot';

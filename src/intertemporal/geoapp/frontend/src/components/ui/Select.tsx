@@ -146,26 +146,26 @@ export const Select: React.FC<SelectProps> = ({
           w-full px-4 py-3 text-left
           bg-white/70 backdrop-blur-md
           border border-white/50
-          rounded-xl shadow-lg shadow-purple-500/5
+          rounded-xl shadow-lg shadow-[#faf8f5]0/5
           transition-all duration-300 ease-out
           ${disabled
             ? 'opacity-50 cursor-not-allowed'
-            : 'hover:bg-white/80 hover:border-pink-300/50 hover:shadow-pink-500/10 cursor-pointer'
+            : 'hover:bg-white/80 hover:border-pink-300/50 hover:shadow-[#D97757]/10 cursor-pointer'
           }
-          ${isOpen ? 'ring-2 ring-pink-400/50 border-pink-300' : ''}
-          focus:outline-none focus:ring-2 focus:ring-pink-400/50
+          ${isOpen ? 'ring-2 ring-[#D97757]/50 border-pink-300' : ''}
+          focus:outline-none focus:ring-2 focus:ring-[#D97757]/50
         `}
       >
         <div className="flex items-center justify-between">
           <span
             className={`block truncate ${
-              selectedOption ? 'text-[#4a3f5c]' : 'text-[#4a3f5c]/50'
+              selectedOption ? 'text-[#1a1613]' : 'text-[#1a1613]/50'
             }`}
           >
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <svg
-            className={`w-5 h-5 text-[#C678DD] transition-transform duration-300 ${
+            className={`w-5 h-5 text-[#D97757] transition-transform duration-300 ${
               isOpen ? 'rotate-180' : ''
             }`}
             fill="none"
@@ -185,7 +185,7 @@ export const Select: React.FC<SelectProps> = ({
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[9999] bg-white/95 backdrop-blur-xl border border-white/60 rounded-xl shadow-2xl shadow-purple-500/20 overflow-hidden"
+          className="fixed z-[9999] bg-white/95 backdrop-blur-xl border border-white/60 rounded-xl shadow-2xl shadow-[#faf8f5]0/20 overflow-hidden"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,
@@ -193,7 +193,7 @@ export const Select: React.FC<SelectProps> = ({
           }}
         >
           {searchable && (
-            <div className="p-2 border-b border-purple-100/50">
+            <div className="p-2 border-b border-[#f5f0eb]/50">
               <input
                 ref={inputRef}
                 type="text"
@@ -202,9 +202,9 @@ export const Select: React.FC<SelectProps> = ({
                 placeholder="Search..."
                 className="
                   w-full px-3 py-2
-                  bg-white/50 border border-purple-100
-                  rounded-lg text-[#4a3f5c] placeholder-[#4a3f5c]/40
-                  focus:outline-none focus:ring-2 focus:ring-pink-400/30
+                  bg-white/50 border border-[#f5f0eb]
+                  rounded-lg text-[#1a1613] placeholder-[#1a1613]/40
+                  focus:outline-none focus:ring-2 focus:ring-[#D97757]/30
                   transition-all duration-200
                 "
               />
@@ -213,7 +213,7 @@ export const Select: React.FC<SelectProps> = ({
 
           <div className="max-h-60 overflow-y-auto py-1">
             {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-[#4a3f5c]/50 text-center">
+              <div className="px-4 py-3 text-[#1a1613]/50 text-center">
                 No options found
               </div>
             ) : (
@@ -227,21 +227,21 @@ export const Select: React.FC<SelectProps> = ({
                     w-full px-4 py-3 text-left
                     transition-all duration-200
                     ${option.disabled
-                      ? 'opacity-50 cursor-not-allowed text-[#4a3f5c]/50'
+                      ? 'opacity-50 cursor-not-allowed text-[#1a1613]/50'
                       : 'cursor-pointer'
                     }
                     ${option.value === value
-                      ? 'bg-gradient-to-r from-[#FF6B9D]/20 to-[#C678DD]/20 text-[#4a3f5c] font-medium'
+                      ? 'bg-gradient-to-r from-[#348296]/20 to-[#D97757]/20 text-[#1a1613] font-medium'
                       : index === highlightedIndex
-                      ? 'bg-purple-50/80 text-[#4a3f5c]'
-                      : 'text-[#4a3f5c] hover:bg-purple-50/50'
+                      ? 'bg-[#faf8f5]/80 text-[#1a1613]'
+                      : 'text-[#1a1613] hover:bg-[#faf8f5]/50'
                     }
                   `}
                 >
                   <div className="flex items-center">
                     {option.value === value && (
                       <svg
-                        className="w-4 h-4 mr-2 text-[#FF6B9D]"
+                        className="w-4 h-4 mr-2 text-[#348296]"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >

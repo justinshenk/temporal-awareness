@@ -338,9 +338,9 @@ def run_logit_lens_from_cache(
     logit_direction_norm = logit_direction / (torch.norm(logit_direction) + 1e-10)
 
     # Find available layers from target keys
-    # Target keys look like "L21_resid_post_Presponse"
+    # Target keys look like "L21_resid_post_response_choice"
     target_keys = data.get_target_keys()
-    resid_post_keys = [k for k in target_keys if "resid_post" in k and "response" in k]
+    resid_post_keys = [k for k in target_keys if "resid_post" in k and "_response" in k]
 
     if not resid_post_keys:
         logger.warning("No resid_post activations found at response position")
@@ -364,10 +364,10 @@ def run_logit_lens_from_cache(
 
     for layer_idx, layer in enumerate(layers):
         # Find the target key for this layer
-        target_key = f"L{layer}_resid_post_Presponse"
+        target_key = f"L{layer}_resid_post_response"
         if target_key not in target_keys:
             # Try alternate naming
-            target_key = f"L{layer}_resid_post_Pdest"
+            target_key = f"L{layer}_resid_post_dest"
             if target_key not in target_keys:
                 logger.warning(f"  No resid_post for layer {layer}")
                 continue

@@ -34,34 +34,40 @@ MAX_TRAJECTORY_SAMPLES = 200  # Max samples to plot in trajectory (for clarity)
 
 
 # =============================================================================
-# Named Position Types
+# Semantic Position Types (from DefaultPromptFormat)
 # =============================================================================
 
-NAMED_POSITIONS = {
-    # Source positions (in prompt)
+# All valid semantic positions for extraction
+# These map to regions in the prompt template, not absolute token indices
+SEMANTIC_POSITIONS = {
+    # Prompt markers
+    "situation_marker",
+    "task_marker",
+    "consider_marker",
+    "action_marker",
+    "format_marker",
+    "format_choice_prefix",
+    "format_reasoning_prefix",
+
+    # Option labels (a), b))
+    "left_label",
+    "right_label",
+
+    # Option values (by presentation order)
+    "left_time",
+    "left_reward",
+    "right_time",
+    "right_reward",
     "time_horizon",
-    "short_term_time",
-    "short_term_reward",
-    "long_term_time",
-    "long_term_reward",
-    # Dest positions (in response)
-    "response",
-    # Legacy aggregate positions
-    "source",  # All source positions combined
-    "dest",    # Same as response
+    "post_time_horizon",
+
+    # Response positions
+    "response_choice_prefix",
+    "response_choice",
+    "response_reasoning_prefix",
+    "response_reasoning",
 }
 
-
-def is_absolute_position(pos: str) -> bool:
-    """Check if position is an absolute index (e.g., P86, P145)."""
-    return pos.startswith("P") and pos[1:].isdigit()
-
-
-def parse_absolute_position(pos: str) -> int:
-    """Parse absolute position string to index (e.g., P86 -> 86)."""
-    if not is_absolute_position(pos):
-        raise ValueError(f"Not an absolute position: {pos}")
-    return int(pos[1:])
 
 
 # =============================================================================
@@ -77,7 +83,7 @@ class TargetSpec:
     Attributes:
         layer: Transformer layer index
         component: Component type (resid_pre, resid_post, mlp_out, attn_out)
-        position: Token position type (see NAMED_POSITIONS)
+        position: Token position type (see SEMANTIC_POSITIONS)
     """
 
     layer: int
@@ -89,20 +95,21 @@ class TargetSpec:
 
         if self.component not in valid_components:
             raise ValueError(f"Invalid component: {self.component}")
-        if self.position not in NAMED_POSITIONS and not is_absolute_position(self.position):
-            raise ValueError(f"Invalid position: {self.position}. Valid: {NAMED_POSITIONS} or absolute (P86, P145, etc.)")
+
+        if self.position not in SEMANTIC_POSITIONS:
+            raise ValueError(
+                f"Invalid position: {self.position}. "
+                f"Valid semantic positions: {sorted(SEMANTIC_POSITIONS)}"
+            )
 
     @property
     def key(self) -> str:
         """Unique key for this target.
 
-        For named positions: L21_resid_post_Pdest
-        For absolute positions (P86): L21_resid_post_P86 (no double P)
+        Format: L{layer}_{component}_{position}
+        Example: L21_resid_post_response_choice, L13_resid_pre_short_term_reward
         """
-        if is_absolute_position(self.position):
-            # Position is already "P86", so just use the numeric part
-            return f"L{self.layer}_{self.component}_{self.position}"
-        return f"L{self.layer}_{self.component}_P{self.position}"
+        return f"L{self.layer}_{self.component}_{self.position}"
 
     @property
     def hook_name(self) -> str:
@@ -194,14 +201,22 @@ class GeoVizConfig:
 # =============================================================================
 
 RECOMMENDED_TARGETS = [
-    # Best performers for time decoding (dest positions)
-    TargetSpec(24, "resid_pre", "dest"),
-    TargetSpec(21, "resid_post", "dest"),
-    TargetSpec(21, "attn_out", "dest"),
-    TargetSpec(19, "mlp_out", "dest"),
-    TargetSpec(31, "mlp_out", "dest"),
-    # Source positions for comparison (should show no time signal)
-    TargetSpec(21, "attn_out", "source"),
-    TargetSpec(21, "resid_post", "source"),
-    TargetSpec(19, "mlp_out", "source"),
+    # Response positions (where choice is decoded)
+    TargetSpec(24, "resid_pre", "response_choice"),
+    TargetSpec(21, "resid_post", "response_choice"),
+    TargetSpec(21, "attn_out", "response_choice"),
+
+    # Time horizon positions
+    TargetSpec(21, "resid_post", "time_horizon"),
+    TargetSpec(19, "mlp_out", "time_horizon"),
+
+    # Option value positions (by presentation order)
+    TargetSpec(21, "resid_post", "left_reward"),
+    TargetSpec(21, "resid_post", "right_reward"),
+    TargetSpec(21, "resid_post", "left_time"),
+    TargetSpec(21, "resid_post", "right_time"),
+
+    # Labels
+    TargetSpec(13, "resid_post", "left_label"),
+    TargetSpec(13, "resid_post", "right_label"),
 ]

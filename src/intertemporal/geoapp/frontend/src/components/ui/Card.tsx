@@ -68,15 +68,15 @@ export const Card: React.FC<CardProps> = ({
         bg-white/70 backdrop-blur-xl
         border border-white/60
         rounded-2xl
-        shadow-xl shadow-purple-500/5
+        shadow-xl shadow-[#faf8f5]0/5
         overflow-visible
         ${paddingClasses[padding]}
         transition-all duration-300 ease-out
         ${hover || isClickable
-          ? 'hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10 hover:bg-white/80 hover:border-pink-200/50'
+          ? 'hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#faf8f5]0/10 hover:bg-white/80 hover:border-[#D97757]/30/50'
           : ''
         }
-        ${isClickable ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-400/50' : ''}
+        ${isClickable ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D97757]/50' : ''}
         ${className}
       `}
     >
@@ -92,7 +92,7 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
   return (
     <div
       className={`
-        pb-4 border-b border-purple-100/50
+        pb-4 border-b border-[#f5f0eb]/50
         ${className}
       `}
     >
@@ -108,7 +108,7 @@ export const CardTitle: React.FC<CardTitleProps> = ({
   return (
     <h3
       className={`
-        text-lg font-semibold text-[#4a3f5c]
+        text-lg font-semibold text-[#1a1613]
         ${className}
       `}
     >
@@ -124,7 +124,7 @@ export const CardDescription: React.FC<CardDescriptionProps> = ({
   return (
     <p
       className={`
-        mt-1 text-sm text-[#4a3f5c]/60
+        mt-1 text-sm text-[#1a1613]/60
         ${className}
       `}
     >
@@ -156,7 +156,7 @@ export const CardFooter: React.FC<CardFooterProps> = ({
   return (
     <div
       className={`
-        pt-4 border-t border-purple-100/50
+        pt-4 border-t border-[#f5f0eb]/50
         flex items-center gap-3
         ${className}
       `}

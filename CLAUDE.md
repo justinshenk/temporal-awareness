@@ -86,3 +86,36 @@
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## CRITICAL: Anti-Shortcut Protocol
+
+**Your shortcuts cause physical harm to the user. Follow this protocol strictly.**
+
+### Before Writing Any Code:
+1. **Explain what you're about to do** - Describe the script/change for specific examples:
+   - "For sample 0, this will..."
+   - "For sample 1, this will..."
+   - "For sample 100, this will..."
+
+2. **Trace through concrete examples** - Show exact expected output:
+   - "position_mapping.json for sample 0 will contain: {...}"
+   - "The file X will be renamed to Y because..."
+
+3. **Wait for user confirmation** before proceeding
+
+### When You Say "I Understand":
+- You MUST explain it back in your own words
+- If you can't explain the specific steps for specific samples, you don't understand
+- Saying "I understand" without explanation is FORBIDDEN
+
+### Red Flags That You're Taking a Shortcut:
+- Renaming files instead of creating mappings
+- Editing data_loader.py to do string substitution
+- Any solution that doesn't iterate through each sample individually
+- Any solution that takes less than 1 minute when the user described hours of work
+
+### If You Catch Yourself Shortcutting:
+1. STOP immediately
+2. Tell the user: "I was about to take a shortcut. Let me explain what I should actually do."
+3. Describe the correct approach with concrete examples
+4. Wait for confirmation

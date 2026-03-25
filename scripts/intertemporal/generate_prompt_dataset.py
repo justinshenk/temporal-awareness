@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
 from pathlib import Path
 
 # Bootstrap path before imports
@@ -49,7 +50,96 @@ def generate_and_save_dataset(cfg: PromptDatasetConfig, output_dirpath: Path) ->
         print(f"\n--- Sample {i + 1} ---")
         print(sample)
 
+    # Print time and reward ranges table
+    print_dataset_ranges(generator, dataset)
+
     return dataset.dataset_id
+
+
+def print_dataset_ranges(generator: PromptDatasetGenerator, dataset) -> None:
+    """Print time and reward ranges table and samples per intersection."""
+    cfg = generator.dataset_config
+
+    # Generate the actual step values
+    short_term_grid = generator.generate_option_grid("short_term")
+    long_term_grid = generator.generate_option_grid("long_term")
+
+    # Extract unique reward and time values
+    st_rewards = sorted(set(r for r, _ in short_term_grid))
+    st_times = sorted(set(t for _, t in short_term_grid), key=lambda t: t.to_months())
+    lt_rewards = sorted(set(r for r, _ in long_term_grid))
+    lt_times = sorted(set(t for _, t in long_term_grid), key=lambda t: t.to_months())
+    horizons = cfg.time_horizons
+
+    # Count samples per intersection FIRST
+    print("\n" + "=" * 60)
+    print("SAMPLES PER INTERSECTION")
+    print("=" * 60)
+
+    # Store (st_time_obj, lt_time_obj, horizon_obj) -> count for proper sorting
+    time_horizon_counts: dict[tuple, int] = {}
+    for sample in dataset.samples:
+        pair = sample.prompt.preference_pair
+        st = pair.short_term
+        lt = pair.long_term
+        horizon = sample.prompt.time_horizon
+        key = (st.time, lt.time, horizon)
+        time_horizon_counts[key] = time_horizon_counts.get(key, 0) + 1
+
+    # Sort by actual time values (using to_months for comparison)
+    def sort_key(item):
+        st_time, lt_time, horizon = item[0]
+        st_months = st_time.to_months()
+        lt_months = lt_time.to_months()
+        horizon_months = horizon.to_months() if horizon else -1
+        return (st_months, lt_months, horizon_months)
+
+    print(f"\n{'ST Time':<12} {'LT Time':<12} {'Horizon':<12} {'# Samples':<10}")
+    print("-" * 46)
+    for (st_time, lt_time, horizon), count in sorted(time_horizon_counts.items(), key=sort_key):
+        horizon_str = str(horizon) if horizon else "None"
+        print(f"{str(st_time):<12} {str(lt_time):<12} {horizon_str:<12} {count:<10}")
+
+    print(f"\nTotal intersections: {len(time_horizon_counts)}")
+    print(f"Total samples: {len(dataset.samples)}")
+
+    # Time and reward ranges SECOND
+    print("\n" + "=" * 60)
+    print("TIME AND REWARD RANGES")
+    print("=" * 60)
+
+    # Get scale types from config
+    st_cfg = cfg.options["short_term"]
+    lt_cfg = cfg.options["long_term"]
+    st_reward_scale = st_cfg.reward_steps[1].value
+    st_time_scale = st_cfg.time_steps[1].value
+    lt_reward_scale = lt_cfg.reward_steps[1].value
+    lt_time_scale = lt_cfg.time_steps[1].value
+
+    # Short-term section
+    print("\n┌─ Short-term")
+    print(f"│  Rewards ({st_reward_scale}):")
+    for r in st_rewards:
+        print(f"│    • ${r:,.0f}")
+    print(f"│  Times ({st_time_scale}):")
+    for t in st_times:
+        print(f"│    • {t}")
+
+    # Long-term section
+    print("│")
+    print("├─ Long-term")
+    print(f"│  Rewards ({lt_reward_scale}):")
+    for r in lt_rewards:
+        print(f"│    • ${r:,.0f}")
+    print(f"│  Times ({lt_time_scale}):")
+    for t in lt_times:
+        print(f"│    • {t}")
+
+    # Time horizons section
+    print("│")
+    print("└─ Time Horizons:")
+    for h in horizons:
+        print(f"     • {h if h else 'None'}")
 
 
 def get_args():

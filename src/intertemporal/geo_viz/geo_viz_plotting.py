@@ -581,6 +581,9 @@ def plot_component_decomposition_3d(
             top_pcs = [min(c[0], n_stored - 1) for c in pca_result.pc_correlations[:3]]
             if len(top_pcs) < 3:
                 top_pcs = list(range(min(3, n_stored)))
+            # Pad to at least 3 elements for 3D plot
+            while len(top_pcs) < 3:
+                top_pcs.append(0)
 
             r2_info = comp_data[component]["r2"]
             r2_val = r2_info.r2_mean if r2_info else 0
@@ -901,7 +904,7 @@ def plot_linear_probe_summary(
     r2_values = [results[t].r2_mean for t in targets]
     r2_stds = [results[t].r2_std for t in targets]
 
-    colors = ["#4CAF50" if "Pdest" in t or "Presponse" in t else "#F44336" for t in targets]
+    colors = ["#4CAF50" if "_dest" in t or "_response" in t else "#F44336" for t in targets]
 
     fig, ax = plt.subplots(figsize=(12, max(6, len(targets) * 0.25)))
 
@@ -1132,8 +1135,18 @@ def plot_target_3d(
     X_pca = pca_result.transformed
     n_samples = X_pca.shape[0]
     n_stored = X_pca.shape[1]
+
+    # Skip 3D plots if insufficient data
+    if n_stored < 2:
+        return
+
     top_pcs = [min(c[0], n_stored - 1) for c in pca_result.pc_correlations[:3]]
+    # Pad to at least 3 elements for 3D plot
+    while len(top_pcs) < 3:
+        top_pcs.append(0)
     corrs = [pca_result.pc_correlations[i][1] for i in range(min(3, len(pca_result.pc_correlations)))]
+    while len(corrs) < 3:
+        corrs.append(0.0)
 
     for scheme in schemes:
         values = scheme.values[:n_samples] if n_samples < len(scheme.values) else scheme.values
@@ -1451,6 +1464,12 @@ def plot_continuous_time_probe(
             # Plot predictions vs actuals (both in months, log scale)
             actuals_log = np.log10(result.actuals + 1)
             predictions_log = np.log10(result.predictions + 1)
+
+            # Skip if no data or mismatched sizes
+            if len(actuals_log) == 0 or len(actuals_log) != len(predictions_log):
+                ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+                ax.set_title(f"{target_key}\n(no data)", fontsize=9)
+                continue
 
             ax.scatter(
                 actuals_log,
@@ -2072,65 +2091,136 @@ def plot_no_horizon_projection(
 
 
 # =============================================================================
+# Per-Target Summary Plot
+# =============================================================================
+
+
+def _plot_target_summary(
+    target_key: str,
+    pca_result: PCAResult,
+    time_scheme: ColoringScheme | None,
+    choice_scheme: ColoringScheme | None,
+    output_dir: Path,
+):
+    """Generate summary plots for a single target.
+
+    Outputs (flat files):
+    - {target_key}_summary.png: 2D PCA scatter with both colorings
+    - {target_key}_time_scale.html: 3D interactive plot colored by time scale
+    - {target_key}_choice_type.html: 3D interactive plot colored by choice type
+    """
+    try:
+        import plotly.graph_objects as go
+    except ImportError:
+        go = None
+
+    X_pca = pca_result.transformed
+    n_samples = X_pca.shape[0]
+    n_stored = X_pca.shape[1]
+
+    if n_stored < 1 or n_samples < 2:
+        return
+
+    # Get top PCs by correlation (pad to at least 3 for 3D)
+    top_pcs = [min(c[0], n_stored - 1) for c in pca_result.pc_correlations[:min(3, n_stored)]]
+    while len(top_pcs) < 3:
+        top_pcs.append(0)
+
+    # Pad X_pca to at least 2 columns for 2D plotting
+    if n_stored < 2:
+        X_pca = np.hstack([X_pca, np.zeros((n_samples, 2 - n_stored))])
+
+    # === 1. Summary PNG (2D scatter with both colorings) ===
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    for ax, scheme in zip(axes, [time_scheme, choice_scheme]):
+        if scheme is None:
+            ax.axis("off")
+            continue
+
+        values = scheme.values[:n_samples] if n_samples < len(scheme.values) else scheme.values
+
+        if scheme.is_categorical:
+            colors = ["#9C27B0", "#2196F3", "#4CAF50", "#FF9800"][:len(set(values))]
+            for i, cat in enumerate(sorted(set(values))):
+                mask = np.array(values) == cat
+                label = scheme.categories[int(cat)] if scheme.categories else str(int(cat))
+                ax.scatter(X_pca[mask, top_pcs[0]], X_pca[mask, top_pcs[1]],
+                          c=colors[i % len(colors)], label=label, s=20, alpha=0.7)
+            ax.legend(fontsize=8)
+        else:
+            color_vals = np.log10(np.array(values) + 1) if scheme.use_log else values
+            sc = ax.scatter(X_pca[:, top_pcs[0]], X_pca[:, top_pcs[1]],
+                           c=color_vals, cmap="Plasma", s=20, alpha=0.7)
+            plt.colorbar(sc, ax=ax, label=scheme.label)
+
+        ax.set_xlabel(f"PC{top_pcs[0]}")
+        ax.set_ylabel(f"PC{top_pcs[1]}")
+        ax.set_title(f"{scheme.label}")
+
+    fig.suptitle(target_key, fontsize=12)
+    plt.tight_layout()
+    plt.savefig(output_dir / f"{target_key}_summary.png", dpi=100)
+    plt.close()
+
+    # === 2. Interactive 3D plots (if plotly available) ===
+    if go is None:
+        return
+
+    for scheme, filename in [(time_scheme, "time_scale"), (choice_scheme, "choice_type")]:
+        if scheme is None:
+            continue
+
+        values = scheme.values[:n_samples] if n_samples < len(scheme.values) else scheme.values
+
+        if scheme.is_categorical:
+            colors = ["purple", "blue", "green", "orange"]
+            color_list = [colors[int(v) % len(colors)] for v in values]
+            hover_text = [scheme.categories[int(v)] if scheme.categories else str(int(v)) for v in values]
+            marker = dict(size=4, color=color_list, opacity=0.8)
+        else:
+            color_vals = np.log10(np.array(values) + 1) if scheme.use_log else values
+            hover_text = [f"{scheme.label}: {v:.1f}" for v in values]
+            marker = dict(size=4, color=color_vals, colorscale="Plasma", opacity=0.8)
+
+        fig = go.Figure(data=[go.Scatter3d(
+            x=X_pca[:, top_pcs[0]],
+            y=X_pca[:, top_pcs[1]],
+            z=X_pca[:, top_pcs[2]],
+            mode="markers",
+            marker=marker,
+            text=hover_text,
+            hovertemplate="%{text}<extra></extra>",
+        )])
+
+        fig.update_layout(
+            title=f"{target_key} - {scheme.label}",
+            scene=dict(
+                xaxis_title=f"PC{top_pcs[0]}",
+                yaxis_title=f"PC{top_pcs[1]}",
+                zaxis_title=f"PC{top_pcs[2]}",
+            ),
+            width=800,
+            height=600,
+        )
+
+        fig.write_html(output_dir / f"{target_key}_{filename}.html")
+
+
+# =============================================================================
 # Helper Functions
 # =============================================================================
 
 
-def _is_absolute_position(pos: str) -> bool:
-    """Check if position is an absolute index (e.g., 86, 145)."""
-    return pos.isdigit()
-
-
-def _parse_target_key(target_key: str) -> tuple[str, str, str]:
-    """Parse target key into (base_key, position, position_type)."""
-    source_positions = {"time_horizon", "short_term_time", "short_term_reward",
-                       "long_term_time", "long_term_reward", "source"}
-    dest_positions = {"response", "dest"}
-
-    p_idx = target_key.rfind("_P")
-    if p_idx == -1:
-        return target_key, "unknown", "unknown"
-
-    base_key = target_key[:p_idx]
-    position = target_key[p_idx + 2:]
-
-    if position in source_positions:
-        pos_type = "src"
-    elif position in dest_positions:
-        pos_type = "dst"
-    elif _is_absolute_position(position):
-        pos_type = "absolute"
-    else:
-        pos_type = "unknown"
-
-    return base_key, position, pos_type
-
-
-def _group_targets_by_base(target_keys: list[str]) -> dict[str, dict[str, dict[str, str]]]:
-    """Group target keys by their base (layer+component) and position type."""
-    groups = {}
-    for key in target_keys:
-        base, pos, pos_type = _parse_target_key(key)
-        if base not in groups:
-            groups[base] = {"dst": {}, "src": {}, "absolute": {}}
-        if pos_type in groups[base]:
-            groups[base][pos_type][pos] = key
-    return groups
-
-
 def _get_pos_color(pos: str) -> str:
     """Get color for a position name."""
-    dest_positions = {"response", "dest"}
+    dest_positions = {
+        "response", "response_choice", "response_choice_prefix",
+        "response_reasoning", "response_reasoning_prefix",
+    }
     if pos in dest_positions:
-        return "#4CAF50"
-    elif _is_absolute_position(pos):
-        idx = int(pos)
-        if idx >= 140:
-            return "#9C27B0"
-        else:
-            return "#2196F3"
-    else:
-        return "#F44336"
+        return "#4CAF50"  # Green for response positions
+    return "#F44336"  # Red for source/prompt positions
 
 
 # =============================================================================
@@ -2147,6 +2237,7 @@ def generate_all_plots(
     cross_position_results: dict | None = None,
     continuous_time_results: dict | None = None,
     no_horizon_results: dict[str, NoHorizonProjectionResult] | None = None,
+    skip_per_target_plots: bool = False,
 ):
     """Generate all plots with memory-efficient processing.
 
@@ -2160,12 +2251,10 @@ def generate_all_plots(
         ├── 06_scree/               # Variance explained
         ├── 07_component_decomp/    # 2x2 component plots (2D)
         ├── 08_component_decomp_3d/ # Interactive 3D component plots
-        ├── 09_targets/             # Per-target plots
-        │   └── {base_key}/
-        │       └── {pos_type}/
-        │           ├── pca/
-        │           ├── pca_2d/
-        │           └── 3d/
+        ├── 09_targets/             # Per-target plots (skipped with --quick)
+        │   └── {target_key}/
+        │       ├── pca/
+        │       └── 3d/
         ├── 10_cross_position/      # Cross-position similarity (optional)
         ├── 11_continuous_time/     # Continuous time probe (optional)
         └── 12_no_horizon/          # No-horizon projection analysis (optional)
@@ -2242,42 +2331,31 @@ def generate_all_plots(
     plot_component_decomposition_3d(linear_probe_results, pca_results, schemes, decomp_3d_dir)
     gc.collect()
 
-    # Per-target plots (process in batches)
-    logger.info("Generating per-target plots...")
-    targets_dir = output_dir / "09_targets"
-    targets_dir.mkdir(parents=True, exist_ok=True)
+    # Per-target plots - skip with --quick flag
+    # Generates flat files: {target_key}_summary.png, {target_key}_time_scale.html, {target_key}_choice_type.html
+    if skip_per_target_plots:
+        logger.info("Skipping per-target plots (--quick mode)")
+    else:
+        logger.info("Generating per-target plots...")
+        targets_dir = output_dir / "09_targets"
+        targets_dir.mkdir(parents=True, exist_ok=True)
 
-    target_groups = _group_targets_by_base(list(pca_results.keys()))
-    n_groups = len(target_groups)
+        # Find the time_scale and choice_type schemes
+        time_scheme = next((s for s in schemes if s.name == "time_scale"), None)
+        choice_scheme = next((s for s in schemes if s.name == "choice_type"), None)
 
-    for group_idx, (base_key, pos_type_targets) in enumerate(target_groups.items()):
-        if group_idx % 10 == 0:
-            logger.info(f"  Processing group {group_idx}/{n_groups}: {base_key}")
+        target_keys = list(pca_results.keys())
+        n_targets = len(target_keys)
 
-        base_dir = targets_dir / base_key
-        base_dir.mkdir(parents=True, exist_ok=True)
+        for idx, target_key in enumerate(target_keys):
+            if idx % 50 == 0:
+                logger.info(f"  Processing target {idx}/{n_targets}")
 
-        # Process each position type
-        for pos_type in ["dst", "src", "absolute"]:
-            positions = pos_type_targets.get(pos_type, {})
-            if not positions:
-                continue
+            pca_result = pca_results[target_key]
+            _plot_target_summary(target_key, pca_result, time_scheme, choice_scheme, targets_dir)
 
-            type_dir = base_dir / pos_type
-            type_dir.mkdir(parents=True, exist_ok=True)
-
-            for pos, target_key in positions.items():
-                if target_key not in pca_results:
-                    continue
-
-                plot_target_pca(target_key, pca_results[target_key], schemes, type_dir)
-                if target_key in embedding_results:
-                    plot_target_embeddings(target_key, embedding_results[target_key], schemes, type_dir)
-                plot_target_3d(target_key, pca_results[target_key], schemes, type_dir)
-
-        # GC after each group
-        if group_idx % PLOT_GC_INTERVAL == 0:
-            gc.collect()
+            if idx % PLOT_GC_INTERVAL == 0:
+                gc.collect()
 
     # Optional: Cross-position similarity plots
     if cross_position_results:

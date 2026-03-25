@@ -77,22 +77,22 @@ OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 OPTIONS_GEO = {
     "short_term": {
-        "reward_range": [1000, 2500],
+        "reward_range": [1000, 100000],
         "time_range": [
             {"value": 1, "unit": "days"},
-            {"value": 5, "unit": "years"},
+            {"value": 20, "unit": "years"},
         ],
-        "reward_steps": [3, "linear"],
-        "time_steps": [3, "linear"],
+        "reward_steps": [2, "logarithmic"],
+        "time_steps": [5, "logarithmic"],
     },
     "long_term": {
-        "reward_range": [30000, 100000],
+        "reward_range": [1000, 100000],
         "time_range": [
-            {"value": 10, "unit": "years"},
-            {"value": 70, "unit": "years"},
+            {"value": 1, "unit": "years"},
+            {"value": 100, "unit": "years"},
         ],
-        "reward_steps": [4, "linear"],
-        "time_steps": [4, "linear"],
+        "reward_steps": [2, "logarithmic"],
+        "time_steps": [5, "logarithmic"],
     },
 }
 
@@ -146,9 +146,6 @@ HOR_GEO = [
     {"value": 1, "unit": "centuries"},
     {"value": 2, "unit": "centuries"},
     {"value": 5, "unit": "centuries"},
-    {"value": 1, "unit": "millenia"},
-    {"value": 5, "unit": "millenia"},
-    {"value": 10, "unit": "millenia"},
 ]
 
 ###########################
@@ -179,20 +176,6 @@ HORIZON_SWEEP_CFG = {
     "time_horizons": HOR_COARSE_SWEEP,
 }
 
-
-REWARD_SWEEP_CFG = {
-    "name": "reward_sweep",
-    "context": BASE_CONTEXT,
-    "options": OPTIONS_SINGLE,
-    "time_horizons": HOR_BINARY,
-}
-
-MINI_CFG = {
-    "name": "mini",
-    "context": BASE_CONTEXT,
-    "options": OPTIONS_SINGLE,
-    "time_horizons": HOR_BINARY,
-}
 
 SMALL_CFG = {
     "name": "small",
@@ -227,14 +210,16 @@ GEO_VIZ_CFG = {
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
     "do_context_variations": False,
+    "round_time_units": True,
+    "round_reward_units": True,
 }
 
 ###########################
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
 
-FULL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
+FULL_EXPERIMENT_DATASET_CONFIG = GEO_VIZ_CFG
 
 MULTILABEL_EXPERIMENT_DATASET_CONFIG = MULTILABEL_CFG

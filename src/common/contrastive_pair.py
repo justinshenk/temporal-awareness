@@ -10,7 +10,7 @@ from .choice import LabeledSimpleBinaryChoice
 from .hook_utils import hook_name
 from .patching_types import PatchingMode
 from .time_value import TimeValue
-from .token_positions import PositionMapping
+from .token_positions import PairPositionMapping
 from .token_trajectory import TokenTrajectory
 
 DEBUG_INTERVENTIONS = False
@@ -35,7 +35,7 @@ class ContrastivePair(BaseSchema):
 
     clean_traj: TokenTrajectory
     corrupted_traj: TokenTrajectory
-    position_mapping: PositionMapping = field(default_factory=PositionMapping)
+    position_mapping: PairPositionMapping = field(default_factory=PairPositionMapping)
     full_texts: tuple[str, str] = ("", "")
     prompt_texts: tuple[str, str] = ("", "")
     clean_labels: tuple[str, str] | None = None

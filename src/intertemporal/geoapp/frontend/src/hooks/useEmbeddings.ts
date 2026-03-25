@@ -1,8 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 
 // Types matching the actual backend API responses
+
+export interface PromptTemplateElement {
+  name: string;
+  label: string;
+  type: 'marker' | 'variable' | 'static' | 'semantic';
+  available: boolean;
+}
 
 export interface ConfigResponse {
   layers: number[];
@@ -10,6 +17,11 @@ export interface ConfigResponse {
   positions: string[];
   color_options: string[];
   n_samples: number;
+  model_name: string;
+  position_labels: Record<string, string>;
+  prompt_template: PromptTemplateElement[];
+  semantic_to_positions: Record<string, string[]>;
+  markers: Record<string, string>;
 }
 
 // Transformed config for easier use in components
@@ -20,6 +32,11 @@ export interface TransformedConfig {
   methods: string[];
   colorByOptions: string[];
   totalSamples: number;
+  modelName: string;
+  positionLabels: Record<string, string>;
+  promptTemplate: PromptTemplateElement[];
+  semanticToPositions: Record<string, string[]>;
+  markers: Record<string, string>;
 }
 
 interface Point3D {
@@ -48,7 +65,7 @@ export interface EmbeddingResponse {
 
 interface BackendMetadataResponse {
   color_by: string;
-  values: (number | string | boolean)[];
+  values: (number | string | boolean | null)[];
   dtype: 'numeric' | 'categorical' | 'boolean';
 }
 
@@ -92,6 +109,11 @@ export function useConfig() {
         methods: ['pca', 'umap', 'tsne'],  // Fixed methods supported by backend
         colorByOptions: response.color_options,
         totalSamples: response.n_samples,
+        modelName: response.model_name || '',
+        positionLabels: response.position_labels || {},
+        promptTemplate: response.prompt_template || [],
+        semanticToPositions: response.semantic_to_positions || {},
+        markers: response.markers || {},
       };
     },
     staleTime: Infinity, // Config doesn't change during session
@@ -149,9 +171,24 @@ export function useMetadata(colorBy: string) {
       let max = 1;
 
       if (response.dtype === 'numeric') {
-        numericValues = response.values as number[];
-        min = Math.min(...numericValues);
-        max = Math.max(...numericValues);
+        // For time_horizon fields, backend sends null for no-horizon samples
+        // Convert null to -1 (sentinel value) so timeGradientColors can identify them
+        const isTimeField = colorBy === 'time_horizon' ;
+        numericValues = (response.values as (number | null)[]).map(v =>
+          v === null ? -1 : v
+        );
+
+
+        // For min/max calculation, exclude sentinel values (-1)
+        const validValues = isTimeField
+          ? numericValues.filter(v => v >= 0)
+          : numericValues;
+
+        if (validValues.length > 0) {
+          min = Math.min(...validValues);
+          max = Math.max(...validValues);
+        }
+        // If empty, keep defaults min=0, max=1
       } else if (response.dtype === 'boolean') {
         numericValues = (response.values as boolean[]).map(v => v ? 1 : 0);
         labels = ['false', 'true'];
@@ -165,7 +202,8 @@ export function useMetadata(colorBy: string) {
           uniqueVals.indexOf(v)
         );
         min = 0;
-        max = uniqueVals.length - 1;
+        // Ensure max >= 1 to avoid division by zero in color calculations
+        max = Math.max(1, uniqueVals.length - 1);
       }
 
       return {
@@ -252,11 +290,38 @@ function getColormapColor(
 }
 
 function viridis(t: number): [number, number, number] {
-  // Simplified viridis colormap
-  const r = Math.max(0, Math.min(1, 0.267 + 0.004 * t + t * t * (0.329 - 0.6 * t)));
-  const g = Math.max(0, Math.min(1, 0.004 + t * (0.873 - 0.385 * t)));
-  const b = Math.max(0, Math.min(1, 0.329 + t * (0.42 + t * (-0.749 + 0.35 * t))));
-  return [r, g, b];
+  // Accurate Viridis colormap from matplotlib
+  // Interpolated from official viridis color stops
+  const stops = [
+    [0.267004, 0.004874, 0.329415],
+    [0.282327, 0.140926, 0.457517],
+    [0.253935, 0.265254, 0.529983],
+    [0.206756, 0.371758, 0.553117],
+    [0.163625, 0.471133, 0.558148],
+    [0.127568, 0.566949, 0.550556],
+    [0.134692, 0.658636, 0.517649],
+    [0.266941, 0.748751, 0.440573],
+    [0.477504, 0.821444, 0.318195],
+    [0.741388, 0.873449, 0.149561],
+    [0.993248, 0.906157, 0.143936],
+  ];
+
+  t = Math.max(0, Math.min(1, t));
+  const idx = t * (stops.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+
+  if (i >= stops.length - 1) return stops[stops.length - 1] as [number, number, number];
+  if (i < 0) return stops[0] as [number, number, number];
+
+  const c0 = stops[i];
+  const c1 = stops[i + 1];
+
+  return [
+    c0[0] + f * (c1[0] - c0[0]),
+    c0[1] + f * (c1[1] - c0[1]),
+    c0[2] + f * (c1[2] - c0[2]),
+  ];
 }
 
 function plasma(t: number): [number, number, number] {
@@ -294,11 +359,38 @@ function plasma(t: number): [number, number, number] {
 }
 
 function turbo(t: number): [number, number, number] {
-  // Simplified turbo colormap
-  const r = Math.max(0, Math.min(1, 0.13 + t * (2.5 - t * 2)));
-  const g = Math.max(0, Math.min(1, 0.13 + t * (1.2 + t * (0.5 - t))));
-  const b = Math.max(0, Math.min(1, 0.53 + t * (-0.6 - t * 0.3)));
-  return [r, g, b];
+  // Accurate Turbo colormap from Google
+  // Interpolated from official turbo color stops
+  const stops = [
+    [0.18995, 0.07176, 0.23217],
+    [0.25107, 0.25237, 0.63374],
+    [0.19097, 0.40774, 0.85766],
+    [0.08552, 0.53310, 0.87085],
+    [0.16354, 0.68323, 0.72642],
+    [0.36110, 0.79945, 0.52558],
+    [0.56532, 0.86851, 0.32241],
+    [0.77377, 0.89730, 0.14590],
+    [0.94290, 0.82507, 0.11454],
+    [0.99218, 0.64896, 0.14537],
+    [0.94890, 0.43070, 0.10159],
+  ];
+
+  t = Math.max(0, Math.min(1, t));
+  const idx = t * (stops.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+
+  if (i >= stops.length - 1) return stops[stops.length - 1] as [number, number, number];
+  if (i < 0) return stops[0] as [number, number, number];
+
+  const c0 = stops[i];
+  const c1 = stops[i + 1];
+
+  return [
+    c0[0] + f * (c1[0] - c0[0]),
+    c0[1] + f * (c1[1] - c0[1]),
+    c0[2] + f * (c1[2] - c0[2]),
+  ];
 }
 
 // Generate categorical colors
@@ -308,20 +400,23 @@ export function categoricalColors(
 ): Float32Array {
   const colors = new Float32Array(values.length * 3);
 
-  // Define a palette for categories
+  // Define a palette for categories - Anthropic-inspired with high contrast
   const palette = [
-    [0.78, 0.47, 0.87], // Primary purple
-    [1.0, 0.42, 0.62],  // Primary pink
-    [0.34, 0.71, 0.76], // Primary cyan
-    [0.98, 0.73, 0.01], // Yellow
-    [0.3, 0.69, 0.31],  // Green
+    [0.85, 0.47, 0.34], // Anthropic terracotta/coral #D97757
+    [0.20, 0.51, 0.59], // Deep teal #348296 (high contrast with terracotta)
+    [0.56, 0.44, 0.86], // Purple #8F70DB
+    [0.95, 0.68, 0.26], // Warm amber #F2AD42
+    [0.35, 0.65, 0.47], // Forest green #59A678
     [0.94, 0.5, 0.5],   // Light red
     [0.59, 0.59, 0.8],  // Light purple
     [1.0, 0.65, 0.4],   // Orange
   ];
 
   for (let i = 0; i < values.length; i++) {
-    const categoryIdx = Math.floor(values[i]) % palette.length;
+    // Handle NaN, negative values, and ensure valid index
+    const value = values[i];
+    const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+    const categoryIdx = safeValue % palette.length;
     const color = palette[categoryIdx];
     colors[i * 3] = color[0];
     colors[i * 3 + 1] = color[1];
@@ -331,32 +426,159 @@ export function categoricalColors(
   return colors;
 }
 
-// Special coloring for log_time_horizon with gray for no-horizon samples (value 0)
-export function logTimeHorizonColors(
+// Time scale types for transfer functions
+export type TimeScaleType = 'linear' | 'log' | 'adaptive' | 'blend';
+
+// Time tier breakpoints in months for scale-adaptive approach
+// Each tier gets equal visual space regardless of absolute duration
+const TIME_TIERS = [
+  { name: 'seconds', maxMonths: 1 / 2592000 },      // 1 second in months
+  { name: 'minutes', maxMonths: 1 / 43200 },        // 1 minute in months
+  { name: 'hours', maxMonths: 1 / 720 },            // 1 hour in months
+  { name: 'days', maxMonths: 1 / 30 },              // 1 day in months
+  { name: 'weeks', maxMonths: 1 / 4.3 },            // 1 week in months
+  { name: 'months', maxMonths: 1 },                 // 1 month
+  { name: 'years', maxMonths: 12 },                 // 1 year in months
+  { name: 'decades', maxMonths: 120 },              // 10 years
+  { name: 'centuries', maxMonths: 1200 },           // 100 years
+  { name: 'millennia', maxMonths: 12000 },          // 1000 years
+  { name: 'deep_time', maxMonths: Infinity },       // Beyond millennia
+];
+
+// Transfer function: linear
+function linearTransfer(value: number, min: number, max: number): number {
+  // When all values are the same (min === max), return middle of range
+  if (max === min) return 0.5;
+  return (value - min) / (max - min);
+}
+
+// Transfer function: log
+function logTransfer(value: number, min: number, max: number): number {
+  // Handle edge cases: zero/negative values can't be log-transformed
+  if (value <= 0) return 0;
+  if (max <= 0) return 0;
+
+  // Use a small epsilon for min to handle near-zero minimums
+  const epsilon = 1e-10;
+  const safeMin = Math.max(min, epsilon);
+  const safeMax = Math.max(max, epsilon);
+  const safeVal = Math.max(value, epsilon);
+
+  const logMin = Math.log10(safeMin);
+  const logMax = Math.log10(safeMax);
+  const logVal = Math.log10(safeVal);
+
+  // Avoid division by zero when min === max
+  if (logMax === logMin) return 0.5;
+
+  return (logVal - logMin) / (logMax - logMin);
+}
+
+// Transfer function: scale-adaptive (equal visual space per tier)
+function adaptiveTransfer(valueMonths: number, _min: number, _max: number): number {
+  if (valueMonths <= 0) return 0;
+
+  // Find which tier this value belongs to
+  let tierIdx = TIME_TIERS.length - 1; // Default to last tier
+  for (let i = 0; i < TIME_TIERS.length; i++) {
+    if (valueMonths <= TIME_TIERS[i].maxMonths) {
+      tierIdx = i;
+      break;
+    }
+  }
+
+  // Calculate position within tier using log interpolation
+  const tierStart = tierIdx === 0 ? 0 : TIME_TIERS[tierIdx - 1].maxMonths;
+  const tierEnd = TIME_TIERS[tierIdx].maxMonths;
+
+  // Position within this tier (0-1)
+  let withinTier: number;
+  if (!isFinite(tierEnd)) {
+    // For the infinite tier (deep_time), use log position relative to tier start
+    // Map values from tierStart to tierStart*1000 across the tier
+    const logStart = Math.log10(Math.max(tierStart, 1e-10));
+    const logEnd = logStart + 3; // 3 orders of magnitude above tier start
+    const logVal = Math.log10(Math.max(valueMonths, tierStart));
+    withinTier = Math.max(0, Math.min(1, (logVal - logStart) / (logEnd - logStart)));
+  } else if (tierIdx === 0) {
+    // First tier: value ranges from near-zero to tierEnd
+    // Use linear interpolation since log of near-zero is problematic
+    withinTier = Math.max(0, Math.min(1, valueMonths / tierEnd));
+  } else {
+    // Normal tier: use log interpolation within tier for smoothness
+    const epsilon = 1e-10;
+    const logStart = Math.log10(Math.max(tierStart, epsilon));
+    const logEnd = Math.log10(tierEnd);
+    const logVal = Math.log10(Math.max(valueMonths, tierStart));
+
+    // Avoid division by zero when tier boundaries are equal (shouldn't happen normally)
+    if (logEnd === logStart) {
+      withinTier = 0.5;
+    } else {
+      withinTier = Math.max(0, Math.min(1, (logVal - logStart) / (logEnd - logStart)));
+    }
+  }
+
+  // Each tier gets 1/N of the visual range
+  const numTiers = TIME_TIERS.length;
+  const tierWidth = 1 / numTiers;
+
+  return tierIdx * tierWidth + withinTier * tierWidth;
+}
+
+// Transfer function: blend (mix between linear and log)
+function blendTransfer(value: number, min: number, max: number, mix: number): number {
+  const lin = linearTransfer(value, min, max);
+  const log = logTransfer(value, min, max);
+  return (1 - mix) * lin + mix * log;
+}
+
+// Time gradient coloring with configurable transfer function
+// Values outside min-max range are shown as white (out of range)
+// No-horizon values (< 0, i.e. sentinel -1) are shown as gray
+export function timeGradientColors(
   values: number[],
   min: number,
-  max: number
+  max: number,
+  scaleType: TimeScaleType = 'linear',
+  blendMix: number = 0.5
 ): Float32Array {
   const colors = new Float32Array(values.length * 3);
-  // No-horizon samples have log value of 0 (log10(0+1) = 0)
-  // Gray for no-horizon, plasma gradient for the rest
-  const noHorizonThreshold = 0.01; // log10(1+1) = 0.301, so 0 is definitely no-horizon
 
-  // Get range excluding no-horizon for proper scaling
-  const horizonValues = values.filter(v => v > noHorizonThreshold);
-  const actualMin = horizonValues.length > 0 ? Math.min(...horizonValues) : min;
-  const actualMax = horizonValues.length > 0 ? Math.max(...horizonValues) : max;
-  const range = actualMax - actualMin || 1;
 
   for (let i = 0; i < values.length; i++) {
-    if (values[i] <= noHorizonThreshold) {
-      // Gray for no-horizon
-      colors[i * 3] = 0.4;
-      colors[i * 3 + 1] = 0.4;
-      colors[i * 3 + 2] = 0.4;
+    const value = values[i];
+
+    if (value < 0) {
+      // Distinct blue-grey for no-horizon samples (sentinel value -1 from backend)
+      // Using a cool grey that's clearly different from the warm plasma colormap
+      colors[i * 3] = 0.35;      // R
+      colors[i * 3 + 1] = 0.4;   // G
+      colors[i * 3 + 2] = 0.5;   // B - slightly blue-tinted grey
+    } else if (value < min || value > max) {
+      // White/light gray for out-of-range samples (but NOT no-horizon)
+      colors[i * 3] = 0.85;
+      colors[i * 3 + 1] = 0.85;
+      colors[i * 3 + 2] = 0.85;
     } else {
-      // Plasma gradient for horizon samples
-      const t = (values[i] - actualMin) / range;
+      // Apply transfer function based on scale type
+      let t: number;
+      switch (scaleType) {
+        case 'log':
+          t = logTransfer(value, min, max);
+          break;
+        case 'adaptive':
+          t = adaptiveTransfer(value, min, max);
+          break;
+        case 'blend':
+          t = blendTransfer(value, min, max, blendMix);
+          break;
+        case 'linear':
+        default:
+          t = linearTransfer(value, min, max);
+      }
+
+      t = Math.max(0, Math.min(1, t));
       const [r, g, b] = plasmaColor(t);
       colors[i * 3] = r;
       colors[i * 3 + 1] = g;
@@ -367,7 +589,16 @@ export function logTimeHorizonColors(
   return colors;
 }
 
-// Helper function for plasma color (reuse the implementation)
+// Get tier labels for legend (adaptive scale)
+export function getAdaptiveTierLabels(): { position: number; label: string }[] {
+  const numTiers = TIME_TIERS.length;
+  return TIME_TIERS.map((tier, i) => ({
+    position: (i + 0.5) / numTiers,
+    label: tier.name,
+  }));
+}
+
+// Helper function for plasma color
 function plasmaColor(t: number): [number, number, number] {
   const stops = [
     [0.050383, 0.029803, 0.527975],
@@ -401,36 +632,6 @@ function plasmaColor(t: number): [number, number, number] {
   ];
 }
 
-// Special coloring for time_horizon with gray for no-horizon samples
-export function timeHorizonColors(values: number[]): Float32Array {
-  const colors = new Float32Array(values.length * 3);
-
-  // Gray for no-horizon (value 0), then plasma-inspired colors for horizons
-  const horizonPalette: Record<number, [number, number, number]> = {
-    0: [0.4, 0.4, 0.4],     // Gray - no horizon
-    1: [0.05, 0.03, 0.53],  // Deep purple - 1 month
-    2: [0.42, 0.00, 0.66],  // Purple - 2 months
-    3: [0.69, 0.17, 0.56],  // Magenta - 3 months
-    4: [0.88, 0.39, 0.38],  // Salmon - 4 months
-    5: [0.95, 0.52, 0.30],  // Orange - 5 months
-    8: [0.99, 0.81, 0.15],  // Yellow - 8 months
-    10: [0.94, 0.98, 0.13], // Bright yellow - 10 months
-  };
-
-  // Default color for unknown values
-  const defaultColor: [number, number, number] = [0.5, 0.5, 0.5];
-
-  for (let i = 0; i < values.length; i++) {
-    const value = Math.round(values[i]);
-    const color = horizonPalette[value] || defaultColor;
-    colors[i * 3] = color[0];
-    colors[i * 3 + 1] = color[1];
-    colors[i * 3 + 2] = color[2];
-  }
-
-  return colors;
-}
-
 // Heatmap types
 export interface HeatmapCell {
   layer: number;
@@ -460,6 +661,81 @@ export function useHeatmap(component: string, metric: string = 'r2') {
   });
 }
 
+// Warmup status response type
+interface WarmupStatusResponse {
+  message: string;
+  status: {
+    is_running: boolean;
+    progress: number;
+    total: number;
+    current_task: string | null;
+    cached_pca: number;
+    cached_umap: number;
+    cached_tsne: number;
+  };
+}
+
+// Hook to trigger backend prefetch for adjacent embeddings
+export function useBackendPrefetch(
+  layer: number,
+  component: string,
+  position: string,
+  method: string,
+  enabled: boolean = true
+) {
+  useEffect(() => {
+    if (!enabled || layer < 0 || !component || !position || !method) return;
+
+    // Fire-and-forget prefetch request to backend
+    // This precomputes adjacent layers/positions server-side for faster navigation
+    const prefetchUrl = `/warmup/prefetch?layer=${layer}&component=${encodeURIComponent(component)}&position=${encodeURIComponent(position)}&method=${method}`;
+
+    api.post<WarmupStatusResponse>(prefetchUrl).catch(() => {
+      // Silently ignore prefetch failures - it's just an optimization
+    });
+  }, [layer, component, position, method, enabled]);
+}
+
+// Hook to get warmup status
+export function useWarmupStatus() {
+  return useQuery({
+    queryKey: ['warmup', 'status'],
+    queryFn: async (): Promise<WarmupStatusResponse> => {
+      return api.get<WarmupStatusResponse>('/warmup/status');
+    },
+    refetchInterval: (query) => {
+      // Poll every 2 seconds while warmup is running
+      return query.state.data?.status.is_running ? 2000 : false;
+    },
+    staleTime: 1000, // 1 second
+  });
+}
+
+// Hook to trigger warmup
+export function useWarmup() {
+  const queryClient = useQueryClient();
+
+  const startWarmup = async (
+    methods: string[] = ['pca', 'umap'],
+    components: string[] = ['resid_pre'],
+    allPositions: boolean = true
+  ) => {
+    const methodsParam = methods.join(',');
+    const componentsParam = components.join(',');
+
+    const response = await api.post<WarmupStatusResponse>(
+      `/warmup?methods=${methodsParam}&components=${componentsParam}&all_positions=${allPositions}`
+    );
+
+    // Invalidate the status query to get fresh data
+    queryClient.invalidateQueries({ queryKey: ['warmup', 'status'] });
+
+    return response;
+  };
+
+  return { startWarmup };
+}
+
 // Prefetching hook for background loading
 export function usePrefetch(
   currentLayer: number,
@@ -473,12 +749,12 @@ export function usePrefetch(
 
   useEffect(() => {
     // Prefetch all color options in background
-    colorByOptions.forEach((colorBy) => {
+    colorByOptions.forEach((colorByOption) => {
       queryClient.prefetchQuery({
-        queryKey: ['metadata', colorBy],
+        queryKey: ['metadata', colorByOption],
         queryFn: async (): Promise<MetadataResponse> => {
           const response = await api.get<BackendMetadataResponse>(
-            `/metadata?color_by=${colorBy}`
+            `/metadata?color_by=${colorByOption}`
           );
           let numericValues: number[];
           let labels: string[] | undefined;
@@ -486,9 +762,23 @@ export function usePrefetch(
           let max = 1;
 
           if (response.dtype === 'numeric') {
-            numericValues = response.values as number[];
-            min = Math.min(...numericValues);
-            max = Math.max(...numericValues);
+            // For time_horizon fields, backend sends null for no-horizon samples
+            // Convert null to -1 (sentinel value) so timeGradientColors can identify them
+            const isTimeField = colorByOption === 'time_horizon' ;
+            numericValues = (response.values as (number | null)[]).map(v =>
+              v === null ? -1 : v
+            );
+
+            // For min/max calculation, exclude sentinel values (-1)
+            const validValues = isTimeField
+              ? numericValues.filter(v => v >= 0)
+              : numericValues;
+
+            if (validValues.length > 0) {
+              min = Math.min(...validValues);
+              max = Math.max(...validValues);
+            }
+            // If empty, keep defaults min=0, max=1
           } else if (response.dtype === 'boolean') {
             numericValues = (response.values as boolean[]).map(v => v ? 1 : 0);
             labels = ['false', 'true'];
@@ -498,7 +788,8 @@ export function usePrefetch(
             numericValues = (response.values as string[]).map(v =>
               uniqueVals.indexOf(v)
             );
-            max = uniqueVals.length - 1;
+            // Ensure max >= 1 to avoid division by zero in color calculations
+            max = Math.max(1, uniqueVals.length - 1);
           }
           return { values: numericValues, labels, min, max };
         },
@@ -508,10 +799,10 @@ export function usePrefetch(
 
     // Prefetch adjacent layers in background
     const currentIdx = layers.indexOf(currentLayer);
-    const adjacentLayers = [
-      layers[currentIdx - 1],
-      layers[currentIdx + 1],
-    ].filter(l => l !== undefined);
+    // Only prefetch if currentLayer is found in the layers array
+    const adjacentLayers = currentIdx >= 0
+      ? [layers[currentIdx - 1], layers[currentIdx + 1]].filter(l => l !== undefined)
+      : [];
 
     adjacentLayers.forEach((layer) => {
       queryClient.prefetchQuery({
@@ -532,4 +823,107 @@ export function usePrefetch(
       });
     });
   }, [queryClient, currentLayer, component, position, method, colorByOptions, layers]);
+}
+
+// Types for trajectory data
+interface TrajectoryPoint {
+  x_value: string;
+  values: number[];
+}
+
+interface TrajectoryResponse {
+  component: string;
+  position?: string;
+  layer?: number;
+  method: string;
+  x_axis: string;
+  x_values: string[];
+  n_samples: number;
+  data: TrajectoryPoint[];
+}
+
+export interface TrajectoryData {
+  xValues: string[];
+  trajectoryData: Map<string, Float32Array>;
+  nSamples: number;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+// Hook to fetch PC1 trajectory across layers
+export function useLayerTrajectory(
+  component: string,
+  position: string,
+  enabled: boolean = true
+): TrajectoryData {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['trajectory', 'layers', component, position],
+    queryFn: async (): Promise<TrajectoryResponse> => {
+      return api.get<TrajectoryResponse>(
+        `/trajectory/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}`
+      );
+    },
+    enabled: enabled && !!component && !!position,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Transform to Map<string, Float32Array>
+  const trajectoryData = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  return {
+    xValues: data?.x_values || [],
+    trajectoryData,
+    nSamples: data?.n_samples || 0,
+    isLoading,
+    error: error as Error | null,
+  };
+}
+
+// Hook to fetch PC1 trajectory across positions
+export function usePositionTrajectory(
+  layer: number,
+  component: string,
+  positions?: string[], // Optional filter
+  enabled: boolean = true
+): TrajectoryData {
+  const positionsFilter = positions?.join(',') || '';
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['trajectory', 'positions', layer, component, positionsFilter],
+    queryFn: async (): Promise<TrajectoryResponse> => {
+      const url = `/trajectory/positions/${layer}/${encodeURIComponent(component)}${
+        positionsFilter ? `?positions_filter=${encodeURIComponent(positionsFilter)}` : ''
+      }`;
+      return api.get<TrajectoryResponse>(url);
+    },
+    enabled: enabled && layer >= 0 && !!component,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Transform to Map<string, Float32Array>
+  const trajectoryData = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  return {
+    xValues: data?.x_values || [],
+    trajectoryData,
+    nSamples: data?.n_samples || 0,
+    isLoading,
+    error: error as Error | null,
+  };
 }

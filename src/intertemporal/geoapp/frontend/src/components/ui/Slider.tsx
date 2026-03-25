@@ -154,9 +154,9 @@ export const Slider: React.FC<SliderProps> = ({
         onMouseLeave={() => setIsHovering(false)}
         className={`
           relative h-2 rounded-full
-          bg-gradient-to-r from-purple-100 to-pink-100
+          bg-gradient-to-r from-[#f5f0eb] to-pink-100
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-          focus:outline-none focus:ring-2 focus:ring-pink-400/50 focus:ring-offset-2 focus:ring-offset-transparent
+          focus:outline-none focus:ring-2 focus:ring-[#D97757]/50 focus:ring-offset-2 focus:ring-offset-transparent
           transition-all duration-200
         `}
       >
@@ -164,7 +164,7 @@ export const Slider: React.FC<SliderProps> = ({
         <div
           className="
             absolute inset-y-0 left-0 rounded-full
-            bg-gradient-to-r from-[#C678DD] to-[#FF6B9D]
+            bg-gradient-to-r from-[#D97757] to-[#348296]
             transition-all duration-75 ease-out
           "
           style={{ width: `${percentage}%` }}
@@ -176,10 +176,10 @@ export const Slider: React.FC<SliderProps> = ({
             absolute top-1/2 -translate-y-1/2 -translate-x-1/2
             w-5 h-5 rounded-full
             bg-white
-            border-2 border-[#FF6B9D]
-            shadow-lg shadow-pink-500/30
+            border-2 border-[#348296]
+            shadow-lg shadow-[#D97757]/30
             transition-all duration-150
-            ${isDragging ? 'scale-125 shadow-xl shadow-pink-500/40' : ''}
+            ${isDragging ? 'scale-125 shadow-xl shadow-[#D97757]/40' : ''}
             ${!disabled && !isDragging ? 'hover:scale-110' : ''}
           `}
           style={{ left: `${percentage}%` }}
@@ -188,7 +188,7 @@ export const Slider: React.FC<SliderProps> = ({
           <div
             className={`
               absolute inset-1 rounded-full
-              bg-gradient-to-br from-[#FF6B9D] to-[#C678DD]
+              bg-gradient-to-br from-[#348296] to-[#D97757]
               transition-opacity duration-200
               ${isDragging ? 'opacity-100' : 'opacity-60'}
             `}
@@ -200,9 +200,9 @@ export const Slider: React.FC<SliderProps> = ({
           className={`
             absolute bottom-full mb-3 -translate-x-1/2
             px-2.5 py-1 rounded-lg
-            bg-gradient-to-r from-[#C678DD] to-[#FF6B9D]
+            bg-gradient-to-r from-[#D97757] to-[#348296]
             text-white text-sm font-medium
-            shadow-lg shadow-purple-500/20
+            shadow-lg shadow-[#faf8f5]0/20
             transition-all duration-200
             ${showTooltipNow
               ? 'opacity-100 translate-y-0'
@@ -216,7 +216,7 @@ export const Slider: React.FC<SliderProps> = ({
           <div
             className="
               absolute top-full left-1/2 -translate-x-1/2
-              border-4 border-transparent border-t-[#FF6B9D]
+              border-4 border-transparent border-t-[#348296]
             "
           />
         </div>

@@ -74,12 +74,12 @@ export const Heatmap: React.FC<HeatmapProps> = ({
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center h-48 ${className}`}>
-        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#faf8f5]0 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (!data || data.cells.length === 0) {
+  if (!data || data.cells.length === 0 || data.layers.length === 0 || data.positions.length === 0) {
     return (
       <div className={`flex items-center justify-center h-48 text-gray-400 ${className}`}>
         No data available
@@ -131,8 +131,7 @@ export const Heatmap: React.FC<HeatmapProps> = ({
 
             {/* Cells */}
             {positions.map((pos) => {
-              const rawValue = cellMap.get(`${layer}-${pos}`);
-              const value = rawValue ?? null;
+              const value = cellMap.get(`${layer}-${pos}`) ?? null;
               const isSelected =
                 selectedCell?.layer === layer && selectedCell?.position === pos;
               const t = value !== null ? (value - (min_value ?? 0)) / range : 0;
@@ -142,7 +141,7 @@ export const Heatmap: React.FC<HeatmapProps> = ({
                 <div
                   key={`${layer}-${pos}`}
                   className={`w-8 h-6 flex-shrink-0 cursor-pointer transition-all duration-150 ${
-                    isSelected ? 'ring-2 ring-white ring-offset-1' : ''
+                    isSelected ? 'ring-2 ring-black ring-offset-1 ring-offset-white' : ''
                   }`}
                   style={{ backgroundColor: bgColor }}
                   onClick={() => onCellClick?.(layer, pos)}

@@ -269,19 +269,8 @@ def format_time_value(tv: TimeValue, spell_out: bool = False) -> str:
         if spelled:
             return spelled
 
-    # Default numerical format
-    value = tv.value
-    unit = tv.unit
-
-    # Round to reasonable precision
-    if value == int(value):
-        value_str = str(int(value))
-    elif value < 10:
-        value_str = f"{value:.2f}".rstrip("0").rstrip(".")
-    else:
-        value_str = f"{value:.1f}".rstrip("0").rstrip(".")
-
-    return f"{value_str} {unit}"
+    # Use TimeValue's __str__ which handles singular/plural correctly
+    return str(tv)
 
 
 # =============================================================================

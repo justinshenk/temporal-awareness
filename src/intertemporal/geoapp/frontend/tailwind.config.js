@@ -8,22 +8,27 @@ export default {
     extend: {
       colors: {
         primary: {
-          pink: '#FF6B9D',
-          purple: '#C678DD',
-          cyan: '#56B6C2',
+          coral: '#D97757',    // Anthropic terracotta/coral
+          teal: '#348296',     // Deep teal accent
+          purple: '#8F70DB',   // Purple accent
+          // Legacy aliases for gradual migration
+          pink: '#D97757',
+          cyan: '#348296',
         },
         text: {
-          dark: '#4a3f5c',
-          muted: '#7a6b8a',
+          dark: '#1a1613',     // Anthropic dark brown
+          muted: '#5c534a',    // Warm gray-brown
         },
         bg: {
-          start: '#ffeef5',
-          mid: '#f0e6ff',
-          end: '#e6f5ff',
+          cream: '#faf8f5',    // Anthropic cream
+          warm: '#f5f0eb',     // Warm beige
+          start: '#faf8f5',
+          mid: '#f5f0eb',
+          end: '#f0ebe5',
         }
       },
       backgroundImage: {
-        'gradient-main': 'linear-gradient(135deg, #ffeef5 0%, #f0e6ff 50%, #e6f5ff 100%)',
+        'gradient-main': 'linear-gradient(135deg, #faf8f5 0%, #f5f0eb 50%, #f0ebe5 100%)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -13,38 +13,38 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: `
-    bg-gradient-to-r from-[#C678DD] to-[#FF6B9D]
+    bg-gradient-to-r from-[#D97757] to-[#348296]
     text-white font-medium
-    shadow-lg shadow-pink-500/25
-    hover:shadow-xl hover:shadow-pink-500/30
+    shadow-lg shadow-[#D97757]/25
+    hover:shadow-xl hover:shadow-[#D97757]/30
     hover:from-[#b86cd0] hover:to-[#ff5a8f]
     active:shadow-md active:scale-[0.98]
     disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none
   `,
   secondary: `
     bg-white/70 backdrop-blur-md
-    border-2 border-[#C678DD]/30
-    text-[#4a3f5c] font-medium
-    shadow-md shadow-purple-500/10
-    hover:border-[#FF6B9D]/50 hover:bg-white/90
-    hover:shadow-lg hover:shadow-pink-500/15
+    border-2 border-[#D97757]/30
+    text-[#1a1613] font-medium
+    shadow-md shadow-[#faf8f5]0/10
+    hover:border-[#348296]/50 hover:bg-white/90
+    hover:shadow-lg hover:shadow-[#D97757]/15
     active:scale-[0.98]
     disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50
   `,
   ghost: `
     bg-transparent
-    text-[#4a3f5c]
-    hover:bg-purple-50/50 hover:text-[#C678DD]
-    active:bg-purple-100/50
+    text-[#1a1613]
+    hover:bg-[#faf8f5]/50 hover:text-[#D97757]
+    active:bg-[#f5f0eb]/50
     disabled:text-gray-300 disabled:bg-transparent
   `,
   icon: `
     bg-white/70 backdrop-blur-md
     border border-white/60
-    text-[#4a3f5c]
-    shadow-md shadow-purple-500/5
-    hover:bg-white/90 hover:border-pink-200/50 hover:text-[#FF6B9D]
-    hover:shadow-lg hover:shadow-pink-500/10
+    text-[#1a1613]
+    shadow-md shadow-[#faf8f5]0/5
+    hover:bg-white/90 hover:border-[#D97757]/30/50 hover:text-[#348296]
+    hover:shadow-lg hover:shadow-[#D97757]/10
     active:scale-[0.95]
     disabled:text-gray-300 disabled:bg-gray-50 disabled:border-gray-200
   `,
@@ -127,7 +127,7 @@ export const Button: React.FC<ButtonProps> = ({
       className={`
         inline-flex items-center justify-center
         transition-all duration-200 ease-out
-        focus:outline-none focus:ring-2 focus:ring-pink-400/50 focus:ring-offset-2 focus:ring-offset-transparent
+        focus:outline-none focus:ring-2 focus:ring-[#D97757]/50 focus:ring-offset-2 focus:ring-offset-transparent
         disabled:cursor-not-allowed disabled:opacity-60
         ${variantClasses[variant]}
         ${sizeClasses[variant][size]}

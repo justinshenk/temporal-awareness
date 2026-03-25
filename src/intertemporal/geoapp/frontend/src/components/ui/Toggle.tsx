@@ -76,13 +76,13 @@ export const Toggle: React.FC<ToggleProps> = ({
         relative inline-flex items-center shrink-0
         ${config.track} rounded-full
         transition-all duration-300 ease-out
-        focus:outline-none focus:ring-2 focus:ring-pink-400/50 focus:ring-offset-2 focus:ring-offset-transparent
+        focus:outline-none focus:ring-2 focus:ring-[#D97757]/50 focus:ring-offset-2 focus:ring-offset-transparent
         ${disabled
           ? 'opacity-50 cursor-not-allowed'
           : 'cursor-pointer'
         }
         ${isChecked
-          ? 'bg-gradient-to-r from-[#C678DD] to-[#FF6B9D] shadow-lg shadow-pink-500/30'
+          ? 'bg-gradient-to-r from-[#D97757] to-[#348296] shadow-lg shadow-[#D97757]/30'
           : 'bg-gray-200 shadow-inner'
         }
       `}
@@ -91,7 +91,7 @@ export const Toggle: React.FC<ToggleProps> = ({
       <span
         className={`
           absolute inset-0 rounded-full
-          bg-gradient-to-r from-[#C678DD]/20 to-[#FF6B9D]/20
+          bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20
           blur-md
           transition-opacity duration-300
           ${isChecked ? 'opacity-100' : 'opacity-0'}
@@ -107,7 +107,7 @@ export const Toggle: React.FC<ToggleProps> = ({
           shadow-md
           transition-all duration-300 ease-out
           ${isChecked ? config.translate : 'translate-x-0'}
-          ${isChecked ? 'shadow-lg shadow-pink-500/20' : 'shadow-gray-400/20'}
+          ${isChecked ? 'shadow-lg shadow-[#D97757]/20' : 'shadow-gray-400/20'}
         `}
       >
         {/* Inner gradient when active */}
@@ -138,7 +138,7 @@ export const Toggle: React.FC<ToggleProps> = ({
       {labelPosition === 'left' && (
         <span
           className={`
-            ${config.labelText} text-[#4a3f5c]
+            ${config.labelText} text-[#1a1613]
             ${disabled ? 'opacity-50' : ''}
           `}
         >
@@ -149,7 +149,7 @@ export const Toggle: React.FC<ToggleProps> = ({
       {labelPosition === 'right' && (
         <span
           className={`
-            ${config.labelText} text-[#4a3f5c]
+            ${config.labelText} text-[#1a1613]
             ${disabled ? 'opacity-50' : ''}
           `}
         >

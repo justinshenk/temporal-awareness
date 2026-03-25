@@ -58,7 +58,8 @@ class FineGrainedConfig:
     # Position patching for top heads
     position_patching_enabled: bool = True
     n_top_heads_for_position: int = 5
-    position_range: tuple[int, int] | None = None  # (start, end) or auto
+    position_range: tuple[int, int] | None = None  # (start, end) or auto - DEPRECATED
+    positions: list[int] | None = None  # Specific positions to patch (None = use source + dest)
 
     # Path patching
     path_patching_enabled: bool = True
@@ -73,7 +74,8 @@ class FineGrainedConfig:
 
     # Neuron patching
     neuron_patching_enabled: bool = True
-    neuron_target_layer: int = 31
+    mlp_layers: list[int] = field(default_factory=lambda: [31, 24, 28])  # MLP layers to patch
+    neuron_target_layer: int = 31  # Deprecated, use mlp_layers
     n_top_neurons: int = 50
 
     # Layer-position fine heatmap
@@ -82,6 +84,11 @@ class FineGrainedConfig:
         default_factory=lambda: ["attn_out", "mlp_out"]
     )
     layer_position_layers: list[int] | None = None  # None = layers 15-35
+    layer_position_positions: list[int] | None = None  # Specific positions (None = use source + dest)
+
+    # Key positions (used by multiple analyses when specific positions not set)
+    source_positions: list[int] = field(default_factory=lambda: [86, 87, 88])  # Horizon tokens
+    destination_positions: list[int] = field(default_factory=lambda: [143, 144, 145])  # Choice tokens
 
     @classmethod
     def from_dict(cls, d: dict) -> FineGrainedConfig:

@@ -20,10 +20,13 @@ PatchingComponent = Literal["resid_post", "attn_out", "mlp_out"]
 # Mode types
 # =============================================================================
 
-PatchingMode = Literal["denoising", "noising"]
+PatchingMode = Literal["denoising", "noising", "zero_ablation", "mean_ablation", "gaussian_noise"]
 """Mode for activation patching:
 - 'denoising': Run on corrupted, patch in clean activations (REMOVE noise)
 - 'noising': Run on clean, patch in corrupted activations (ADD noise)
+- 'zero_ablation': Set activations to zero (test circuit necessity)
+- 'mean_ablation': Set activations to pre-computed mean (test circuit necessity)
+- 'gaussian_noise': Add Gaussian noise to activations (robustness testing)
 """
 
 TrajectoryType = Literal["clean", "corrupted"]

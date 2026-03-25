@@ -390,7 +390,13 @@ def run_streaming_analysis(
     # Pre-compute log horizons once
     log_horizons = _get_log_horizons(data)
 
-    target_keys = data.get_target_keys()
+    # Get target keys from data, filtered to only requested positions
+    all_target_keys = data.get_target_keys()
+    requested_positions = {t.position for t in config.targets}
+    target_keys = [
+        k for k in all_target_keys
+        if any(k.endswith(f"_{pos}") for pos in requested_positions)
+    ]
     n_targets = len(target_keys)
 
     logger.info(f"Running streaming analysis on {n_targets} targets...")

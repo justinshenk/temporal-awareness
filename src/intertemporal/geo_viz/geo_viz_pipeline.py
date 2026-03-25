@@ -20,7 +20,6 @@ from .geo_viz_data import (
     collect_samples,
     extract_activations,
     load_cached_data,
-    save_data,
 )
 from .geo_viz_logit_lens import LogitLensResult, run_logit_lens_from_cache
 from .geo_viz_plotting import generate_all_plots, plot_logit_lens
@@ -32,6 +31,8 @@ def run_geo_viz_pipeline(
     config: GeoVizConfig,
     use_cache: bool = True,
     skip_extraction: bool = False,
+    skip_viz: bool = False,
+    skip_per_target_plots: bool = False,
     run_cross_position_similarity: bool = True,
     run_continuous_time_probe: bool = True,
     run_logit_lens: bool = False,
@@ -48,6 +49,8 @@ def run_geo_viz_pipeline(
         config: Pipeline configuration
         use_cache: Whether to use cached data if available
         skip_extraction: Skip sample generation and extraction (requires cache)
+        skip_viz: Skip all visualization (extraction and analysis only)
+        skip_per_target_plots: Skip per-target plots (09_targets folder)
         run_cross_position_similarity: Run cross-position cosine similarity analysis
             (compares PC0 directions at source vs destination positions)
         run_continuous_time_probe: Run continuous time horizon regression
@@ -86,7 +89,7 @@ def run_geo_viz_pipeline(
         logger.info("\n" + "=" * 60)
         logger.info("Generating Samples")
         logger.info("=" * 60)
-        dataset = collect_samples()
+        dataset = collect_samples(config.output_dir)
 
         # Extract activations (streaming to disk)
         logger.info("\n" + "=" * 60)
@@ -105,6 +108,9 @@ def run_geo_viz_pipeline(
     if missing:
         logger.warning(f"Missing {len(missing)} targets in data")
         logger.warning("Run without --cache to regenerate")
+
+    # Targets actually analyzed = intersection of requested and available
+    analyzed_targets = requested_targets & available_targets
 
     # Step 2: Run streaming analysis (one target at a time)
     logger.info("\n" + "=" * 60)
@@ -153,27 +159,33 @@ def run_geo_viz_pipeline(
     # Force GC before plotting
     gc.collect()
 
-    # Step 3: Generate plots
-    logger.info("\n" + "=" * 60)
-    logger.info("Generating Plots")
-    logger.info("=" * 60)
-    generate_all_plots(
-        data, linear_probe_results, pca_results, embedding_results, config,
-        cross_position_results=cross_position_results,
-        continuous_time_results=continuous_time_results,
-    )
+    # Step 3: Generate plots (unless skipped)
+    if not skip_viz:
+        logger.info("\n" + "=" * 60)
+        logger.info("Generating Plots")
+        logger.info("=" * 60)
+        generate_all_plots(
+            data, linear_probe_results, pca_results, embedding_results, config,
+            cross_position_results=cross_position_results,
+            continuous_time_results=continuous_time_results,
+            skip_per_target_plots=skip_per_target_plots,
+        )
 
-    # Step 3b: Generate logit lens plots (if available)
-    if logit_lens_result is not None:
-        logger.info("Generating logit lens plots...")
-        logit_lens_plot_dir = config.output_dir / "plots" / "12_logit_lens"
-        plot_logit_lens(logit_lens_result, logit_lens_plot_dir)
+        # Step 3b: Generate logit lens plots (if available)
+        if logit_lens_result is not None:
+            logger.info("Generating logit lens plots...")
+            logit_lens_plot_dir = config.output_dir / "plots" / "12_logit_lens"
+            plot_logit_lens(logit_lens_result, logit_lens_plot_dir)
+    else:
+        logger.info("\n" + "=" * 60)
+        logger.info("Skipping Visualization (--no-viz)")
+        logger.info("=" * 60)
 
     # Build summary (minimal memory)
     summary = {
         "n_samples": len(data.samples),
-        "n_targets": len(available_targets),
-        "targets": list(available_targets),
+        "n_targets": len(analyzed_targets),
+        "targets": sorted(analyzed_targets),
         "linear_probe": {
             k: {"r2": v.r2_mean, "r2_std": v.r2_std, "corr": v.correlation}
             for k, v in linear_probe_results.items()
@@ -210,7 +222,7 @@ def run_geo_viz_pipeline(
     logger.info("Summary")
     logger.info("=" * 60)
     logger.info(f"Samples: {len(data.samples)}")
-    logger.info(f"Targets: {len(available_targets)}")
+    logger.info(f"Targets analyzed: {len(analyzed_targets)}")
 
     # Top R² scores (destination positions - binary choice decoding)
     logger.info("\nTop 10 Linear Probe R² Scores (Destination):")
@@ -218,7 +230,7 @@ def run_geo_viz_pipeline(
         linear_probe_results.items(), key=lambda x: x[1].r2_mean, reverse=True
     )[:10]
     for k, v in sorted_results:
-        pos_type = "DEST" if "Presponse" in k or "Pdest" in k else "SRC"
+        pos_type = "DEST" if "_response" in k or "_dest" in k else "SRC"
         logger.info(f"  [{pos_type}] {k}: R²={v.r2_mean:.3f}")
 
     # Top R² scores for continuous time probe (source positions)

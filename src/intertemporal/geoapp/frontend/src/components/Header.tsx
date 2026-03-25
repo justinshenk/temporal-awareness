@@ -3,6 +3,7 @@ import { Badge, BadgeGroup } from './ui/Badge';
 import { Button } from './ui/Button';
 
 interface HeaderProps {
+  modelName?: string;
   totalSamples?: number;
   totalLayers?: number;
   totalPositions?: number;
@@ -78,6 +79,7 @@ const GlobeIcon = () => (
 );
 
 export const Header: React.FC<HeaderProps> = ({
+  modelName = '',
   totalSamples = 0,
   totalLayers = 0,
   totalPositions = 0,
@@ -102,23 +104,18 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-4">
             <div className="relative">
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#C678DD] to-[#FF6B9D] rounded-xl blur-lg opacity-40" />
+              <div className="absolute inset-0 bg-[#D97757] rounded-xl blur-lg opacity-30" />
               {/* Logo container */}
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#C678DD] to-[#FF6B9D] flex items-center justify-center shadow-lg shadow-pink-500/25">
-                <GlobeIcon />
+              <div className="relative w-10 h-10 rounded-xl bg-[#D97757] flex items-center justify-center shadow-lg shadow-[#D97757]/25">
                 <span className="text-white">
                   <GlobeIcon />
                 </span>
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold">
-                <span className="text-gradient">GeoViz</span>
-                <span className="text-[#4a3f5c] font-normal ml-1">Explorer</span>
+              <h1 className="text-xl font-bold text-[#1a1613]">
+                {modelName || 'GeoViz Explorer'}
               </h1>
-              <p className="text-xs text-[#4a3f5c]/50 -mt-0.5">
-                Embedding Visualization Tool
-              </p>
             </div>
           </div>
 
@@ -145,10 +142,10 @@ export const Header: React.FC<HeaderProps> = ({
               className="
                 p-2 rounded-lg
                 bg-white/50 border border-white/60
-                text-[#4a3f5c]
-                hover:bg-white/80 hover:border-pink-200/50 hover:text-[#FF6B9D]
+                text-[#1a1613]
+                hover:bg-white/80 hover:border-[#D97757]/30/50 hover:text-[#348296]
                 transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-pink-400/50
+                focus:outline-none focus:ring-2 focus:ring-[#D97757]/50
               "
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >

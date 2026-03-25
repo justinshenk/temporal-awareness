@@ -22,7 +22,7 @@ interface PointCloudProps {
   hoverScale?: number;
 }
 
-// Custom shader for crisp point rendering with zoom-based scaling
+// Custom shader for crisp point rendering - BIG visible points
 const vertexShader = `
   attribute float pointIndex;
 
@@ -30,6 +30,8 @@ const vertexShader = `
   uniform float hoverScale;
   uniform float selectedIndex;
   uniform float hoveredIndex;
+  uniform float pointCount;
+  uniform float maxPointSize;
 
   varying vec3 vColor;
   varying float vIsSelected;
@@ -45,17 +47,25 @@ const vertexShader = `
 
     // Scale up selected/hovered points
     float scale = 1.0;
-    if (vIsSelected > 0.5) scale = hoverScale * 1.5;
-    else if (vIsHovered > 0.5) scale = hoverScale;
+    if (vIsSelected > 0.5) scale = 2.0;
+    else if (vIsHovered > 0.5) scale = 1.5;
 
-    // Scale points based on distance using sqrt for gentler scaling
-    // sqrt prevents extreme growth when zoomed in very close
-    float dist = max(-mvPosition.z, 1.0);
-    float distanceScale = 15.0 / sqrt(dist);
-    gl_PointSize = size * scale * distanceScale;
+    // Base point size - start BIG
+    float baseSize = size * 3.0;
 
-    // Clamp to reasonable range
-    gl_PointSize = clamp(gl_PointSize, 2.0, 12.0);
+    // Sparsity: fewer points = bigger (range 1.0 to 4.0)
+    float sparsityFactor = clamp(sqrt(2000.0 / max(pointCount, 1.0)), 1.0, 4.0);
+
+    // Distance: closer = bigger (when zoomed in)
+    float dist = max(abs(mvPosition.z), 0.5);
+    float zoomFactor = clamp(5.0 / sqrt(dist), 1.0, 4.0);
+
+    // Final size
+    gl_PointSize = baseSize * scale * sparsityFactor * zoomFactor;
+
+    // HARD minimum of 8 pixels - ALWAYS visible
+    // Max of 100 pixels when very sparse and zoomed in
+    gl_PointSize = clamp(gl_PointSize, 8.0, 100.0);
 
     gl_Position = projectionMatrix * mvPosition;
   }
@@ -102,12 +112,49 @@ export function PointCloud({
   const { raycaster, gl } = useThree();
 
   const pointCount = positions.length / 3;
+  const colorPointCount = colors.length / 3;
+
+  // Validate and sanitize positions - replace NaN/Infinity with 0
+  const safePositions = useMemo(() => {
+    let hasInvalid = false;
+    let invalidCount = 0;
+
+    for (let i = 0; i < positions.length; i++) {
+      if (!isFinite(positions[i])) {
+        hasInvalid = true;
+        invalidCount++;
+      }
+    }
+
+    if (!hasInvalid) return positions;
+
+    console.warn(`PointCloud: Found ${invalidCount} invalid position values (NaN/Infinity). Replacing with 0.`);
+    const sanitized = new Float32Array(positions.length);
+    for (let i = 0; i < positions.length; i++) {
+      sanitized[i] = isFinite(positions[i]) ? positions[i] : 0;
+    }
+    return sanitized;
+  }, [positions]);
 
   // Create geometry with point indices for hover detection
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(safePositions, 3));
+
+    // Ensure colors array matches positions array length
+    // If mismatched, create a fallback color array to prevent WebGL errors
+    let safeColors = colors;
+    if (colorPointCount !== pointCount) {
+      console.warn(`PointCloud: Color array length (${colorPointCount}) doesn't match position count (${pointCount}). Using fallback colors.`);
+      safeColors = new Float32Array(pointCount * 3);
+      for (let i = 0; i < pointCount; i++) {
+        // Default to coral
+        safeColors[i * 3] = 0.85;
+        safeColors[i * 3 + 1] = 0.47;
+        safeColors[i * 3 + 2] = 0.34;
+      }
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(safeColors, 3));
 
     // Add point indices for shader
     const indices = new Float32Array(pointCount);
@@ -116,10 +163,23 @@ export function PointCloud({
     }
     geo.setAttribute('pointIndex', new THREE.BufferAttribute(indices, 1));
 
+    // Compute bounding sphere for proper frustum culling
+    geo.computeBoundingSphere();
+
     return geo;
-  }, [positions, colors, pointCount]);
+  }, [safePositions, colors, pointCount, colorPointCount]);
+
+  // Dispose geometry when it changes or component unmounts
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
 
   // Custom shader material - crisp points with proper depth
+  // Note: Do NOT include selectedIndex, pointSize, or hoverScale in dependencies
+  // These are updated via useEffect to avoid recreating the material and causing
+  // stale references in callbacks that capture the material
   const material = useMemo(() => {
     return new THREE.ShaderMaterial({
       vertexShader,
@@ -129,13 +189,23 @@ export function PointCloud({
         hoverScale: { value: hoverScale },
         selectedIndex: { value: selectedIndex ?? -1 },
         hoveredIndex: { value: -1 },
+        pointCount: { value: pointCount },
+        maxPointSize: { value: 16.0 },  // Base max, will be scaled by sparsity
       },
       vertexColors: true,
       transparent: false,
       depthWrite: true,
       depthTest: true,
     });
-  }, [pointSize, hoverScale, selectedIndex]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Dispose material on unmount
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
 
   // Update uniforms when props change
   useEffect(() => {
@@ -143,8 +213,9 @@ export function PointCloud({
       material.uniforms.size.value = pointSize;
       material.uniforms.hoverScale.value = hoverScale;
       material.uniforms.selectedIndex.value = selectedIndex ?? -1;
+      material.uniforms.pointCount.value = pointCount;
     }
-  }, [material, pointSize, hoverScale, selectedIndex]);
+  }, [material, pointSize, hoverScale, selectedIndex, pointCount]);
 
   // Raycasting for hover detection
   const handlePointerMove = useCallback(

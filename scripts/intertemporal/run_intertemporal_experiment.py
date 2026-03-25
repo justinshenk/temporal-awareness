@@ -41,7 +41,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -74,7 +76,6 @@ from src.intertemporal.experiments.experiment_config import (
     FINE_PATCH,
     MLP_ANALYSIS,
     ATTN_ANALYSIS,
-    FINE_GRAINED,
 )
 from src.intertemporal.viz.coarse.component_comparison.comp_constants import COMPONENTS
 
@@ -200,13 +201,6 @@ def parse_args() -> argparse.Namespace:
         help="Override attention analysis settings as JSON, e.g. '{\"enabled\": true, \"layers\": [19, 21, 24]}'",
     )
     parser.add_argument(
-        "--fine_grained",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override fine-grained patching settings (plots 17-26), e.g. '{\"enabled\": true}'",
-    )
-    parser.add_argument(
         "--disable",
         action="store_true",
         help="Disable all steps except those explicitly enabled via flags",
@@ -257,7 +251,6 @@ def main() -> int:
         config_dict["fine_patch"] = {**FINE_PATCH, "enabled": False}
         config_dict["mlp_analysis"] = {**MLP_ANALYSIS, "enabled": False}
         config_dict["attn_analysis"] = {**ATTN_ANALYSIS, "enabled": False}
-        config_dict["fine_grained"] = {**FINE_GRAINED, "enabled": False}
         config_dict["viz"] = {**VIZ, "enabled": False}
 
     # Apply JSON overrides, merging with defaults if key missing
@@ -282,9 +275,9 @@ def main() -> int:
             json.loads(args.pair_req)
         )
     if args.fine:
-        config_dict.setdefault("fine_patch", FINE_PATCH.copy()).update(
-            json.loads(args.fine)
-        )
+        fine_config = config_dict.setdefault("fine_patch", FINE_PATCH.copy())
+        fine_config["enabled"] = True  # Auto-enable when --fine is passed
+        fine_config.update(json.loads(args.fine))
     if args.mlp:
         mlp_config = config_dict.setdefault("mlp_analysis", MLP_ANALYSIS.copy())
         mlp_config["enabled"] = True  # Auto-enable when --mlp is passed
@@ -293,10 +286,6 @@ def main() -> int:
         attn_config = config_dict.setdefault("attn_analysis", ATTN_ANALYSIS.copy())
         attn_config["enabled"] = True  # Auto-enable when --attn is passed
         attn_config.update(json.loads(args.attn))
-    if args.fine_grained:
-        fine_grained_config = config_dict.setdefault("fine_grained", FINE_GRAINED.copy())
-        fine_grained_config["enabled"] = True  # Auto-enable when --fine_grained is passed
-        fine_grained_config.update(json.loads(args.fine_grained))
 
     # Determine output directory
     output_dir = None
@@ -305,6 +294,14 @@ def main() -> int:
     if args.cache and isinstance(args.cache, str):
         # --cache FOLDER: load from specific folder
         output_dir = get_experiment_dir() / args.cache
+
+        # Backup existing cache before modifying
+        if output_dir.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_dir = get_experiment_dir() / f"{args.cache}_backup_{timestamp}"
+            print(f"Backing up {output_dir} -> {backup_dir}")
+            shutil.copytree(output_dir, backup_dir)
+            print(f"Backup complete: {backup_dir}")
 
         # Auto-detect cached components
         cached = detect_cached_components(output_dir)

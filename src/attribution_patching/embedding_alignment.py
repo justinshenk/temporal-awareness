@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:
-    from ..common.token_positions import PositionMapping
+    from ..common.token_positions import PairPositionMapping
 
 
 class PaddingStrategy(Enum):
@@ -51,7 +51,7 @@ class AlignedEmbeddings:
 
 
 def get_segments_from_anchors(
-    pos_mapping: "PositionMapping",
+    pos_mapping: "PairPositionMapping",
 ) -> list[AlignedSegment]:
     """Extract segments from position mapping anchors.
 
@@ -172,7 +172,7 @@ def pad_segment(
 def align_embeddings(
     clean_embeds: torch.Tensor,
     corrupted_embeds: torch.Tensor,
-    pos_mapping: "PositionMapping",
+    pos_mapping: "PairPositionMapping",
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
 ) -> AlignedEmbeddings:
     """Align embeddings from two sequences using anchor-based segmentation.

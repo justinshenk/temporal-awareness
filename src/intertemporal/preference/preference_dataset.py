@@ -275,12 +275,12 @@ class PreferenceDataset(BaseSchema):
         """
         path = Path(path)
         ensure_dir(path.parent)
-        internals_dir = get_internals_dir(path.parent)
-        ensure_dir(internals_dir)
 
         data = self._to_dict()
 
         if with_internals:
+            internals_dir = get_internals_dir(path.parent)
+            ensure_dir(internals_dir)
             for idx, pref in enumerate(self.preferences):
                 if pref.internals:
                     file_path = internals_dir / self.get_internals_filename(idx)
