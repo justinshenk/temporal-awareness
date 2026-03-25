@@ -6,8 +6,8 @@ using linear probes, PCA, and dimensionality reduction techniques.
 Memory-optimized implementation with configurable parameters.
 """
 
-from .geo_viz_config import (
-    GeoVizConfig,
+from .geometry_config import (
+    GeometryConfig,
     RECOMMENDED_TARGETS,
     TargetSpec,
     # Memory optimization constants
@@ -19,7 +19,7 @@ from .geo_viz_config import (
     PLOT_GC_INTERVAL,
     MAX_TRAJECTORY_SAMPLES,
 )
-from .geo_viz_data import (
+from .geometry_data import (
     ActivationData,
     ChoiceInfo,
     collect_samples,
@@ -27,7 +27,7 @@ from .geo_viz_data import (
     get_time_horizon_months,
     load_cached_data,
 )
-from .geo_viz_analysis import (
+from .geometry_analysis import (
     linear_probe_analysis,
     pca_correlation_analysis,
     compute_embeddings,
@@ -41,24 +41,24 @@ from .geo_viz_analysis import (
     NoHorizonProjectionResult,
     run_no_horizon_analysis,
 )
-from .geo_viz_plotting import (
+from .geometry_plotting import (
     generate_all_plots,
     plot_cross_position_similarity,
     plot_continuous_time_probe,
     plot_logit_lens,
     plot_no_horizon_projection,
 )
-from .geo_viz_logit_lens import (
+from .geometry_logit_lens import (
     LogitLensResult,
     compute_logit_lens,
     run_logit_lens_analysis,
     run_logit_lens_from_cache,
 )
-from .geo_viz_pipeline import run_geo_viz_pipeline
+from .geometry_pipeline import run_geometry_pipeline
 
 __all__ = [
     # Config
-    "GeoVizConfig",
+    "GeometryConfig",
     "RECOMMENDED_TARGETS",
     "TargetSpec",
     # Memory constants
@@ -101,5 +101,5 @@ __all__ = [
     "run_logit_lens_analysis",
     "run_logit_lens_from_cache",
     # Pipeline
-    "run_geo_viz_pipeline",
+    "run_geometry_pipeline",
 ]

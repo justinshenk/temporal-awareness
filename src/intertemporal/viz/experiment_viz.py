@@ -12,7 +12,7 @@ from .att_patching_viz import visualize_att_patching
 from .coarse_patching_viz import visualize_coarse_patching, visualize_component_comparison
 from .diffmeans_viz import visualize_diffmeans_pair
 from .fine_patching_viz import visualize_fine_patching
-from .geo_viz import visualize_geo_pair
+from .geometry_viz import visualize_geo_pair
 from .tokenization_viz import (
     TokenizationVizData,
     visualize_tokenization,

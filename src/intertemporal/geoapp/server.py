@@ -1,4 +1,4 @@
-"""FastAPI server for GeoViz visualization backend."""
+"""FastAPI server for geometry visualization backend."""
 
 import os
 import threading
@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from ..geoapp.data_loader import GeoVizDataLoader
+from ..geoapp.data_loader import GeometryDataLoader
 
 from .routes import create_router
 
@@ -27,7 +27,7 @@ def create_app(
     """Create and configure the FastAPI application.
 
     Args:
-        data_dir: Directory containing geo_viz output data. Defaults to out/geo_viz.
+        data_dir: Directory containing geometry output data. Defaults to out/geometry.
         frontend_dir: Directory containing built React frontend. Defaults to frontend/dist.
         enable_cors: Enable CORS for local development. Defaults to True.
         warmup: Pre-compute embeddings on startup. Defaults to False.
@@ -46,7 +46,7 @@ def create_app(
     frontend_dir = Path(frontend_dir)
 
     # Create data loader
-    data_loader = GeoVizDataLoader(data_dir)
+    data_loader = GeometryDataLoader(data_dir)
 
     # NON-BLOCKING WARMUP: Compute embeddings in background after server starts
     def background_warmup():
@@ -81,7 +81,7 @@ def create_app(
 
     # Create FastAPI app
     app = FastAPI(
-        title="GeoViz API",
+        title="Geometry API",
         description="API for exploring embedding visualizations of transformer activations",
         version="2.0.0",
     )
@@ -112,9 +112,9 @@ def app_factory() -> FastAPI:
 
     Reads configuration from environment variables set by run_app.
     """
-    data_dir = os.environ.get("GEOVIZ_DATA_DIR")
-    frontend_dir = os.environ.get("GEOVIZ_FRONTEND_DIR")
-    warmup = os.environ.get("GEOVIZ_WARMUP") == "1"
+    data_dir = os.environ.get("GEOMETRY_DATA_DIR")
+    frontend_dir = os.environ.get("GEOMETRY_FRONTEND_DIR")
+    warmup = os.environ.get("GEOMETRY_WARMUP") == "1"
 
     return create_app(
         data_dir=data_dir,
@@ -135,7 +135,7 @@ def run_app(
     """Run the FastAPI application with uvicorn.
 
     Args:
-        data_dir: Directory containing geo_viz output data.
+        data_dir: Directory containing geometry output data.
         frontend_dir: Directory containing built React frontend.
         host: Host to bind to. Defaults to 127.0.0.1.
         port: Port to bind to. Defaults to 8000.
@@ -144,13 +144,13 @@ def run_app(
     """
     # Store config in environment for factory function
     if data_dir:
-        os.environ["GEOVIZ_DATA_DIR"] = str(data_dir)
+        os.environ["GEOMETRY_DATA_DIR"] = str(data_dir)
     if frontend_dir:
-        os.environ["GEOVIZ_FRONTEND_DIR"] = str(frontend_dir)
+        os.environ["GEOMETRY_FRONTEND_DIR"] = str(frontend_dir)
     if warmup:
-        os.environ["GEOVIZ_WARMUP"] = "1"
+        os.environ["GEOMETRY_WARMUP"] = "1"
 
-    print(f"Starting GeoViz API server at http://{host}:{port}")
+    print(f"Starting Geometry API server at http://{host}:{port}")
     print(f"Data directory: {data_dir or DEFAULT_DATA_DIR}")
     print(f"API docs: http://{host}:{port}/docs")
 
@@ -180,12 +180,12 @@ def run_app(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run GeoViz API server")
+    parser = argparse.ArgumentParser(description="Run Geometry API server")
     parser.add_argument(
         "--data-dir",
         type=str,
         default=None,
-        help="Directory containing geo_viz output data",
+        help="Directory containing geometry output data",
     )
     parser.add_argument(
         "--frontend-dir",

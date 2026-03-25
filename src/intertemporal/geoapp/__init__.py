@@ -11,11 +11,11 @@ Features:
 - Sample detail inspection on click
 """
 
-from .data_loader import GeoVizDataLoader
+from .data_loader import GeometryDataLoader
 from .server import create_app, run_app
 
 __all__ = [
-    "GeoVizDataLoader",
+    "GeometryDataLoader",
     "create_app",
     "run_app",
 ]

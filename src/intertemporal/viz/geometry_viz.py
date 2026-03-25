@@ -141,7 +141,7 @@ def visualize_geo(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not agg.pair_results:
-        log("[geo_viz] No pair results to visualize")
+        log("[geometry_viz] No pair results to visualize")
         return
 
     n_plots = 0
@@ -161,7 +161,7 @@ def visualize_geo(
         _plot_pca_scatter_by_horizon(agg, pref_pairs, output_dir / "pca_scatter_horizon.png")
         n_plots += 1
 
-    log(f"[geo_viz] Generated {n_plots} plots in {output_dir}")
+    log(f"[geometry_viz] Generated {n_plots} plots in {output_dir}")
 
 
 def visualize_geo_pair(

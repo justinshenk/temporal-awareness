@@ -20,7 +20,7 @@
 
 2. **Use auto-export in ALL `__init__` files** - Every `__init__.py` should automatically export all public symbols from submodules.
 
-3. **Python file names must be multi-word** - Never use single-word .py file names (e.g., use `geo_viz_data.py` not `data.py`). This improves clarity and avoids import collisions.
+3. **Python file names must be multi-word** - Never use single-word .py file names (e.g., use `geometry_data.py` not `data.py`). This improves clarity and avoids import collisions.
 
 4. **Code quality standards:**
    - **Clean code** - No dead code, no commented-out code, no debug prints

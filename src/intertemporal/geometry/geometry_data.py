@@ -29,7 +29,7 @@ from ..common.sample_position_mapping import (
     DatasetPositionMapping,
     SamplePositionMapping,
 )
-from .geo_viz_config import GeoVizConfig, TargetSpec, ACTIVATION_DTYPE
+from .geometry_config import GeometryConfig, TargetSpec, ACTIVATION_DTYPE
 
 logger = logging.getLogger(__name__)
 
@@ -361,10 +361,10 @@ def _format_prompt_sample(sample: PromptSample) -> str:
 
 def collect_samples(output_dir: Path | None = None) -> "PromptDataset":
     """Generate samples with diverse time horizons."""
-    from ..data.default_datasets import GEO_VIZ_CFG
+    from ..data.default_datasets import GEOMETRY_CFG
     from ..prompt import PromptDatasetConfig, PromptDatasetGenerator
 
-    dataset_config = PromptDatasetConfig.from_dict(GEO_VIZ_CFG)
+    dataset_config = PromptDatasetConfig.from_dict(GEOMETRY_CFG)
     dataset = PromptDatasetGenerator(dataset_config).generate()
 
     logger.info(f"Generated {len(dataset.samples)} samples")
@@ -398,7 +398,7 @@ def collect_samples(output_dir: Path | None = None) -> "PromptDataset":
 
 
 def extract_activations(
-    dataset: "PromptDataset", targets: list[TargetSpec], config: GeoVizConfig
+    dataset: "PromptDataset", targets: list[TargetSpec], config: GeometryConfig
 ) -> ActivationData:
     """Extract activations organized by sample with absolute positions.
 
@@ -567,7 +567,7 @@ def extract_activations(
 # =============================================================================
 
 
-def load_cached_data(config: GeoVizConfig) -> ActivationData | None:
+def load_cached_data(config: GeometryConfig) -> ActivationData | None:
     """Load cached data if available."""
     cache_path = config.output_dir / "data"
 

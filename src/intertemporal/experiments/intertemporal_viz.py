@@ -24,7 +24,7 @@ from ..viz import (
 )
 from ..viz.attn_analysis_viz import visualize_attn_analysis, visualize_attn_pair
 from ..viz.diffmeans_viz import visualize_diffmeans, visualize_diffmeans_pair
-from ..viz.geo_viz import visualize_geo, visualize_geo_pair
+from ..viz.geometry_viz import visualize_geo, visualize_geo_pair
 from ..viz.mlp_analysis_viz import visualize_mlp_analysis, visualize_mlp_pair
 from .attn_analysis import AttnAggregatedResults, AttnPairResult
 from .diffmeans import DiffMeansAggregatedResults, DiffMeansPairResult

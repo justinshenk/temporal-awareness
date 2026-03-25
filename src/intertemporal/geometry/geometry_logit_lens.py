@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .geo_viz_config import ACTIVATION_DTYPE
+from .geometry_config import ACTIVATION_DTYPE
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ def run_logit_lens_analysis(
         runner: ModelRunner with TransformerLens backend
         samples: List of PromptSample objects
         choices: List of ChoiceInfo objects
-        config: GeoVizConfig
+        config: GeometryConfig
         token_a_str: String for token A (default "a")
         token_b_str: String for token B (default "b")
 
@@ -304,7 +304,7 @@ def run_logit_lens_from_cache(
     Args:
         runner: ModelRunner with TransformerLens backend
         data: ActivationData with cached activations
-        config: GeoVizConfig
+        config: GeometryConfig
         token_a_str: String for token A (default "a")
         token_b_str: String for token B (default "b")
 

@@ -10,25 +10,25 @@ import gc
 import json
 import logging
 
-from .geo_viz_analysis import (
+from .geometry_analysis import (
     compute_continuous_time_probe,
     compute_cross_position_similarity,
     run_streaming_analysis,
 )
-from .geo_viz_config import GeoVizConfig
-from .geo_viz_data import (
+from .geometry_config import GeometryConfig
+from .geometry_data import (
     collect_samples,
     extract_activations,
     load_cached_data,
 )
-from .geo_viz_logit_lens import LogitLensResult, run_logit_lens_from_cache
-from .geo_viz_plotting import generate_all_plots, plot_logit_lens
+from .geometry_logit_lens import LogitLensResult, run_logit_lens_from_cache
+from .geometry_plotting import generate_all_plots, plot_logit_lens
 
 logger = logging.getLogger(__name__)
 
 
-def run_geo_viz_pipeline(
-    config: GeoVizConfig,
+def run_geometry_pipeline(
+    config: GeometryConfig,
     use_cache: bool = True,
     skip_extraction: bool = False,
     skip_viz: bool = False,

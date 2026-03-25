@@ -192,7 +192,7 @@ class DatasetPositionMapping(BaseSchema):
 
 
 # =============================================================================
-# Position Building (factored from geo_viz_data.py)
+# Position Building (factored from geometry_data.py)
 # =============================================================================
 
 
@@ -256,7 +256,7 @@ def _build_named_positions(
 ) -> dict[str, list[int]]:
     """Build named positions dictionary from sample structure.
 
-    This mirrors the logic in geo_viz_data.resolve_positions but works
+    This mirrors the logic in geometry_data.resolve_positions but works
     with pre-decoded tokens.
     """
     from ..formatting.configs.default_prompt_format import DefaultPromptFormat
@@ -292,7 +292,7 @@ def _build_named_positions(
     marker_positions_list.sort(key=lambda x: x[0])
 
     # === Context Keywords ===
-    # Get context values - use defaults merged with GEO_VIZ context
+    # Get context values - use defaults merged with BASE_CONTEXT
     from ..data.default_datasets import BASE_CONTEXT
     from ..prompt.prompt_dataset_config import ContextConfig
 
@@ -502,6 +502,45 @@ def _build_named_positions(
             named_positions["chat_prefix"] = chat_prefix_positions
             assigned_positions.update(chat_prefix_positions)
 
+    # Detect chat template suffix at end of prompt
+    # Look for common chat template patterns: <|im_end|>, <|im_start|>, assistant, etc.
+    chat_template_tokens = {"<|im_end|>", "<|im_start|>", "assistant", "<|eot_id|>", "<|start_header_id|>"}
+    chat_suffix_start_pos = None
+
+    # Scan from end of prompt to find where chat suffix begins
+    for i in range(prompt_len - 1, -1, -1):
+        tok = prompt_tokens_decoded[i]
+        tok_stripped = tok.strip()
+
+        # Skip whitespace-only tokens (newlines, spaces) - they're part of chat suffix
+        if not tok_stripped:
+            if chat_suffix_start_pos is not None:
+                # Include whitespace that follows chat template tokens
+                chat_suffix_start_pos = i
+            continue
+
+        if tok_stripped in chat_template_tokens or tok_stripped.startswith("<|") or tok_stripped.endswith("|>"):
+            chat_suffix_start_pos = i
+        else:
+            # Stop scanning once we hit non-chat-template token
+            break
+
+    # Calculate character position where chat suffix starts
+    chat_suffix_start_char = len(prompt_text)  # default: end of prompt
+    if chat_suffix_start_pos is not None:
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == chat_suffix_start_pos:
+                chat_suffix_start_char = char_count
+                break
+            char_count += len(tok)
+
+        # Assign chat_suffix positions
+        chat_suffix_positions = list(range(chat_suffix_start_pos, prompt_len))
+        if chat_suffix_positions:
+            named_positions["chat_suffix"] = chat_suffix_positions
+            assigned_positions.update(chat_suffix_positions)
+
     # Assign content regions between section markers
     for idx, (char_pos, marker_name, marker_text) in enumerate(marker_boundaries):
         if marker_name not in section_markers:
@@ -510,11 +549,12 @@ def _build_named_positions(
         content_name = section_markers[marker_name]
         marker_end_char = char_pos + len(marker_text)
 
-        # Find where next marker starts (or end of prompt)
+        # Find where next marker starts (or chat suffix, or end of prompt)
         if idx + 1 < len(marker_boundaries):
             next_marker_char = marker_boundaries[idx + 1][0]
         else:
-            next_marker_char = len(prompt_text)
+            # For last section, stop at chat suffix if present
+            next_marker_char = chat_suffix_start_char
 
         # Find unassigned tokens in this content region
         char_count = 0

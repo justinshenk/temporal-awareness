@@ -202,8 +202,8 @@ MULTILABEL_CFG = {
     "do_formatting_variation_grid": True,
 }
 
-GEO_VIZ_CFG = {
-    "name": "geo_viz",
+GEOMETRY_CFG = {
+    "name": "geometry",
     "context": BASE_CONTEXT,
     "options": OPTIONS_GEO,
     "time_horizons": HOR_GEO,
@@ -220,6 +220,6 @@ GEO_VIZ_CFG = {
 
 MINIMAL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
 
-FULL_EXPERIMENT_DATASET_CONFIG = GEO_VIZ_CFG
+FULL_EXPERIMENT_DATASET_CONFIG = GEOMETRY_CFG
 
 MULTILABEL_EXPERIMENT_DATASET_CONFIG = MULTILABEL_CFG

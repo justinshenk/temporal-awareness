@@ -1,4 +1,4 @@
-"""Pydantic models for GeoViz API responses."""
+"""Pydantic models for Geometry API responses."""
 
 from typing import Any
 

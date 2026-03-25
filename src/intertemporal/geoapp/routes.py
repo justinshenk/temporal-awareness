@@ -1,4 +1,4 @@
-"""API route definitions for GeoViz backend."""
+"""API route definitions for Geometry visualization backend."""
 
 import asyncio
 import math
@@ -7,7 +7,7 @@ from typing import Literal
 import numpy as np
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
-from .data_loader import GeoVizDataLoader
+from .data_loader import GeometryDataLoader
 from .models import (
     ColorValues,
     ConfigResponse,
@@ -40,16 +40,16 @@ def _sanitize_float(value: float) -> float | None:
     return float(value)
 
 
-def create_router(data_loader: GeoVizDataLoader) -> APIRouter:
+def create_router(data_loader: GeometryDataLoader) -> APIRouter:
     """Create API router with endpoints bound to the given data loader.
 
     Args:
-        data_loader: GeoVizDataLoader instance for accessing embedding data.
+        data_loader: GeometryDataLoader instance for accessing embedding data.
 
     Returns:
         FastAPI APIRouter with all endpoints configured.
     """
-    router = APIRouter(prefix="/api", tags=["geoviz"])
+    router = APIRouter(prefix="/api", tags=["geometry"])
 
     # Warmup state (shared across requests)
     warmup_state = {

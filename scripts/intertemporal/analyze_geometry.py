@@ -10,9 +10,9 @@ Key findings:
 - The signal emerges strongly in layers 19-24
 
 Usage:
-    uv run python scripts/intertemporal/run_geo_viz.py
-    uv run python scripts/intertemporal/run_geo_viz.py --cache
-    uv run python scripts/intertemporal/run_geo_viz.py --only-viz
+    uv run python scripts/intertemporal/analyze_geometry.py
+    uv run python scripts/intertemporal/analyze_geometry.py --cache
+    uv run python scripts/intertemporal/analyze_geometry.py --only-viz
 """
 
 import argparse
@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.intertemporal.data.default_configs import DEFAULT_MODEL
-from src.intertemporal.geo_viz import GeoVizConfig, TargetSpec, run_geo_viz_pipeline
+from src.intertemporal.geometry import GeometryConfig, TargetSpec, run_geometry_pipeline
 
 logging.basicConfig(
     level=logging.INFO,
@@ -251,7 +251,7 @@ def main() -> None:
         backup_existing_output(output_dir)
 
     # Build config from defaults + CLI args
-    config = GeoVizConfig(
+    config = GeometryConfig(
         targets=DEFAULT_CONFIG["targets"],
         output_dir=Path(args.output_dir),
         model=args.model,
@@ -276,7 +276,7 @@ def main() -> None:
     skip_extraction = args.skip_extraction or args.only_viz
 
     # Run pipeline
-    results = run_geo_viz_pipeline(
+    results = run_geometry_pipeline(
         config,
         use_cache=use_cache,
         skip_extraction=skip_extraction,

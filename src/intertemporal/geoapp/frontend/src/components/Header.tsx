@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#1a1613]">
-                {modelName || 'GeoViz Explorer'}
+                {modelName || 'Geometry Explorer'}
               </h1>
             </div>
           </div>

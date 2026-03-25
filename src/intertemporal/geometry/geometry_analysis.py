@@ -22,13 +22,13 @@ from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .geo_viz_config import (
-    GeoVizConfig,
+from .geometry_config import (
+    GeometryConfig,
     ACTIVATION_DTYPE,
     ANALYSIS_GC_INTERVAL,
     MAX_STORED_PCA_COMPONENTS,
 )
-from .geo_viz_data import ActivationData, get_time_horizon_months
+from .geometry_data import ActivationData, get_time_horizon_months
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ def analyze_single_target(
     target_key: str,
     X: np.ndarray,
     log_horizons: np.ndarray,
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> tuple[LinearProbeResult, PCAResult, EmbeddingResult]:
     """Run all analyses on a single target. Memory efficient."""
     n_samples = X.shape[0]
@@ -299,7 +299,7 @@ def _pca_single(
     target_key: str,
     X: np.ndarray,
     log_horizons: np.ndarray,
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> PCAResult:
     """PCA analysis for a single target."""
     n_samples = X.shape[0]
@@ -343,7 +343,7 @@ def _pca_single(
 def _embeddings_single(
     target_key: str,
     pca_result: PCAResult,
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> EmbeddingResult:
     """Compute PCA 2D embedding for a single target."""
     X_pca = pca_result.transformed
@@ -373,7 +373,7 @@ def _safe_key(key: str) -> str:
 
 def run_streaming_analysis(
     data: ActivationData,
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> tuple[dict[str, LinearProbeResult], dict[str, PCAResult], dict[str, EmbeddingResult]]:
     """Run analysis with streaming - process one target at a time.
 
@@ -464,7 +464,7 @@ def run_streaming_analysis(
 
 
 def linear_probe_analysis(
-    data: ActivationData, config: GeoVizConfig
+    data: ActivationData, config: GeometryConfig
 ) -> dict[str, LinearProbeResult]:
     """Run linear probe analysis. Uses streaming internally."""
     linear_results, _, _ = run_streaming_analysis(data, config)
@@ -472,7 +472,7 @@ def linear_probe_analysis(
 
 
 def pca_correlation_analysis(
-    data: ActivationData, config: GeoVizConfig
+    data: ActivationData, config: GeometryConfig
 ) -> dict[str, PCAResult]:
     """Run PCA analysis. Returns cached results."""
     results_dir = config.output_dir / "results" / "pca"
@@ -491,7 +491,7 @@ def pca_correlation_analysis(
 
 
 def compute_embeddings(
-    data: ActivationData, config: GeoVizConfig, pca_results: dict[str, PCAResult]
+    data: ActivationData, config: GeometryConfig, pca_results: dict[str, PCAResult]
 ) -> dict[str, EmbeddingResult]:
     """Compute embeddings. Returns cached results."""
     results_dir = config.output_dir / "results" / "embeddings"
@@ -594,7 +594,7 @@ def _parse_target_key(key: str) -> tuple[int, str, str] | None:
 
 def compute_cross_position_similarity(
     pca_results: dict[str, PCAResult],
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> dict[str, CrossPositionSimilarityResult]:
     """Compute cosine similarity between PC0 directions at source vs destination.
 
@@ -782,7 +782,7 @@ def _get_time_horizons_months(data: ActivationData) -> np.ndarray:
 
 def compute_continuous_time_probe(
     data: ActivationData,
-    config: GeoVizConfig,
+    config: GeometryConfig,
     alpha: float = 1.0,
 ) -> dict[str, ContinuousTimeProbeResult]:
     """Run continuous time horizon regression on source positions.
@@ -1018,7 +1018,7 @@ def analyze_no_horizon_projection(
     target_key: str,
     X: np.ndarray,
     data: ActivationData,
-    config: GeoVizConfig,
+    config: GeometryConfig,
     short_threshold_months: float = 12.0,  # <1 year = short horizon
     long_threshold_months: float = 60.0,  # >5 years = long horizon
 ) -> NoHorizonProjectionResult | None:
@@ -1028,7 +1028,7 @@ def analyze_no_horizon_projection(
         target_key: Target identifier
         X: Activation matrix (n_samples, n_features)
         data: ActivationData with sample information
-        config: GeoVizConfig
+        config: GeometryConfig
         short_threshold_months: Threshold for "short" horizon classification
         long_threshold_months: Threshold for "long" horizon classification
 
@@ -1117,7 +1117,7 @@ def analyze_no_horizon_projection(
 
 def run_no_horizon_analysis(
     data: ActivationData,
-    config: GeoVizConfig,
+    config: GeometryConfig,
 ) -> dict[str, NoHorizonProjectionResult]:
     """Run no-horizon projection analysis on all targets.
 

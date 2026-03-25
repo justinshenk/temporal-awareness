@@ -131,7 +131,7 @@ class TargetSpec:
 # =============================================================================
 
 @dataclass
-class GeoVizConfig:
+class GeometryConfig:
     """Configuration for geometric visualization pipeline.
 
     Attributes:
@@ -148,7 +148,7 @@ class GeoVizConfig:
     """
 
     targets: list[TargetSpec] = field(default_factory=list)
-    output_dir: Path = field(default_factory=lambda: Path("out/geo_viz"))
+    output_dir: Path = field(default_factory=lambda: Path("out/geometry"))
     model: str = ""
     seed: int = 42
     max_samples: int | None = None
@@ -163,14 +163,14 @@ class GeoVizConfig:
             self.output_dir = Path(self.output_dir)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GeoVizConfig":
+    def from_dict(cls, d: dict) -> "GeometryConfig":
         """Create config from dictionary."""
         targets = [
             TargetSpec(**t) if isinstance(t, dict) else t for t in d.get("targets", [])
         ]
         return cls(
             targets=targets,
-            output_dir=Path(d.get("output_dir", "out/geo_viz")),
+            output_dir=Path(d.get("output_dir", "out/geometry")),
             model=d.get("model", ""),
             seed=d.get("seed", 42),
             max_samples=d.get("max_samples"),

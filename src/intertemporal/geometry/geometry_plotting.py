@@ -19,14 +19,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from .geo_viz_analysis import EmbeddingResult, LinearProbeResult, NoHorizonProjectionResult, PCAResult
-from .geo_viz_config import (
-    GeoVizConfig,
+from .geometry_analysis import EmbeddingResult, LinearProbeResult, NoHorizonProjectionResult, PCAResult
+from .geometry_config import (
+    GeometryConfig,
     ACTIVATION_DTYPE,
     PLOT_GC_INTERVAL,
     MAX_TRAJECTORY_SAMPLES,
 )
-from .geo_viz_data import ActivationData, get_time_horizon_months
+from .geometry_data import ActivationData, get_time_horizon_months
 
 
 def _months_to_years(months: float) -> float:
@@ -1205,7 +1205,7 @@ def plot_cross_position_similarity(
     Shows how PC0 directions at source positions correlate with
     PC0 directions at destination positions across layers.
     """
-    from .geo_viz_analysis import CrossPositionSimilarityResult
+    from .geometry_analysis import CrossPositionSimilarityResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1331,7 +1331,7 @@ def plot_continuous_time_probe(
     Shows how well we can predict the raw time_horizon_months value
     from activations at different source positions and layers.
     """
-    from .geo_viz_analysis import ContinuousTimeProbeResult
+    from .geometry_analysis import ContinuousTimeProbeResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2233,7 +2233,7 @@ def generate_all_plots(
     linear_probe_results: dict[str, LinearProbeResult],
     pca_results: dict[str, PCAResult],
     embedding_results: dict[str, EmbeddingResult],
-    config: GeoVizConfig,
+    config: GeometryConfig,
     cross_position_results: dict | None = None,
     continuous_time_results: dict | None = None,
     no_horizon_results: dict[str, NoHorizonProjectionResult] | None = None,

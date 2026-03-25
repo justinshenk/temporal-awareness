@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the GeoViz Explorer interactive app.
+"""Run the Geometry Explorer interactive app.
 
 Usage:
     # Development mode (backend only, run frontend separately):
@@ -34,7 +34,7 @@ FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp" / "frontend"
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run GeoViz Explorer - Interactive 3D visualization with React frontend",
+        description="Run Geometry Explorer - Interactive 3D visualization with React frontend",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -42,7 +42,7 @@ def main():
         "--data-dir",
         type=str,
         default="out/geometry",
-        help="Path to geo_viz output directory (default: out/geometry)",
+        help="Path to geometry output directory (default: out/geometry)",
     )
     parser.add_argument(
         "--host",
@@ -72,13 +72,13 @@ def main():
     data_dir = Path(args.data_dir)
     if not data_dir.exists():
         print(f"Error: Data directory not found: {data_dir}")
-        print("Run the geo_viz pipeline first to generate data.")
+        print("Run the geometry pipeline first to generate data.")
         sys.exit(1)
 
     if args.dev:
         # Development mode
         print("=" * 60)
-        print("GeoViz Explorer - DEVELOPMENT MODE")
+        print("Geometry Explorer - DEVELOPMENT MODE")
         print("=" * 60)
         print()
         print(f"Backend API: http://{args.host}:{args.port}")
@@ -121,7 +121,7 @@ def main():
             sys.exit(1)
 
         print("=" * 60)
-        print("GeoViz Explorer - PRODUCTION MODE")
+        print("Geometry Explorer - PRODUCTION MODE")
         print("=" * 60)
         print()
         print(f"App URL:  http://{args.host}:{args.port}")

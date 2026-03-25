@@ -1,6 +1,6 @@
-"""Data loader for geo_viz output with new position mapping format.
+"""Data loader for geometry output with position mapping format.
 
-The new format stores:
+The format stores:
 - Per-sample activation files: targets/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
 - Position mapping: sample_position_mapping.json maps abs_pos -> semantic format_pos
 - samples.json with prompt/preference info
@@ -29,10 +29,10 @@ _compute_lock = threading.Lock()
 
 
 @dataclass
-class GeoVizDataLoader:
-    """Load and cache geo_viz data for interactive visualization.
+class GeometryDataLoader:
+    """Load and cache geometry data for interactive visualization.
 
-    Handles the new per-sample activation format with semantic position mapping.
+    Handles the per-sample activation format with semantic position mapping.
     """
 
     data_dir: Path
