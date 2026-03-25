@@ -132,6 +132,14 @@ MODEL_CONFIGS = {
         "max_new_tokens": 512,
         "is_instruct": True,
     },
+    "DeepSeek-R1-Distill-Qwen-7B": {
+        "hf_name": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+        "default_layers": [4, 8, 14, 20, 24, 28],
+        "quick_layers": [14],
+        "max_new_tokens": 512,
+        "is_instruct": True,
+        "is_reasoning": True,  # Flag for Phase 2 thinking vs non-thinking comparison
+    },
 }
 
 REPETITION_COUNTS = [1, 3, 5, 8, 12, 16, 20, 30, 50, 100]
@@ -265,7 +273,16 @@ def build_repetitive_prompt(base_prompt: str, n_reps: int) -> str:
 
 def format_instruct_prompt(prompt: str, model_name: str) -> str:
     """Wrap prompt in chat template for instruct models."""
-    if "Qwen3" in model_name:
+    if "DeepSeek-R1" in model_name:
+        # DeepSeek-R1 distilled models use ChatML format and produce <think>...</think>
+        # blocks by default. Disable thinking for Phase 1 behavioral metrics so we
+        # measure direct task performance. Phase 2 will compare think vs no-think.
+        return (
+            f"<|im_start|>system\nYou are a helpful assistant. "
+            f"Do not use <think> tags. Answer directly and concisely.<|im_end|>\n"
+            f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+        )
+    elif "Qwen3" in model_name:
         # Qwen3 has thinking mode enabled by default — disable it with /no_think
         # so we measure direct task performance, not chain-of-thought reasoning
         return (

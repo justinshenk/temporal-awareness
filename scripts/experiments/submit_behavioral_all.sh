@@ -23,6 +23,7 @@ MODELS=(
     "Llama-3.1-8B-Instruct"
     "Qwen3-8B"
     "Qwen3-30B-A3B"
+    "DeepSeek-R1-Distill-Qwen-7B"
 )
 
 # Host memory per model
@@ -34,6 +35,7 @@ MEM_MAP[Qwen2.5-3B-Instruct]="48G"
 MEM_MAP[Llama-3.1-8B-Instruct]="64G"
 MEM_MAP[Qwen3-8B]="64G"
 MEM_MAP[Qwen3-30B-A3B]="48G"
+MEM_MAP[DeepSeek-R1-Distill-Qwen-7B]="64G"
 
 # Time limits (extended for 500 examples × 10 rep levels including 30/50/100)
 declare -A TIME_MAP
@@ -44,6 +46,7 @@ TIME_MAP[Qwen2.5-3B-Instruct]="24:00:00"
 TIME_MAP[Llama-3.1-8B-Instruct]="24:00:00"
 TIME_MAP[Qwen3-8B]="24:00:00"
 TIME_MAP[Qwen3-30B-A3B]="24:00:00"
+TIME_MAP[DeepSeek-R1-Distill-Qwen-7B]="24:00:00"
 
 # GPU constraints per model (ensure enough VRAM)
 # gpt2/pythia: ~1-2GB VRAM, any GPU works
@@ -58,6 +61,7 @@ GPU_CONSTRAINT[Qwen2.5-3B-Instruct]="GPU_MEM:32GB"
 GPU_CONSTRAINT[Llama-3.1-8B-Instruct]="GPU_SKU:L40S"
 GPU_CONSTRAINT[Qwen3-8B]="GPU_SKU:L40S"
 GPU_CONSTRAINT[Qwen3-30B-A3B]="GPU_MEM:32GB"
+GPU_CONSTRAINT[DeepSeek-R1-Distill-Qwen-7B]="GPU_SKU:L40S"
 
 # Number of GPUs per model (1 GPU each with proper VRAM)
 declare -A NUM_GPUS
@@ -68,6 +72,7 @@ NUM_GPUS[Qwen2.5-3B-Instruct]=1
 NUM_GPUS[Llama-3.1-8B-Instruct]=1
 NUM_GPUS[Qwen3-8B]=1
 NUM_GPUS[Qwen3-30B-A3B]=1
+NUM_GPUS[DeepSeek-R1-Distill-Qwen-7B]=1
 
 if [ "$QUICK" -eq 1 ]; then
     for m in "${MODELS[@]}"; do
