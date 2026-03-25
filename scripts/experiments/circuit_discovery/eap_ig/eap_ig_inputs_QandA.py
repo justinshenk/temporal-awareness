@@ -36,6 +36,7 @@ SUPPORTED_QUADRATURES = {
 QUADRATURE_ALIASES = {
     "midpoint": "riemann-midpoint",
 }
+DOT_CONFIG_SYMBOLS = {"●", "■"}
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -131,23 +132,25 @@ def ensure_mech_interp_toolkit_installed() -> None:
 
 
 def extract_alnum(s: str) -> str:
-    """Extract the first alphanumeric character from a string.
+    """Extract the semantic token string from an option marker.
 
     Args:
         s: Input string to search
 
     Returns:
-        First alphanumeric character found
+        Concatenated alphanumeric content when present, otherwise the first
+        non-wrapper symbol for symbolic markers like ``(●)``.
 
     Raises:
-        ValueError: If no alphanumeric character is found
+        ValueError: If no supported token content is found
     """
     out = []
     for c in s:
-        if c.isalnum():
+        if c.isalnum() or c in DOT_CONFIG_SYMBOLS:
             out.append(c)
     if out:
         return "".join(out)
+
     raise ValueError(f"malformed option string {s}")
 
 
@@ -535,6 +538,7 @@ def run_eap_ig(
         upload_thread.join()
 
     return model, tokenizer
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
