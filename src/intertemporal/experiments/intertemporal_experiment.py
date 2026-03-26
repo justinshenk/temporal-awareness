@@ -25,7 +25,8 @@ from ...attribution_patching import (
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 from .geo import run_geo_analysis, GeoAggregatedResults
 from .mlp_analysis import run_mlp_analysis, MLPAggregatedResults
-from .attn_analysis import run_attn_analysis, AttnAggregatedResults
+from .attn_analysis import run_attn_analysis, AttnAggregatedResults, AttnAnalysisConfig
+from ..common.sample_position_mapping import SamplePositionMapping
 from .fine_grained import (
     FineGrainedConfig,
     run_fine_grained_analysis,
@@ -381,11 +382,16 @@ def step_attn_analysis(
         log("[attn] Attention analysis disabled, skipping")
         return
 
-    layers = attn_cfg.get("layers", [19, 21, 24])
-    store_patterns = attn_cfg.get("store_patterns", False)
-    dynamic_threshold = attn_cfg.get("dynamic_threshold", 0.1)
+    # Build config from attn_cfg dict
+    config = AttnAnalysisConfig(
+        layers=attn_cfg.get("layers", AttnAnalysisConfig().layers),
+        source_positions=attn_cfg.get("source_positions", AttnAnalysisConfig().source_positions),
+        dest_positions=attn_cfg.get("dest_positions", AttnAnalysisConfig().dest_positions),
+        store_patterns=attn_cfg.get("store_patterns", True),
+        dynamic_threshold=attn_cfg.get("dynamic_threshold", 0.1),
+    )
 
-    ctx.attn_agg = AttnAggregatedResults(layers_analyzed=layers)
+    ctx.attn_agg = AttnAggregatedResults(layers_analyzed=config.layers)
 
     # Detect cached pairs first (unless no_cache is set)
     cached_pair_indices = set()
@@ -406,17 +412,36 @@ def step_attn_analysis(
             continue
 
         log_progress(pair_idx + 1, len(ctx.pairs), "[attn] Processing pair ")
+
+        # Build position mapping from preference sample
+        pref_pair = ctx.get_pref_pair(pair_idx)
+        if pref_pair is None:
+            log(f"[attn] Pair {pair_idx}: No preference pair found, skipping")
+            continue
+
+        # Use the long_term sample for position mapping (corrupted trajectory)
+        # because it contains the actual time_horizon instruction we want to analyze
+        mapping = SamplePositionMapping.build_from_preference(
+            pref_pair.long_term, ctx.runner, sample_idx=pair_idx
+        )
+
+        # Log what positions were found for debugging
+        if "time_horizon" in mapping.named_positions:
+            horizon_pos = mapping.named_positions["time_horizon"]
+            log(f"[attn] Pair {pair_idx}: Found time_horizon at positions {horizon_pos}")
+        else:
+            log(f"[attn] Pair {pair_idx}: No time_horizon found, available: {list(mapping.named_positions.keys())}")
+
         result = run_attn_analysis(
             ctx.runner,
             pair,
+            mapping,
             pair_idx=pair_idx,
-            layers=layers,
-            store_patterns=store_patterns,
-            dynamic_threshold=dynamic_threshold,
+            config=config,
         )
         ctx.attn_analysis[pair_idx] = result
         ctx.attn_agg.add(result)
-        ctx.save_attn_analysis_pair(pair_idx, store_patterns=store_patterns)
+        ctx.save_attn_analysis_pair(pair_idx, store_patterns=config.store_patterns)
 
     n_loaded = len(cached_pair_indices)
     n_total = ctx.attn_agg.n_pairs

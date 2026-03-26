@@ -148,6 +148,87 @@ class SamplePositionMapping(BaseSchema):
         """Get list of all format position names in this sample."""
         return list(self.named_positions.keys())
 
+    @classmethod
+    def build_from_preference(
+        cls,
+        pref: "PreferenceSample",
+        tokenizer: Any,
+        sample_idx: int = 0,
+    ) -> "SamplePositionMapping":
+        """Build position mapping from PreferenceSample only.
+
+        This method extracts position information directly from the preference
+        sample without requiring the original PromptSample.
+
+        Args:
+            pref: The PreferenceSample with prompt text and trajectory
+            tokenizer: Tokenizer with decode method (or runner with _tokenizer)
+            sample_idx: Sample index (default: 0)
+
+        Returns:
+            SamplePositionMapping with positions mapped
+        """
+        from ..formatting.prompt_formats import find_prompt_format_config
+
+        # Get tokenizer if runner was passed
+        if hasattr(tokenizer, "_tokenizer"):
+            tokenizer = tokenizer._tokenizer
+
+        # Get token IDs and decode each
+        token_ids = pref.chosen_traj.token_ids
+        full_len = len(token_ids)
+        prompt_len = pref.prompt_token_count
+
+        decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
+
+        # Get format config
+        format_config = find_prompt_format_config(pref.formatting_id)
+
+        # Build named positions from text patterns
+        named_positions = _build_named_positions_from_preference(
+            pref, format_config, decoded_tokens, prompt_len, full_len
+        )
+
+        # Build reverse mapping: abs_pos -> (format_pos, rel_pos)
+        pos_to_format: dict[int, tuple[str, int]] = {}
+        for format_name, abs_positions in named_positions.items():
+            for rel_idx, abs_pos in enumerate(abs_positions):
+                if abs_pos in pos_to_format:
+                    existing_name = pos_to_format[abs_pos][0]
+                    if len(format_name) < len(existing_name):
+                        pos_to_format[abs_pos] = (format_name, rel_idx)
+                else:
+                    pos_to_format[abs_pos] = (format_name, rel_idx)
+
+        # Build position list
+        positions = []
+        for abs_pos in range(full_len):
+            decoded = decoded_tokens[abs_pos]
+            traj_section = "prompt" if abs_pos < prompt_len else "response"
+
+            if abs_pos in pos_to_format:
+                format_pos, rel_pos = pos_to_format[abs_pos]
+            else:
+                format_pos, rel_pos = None, -1
+
+            positions.append(
+                TokenPositionInfo(
+                    abs_pos=abs_pos,
+                    decoded_token=decoded,
+                    traj_section=traj_section,
+                    format_pos=format_pos,
+                    rel_pos=rel_pos,
+                )
+            )
+
+        return cls(
+            sample_idx=sample_idx,
+            prompt_len=prompt_len,
+            full_len=full_len,
+            positions=positions,
+            named_positions=named_positions,
+        )
+
 
 @dataclass
 class DatasetPositionMapping(BaseSchema):
@@ -590,5 +671,223 @@ def _build_named_positions(
     ]
     if response_other_positions:
         named_positions["response_other"] = response_other_positions
+
+    return named_positions
+
+
+def _format_time_for_search(time_years: float) -> str | None:
+    """Format a time value (in years) for searching in text.
+
+    Handles common formats like "9 months", "17.3 years", etc.
+    """
+    if time_years <= 0:
+        return None
+
+    # Check if it's less than a year (use months)
+    if time_years < 1:
+        months = round(time_years * 12)
+        if months == 1:
+            return "1 month"
+        return f"{months} months"
+
+    # For years, check if it's a whole number
+    if time_years == int(time_years):
+        years = int(time_years)
+        if years == 1:
+            return "1 year"
+        return f"{years} years"
+
+    # Decimal years
+    return f"{time_years} years"
+
+
+def _build_named_positions_from_preference(
+    pref: "PreferenceSample",
+    format_config,
+    decoded_tokens: list[str],
+    prompt_len: int,
+    full_len: int,
+) -> dict[str, list[int]]:
+    """Build named positions from PreferenceSample without PromptSample.
+
+    Uses text pattern matching on the prompt/response to find semantic positions.
+    """
+    prompt_tokens_decoded = decoded_tokens[:prompt_len]
+    prompt_text = "".join(prompt_tokens_decoded)
+    full_text = "".join(decoded_tokens)
+    response_text = full_text[len(prompt_text):]
+    response_tokens = decoded_tokens[prompt_len:]
+
+    named_positions: dict[str, list[int]] = {}
+
+    # === Prompt Markers ===
+    markers = {
+        "situation_marker": format_config.prompt_const_keywords.get("situation_marker", "SITUATION:"),
+        "task_marker": format_config.prompt_const_keywords.get("task_marker", "TASK:"),
+        "consider_marker": format_config.prompt_const_keywords.get("consider_marker", "CONSIDER:"),
+        "action_marker": format_config.prompt_const_keywords.get("action_marker", "ACTION:"),
+        "format_marker": format_config.prompt_const_keywords.get("format_marker", "FORMAT:"),
+        "format_choice_prefix": format_config.prompt_const_keywords.get("format_choice_prefix", "I choose:"),
+        "format_reasoning_prefix": format_config.prompt_const_keywords.get("format_reasoning_prefix", "My reasoning:"),
+    }
+
+    marker_boundaries = []
+    for name, marker_text in markers.items():
+        char_pos = prompt_text.find(marker_text)
+        if char_pos >= 0:
+            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, marker_text)
+            if positions:
+                named_positions[name] = positions
+                marker_boundaries.append((char_pos, name, marker_text, positions))
+
+    marker_boundaries.sort(key=lambda x: x[0])
+
+    # === Time Values from PreferenceSample ===
+    # pref.time_horizon: the actual time horizon instruction (e.g., "50 years")
+    # pref.short_term_time/long_term_time: option delivery times (e.g., "9 months", "17.3 years")
+
+    # Find actual time horizon instruction (if present)
+    # pref.time_horizon is stored as a float (years) by the querier
+    if pref.time_horizon is not None:
+        if isinstance(pref.time_horizon, dict):
+            # Legacy dict format {"value": 50, "unit": "years"}
+            horizon_value = pref.time_horizon.get("value")
+        else:
+            # Current format: float in years
+            horizon_value = float(pref.time_horizon)
+
+        if horizon_value is not None and horizon_value > 0:
+            time_str = _format_time_for_search(horizon_value)
+            if time_str:
+                positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, time_str)
+                if positions:
+                    named_positions["time_horizon"] = positions
+
+    # Find option delivery times (left/right based on presentation order)
+    if pref.short_term_first:
+        left_time, right_time = pref.short_term_time, pref.long_term_time
+    else:
+        left_time, right_time = pref.long_term_time, pref.short_term_time
+
+    if left_time is not None:
+        time_str = _format_time_for_search(left_time)
+        if time_str:
+            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, time_str)
+            if positions:
+                named_positions["left_time"] = positions
+
+    if right_time is not None:
+        time_str = _format_time_for_search(right_time)
+        if time_str:
+            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, time_str)
+            if positions:
+                named_positions["right_time"] = positions
+
+    # Find post_time_horizon region if we found time_horizon
+    if "time_horizon" in named_positions:
+        action_marker_text = markers.get("action_marker", "ACTION:")
+        action_marker_char = prompt_text.find(action_marker_text)
+        if action_marker_char >= 0:
+            time_horizon_end_pos = max(named_positions["time_horizon"])
+            char_count = 0
+            for i, tok in enumerate(prompt_tokens_decoded):
+                if i == time_horizon_end_pos:
+                    time_horizon_end_char = char_count + len(tok)
+                    break
+                char_count += len(tok)
+            else:
+                time_horizon_end_char = len(prompt_text)
+
+            post_time_horizon_positions = []
+            char_count = 0
+            for i, tok in enumerate(prompt_tokens_decoded):
+                tok_start = char_count
+                tok_end = char_count + len(tok)
+                if tok_start >= time_horizon_end_char and tok_start < action_marker_char:
+                    post_time_horizon_positions.append(i)
+                char_count = tok_end
+            if post_time_horizon_positions:
+                named_positions["post_time_horizon"] = post_time_horizon_positions
+
+    # === Option Labels ===
+    short_label = pref.short_term_label
+    long_label = pref.long_term_label
+    if short_label and long_label:
+        if pref.short_term_first:
+            left_label, right_label = short_label, long_label
+        else:
+            left_label, right_label = long_label, short_label
+
+        left_label_pos = _find_substring_token_range(prompt_tokens_decoded, prompt_text, left_label)
+        right_label_pos = _find_substring_token_range(prompt_tokens_decoded, prompt_text, right_label)
+
+        if left_label_pos:
+            named_positions["left_label"] = left_label_pos
+        if right_label_pos:
+            named_positions["right_label"] = right_label_pos
+
+    # === Response Regions ===
+    choice_prefix_text = format_config.response_const_keywords.get("response_choice_prefix", "I choose: ")
+    choice_prefix_core = choice_prefix_text.rstrip()
+    choice_prefix_pos = response_text.find(choice_prefix_core)
+    if choice_prefix_pos >= 0:
+        prefix_positions = _find_substring_token_range(response_tokens, response_text, choice_prefix_core)
+        if prefix_positions:
+            named_positions["response_choice_prefix"] = [p + prompt_len for p in prefix_positions]
+
+        choice_start_char = choice_prefix_pos + len(choice_prefix_core)
+        for label in [short_label, long_label]:
+            if not label:
+                continue
+            label_pos = response_text.find(label, choice_start_char)
+            if label_pos >= 0 and label_pos < choice_start_char + 10:
+                choice_positions = _find_substring_token_range(response_tokens, response_text, label)
+                if choice_positions:
+                    named_positions["response_choice"] = [p + prompt_len for p in choice_positions]
+                    break
+
+    reasoning_prefix_text = format_config.response_const_keywords.get("response_reasoning_prefix", "My reasoning: ")
+    reasoning_prefix_core = reasoning_prefix_text.rstrip()
+    reasoning_prefix_pos = response_text.find(reasoning_prefix_core)
+    if reasoning_prefix_pos >= 0:
+        prefix_positions = _find_substring_token_range(response_tokens, response_text, reasoning_prefix_core)
+        if prefix_positions:
+            named_positions["response_reasoning_prefix"] = [p + prompt_len for p in prefix_positions]
+
+        reasoning_content_start = reasoning_prefix_pos + len(reasoning_prefix_text)
+        char_count = 0
+        reasoning_positions = []
+        for idx, tok in enumerate(response_tokens):
+            tok_end = char_count + len(tok)
+            if tok_end > reasoning_content_start:
+                reasoning_positions.append(idx + prompt_len)
+            char_count = tok_end
+        if reasoning_positions:
+            named_positions["response_reasoning"] = reasoning_positions
+
+    # === Chat Suffix Detection ===
+    chat_template_tokens = {"<|im_end|>", "<|im_start|>", "assistant", "<|eot_id|>", "<|start_header_id|>"}
+    chat_suffix_start_pos = None
+
+    for i in range(prompt_len - 1, -1, -1):
+        tok = prompt_tokens_decoded[i]
+        tok_stripped = tok.strip()
+        if not tok_stripped:
+            if chat_suffix_start_pos is not None:
+                chat_suffix_start_pos = i
+            continue
+        if tok_stripped in chat_template_tokens or tok_stripped.startswith("<|") or tok_stripped.endswith("|>"):
+            chat_suffix_start_pos = i
+        else:
+            break
+
+    if chat_suffix_start_pos is not None:
+        named_positions["chat_suffix"] = list(range(chat_suffix_start_pos, prompt_len))
+
+    # === Clamp and Filter ===
+    for key in list(named_positions.keys()):
+        named_positions[key] = [max(0, min(p, full_len - 1)) for p in named_positions[key]]
+        if not named_positions[key]:
+            del named_positions[key]
 
     return named_positions

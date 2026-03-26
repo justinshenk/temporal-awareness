@@ -27,6 +27,7 @@ from ..experiments.attn_analysis import AttnAggregatedResults, AttnPairResult
 
 if TYPE_CHECKING:
     from ...patching.binary_choice_runner import BinaryChoiceRunner
+    from ..common.sample_position_mapping import SamplePositionMapping
 
 
 # Plot styling
@@ -503,6 +504,7 @@ def visualize_attn_pair(
     result: AttnPairResult,
     output_dir: Path,
     runner: "BinaryChoiceRunner | None" = None,
+    mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate attention analysis visualizations for a single pair.
 
@@ -510,6 +512,7 @@ def visualize_attn_pair(
         result: Attention analysis results for one pair
         output_dir: Directory to save plots
         runner: Optional model runner for QK analysis (plot 8)
+        mapping: Optional SamplePositionMapping for token identity annotation
 
     Note: OV projection analysis (plot 7) has been moved to diffmeans_viz.py
     """
@@ -545,19 +548,35 @@ def visualize_attn_pair(
                 n_plots += 1
 
             # Plot 4: Attention flow diagram (for top heads)
-            _plot_pair_attention_flow(result, output_dir / "attn_flow.png")
+            _plot_pair_attention_flow(result, output_dir / "attn_flow.png", mapping=mapping)
             n_plots += 1
 
         # Top attended positions visualization
         _plot_pair_top_attended(result, output_dir / "attn_top_attended.png")
         n_plots += 1
+
+        # Source attention bars (attention to time_horizon positions)
+        if result.source_positions and result.corrupted_attention_patterns:
+            _plot_source_attention_bars(result, output_dir / "attn_source_bars.png")
+            n_plots += 1
+
+        # Cosine consistency visualization
+        if any(hi.attn_pattern_cosine != 0.0 for lr in result.layer_results for hi in lr.head_results):
+            _plot_cosine_consistency(result, output_dir / "attn_consistency.png")
+            n_plots += 1
     else:
         # Layer-level summary for this pair
         _plot_pair_layer_summary(result, output_dir / "attn_pair_summary.png")
         n_plots += 1
 
+    # Plot 7: OV projection analysis (requires TransformerLens backend)
+    if runner is not None:
+        try:
+            n_plots += visualize_attn_ov_projection(runner, result, output_dir)
+        except Exception as e:
+            log(f"[attn_viz] OV projection skipped: {e}")
+
     # Plot 8: QK analysis (requires TransformerLens backend)
-    # Note: Plot 7 (OV projection) moved to diffmeans_viz.py where logit direction is computed
     if runner is not None:
         try:
             n_plots += visualize_qk_analysis(runner, result, output_dir)
@@ -713,11 +732,16 @@ def _plot_pair_attention_heatmaps(result: AttnPairResult, output_path: Path) -> 
     plt.close()
 
 
-def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None:
+def _plot_pair_attention_flow(
+    result: AttnPairResult,
+    output_path: Path,
+    mapping: "SamplePositionMapping | None" = None,
+) -> None:
     """Plot 4: Attention flow diagram for top heads.
 
     Lines from query positions to key positions, thickness = attention weight.
     For the top N heads by attention to source.
+    Optionally annotates key positions with token identities.
     """
     if not result.attention_patterns:
         return
@@ -733,7 +757,7 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     if not top_heads:
         return
 
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(14, 8))
 
     # Create a flow diagram showing attention from dest to source
     dest_pos = result.dest_position
@@ -751,6 +775,10 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     ax.scatter(result.source_positions, [y_positions['src']] * len(result.source_positions),
                s=100, c=src_colors, marker='o', zorder=5, label='Source Positions')
 
+    # Annotate key positions with token identities if mapping available
+    if mapping is not None:
+        _annotate_key_tokens(ax, result, mapping, y_positions)
+
     # Draw attention lines for top heads and collect legend handles
     colors = LAYER_COLORS[:len(top_heads)]
     legend_handles = []
@@ -759,7 +787,6 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
         label = f'L{layer}.H{head} ({attn_to_src:.3f})'
 
         # Draw lines to top attended positions
-        first_line = True
         if top_pos and top_weights:
             for pos, weight in zip(top_pos[:3], top_weights[:3]):  # Top 3
                 if pos in result.source_positions or weight > 0.05:
@@ -768,7 +795,6 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
                                 xytext=(dest_pos, y_positions['dest']),
                                 arrowprops=dict(arrowstyle='->', color=color,
                                                lw=weight * 10 + 0.5, alpha=0.6))
-                    first_line = False
 
         # Create legend handle for this head
         legend_handles.append(mpatches.Patch(color=color, label=label))
@@ -792,24 +818,81 @@ def _plot_pair_attention_flow(result: AttnPairResult, output_path: Path) -> None
     plt.close()
 
 
+def _annotate_key_tokens(
+    ax: plt.Axes,
+    result: AttnPairResult,
+    mapping: "SamplePositionMapping",
+    y_positions: dict[str, float],
+) -> None:
+    """Annotate key positions with token identities on the attention flow diagram.
+
+    Args:
+        ax: Matplotlib axes
+        result: Attention analysis results
+        mapping: SamplePositionMapping with token info
+        y_positions: Y positions for source and dest
+    """
+    # Annotate destination position
+    dest_info = mapping.get_position(result.dest_position)
+    if dest_info:
+        token_repr = repr(dest_info.decoded_token)[:20]  # Truncate long tokens
+        ax.annotate(
+            f'P{result.dest_position}: {token_repr}',
+            xy=(result.dest_position, y_positions['dest']),
+            xytext=(0, 15), textcoords='offset points',
+            fontsize=8, ha='center', va='bottom',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='#FFECB3', alpha=0.8)
+        )
+
+    # Annotate key source positions
+    key_positions = result.source_positions[:5]
+
+    for pos in key_positions:
+        pos_info = mapping.get_position(pos)
+        if pos_info:
+            token_repr = repr(pos_info.decoded_token)[:15]
+            format_label = f" ({pos_info.format_pos})" if pos_info.format_pos else ""
+            ax.annotate(
+                f'P{pos}: {token_repr}{format_label}',
+                xy=(pos, y_positions['src']),
+                xytext=(0, -20), textcoords='offset points',
+                fontsize=7, ha='center', va='top', rotation=45,
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='#E3F2FD', alpha=0.8)
+            )
+
+
 def _plot_pair_top_attended(result: AttnPairResult, output_path: Path) -> None:
-    """Plot top attended positions for each head."""
+    """Plot top attended positions for each head with clean vs corrupted comparison."""
     layers = [lr.layer for lr in result.layer_results]
     if not layers:
         return
+
+    has_corrupted = bool(result.corrupted_attention_patterns)
 
     # Collect top attended position data
     head_data = []
     for lr in result.layer_results:
         for hi in lr.head_results:
             if hi.top_attended_positions:
-                head_data.append({
+                hd = {
                     'layer': lr.layer,
                     'head': hi.head_idx,
                     'attn_to_source': hi.attn_to_source,
                     'top_pos': hi.top_attended_positions[:5],
                     'top_weights': hi.top_attended_weights[:5],
-                })
+                    'corrupted_weights': [],
+                }
+                # Extract corrupted attention weights for the same positions
+                if has_corrupted and lr.layer in result.corrupted_attention_patterns:
+                    corr_pattern = result.corrupted_attention_patterns[lr.layer]
+                    if hi.head_idx < len(corr_pattern):
+                        corr_head_attn = corr_pattern[hi.head_idx]
+                        for pos in hd['top_pos']:
+                            if pos < len(corr_head_attn):
+                                hd['corrupted_weights'].append(corr_head_attn[pos])
+                            else:
+                                hd['corrupted_weights'].append(0.0)
+                head_data.append(hd)
 
     if not head_data:
         return
@@ -818,6 +901,7 @@ def _plot_pair_top_attended(result: AttnPairResult, output_path: Path) -> None:
     head_data = sorted(head_data, key=lambda x: x['attn_to_source'], reverse=True)[:10]
 
     fig, axes = plt.subplots(2, 5, figsize=(20, 8), squeeze=False)
+    bar_height = 0.35
 
     for idx, hd in enumerate(head_data):
         row = idx // 5
@@ -825,18 +909,30 @@ def _plot_pair_top_attended(result: AttnPairResult, output_path: Path) -> None:
         ax = axes[row, col]
 
         positions = hd['top_pos']
-        weights = hd['top_weights']
+        clean_weights = hd['top_weights']
+        corrupted_weights = hd['corrupted_weights']
 
-        # Color bars by whether position is in source range
-        colors = []
-        for pos in positions:
-            if pos in result.source_positions:
-                colors.append('#E91E63')  # Highlight source positions
-            else:
-                colors.append('#2196F3')
+        y = np.arange(len(positions))
 
-        ax.barh(range(len(positions)), weights, color=colors, alpha=0.8)
-        ax.set_yticks(range(len(positions)))
+        # Draw paired bars: clean (blue) and corrupted (orange)
+        if corrupted_weights and len(corrupted_weights) == len(clean_weights):
+            # Clean bars (top of each pair)
+            clean_colors = [('#E91E63' if pos in result.source_positions else CLEAN_COLOR)
+                           for pos in positions]
+            ax.barh(y + bar_height/2, clean_weights, bar_height,
+                   color=clean_colors, alpha=0.8, label='Clean')
+            # Corrupted bars (bottom of each pair)
+            corr_colors = [('#FF6B6B' if pos in result.source_positions else CORRUPTED_COLOR)
+                          for pos in positions]
+            ax.barh(y - bar_height/2, corrupted_weights, bar_height,
+                   color=corr_colors, alpha=0.8, label='Corrupted')
+        else:
+            # Single bars (no corrupted data)
+            colors = [('#E91E63' if pos in result.source_positions else CLEAN_COLOR)
+                     for pos in positions]
+            ax.barh(y, clean_weights, color=colors, alpha=0.8)
+
+        ax.set_yticks(y)
         ax.set_yticklabels([f'P{p}' for p in positions])
         ax.set_xlabel('Attention')
         ax.set_title(f'L{hd["layer"]}.H{hd["head"]}\n(src={hd["attn_to_source"]:.3f})',
@@ -850,8 +946,15 @@ def _plot_pair_top_attended(result: AttnPairResult, output_path: Path) -> None:
         col = idx % 5
         axes[row, col].axis('off')
 
-    # Add legend
-    fig.suptitle(f'Pair {result.pair_idx}: Top Attended Positions (Pink = Source Position)',
+    # Add legend for clean vs corrupted
+    legend_handles = [
+        mpatches.Patch(color=CLEAN_COLOR, label='Clean', alpha=0.8),
+        mpatches.Patch(color=CORRUPTED_COLOR, label='Corrupted', alpha=0.8),
+        mpatches.Patch(color='#E91E63', label='Source (Clean)', alpha=0.8),
+    ]
+    fig.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(0.98, 0.98))
+
+    fig.suptitle(f'Pair {result.pair_idx}: Top Attended Positions',
                  fontsize=14, y=1.02)
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
@@ -1000,11 +1103,159 @@ def _plot_pair_attention_diff(result: AttnPairResult, output_path: Path) -> None
     plt.close()
 
 
-# Legacy function kept for backwards compatibility
-def _plot_pair_attention_patterns(result: AttnPairResult, output_path: Path) -> None:
-    """Plot attention pattern heatmaps for a single pair (legacy function)."""
-    # Redirect to new heatmap function
-    _plot_pair_attention_heatmaps(result, output_path)
+# =============================================================================
+# Source Attention Visualizations
+# =============================================================================
+
+
+def _plot_source_attention_bars(result: AttnPairResult, output_path: Path) -> None:
+    """Plot attention to source positions (time_horizon tokens).
+
+    Shows paired clean/corrupted bars per head, directly answering:
+    "Which heads read the time-horizon tokens?"
+    """
+    if not result.source_positions:
+        return
+
+    if not result.attention_patterns or not result.corrupted_attention_patterns:
+        return
+
+    layers = sorted(set(result.attention_patterns.keys()) &
+                   set(result.corrupted_attention_patterns.keys()))
+    if not layers:
+        return
+
+    # Collect attention to source positions for each head
+    # Use source_positions for corrupted and source_positions_clean for clean
+    source_pos_clean = result.source_positions_clean if result.source_positions_clean else []
+    source_pos_corr = result.source_positions
+
+    head_data = []
+    for layer in layers:
+        clean_patterns = result.attention_patterns[layer]
+        corr_patterns = result.corrupted_attention_patterns[layer]
+
+        n_heads = len(clean_patterns)
+        for head_idx in range(n_heads):
+            clean_attn = clean_patterns[head_idx]
+            corr_attn = corr_patterns[head_idx]
+
+            # Sum attention to source positions (using frame-appropriate positions)
+            clean_sum = sum(
+                clean_attn[p] for p in source_pos_clean
+                if p < len(clean_attn)
+            )
+            corr_sum = sum(
+                corr_attn[p] for p in source_pos_corr
+                if p < len(corr_attn)
+            )
+
+            head_data.append({
+                'layer': layer,
+                'head': head_idx,
+                'clean': clean_sum,
+                'corrupted': corr_sum,
+                'diff': clean_sum - corr_sum,
+            })
+
+    if not head_data:
+        return
+
+    # Sort by clean attention and take top 20
+    head_data = sorted(head_data, key=lambda x: x['clean'], reverse=True)[:20]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    labels = [f"L{d['layer']}.H{d['head']}" for d in head_data]
+    clean_vals = [d['clean'] for d in head_data]
+    corr_vals = [d['corrupted'] for d in head_data]
+
+    x = np.arange(len(labels))
+    width = 0.35
+
+    bars_clean = ax.bar(x - width/2, clean_vals, width, label='Clean',
+                        color=CLEAN_COLOR, alpha=0.8)
+    bars_corr = ax.bar(x + width/2, corr_vals, width, label='Corrupted',
+                       color=CORRUPTED_COLOR, alpha=0.8)
+
+    ax.set_xlabel('Head', fontsize=12)
+    ax.set_ylabel('Attention to Source Positions', fontsize=12)
+
+    # Use semantic position names if available
+    if result.source_position_names:
+        pos_label = ', '.join(result.source_position_names)
+    else:
+        pos_label = f"P{min(result.source_positions)}-P{max(result.source_positions)}"
+
+    ax.set_title(f'Pair {result.pair_idx}: Attention to Source ({pos_label})',
+                 fontsize=14)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
+    ax.legend()
+    ax.grid(axis='y', alpha=GRID_ALPHA)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _plot_cosine_consistency(result: AttnPairResult, output_path: Path) -> None:
+    """Plot cosine similarity of attention patterns between clean/corrupted.
+
+    Shows which heads have consistent vs changing attention patterns.
+    """
+    layers = [lr.layer for lr in result.layer_results]
+    if not layers:
+        return
+
+    # Collect cosine similarity for each head
+    head_data = []
+    for lr in result.layer_results:
+        for hi in lr.head_results:
+            if hi.attn_pattern_cosine != 0.0:  # Only if computed
+                head_data.append({
+                    'layer': lr.layer,
+                    'head': hi.head_idx,
+                    'cosine': hi.attn_pattern_cosine,
+                    'attn_to_source': hi.attn_to_source,
+                })
+
+    if not head_data:
+        return
+
+    # Sort by cosine similarity (lowest = most different patterns)
+    head_data = sorted(head_data, key=lambda x: x['cosine'])
+
+    # Take heads from both ends: most different and most similar
+    n_show = min(15, len(head_data))
+    most_different = head_data[:n_show // 2]
+    most_similar = head_data[-(n_show - n_show // 2):]
+    selected = most_different + most_similar
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    labels = [f"L{d['layer']}.H{d['head']}" for d in selected]
+    cosines = [d['cosine'] for d in selected]
+    colors = ['#E74C3C' if c < 0.9 else '#2ECC71' for c in cosines]
+
+    x = np.arange(len(labels))
+    bars = ax.bar(x, cosines, color=colors, alpha=0.8, edgecolor='black')
+
+    ax.set_xlabel('Head', fontsize=12)
+    ax.set_ylabel('Cosine Similarity (Clean vs Corrupted)', fontsize=12)
+    ax.set_title(f'Pair {result.pair_idx}: Attention Pattern Consistency\n'
+                 '(Red = patterns differ, Green = patterns similar)', fontsize=14)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
+    ax.axhline(y=1.0, color='gray', linestyle='--', alpha=0.5, label='Identical')
+    ax.axhline(y=0.9, color='orange', linestyle='--', alpha=0.5, label='Threshold (0.9)')
+    ax.set_ylim(0, 1.05)
+    ax.legend(loc='lower right')
+    ax.grid(axis='y', alpha=GRID_ALPHA)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
 
 
 # =============================================================================
@@ -1085,7 +1336,7 @@ def visualize_qk_analysis(
             U, S, Vh = torch.linalg.svd(W_QK)
 
             # Plot top singular values
-            top_s = S[:20].cpu().numpy()
+            top_s = S[:20].detach().cpu().float().numpy()
             ax.bar(range(len(top_s)), top_s, color='steelblue', alpha=0.7)
             ax.set_xlabel('Singular Value Index')
             ax.set_ylabel('Singular Value')
@@ -1093,8 +1344,9 @@ def visualize_qk_analysis(
             ax.grid(True, alpha=0.3)
 
             # Annotate with effective rank
-            total_var = float(S.sum())
-            cumsum = torch.cumsum(S, 0)
+            S_cpu = S.detach().cpu().float()
+            total_var = float(S_cpu.sum())
+            cumsum = torch.cumsum(S_cpu, 0)
             eff_rank = int((cumsum < 0.9 * total_var).sum()) + 1
             ax.text(0.95, 0.95, f'Eff. Rank (90%): {eff_rank}',
                    transform=ax.transAxes, ha='right', va='top',
@@ -1119,3 +1371,322 @@ def visualize_qk_analysis(
 
     print(f"Saved: {output_path}")
     return 1
+
+
+# =============================================================================
+# Plot 7: OV Projection Analysis (for attention heads)
+# =============================================================================
+
+
+def visualize_attn_ov_projection(
+    runner: "BinaryChoiceRunner",
+    result: AttnPairResult,
+    output_dir: Path,
+    top_n_heads: int = 10,
+) -> int:
+    """Visualize OV projection alignment with logit direction for top attention heads.
+
+    Uses the top heads by attention to source from AttnPairResult.
+    Computes W_OV = W_V @ W_O and measures how much the head's output
+    aligns with the logit direction. Shows which heads amplify vs suppress
+    the task-relevant signal.
+
+    Args:
+        runner: Model runner with TransformerLens backend
+        result: Attention analysis results (used to identify top heads)
+        output_dir: Output directory for plots
+        top_n_heads: Number of top heads to show
+
+    Returns:
+        Number of plots generated
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if backend supports weight matrix access
+    try:
+        _ = runner._backend.get_W_OV(0, 0)
+    except (NotImplementedError, AttributeError):
+        log("[attn_viz] OV projection requires TransformerLens backend")
+        return 0
+
+    # Compute logit direction from runner
+    logit_direction = _compute_logit_direction_for_attn(runner, result)
+    if logit_direction is None:
+        log("[attn_viz] Could not compute logit direction for OV analysis")
+        return 0
+
+    # Get top heads by attention to source from result
+    all_heads = []
+    for lr in result.layer_results:
+        for hi in lr.head_results:
+            all_heads.append((lr.layer, hi.head_idx, hi.attn_to_source))
+    all_heads.sort(key=lambda x: x[2], reverse=True)
+    top_heads = all_heads[:top_n_heads * 2]  # Get more to filter
+
+    # Compute OV alignment for top heads
+    head_data = []
+    for layer, head, attn in top_heads:
+        try:
+            W_OV = runner._backend.get_W_OV(layer, head)  # [d_model, d_model]
+
+            # Project logit direction through OV circuit
+            ov_output = W_OV @ logit_direction
+            ov_output = ov_output / (ov_output.norm() + 1e-10)
+
+            # Compute alignment with logit direction
+            alignment = float(torch.dot(ov_output, logit_direction).item())
+            head_data.append((layer, head, alignment, attn))
+        except Exception as e:
+            log(f"[attn_viz] Error computing OV for L{layer}.H{head}: {e}")
+
+    if not head_data:
+        return 0
+
+    # Sort by absolute alignment and take top N
+    head_data.sort(key=lambda x: abs(x[2]), reverse=True)
+    selected_heads = head_data[:top_n_heads]
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    labels = [f"L{l}.H{h}\n(attn={a:.2f})" for l, h, _, a in selected_heads]
+    alignments = [align for _, _, align, _ in selected_heads]
+    colors = ["#2ECC71" if a > 0 else "#E74C3C" for a in alignments]
+
+    bars = ax.bar(range(len(alignments)), alignments, color=colors, alpha=0.8, edgecolor="black")
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
+    ax.set_xlabel("Head (Layer.Head, attn=attention to source)")
+    ax.set_ylabel("OV Alignment with Logit Direction")
+    ax.set_title(
+        f"Pair {result.pair_idx}: OV Projection Analysis\n"
+        "(Green = amplifies correct answer, Red = suppresses)"
+    )
+    ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5)
+    ax.grid(True, alpha=0.3, axis="y")
+
+    # Add value labels on bars
+    for bar, val in zip(bars, alignments):
+        height = bar.get_height()
+        ax.annotate(
+            f"{val:.3f}",
+            xy=(bar.get_x() + bar.get_width() / 2, height),
+            xytext=(0, 3 if height >= 0 else -12),
+            textcoords="offset points",
+            ha="center",
+            va="bottom" if height >= 0 else "top",
+            fontsize=8,
+        )
+
+    plt.tight_layout()
+    output_path = output_dir / "attn_ov_projection.png"
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+    log(f"[attn_viz] Saved OV projection: {output_path}")
+    return 1
+
+
+# =============================================================================
+# Intermediate Attention Analysis
+# =============================================================================
+
+
+def visualize_intermediate_attention(
+    runner: "BinaryChoiceRunner",
+    token_ids: list[int],
+    output_dir: Path,
+    query_positions: list[int] | None = None,
+    source_positions: list[int] | None = None,
+    layers: list[int] | None = None,
+    pair_idx: int = 0,
+) -> int:
+    """Analyze attention from intermediate positions (e.g., P108/P111/P112) in early layers.
+
+    Tests information flow from source positions (e.g., P86 time horizon) to
+    intermediate positions in early layers (L10-L17).
+
+    Args:
+        runner: Model runner with access to attention weights
+        token_ids: Token IDs of the sequence to analyze
+        output_dir: Output directory for plots
+        query_positions: Query (destination) positions to analyze (default: [108, 111, 112])
+        source_positions: Source positions to track (default: [86, 87, 88])
+        layers: Layers to analyze (default: [10, 11, 12, 13, 14, 15, 16, 17])
+        pair_idx: Pair index for title
+
+    Returns:
+        Number of plots generated
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if query_positions is None:
+        query_positions = [108, 111, 112]
+    if source_positions is None:
+        source_positions = [86, 87, 88]
+    if layers is None:
+        layers = [10, 11, 12, 13, 14, 15, 16, 17]
+
+    # Filter to valid positions
+    seq_len = len(token_ids)
+    query_positions = [p for p in query_positions if p < seq_len]
+    source_positions = [p for p in source_positions if p < seq_len]
+
+    if not query_positions or not source_positions:
+        log("[attn_viz] Intermediate attention: positions out of range")
+        return 0
+
+    # Build hooks for attention patterns
+    hooks = set()
+    for layer in layers:
+        hooks.add(f"blocks.{layer}.attn.hook_pattern")
+        hooks.add(f"blocks.{layer}.attn.hook_attn")
+
+    names_filter = lambda name: name in hooks
+
+    # Run model
+    input_ids = torch.tensor([token_ids], device=runner.device)
+    with torch.no_grad():
+        _, cache = runner._backend.run_with_cache(input_ids, names_filter=names_filter)
+
+    # Collect attention to source for each (layer, query_pos) combination
+    results_data = []
+
+    for layer in layers:
+        # Get attention patterns
+        attn = None
+        for key in [f"blocks.{layer}.attn.hook_pattern", f"blocks.{layer}.attn.hook_attn"]:
+            if key in cache:
+                attn = cache[key][0]  # [n_heads, seq_q, seq_k]
+                break
+
+        if attn is None:
+            continue
+
+        n_heads = attn.shape[0]
+
+        for q_pos in query_positions:
+            if q_pos >= attn.shape[1]:
+                continue
+
+            for head_idx in range(n_heads):
+                head_attn = attn[head_idx, q_pos, :]  # [seq_k]
+
+                # Sum attention to source positions
+                attn_to_source = sum(
+                    float(head_attn[p]) for p in source_positions if p < len(head_attn)
+                )
+
+                results_data.append({
+                    'layer': layer,
+                    'head': head_idx,
+                    'query_pos': q_pos,
+                    'attn_to_source': attn_to_source,
+                })
+
+    if not results_data:
+        log("[attn_viz] Intermediate attention: no data collected")
+        return 0
+
+    # Create heatmap: rows = heads (grouped by layer), cols = query positions
+    # Actually, let's create a cleaner visualization: for each query position,
+    # show top heads across all layers
+
+    n_query = len(query_positions)
+    fig, axes = plt.subplots(1, n_query, figsize=(6 * n_query, 8), squeeze=False)
+
+    for q_idx, q_pos in enumerate(query_positions):
+        ax = axes[0, q_idx]
+
+        # Filter to this query position
+        q_data = [d for d in results_data if d['query_pos'] == q_pos]
+
+        # Sort by attention to source
+        q_data = sorted(q_data, key=lambda x: x['attn_to_source'], reverse=True)[:15]
+
+        if not q_data:
+            ax.text(0.5, 0.5, 'No data', transform=ax.transAxes, ha='center', va='center')
+            ax.set_title(f'P{q_pos}')
+            continue
+
+        labels = [f"L{d['layer']}.H{d['head']}" for d in q_data]
+        attns = [d['attn_to_source'] for d in q_data]
+
+        # Color by layer
+        layer_to_color = {l: LAYER_COLORS[i % len(LAYER_COLORS)] for i, l in enumerate(sorted(layers))}
+        colors = [layer_to_color[d['layer']] for d in q_data]
+
+        y = np.arange(len(labels))
+        ax.barh(y, attns, color=colors, alpha=0.8)
+        ax.set_yticks(y)
+        ax.set_yticklabels(labels, fontsize=8)
+        ax.set_xlabel('Attention to Source')
+        ax.set_title(f'Query P{q_pos}')
+        ax.set_xlim(0, max(attns) * 1.1 if attns else 1)
+        ax.grid(axis='x', alpha=GRID_ALPHA)
+        ax.invert_yaxis()
+
+    src_str = ', '.join(f'P{p}' for p in source_positions)
+    fig.suptitle(
+        f'Pair {pair_idx}: Intermediate Attention (L{min(layers)}-L{max(layers)})\n'
+        f'Attention to Source ({src_str})',
+        fontsize=14, y=1.02
+    )
+    plt.tight_layout()
+    output_path = output_dir / 'attn_intermediate.png'
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+    log(f"[attn_viz] Saved intermediate attention: {output_path}")
+    return 1
+
+
+def _compute_logit_direction_for_attn(
+    runner: "BinaryChoiceRunner",
+    result: AttnPairResult,
+) -> torch.Tensor | None:
+    """Compute normalized logit direction for OV analysis.
+
+    Uses the runner's W_U matrix to compute the direction between
+    clean and corrupted logits based on the pair's divergent tokens.
+    """
+    W_U = runner.W_U
+    if W_U is None:
+        return None
+
+    # We need token IDs - use the result's stored info if available
+    # For now, use a heuristic based on common divergent patterns
+    # This should be enhanced to pass actual pair info
+    try:
+        # Try to get from runner's last cached pair
+        if hasattr(runner, '_last_pair') and runner._last_pair is not None:
+            pair = runner._last_pair
+            clean_div_pos = pair.clean_divergent_position
+            corrupted_div_pos = pair.corrupted_divergent_position
+
+            if clean_div_pos is None or corrupted_div_pos is None:
+                clean_token = pair.clean_traj.token_ids[-1]
+                corrupted_token = pair.corrupted_traj.token_ids[-1]
+            else:
+                clean_token = pair.clean_traj.token_ids[clean_div_pos]
+                corrupted_token = pair.corrupted_traj.token_ids[corrupted_div_pos]
+
+            if clean_token == corrupted_token:
+                return None
+
+            if W_U.shape[0] > W_U.shape[1]:
+                clean_vec = W_U[clean_token]
+                corrupted_vec = W_U[corrupted_token]
+            else:
+                clean_vec = W_U[:, clean_token]
+                corrupted_vec = W_U[:, corrupted_token]
+
+            direction = clean_vec - corrupted_vec
+            return direction / torch.norm(direction)
+    except Exception:
+        pass
+
+    return None

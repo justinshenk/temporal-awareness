@@ -10,6 +10,13 @@ import numpy as np
 from ....common.base_schema import BaseSchema
 from ....common.file_io import save_json
 
+__all__ = [
+    "HeadAttnInfo",
+    "AttnLayerResult",
+    "AttnPairResult",
+    "AttnAggregatedResults",
+]
+
 
 @dataclass
 class HeadAttnInfo(BaseSchema):
@@ -18,11 +25,11 @@ class HeadAttnInfo(BaseSchema):
     head_idx: int
 
     # Attention pattern metrics
-    attn_to_source: float = 0.0  # Mean attention to source positions (horizon tokens)
+    attn_to_source: float = 0.0  # Total attention to source positions (time_horizon)
     attn_to_dest: float = 0.0  # Self-attention to destination position
     attn_entropy: float = 0.0  # Entropy of attention distribution
 
-    # Top attended positions (from P_dest)
+    # Top attended positions
     top_attended_positions: list[int] = field(default_factory=list)
     top_attended_weights: list[float] = field(default_factory=list)
 
@@ -31,8 +38,10 @@ class HeadAttnInfo(BaseSchema):
     output_norm: float = 0.0  # ||head_out||
 
     # Clean vs corrupted comparison
-    attn_pattern_diff: float = 0.0  # ||attn_clean - attn_corrupted||
-    is_dynamic: bool = False  # Pattern changes between conditions
+    attn_pattern_diff: float = 0.0  # L2 norm of pattern difference
+    attn_pattern_diff_l1: float = 0.0  # L1 norm of pattern difference
+    attn_pattern_cosine: float = 0.0  # Cosine similarity (1.0 = identical)
+    is_dynamic: bool = False  # Pattern changes between clean/corrupted
 
 
 @dataclass
@@ -72,8 +81,11 @@ class AttnPairResult(BaseSchema):
     """Attention analysis results for a single pair."""
 
     pair_idx: int = 0
-    dest_position: int = 0  # Destination position analyzed (P_dest)
-    source_positions: list[int] = field(default_factory=list)  # Source positions tracked
+    dest_position: int = 0  # Primary destination position analyzed (corrupted frame)
+    source_positions: list[int] = field(default_factory=list)  # Source positions in CORRUPTED frame
+    source_positions_clean: list[int] = field(default_factory=list)  # Source positions in CLEAN frame
+    source_position_names: list[str] = field(default_factory=list)  # Semantic names (e.g., ["time_horizon"])
+    dest_position_names: list[str] = field(default_factory=list)  # Semantic names (e.g., ["response_choice"])
 
     layer_results: list[AttnLayerResult] = field(default_factory=list)
 
