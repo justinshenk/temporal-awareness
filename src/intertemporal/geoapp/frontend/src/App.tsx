@@ -21,10 +21,8 @@ import {
   TimeScaleType,
 } from './hooks/useEmbeddings';
 
-// Default values matching available data
-const DEFAULT_LAYER = 13;
+// Default values - these are fallbacks, actual values come from config
 const DEFAULT_COMPONENT = 'resid_post';
-const DEFAULT_POSITION = 'response';
 const DEFAULT_METHOD = 'pca';
 const DEFAULT_COLOR_BY = 'time_horizon';
 
@@ -35,10 +33,10 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('3D');
 
-  // Control state
-  const [layer, setLayer] = useState(DEFAULT_LAYER);
+  // Control state - layer and position are initialized to -1/'', then set from config
+  const [layer, setLayer] = useState<number>(-1);
   const [component, setComponent] = useState(DEFAULT_COMPONENT);
-  const [position, setPosition] = useState(DEFAULT_POSITION);
+  const [position, setPosition] = useState<string>('');
   const [method, setMethod] = useState(DEFAULT_METHOD);
   const [colorBy, setColorBy] = useState(DEFAULT_COLOR_BY);
   const [showNoHorizon, setShowNoHorizon] = useState(true);
@@ -61,6 +59,26 @@ function App() {
 
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
+
+  // Initialize layer and position from config when it first loads
+  useEffect(() => {
+    if (config) {
+      // Set layer to first available if not yet set or invalid
+      if (layer < 0 || !config.layers.includes(layer)) {
+        const firstLayer = config.layers[0];
+        if (firstLayer !== undefined) {
+          setLayer(firstLayer);
+        }
+      }
+      // Set position to first available if not yet set or invalid
+      if (!position || !config.positions.includes(position)) {
+        const firstPosition = config.positions[0];
+        if (firstPosition) {
+          setPosition(firstPosition);
+        }
+      }
+    }
+  }, [config, layer, position]);
 
   // Fetch embedding data
   const {
@@ -433,9 +451,9 @@ function App() {
 
   // Derived state
   const isLoading = configLoading || embeddingLoading || metadataLoading;
-  const layers = config?.layers || [DEFAULT_LAYER];
+  const layers = config?.layers || [];
   const components = config?.components || [DEFAULT_COMPONENT];
-  const positions_options = config?.positions || [DEFAULT_POSITION];
+  const positions_options = config?.positions || [];
   const methods = config?.methods || [DEFAULT_METHOD];
   const colorByOptions = config?.colorByOptions || [DEFAULT_COLOR_BY];
 

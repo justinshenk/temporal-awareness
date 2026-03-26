@@ -66,6 +66,10 @@ SEMANTIC_POSITIONS = {
     "response_choice",
     "response_reasoning_prefix",
     "response_reasoning",
+
+    # Chat template positions
+    "chat_prefix",
+    "chat_suffix",
 }
 
 

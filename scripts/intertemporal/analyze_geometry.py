@@ -66,6 +66,7 @@ PROMPT_POSITIONS = [
 
 # Response positions (where model output is generated)
 RESPONSE_POSITIONS = [
+    "chat_suffix",
     "response_choice_prefix",
     "response_choice",
     "response_reasoning_prefix",
