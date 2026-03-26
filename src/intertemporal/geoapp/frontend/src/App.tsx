@@ -40,6 +40,7 @@ function App() {
   const [method, setMethod] = useState(DEFAULT_METHOD);
   const [colorBy, setColorBy] = useState(DEFAULT_COLOR_BY);
   const [showNoHorizon, setShowNoHorizon] = useState(true);
+  const [showWithHorizon, setShowWithHorizon] = useState(true);
 
   // Color range controls for gradient coloring
   const [colorRangeMin, setColorRangeMin] = useState<number | null>(null);
@@ -127,14 +128,21 @@ function App() {
     viewMode === '1DxPos'
   );
 
-  // Compute filter mask for no-horizon samples
+  // Compute filter mask for horizon filtering
   const filterMask = useMemo(() => {
-    if (!hasHorizonMeta?.values || showNoHorizon) {
-      return null; // No filtering needed
+    if (!hasHorizonMeta?.values || (showNoHorizon && showWithHorizon)) {
+      return null; // No filtering needed - show all
     }
-    // Filter out samples where has_horizon = 0 (no horizon)
-    return hasHorizonMeta.values.map(v => v === 1);
-  }, [hasHorizonMeta?.values, showNoHorizon]);
+    // Filter based on horizon toggles
+    return hasHorizonMeta.values.map(v => {
+      const hasHorizon = v === 1;
+      if (hasHorizon) {
+        return showWithHorizon; // Show if with-horizon toggle is on
+      } else {
+        return showNoHorizon; // Show if no-horizon toggle is on
+      }
+    });
+  }, [hasHorizonMeta?.values, showNoHorizon, showWithHorizon]);
 
   // Compute positions Float32Array (with filtering)
   const positions = useMemo(() => {
@@ -546,12 +554,18 @@ function App() {
               ))}
             </div>
 
-            {/* No-horizon toggle */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 px-3 py-1.5">
+            {/* Horizon filter toggles */}
+            <div className="flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 px-3 py-1.5">
+              <Toggle
+                checked={showWithHorizon}
+                onChange={setShowWithHorizon}
+                label="With-Horizon"
+                size="sm"
+              />
               <Toggle
                 checked={showNoHorizon}
                 onChange={setShowNoHorizon}
-                label="Show no-horizon"
+                label="No-Horizon"
                 size="sm"
               />
             </div>
@@ -581,7 +595,7 @@ function App() {
                     No samples to display
                   </p>
                   <p className="text-[#1a1613]/50 text-sm">
-                    All samples have been filtered out. Try enabling "Show no-horizon samples" in the Filters section.
+                    All samples have been filtered out. Try enabling "With-Horizon" or "No-Horizon" toggles.
                   </p>
                 </div>
               </div>
@@ -652,7 +666,7 @@ function App() {
                 title={`PC1 Trajectory Across Layers (${position} @ ${component})`}
                 colors={unfilteredColors}
                 pointData={unfilteredPointData}
-                filterMask={showNoHorizon ? null : filterMask}
+                filterMask={filterMask}
                 backgroundColor="#faf8f5"
                 showGrid={true}
                 onPointSelect={handlePointSelect}
@@ -671,7 +685,7 @@ function App() {
                 title={`PC1 Trajectory Across Positions (L${layer} @ ${component})`}
                 colors={unfilteredColors}
                 pointData={unfilteredPointData}
-                filterMask={showNoHorizon ? null : filterMask}
+                filterMask={filterMask}
                 backgroundColor="#faf8f5"
                 showGrid={true}
                 onPointSelect={handlePointSelect}
