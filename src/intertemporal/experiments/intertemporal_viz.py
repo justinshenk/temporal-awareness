@@ -640,10 +640,20 @@ def generate_viz(
                 visualize_mlp_pair(mlp_result, pair_dir / "mlp_analysis")
             if attn_result:
                 # Pass runner for QK analysis (plot 8) if TransformerLens backend
+                # Build mapping for token annotations if pref_pairs available
+                mapping = None
+                if pref_pairs and pair_idx < len(pref_pairs) and runner:
+                    from ..common.sample_position_mapping import SamplePositionMapping
+                    pref_pair = pref_pairs[pair_idx]
+                    # Use long_term sample (corrupted) which has the time_horizon
+                    mapping = SamplePositionMapping.build_from_preference(
+                        pref_pair.long_term, runner, sample_idx=pair_idx
+                    )
                 visualize_attn_pair(
                     attn_result,
                     pair_dir / "attn",
                     runner=runner,
+                    mapping=mapping,
                 )
             if diffmeans_result:
                 # OV projection (plot 7) is in diffmeans_viz - requires runner and pair
