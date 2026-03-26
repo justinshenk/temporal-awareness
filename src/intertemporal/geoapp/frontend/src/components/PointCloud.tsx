@@ -22,6 +22,8 @@ interface PointCloudProps {
   hoverScale?: number;
   /** Visibility mask - 1.0 for visible, 0.0 for hidden */
   visibility?: Float32Array;
+  /** Disable pointer events during camera interaction for performance */
+  disablePointerEvents?: boolean;
 }
 
 // Reusable vector to avoid allocations
@@ -126,6 +128,7 @@ function PointCloudInner({
   selectedIndex = null,
   hoverScale = 1.5,
   visibility,
+  disablePointerEvents = false,
 }: PointCloudProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -262,7 +265,8 @@ function PointCloudInner({
   // Raycasting for hover detection
   const handlePointerMove = useCallback(
     (_event: ThreeEvent<PointerEvent>) => {
-      if (!pointsRef.current) return;
+      // Skip raycasting during camera interaction for performance
+      if (disablePointerEvents || !pointsRef.current) return;
 
       // Throttle hover detection
       const now = performance.now();
@@ -298,7 +302,7 @@ function PointCloudInner({
         }
       }
     },
-    [raycaster, positions, pointData, onHover, hoveredIndex, material]
+    [raycaster, positions, pointData, onHover, hoveredIndex, material, disablePointerEvents]
   );
 
   const handlePointerOut = useCallback(() => {

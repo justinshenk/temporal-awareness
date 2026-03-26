@@ -5,6 +5,6 @@ Analyzes attention patterns using semantic position names:
 - Dest positions: where information flows TO (e.g., "response_choice")
 """
 
-from .attn_analysis_config import *
-from .attn_analysis_results import *
-from .attn_analysis_run import *
+from src.common.auto_export import auto_export
+
+__all__ = auto_export(__file__, __name__, globals())

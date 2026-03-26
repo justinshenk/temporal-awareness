@@ -38,7 +38,7 @@ class FineGrainedConfig:
         n_components_multi_site: Number of top components for interaction analysis
 
         # Neuron patching settings
-        neuron_patching_enabled: Whether to run neuron-level ablation
+        neuron_patching_enabled: Whether to run neuron-level differential contribution
         neuron_target_layer: Layer for neuron-level analysis (e.g., L31)
         n_top_neurons: Number of top neurons to track
 

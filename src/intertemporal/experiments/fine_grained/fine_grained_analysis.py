@@ -740,11 +740,14 @@ def run_neuron_patching(
     pair: ContrastivePair,
     config: FineGrainedConfig,
 ) -> list[NeuronPatchingResult]:
-    """Run neuron-level attribution at target layer.
+    """Run neuron-level differential contribution at target layer.
 
-    Uses gradient-based attribution to efficiently measure each neuron's
-    contribution to the model's decision. This is much faster than individual
-    ablations while providing meaningful per-neuron importance scores.
+    Computes (clean_act - corrupt_act) × W_out_alignment for each neuron.
+    This measures how much each neuron's activation difference between
+    clean and corrupted runs contributes to the logit direction.
+
+    Unlike ablation, this directly measures what changes between conditions
+    rather than what happens when a component is removed.
 
     Args:
         runner: Model runner
@@ -752,7 +755,7 @@ def run_neuron_patching(
         config: Fine-grained config
 
     Returns:
-        List of NeuronPatchingResult for top neurons by importance
+        List of NeuronPatchingResult for all neurons at target layer
     """
     layer = config.neuron_target_layer
     d_mlp = runner._backend.get_d_mlp()
@@ -1036,7 +1039,7 @@ def run_fine_grained_analysis(
     2. Position-level patching for top heads
     3. Path patching (head-to-MLP and head-to-head)
     4. Multi-site interaction patching
-    5. Neuron-level ablation
+    5. Neuron-level differential contribution
     6. Layer-position fine heatmap
 
     Args:
@@ -1090,15 +1093,42 @@ def run_fine_grained_analysis(
         log("[fine] Running path patching to heads...")
         results.path_to_head = run_path_patching_to_head(runner, pair, top_heads, config)
 
-        # 3b. Cross-layer path patching (L19/L21 → L24)
-        # Find source heads from earlier layers and dest heads from later layers
+        # 3b. Cross-layer path patching
+        # Find heads at different layers for path testing
+        l19_heads = [h for h in top_heads if h.layer == 19]
+        l21_heads = [h for h in top_heads if h.layer == 21]
+        l24_heads = [h for h in top_heads if h.layer == 24]
         earlier_layer_heads = [h for h in top_heads if h.layer < 24]
         later_layer_heads = [h for h in top_heads if h.layer >= 24]
-        if earlier_layer_heads and later_layer_heads:
-            log("[fine] Running cross-layer path patching (L19/L21 → L24)...")
-            results.cross_layer_paths = run_cross_layer_path_patching(
-                runner, pair, earlier_layer_heads[:5], later_layer_heads[:5], config
+
+        all_cross_layer_paths = []
+
+        # L19 → L21 paths (e.g., L19.H28 → L21.H11/H19)
+        if l19_heads and l21_heads:
+            log("[fine] Running cross-layer path patching (L19 → L21)...")
+            l19_to_l21 = run_cross_layer_path_patching(
+                runner, pair, l19_heads[:3], l21_heads[:5], config
             )
+            all_cross_layer_paths.extend(l19_to_l21)
+
+        # L19/L21 → L24 paths
+        if earlier_layer_heads and l24_heads:
+            log("[fine] Running cross-layer path patching (L19/L21 → L24)...")
+            to_l24 = run_cross_layer_path_patching(
+                runner, pair, earlier_layer_heads[:5], l24_heads[:5], config
+            )
+            all_cross_layer_paths.extend(to_l24)
+
+        # L24 → later layer heads (L28-31)
+        later_than_l24 = [h for h in top_heads if h.layer > 24]
+        if l24_heads and later_than_l24:
+            log("[fine] Running cross-layer path patching (L24 → L28-31)...")
+            l24_to_later = run_cross_layer_path_patching(
+                runner, pair, l24_heads[:5], later_than_l24[:5], config
+            )
+            all_cross_layer_paths.extend(l24_to_later)
+
+        results.cross_layer_paths = all_cross_layer_paths
 
     # 4. Multi-site interaction
     if config.multi_site_enabled and top_heads:

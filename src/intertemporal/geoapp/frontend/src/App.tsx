@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot } from './components';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
 import { PointData } from './components/PointCloud';
 import {
   useConfig,
-  useEmbedding,
+  useStreamingEmbedding,
   useMetadata,
   useSample,
   usePrefetch,
@@ -81,25 +81,22 @@ function App() {
     }
   }, [config, layer, position]);
 
-  // Fetch embedding data
-  const {
-    data: embedding,
-    isLoading: embeddingLoading,
-    error: embeddingError,
-  } = useEmbedding(layer, component, position, method);
+  // Fetch embedding data via streaming for progressive loading
+  const streamingEmbed = useStreamingEmbedding(layer, component, position, method);
 
-  // Performance: track when layer/position changes and when data arrives
-  const loadStartRef = useRef<number>(0);
-  useEffect(() => {
-    loadStartRef.current = performance.now();
-  }, [layer, component, position, method]);
+  // Convert streaming state to the format expected by the rest of the app
+  const embedding = useMemo(() => {
+    if (streamingEmbed.loadedPoints === 0) return undefined;
+    return {
+      positions: streamingEmbed.positions,
+      indices: streamingEmbed.indices,
+      metrics: {},
+    };
+  }, [streamingEmbed.positions, streamingEmbed.indices, streamingEmbed.loadedPoints]);
 
-  useEffect(() => {
-    if (embedding && loadStartRef.current > 0) {
-      const loadTime = performance.now() - loadStartRef.current;
-      console.log(`[Perf] Data loaded: ${loadTime.toFixed(0)}ms for L${layer}/${component}/${position}`);
-    }
-  }, [embedding, layer, component, position]);
+  const embeddingLoading = streamingEmbed.isStreaming && streamingEmbed.loadedPoints === 0;
+  const embeddingError = streamingEmbed.error;
+  const streamingProgress = streamingEmbed.progress;
 
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMetadata(colorBy);
@@ -713,8 +710,18 @@ function App() {
                     </svg>
                   </div>
                   <p className="text-[#1a1613]/60 font-medium">
-                    Loading embedding data...
+                    {streamingProgress > 0
+                      ? `Streaming... ${streamingProgress}%`
+                      : 'Loading embedding data...'}
                   </p>
+                  {streamingProgress > 0 && (
+                    <div className="w-32 h-1.5 mt-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#D97757] to-[#348296] transition-all duration-150"
+                        style={{ width: `${streamingProgress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ) : viewMode === '3D' ? (

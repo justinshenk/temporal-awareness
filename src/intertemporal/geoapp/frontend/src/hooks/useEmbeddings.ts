@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 
 // Types matching the actual backend API responses
@@ -146,6 +146,135 @@ export function useEmbedding(
     staleTime: 1000 * 60 * 30, // 30 minutes - embeddings are expensive to compute
     gcTime: 1000 * 60 * 60, // 1 hour - keep in cache for a long time
   });
+}
+
+// Streaming embedding response type
+export interface StreamingEmbeddingState {
+  positions: number[];
+  indices: number[];
+  totalPoints: number;
+  loadedPoints: number;
+  isStreaming: boolean;
+  isComplete: boolean;
+  error: Error | null;
+  progress: number; // 0-100
+}
+
+// Hook for streaming embedding data via SSE
+export function useStreamingEmbedding(
+  layer: number,
+  component: string,
+  position: string,
+  method: string
+) {
+  const [state, setState] = useState<StreamingEmbeddingState>({
+    positions: [],
+    indices: [],
+    totalPoints: 0,
+    loadedPoints: 0,
+    isStreaming: false,
+    isComplete: false,
+    error: null,
+    progress: 0,
+  });
+
+  useEffect(() => {
+    if (layer < 0 || !component || !position || !method) return;
+
+    // Reset state for new request
+    setState({
+      positions: [],
+      indices: [],
+      totalPoints: 0,
+      loadedPoints: 0,
+      isStreaming: true,
+      isComplete: false,
+      error: null,
+      progress: 0,
+    });
+
+    const url = `/api/embedding/${layer}/${component}/${encodeURIComponent(position)}/stream?method=${method}&chunk_size=500`;
+    const eventSource = new EventSource(url);
+
+    let allPositions: number[] = [];
+    let allIndices: number[] = [];
+    let totalPoints = 0;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'metadata') {
+          totalPoints = data.total_points;
+          // Pre-allocate arrays for better performance
+          allPositions = new Array(totalPoints * 3);
+          allIndices = new Array(totalPoints);
+          setState(prev => ({
+            ...prev,
+            totalPoints,
+          }));
+        } else if (data.type === 'chunk') {
+          // Copy chunk data into pre-allocated arrays
+          const coords = data.coordinates as number[];
+          const indices = data.sample_indices as number[];
+          const startIdx = data.start_idx as number;
+
+          for (let i = 0; i < indices.length; i++) {
+            allIndices[startIdx + i] = indices[i];
+            allPositions[(startIdx + i) * 3] = coords[i * 3];
+            allPositions[(startIdx + i) * 3 + 1] = coords[i * 3 + 1];
+            allPositions[(startIdx + i) * 3 + 2] = coords[i * 3 + 2];
+          }
+
+          const loadedPoints = data.end_idx as number;
+          const progress = Math.round((loadedPoints / totalPoints) * 100);
+
+          // Update state with current progress - spread to trigger re-render
+          setState(prev => ({
+            ...prev,
+            positions: [...allPositions.slice(0, loadedPoints * 3)],
+            indices: [...allIndices.slice(0, loadedPoints)],
+            loadedPoints,
+            progress,
+          }));
+        } else if (data.type === 'complete') {
+          setState(prev => ({
+            ...prev,
+            positions: allPositions,
+            indices: allIndices,
+            isStreaming: false,
+            isComplete: true,
+            progress: 100,
+          }));
+          eventSource.close();
+        } else if (data.error) {
+          setState(prev => ({
+            ...prev,
+            isStreaming: false,
+            error: new Error(data.error),
+          }));
+          eventSource.close();
+        }
+      } catch (e) {
+        console.error('SSE parse error:', e);
+      }
+    };
+
+    eventSource.onerror = () => {
+      setState(prev => ({
+        ...prev,
+        isStreaming: false,
+        error: new Error('Stream connection failed'),
+      }));
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [layer, component, position, method]);
+
+  return state;
 }
 
 // Hook to fetch metadata for coloring points
@@ -685,13 +814,18 @@ export function useBackendPrefetch(
   useEffect(() => {
     if (!enabled || layer < 0 || !component || !position || !method) return;
 
-    // Fire-and-forget prefetch request to backend
-    // This precomputes adjacent layers/positions server-side for faster navigation
-    const prefetchUrl = `/warmup/prefetch?layer=${layer}&component=${encodeURIComponent(component)}&position=${encodeURIComponent(position)}&method=${method}`;
+    // Debounce prefetch to avoid flooding server during rapid navigation
+    const timeoutId = setTimeout(() => {
+      // Fire-and-forget prefetch request to backend
+      // This precomputes adjacent layers/positions server-side for faster navigation
+      const prefetchUrl = `/warmup/prefetch?layer=${layer}&component=${encodeURIComponent(component)}&position=${encodeURIComponent(position)}&method=${method}`;
 
-    api.post<WarmupStatusResponse>(prefetchUrl).catch(() => {
-      // Silently ignore prefetch failures - it's just an optimization
-    });
+      api.post<WarmupStatusResponse>(prefetchUrl).catch(() => {
+        // Silently ignore prefetch failures - it's just an optimization
+      });
+    }, 500); // Wait 500ms before prefetching
+
+    return () => clearTimeout(timeoutId);
   }, [layer, component, position, method, enabled]);
 }
 

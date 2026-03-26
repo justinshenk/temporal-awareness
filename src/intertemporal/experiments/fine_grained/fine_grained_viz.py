@@ -864,60 +864,84 @@ def _plot_cross_layer_paths(
     cross_layer_results: list,  # list[PathPatchingResult]
     output_dir: Path,
 ) -> None:
-    """Plot 29: Cross-layer path patching (L19/L21 → L24).
+    """Plot 29: Cross-layer path patching (multi-hop circuit).
 
-    Shows which earlier layer heads feed into later layer heads.
+    Shows information flow between layers:
+    - L19 → L21 (early circuit)
+    - L19/L21 → L24 (mid circuit)
+    - L24 → L28-31 (late circuit)
     """
     if not cross_layer_results:
         return
 
-    # Group by source layer
-    source_layers = sorted(set(r.source_layer for r in cross_layer_results))
-    dest_heads = sorted(set((r.dest_layer, r.dest_head) for r in cross_layer_results))
+    # Group paths by hop type
+    l19_to_l21 = [r for r in cross_layer_results if r.source_layer == 19 and r.dest_layer == 21]
+    early_to_l24 = [r for r in cross_layer_results if r.source_layer in (19, 21) and r.dest_layer == 24]
+    l24_to_later = [r for r in cross_layer_results if r.source_layer == 24 and r.dest_layer > 24]
 
-    # Build matrix: source heads × dest heads
-    source_heads = sorted(set((r.source_layer, r.source_head) for r in cross_layer_results))
+    # Count how many subplots we need
+    groups = []
+    if l19_to_l21:
+        groups.append(("L19 → L21", l19_to_l21))
+    if early_to_l24:
+        groups.append(("L19/L21 → L24", early_to_l24))
+    if l24_to_later:
+        groups.append(("L24 → L28-31", l24_to_later))
 
-    n_src = len(source_heads)
-    n_dst = len(dest_heads)
-
-    if n_src == 0 or n_dst == 0:
+    if not groups:
         return
 
-    matrix = np.zeros((n_src, n_dst))
-    src_to_idx = {s: i for i, s in enumerate(source_heads)}
-    dst_to_idx = {d: i for i, d in enumerate(dest_heads)}
+    # Create subplots
+    n_groups = len(groups)
+    fig, axes = plt.subplots(1, n_groups, figsize=(5 * n_groups, 6))
+    if n_groups == 1:
+        axes = [axes]
 
-    for r in cross_layer_results:
-        si = src_to_idx.get((r.source_layer, r.source_head))
-        di = dst_to_idx.get((r.dest_layer, r.dest_head))
-        if si is not None and di is not None:
-            matrix[si, di] = r.effect
+    for ax, (title, paths) in zip(axes, groups):
+        source_heads = sorted(set((r.source_layer, r.source_head) for r in paths))
+        dest_heads = sorted(set((r.dest_layer, r.dest_head) for r in paths))
 
-    fig, ax = plt.subplots(figsize=(max(8, n_dst * 1.2), max(6, n_src * 0.4)))
-    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
-    plt.colorbar(im, ax=ax, label="Path Effect")
+        n_src = len(source_heads)
+        n_dst = len(dest_heads)
 
-    # Labels
-    src_labels = [f"L{l}.H{h}" for l, h in source_heads]
-    dst_labels = [f"L{l}.H{h}" for l, h in dest_heads]
+        if n_src == 0 or n_dst == 0:
+            ax.set_visible(False)
+            continue
 
-    ax.set_yticks(range(n_src))
-    ax.set_yticklabels(src_labels, fontsize=9)
-    ax.set_xticks(range(n_dst))
-    ax.set_xticklabels(dst_labels, rotation=45, ha="right", fontsize=9)
+        matrix = np.zeros((n_src, n_dst))
+        src_to_idx = {s: i for i, s in enumerate(source_heads)}
+        dst_to_idx = {d: i for i, d in enumerate(dest_heads)}
 
-    ax.set_xlabel("Destination Head (L24)", fontsize=11)
-    ax.set_ylabel("Source Head (L19/L21)", fontsize=11)
-    ax.set_title("Cross-Layer Path Patching: Earlier → Later Heads", fontsize=12, fontweight="bold")
+        for r in paths:
+            si = src_to_idx.get((r.source_layer, r.source_head))
+            di = dst_to_idx.get((r.dest_layer, r.dest_head))
+            if si is not None and di is not None:
+                matrix[si, di] = r.effect
 
-    # Add value annotations
-    for i in range(n_src):
-        for j in range(n_dst):
-            val = matrix[i, j]
-            if abs(val) > 0.01:
-                color = "white" if abs(val) > 0.15 else "black"
-                ax.text(j, i, f"{val:.2f}", ha="center", va="center", color=color, fontsize=8)
+        im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+        plt.colorbar(im, ax=ax, label="Path Effect")
 
+        # Labels
+        src_labels = [f"L{l}.H{h}" for l, h in source_heads]
+        dst_labels = [f"L{l}.H{h}" for l, h in dest_heads]
+
+        ax.set_yticks(range(n_src))
+        ax.set_yticklabels(src_labels, fontsize=9)
+        ax.set_xticks(range(n_dst))
+        ax.set_xticklabels(dst_labels, rotation=45, ha="right", fontsize=9)
+
+        ax.set_xlabel("Destination Head", fontsize=10)
+        ax.set_ylabel("Source Head", fontsize=10)
+        ax.set_title(title, fontsize=11, fontweight="bold")
+
+        # Add value annotations
+        for i in range(n_src):
+            for j in range(n_dst):
+                val = matrix[i, j]
+                if abs(val) > 0.01:
+                    color = "white" if abs(val) > 0.15 else "black"
+                    ax.text(j, i, f"{val:.2f}", ha="center", va="center", color=color, fontsize=8)
+
+    fig.suptitle("Cross-Layer Path Patching: Multi-Hop Circuit", fontsize=12, fontweight="bold", y=1.02)
     plt.tight_layout()
     finalize_plot(output_dir / "29_cross_layer_paths.png")

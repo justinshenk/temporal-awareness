@@ -23,6 +23,12 @@ __all__ = [
 PROMPT_POSITIONS = [
     "time_horizon",
     "post_time_horizon",
+    "left_label",
+    "left_reward",
+    "left_time",
+    "right_label",
+    "right_reward",
+    "right_time",
 ]
 
 # Response positions (where model output is generated)

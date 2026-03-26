@@ -1,7 +1,15 @@
-"""FastAPI server for geometry visualization backend."""
+"""FastAPI server for geometry visualization backend.
 
+Architecture: Streaming/Reactive Pattern
+- No upfront warmup - server starts instantly
+- Lazy loading - embeddings computed on first request
+- Smart prefetching - adjacent data loaded in background after each request
+- Everything cached once loaded
+"""
+
+import asyncio
 import os
-import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import uvicorn
@@ -13,6 +21,9 @@ from ..geoapp.data_loader import GeometryDataLoader
 
 from .routes import create_router
 
+# Background executor for prefetching - separate from request handling
+_prefetch_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="prefetch")
+
 # Default paths
 DEFAULT_DATA_DIR = Path("out/geometry")
 DEFAULT_FRONTEND_DIR = Path(__file__).parent / "frontend" / "dist"
@@ -22,15 +33,19 @@ def create_app(
     data_dir: Path | str | None = None,
     frontend_dir: Path | str | None = None,
     enable_cors: bool = True,
-    warmup: bool = False,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
+
+    Uses streaming/reactive architecture:
+    - No upfront warmup - server starts instantly
+    - Lazy loading - embeddings computed on first request
+    - Smart prefetching - adjacent data loaded in background
+    - Everything cached once loaded
 
     Args:
         data_dir: Directory containing geometry output data. Defaults to out/geometry.
         frontend_dir: Directory containing built React frontend. Defaults to frontend/dist.
         enable_cors: Enable CORS for local development. Defaults to True.
-        warmup: Pre-compute embeddings on startup. Defaults to False.
 
     Returns:
         Configured FastAPI application instance.
@@ -45,72 +60,18 @@ def create_app(
         frontend_dir = DEFAULT_FRONTEND_DIR
     frontend_dir = Path(frontend_dir)
 
-    # Create data loader
+    # Create data loader with lazy loading - no upfront computation
     data_loader = GeometryDataLoader(data_dir)
-
-    # NON-BLOCKING WARMUP: Compute embeddings in background after server starts
-    def background_warmup():
-        import time
-        # Small delay to let server start first
-        time.sleep(0.5)
-        print("\n" + "=" * 60)
-        print("  EMBEDDING WARMUP STARTING")
-        print("  Loading from disk cache or computing embeddings...")
-        print("=" * 60 + "\n")
-
-        total_start = time.time()
-
-        # PCA (fast - should be mostly cached)
-        print("[Warmup] Loading PCA embeddings...")
-        pca_start = time.time()
-        pca_count = data_loader.warmup(
-            methods=["pca"],
-            components=["resid_pre", "resid_post", "attn_out", "mlp_out"],
-            positions=None,
-        )
-        pca_time = time.time() - pca_start
-        print(f"[Warmup] PCA: {pca_count} embeddings loaded ({pca_time:.1f}s)")
-
-        # UMAP (slower)
-        print("[Warmup] Loading UMAP embeddings...")
-        umap_start = time.time()
-        umap_count = data_loader.warmup(
-            methods=["umap"],
-            components=["resid_pre", "resid_post"],
-            positions=None,
-        )
-        umap_time = time.time() - umap_start
-        print(f"[Warmup] UMAP: {umap_count} embeddings loaded ({umap_time:.1f}s)")
-
-        # t-SNE (slowest)
-        print("[Warmup] Loading t-SNE embeddings...")
-        tsne_start = time.time()
-        tsne_count = data_loader.warmup(
-            methods=["tsne"],
-            components=["resid_pre"],
-            positions=None,
-        )
-        tsne_time = time.time() - tsne_start
-        print(f"[Warmup] t-SNE: {tsne_count} embeddings loaded ({tsne_time:.1f}s)")
-
-        total_time = time.time() - total_start
-        total_count = pca_count + umap_count + tsne_count
-
-        print("\n" + "=" * 60)
-        print("  WARMUP COMPLETE!")
-        print(f"  Total: {total_count} embeddings loaded in {total_time:.1f}s")
-        print("  UI should now be SUPER SMOOTH")
-        print("=" * 60 + "\n")
-
-    if warmup:
-        threading.Thread(target=background_warmup, daemon=True).start()
 
     # Create FastAPI app
     app = FastAPI(
         title="Geometry API",
-        description="API for exploring embedding visualizations of transformer activations",
+        description="Streaming API for embedding visualizations - lazy loading with smart prefetch",
         version="2.0.0",
     )
+
+    # Store prefetch executor reference for routes to use
+    app.state.prefetch_executor = _prefetch_executor
 
     # Add CORS middleware for local development
     if enable_cors:
@@ -154,13 +115,11 @@ def app_factory() -> FastAPI:
     """
     data_dir = os.environ.get("GEOMETRY_DATA_DIR")
     frontend_dir = os.environ.get("GEOMETRY_FRONTEND_DIR")
-    warmup = os.environ.get("GEOMETRY_WARMUP") == "1"
 
     return create_app(
         data_dir=data_dir,
         frontend_dir=frontend_dir,
         enable_cors=True,
-        warmup=warmup,
     )
 
 
@@ -169,17 +128,21 @@ def run_app(
     frontend_dir: Path | str | None = None,
     host: str = "127.0.0.1",
     port: int = 8000,
-    warmup: bool = False,
+    warmup: bool = False,  # Ignored - kept for backward compatibility
     reload: bool = False,
 ) -> None:
     """Run the FastAPI application with uvicorn.
+
+    Uses streaming/reactive architecture - no upfront warmup needed.
+    Embeddings are loaded on-demand and cached. Smart prefetching
+    loads adjacent data in background.
 
     Args:
         data_dir: Directory containing geometry output data.
         frontend_dir: Directory containing built React frontend.
         host: Host to bind to. Defaults to 127.0.0.1.
         port: Port to bind to. Defaults to 8000.
-        warmup: Pre-compute embeddings on startup. Defaults to False.
+        warmup: DEPRECATED - ignored. Streaming architecture loads on-demand.
         reload: Enable auto-reload for development. Defaults to False.
     """
     # Store config in environment for factory function
@@ -187,12 +150,11 @@ def run_app(
         os.environ["GEOMETRY_DATA_DIR"] = str(data_dir)
     if frontend_dir:
         os.environ["GEOMETRY_FRONTEND_DIR"] = str(frontend_dir)
-    if warmup:
-        os.environ["GEOMETRY_WARMUP"] = "1"
 
     print(f"Starting Geometry API server at http://{host}:{port}")
     print(f"Data directory: {data_dir or DEFAULT_DATA_DIR}")
     print(f"API docs: http://{host}:{port}/docs")
+    print("Mode: Streaming (lazy load + smart prefetch)")
 
     # Use import string for reload mode, direct app otherwise
     if reload:
@@ -208,7 +170,6 @@ def run_app(
             data_dir=data_dir,
             frontend_dir=frontend_dir,
             enable_cors=True,
-            warmup=warmup,
         )
         uvicorn.run(
             app,

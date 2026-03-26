@@ -6,6 +6,8 @@ from typing import Literal
 
 import numpy as np
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
+import json
 
 from .data_loader import GeometryDataLoader
 from .models import (
@@ -178,6 +180,92 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             n_samples=len(sample_indices),
             coordinates_flat=coordinates_flat,
             sample_indices=sample_indices,
+        )
+
+    @router.get("/embedding/{layer}/{component}/{position}/stream")
+    async def get_embedding_stream(
+        layer: int,
+        component: str,
+        position: str,
+        method: Literal["pca", "umap", "tsne"] = Query(default="pca"),
+        chunk_size: int = Query(default=500, description="Points per chunk"),
+    ):
+        """Stream embedding coordinates via Server-Sent Events.
+
+        Sends data in chunks so UI can render progressively.
+        Each chunk contains coordinates for chunk_size points.
+        """
+        # Validate inputs
+        if layer not in data_loader.get_layers():
+            raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
+        if component not in data_loader.get_components():
+            raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+        if position not in data_loader.get_positions():
+            raise HTTPException(status_code=404, detail=f"Position {position} not found")
+
+        async def generate_chunks():
+            """Generator that yields SSE chunks."""
+            import asyncio
+
+            # Load embedding (this is the slow part)
+            if method == "pca":
+                embedding = data_loader.load_pca(layer, component, position, n_components=3)
+            elif method == "umap":
+                embedding = data_loader.load_umap(layer, component, position, n_components=3)
+            elif method == "tsne":
+                embedding = data_loader.load_tsne(layer, component, position, n_components=3)
+            else:
+                embedding = None
+
+            if embedding is None:
+                yield f"data: {json.dumps({'error': 'No embedding found'})}\n\n"
+                return
+
+            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+            clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
+
+            total_points = len(sample_indices)
+
+            # Send metadata first
+            metadata = {
+                "type": "metadata",
+                "layer": layer,
+                "component": component,
+                "position": position,
+                "method": method,
+                "total_points": total_points,
+                "chunk_size": chunk_size,
+            }
+            yield f"data: {json.dumps(metadata)}\n\n"
+            await asyncio.sleep(0)  # Yield to event loop
+
+            # Stream chunks of points
+            for i in range(0, total_points, chunk_size):
+                end_idx = min(i + chunk_size, total_points)
+                chunk_coords = clean_embedding[i:end_idx].flatten().tolist()
+                chunk_indices = sample_indices[i:end_idx]
+
+                chunk_data = {
+                    "type": "chunk",
+                    "start_idx": i,
+                    "end_idx": end_idx,
+                    "coordinates": chunk_coords,
+                    "sample_indices": chunk_indices,
+                }
+                yield f"data: {json.dumps(chunk_data)}\n\n"
+                await asyncio.sleep(0)  # Yield to event loop between chunks
+
+            # Send completion signal
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        return StreamingResponse(
+            generate_chunks(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            }
         )
 
     @router.get("/metadata", response_model=ColorValues)
@@ -495,6 +583,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
 
     @router.post("/warmup/prefetch", response_model=WarmupResponse)
     async def prefetch_adjacent(
+        background_tasks: BackgroundTasks,
         layer: int = Query(description="Current layer"),
         component: str = Query(description="Current component"),
         position: str = Query(description="Current position"),
@@ -505,44 +594,53 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Call this after navigating to a new view to preload nearby data
         for smoother navigation.
 
-        This runs synchronously but is fast for PCA (uses cache).
+        Runs in background to avoid blocking the main request.
         """
-        layers = data_loader.get_layers()
-        positions = data_loader.get_positions()
+        # Skip prefetch if warmup is already running to avoid overloading
+        if warmup_state["is_running"]:
+            return WarmupResponse(
+                message="Skipped prefetch - warmup already running",
+                status=WarmupStatus(
+                    is_running=True,
+                    progress=warmup_state.get("progress", 0),
+                    total=warmup_state.get("total", 0),
+                    current_task=warmup_state.get("current_task"),
+                    cached_pca=len(data_loader._pca_cache),
+                    cached_umap=len(data_loader._umap_cache),
+                    cached_tsne=len(data_loader._tsne_cache),
+                ),
+            )
 
-        # Find current index and prefetch +/- 2
-        layer_idx = layers.index(layer) if layer in layers else 0
-        adjacent_layers = [
-            layers[i] for i in range(max(0, layer_idx - 2), min(len(layers), layer_idx + 3))
-        ]
+        def do_prefetch() -> None:
+            """Background prefetch task."""
+            layers = data_loader.get_layers()
+            positions = data_loader.get_positions()
 
-        # Prefetch adjacent positions (named positions only for speed)
-        pos_idx = positions.index(position) if position in positions else 0
-        adjacent_positions = [
-            positions[i] for i in range(max(0, pos_idx - 1), min(len(positions), pos_idx + 2))
-        ]
+            # Find current index and prefetch +/- 1 (reduced from +/- 2)
+            layer_idx = layers.index(layer) if layer in layers else 0
+            adjacent_layers = [
+                layers[i] for i in range(max(0, layer_idx - 1), min(len(layers), layer_idx + 2))
+            ]
 
-        # Quick prefetch for PCA only (UMAP/t-SNE are slow)
-        prefetched = 0
-        for l in adjacent_layers:
-            for p in adjacent_positions:
-                if method == "pca":
-                    result = data_loader.load_pca(l, component, p)
-                elif method == "umap":
-                    result = data_loader.load_umap(l, component, p)
-                elif method == "tsne":
-                    result = data_loader.load_tsne(l, component, p)
-                else:
-                    result = None
-                if result is not None:
-                    prefetched += 1
+            # Prefetch only current position (removed adjacent positions)
+            adjacent_positions = [position] if position in positions else []
+
+            # Quick prefetch for PCA only (UMAP/t-SNE are too slow)
+            for l in adjacent_layers:
+                for p in adjacent_positions:
+                    if method == "pca":
+                        data_loader.load_pca(l, component, p)
+                    # Skip UMAP/t-SNE prefetch - too slow
+
+        # Run prefetch in background - return immediately
+        background_tasks.add_task(do_prefetch)
 
         return WarmupResponse(
-            message=f"Prefetched {prefetched} embeddings for adjacent layers/positions",
+            message="Prefetch started in background",
             status=WarmupStatus(
                 is_running=False,
-                progress=prefetched,
-                total=prefetched,
+                progress=0,
+                total=0,
                 current_task=None,
                 cached_pca=len(data_loader._pca_cache),
                 cached_umap=len(data_loader._umap_cache),

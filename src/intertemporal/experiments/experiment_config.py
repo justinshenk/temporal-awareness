@@ -11,7 +11,7 @@ from ..prompt import PromptDatasetConfig
 # Default coarse patching settings (empty dict or empty lists = skip)
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     "layer_steps": [1],
     "pos_steps": [5],
@@ -25,7 +25,7 @@ COARSE_PATCH: dict = {
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 # Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     "ig_steps": 30,
     "methods": ["standard", "eap_ig", "eap"],

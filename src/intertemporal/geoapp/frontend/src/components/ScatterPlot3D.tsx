@@ -92,6 +92,8 @@ interface SceneContentProps {
     startPosition: THREE.Vector3;
     startTarget: THREE.Vector3;
   }>;
+  // Disable pointer events during camera interaction
+  isInteracting: boolean;
 }
 
 const SceneContent = memo(function SceneContent({
@@ -109,6 +111,7 @@ const SceneContent = memo(function SceneContent({
   gridSize,
   visibility,
   cameraStateRef,
+  isInteracting,
 }: SceneContentProps) {
   // Performance measurement
   const renderStart = useRef(performance.now());
@@ -187,6 +190,7 @@ const SceneContent = memo(function SceneContent({
           selectedIndex={selectedIndex}
           hoverScale={1.5}
           visibility={visibility}
+          disablePointerEvents={isInteracting}
         />
       </Suspense>
     </>
@@ -214,6 +218,8 @@ function ScatterPlot3DInner({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isInteracting, setIsInteracting] = useState(false);
+  const interactionTimeoutRef = useRef<number | null>(null);
 
   // Compute data bounds for camera positioning - cached for performance
   const { center, cameraDistance, gridSize } = useMemo(() => {
@@ -287,6 +293,49 @@ function ScatterPlot3DInner({
     }
   }, [onPointHover]);
 
+  // Track camera interaction to disable pointer events during rotation/zoom
+  // This prevents expensive raycasting during camera manipulation
+  const handleInteractionStart = useCallback(() => {
+    setIsInteracting(true);
+    // Clear any pending timeout
+    if (interactionTimeoutRef.current !== null) {
+      window.clearTimeout(interactionTimeoutRef.current);
+      interactionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleInteractionEnd = useCallback(() => {
+    // Delay re-enabling pointer events to avoid spurious raycasts
+    if (interactionTimeoutRef.current !== null) {
+      window.clearTimeout(interactionTimeoutRef.current);
+    }
+    interactionTimeoutRef.current = window.setTimeout(() => {
+      setIsInteracting(false);
+      interactionTimeoutRef.current = null;
+    }, 100);
+  }, []);
+
+  const handleWheel = useCallback(() => {
+    handleInteractionStart();
+    // Reset on wheel - treat as brief interaction
+    if (interactionTimeoutRef.current !== null) {
+      window.clearTimeout(interactionTimeoutRef.current);
+    }
+    interactionTimeoutRef.current = window.setTimeout(() => {
+      setIsInteracting(false);
+      interactionTimeoutRef.current = null;
+    }, 150);
+  }, [handleInteractionStart]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (interactionTimeoutRef.current !== null) {
+        window.clearTimeout(interactionTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handle point hover
   const handlePointHover = useCallback(
     (index: number | null, point: THREE.Vector3 | null, data: PointData | null) => {
@@ -337,6 +386,9 @@ function ScatterPlot3DInner({
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleInteractionStart}
+      onMouseUp={handleInteractionEnd}
+      onWheel={handleWheel}
     >
       <Canvas
         gl={{
@@ -365,6 +417,7 @@ function ScatterPlot3DInner({
           gridSize={gridSize}
           visibility={visibility}
           cameraStateRef={cameraStateRef}
+          isInteracting={isInteracting}
         />
       </Canvas>
 

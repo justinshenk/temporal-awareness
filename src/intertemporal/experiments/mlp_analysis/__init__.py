@@ -7,18 +7,6 @@ Provides neuron-level analysis of MLP layers to understand:
 4. Max-activating prompts for top neurons
 """
 
-from .mlp_analysis_results import (
-    NeuronInfo,
-    MLPNeuronLayerResult,
-    MLPPairResult,
-    MLPAggregatedResults,
-)
-from .mlp_analysis_run import run_mlp_analysis
+from src.common.auto_export import auto_export
 
-__all__ = [
-    "NeuronInfo",
-    "MLPNeuronLayerResult",
-    "MLPPairResult",
-    "MLPAggregatedResults",
-    "run_mlp_analysis",
-]
+__all__ = auto_export(__file__, __name__, globals())

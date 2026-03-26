@@ -207,13 +207,18 @@ class MultiSiteResult(BaseSchema):
 
 @dataclass
 class NeuronPatchingResult(BaseSchema):
-    """Result for neuron-level ablation at a target layer.
+    """Result for neuron-level differential contribution at a target layer.
+
+    Computes (clean_act - corrupt_act) × W_out_alignment for each neuron,
+    measuring how much the activation difference contributes to the logit
+    direction. This is NOT ablation - it measures what changes between
+    clean and corrupted conditions.
 
     Attributes:
         layer: Layer index
         neuron_idx: Neuron index
-        effect: Drop in correct logit probability when ablating this neuron
-        activation_mean: Mean activation of this neuron
+        effect: Differential contribution to logit direction
+        activation_mean: Mean activation of this neuron across conditions
     """
 
     layer: int
@@ -316,7 +321,7 @@ class FineGrainedResults(BaseSchema):
         path_to_mlp: Head-to-MLP path patching results
         path_to_head: Head-to-head path patching results
         multi_site: Multi-site interaction results
-        neuron_results: Neuron-level ablation results
+        neuron_results: Neuron-level differential contribution results
         layer_position: Layer x position fine heatmap data
     """
 
@@ -337,7 +342,7 @@ class FineGrainedResults(BaseSchema):
     neuron_target_layer: int = 31
 
     def get_top_neurons(self, n: int = 50) -> list[NeuronPatchingResult]:
-        """Get top N neurons by ablation effect."""
+        """Get top N neurons by differential contribution magnitude."""
         return sorted(
             self.neuron_results,
             key=lambda x: abs(x.effect),
@@ -375,7 +380,7 @@ class FineGrainedResults(BaseSchema):
         if self.multi_site:
             print(f"  Multi-site: {len(self.multi_site)} interactions")
         if self.neuron_results:
-            print(f"  Neuron ablation: {len(self.neuron_results)} neurons at L{self.neuron_target_layer}")
+            print(f"  Neuron differential: {len(self.neuron_results)} neurons at L{self.neuron_target_layer}")
         if self.layer_position:
             for comp, lp in self.layer_position.items():
                 print(f"  Layer-position ({comp}): {len(lp.layers)} layers x {len(lp.positions)} positions")
