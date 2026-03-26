@@ -25,6 +25,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.intertemporal.common.semantic_positions import (
+    PROMPT_POSITIONS,
+    RESPONSE_POSITIONS,
+)
 from src.intertemporal.data.default_configs import DEFAULT_MODEL
 from src.intertemporal.geometry import GeometryConfig, TargetSpec, run_geometry_pipeline
 
@@ -58,20 +62,8 @@ LAYERS = [
 # Activation components to extract
 COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
 
-# Prompt positions (where time horizon info is encoded)
-PROMPT_POSITIONS = [
-    "time_horizon",
-    "post_time_horizon",
-]
-
-# Response positions (where model output is generated)
-RESPONSE_POSITIONS = [
-    "chat_suffix",
-    "response_choice_prefix",
-    "response_choice",
-    "response_reasoning_prefix",
-    "response_reasoning",
-]
+# Subset of prompt positions for geometry (focus on time horizon)
+GEOMETRY_SOURCE_POSITIONS = ["time_horizon", "post_time_horizon"]
 
 
 def build_targets(
