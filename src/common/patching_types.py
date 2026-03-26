@@ -7,14 +7,21 @@ from typing import Literal
 # =============================================================================
 
 # All model components (for hooks/capturing)
-COMPONENTS = ("resid_pre", "resid_post", "attn_out", "mlp_out")
-Component = Literal["resid_pre", "resid_post", "attn_out", "mlp_out"]
-"""All model components for activation capture."""
+COMPONENTS = ("resid_pre", "resid_post", "attn_out", "mlp_out", "attn_z")
+Component = Literal["resid_pre", "resid_post", "attn_out", "mlp_out", "attn_z"]
+"""All model components for activation capture.
+
+attn_z: Per-head attention output BEFORE O projection. Shape [batch, seq, n_heads, d_head].
+        Use for head-level interventions.
+"""
 
 # Components used in patching/attribution (resid_pre excluded as redundant)
-PATCHING_COMPONENTS = ("resid_post", "attn_out", "mlp_out")
-PatchingComponent = Literal["resid_post", "attn_out", "mlp_out"]
-"""Components used for patching and attribution."""
+PATCHING_COMPONENTS = ("resid_post", "attn_out", "mlp_out", "attn_z")
+PatchingComponent = Literal["resid_post", "attn_out", "mlp_out", "attn_z"]
+"""Components used for patching and attribution.
+
+attn_z: Per-head attention output BEFORE O projection. Use with head parameter for head-level patching.
+"""
 
 # =============================================================================
 # Mode types

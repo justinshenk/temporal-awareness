@@ -130,17 +130,19 @@ function App() {
 
   // Compute filter mask for horizon filtering
   const filterMask = useMemo(() => {
+    // No filtering if both toggles are on or data not loaded
     if (!hasHorizonMeta?.values || (showNoHorizon && showWithHorizon)) {
-      return null; // No filtering needed - show all
+      return null;
     }
-    // Filter based on horizon toggles
+    // If both toggles are off, filter everything (empty result)
+    if (!showNoHorizon && !showWithHorizon) {
+      return hasHorizonMeta.values.map(() => false);
+    }
+    // Filter based on which toggle is off
     return hasHorizonMeta.values.map(v => {
+      // v === 1 means has horizon, v === 0 means no horizon
       const hasHorizon = v === 1;
-      if (hasHorizon) {
-        return showWithHorizon; // Show if with-horizon toggle is on
-      } else {
-        return showNoHorizon; // Show if no-horizon toggle is on
-      }
+      return hasHorizon ? showWithHorizon : showNoHorizon;
     });
   }, [hasHorizonMeta?.values, showNoHorizon, showWithHorizon]);
 

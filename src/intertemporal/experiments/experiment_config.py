@@ -12,6 +12,7 @@ from ..prompt import PromptDatasetConfig
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
     "enabled": False,
+    "no_cache": False,
     "layer_steps": [1],
     "pos_steps": [5],
     "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
@@ -25,6 +26,7 @@ COARSE_PATCH: dict = {
 # Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
     "enabled": False,
+    "no_cache": False,
     "ig_steps": 30,
     "methods": ["standard", "eap_ig", "eap"],
     "components": ["mlp_out", "attn_out", "resid_post"],
@@ -45,6 +47,7 @@ VIZ: dict = {
 # Default geometric analysis settings (PCA of residual stream)
 GEO: dict = {
     "enabled": False,
+    "no_cache": True,
     "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
     "positions": [
         28,
@@ -71,14 +74,16 @@ GEO: dict = {
 
 # Default difference-in-means settings
 DIFFMEANS: dict = {
-    "enabled": True,
+    "enabled": False,
+    "no_cache": True,
     "n_components": 10,  # Number of SVD components to track
 }
 
 # Default fine-grained activation patching settings
 # Uses FAST attribution for heads/neurons (not sweeps), then causal patching for position/path/multi-site
 FINE_PATCH: dict = {
-    "enabled": True,
+    "enabled": False,
+    "no_cache": True,
     # Head attribution (fast - uses specified layers, not sweep)
     "head_patching_enabled": True,
     "head_layers": [24, 21, 19, 29, 30],  # Key attention layers (fast attribution)
@@ -108,7 +113,8 @@ FINE_PATCH: dict = {
 
 # Default MLP neuron analysis settings
 MLP_ANALYSIS: dict = {
-    "enabled": True,
+    "enabled": False,
+    "no_cache": True,
     "layers": [35, 31, 28, 19],  # Key MLP layers for horizon processing
     "n_top_neurons": 50,  # Number of top neurons to track per layer
 }
@@ -116,6 +122,7 @@ MLP_ANALYSIS: dict = {
 # Default attention pattern analysis settings
 ATTN_ANALYSIS: dict = {
     "enabled": True,
+    "no_cache": True,
     "layers": [19, 21, 24],  # Key attention layers for horizon processing
     "store_patterns": True,  # Whether to store full attention patterns
     "dynamic_threshold": 0.1,  # Threshold for detecting dynamic attention changes

@@ -1,4 +1,9 @@
-"""Fine-grained activation patching analysis functions."""
+"""Fine-grained activation patching analysis functions.
+
+Uses attribution patching (hook_z + W_O projection) for per-head analysis.
+This correctly attributes importance to individual heads, unlike layer-level
+causal patching which sums across all heads.
+"""
 
 from __future__ import annotations
 
@@ -28,6 +33,168 @@ from .fine_grained_results import (
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner
+
+
+def _get_attention_hook_filter(layers: list[int]) -> callable:
+    """Create filter for attention-related hooks at specific layers."""
+    hooks = set()
+    for layer in layers:
+        # hook_z: head outputs before O projection [batch, pos, n_heads, d_head]
+        hooks.add(f"blocks.{layer}.attn.hook_z")
+    return lambda name: name in hooks
+
+
+@profile
+def run_head_attribution_sweep(
+    runner: "BinaryChoiceRunner",
+    pair: ContrastivePair,
+    config: FineGrainedConfig,
+) -> HeadSweepResults:
+    """Run per-head attribution sweep using hook_z + W_O projection.
+
+    This correctly computes per-head importance by:
+    1. Getting hook_z (before O projection) with shape [batch, seq, n_heads, d_head]
+    2. Computing per-head contributions via z @ W_O
+    3. Projecting onto logit direction
+
+    Unlike causal patching at attn_out (which has heads summed), this gives
+    true per-head attribution scores.
+
+    Args:
+        runner: Model runner
+        pair: Contrastive pair
+        config: Fine-grained config
+
+    Returns:
+        HeadSweepResults with per-head attribution scores
+    """
+    n_heads = runner._backend.get_n_heads()
+    n_layers = runner.n_layers
+
+    layers = config.head_layers
+    if layers is None:
+        layers = list(range(n_layers // 2, n_layers))
+
+    names_filter = _get_attention_hook_filter(layers)
+
+    # Run clean trajectory with cache
+    clean_choice = runner.choose(
+        pair.clean_prompt,
+        pair.choice_prefix,
+        pair.clean_labels,
+        with_cache=True,
+        names_filter=names_filter,
+    )
+    clean_cache = clean_choice.cache
+
+    # Run corrupted trajectory with cache
+    corrupted_choice = runner.choose(
+        pair.corrupted_prompt,
+        pair.choice_prefix,
+        pair.corrupted_labels,
+        with_cache=True,
+        names_filter=names_filter,
+    )
+    corrupted_cache = corrupted_choice.cache
+
+    # Get divergent position for metric computation
+    clean_div_pos, corrupted_div_pos = pair.choice_divergent_positions
+
+    # Get logit direction (difference between choice A and B logits)
+    W_U = runner.W_U  # [d_model, vocab_size]
+    labels = pair.clean_labels
+    label_a_id = runner.encode_ids(labels[0], add_special_tokens=False)[0]
+    label_b_id = runner.encode_ids(labels[1], add_special_tokens=False)[0]
+    logit_direction = W_U[:, label_a_id] - W_U[:, label_b_id]  # [d_model]
+    logit_direction = logit_direction / torch.norm(logit_direction)
+
+    results = HeadSweepResults(
+        n_layers=n_layers,
+        n_heads=n_heads,
+        layers_analyzed=layers,
+    )
+
+    total = len(layers) * n_heads
+    count = 0
+
+    with torch.no_grad():
+        for layer in layers:
+            hook_z_name = f"blocks.{layer}.attn.hook_z"
+
+            clean_z = clean_cache.get(hook_z_name)
+            corrupted_z = corrupted_cache.get(hook_z_name)
+
+            if clean_z is None or corrupted_z is None:
+                log(f"[head_attribution] Warning: hook_z not available for layer {layer}")
+                # Fall back to zeros for this layer
+                for head in range(n_heads):
+                    count += 1
+                    log_progress(count, total, prefix="[fine] Head attribution ")
+                    results.results.append(HeadPatchingResult(
+                        layer=layer,
+                        head=head,
+                        denoising_recovery=0.0,
+                        noising_disruption=0.0,
+                    ))
+                continue
+
+            # Print tensor shape for debugging (first layer only)
+            if count == 0:
+                log(f"[head_attribution] hook_z shape: {clean_z.shape} (expected [batch, seq, n_heads, d_head])")
+
+            # Get W_O: [n_heads, d_head, d_model]
+            W_O = runner._backend.get_W_O(layer)
+
+            # Get z at metric positions
+            # Clamp metric positions to valid range
+            clean_seq_len = clean_z.shape[1]
+            corrupted_seq_len = corrupted_z.shape[1]
+            clean_metric_pos = min(clean_div_pos - 1, clean_seq_len - 1)
+            corrupted_metric_pos = min(corrupted_div_pos - 1, corrupted_seq_len - 1)
+
+            # Clone to avoid inference mode issues
+            clean_z_at_pos = clean_z[0, clean_metric_pos, :, :].clone()  # [n_heads, d_head]
+            corrupted_z_at_pos = corrupted_z[0, corrupted_metric_pos, :, :].clone()
+
+            # Compute per-head contributions: z @ W_O[head] for each head
+            # [n_heads, d_head] @ [n_heads, d_head, d_model] -> [n_heads, d_model]
+            clean_contrib = torch.einsum("hd,hdm->hm", clean_z_at_pos, W_O)
+            corrupted_contrib = torch.einsum("hd,hdm->hm", corrupted_z_at_pos, W_O)
+
+            for head in range(n_heads):
+                count += 1
+                log_progress(count, total, prefix="[fine] Head attribution ")
+
+                # Difference in this head's contribution
+                diff = clean_contrib[head] - corrupted_contrib[head]  # [d_model]
+
+                # Project onto logit direction to get attribution score
+                score = torch.dot(diff, logit_direction).item()
+
+                # Convert attribution score to pseudo-recovery/disruption
+                # Positive score = head contributes to clean answer (denoising would recover this)
+                # Negative score = head contributes to corrupted answer (noising would add this)
+                # Use absolute value for both metrics (importance magnitude)
+                abs_score = abs(score)
+                denoising_recovery = abs_score if score > 0 else 0.0
+                noising_disruption = abs_score if score < 0 else 0.0
+
+                results.results.append(HeadPatchingResult(
+                    layer=layer,
+                    head=head,
+                    denoising_recovery=denoising_recovery,
+                    noising_disruption=noising_disruption,
+                ))
+
+    # Build matrices for heatmap visualization
+    results.build_matrices()
+
+    # Cleanup
+    clean_choice.pop_heavy()
+    corrupted_choice.pop_heavy()
+    clear_gpu_memory()
+
+    return results
 
 
 @profile
@@ -127,11 +294,12 @@ def run_position_patching(
     """
     results = []
 
-    # Use specific positions if provided, otherwise combine source + destination
+    # Use specific positions if provided, otherwise use only source positions
+    # (destination positions like P143-145 are invalid with unequal-length prompts)
     if config.positions:
         positions = config.positions
     else:
-        positions = config.source_positions + config.destination_positions
+        positions = config.source_positions  # Only source positions are reliable
 
     for head_result in top_heads[:config.n_top_heads_for_position]:
         layer = head_result.layer
@@ -491,11 +659,12 @@ def run_layer_position_patching(
         n_layers = runner.n_layers
         layers = list(range(n_layers // 2, n_layers))
 
-    # Use specific positions if provided, otherwise combine source + destination
+    # Use specific positions if provided, otherwise use only source positions
+    # (destination positions like P143-145 are invalid with unequal-length prompts)
     if config.layer_position_positions:
         positions = config.layer_position_positions
     else:
-        positions = config.source_positions + config.destination_positions
+        positions = config.source_positions  # Only source positions are reliable
 
     for component in config.layer_position_components:
         log(f"[fine] Layer-position patching for {component}")
@@ -576,47 +745,13 @@ def run_fine_grained_analysis(
         neuron_target_layer=config.neuron_target_layer,
     )
 
-    # 1. Head-level causal patching at specified layers
+    # 1. Head-level attribution sweep using hook_z + W_O
+    # This correctly isolates per-head contributions (unlike attn_out which has heads summed)
     top_heads = []
     if config.head_patching_enabled:
-        head_layers = config.head_layers
-        if head_layers is None:
-            head_layers = [24, 21, 19, 29, 30]
-
-        n_heads = config.n_heads
-        total = len(head_layers) * n_heads
-        log(f"[fine] Running head patching: {len(head_layers)} layers × {n_heads} heads = {total} sweeps")
-
-        all_head_results = []
-        count = 0
-        for layer in head_layers:
-            for head in range(n_heads):
-                count += 1
-                log_progress(count, total, prefix="[fine] Head sweep ")
-
-                target = InterventionTarget.at(
-                    layers=[layer],
-                    component="attn_out",
-                )
-
-                dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
-                ns = patch_for_choice(runner, pair, target, "noising", clear_memory=True)
-
-                all_head_results.append(HeadPatchingResult(
-                    layer=layer,
-                    head=head,
-                    denoising_recovery=dn.recovery,
-                    noising_disruption=ns.disruption,
-                ))
-
-        results.head_sweep = HeadSweepResults(
-            n_layers=config.n_layers,
-            n_heads=config.n_heads,
-            results=all_head_results,
-            layers_analyzed=head_layers,
-        )
-        results.head_sweep.build_matrices()
-        log(f"[fine] Head patching complete: {len(all_head_results)} heads")
+        log("[fine] Running head attribution sweep (hook_z + W_O projection)...")
+        results.head_sweep = run_head_attribution_sweep(runner, pair, config)
+        log(f"[fine] Head attribution complete: {len(results.head_sweep.results)} heads")
 
         # Get top heads for subsequent analyses
         n_top = max(
@@ -644,31 +779,14 @@ def run_fine_grained_analysis(
         log("[fine] Running multi-site patching...")
         results.multi_site = run_multi_site_patching(runner, pair, top_heads, config)
 
-    # 5. MLP-level causal patching at specified layers
+    # 5. Per-neuron attribution using MLP activations
     if config.neuron_patching_enabled:
-        mlp_layers = config.mlp_layers
-
-        log(f"[fine] Running neuron patching: {len(mlp_layers)} layers")
-        neuron_results = []
-
-        for layer in mlp_layers:
-            target = InterventionTarget.at(
-                layers=[layer],
-                component="mlp_out",
-            )
-
-            dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
-            ns = patch_for_choice(runner, pair, target, "noising", clear_memory=True)
-
-            neuron_results.append(NeuronPatchingResult(
-                layer=layer,
-                neuron_idx=-1,  # Layer-level, not individual neuron
-                effect=dn.recovery,
-                activation_mean=ns.disruption,
-            ))
-
-        results.neuron_results = neuron_results
-        log(f"[fine] Neuron patching complete: {len(neuron_results)} layers")
+        log(f"[fine] Running per-neuron attribution at layer {config.neuron_target_layer}...")
+        # Use run_neuron_patching which computes per-neuron attribution scores
+        # with actual neuron indices (not layer-level placeholder)
+        results.neuron_results = run_neuron_patching(runner, pair, config)
+        n_neurons = len(results.neuron_results)
+        log(f"[fine] Neuron attribution complete: top {n_neurons} neurons at L{config.neuron_target_layer}")
 
     # 6. Layer-position fine heatmap
     if config.layer_position_enabled:

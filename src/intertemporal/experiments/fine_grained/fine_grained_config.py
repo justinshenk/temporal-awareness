@@ -83,7 +83,7 @@ class FineGrainedConfig:
     layer_position_components: list[str] = field(
         default_factory=lambda: ["attn_out", "mlp_out"]
     )
-    layer_position_layers: list[int] | None = None  # None = layers 15-35
+    layer_position_layers: list[int] | None = None  # None = second half of layers (n_layers//2 to n_layers-1)
     layer_position_positions: list[int] | None = None  # Specific positions (None = use source + dest)
 
     # Key positions (used by multiple analyses when specific positions not set)
