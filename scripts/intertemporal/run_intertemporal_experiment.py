@@ -170,7 +170,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         metavar="JSON",
-        help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": [86, 87]}\'',
+        help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": ["time_horizon", "response_choice"]}\'',
     )
     parser.add_argument(
         "--pair_req",

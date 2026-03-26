@@ -72,6 +72,9 @@ def step_preference_data(
     # Save contrastive preferences for each pair
     ctx.save_all_contrastive_prefs()
 
+    # Save position mappings for each pair
+    ctx.save_all_position_mappings()
+
     # Build and save horizon analysis
     horizon_analysis = build_horizon_analysis(ctx.pref_pairs)
     save_horizon_analysis(horizon_analysis, ctx.output_dir)
@@ -249,6 +252,9 @@ def step_geo(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Run geometric (PCA) analysis on residual stream activations."""
+    from ..common.sample_position_mapping import SamplePositionMapping
+    from .attn_analysis.attn_analysis_run import resolve_positions
+
     geo_cfg = ctx.cfg.geo
     if not geo_cfg.get("enabled", False):
         log("[geo] Geo analysis disabled, skipping")
@@ -257,7 +263,7 @@ def step_geo(
     ctx.geo_agg = GeoAggregatedResults()
 
     # Get analysis parameters from config
-    positions = geo_cfg.get("positions", None)  # None = last token only
+    position_config = geo_cfg.get("positions", None)  # Can be list of int or str
     layers = geo_cfg.get("layers", None)  # None = all layers
     n_components = geo_cfg.get("n_components", 3)
 
@@ -278,6 +284,21 @@ def step_geo(
     for pair_idx, pair in enumerate(ctx.pairs):
         if pair_idx in cached_pair_indices:
             continue
+
+        # Resolve positions for this pair
+        # If positions are strings (format_pos names), resolve them using mapping
+        positions = position_config
+        if position_config and all(isinstance(p, str) for p in position_config):
+            # Build mapping for this pair (using corrupted/long_term sample)
+            pref = ctx.get_pref_pair(pair_idx)
+            if pref is not None:
+                mapping = SamplePositionMapping.build_from_preference(
+                    pref.long_term, ctx.runner, sample_idx=pair_idx
+                )
+                positions = resolve_positions(mapping, position_config)
+                if not positions:
+                    log(f"[geo] Pair {pair_idx}: No positions resolved from {position_config}")
+                    continue
 
         log_progress(pair_idx + 1, len(ctx.pairs), "[geo] Processing pair ")
         result = run_geo_analysis(

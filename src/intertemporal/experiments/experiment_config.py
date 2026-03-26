@@ -45,36 +45,40 @@ VIZ: dict = {
 }
 
 # Default geometric analysis settings (PCA of residual stream)
+# Positions use format_pos names from SamplePositionMapping
 GEO: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
     "positions": [
-        28,
-        30,
-        32,
-        35,
-        44,
-        48,
-        52,
-        86,
-        87,
-        88,
-        103,
-        121,
-        122,
-        139,
-        140,
-        143,
-        144,
-        145,
+        # Prompt structure markers
+        "situation_marker",
+        "task_marker",
+        "consider_marker",
+        "action_marker",
+        "format_marker",
+        # Variable positions (time horizon and options)
+        "time_horizon",
+        "post_time_horizon",
+        "left_label",
+        "left_reward",
+        "left_time",
+        "right_label",
+        "right_reward",
+        "right_time",
+        # Response positions
+        "chat_suffix",
+        "response_choice_prefix",
+        "response_choice",
+        "response_reasoning_prefix",
+        "response_reasoning",
     ],
     "n_components": 5,
 }
 
 # Default difference-in-means settings
 DIFFMEANS: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "n_components": 10,  # Number of SVD components to track
 }
@@ -82,19 +86,19 @@ DIFFMEANS: dict = {
 # Default fine-grained activation patching settings
 # Uses FAST attribution for heads/neurons (not sweeps), then causal patching for position/path/multi-site
 FINE_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     # Head attribution (fast - uses specified layers, not sweep)
     "head_patching_enabled": True,
-    "head_layers": [24, 21, 19, 29, 30],  # Key attention layers (fast attribution)
+    "head_layers": [19, 21, 24, 28, 29, 30],  # Key attention layers (fast attribution)
     # Position patching for top heads (causal)
     "position_patching_enabled": True,
-    "n_top_heads_for_position": 5,
+    "n_top_heads_for_position": 10,
     "position_range": None,  # (start, end) or auto
     # Path patching (causal)
     "path_patching_enabled": True,
     "source_layers": [19, 21, 24],
-    "dest_mlp_layers": [28, 31, 34],
+    "dest_mlp_layers": [28, 29, 31, 34],
     "dest_head_layers": [28, 29, 30, 31],
     "n_top_source_heads": 5,
     # Multi-site interaction (causal)
@@ -103,7 +107,7 @@ FINE_PATCH: dict = {
     # Neuron attribution (fast - uses specified layer, not sweep)
     "neuron_patching_enabled": True,
     "neuron_target_layer": 31,
-    "mlp_layers": [31, 24, 28],  # Key MLP layers (fast attribution)
+    "mlp_layers": [24, 28, 31],  # Key MLP layers (fast attribution)
     "n_top_neurons": 50,
     # Layer-position fine heatmap (causal)
     "layer_position_enabled": True,
@@ -113,9 +117,9 @@ FINE_PATCH: dict = {
 
 # Default MLP neuron analysis settings
 MLP_ANALYSIS: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
-    "layers": [35, 31, 28, 19],  # Key MLP layers for horizon processing
+    "layers": [35, 31, 28, 21, 24, 19],  # Key MLP layers for horizon processing
     "n_top_neurons": 50,  # Number of top neurons to track per layer
 }
 
@@ -125,7 +129,7 @@ ATTN_ANALYSIS: dict = {
     "no_cache": True,
     "layers": [19, 21, 24],  # Key attention layers for horizon processing
     "store_patterns": True,  # Whether to store full attention patterns
-    "dynamic_threshold": 0.1,  # Threshold for detecting dynamic attention changes
+    "dynamic_threshold": 0.05,  # Threshold for detecting dynamic attention changes
 }
 
 # Default pair requirement settings (empty = no requirements, allows all valid pairs)

@@ -73,6 +73,17 @@ class PrefPairRequirement(BaseSchema):
     only_long_associated: bool = False
     only_one_associated: bool = False
 
+    # Largest reward choice requirements
+    both_largest_reward: bool = False
+    neither_largest_reward: bool = False
+    only_short_largest_reward: bool = False
+    only_long_largest_reward: bool = False
+    only_one_largest_reward: bool = False
+
+    # Trajectory length requirements
+    same_length: bool = False
+    different_length: bool = False
+
     def verify(self) -> None:
         """Verify requirements are logically consistent.
 
@@ -90,8 +101,10 @@ class PrefPairRequirement(BaseSchema):
             ("same_rewards", "different_rewards"),
             ("same_times", "different_times"),
             ("same_horizon", "different_horizon"),
+            ("same_length", "different_length"),
             ("both_rational", "neither_rational"),
             ("both_associated", "neither_associated"),
+            ("both_largest_reward", "neither_largest_reward"),
         ]
         for a, b in exclusive_pairs:
             if getattr(self, a) and getattr(self, b):
@@ -148,6 +161,19 @@ class PrefPairRequirement(BaseSchema):
         if len(active_associated) > 1:
             errors.append(
                 f"Associated requirements are mutually exclusive: {active_associated}"
+            )
+
+        # Largest reward: mutually exclusive groups
+        largest_reward_exclusive = [
+            "both_largest_reward",
+            "neither_largest_reward",
+            "only_short_largest_reward",
+            "only_long_largest_reward",
+        ]
+        active_largest_reward = [r for r in largest_reward_exclusive if getattr(self, r)]
+        if len(active_largest_reward) > 1:
+            errors.append(
+                f"Largest reward requirements are mutually exclusive: {active_largest_reward}"
             )
 
         # only_one_X with specific only_short/long is redundant but not invalid
@@ -234,6 +260,24 @@ class PrefPairRequirement(BaseSchema):
         if self.only_long_associated and not pair.only_long_associated:
             return False
         if self.only_one_associated and not pair.only_one_associated:
+            return False
+
+        # Largest reward checks
+        if self.both_largest_reward and not pair.both_largest_reward:
+            return False
+        if self.neither_largest_reward and not pair.neither_largest_reward:
+            return False
+        if self.only_short_largest_reward and not pair.only_short_largest_reward:
+            return False
+        if self.only_long_largest_reward and not pair.only_long_largest_reward:
+            return False
+        if self.only_one_largest_reward and not pair.only_one_largest_reward:
+            return False
+
+        # Length checks
+        if self.same_length and not pair.same_length:
+            return False
+        if self.different_length and not pair.different_length:
             return False
 
         return True

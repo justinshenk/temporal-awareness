@@ -23,6 +23,44 @@ from ...viz.token_coloring import (
 
 TOKENIZATION_CACHE_FILENAME = "tokenization_viz_cache.json"
 
+# Color palette for format positions
+FORMAT_POS_COLORS = {
+    # Prompt markers
+    "situation_marker": "#FF9800",
+    "task_marker": "#2196F3",
+    "consider_marker": "#9C27B0",
+    "action_marker": "#4CAF50",
+    "format_marker": "#795548",
+    "format_choice_prefix": "#E91E63",
+    "format_reasoning_prefix": "#00BCD4",
+    # Content regions
+    "situation_content": "#FFE0B2",
+    "task_content": "#BBDEFB",
+    "consider_content": "#E1BEE7",
+    "action_content": "#C8E6C9",
+    "format_content": "#D7CCC8",
+    # Variable positions
+    "time_horizon": "#F44336",
+    "post_time_horizon": "#FFCDD2",
+    "left_label": "#8BC34A",
+    "left_reward": "#CDDC39",
+    "left_time": "#FFEB3B",
+    "right_label": "#03A9F4",
+    "right_reward": "#00BCD4",
+    "right_time": "#009688",
+    # Response positions
+    "response_choice_prefix": "#9C27B0",
+    "response_choice": "#673AB7",
+    "response_reasoning_prefix": "#3F51B5",
+    "response_reasoning": "#C5CAE9",
+    # Chat template
+    "chat_prefix": "#9E9E9E",
+    "chat_suffix": "#607D8B",
+    # Other
+    "prompt_other": "#ECEFF1",
+    "response_other": "#FAFAFA",
+}
+
 
 @dataclass
 class TokenizationVizData(BaseSchema):
@@ -517,3 +555,217 @@ def _plot_token_grid(
         bbox_to_anchor=(1.01, 1),
         borderaxespad=0,
     )
+
+
+def visualize_tokenization_from_position_mapping(
+    mapping_path: Path,
+    output_path: Path | None = None,
+) -> bool:
+    """Visualize tokenization from a SamplePositionMapping JSON file.
+
+    Creates a token grid visualization colored by format_pos assignments.
+
+    Args:
+        mapping_path: Path to sample_position_mapping.json
+        output_path: Path to save the PNG (default: same dir as mapping, tokenization.png)
+
+    Returns:
+        True if successful, False if mapping not found
+    """
+    from ..common.sample_position_mapping import SamplePositionMapping
+
+    mapping_path = Path(mapping_path)
+    if not mapping_path.exists():
+        return False
+
+    # Load mapping
+    mapping = SamplePositionMapping.from_json(mapping_path)
+
+    # Default output path
+    if output_path is None:
+        output_path = mapping_path.parent / "tokenization.png"
+
+    # Plot
+    _plot_position_mapping_grid(mapping, output_path)
+    return True
+
+
+def _plot_position_mapping_grid(
+    mapping,  # SamplePositionMapping
+    save_path: Path,
+    max_response_tokens: int = 100,
+) -> None:
+    """Plot token grid from SamplePositionMapping with format_pos coloring.
+
+    Args:
+        mapping: SamplePositionMapping with token info
+        save_path: Path to save the plot
+        max_response_tokens: Max response tokens to show
+    """
+    positions = mapping.positions
+    prompt_len = mapping.prompt_len
+    full_len = mapping.full_len
+
+    # Limit response tokens
+    response_len = full_len - prompt_len
+    response_to_show = min(response_len, max_response_tokens)
+    n_tokens = prompt_len + response_to_show
+
+    # Create figure
+    tokens_per_row = 15
+    n_rows = (n_tokens + tokens_per_row - 1) // tokens_per_row
+    fig_height = max(14, min(32, 3 + (n_rows * 0.8)))
+    fig = plt.figure(figsize=(20, fig_height))
+
+    # Info panel at top
+    ax_info = fig.add_axes([0.05, 0.94, 0.9, 0.04])
+    ax_info.axis("off")
+    info_text = (
+        f"Sample {mapping.sample_idx}    |    "
+        f"Prompt: {prompt_len} tokens    |    "
+        f"Total: {full_len} tokens    |    "
+        f"Format positions: {len(mapping.named_positions)}"
+    )
+    ax_info.text(0.5, 0.5, info_text, ha="center", va="center", fontsize=11, fontweight="bold")
+
+    # Main token grid
+    ax = fig.add_axes([0.02, 0.02, 0.75, 0.90])
+    ax.set_xlim(-0.5, tokens_per_row - 0.5)
+    ax.set_ylim(-0.5, n_rows - 0.5)
+    ax.invert_yaxis()
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    # Draw each token
+    for i in range(n_tokens):
+        if i >= len(positions):
+            break
+
+        pos_info = positions[i]
+        row = i // tokens_per_row
+        col = i % tokens_per_row
+
+        # Get color based on format_pos
+        format_pos = pos_info.format_pos
+        if format_pos and format_pos in FORMAT_POS_COLORS:
+            facecolor = FORMAT_POS_COLORS[format_pos]
+        elif pos_info.traj_section == "prompt":
+            facecolor = "#E8F5E9"  # Light green for prompt
+        else:
+            facecolor = "#E3F2FD"  # Light blue for response
+
+        # Edge color based on section
+        edgecolor = "#388E3C" if pos_info.traj_section == "prompt" else "#1976D2"
+
+        # Draw token box
+        rect = mpatches.FancyBboxPatch(
+            (col - 0.45, row - 0.4),
+            0.9,
+            0.8,
+            boxstyle="round,pad=0.02,rounding_size=0.08",
+            facecolor=facecolor,
+            edgecolor=edgecolor,
+            linewidth=1.5,
+        )
+        ax.add_patch(rect)
+
+        # Token text (escape special chars)
+        token_text = pos_info.decoded_token.replace("\n", "\\n").replace("\t", "\\t")
+
+        # Adaptive font size
+        if len(token_text) > 12:
+            token_text = token_text[:10] + ".."
+            fontsize = 5
+        elif len(token_text) > 8:
+            fontsize = 5.5
+        elif len(token_text) > 5:
+            fontsize = 6
+        else:
+            fontsize = 7
+
+        ax.text(
+            col, row - 0.12, token_text,
+            ha="center", va="center",
+            fontsize=fontsize, fontfamily="monospace", fontweight="bold",
+        )
+
+        # Format position label (abbreviated)
+        if format_pos:
+            label = format_pos
+            if pos_info.rel_pos >= 0:
+                label = f"{label}:{pos_info.rel_pos}"
+            # Truncate long labels
+            if len(label) > 12:
+                label = label[:10] + ".."
+            ax.text(
+                col, row + 0.22, label,
+                ha="center", va="center",
+                fontsize=4, color="#444444",
+            )
+        else:
+            ax.text(
+                col, row + 0.22, f"P{i}",
+                ha="center", va="center",
+                fontsize=4, color="gray",
+            )
+
+        # Position number in corner
+        pos_color = "#D32F2F" if format_pos == "time_horizon" else "darkgray"
+        pos_weight = "bold" if format_pos == "time_horizon" else "normal"
+        ax.text(
+            col - 0.35, row - 0.32, str(i),
+            ha="left", va="center",
+            fontsize=5, color=pos_color, fontweight=pos_weight,
+        )
+
+    # Legend - show unique format_pos values present in this sample
+    ax_legend = fig.add_axes([0.78, 0.02, 0.20, 0.90])
+    ax_legend.axis("off")
+
+    # Get unique format_pos values
+    unique_formats = set()
+    for pos_info in positions[:n_tokens]:
+        if pos_info.format_pos:
+            unique_formats.add(pos_info.format_pos)
+
+    # Sort by category
+    category_order = [
+        # Markers first
+        "situation_marker", "task_marker", "consider_marker", "action_marker", "format_marker",
+        "format_choice_prefix", "format_reasoning_prefix",
+        # Content regions
+        "situation_content", "task_content", "consider_content", "action_content", "format_content",
+        # Variable positions
+        "time_horizon", "post_time_horizon",
+        "left_label", "left_reward", "left_time",
+        "right_label", "right_reward", "right_time",
+        # Response
+        "response_choice_prefix", "response_choice", "response_reasoning_prefix", "response_reasoning",
+        # Other
+        "chat_prefix", "chat_suffix", "prompt_other", "response_other",
+    ]
+
+    sorted_formats = [f for f in category_order if f in unique_formats]
+    # Add any not in category_order
+    sorted_formats.extend([f for f in sorted(unique_formats) if f not in sorted_formats])
+
+    # Draw legend entries
+    y_pos = 0.98
+    ax_legend.text(0.05, y_pos, "Format Positions:", fontsize=9, fontweight="bold", va="top")
+    y_pos -= 0.04
+
+    for fmt in sorted_formats:
+        if y_pos < 0.02:
+            break
+        color = FORMAT_POS_COLORS.get(fmt, "#CCCCCC")
+        rect = mpatches.FancyBboxPatch(
+            (0.05, y_pos - 0.015), 0.08, 0.025,
+            boxstyle="round,pad=0.01,rounding_size=0.01",
+            facecolor=color, edgecolor="#666666", linewidth=0.5,
+            transform=ax_legend.transAxes, clip_on=False,
+        )
+        ax_legend.add_patch(rect)
+        ax_legend.text(0.15, y_pos, fmt, fontsize=7, va="center", transform=ax_legend.transAxes)
+        y_pos -= 0.028
+
+    _finalize_plot(save_path)

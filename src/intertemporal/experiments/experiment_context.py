@@ -423,6 +423,41 @@ class ExperimentContext:
             self.save_contrastive_pref(pair_idx)
         log(f"[ctx] Saved contrastive preferences for {len(self.pairs)} pairs")
 
+    def get_position_mapping_path(self, pair_idx: int) -> Path:
+        """Get path for per-pair position mapping JSON."""
+        return self.get_pair_dir(pair_idx) / "sample_position_mapping.json"
+
+    def save_position_mapping(self, pair_idx: int) -> None:
+        """Save position mapping for a pair.
+
+        Builds SamplePositionMapping from the corrupted trajectory and saves it.
+        Also generates tokenization.png visualization from the mapping.
+        """
+        from ..common.sample_position_mapping import SamplePositionMapping
+        from ..viz.tokenization_viz import visualize_tokenization_from_position_mapping
+
+        pref = self.get_pref_pair(pair_idx)
+        if pref is None:
+            return
+
+        # Build mapping from corrupted (long_term) sample
+        mapping = SamplePositionMapping.build_from_preference(
+            pref.long_term, self.runner, sample_idx=pair_idx
+        )
+
+        path = self.get_position_mapping_path(pair_idx)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(mapping.to_dict(), path)
+
+        # Generate tokenization visualization from the mapping
+        visualize_tokenization_from_position_mapping(path)
+
+    def save_all_position_mappings(self) -> None:
+        """Save position mappings for all pairs."""
+        for pair_idx in range(len(self.pairs)):
+            self.save_position_mapping(pair_idx)
+        log(f"[ctx] Saved position mappings for {len(self.pairs)} pairs")
+
     def get_fine_agg_path(self) -> Path:
         return self.output_dir / "fine_agg.json"
 

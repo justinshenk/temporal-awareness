@@ -303,6 +303,85 @@ class ContrastivePreferences(BaseSchema):
         """Minimum choice probability across both samples."""
         return min(self.short_term.choice_prob, self.long_term.choice_prob)
 
+    # =========================================================================
+    # Trajectory Length Properties
+    # =========================================================================
+
+    @property
+    def short_term_length(self) -> int | None:
+        """Number of tokens in short_term trajectory."""
+        traj = self.short_term.chosen_traj
+        if traj is not None and hasattr(traj, "token_ids"):
+            return len(traj.token_ids)
+        return None
+
+    @property
+    def long_term_length(self) -> int | None:
+        """Number of tokens in long_term trajectory."""
+        traj = self.long_term.chosen_traj
+        if traj is not None and hasattr(traj, "token_ids"):
+            return len(traj.token_ids)
+        return None
+
+    @property
+    def same_length(self) -> bool:
+        """Check if both trajectories have the same number of tokens."""
+        short_len = self.short_term_length
+        long_len = self.long_term_length
+        if short_len is None or long_len is None:
+            return False
+        return short_len == long_len
+
+    @property
+    def different_length(self) -> bool:
+        """Check if trajectories have different number of tokens."""
+        short_len = self.short_term_length
+        long_len = self.long_term_length
+        if short_len is None or long_len is None:
+            return False
+        return short_len != long_len
+
+    # =========================================================================
+    # Largest Reward Choice Properties
+    # =========================================================================
+
+    @property
+    def both_largest_reward(self) -> bool:
+        """Both samples chose the option with the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is True
+            and self.long_term.matches_largest_reward is True
+        )
+
+    @property
+    def neither_largest_reward(self) -> bool:
+        """Neither sample chose the option with the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is False
+            and self.long_term.matches_largest_reward is False
+        )
+
+    @property
+    def only_short_largest_reward(self) -> bool:
+        """Only short_term sample chose the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is True
+            and self.long_term.matches_largest_reward is False
+        )
+
+    @property
+    def only_long_largest_reward(self) -> bool:
+        """Only long_term sample chose the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is False
+            and self.long_term.matches_largest_reward is True
+        )
+
+    @property
+    def only_one_largest_reward(self) -> bool:
+        """Exactly one sample chose the largest reward."""
+        return self.only_short_largest_reward or self.only_long_largest_reward
+
     @property
     def mean_choice_prob(self) -> float:
         """Mean choice probability across both samples."""
@@ -355,7 +434,7 @@ class ContrastivePreferences(BaseSchema):
                 self.long_term.choice_prob,
             ],
             "min_choice_prob": self.min_choice_prob,
-            # Rational/associated
+            # Rational/associated/largest_reward
             "matches_rational": [
                 self.short_term.matches_rational,
                 self.long_term.matches_rational,
@@ -364,6 +443,16 @@ class ContrastivePreferences(BaseSchema):
                 self.short_term.matches_associated,
                 self.long_term.matches_associated,
             ],
+            "matches_largest_reward": [
+                self.short_term.matches_largest_reward,
+                self.long_term.matches_largest_reward,
+            ],
+            # Trajectory lengths
+            "trajectory_lengths": [
+                self.short_term_length,
+                self.long_term_length,
+            ],
+            "same_length": self.same_length,
             # IDs
             "formatting_ids": [
                 self.short_term.formatting_id,
