@@ -223,8 +223,16 @@ class ContrastivePair(BaseSchema):
         corrupted_internals: dict,
         alpha: float,
     ) -> Intervention | None:
-        """Create intervention for a single layer."""
-        hook = hook_name(layer, component)
+        """Create intervention for a single layer.
+
+        Handles both 3D activations [batch, seq, hidden] and 4D activations
+        [batch, seq, n_heads, d_head] for attn_z head-level interventions.
+        """
+        # For attn_z, use the special hook name format
+        if component == "attn_z":
+            hook = f"blocks.{layer}.attn.hook_z"
+        else:
+            hook = hook_name(layer, component)
 
         # Get source activations (only source needs internals)
         if mode == "denoising":
@@ -237,9 +245,16 @@ class ContrastivePair(BaseSchema):
         if patch_acts is None:
             return None
 
-        # Squeeze batch dimension if present: [1, seq, hidden] -> [seq, hidden]
-        if patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
-            patch_acts = patch_acts.squeeze(0)
+        # Determine if this is a head-level intervention (4D tensor)
+        is_head_level = component == "attn_z" and target.head is not None
+
+        # Handle dimension squeezing based on tensor rank
+        # 4D: [batch, seq, n_heads, d_head] -> [seq, n_heads, d_head]
+        # 3D: [batch, seq, hidden] -> [seq, hidden]
+        if patch_acts.ndim == 4 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, n_heads, d_head]
+        elif patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, hidden]
 
         positions = target.positions
 
@@ -263,11 +278,19 @@ class ContrastivePair(BaseSchema):
                     self.position_mapping.get(p, p) for p in range(running_len)
                 ]
 
-        # Clamp positions to valid range
+        # Clamp positions to valid range (use first dimension for seq length)
         patch_positions = [
-            max(0, min(int(p), len(patch_acts) - 1)) for p in patch_positions
+            max(0, min(int(p), patch_acts.shape[0] - 1)) for p in patch_positions
         ]
-        patch_vals = patch_acts[patch_positions]
+
+        # Extract patch values based on tensor structure
+        if is_head_level:
+            # For head-level: extract [n_positions, d_head] for specific head
+            head_idx = target.head
+            patch_vals = patch_acts[patch_positions, head_idx, :]  # [n_positions, d_head]
+        else:
+            # For standard 3D: extract [n_positions, hidden]
+            patch_vals = patch_acts[patch_positions]
 
         # Properly convert tensor to numpy array
         if hasattr(patch_vals, "detach"):
@@ -284,7 +307,7 @@ class ContrastivePair(BaseSchema):
         )
 
         if DEBUG_INTERVENTIONS and layer == 0:
-            print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
+            print(f"[intervention] L{layer} mode={mode} alpha={alpha} head={target.head}")
             print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
             print(
                 f"[intervention]   running_len={running_len}, target.positions={positions}"
@@ -303,6 +326,7 @@ class ContrastivePair(BaseSchema):
                 values=patch_vals,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
         else:
             return Intervention(
@@ -313,6 +337,7 @@ class ContrastivePair(BaseSchema):
                 alpha=alpha,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
 
     def print_summary(self) -> None:

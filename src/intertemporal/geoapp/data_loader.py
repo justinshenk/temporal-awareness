@@ -27,12 +27,20 @@ from umap import UMAP
 
 _compute_lock = threading.Lock()
 
+# Module-level caches that survive server reloads (uvicorn --reload)
+# This prevents losing warmup work when files change and server restarts
+_GLOBAL_PCA_CACHE: dict = {}
+_GLOBAL_UMAP_CACHE: dict = {}
+_GLOBAL_TSNE_CACHE: dict = {}
+_GLOBAL_ACTIVATIONS_CACHE: dict = {}
+
 
 @dataclass
 class GeometryDataLoader:
     """Load and cache geometry data for interactive visualization.
 
     Handles the per-sample activation format with semantic position mapping.
+    Uses module-level caches that survive server reloads.
     """
 
     data_dir: Path
@@ -41,14 +49,17 @@ class GeometryDataLoader:
     _position_mapping: dict = field(default_factory=dict, repr=False)
     _layers: list = field(default_factory=list, repr=False)
     _semantic_positions: set = field(default_factory=set, repr=False)
-    _pca_cache: dict = field(default_factory=dict, repr=False)
-    _umap_cache: dict = field(default_factory=dict, repr=False)
-    _tsne_cache: dict = field(default_factory=dict, repr=False)
-    _activations_cache: dict = field(default_factory=dict, repr=False)
+    # Instance caches point to global caches for reload survival
+    _pca_cache: dict = field(default_factory=lambda: _GLOBAL_PCA_CACHE, repr=False)
+    _umap_cache: dict = field(default_factory=lambda: _GLOBAL_UMAP_CACHE, repr=False)
+    _tsne_cache: dict = field(default_factory=lambda: _GLOBAL_TSNE_CACHE, repr=False)
+    _activations_cache: dict = field(default_factory=lambda: _GLOBAL_ACTIVATIONS_CACHE, repr=False)
 
     def __post_init__(self):
         if isinstance(self.data_dir, str):
             self.data_dir = Path(self.data_dir)
+        # Cache key prefix for this data directory (ensures different dirs don't share cache)
+        self._cache_prefix = str(self.data_dir.resolve())
         self._load_data()
 
     def _load_data(self):
@@ -299,7 +310,7 @@ class GeometryDataLoader:
         Returns the sample indices in the same order as the activations/embeddings.
         Supports position format "format_pos:rel_pos" for specific relative position.
         """
-        cache_key = f"L{layer}_{component}_{position}_indices"
+        cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_indices"
         if cache_key in self._activations_cache:
             return self._activations_cache[cache_key]
 
@@ -349,7 +360,7 @@ class GeometryDataLoader:
 
         Supports position format "format_pos:rel_pos" for specific relative position.
         """
-        cache_key = f"L{layer}_{component}_{position}"
+        cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}"
         if cache_key in self._activations_cache:
             return self._activations_cache[cache_key]
 
@@ -415,7 +426,7 @@ class GeometryDataLoader:
         self, layer: int, component: str, position: str, n_components: int = 3
     ) -> np.ndarray | None:
         """Load or compute PCA embedding."""
-        cache_key = f"L{layer}_{component}_{position}_pca_{n_components}"
+        cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_pca_{n_components}"
 
         # Check memory cache first
         if cache_key in self._pca_cache:
@@ -475,7 +486,7 @@ class GeometryDataLoader:
         min_dist: float = 0.1,
     ) -> np.ndarray | None:
         """Load or compute UMAP embedding."""
-        cache_key = f"L{layer}_{component}_{position}_umap_{n_components}_{n_neighbors}_{min_dist}"
+        cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_umap_{n_components}_{n_neighbors}_{min_dist}"
 
         # Check memory cache first
         if cache_key in self._umap_cache:
@@ -520,7 +531,7 @@ class GeometryDataLoader:
         perplexity: float = 30.0,
     ) -> np.ndarray | None:
         """Load or compute t-SNE embedding."""
-        cache_key = f"L{layer}_{component}_{position}_tsne_{n_components}_{perplexity}"
+        cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_tsne_{n_components}_{perplexity}"
 
         # Check memory cache first
         if cache_key in self._tsne_cache:

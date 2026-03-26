@@ -20,6 +20,8 @@ interface PointCloudProps {
   onSelect?: (index: number | null, point: THREE.Vector3 | null, data: PointData | null) => void;
   selectedIndex?: number | null;
   hoverScale?: number;
+  /** Visibility mask - 1.0 for visible, 0.0 for hidden */
+  visibility?: Float32Array;
 }
 
 // Reusable vector to avoid allocations
@@ -28,6 +30,7 @@ const tempVector = new THREE.Vector3();
 // Custom shader for crisp point rendering - BIG visible points
 const vertexShader = `
   attribute float pointIndex;
+  attribute float visibility;
 
   uniform float size;
   uniform float hoverScale;
@@ -39,14 +42,23 @@ const vertexShader = `
   varying vec3 vColor;
   varying float vIsSelected;
   varying float vIsHovered;
+  varying float vVisibility;
 
   void main() {
     vColor = color;
+    vVisibility = visibility;
 
     vIsSelected = (pointIndex == selectedIndex) ? 1.0 : 0.0;
     vIsHovered = (pointIndex == hoveredIndex) ? 1.0 : 0.0;
 
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+
+    // Hide point if not visible (move off-screen and set size to 0)
+    if (visibility < 0.5) {
+      gl_PointSize = 0.0;
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // Off-screen
+      return;
+    }
 
     // Scale up selected/hovered points
     float scale = 1.0;
@@ -78,8 +90,12 @@ const fragmentShader = `
   varying vec3 vColor;
   varying float vIsSelected;
   varying float vIsHovered;
+  varying float vVisibility;
 
   void main() {
+    // Discard hidden points
+    if (vVisibility < 0.5) discard;
+
     // Create circular points with hard edges
     vec2 center = gl_PointCoord - vec2(0.5);
     float dist = length(center);
@@ -109,6 +125,7 @@ function PointCloudInner({
   onSelect,
   selectedIndex = null,
   hoverScale = 1.5,
+  visibility,
 }: PointCloudProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -122,6 +139,7 @@ function PointCloudInner({
   const positionAttrRef = useRef<THREE.BufferAttribute | null>(null);
   const colorAttrRef = useRef<THREE.BufferAttribute | null>(null);
   const indexAttrRef = useRef<THREE.BufferAttribute | null>(null);
+  const visibilityAttrRef = useRef<THREE.BufferAttribute | null>(null);
 
   // Create or update geometry - avoid full recreation
   const geometry = useMemo(() => {
@@ -167,9 +185,26 @@ function PointCloudInner({
       geo.setAttribute('pointIndex', indexAttrRef.current);
     }
 
+    // Update visibility attribute - default to all visible (1.0)
+    const safeVisibility = visibility && visibility.length === pointCount
+      ? visibility
+      : (() => {
+          const allVisible = new Float32Array(pointCount);
+          for (let i = 0; i < pointCount; i++) allVisible[i] = 1.0;
+          return allVisible;
+        })();
+
+    if (!visibilityAttrRef.current || visibilityAttrRef.current.count !== pointCount) {
+      visibilityAttrRef.current = new THREE.BufferAttribute(safeVisibility, 1);
+      geo.setAttribute('visibility', visibilityAttrRef.current);
+    } else {
+      visibilityAttrRef.current.array = safeVisibility;
+      visibilityAttrRef.current.needsUpdate = true;
+    }
+
     geo.computeBoundingSphere();
     return geo;
-  }, [positions, colors, pointCount, colorPointCount]);
+  }, [positions, colors, pointCount, colorPointCount, visibility]);
 
   // Cleanup on unmount only
   useEffect(() => {

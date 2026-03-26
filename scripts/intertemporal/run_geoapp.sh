@@ -47,10 +47,10 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# Start backend server
-echo -e "${GREEN}Starting backend server...${NC}"
+# Start backend server with warmup enabled for smooth UI
+echo -e "${GREEN}Starting backend server (with warmup)...${NC}"
 cd "$PROJECT_ROOT"
-uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" --dev &
+uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" --dev --warmup &
 BACKEND_PID=$!
 
 # Wait for backend to be ready (check health endpoint)

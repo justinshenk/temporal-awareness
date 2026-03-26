@@ -248,8 +248,11 @@ class AttentionPatchingCorrelation(BaseSchema):
     patching_score: float = 0.0
     denoising_recovery: float = 0.0
     noising_disruption: float = 0.0
+    redundancy_gap: float = 0.0  # denoising - noising (positive = unique info, negative = redundant)
     attn_to_source: float = 0.0
     attn_to_dest: float = 0.0
+    top_attended_positions: list[int] = field(default_factory=list)  # Top-5 attended positions
+    top_attended_weights: list[float] = field(default_factory=list)  # Corresponding weights
     is_source_attender: bool = False
     correlation_type: str = "unknown"  # "source_attender", "dest_attender", "both", "neither"
 
@@ -322,9 +325,11 @@ class FineGrainedResults(BaseSchema):
     position_results: list[PositionPatchingResult] = field(default_factory=list)
     path_to_mlp: list[PathPatchingResult] = field(default_factory=list)
     path_to_head: list[PathPatchingResult] = field(default_factory=list)
+    cross_layer_paths: list[PathPatchingResult] = field(default_factory=list)  # L19/L21 → L24
     multi_site: list[MultiSiteResult] = field(default_factory=list)
     neuron_results: list[NeuronPatchingResult] = field(default_factory=list)
     layer_position: dict[str, LayerPositionResult] = field(default_factory=dict)
+    attention_correlations: list[AttentionPatchingCorrelation] = field(default_factory=list)
 
     # Metadata
     n_layers: int = 0
@@ -385,8 +390,10 @@ class FineGrainedResults(BaseSchema):
             "position_results": [r.to_dict() for r in self.position_results],
             "path_to_mlp": [r.to_dict() for r in self.path_to_mlp],
             "path_to_head": [r.to_dict() for r in self.path_to_head],
+            "cross_layer_paths": [r.to_dict() for r in self.cross_layer_paths],
             "multi_site": [r.to_dict() for r in self.multi_site],
             "neuron_results": [r.to_dict() for r in self.neuron_results],
+            "attention_correlations": [r.to_dict() for r in self.attention_correlations],
         }
         if self.head_sweep is not None:
             d["head_sweep"] = self.head_sweep.to_dict()
@@ -404,8 +411,10 @@ class FineGrainedResults(BaseSchema):
             position_results=[PositionPatchingResult.from_dict(r) for r in d.get("position_results", [])],
             path_to_mlp=[PathPatchingResult.from_dict(r) for r in d.get("path_to_mlp", [])],
             path_to_head=[PathPatchingResult.from_dict(r) for r in d.get("path_to_head", [])],
+            cross_layer_paths=[PathPatchingResult.from_dict(r) for r in d.get("cross_layer_paths", [])],
             multi_site=[MultiSiteResult.from_dict(r) for r in d.get("multi_site", [])],
             neuron_results=[NeuronPatchingResult.from_dict(r) for r in d.get("neuron_results", [])],
+            attention_correlations=[AttentionPatchingCorrelation.from_dict(r) for r in d.get("attention_correlations", [])],
         )
         if "head_sweep" in d and d["head_sweep"] is not None:
             result.head_sweep = HeadSweepResults.from_dict(d["head_sweep"])

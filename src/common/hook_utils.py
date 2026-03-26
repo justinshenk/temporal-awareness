@@ -14,7 +14,12 @@ ATTRIBUTION_COMPONENTS = PATCHING_COMPONENTS
 
 
 def hook_name(layer: int, component: str) -> str:
-    """Generate hook name: blocks.{layer}.hook_{component}"""
+    """Generate hook name: blocks.{layer}.hook_{component}
+
+    Handles attn_z specially: blocks.{layer}.attn.hook_z
+    """
+    if component == "attn_z":
+        return f"blocks.{layer}.attn.hook_z"
     return f"blocks.{layer}.hook_{component}"
 
 
@@ -31,7 +36,14 @@ def hook_names_all(n_layers: int, components: list[str] | None = None) -> list[s
 
 
 def hook_filter_for_component(component: str) -> Callable[[str], bool]:
-    """Filter for a specific component."""
+    """Filter for a specific component.
+
+    Handles both standard components (hook_{component}) and
+    attention internals (attn.hook_z for attn_z component).
+    """
+    if component == "attn_z":
+        # attn_z uses special naming: blocks.{layer}.attn.hook_z
+        return lambda name: "attn.hook_z" in name
     target = f"hook_{component}"
     return lambda name: target in name
 
@@ -53,12 +65,20 @@ def attribution_filter(name: str) -> bool:
 
 
 def parse_hook_name(name: str) -> tuple[int, str] | None:
-    """Parse hook name to (layer, component) or None."""
+    """Parse hook name to (layer, component) or None.
+
+    Handles both standard format (blocks.{layer}.hook_{component})
+    and attention internal format (blocks.{layer}.attn.hook_z).
+    """
     if not name.startswith("blocks.") or ".hook_" not in name:
         return None
     try:
         parts = name.split(".")
         layer = int(parts[1])
+        # Handle attn.hook_z format
+        if ".attn.hook_z" in name:
+            return (layer, "attn_z")
+        # Standard format
         component = name.split(".hook_")[1]
         return (layer, component)
     except (IndexError, ValueError):

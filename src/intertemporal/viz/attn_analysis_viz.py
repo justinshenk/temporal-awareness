@@ -148,6 +148,88 @@ def _get_format_pos_labels_for_range(
     return labels
 
 
+def _get_source_position_labels(
+    result: AttnPairResult,
+    mapping: "SamplePositionMapping | None" = None,
+    abbreviate: bool = True,
+) -> list[str]:
+    """Get labels for source positions from result.
+
+    Uses mapping if available, otherwise generates labels from
+    result.source_position_names.
+
+    Args:
+        result: AttnPairResult with source_positions and source_position_names
+        mapping: Optional SamplePositionMapping for richer labels
+        abbreviate: Whether to abbreviate format_pos names
+
+    Returns:
+        List of labels for each source position
+    """
+    source_positions = result.source_positions
+    if not source_positions:
+        return []
+
+    # Try to use mapping first
+    if mapping is not None:
+        labels = []
+        for pos in source_positions:
+            label = _get_format_pos_label(mapping, pos, include_rel_pos=True, max_len=15, abbreviate=abbreviate)
+            labels.append(label)
+        # Check if mapping provided useful labels
+        if any(not label.startswith("P") for label in labels):
+            return labels
+
+    # Fallback: generate labels from source_position_names
+    # Assume positions are distributed among names in order
+    names = result.source_position_names or []
+    if not names:
+        return [f"P{p}" for p in source_positions]
+
+    # Abbreviation map
+    abbrevs = {
+        "time_horizon": "t_horiz",
+        "post_time_horizon": "post_th",
+        "response_choice": "resp_ch",
+        "response_choice_prefix": "resp_pre",
+        "response_reasoning_prefix": "reas_pre",
+        "response_reasoning": "resp_reas",
+        "chat_suffix": "chat_sfx",
+    }
+
+    # Try to infer which positions belong to which name
+    # This is a heuristic: consecutive positions with same prefix
+    labels = []
+    name_counts: dict[str, int] = {}
+
+    # Simple heuristic: divide positions among names based on named_positions if available
+    # Otherwise, use first name for all but last position, last name for last position
+    if len(names) == 1:
+        name = names[0]
+        abbrev = abbrevs.get(name, name) if abbreviate else name
+        for i in range(len(source_positions)):
+            labels.append(f"{abbrev}:{i}")
+    elif len(names) == 2:
+        # Assume time_horizon takes all but last, post_time_horizon takes last
+        name1, name2 = names
+        abbrev1 = abbrevs.get(name1, name1) if abbreviate else name1
+        abbrev2 = abbrevs.get(name2, name2) if abbreviate else name2
+        n1 = len(source_positions) - 1  # all but last for first name
+        for i in range(n1):
+            labels.append(f"{abbrev1}:{i}")
+        labels.append(f"{abbrev2}:0")
+    else:
+        # Multiple names - just use generic labels
+        for name in names:
+            abbrev = abbrevs.get(name, name) if abbreviate else name
+            if name not in name_counts:
+                name_counts[name] = 0
+            labels.append(f"{abbrev}:{name_counts[name]}")
+            name_counts[name] += 1
+
+    return labels
+
+
 def visualize_attn_analysis(
     agg: AttnAggregatedResults,
     output_dir: Path,
@@ -771,14 +853,13 @@ def _plot_pair_attention_heatmaps(
     output_path: Path,
     mapping: "SamplePositionMapping | None" = None,
 ) -> None:
-    """Plot 1: Attention probability heatmaps per head (clean).
+    """Plot 1: Attention to configured source positions only.
 
-    One heatmap per head at key layers.
-    X-axis: source position (key) - uses format_pos labels
+    X-axis: ONLY the configured source positions (time_horizon, post_time_horizon)
     Y-axis: head index
-    Color: attention weight
+    Color: attention weight to that position
     """
-    if not result.attention_patterns:
+    if not result.attention_patterns or not result.source_positions:
         return
 
     layers = sorted(result.attention_patterns.keys())
@@ -786,13 +867,13 @@ def _plot_pair_attention_heatmaps(
     if n_layers == 0:
         return
 
-    # Determine crop ranges based on source/dest positions
-    src_start, src_end = DEFAULT_SRC_RANGE
-    if result.source_positions:
-        src_start = max(0, min(result.source_positions) - 5)
-        src_end = min(200, max(result.source_positions) + 10)
+    # Only show configured source positions on x-axis
+    source_positions = result.source_positions
 
-    fig, axes = plt.subplots(1, n_layers, figsize=(6 * n_layers, 6), squeeze=False)
+    # Get format_pos labels for source positions
+    pos_labels = _get_source_position_labels(result, mapping)
+
+    fig, axes = plt.subplots(1, n_layers, figsize=(5 * n_layers, 6), squeeze=False)
 
     for i, layer in enumerate(layers):
         ax = axes[0, i]
@@ -808,42 +889,26 @@ def _plot_pair_attention_heatmaps(
         pattern_array = np.array(patterns)
         n_heads, seq_len = pattern_array.shape
 
-        # Crop to interesting range
-        crop_start = max(0, src_start)
-        crop_end = min(seq_len, src_end)
-        if crop_end <= crop_start:
-            crop_start, crop_end = 0, seq_len
-
-        cropped = pattern_array[:, crop_start:crop_end]
-        positions = list(range(crop_start, crop_end))
-
-        # Get format_pos labels for x-axis
-        pos_labels = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=12)
-                      for p in positions]
+        # Extract ONLY attention to configured source positions
+        source_attn = np.zeros((n_heads, len(source_positions)))
+        for j, sp in enumerate(source_positions):
+            if sp < seq_len:
+                source_attn[:, j] = pattern_array[:, sp]
 
         # Show heatmap
-        im = ax.imshow(cropped, aspect='auto', cmap='viridis')
+        im = ax.imshow(source_attn, aspect='auto', cmap='viridis')
         ax.set_ylabel('Head')
         ax.set_title(f'Layer {layer}')
 
-        # Set x-axis ticks with format_pos labels (every 3rd position to avoid crowding)
-        tick_step = max(1, len(positions) // 8)
-        tick_indices = list(range(0, len(positions), tick_step))
-        ax.set_xticks(tick_indices)
-        ax.set_xticklabels([pos_labels[i] for i in tick_indices], rotation=45, ha='right', fontsize=7)
-        ax.set_xlabel('Position (format_pos)')
-
-        # Mark source positions with vertical lines
-        for sp in result.source_positions:
-            if crop_start <= sp < crop_end:
-                x_idx = sp - crop_start
-                ax.axvline(x=x_idx, color='red', alpha=0.6, linewidth=1.5, linestyle='--')
+        # Set x-axis ticks with format_pos labels
+        ax.set_xticks(range(len(source_positions)))
+        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        ax.set_xlabel('Source Position')
 
         plt.colorbar(im, ax=ax, label='Attention', shrink=0.8)
 
-    # Create legend for source marker
     source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
-    fig.suptitle(f'Pair {result.pair_idx}: Attention Patterns (red = {source_names})',
+    fig.suptitle(f'Pair {result.pair_idx}: Attention to {source_names}',
                  fontsize=14)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
@@ -920,8 +985,24 @@ def _plot_pair_attention_flow(
     ax.set_xlim(min(result.source_positions) - 10 if result.source_positions else 0,
                 dest_pos + 10)
     ax.set_ylim(0, 1)
-    ax.set_xlabel('Position', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: Attention Flow (Top 5 Heads)\nDest P{dest_pos} -> Source Positions',
+
+    # Get dest label - use dest_position_names from result if mapping not available
+    dest_label = _get_format_pos_label(mapping, dest_pos, include_rel_pos=True, max_len=20)
+    if dest_label.startswith("P") and result.dest_position_names:
+        # Fallback to first dest position name when mapping unavailable
+        dest_label = result.dest_position_names[0]
+    source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
+
+    # Hide numerical x-axis - use semantic labels instead
+    # Set x-ticks at source and dest positions with semantic labels
+    source_labels = _get_source_position_labels(result, mapping)
+    tick_positions = list(result.source_positions) + [dest_pos]
+    tick_labels = source_labels + [dest_label]
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=8)
+    ax.set_xlabel('Position (format_pos)', fontsize=10)
+
+    ax.set_title(f'Pair {result.pair_idx}: Attention Flow (Top 5 Heads)\nDest {dest_label} -> {source_names}',
                  fontsize=14)
     ax.set_yticks([y_positions['src'], y_positions['dest']])
     ax.set_yticklabels(['Source\n(Key)', 'Dest\n(Query)'])
@@ -944,6 +1025,8 @@ def _annotate_key_tokens(
 ) -> None:
     """Annotate key positions with token identities on the attention flow diagram.
 
+    Uses format_pos labels instead of absolute positions.
+
     Args:
         ax: Matplotlib axes
         result: Attention analysis results
@@ -954,8 +1037,9 @@ def _annotate_key_tokens(
     dest_info = mapping.get_position(result.dest_position)
     if dest_info:
         token_repr = repr(dest_info.decoded_token)[:20]  # Truncate long tokens
+        format_label = _get_format_pos_label(mapping, result.dest_position, include_rel_pos=True, max_len=15)
         ax.annotate(
-            f'P{result.dest_position}: {token_repr}',
+            f'{format_label}: {token_repr}',
             xy=(result.dest_position, y_positions['dest']),
             xytext=(0, 15), textcoords='offset points',
             fontsize=8, ha='center', va='bottom',
@@ -969,9 +1053,9 @@ def _annotate_key_tokens(
         pos_info = mapping.get_position(pos)
         if pos_info:
             token_repr = repr(pos_info.decoded_token)[:15]
-            format_label = f" ({pos_info.format_pos})" if pos_info.format_pos else ""
+            format_label = _get_format_pos_label(mapping, pos, include_rel_pos=True, max_len=12)
             ax.annotate(
-                f'P{pos}: {token_repr}{format_label}',
+                f'{format_label}: {token_repr}',
                 xy=(pos, y_positions['src']),
                 xytext=(0, -20), textcoords='offset points',
                 fontsize=7, ha='center', va='top', rotation=45,
@@ -999,11 +1083,18 @@ def _plot_pair_top_attended(
     for lr in result.layer_results:
         for hi in lr.head_results:
             if hi.top_attended_positions:
+                # Use stored labels if available, otherwise generate from mapping
+                if hi.top_attended_labels and len(hi.top_attended_labels) >= len(hi.top_attended_positions[:5]):
+                    labels = hi.top_attended_labels[:5]
+                else:
+                    labels = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=15)
+                              for p in hi.top_attended_positions[:5]]
                 hd = {
                     'layer': lr.layer,
                     'head': hi.head_idx,
                     'attn_to_source': hi.attn_to_source,
                     'top_pos': hi.top_attended_positions[:5],
+                    'top_labels': labels,
                     'top_weights': hi.top_attended_weights[:5],
                     'corrupted_weights': [],
                 }
@@ -1034,12 +1125,9 @@ def _plot_pair_top_attended(
         ax = axes[row, col]
 
         positions = hd['top_pos']
+        pos_labels = hd['top_labels']
         clean_weights = hd['top_weights']
         corrupted_weights = hd['corrupted_weights']
-
-        # Get format_pos labels for positions
-        pos_labels = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=15)
-                      for p in positions]
 
         y = np.arange(len(positions))
 
@@ -1084,7 +1172,7 @@ def _plot_pair_top_attended(
     fig.legend(handles=legend_handles, loc='lower center', ncol=3,
                bbox_to_anchor=(0.5, -0.02), fontsize=10)
 
-    fig.suptitle(f'Pair {result.pair_idx}: Top Attended Positions (by format_pos)',
+    fig.suptitle(f'Pair {result.pair_idx}: Top Attended Positions per Head',
                  fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
@@ -1099,9 +1187,11 @@ def _plot_pair_attention_sidebyside(
     """Plot 1b: Side-by-side heatmaps for clean vs corrupted attention.
 
     For each layer, show clean and corrupted attention patterns side by side.
-    Uses format_pos labels on x-axis when mapping is provided.
+    X-axis: ONLY configured source positions (time_horizon, post_time_horizon).
     """
     if not result.attention_patterns or not result.corrupted_attention_patterns:
+        return
+    if not result.source_positions:
         return
 
     # Only plot layers that have both clean and corrupted patterns
@@ -1110,14 +1200,14 @@ def _plot_pair_attention_sidebyside(
     if not layers:
         return
 
-    # Determine crop ranges
-    src_start, src_end = DEFAULT_SRC_RANGE
-    if result.source_positions:
-        src_start = max(0, min(result.source_positions) - 5)
-        src_end = min(200, max(result.source_positions) + 10)
+    # Only show configured source positions
+    source_positions = result.source_positions
+
+    # Get format_pos labels for source positions
+    pos_labels = _get_source_position_labels(result, mapping)
 
     n_layers = len(layers)
-    fig, axes = plt.subplots(n_layers, 2, figsize=(14, 5 * n_layers), squeeze=False)
+    fig, axes = plt.subplots(n_layers, 2, figsize=(10, 4 * n_layers), squeeze=False)
 
     for i, layer in enumerate(layers):
         clean_patterns = np.array(result.attention_patterns[layer])
@@ -1127,67 +1217,46 @@ def _plot_pair_attention_sidebyside(
         seq_len_clean = clean_patterns.shape[1]
         seq_len_corr = corrupted_patterns.shape[1]
 
-        # Crop to interesting range
-        crop_start = max(0, src_start)
-        crop_end_clean = min(seq_len_clean, src_end)
-        crop_end_corr = min(seq_len_corr, src_end)
+        # Extract ONLY attention to configured source positions
+        clean_attn = np.zeros((n_heads, len(source_positions)))
+        corr_attn = np.zeros((n_heads, len(source_positions)))
 
-        clean_cropped = clean_patterns[:, crop_start:crop_end_clean]
-        corr_cropped = corrupted_patterns[:, crop_start:crop_end_corr]
-
-        # Get positions and labels for corrupted (which has more positions)
-        positions_corr = list(range(crop_start, crop_end_corr))
-        pos_labels_corr = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=10)
-                          for p in positions_corr]
+        for j, sp in enumerate(source_positions):
+            if sp < seq_len_clean:
+                clean_attn[:, j] = clean_patterns[:, sp]
+            if sp < seq_len_corr:
+                corr_attn[:, j] = corrupted_patterns[:, sp]
 
         # Compute shared vmin/vmax for consistent coloring
-        vmax = max(clean_cropped.max(), corr_cropped.max())
+        vmax = max(clean_attn.max(), corr_attn.max(), 0.01)
 
         # Clean heatmap
         ax_clean = axes[i, 0]
-        im_clean = ax_clean.imshow(clean_cropped, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
+        im_clean = ax_clean.imshow(clean_attn, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
         ax_clean.set_ylabel('Head')
         ax_clean.set_title(f'Layer {layer} - Clean')
 
         # Set x-axis ticks with format_pos labels
-        positions_clean = list(range(crop_start, crop_end_clean))
-        pos_labels_clean = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=10)
-                           for p in positions_clean]
-        tick_step = max(1, len(positions_clean) // 6)
-        tick_indices = list(range(0, len(positions_clean), tick_step))
-        ax_clean.set_xticks(tick_indices)
-        ax_clean.set_xticklabels([pos_labels_clean[i] for i in tick_indices], rotation=45, ha='right', fontsize=7)
-        ax_clean.set_xlabel('Position (format_pos)')
-
-        # Mark source positions
-        for sp in result.source_positions:
-            if crop_start <= sp < crop_end_clean:
-                x_idx = sp - crop_start
-                ax_clean.axvline(x=x_idx, color='red', alpha=0.6, linewidth=1.5, linestyle='--')
+        ax_clean.set_xticks(range(len(source_positions)))
+        ax_clean.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        ax_clean.set_xlabel('Source Position')
         plt.colorbar(im_clean, ax=ax_clean, label='Attention', shrink=0.8)
 
         # Corrupted heatmap
         ax_corr = axes[i, 1]
-        im_corr = ax_corr.imshow(corr_cropped, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
+        im_corr = ax_corr.imshow(corr_attn, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
         ax_corr.set_ylabel('Head')
         ax_corr.set_title(f'Layer {layer} - Corrupted')
 
-        tick_step_corr = max(1, len(positions_corr) // 6)
-        tick_indices_corr = list(range(0, len(positions_corr), tick_step_corr))
-        ax_corr.set_xticks(tick_indices_corr)
-        ax_corr.set_xticklabels([pos_labels_corr[i] for i in tick_indices_corr], rotation=45, ha='right', fontsize=7)
-        ax_corr.set_xlabel('Position (format_pos)')
-
-        for sp in result.source_positions:
-            if crop_start <= sp < crop_end_corr:
-                x_idx = sp - crop_start
-                ax_corr.axvline(x=x_idx, color='red', alpha=0.6, linewidth=1.5, linestyle='--')
+        ax_corr.set_xticks(range(len(source_positions)))
+        ax_corr.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        ax_corr.set_xlabel('Source Position')
         plt.colorbar(im_corr, ax=ax_corr, label='Attention', shrink=0.8)
 
     source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
-    fig.suptitle(f'Pair {result.pair_idx}: Clean vs Corrupted Attention (red = {source_names})',
-                 fontsize=14)
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.suptitle(f'Pair {result.pair_idx}: Clean vs Corrupted Attention to {source_names}',
+                 fontsize=12)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
     plt.close()
 
@@ -1197,12 +1266,15 @@ def _plot_pair_attention_diff(
     output_path: Path,
     mapping: "SamplePositionMapping | None" = None,
 ) -> None:
-    """Plot 2: Attention difference heatmaps (clean - corrupted).
+    """Plot 2: Attention difference to configured source positions only.
 
+    X-axis: ONLY configured source positions (time_horizon, post_time_horizon)
+    Y-axis: head index
     Diverging colormap: Red = more attention in clean, Blue = more in corrupted.
-    Uses format_pos labels on x-axis when mapping is provided.
     """
     if not result.attention_patterns or not result.corrupted_attention_patterns:
+        return
+    if not result.source_positions:
         return
 
     # Only plot layers that have both clean and corrupted patterns
@@ -1211,14 +1283,14 @@ def _plot_pair_attention_diff(
     if not layers:
         return
 
-    # Determine crop ranges
-    src_start, src_end = DEFAULT_SRC_RANGE
-    if result.source_positions:
-        src_start = max(0, min(result.source_positions) - 5)
-        src_end = min(200, max(result.source_positions) + 10)
+    # Only show configured source positions
+    source_positions = result.source_positions
+
+    # Get format_pos labels for source positions
+    pos_labels = _get_source_position_labels(result, mapping)
 
     n_layers = len(layers)
-    fig, axes = plt.subplots(1, n_layers, figsize=(6 * n_layers, 6), squeeze=False)
+    fig, axes = plt.subplots(1, n_layers, figsize=(5 * n_layers, 6), squeeze=False)
 
     for i, layer in enumerate(layers):
         ax = axes[0, i]
@@ -1226,50 +1298,40 @@ def _plot_pair_attention_diff(
         corrupted_patterns = np.array(result.corrupted_attention_patterns[layer])
 
         n_heads = clean_patterns.shape[0]
-        seq_len = min(clean_patterns.shape[1], corrupted_patterns.shape[1])
+        seq_len_clean = clean_patterns.shape[1]
+        seq_len_corr = corrupted_patterns.shape[1]
 
-        # Compute difference (truncate to same length)
-        diff = clean_patterns[:, :seq_len] - corrupted_patterns[:, :seq_len]
+        # Extract ONLY attention to configured source positions
+        clean_attn = np.zeros((n_heads, len(source_positions)))
+        corr_attn = np.zeros((n_heads, len(source_positions)))
 
-        # Crop to interesting range
-        crop_start = max(0, src_start)
-        crop_end = min(seq_len, src_end)
-        if crop_end <= crop_start:
-            crop_start, crop_end = 0, seq_len
+        for j, sp in enumerate(source_positions):
+            if sp < seq_len_clean:
+                clean_attn[:, j] = clean_patterns[:, sp]
+            if sp < seq_len_corr:
+                corr_attn[:, j] = corrupted_patterns[:, sp]
 
-        diff_cropped = diff[:, crop_start:crop_end]
-        positions = list(range(crop_start, crop_end))
-
-        # Get format_pos labels for x-axis
-        pos_labels = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=12)
-                      for p in positions]
+        # Compute difference
+        diff = clean_attn - corr_attn
 
         # Use diverging colormap centered at 0
-        vabs = max(abs(diff_cropped.min()), abs(diff_cropped.max()), 0.01)
+        vabs = max(abs(diff.min()), abs(diff.max()), 0.01)
         norm = TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
 
-        im = ax.imshow(diff_cropped, aspect='auto', cmap=DIFF_CMAP, norm=norm)
+        im = ax.imshow(diff, aspect='auto', cmap=DIFF_CMAP, norm=norm)
         ax.set_ylabel('Head')
         ax.set_title(f'Layer {layer}')
 
         # Set x-axis ticks with format_pos labels
-        tick_step = max(1, len(positions) // 8)
-        tick_indices = list(range(0, len(positions), tick_step))
-        ax.set_xticks(tick_indices)
-        ax.set_xticklabels([pos_labels[i] for i in tick_indices], rotation=45, ha='right', fontsize=7)
-        ax.set_xlabel('Position (format_pos)')
-
-        # Mark source positions with vertical lines
-        for sp in result.source_positions:
-            if crop_start <= sp < crop_end:
-                x_idx = sp - crop_start
-                ax.axvline(x=x_idx, color='black', alpha=0.6, linewidth=1.5, linestyle='--')
+        ax.set_xticks(range(len(source_positions)))
+        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        ax.set_xlabel('Source Position')
 
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
         cbar.set_label('Clean - Corrupted')
 
     source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
-    fig.suptitle(f'Pair {result.pair_idx}: Attention Difference (dashed = {source_names})\n(Red = more in clean, Blue = more in corrupted)',
+    fig.suptitle(f'Pair {result.pair_idx}: Attention Difference to {source_names}\n(Red = more in clean, Blue = more in corrupted)',
                  fontsize=12)
     plt.tight_layout(rect=[0, 0, 1, 0.94])
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')

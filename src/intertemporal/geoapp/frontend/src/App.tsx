@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot } from './components';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
@@ -88,6 +88,19 @@ function App() {
     error: embeddingError,
   } = useEmbedding(layer, component, position, method);
 
+  // Performance: track when layer/position changes and when data arrives
+  const loadStartRef = useRef<number>(0);
+  useEffect(() => {
+    loadStartRef.current = performance.now();
+  }, [layer, component, position, method]);
+
+  useEffect(() => {
+    if (embedding && loadStartRef.current > 0) {
+      const loadTime = performance.now() - loadStartRef.current;
+      console.log(`[Perf] Data loaded: ${loadTime.toFixed(0)}ms for L${layer}/${component}/${position}`);
+    }
+  }, [embedding, layer, component, position]);
+
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMetadata(colorBy);
 
@@ -166,28 +179,33 @@ function App() {
   // Use appropriate filter mask based on view mode
   const filterMask = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryFilterMask : scatterFilterMask;
 
-  // Compute positions Float32Array (with filtering)
+  // Compute positions Float32Array - NO filtering, positions stay fixed
   const positions = useMemo(() => {
     if (!embedding?.positions) {
       return new Float32Array(0);
     }
-    if (!filterMask) {
-      return toFloat32Array(embedding.positions);
+    return toFloat32Array(embedding.positions);
+  }, [embedding?.positions]);
+
+  // Compute visibility Float32Array from scatterFilterMask
+  const visibility = useMemo(() => {
+    const numPoints = positions.length / 3;
+    if (numPoints === 0) {
+      return new Float32Array(0);
     }
-    // Filter positions - filterMask is aligned with embedding indices
-    const numEmbeddingPoints = embedding.positions.length / 3;
-    const filtered: number[] = [];
-    for (let i = 0; i < numEmbeddingPoints; i++) {
-      if (filterMask[i]) {
-        filtered.push(
-          embedding.positions[i * 3],
-          embedding.positions[i * 3 + 1],
-          embedding.positions[i * 3 + 2]
-        );
-      }
+    // Default: all visible
+    if (!scatterFilterMask) {
+      const vis = new Float32Array(numPoints);
+      for (let i = 0; i < numPoints; i++) vis[i] = 1.0;
+      return vis;
     }
-    return new Float32Array(filtered);
-  }, [embedding?.positions, filterMask]);
+    // Apply filter mask
+    const vis = new Float32Array(numPoints);
+    for (let i = 0; i < numPoints; i++) {
+      vis[i] = scatterFilterMask[i] ? 1.0 : 0.0;
+    }
+    return vis;
+  }, [positions.length, scatterFilterMask]);
 
   // Fields that should always use gradient coloring (not categorical)
   const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward'];
@@ -213,7 +231,7 @@ function App() {
     };
   }, [metadata?.values, colorBy, colorRangeMin, colorRangeMax]);
 
-  // Compute colors Float32Array (with filtering)
+  // Compute colors Float32Array - NO filtering, visibility handles hiding
   const colors = useMemo(() => {
     if (!metadata?.values || metadata.values.length === 0 || !embedding?.indices) {
       // Default gradient colors if no metadata
@@ -232,49 +250,37 @@ function App() {
     // Map metadata values through embedding indices to align with positions
     const embeddingValues = embedding.indices.map(idx => metadata.values[idx]);
 
-    // Apply filter mask if needed (filterMask is aligned with embedding indices)
-    const filteredValues = filterMask
-      ? embeddingValues.filter((_, i) => filterMask[i])
-      : embeddingValues;
-
     // Check if categorical or continuous (force gradient for certain fields)
-    const uniqueValues = new Set(filteredValues);
+    const uniqueValues = new Set(embeddingValues);
     const forceGradient = GRADIENT_FIELDS.includes(colorBy);
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
-      return categoricalColors(filteredValues, uniqueValues.size);
+      return categoricalColors(embeddingValues, uniqueValues.size);
     } else {
       // For time-related fields, use special coloring with gray for no-horizon (value 0)
       const isTimeField = colorBy === 'time_horizon' ;
       if (isTimeField) {
         return timeGradientColors(
-          filteredValues,
+          embeddingValues,
           effectiveColorRange.min,
           effectiveColorRange.max,
           timeScaleType,
           blendMix
         );
       }
-      return valuesToColors(filteredValues, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
+      return valuesToColors(embeddingValues, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
     }
-  }, [metadata, embedding?.indices, filterMask, positions.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
+  }, [metadata, embedding?.indices, positions.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
 
   // Create point data array (with filtering)
   const pointData = useMemo<PointData[]>(() => {
     if (!embedding?.indices) return [];
-    if (!filterMask) {
-      return embedding.indices.map((idx) => ({
-        sampleIdx: idx,
-      }));
-    }
-    // Filter point data
-    return embedding.indices
-      .filter((_, i) => filterMask[i])
-      .map((idx) => ({
-        sampleIdx: idx,
-      }));
-  }, [embedding?.indices, filterMask]);
+    // NO filtering - visibility handles hiding
+    return embedding.indices.map((idx) => ({
+      sampleIdx: idx,
+    }));
+  }, [embedding?.indices]);
 
   // Helper to compute colors from values
   const computeColors = useCallback((values: number[], numPoints: number): Float32Array => {
@@ -709,6 +715,7 @@ function App() {
                 initialCameraPosition={[8, 6, 8]}
                 className="w-full h-full"
                 selectedSampleIdx={selectedSampleIdx}
+                visibility={visibility}
               />
             ) : viewMode === '2D' ? (
               <ScatterPlot2D

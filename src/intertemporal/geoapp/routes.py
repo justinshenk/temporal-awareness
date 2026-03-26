@@ -158,15 +158,13 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         # Get the sample indices that correspond to the embedding rows
         sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
 
-        # Convert numpy array to list of Point3D, sanitizing NaN/Infinity
-        coordinates = [
-            Point3D(
-                x=_sanitize_float(row[0]) or 0.0,
-                y=_sanitize_float(row[1]) or 0.0,
-                z=_sanitize_float(row[2]) or 0.0,
-            )
-            for row in embedding
-        ]
+        # Optimized conversion: sanitize NaN/Infinity in bulk using numpy
+        # Replace NaN/Inf with 0.0 in-place
+        clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Convert to flat list of floats for maximum performance
+        # Format: [x0, y0, z0, x1, y1, z1, ...] - frontend will reshape
+        coordinates_flat = clean_embedding.flatten().tolist()
 
         # Set cache headers for browser caching (30 minutes)
         if response:
@@ -177,8 +175,8 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             component=component,
             position=position,
             method=method,
-            n_samples=len(coordinates),
-            coordinates=coordinates,
+            n_samples=len(sample_indices),
+            coordinates_flat=coordinates_flat,
             sample_indices=sample_indices,
         )
 

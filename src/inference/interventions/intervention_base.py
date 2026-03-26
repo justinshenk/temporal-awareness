@@ -35,6 +35,11 @@ class Intervention(BaseSchema):
     For embedding interventions:
         - Set component="embed" to intervene on input embeddings
         - layer is ignored for embedding interventions
+
+    For head-level interventions (component="attn_z"):
+        - Set head to specify which attention head to intervene on
+        - values should have shape [n_positions, d_head] or [d_head]
+        - The intervention only affects the specified head
     """
 
     layer: int
@@ -45,6 +50,7 @@ class Intervention(BaseSchema):
     strength: float = 1.0
     target_values: Optional[np.ndarray] = None
     alpha: float = 0.5
+    head: Optional[int] = None  # For head-level interventions with attn_z
 
     def __post_init__(self):
         if not isinstance(self.values, np.ndarray):
@@ -65,6 +71,9 @@ class Intervention(BaseSchema):
     def hook_name(self) -> str:
         if self.is_embedding:
             return "hook_embed"
+        # attn_z uses a different naming convention: blocks.{layer}.attn.hook_z
+        if self.component == "attn_z":
+            return f"blocks.{self.layer}.attn.hook_z"
         return f"blocks.{self.layer}.hook_{self.component}"
 
     @property
@@ -77,50 +86,83 @@ def create_intervention_hook(
     dtype: torch.dtype,
     device: str,
 ) -> tuple[Callable, None]:
-    """Create a forward hook for the intervention. Returns (hook, None)."""
+    """Create a forward hook for the intervention. Returns (hook, None).
+
+    Handles both 3D tensors [batch, seq, hidden] and 4D tensors [batch, seq, n_heads, d_head]
+    for head-level interventions with attn_z component.
+    """
     values = torch.tensor(config.scaled_values, dtype=dtype, device=device)
     target = config.target
     mode = config.mode
     alpha = config.alpha
+    head = config.head  # For head-level interventions
 
     target_values = None
     if mode == "interpolate" and config.target_values is not None:
         target_values = torch.tensor(config.target_values, dtype=dtype, device=device)
 
     if DEBUG_HOOKS:
-        print(f"[hook] Creating hook: layer={config.layer}, mode={mode}, alpha={alpha}")
+        print(f"[hook] Creating hook: layer={config.layer}, mode={mode}, alpha={alpha}, head={head}")
         print(f"[hook]   values.shape={values.shape}, target={target}")
         if target_values is not None:
             print(f"[hook]   target_values.shape={target_values.shape}")
 
+    # Check if this is a head-level intervention (4D tensor expected)
+    is_head_level = config.component == "attn_z" and head is not None
+
     # All positions
     if target.is_all_positions:
-        def full_hook(act, hook=None):
-            if DEBUG_HOOKS:
-                print(f"[hook] Applying FULL: act.shape={act.shape}, values.shape={values.shape}")
-            return _apply_full(act, values, mode, target_values, alpha)
-        return full_hook, None
+        if is_head_level:
+            def full_hook_head(act, hook=None):
+                if DEBUG_HOOKS:
+                    print(f"[hook] Applying FULL (head-level): act.shape={act.shape}, head={head}")
+                return _apply_full_head(act, values, mode, target_values, alpha, head)
+            return full_hook_head, None
+        else:
+            def full_hook(act, hook=None):
+                if DEBUG_HOOKS:
+                    print(f"[hook] Applying FULL: act.shape={act.shape}, values.shape={values.shape}")
+                return _apply_full(act, values, mode, target_values, alpha)
+            return full_hook, None
 
     # Specific positions
     positions = list(target.positions)
 
-    def hook(act, hook=None):
-        if DEBUG_HOOKS:
-            print(f"[hook] Applying to positions {positions[:5]}..., act.shape={act.shape}")
-        for i, pos in enumerate(positions):
-            if pos < act.shape[1]:
-                v = values[i] if values.dim() > 1 and i < values.shape[0] else values
-                tv = None
-                if target_values is not None:
-                    tv = (
-                        target_values[i]
-                        if target_values.dim() > 1 and i < target_values.shape[0]
-                        else target_values
-                    )
-                act[:, pos] = _apply_position(act[:, pos], v, mode, tv, alpha)
-        return act
-
-    return hook, None
+    if is_head_level:
+        def hook_head(act, hook=None):
+            if DEBUG_HOOKS:
+                print(f"[hook] Applying to positions {positions[:5]}... (head-level), head={head}")
+            for i, pos in enumerate(positions):
+                if pos < act.shape[1]:
+                    v = values[i] if values.dim() > 1 and i < values.shape[0] else values
+                    tv = None
+                    if target_values is not None:
+                        tv = (
+                            target_values[i]
+                            if target_values.dim() > 1 and i < target_values.shape[0]
+                            else target_values
+                        )
+                    # Apply to specific head only: act[:, pos, head, :]
+                    act[:, pos, head, :] = _apply_position(act[:, pos, head, :], v, mode, tv, alpha)
+            return act
+        return hook_head, None
+    else:
+        def hook(act, hook=None):
+            if DEBUG_HOOKS:
+                print(f"[hook] Applying to positions {positions[:5]}..., act.shape={act.shape}")
+            for i, pos in enumerate(positions):
+                if pos < act.shape[1]:
+                    v = values[i] if values.dim() > 1 and i < values.shape[0] else values
+                    tv = None
+                    if target_values is not None:
+                        tv = (
+                            target_values[i]
+                            if target_values.dim() > 1 and i < target_values.shape[0]
+                            else target_values
+                        )
+                    act[:, pos] = _apply_position(act[:, pos], v, mode, tv, alpha)
+            return act
+        return hook, None
 
 
 def _apply_full(
@@ -130,7 +172,7 @@ def _apply_full(
     target_values: Optional[torch.Tensor],
     alpha: float,
 ) -> torch.Tensor:
-    """Apply intervention to full activation tensor."""
+    """Apply intervention to full activation tensor (3D: [batch, seq, hidden])."""
     if mode == "add":
         return act + values
     if mode == "mul":
@@ -151,6 +193,45 @@ def _apply_full(
     seq = min(act.shape[1], values.shape[0])
     result = act.clone()
     result[:, :seq] = values[:seq].unsqueeze(0).expand(act.shape[0], -1, -1)
+    return result
+
+
+def _apply_full_head(
+    act: torch.Tensor,
+    values: torch.Tensor,
+    mode: Mode,
+    target_values: Optional[torch.Tensor],
+    alpha: float,
+    head: int,
+) -> torch.Tensor:
+    """Apply intervention to full activation tensor for a specific head.
+
+    For 4D tensors with shape [batch, seq, n_heads, d_head].
+    Only modifies the specified head, leaving other heads unchanged.
+    """
+    result = act.clone()
+    head_act = act[:, :, head, :]  # [batch, seq, d_head]
+
+    if mode == "add":
+        result[:, :, head, :] = head_act + values
+    elif mode == "mul":
+        result[:, :, head, :] = head_act * values
+    elif mode == "interpolate":
+        # Interpolate towards target_values for this head
+        if target_values.dim() == 2 and head_act.dim() == 3:
+            seq = min(head_act.shape[1], target_values.shape[0])
+            tv = target_values[:seq].unsqueeze(0).expand(head_act.shape[0], -1, -1)
+            result[:, :seq, head, :] = head_act[:, :seq] + alpha * (tv - head_act[:, :seq])
+        else:
+            result[:, :, head, :] = head_act + alpha * (target_values - head_act)
+    else:
+        # set mode
+        if values.dim() <= 1:
+            result[:, :, head, :] = values.expand_as(head_act)
+        else:
+            seq = min(head_act.shape[1], values.shape[0])
+            result[:, :seq, head, :] = values[:seq].unsqueeze(0).expand(head_act.shape[0], -1, -1)
+
     return result
 
 

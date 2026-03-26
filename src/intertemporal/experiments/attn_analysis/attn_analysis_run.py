@@ -152,6 +152,30 @@ def run_attn_analysis(
             top_positions = [int(i) for i in top_indices]
             top_weights = [float(attn_np[i]) for i in top_indices]
 
+            # Generate format_pos labels for top attended positions
+            # Note: top_positions are from clean attention, but mapping is in corrupted frame
+            # So we need to map clean positions to corrupted frame for label lookup
+            top_labels = []
+            for pos in top_positions:
+                # Map clean position to corrupted frame for label lookup
+                corr_pos = pair.position_mapping.get(pos, pos)
+                pos_info = mapping.get_position(corr_pos)
+                if pos_info and pos_info.format_pos:
+                    label = pos_info.format_pos
+                    if pos_info.rel_pos is not None and pos_info.rel_pos >= 0:
+                        label = f"{label}:{pos_info.rel_pos}"
+                    top_labels.append(label)
+                elif pos_info and pos_info.decoded_token:
+                    # Show token content when no format_pos available
+                    token = pos_info.decoded_token.strip()
+                    if len(token) > 10:
+                        token = token[:9] + "…"
+                    # Clean up for display
+                    token = repr(token)[1:-1]
+                    top_labels.append(f'"{token}"')
+                else:
+                    top_labels.append(f"P{pos}")
+
             # Logit contribution from head output
             logit_contribution = 0.0
             output_norm = 0.0
@@ -189,6 +213,7 @@ def run_attn_analysis(
                 attn_entropy=attn_entropy,
                 top_attended_positions=top_positions,
                 top_attended_weights=top_weights,
+                top_attended_labels=top_labels,
                 logit_contribution=logit_contribution,
                 output_norm=output_norm,
                 attn_pattern_diff=attn_pattern_diff,

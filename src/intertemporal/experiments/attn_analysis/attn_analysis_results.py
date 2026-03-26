@@ -32,6 +32,7 @@ class HeadAttnInfo(BaseSchema):
     # Top attended positions
     top_attended_positions: list[int] = field(default_factory=list)
     top_attended_weights: list[float] = field(default_factory=list)
+    top_attended_labels: list[str] = field(default_factory=list)  # format_pos labels
 
     # Output direction analysis
     logit_contribution: float = 0.0  # head_out @ logit_direction

@@ -46,7 +46,8 @@ class EmbeddingResponse(BaseModel):
     position: str = Field(description="Token position")
     method: str = Field(description="Dimensionality reduction method (pca, umap, tsne)")
     n_samples: int = Field(description="Number of samples")
-    coordinates: list[Point3D] = Field(description="3D coordinates for each sample")
+    # Flat array of coordinates: [x0, y0, z0, x1, y1, z1, ...] for performance
+    coordinates_flat: list[float] = Field(description="Flat array of 3D coordinates [x0,y0,z0,x1,y1,z1,...]")
     sample_indices: list[int] = Field(description="Original sample indices for each coordinate")
 
 

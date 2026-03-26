@@ -11,24 +11,27 @@ from ....common.base_schema import BaseSchema
 
 __all__ = [
     "AttnAnalysisConfig",
-    "SOURCE_POSITIONS",
-    "DEST_POSITIONS",
+    "PROMPT_POSITIONS",
+    "RESPONSE_POSITIONS",
     "DEFAULT_LAYERS",
     "EARLY_LAYERS",
     "INTERMEDIATE_POSITIONS",
 ]
 
 
-# Semantic position names (matching analyze_geometry.py)
-SOURCE_POSITIONS = [
+# Prompt positions (where time horizon info is encoded)
+PROMPT_POSITIONS = [
     "time_horizon",
     "post_time_horizon",
 ]
 
-DEST_POSITIONS = [
+# Response positions (where model output is generated)
+RESPONSE_POSITIONS = [
+    "chat_suffix",
     "response_choice_prefix",
     "response_choice",
     "response_reasoning_prefix",
+    "response_reasoning",
 ]
 
 # Layers for attention analysis (circuit layers)
@@ -52,11 +55,11 @@ class AttnAnalysisConfig(BaseSchema):
     # Layers to analyze
     layers: list[int] = field(default_factory=lambda: DEFAULT_LAYERS.copy())
 
-    # Semantic position names for source (where attention comes FROM)
-    source_positions: list[str] = field(default_factory=lambda: SOURCE_POSITIONS.copy())
+    # Prompt positions (where time horizon info is encoded)
+    source_positions: list[str] = field(default_factory=lambda: PROMPT_POSITIONS.copy())
 
-    # Semantic position names for destination (where attention goes TO)
-    dest_positions: list[str] = field(default_factory=lambda: DEST_POSITIONS.copy())
+    # Response positions (where model output is generated)
+    dest_positions: list[str] = field(default_factory=lambda: RESPONSE_POSITIONS.copy())
 
     # Whether to store full attention patterns (memory intensive)
     store_patterns: bool = True

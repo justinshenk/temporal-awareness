@@ -26,37 +26,40 @@ class TestAPIEndpoints:
         response = test_client.get("/api/embedding/0/resid_pre/response_choice?method=pca")
         assert response.status_code == 200
         data = response.json()
-        assert "coordinates" in data
+        assert "coordinates_flat" in data
         assert "sample_indices" in data
-        assert len(data["coordinates"]) == 10  # 10 samples
-        assert "x" in data["coordinates"][0]
-        assert "y" in data["coordinates"][0]
-        assert "z" in data["coordinates"][0]
+        # 10 samples * 3 coordinates (x,y,z) = 30 values in flat array
+        assert len(data["coordinates_flat"]) == 30
+        assert data["n_samples"] == 10
+        # Check all values are floats
+        assert all(isinstance(v, (int, float)) for v in data["coordinates_flat"])
 
     def test_get_embedding_umap(self, test_client: TestClient):
         """Test GET /api/embedding with UMAP."""
         response = test_client.get("/api/embedding/0/resid_pre/response_choice?method=umap")
         assert response.status_code == 200
         data = response.json()
-        assert "coordinates" in data
+        assert "coordinates_flat" in data
 
     def test_get_embedding_tsne(self, test_client: TestClient):
         """Test GET /api/embedding with t-SNE."""
         response = test_client.get("/api/embedding/0/resid_pre/response_choice?method=tsne")
         assert response.status_code == 200
         data = response.json()
-        assert "coordinates" in data
+        assert "coordinates_flat" in data
 
     def test_get_embedding_time_horizon(self, test_client: TestClient):
         """Test GET /api/embedding for time_horizon position."""
         response = test_client.get("/api/embedding/0/resid_pre/time_horizon?method=pca")
         assert response.status_code == 200
         data = response.json()
-        assert "coordinates" in data
+        assert "coordinates_flat" in data
         assert "sample_indices" in data
         # Only 7 samples have time_horizon
-        assert len(data["coordinates"]) == 7
+        assert data["n_samples"] == 7
         assert len(data["sample_indices"]) == 7
+        # 7 samples * 3 coordinates = 21 values in flat array
+        assert len(data["coordinates_flat"]) == 21
 
     def test_get_embedding_invalid_layer(self, test_client: TestClient):
         """Test GET /api/embedding with invalid layer."""

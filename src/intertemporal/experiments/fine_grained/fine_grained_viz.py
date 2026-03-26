@@ -32,6 +32,7 @@ from .fine_grained_results import (
     MultiSiteResult,
     NeuronPatchingResult,
     LayerPositionResult,
+    AttentionPatchingCorrelation,
 )
 
 
@@ -98,6 +99,14 @@ def visualize_fine_grained(
     # Plot 27: Head redundancy gap chart
     if results.head_sweep:
         _plot_head_redundancy_gap(results.head_sweep, output_dir)
+
+    # Plot 28: Attention-patching cross-reference table
+    if results.attention_correlations:
+        _plot_attention_patching_crossref(results.attention_correlations, output_dir)
+
+    # Plot 29: Cross-layer path patching (L19/L21 → L24)
+    if results.cross_layer_paths:
+        _plot_cross_layer_paths(results.cross_layer_paths, output_dir)
 
     print(f"[viz] Fine-grained patching plots saved to {output_dir}")
 
@@ -298,6 +307,22 @@ def _plot_head_position_heatmap(
     ax.set_ylabel("Position", fontsize=11)
     ax.set_title("Head x Position Patching Effect (Denoising)", fontsize=12, fontweight="bold")
 
+    # Add explanatory note about scale
+    # Per-position effects are ~100x smaller than head-level effects because
+    # this shows the per-position decomposition (effects sum across positions)
+    note_text = (
+        "Note: Per-position effects are smaller than head-level effects\n"
+        "(~0.002 vs ~0.8) because each position contributes a fraction\n"
+        "of the total head effect. Effects sum across all positions."
+    )
+    ax.text(
+        0.02, 0.02, note_text,
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="bottom",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
+
     plt.tight_layout()
     finalize_plot(output_dir / "20_head_position_heatmap.png")
 
@@ -325,6 +350,15 @@ def _plot_head_position_heatmap(
     ax.set_xlabel("Head", fontsize=11)
     ax.set_ylabel("Position", fontsize=11)
     ax.set_title("Head x Position Patching Effect (Noising)", fontsize=12, fontweight="bold")
+
+    # Add explanatory note about scale
+    ax.text(
+        0.02, 0.02, note_text,
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="bottom",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
+    )
 
     plt.tight_layout()
     finalize_plot(output_dir / "20_head_position_heatmap_noising.png")
@@ -722,3 +756,156 @@ def _plot_head_redundancy_gap(head_sweep: HeadSweepResults, output_dir: Path) ->
 
     plt.tight_layout()
     finalize_plot(output_dir / "27_head_redundancy_gap.png")
+
+
+def _plot_attention_patching_crossref(
+    correlations: list,  # list[AttentionPatchingCorrelation]
+    output_dir: Path,
+) -> None:
+    """Plot 28: Cross-reference table of patching scores vs attention patterns.
+
+    Shows for each top head:
+    - Patching score
+    - Redundancy gap
+    - Top-5 attended positions
+    - Attention to source positions
+    """
+    if not correlations:
+        return
+
+    # Create figure with table
+    fig, ax = plt.subplots(figsize=(14, max(4, len(correlations) * 0.5 + 1)))
+    ax.axis("off")
+
+    # Build table data
+    col_labels = [
+        "Head",
+        "Patching\nScore",
+        "Denoising",
+        "Noising",
+        "Gap",
+        "Attn→Src",
+        "Top-5 Attended Positions",
+    ]
+
+    table_data = []
+    for c in correlations:
+        # Format top attended positions
+        if c.top_attended_positions:
+            top_pos_str = ", ".join(f"P{p}" for p in c.top_attended_positions[:5])
+        else:
+            top_pos_str = "N/A"
+
+        row = [
+            c.head_label,
+            f"{c.patching_score:.3f}",
+            f"{c.denoising_recovery:.3f}",
+            f"{c.noising_disruption:.3f}",
+            f"{c.redundancy_gap:+.3f}",
+            f"{c.attn_to_source:.3f}",
+            top_pos_str,
+        ]
+        table_data.append(row)
+
+    # Create table
+    table = ax.table(
+        cellText=table_data,
+        colLabels=col_labels,
+        loc="center",
+        cellLoc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1.2, 1.5)
+
+    # Color header
+    for j in range(len(col_labels)):
+        table[(0, j)].set_facecolor("#4472C4")
+        table[(0, j)].set_text_props(color="white", fontweight="bold")
+
+    # Color cells based on values
+    for i, c in enumerate(correlations, start=1):
+        # Gap column (index 4): green for positive (unique), red for negative (redundant)
+        gap_cell = table[(i, 4)]
+        if c.redundancy_gap > 0.1:
+            gap_cell.set_facecolor("#C6EFCE")  # Light green
+        elif c.redundancy_gap < -0.05:
+            gap_cell.set_facecolor("#FFC7CE")  # Light red
+
+        # Attn to source column (index 5): highlight high attention
+        attn_cell = table[(i, 5)]
+        if c.attn_to_source > 0.1:
+            attn_cell.set_facecolor("#FFEB9C")  # Light yellow
+
+    ax.set_title(
+        "Attention-Patching Cross-Reference: Top Heads",
+        fontsize=12,
+        fontweight="bold",
+        pad=20,
+    )
+
+    plt.tight_layout()
+    finalize_plot(output_dir / "28_attention_patching_crossref.png")
+
+
+def _plot_cross_layer_paths(
+    cross_layer_results: list,  # list[PathPatchingResult]
+    output_dir: Path,
+) -> None:
+    """Plot 29: Cross-layer path patching (L19/L21 → L24).
+
+    Shows which earlier layer heads feed into later layer heads.
+    """
+    if not cross_layer_results:
+        return
+
+    # Group by source layer
+    source_layers = sorted(set(r.source_layer for r in cross_layer_results))
+    dest_heads = sorted(set((r.dest_layer, r.dest_head) for r in cross_layer_results))
+
+    # Build matrix: source heads × dest heads
+    source_heads = sorted(set((r.source_layer, r.source_head) for r in cross_layer_results))
+
+    n_src = len(source_heads)
+    n_dst = len(dest_heads)
+
+    if n_src == 0 or n_dst == 0:
+        return
+
+    matrix = np.zeros((n_src, n_dst))
+    src_to_idx = {s: i for i, s in enumerate(source_heads)}
+    dst_to_idx = {d: i for i, d in enumerate(dest_heads)}
+
+    for r in cross_layer_results:
+        si = src_to_idx.get((r.source_layer, r.source_head))
+        di = dst_to_idx.get((r.dest_layer, r.dest_head))
+        if si is not None and di is not None:
+            matrix[si, di] = r.effect
+
+    fig, ax = plt.subplots(figsize=(max(8, n_dst * 1.2), max(6, n_src * 0.4)))
+    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+    plt.colorbar(im, ax=ax, label="Path Effect")
+
+    # Labels
+    src_labels = [f"L{l}.H{h}" for l, h in source_heads]
+    dst_labels = [f"L{l}.H{h}" for l, h in dest_heads]
+
+    ax.set_yticks(range(n_src))
+    ax.set_yticklabels(src_labels, fontsize=9)
+    ax.set_xticks(range(n_dst))
+    ax.set_xticklabels(dst_labels, rotation=45, ha="right", fontsize=9)
+
+    ax.set_xlabel("Destination Head (L24)", fontsize=11)
+    ax.set_ylabel("Source Head (L19/L21)", fontsize=11)
+    ax.set_title("Cross-Layer Path Patching: Earlier → Later Heads", fontsize=12, fontweight="bold")
+
+    # Add value annotations
+    for i in range(n_src):
+        for j in range(n_dst):
+            val = matrix[i, j]
+            if abs(val) > 0.01:
+                color = "white" if abs(val) > 0.15 else "black"
+                ax.text(j, i, f"{val:.2f}", ha="center", va="center", color=color, fontsize=8)
+
+    plt.tight_layout()
+    finalize_plot(output_dir / "29_cross_layer_paths.png")

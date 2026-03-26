@@ -39,19 +39,13 @@ export interface TransformedConfig {
   markers: Record<string, string>;
 }
 
-interface Point3D {
-  x: number;
-  y: number;
-  z: number;
-}
-
 interface BackendEmbeddingResponse {
   layer: number;
   component: string;
   position: string;
   method: string;
   n_samples: number;
-  coordinates: Point3D[];
+  coordinates_flat: number[];  // Flat array [x0,y0,z0,x1,y1,z1,...]
   sample_indices: number[];
 }
 
@@ -136,15 +130,9 @@ export function useEmbedding(
         `/embedding/${layer}/${component}/${position}?method=${method.toLowerCase()}`
       );
 
-      // Transform Point3D array to flat Float32Array-compatible format
-      const positions: number[] = [];
-
-      response.coordinates.forEach((coord) => {
-        positions.push(coord.x, coord.y, coord.z);
-      });
-
+      // Backend now returns flat array directly - no transformation needed
       return {
-        positions,
+        positions: response.coordinates_flat,
         // Use actual sample indices from backend, not just 0,1,2,...
         indices: response.sample_indices,
         metrics: {},  // Backend doesn't return metrics in embedding endpoint
@@ -815,13 +803,12 @@ export function usePrefetch(
           const response = await api.get<BackendEmbeddingResponse>(
             `/embedding/${layer}/${component}/${position}?method=${method.toLowerCase()}`
           );
-          const positions: number[] = [];
-          const indices: number[] = [];
-          response.coordinates.forEach((coord, i) => {
-            positions.push(coord.x, coord.y, coord.z);
-            indices.push(i);
-          });
-          return { positions, indices, metrics: {} };
+          // Backend now returns flat array directly
+          return {
+            positions: response.coordinates_flat,
+            indices: response.sample_indices,
+            metrics: {},
+          };
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
       });

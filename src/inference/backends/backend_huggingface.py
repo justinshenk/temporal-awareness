@@ -388,6 +388,199 @@ class HuggingFaceBackend(Backend):
 
         return attn_module.register_forward_hook(attention_hook, with_kwargs=True)
 
+    def _create_attn_z_intervention_hook(
+        self,
+        attn_module,
+        layer_idx: int,
+        intervention: "Intervention",
+    ):
+        """Create a hook that intervenes on attn_z (attention output before O projection).
+
+        This hook:
+        1. Intercepts the attention module output
+        2. Reconstructs attn_z from the output (reversing the O projection)
+        3. Applies the intervention to the specified head at specified positions
+        4. Re-projects through O to get the final output
+
+        For efficiency, we use a mathematical approach: instead of fully reconstructing
+        attn_z, we compute the difference in the final output that would result from
+        modifying the specified head's attn_z values.
+
+        Args:
+            attn_module: The attention module to hook
+            layer_idx: Layer index
+            intervention: The intervention to apply
+        """
+        from ..interventions.intervention_base import Intervention
+
+        head = intervention.head
+        positions = list(intervention.target.positions) if intervention.target.positions else None
+        mode = intervention.mode
+        alpha = intervention.alpha
+
+        # Get patch values
+        values = torch.tensor(
+            intervention.scaled_values,
+            dtype=self.runner.dtype,
+            device=self.runner.device,
+        )
+        target_values = None
+        if mode == "interpolate" and intervention.target_values is not None:
+            target_values = torch.tensor(
+                intervention.target_values,
+                dtype=self.runner.dtype,
+                device=self.runner.device,
+            )
+
+        # Get W_O for this layer's head
+        W_O = self.get_W_O(layer_idx)  # [n_heads, d_head, d_model]
+        W_O_head = W_O[head]  # [d_head, d_model]
+
+        def intervention_hook(module, args, kwargs, output):
+            """Apply attn_z intervention by modifying the attention output.
+
+            Strategy: Compute the delta contribution from the patched head and add it to output.
+            delta = (patched_z - original_z) @ W_O[head]
+            output += delta
+            """
+            hidden_states = args[0] if args else kwargs.get("hidden_states")
+            if hidden_states is None:
+                return output
+
+            # Extract the attention output from the module output
+            if isinstance(output, tuple):
+                attn_out = output[0]
+            else:
+                attn_out = output
+
+            batch_size, seq_len, _ = hidden_states.shape
+
+            # Compute original attn_z for this head
+            # We need to recompute Q, K, V and attention
+            if hasattr(module, "q_proj"):
+                # Llama/Qwen3/Mistral style
+                q = module.q_proj(hidden_states)
+                k = module.k_proj(hidden_states)
+                v = module.v_proj(hidden_states)
+
+                # Reshape to [batch, n_heads, seq, d_head]
+                q = q.view(batch_size, seq_len, self._n_heads, self._d_head)
+                q = q.transpose(1, 2)
+                k = k.view(batch_size, seq_len, self._n_kv_heads, self._d_head)
+                k = k.transpose(1, 2)
+                v = v.view(batch_size, seq_len, self._n_kv_heads, self._d_head)
+                v = v.transpose(1, 2)
+
+                # Apply Q/K normalization if present
+                if hasattr(module, "q_norm"):
+                    q = module.q_norm(q)
+                if hasattr(module, "k_norm"):
+                    k = module.k_norm(k)
+
+                # Expand K, V for GQA
+                if self._n_kv_heads != self._n_heads:
+                    k = k.repeat_interleave(self._n_kv_groups, dim=1)
+                    v = v.repeat_interleave(self._n_kv_groups, dim=1)
+
+                # Compute attention weights
+                scale = self._d_head ** -0.5
+                attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale
+
+                # Apply causal mask
+                causal_mask = torch.triu(
+                    torch.ones(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device),
+                    diagonal=1,
+                )
+                attn_weights = attn_weights.masked_fill(causal_mask, float("-inf"))
+                attn_weights = torch.nn.functional.softmax(
+                    attn_weights, dim=-1, dtype=torch.float32
+                ).to(hidden_states.dtype)
+
+                # Compute attn_z: [batch, n_heads, seq, d_head]
+                attn_z = torch.matmul(attn_weights, v)
+
+            elif hasattr(module, "c_attn"):
+                # GPT-2 style
+                qkv = module.c_attn(hidden_states)
+                q, k, v = qkv.chunk(3, dim=-1)
+                q = q.view(batch_size, seq_len, self._n_heads, self._d_head).transpose(1, 2)
+                k = k.view(batch_size, seq_len, self._n_heads, self._d_head).transpose(1, 2)
+                v = v.view(batch_size, seq_len, self._n_heads, self._d_head).transpose(1, 2)
+
+                scale = self._d_head ** -0.5
+                attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale
+                causal_mask = torch.triu(
+                    torch.ones(seq_len, seq_len, dtype=torch.bool, device=hidden_states.device),
+                    diagonal=1,
+                )
+                attn_weights = attn_weights.masked_fill(causal_mask, float("-inf"))
+                attn_weights = torch.nn.functional.softmax(
+                    attn_weights, dim=-1, dtype=torch.float32
+                ).to(hidden_states.dtype)
+                attn_z = torch.matmul(attn_weights, v)
+            else:
+                # Unsupported architecture
+                return output
+
+            # Get the original attn_z values for the target head
+            # attn_z shape: [batch, n_heads, seq, d_head]
+            original_z_head = attn_z[:, head, :, :]  # [batch, seq, d_head]
+
+            # Apply intervention to get patched z values
+            # Clone to avoid modifying original
+            patched_z_head = original_z_head.clone()
+
+            if positions is None:
+                # All positions
+                if mode == "add":
+                    patched_z_head = patched_z_head + values
+                elif mode == "set":
+                    if values.ndim == 2:
+                        seq = min(patched_z_head.shape[1], values.shape[0])
+                        patched_z_head[:, :seq, :] = values[:seq].unsqueeze(0).expand(batch_size, -1, -1)
+                    else:
+                        patched_z_head = values.expand_as(patched_z_head)
+                elif mode == "mul":
+                    patched_z_head = patched_z_head * values
+                elif mode == "interpolate" and target_values is not None:
+                    if target_values.ndim == 2:
+                        seq = min(patched_z_head.shape[1], target_values.shape[0])
+                        tv = target_values[:seq].unsqueeze(0).expand(batch_size, -1, -1)
+                        patched_z_head[:, :seq, :] = (
+                            patched_z_head[:, :seq, :] + alpha * (tv - patched_z_head[:, :seq, :])
+                        )
+                    else:
+                        patched_z_head = patched_z_head + alpha * (target_values - patched_z_head)
+            else:
+                # Specific positions
+                for i, pos in enumerate(positions):
+                    if pos < patched_z_head.shape[1]:
+                        v = values[i] if values.ndim > 1 and i < values.shape[0] else values
+                        if mode == "add":
+                            patched_z_head[:, pos, :] = patched_z_head[:, pos, :] + v
+                        elif mode == "set":
+                            patched_z_head[:, pos, :] = v
+                        elif mode == "mul":
+                            patched_z_head[:, pos, :] = patched_z_head[:, pos, :] * v
+                        elif mode == "interpolate" and target_values is not None:
+                            tv = target_values[i] if target_values.ndim > 1 and i < target_values.shape[0] else target_values
+                            patched_z_head[:, pos, :] = patched_z_head[:, pos, :] + alpha * (tv - patched_z_head[:, pos, :])
+
+            # Compute the delta contribution: (patched - original) @ W_O[head]
+            # original_z_head, patched_z_head: [batch, seq, d_head]
+            # W_O_head: [d_head, d_model]
+            delta_z = patched_z_head - original_z_head  # [batch, seq, d_head]
+            delta_out = torch.matmul(delta_z, W_O_head)  # [batch, seq, d_model]
+
+            # Add delta to output
+            new_attn_out = attn_out + delta_out
+
+            if isinstance(output, tuple):
+                return (new_attn_out,) + output[1:]
+            return new_attn_out
+
+        return attn_module.register_forward_hook(intervention_hook, with_kwargs=True)
+
     def run_with_cache(
         self,
         input_ids: torch.Tensor,
@@ -656,6 +849,15 @@ class HuggingFaceBackend(Backend):
     ) -> torch.Tensor:
         hooks = []
         for intervention in interventions:
+            # Handle attn_z interventions specially
+            if intervention.component == "attn_z":
+                attn_module = self._get_attn_module(intervention.layer)
+                hook = self._create_attn_z_intervention_hook(
+                    attn_module, intervention.layer, intervention
+                )
+                hooks.append(hook)
+                continue
+
             values = torch.tensor(
                 intervention.scaled_values,
                 dtype=self.runner.dtype,
@@ -796,6 +998,15 @@ class HuggingFaceBackend(Backend):
 
         # Set up intervention hooks
         for intervention in interventions:
+            # Handle attn_z interventions specially
+            if intervention.component == "attn_z":
+                attn_module = self._get_attn_module(intervention.layer)
+                hook = self._create_attn_z_intervention_hook(
+                    attn_module, intervention.layer, intervention
+                )
+                hooks.append(hook)
+                continue
+
             values = torch.tensor(
                 intervention.scaled_values,
                 dtype=self.runner.dtype,

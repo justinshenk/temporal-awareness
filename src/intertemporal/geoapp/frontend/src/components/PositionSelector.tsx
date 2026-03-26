@@ -119,6 +119,12 @@ export function PositionSelector({
     <div className="text-[11px]">
       {/* Prompt Template Visualization */}
       <div className="p-2 bg-white border border-gray-200 rounded-lg space-y-1.5 font-mono leading-relaxed">
+        {/* Chat prefix - VERY FIRST (position 0): <|im_start|>user\n */}
+        <div className="flex flex-wrap items-center gap-0.5 text-gray-400 pb-1 border-b border-dashed border-gray-200">
+          {renderPos('chat_prefix', 'chat_prefix')}
+          <span className="text-[8px]">(&lt;|im_start|&gt;user)</span>
+        </div>
+
         {/* SITUATION */}
         <div className="flex flex-wrap items-center gap-0.5">
           {renderPos('situation_marker', 'SITUATION:')}
@@ -181,15 +187,17 @@ export function PositionSelector({
           {renderPos('format_reasoning_prefix', 'My reasoning:')}
         </div>
 
-        {/* Chat prefix (if present) */}
-        <div className="flex flex-wrap items-center gap-0.5 text-gray-400">
-          {renderPos('chat_prefix', 'chat template')}
+        {/* Chat suffix - END of prompt, BEFORE model response */}
+        {/* Position ~122: <|im_end|>\n<|im_start|>assistant\n */}
+        <div className="pt-1.5 border-t border-dashed border-gray-300 flex flex-wrap items-center gap-0.5 text-gray-400">
+          {renderPos('chat_suffix', 'chat_suffix')}
+          <span className="text-[8px]">(&lt;|im_end|&gt;...&lt;|im_start|&gt;assistant)</span>
         </div>
 
-        {/* Response */}
-        <div className="pt-1.5 border-t border-gray-200">
+        {/* Response - MODEL OUTPUT starts here (position 127+) */}
+        <div className="pt-1.5 border-t-2 border-green-400 bg-green-50/50 -mx-2 px-2 pb-1 rounded-b-lg">
           <div className="flex flex-wrap items-center gap-0.5">
-            <span className="text-green-600 font-bold text-[10px]">RESPONSE:</span>
+            <span className="text-green-600 font-bold text-[10px]">MODEL RESPONSE:</span>
           </div>
           <div className="pl-3 flex flex-wrap items-center gap-0.5">
             {renderPos('response_choice_prefix', 'I choose:')}
@@ -199,11 +207,6 @@ export function PositionSelector({
             {renderPos('response_reasoning_prefix', 'My reasoning:')}
             {renderPos('response_reasoning', 'reasoning')}
           </div>
-        </div>
-
-        {/* Chat suffix (if present) */}
-        <div className="flex flex-wrap items-center gap-0.5 text-gray-400">
-          {renderPos('chat_suffix', 'chat suffix')}
         </div>
       </div>
 

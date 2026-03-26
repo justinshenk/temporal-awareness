@@ -53,31 +53,57 @@ def create_app(
         import time
         # Small delay to let server start first
         time.sleep(0.5)
-        print("\n[Background] Starting embedding warmup...")
+        print("\n" + "=" * 60)
+        print("  EMBEDDING WARMUP STARTING")
+        print("  Loading from disk cache or computing embeddings...")
+        print("=" * 60 + "\n")
 
+        total_start = time.time()
+
+        # PCA (fast - should be mostly cached)
+        print("[Warmup] Loading PCA embeddings...")
+        pca_start = time.time()
         pca_count = data_loader.warmup(
             methods=["pca"],
             components=["resid_pre", "resid_post", "attn_out", "mlp_out"],
             positions=None,
         )
-        print(f"[Background] PCA: {pca_count} cached")
+        pca_time = time.time() - pca_start
+        print(f"[Warmup] PCA: {pca_count} embeddings loaded ({pca_time:.1f}s)")
 
+        # UMAP (slower)
+        print("[Warmup] Loading UMAP embeddings...")
+        umap_start = time.time()
         umap_count = data_loader.warmup(
             methods=["umap"],
-            components=["resid_pre", "resid_post", "attn_out", "mlp_out"],
-            positions=None,
-        )
-        print(f"[Background] UMAP: {umap_count} cached")
-
-        tsne_count = data_loader.warmup(
-            methods=["tsne"],
             components=["resid_pre", "resid_post"],
             positions=None,
         )
-        print(f"[Background] t-SNE: {tsne_count} cached")
-        print(f"[Background] Warmup complete: {pca_count + umap_count + tsne_count} total")
+        umap_time = time.time() - umap_start
+        print(f"[Warmup] UMAP: {umap_count} embeddings loaded ({umap_time:.1f}s)")
 
-    threading.Thread(target=background_warmup, daemon=True).start()
+        # t-SNE (slowest)
+        print("[Warmup] Loading t-SNE embeddings...")
+        tsne_start = time.time()
+        tsne_count = data_loader.warmup(
+            methods=["tsne"],
+            components=["resid_pre"],
+            positions=None,
+        )
+        tsne_time = time.time() - tsne_start
+        print(f"[Warmup] t-SNE: {tsne_count} embeddings loaded ({tsne_time:.1f}s)")
+
+        total_time = time.time() - total_start
+        total_count = pca_count + umap_count + tsne_count
+
+        print("\n" + "=" * 60)
+        print("  WARMUP COMPLETE!")
+        print(f"  Total: {total_count} embeddings loaded in {total_time:.1f}s")
+        print("  UI should now be SUPER SMOOTH")
+        print("=" * 60 + "\n")
+
+    if warmup:
+        threading.Thread(target=background_warmup, daemon=True).start()
 
     # Create FastAPI app
     app = FastAPI(
@@ -95,6 +121,20 @@ def create_app(
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    # Add request timing middleware for performance logging
+    @app.middleware("http")
+    async def log_request_time(request, call_next):
+        import time as time_mod
+        start = time_mod.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time_mod.perf_counter() - start) * 1000
+        # Only log API requests, skip static files
+        path = request.url.path
+        if path.startswith("/api/"):
+            status = "FAST" if elapsed_ms < 100 else "SLOW" if elapsed_ms > 500 else "OK"
+            print(f"[{status}] {path} - {elapsed_ms:.0f}ms")
+        return response
 
     # Create and include API router
     api_router = create_router(data_loader)

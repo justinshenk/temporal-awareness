@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, Suspense, memo } from 'react';
+import { useRef, useState, useCallback, useMemo, Suspense, memo, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -27,6 +27,8 @@ export interface ScatterPlot3DProps {
   style?: React.CSSProperties;
   /** The currently selected sample index (from pointData.sampleIdx) - used for both display and point highlighting */
   selectedSampleIdx?: number | null;
+  /** Visibility mask - 1.0 for visible, 0.0 for hidden */
+  visibility?: Float32Array;
 }
 
 // Axes helper component
@@ -80,6 +82,7 @@ interface SceneContentProps {
   center: [number, number, number];
   cameraDistance: number;
   gridSize: number;
+  visibility?: Float32Array;
 }
 
 const SceneContent = memo(function SceneContent({
@@ -95,7 +98,20 @@ const SceneContent = memo(function SceneContent({
   center,
   cameraDistance,
   gridSize,
+  visibility,
 }: SceneContentProps) {
+  // Performance measurement
+  const renderStart = useRef(performance.now());
+
+  // Log render time after component mounts/updates
+  useEffect(() => {
+    const renderTime = performance.now() - renderStart.current;
+    if (positions.length > 0) {
+      console.log(`[Perf] SceneContent render: ${renderTime.toFixed(1)}ms for ${positions.length / 3} points`);
+    }
+    renderStart.current = performance.now();
+  });
+
   // Track if we've initialized the camera (only set position once)
   const hasInitialized = useRef(false);
   const initialCameraPos = useRef<[number, number, number] | null>(null);
@@ -163,6 +179,7 @@ const SceneContent = memo(function SceneContent({
           onSelect={onSelect}
           selectedIndex={selectedIndex}
           hoverScale={1.5}
+          visibility={visibility}
         />
       </Suspense>
     </>
@@ -184,6 +201,7 @@ function ScatterPlot3DInner({
   className,
   style,
   selectedSampleIdx,
+  visibility,
 }: ScatterPlot3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -352,6 +370,7 @@ function ScatterPlot3DInner({
           center={center}
           cameraDistance={cameraDistance}
           gridSize={gridSize}
+          visibility={visibility}
         />
       </Canvas>
 
@@ -390,7 +409,10 @@ function ScatterPlot3DInner({
           zIndex: 10, // Ensure it stays above canvas but below tooltip
         }}
       >
-        {(positions.length / 3).toLocaleString()} points
+        {visibility
+          ? `${visibility.filter(v => v > 0.5).length.toLocaleString()} / ${(positions.length / 3).toLocaleString()} visible`
+          : `${(positions.length / 3).toLocaleString()} points`
+        }
       </div>
 
       {/* Selected point indicator */}
