@@ -32,6 +32,7 @@ class HuggingFaceBackend(Backend):
             self._n_heads = config.n_head
             self._d_head = self._d_model // self._n_heads
             self._n_kv_heads = getattr(config, "n_head", self._n_heads)
+            self._d_mlp = getattr(config, "n_inner", self._d_model * 4)
             self._arch_type = "gpt2"
         elif hasattr(self.runner._model, "gpt_neox"):
             self._layers_attr = "gpt_neox.layers"
@@ -43,6 +44,7 @@ class HuggingFaceBackend(Backend):
             self._n_kv_heads = getattr(
                 config, "num_key_value_heads", self._n_heads
             )
+            self._d_mlp = getattr(config, "intermediate_size", self._d_model * 4)
             self._arch_type = "gpt_neox"
         elif hasattr(self.runner._model, "model") and hasattr(
             self.runner._model.model, "layers"
@@ -58,6 +60,7 @@ class HuggingFaceBackend(Backend):
             self._n_kv_heads = getattr(
                 config, "num_key_value_heads", self._n_heads
             )
+            self._d_mlp = getattr(config, "intermediate_size", self._d_model * 4)
             self._arch_type = "llama"  # Covers Llama, Qwen3, Mistral, etc.
         else:
             raise ValueError(f"Unknown model architecture: {type(self.runner._model)}")
@@ -83,6 +86,10 @@ class HuggingFaceBackend(Backend):
     def get_n_kv_heads(self) -> int:
         """Get the number of key-value heads (for GQA models)."""
         return self._n_kv_heads
+
+    def get_d_mlp(self) -> int:
+        """Get the MLP intermediate dimension."""
+        return self._d_mlp
 
     def encode(
         self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
@@ -257,15 +264,22 @@ class HuggingFaceBackend(Backend):
         raise ValueError(f"Cannot find attention module in layer: {type(layer)}")
 
     def _register_attention_pattern_hook(
-        self, attn_module, layer_idx: int, cache: dict
+        self, attn_module, layer_idx: int, cache: dict, capture_z: bool = False
     ):
-        """Register a hook to capture attention patterns from Q and K.
+        """Register a hook to capture attention patterns and optionally hook_z.
 
         This manually computes attention patterns because SDPA doesn't support
         output_attentions=True. We hook into the attention module and compute:
-        attn_weights = softmax(Q @ K^T / sqrt(d_head))
+        - attn_weights = softmax(Q @ K^T / sqrt(d_head))
+        - hook_z = attn_weights @ V (if capture_z=True)
 
-        For GQA models, K is expanded to match Q head count before computing patterns.
+        For GQA models, K and V are expanded to match Q head count.
+
+        Args:
+            attn_module: The attention module to hook
+            layer_idx: Layer index
+            cache: Cache dict to store results
+            capture_z: Whether to also capture hook_z (attention output before O projection)
         """
 
         def attention_hook(module, args, kwargs, output):
@@ -316,8 +330,28 @@ class HuggingFaceBackend(Backend):
                     attn_weights, dim=-1, dtype=torch.float32
                 ).to(hidden_states.dtype)
 
-                # Store in cache
+                # Store attention pattern in cache
                 cache[f"blocks.{layer_idx}.attn.hook_pattern"] = attn_weights.detach()
+
+                # Compute and store hook_z if requested
+                if capture_z:
+                    v = module.v_proj(hidden_states)
+                    v = v.view(batch_size, seq_len, self._n_kv_heads, self._d_head)
+                    v = v.transpose(1, 2)  # [batch, n_kv_heads, seq, d_head]
+
+                    # Expand V for GQA
+                    if self._n_kv_heads != self._n_heads:
+                        v = v.repeat_interleave(self._n_kv_groups, dim=1)
+
+                    # Compute attention output: attn_weights @ V
+                    # [batch, n_heads, seq, seq] @ [batch, n_heads, seq, d_head]
+                    # -> [batch, n_heads, seq, d_head]
+                    attn_output = torch.matmul(attn_weights, v)
+
+                    # Transpose to [batch, seq, n_heads, d_head] for TransformerLens compatibility
+                    attn_output = attn_output.transpose(1, 2)
+
+                    cache[f"blocks.{layer_idx}.attn.hook_z"] = attn_output.detach()
 
             elif hasattr(module, "c_attn"):
                 # GPT-2 style combined projection
@@ -328,6 +362,8 @@ class HuggingFaceBackend(Backend):
                 q = q.transpose(1, 2)
                 k = k.view(batch_size, seq_len, self._n_heads, self._d_head)
                 k = k.transpose(1, 2)
+                v = v.view(batch_size, seq_len, self._n_heads, self._d_head)
+                v = v.transpose(1, 2)
 
                 scale = self._d_head ** -0.5
                 attn_weights = torch.matmul(q, k.transpose(-2, -1)) * scale
@@ -343,6 +379,12 @@ class HuggingFaceBackend(Backend):
                 ).to(hidden_states.dtype)
 
                 cache[f"blocks.{layer_idx}.attn.hook_pattern"] = attn_weights.detach()
+
+                # Compute and store hook_z if requested
+                if capture_z:
+                    attn_output = torch.matmul(attn_weights, v)
+                    attn_output = attn_output.transpose(1, 2)  # [batch, seq, n_heads, d_head]
+                    cache[f"blocks.{layer_idx}.attn.hook_z"] = attn_output.detach()
 
         return attn_module.register_forward_hook(attention_hook, with_kwargs=True)
 
@@ -417,10 +459,11 @@ class HuggingFaceBackend(Backend):
                 use_input = component == "resid_pre"
                 hooks.append(module.register_forward_hook(make_hook(name, use_input)))
 
-        # Check if we need attention patterns
+        # Check if we need attention patterns or hook_z
         need_attn_patterns = any(
             c in ("attn_pattern", "attn_z") for _, c, _ in hooks_to_capture
         )
+        need_attn_z = any(c == "attn_z" for _, c, _ in hooks_to_capture)
 
         # Set up attention pattern hooks if needed
         # We hook into the attention module to capture Q, K and compute patterns manually
@@ -429,10 +472,14 @@ class HuggingFaceBackend(Backend):
         if need_attn_patterns:
             for layer_idx in range(self._n_layers):
                 pattern_name = f"blocks.{layer_idx}.attn.hook_pattern"
-                if names_filter is None or names_filter(pattern_name):
+                z_name = f"blocks.{layer_idx}.attn.hook_z"
+                # Check if this layer needs a hook
+                need_pattern = names_filter is None or names_filter(pattern_name)
+                need_z = need_attn_z and (names_filter is None or names_filter(z_name))
+                if need_pattern or need_z:
                     attn_module = self._get_attn_module(layer_idx)
                     hook = self._register_attention_pattern_hook(
-                        attn_module, layer_idx, cache
+                        attn_module, layer_idx, cache, capture_z=need_z
                     )
                     attn_hooks.append(hook)
 

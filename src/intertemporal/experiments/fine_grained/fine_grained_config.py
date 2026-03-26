@@ -87,8 +87,16 @@ class FineGrainedConfig:
     layer_position_positions: list[int] | None = None  # Specific positions (None = use source + dest)
 
     # Key positions (used by multiple analyses when specific positions not set)
-    source_positions: list[int] = field(default_factory=lambda: [86, 87, 88])  # Horizon tokens
-    destination_positions: list[int] = field(default_factory=lambda: [143, 144, 145])  # Choice tokens
+    source_positions: list[int] = field(default_factory=lambda: [86, 87, 88])  # Horizon tokens (fallback)
+    destination_positions: list[int] = field(default_factory=lambda: [143, 144, 145])  # Choice tokens (fallback)
+
+    # Semantic position names (resolved via SamplePositionMapping)
+    source_format_positions: list[str] = field(
+        default_factory=lambda: ["time_horizon", "post_time_horizon"]
+    )
+    destination_format_positions: list[str] = field(
+        default_factory=lambda: ["response_choice", "response_choice_prefix"]
+    )
 
     @classmethod
     def from_dict(cls, d: dict) -> FineGrainedConfig:

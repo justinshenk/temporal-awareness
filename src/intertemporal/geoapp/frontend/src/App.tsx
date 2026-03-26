@@ -128,23 +128,43 @@ function App() {
     viewMode === '1DxPos'
   );
 
-  // Compute filter mask for horizon filtering
-  const filterMask = useMemo(() => {
+  // Compute filter mask for 2D/3D views (aligned with embedding.indices)
+  const scatterFilterMask = useMemo(() => {
     // No filtering if both toggles are on or data not loaded
-    if (!hasHorizonMeta?.values || (showNoHorizon && showWithHorizon)) {
+    if (!hasHorizonMeta?.values || !embedding?.indices || (showNoHorizon && showWithHorizon)) {
       return null;
     }
-    // If both toggles are off, filter everything (empty result)
+    // If both toggles are off, filter everything
     if (!showNoHorizon && !showWithHorizon) {
-      return hasHorizonMeta.values.map(() => false);
+      return embedding.indices.map(() => false);
     }
-    // Filter based on which toggle is off
-    return hasHorizonMeta.values.map(v => {
-      // v === 1 means has horizon, v === 0 means no horizon
-      const hasHorizon = v === 1;
+    // Filter based on horizon value
+    return embedding.indices.map(idx => {
+      const hasHorizon = Boolean(hasHorizonMeta.values[idx]);
       return hasHorizon ? showWithHorizon : showNoHorizon;
     });
-  }, [hasHorizonMeta?.values, showNoHorizon, showWithHorizon]);
+  }, [hasHorizonMeta?.values, embedding?.indices, showNoHorizon, showWithHorizon]);
+
+  // Compute filter mask for trajectory views (aligned with samples 0..n-1)
+  const trajectoryFilterMask = useMemo(() => {
+    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    if (!isTrajectoryView) return null;
+
+    const sampleCount = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
+    if (!hasHorizonMeta?.values || sampleCount === 0 || (showNoHorizon && showWithHorizon)) {
+      return null;
+    }
+    if (!showNoHorizon && !showWithHorizon) {
+      return Array(sampleCount).fill(false);
+    }
+    return Array.from({ length: sampleCount }, (_, i) => {
+      const hasHorizon = Boolean(hasHorizonMeta.values[i]);
+      return hasHorizon ? showWithHorizon : showNoHorizon;
+    });
+  }, [hasHorizonMeta?.values, viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples, showNoHorizon, showWithHorizon]);
+
+  // Use appropriate filter mask based on view mode
+  const filterMask = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryFilterMask : scatterFilterMask;
 
   // Compute positions Float32Array (with filtering)
   const positions = useMemo(() => {
@@ -154,9 +174,10 @@ function App() {
     if (!filterMask) {
       return toFloat32Array(embedding.positions);
     }
-    // Filter positions
+    // Filter positions - filterMask is aligned with embedding indices
+    const numEmbeddingPoints = embedding.positions.length / 3;
     const filtered: number[] = [];
-    for (let i = 0; i < filterMask.length; i++) {
+    for (let i = 0; i < numEmbeddingPoints; i++) {
       if (filterMask[i]) {
         filtered.push(
           embedding.positions[i * 3],
@@ -194,7 +215,7 @@ function App() {
 
   // Compute colors Float32Array (with filtering)
   const colors = useMemo(() => {
-    if (!metadata?.values || metadata.values.length === 0) {
+    if (!metadata?.values || metadata.values.length === 0 || !embedding?.indices) {
       // Default gradient colors if no metadata
       const numPoints = positions.length / 3;
       const defaultColors = new Float32Array(numPoints * 3);
@@ -208,10 +229,13 @@ function App() {
       return defaultColors;
     }
 
-    // Apply filter mask if needed
+    // Map metadata values through embedding indices to align with positions
+    const embeddingValues = embedding.indices.map(idx => metadata.values[idx]);
+
+    // Apply filter mask if needed (filterMask is aligned with embedding indices)
     const filteredValues = filterMask
-      ? metadata.values.filter((_, i) => filterMask[i])
-      : metadata.values;
+      ? embeddingValues.filter((_, i) => filterMask[i])
+      : embeddingValues;
 
     // Check if categorical or continuous (force gradient for certain fields)
     const uniqueValues = new Set(filteredValues);
@@ -234,7 +258,7 @@ function App() {
       }
       return valuesToColors(filteredValues, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
     }
-  }, [metadata, filterMask, positions.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
+  }, [metadata, embedding?.indices, filterMask, positions.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
 
   // Create point data array (with filtering)
   const pointData = useMemo<PointData[]>(() => {
@@ -252,13 +276,9 @@ function App() {
       }));
   }, [embedding?.indices, filterMask]);
 
-  // Unfiltered colors for trajectory views (all samples)
-  const unfilteredColors = useMemo(() => {
-    // Use embedding indices length as canonical sample count
-    const numPoints = embedding?.indices?.length || 0;
-
-    if (!metadata?.values || metadata.values.length === 0) {
-      // Default gradient colors when no metadata
+  // Helper to compute colors from values
+  const computeColors = useCallback((values: number[], numPoints: number): Float32Array => {
+    if (values.length === 0 || numPoints === 0) {
       const defaultColors = new Float32Array(numPoints * 3);
       for (let i = 0; i < numPoints; i++) {
         const t = i / (numPoints - 1 || 1);
@@ -269,34 +289,68 @@ function App() {
       return defaultColors;
     }
 
-    const uniqueValues = new Set(metadata.values);
+    const uniqueValues = new Set(values);
     const forceGradient = GRADIENT_FIELDS.includes(colorBy);
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
-      return categoricalColors(metadata.values, uniqueValues.size);
+      return categoricalColors(values, uniqueValues.size);
     } else {
       const isTimeField = colorBy === 'time_horizon';
       if (isTimeField) {
         return timeGradientColors(
-          metadata.values,
+          values,
           effectiveColorRange.min,
           effectiveColorRange.max,
           timeScaleType,
           blendMix
         );
       }
-      return valuesToColors(metadata.values, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
+      return valuesToColors(values, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
     }
-  }, [metadata, embedding?.indices?.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
+  }, [colorBy, effectiveColorRange, timeScaleType, blendMix]);
 
-  // Unfiltered point data for trajectory views
-  const unfilteredPointData = useMemo<PointData[]>(() => {
+  // Colors for scatter views (2D/3D) - only depends on embedding data
+  const scatterColors = useMemo(() => {
+    const numPoints = embedding?.indices?.length || 0;
+    if (!metadata?.values || numPoints === 0) {
+      return computeColors([], numPoints);
+    }
+    const values = embedding!.indices.map(idx => metadata.values[idx]);
+    return computeColors(values, numPoints);
+  }, [metadata, embedding?.indices, computeColors]);
+
+  // Point data for scatter views
+  const scatterPointData = useMemo<PointData[]>(() => {
     if (!embedding?.indices) return [];
-    return embedding.indices.map((idx) => ({
-      sampleIdx: idx,
-    }));
+    return embedding.indices.map((idx) => ({ sampleIdx: idx }));
   }, [embedding?.indices]);
+
+  // Colors for trajectory views - only computed when needed
+  const trajectoryColors = useMemo(() => {
+    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    if (!isTrajectoryView) return new Float32Array(0);
+
+    const numPoints = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
+    if (!metadata?.values || numPoints === 0) {
+      return computeColors([], numPoints);
+    }
+    const values = metadata.values.slice(0, numPoints);
+    return computeColors(values, numPoints);
+  }, [metadata, viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples, computeColors]);
+
+  // Point data for trajectory views
+  const trajectoryPointData = useMemo<PointData[]>(() => {
+    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    if (!isTrajectoryView) return [];
+
+    const numPoints = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
+    return Array.from({ length: numPoints }, (_, i) => ({ sampleIdx: i }));
+  }, [viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples]);
+
+  // Select colors/pointData based on view mode
+  const unfilteredColors = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryColors : scatterColors;
+  const unfilteredPointData = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryPointData : scatterPointData;
 
   // Clear selection when the selected sample is filtered out
   useEffect(() => {
@@ -372,18 +426,20 @@ function App() {
         const colorIdx = Math.floor(Number(value)) % defaultPalette.length;
         const color = defaultPalette[colorIdx];
 
+        // Note: values can be booleans (true/false) or numbers (1/0)
+        const isTruthy = Boolean(value);
         if (colorBy === 'has_horizon') {
-          label = value === 1 ? 'Has horizon' : 'No horizon';
+          label = isTruthy ? 'Has horizon' : 'No horizon';
         } else if (colorBy === 'short_term_first') {
-          label = value === 1 ? 'Short-term first' : 'Long-term first';
+          label = isTruthy ? 'Short-term first' : 'Long-term first';
         } else if (colorBy === 'chosen_time') {
-          label = value === 1 ? 'Long' : 'Short';
+          label = isTruthy ? 'Long' : 'Short';
         } else if (colorBy === 'matches_largest_reward') {
-          label = value === 1 ? 'Yes' : 'No';
+          label = isTruthy ? 'Yes' : 'No';
         } else if (colorBy === 'matches_rational') {
-          label = value === 1 ? 'Yes' : 'No';
+          label = isTruthy ? 'Yes' : 'No';
         } else if (colorBy === 'matches_associated') {
-          label = value === 1 ? 'Yes' : 'No';
+          label = isTruthy ? 'Yes' : 'No';
         } else {
           label = String(value);
         }

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, Suspense } from 'react';
+import { useRef, useState, useCallback, useMemo, Suspense, memo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -65,7 +65,7 @@ function LoadingFallback() {
   );
 }
 
-// Scene content (inside Canvas)
+// Scene content (inside Canvas) - memoized for performance
 interface SceneContentProps {
   positions: Float32Array;
   colors: Float32Array;
@@ -76,17 +76,13 @@ interface SceneContentProps {
   selectedIndex: number | null;
   onHover: (index: number | null, point: THREE.Vector3 | null, data: PointData | null) => void;
   onSelect: (index: number | null, point: THREE.Vector3 | null, data: PointData | null) => void;
-  cameraStateRef: React.MutableRefObject<{
-    targetPosition: THREE.Vector3 | null;
-    targetLookAt: THREE.Vector3 | null;
-    isAnimating: boolean;
-    animationProgress: number;
-    startPosition: THREE.Vector3;
-    startTarget: THREE.Vector3;
-  }>;
+  // Pre-computed values from parent
+  center: [number, number, number];
+  cameraDistance: number;
+  gridSize: number;
 }
 
-function SceneContent({
+const SceneContent = memo(function SceneContent({
   positions,
   colors,
   pointData,
@@ -96,62 +92,24 @@ function SceneContent({
   selectedIndex,
   onHover,
   onSelect,
-  cameraStateRef: _cameraStateRef,
+  center,
+  cameraDistance,
+  gridSize,
 }: SceneContentProps) {
   // Track if we've initialized the camera (only set position once)
   const hasInitialized = useRef(false);
   const initialCameraPos = useRef<[number, number, number] | null>(null);
   const initialTarget = useRef<[number, number, number] | null>(null);
 
-  // Calculate scene bounds for auto-scaling
-  const bounds = useMemo(() => {
-    if (positions.length === 0) {
-      return { min: new THREE.Vector3(-5, -5, -5), max: new THREE.Vector3(5, 5, 5) };
-    }
-
-    const min = new THREE.Vector3(Infinity, Infinity, Infinity);
-    const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
-
-    for (let i = 0; i < positions.length; i += 3) {
-      min.x = Math.min(min.x, positions[i]);
-      min.y = Math.min(min.y, positions[i + 1]);
-      min.z = Math.min(min.z, positions[i + 2]);
-      max.x = Math.max(max.x, positions[i]);
-      max.y = Math.max(max.y, positions[i + 1]);
-      max.z = Math.max(max.z, positions[i + 2]);
-    }
-
-    return { min, max };
-  }, [positions]);
-
-  // Compute center of data
-  const center = useMemo(() => {
-    return new THREE.Vector3(
-      (bounds.min.x + bounds.max.x) / 2,
-      (bounds.min.y + bounds.max.y) / 2,
-      (bounds.min.z + bounds.max.z) / 2
-    );
-  }, [bounds]);
-
-  // Compute data extent and appropriate camera distance
-  const { gridSize, cameraDistance } = useMemo(() => {
-    const range = bounds.max.clone().sub(bounds.min);
-    const maxRange = Math.max(range.x, range.y, range.z, 0.1); // Prevent zero
-    const grid = maxRange * 1.5;
-    // Position camera at distance of ~2x the data extent for good view
-    const camDist = maxRange * 2;
-    return { gridSize: grid, cameraDistance: camDist };
-  }, [bounds]);
-
   // Store initial camera position only once (first time we have valid data)
   if (!hasInitialized.current && positions.length > 0) {
     const offset = cameraDistance / Math.sqrt(3);
     initialCameraPos.current = [
-      center.x + offset,
-      center.y + offset,
-      center.z + offset,
+      center[0] + offset,
+      center[1] + offset,
+      center[2] + offset,
     ];
-    initialTarget.current = [center.x, center.y, center.z];
+    initialTarget.current = center;
     hasInitialized.current = true;
   }
 
@@ -209,9 +167,9 @@ function SceneContent({
       </Suspense>
     </>
   );
-}
+});
 
-export function ScatterPlot3D({
+function ScatterPlot3DInner({
   positions,
   colors,
   pointData = [],
@@ -232,12 +190,13 @@ export function ScatterPlot3D({
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Compute data bounds for camera positioning
-  const { center, cameraDistance } = useMemo(() => {
+  // Compute data bounds for camera positioning - cached for performance
+  const { center, cameraDistance, gridSize } = useMemo(() => {
     if (positions.length === 0) {
       return {
         center: [0, 0, 0] as [number, number, number],
         cameraDistance: 10,
+        gridSize: 10,
       };
     }
 
@@ -260,8 +219,9 @@ export function ScatterPlot3D({
     ];
     const maxRange = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 0.1);
     const camDist = maxRange * 2;
+    const grid = maxRange * 1.5;
 
-    return { center: centerPt, cameraDistance: camDist };
+    return { center: centerPt, cameraDistance: camDist, gridSize: grid };
   }, [positions]);
 
   // Convert selectedSampleIdx (sample ID) to array index for point highlighting
@@ -285,7 +245,6 @@ export function ScatterPlot3D({
 
   const {
     currentPreset,
-    cameraStateRef,
     handlePresetClick: _handlePresetClick,
     handleResetClick: _handleResetClick,
   } = useCameraControls(dataAwareInitialPosition, center);
@@ -369,11 +328,13 @@ export function ScatterPlot3D({
     >
       <Canvas
         gl={{
-          antialias: true,
+          antialias: false, // Disable for performance
           alpha: true,
           powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
         }}
-        dpr={[1, 2]}
+        dpr={1} // Fixed DPR for consistent performance
         style={{ background: backgroundColor }}
         performance={{ min: 0.5 }}
       >
@@ -388,7 +349,9 @@ export function ScatterPlot3D({
           selectedIndex={selectedIndex}
           onHover={handlePointHover}
           onSelect={handlePointSelect}
-          cameraStateRef={cameraStateRef}
+          center={center}
+          cameraDistance={cameraDistance}
+          gridSize={gridSize}
         />
       </Canvas>
 
@@ -457,4 +420,6 @@ export function ScatterPlot3D({
   );
 }
 
+// Memoize to prevent unnecessary re-renders when parent state changes
+export const ScatterPlot3D = memo(ScatterPlot3DInner);
 export default ScatterPlot3D;

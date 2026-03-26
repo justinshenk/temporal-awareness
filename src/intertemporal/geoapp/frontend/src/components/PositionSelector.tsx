@@ -200,6 +200,11 @@ export function PositionSelector({
             {renderPos('response_reasoning', 'reasoning')}
           </div>
         </div>
+
+        {/* Chat suffix (if present) */}
+        <div className="flex flex-wrap items-center gap-0.5 text-gray-400">
+          {renderPos('chat_suffix', 'chat suffix')}
+        </div>
       </div>
 
       {/* Legend */}

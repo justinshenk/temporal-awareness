@@ -52,6 +52,7 @@ interface BackendEmbeddingResponse {
   method: string;
   n_samples: number;
   coordinates: Point3D[];
+  sample_indices: number[];
 }
 
 export interface EmbeddingResponse {
@@ -137,20 +138,21 @@ export function useEmbedding(
 
       // Transform Point3D array to flat Float32Array-compatible format
       const positions: number[] = [];
-      const indices: number[] = [];
 
-      response.coordinates.forEach((coord, i) => {
+      response.coordinates.forEach((coord) => {
         positions.push(coord.x, coord.y, coord.z);
-        indices.push(i);
       });
 
       return {
         positions,
-        indices,
+        // Use actual sample indices from backend, not just 0,1,2,...
+        indices: response.sample_indices,
         metrics: {},  // Backend doesn't return metrics in embedding endpoint
       };
     },
     enabled: layer >= 0 && !!component && !!position && !!method,
+    staleTime: 1000 * 60 * 30, // 30 minutes - embeddings are expensive to compute
+    gcTime: 1000 * 60 * 60, // 1 hour - keep in cache for a long time
   });
 }
 
@@ -158,6 +160,8 @@ export function useEmbedding(
 export function useMetadata(colorBy: string) {
   return useQuery({
     queryKey: ['metadata', colorBy],
+    staleTime: 1000 * 60 * 60, // 1 hour - metadata doesn't change
+    gcTime: 1000 * 60 * 120, // 2 hours
     queryFn: async (): Promise<MetadataResponse> => {
       // Backend uses snake_case: color_by
       const response = await api.get<BackendMetadataResponse>(

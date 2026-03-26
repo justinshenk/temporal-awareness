@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
+import { useRef, useMemo, useCallback, useState, useEffect, memo } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -21,6 +21,9 @@ interface PointCloudProps {
   selectedIndex?: number | null;
   hoverScale?: number;
 }
+
+// Reusable vector to avoid allocations
+const tempVector = new THREE.Vector3();
 
 // Custom shader for crisp point rendering - BIG visible points
 const vertexShader = `
@@ -97,7 +100,7 @@ const fragmentShader = `
   }
 `;
 
-export function PointCloud({
+function PointCloudInner({
   positions,
   colors,
   pointSize = 4,
@@ -114,67 +117,67 @@ export function PointCloud({
   const pointCount = positions.length / 3;
   const colorPointCount = colors.length / 3;
 
-  // Validate and sanitize positions - replace NaN/Infinity with 0
-  const safePositions = useMemo(() => {
-    let hasInvalid = false;
-    let invalidCount = 0;
+  // Use refs to avoid recreating geometry/material
+  const geometryRef = useRef<THREE.BufferGeometry | null>(null);
+  const positionAttrRef = useRef<THREE.BufferAttribute | null>(null);
+  const colorAttrRef = useRef<THREE.BufferAttribute | null>(null);
+  const indexAttrRef = useRef<THREE.BufferAttribute | null>(null);
 
-    for (let i = 0; i < positions.length; i++) {
-      if (!isFinite(positions[i])) {
-        hasInvalid = true;
-        invalidCount++;
-      }
-    }
-
-    if (!hasInvalid) return positions;
-
-    console.warn(`PointCloud: Found ${invalidCount} invalid position values (NaN/Infinity). Replacing with 0.`);
-    const sanitized = new Float32Array(positions.length);
-    for (let i = 0; i < positions.length; i++) {
-      sanitized[i] = isFinite(positions[i]) ? positions[i] : 0;
-    }
-    return sanitized;
-  }, [positions]);
-
-  // Create geometry with point indices for hover detection
+  // Create or update geometry - avoid full recreation
   const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(safePositions, 3));
+    // Create new geometry only if we don't have one or point count changed significantly
+    if (!geometryRef.current) {
+      geometryRef.current = new THREE.BufferGeometry();
+    }
+    const geo = geometryRef.current;
 
-    // Ensure colors array matches positions array length
-    // If mismatched, create a fallback color array to prevent WebGL errors
-    let safeColors = colors;
-    if (colorPointCount !== pointCount) {
-      console.warn(`PointCloud: Color array length (${colorPointCount}) doesn't match position count (${pointCount}). Using fallback colors.`);
-      safeColors = new Float32Array(pointCount * 3);
+    // Update position attribute
+    if (!positionAttrRef.current || positionAttrRef.current.count !== pointCount) {
+      positionAttrRef.current = new THREE.BufferAttribute(positions, 3);
+      geo.setAttribute('position', positionAttrRef.current);
+    } else {
+      positionAttrRef.current.array = positions;
+      positionAttrRef.current.needsUpdate = true;
+    }
+
+    // Update color attribute
+    const safeColors = colorPointCount === pointCount ? colors : (() => {
+      const fallback = new Float32Array(pointCount * 3);
       for (let i = 0; i < pointCount; i++) {
-        // Default to coral
-        safeColors[i * 3] = 0.85;
-        safeColors[i * 3 + 1] = 0.47;
-        safeColors[i * 3 + 2] = 0.34;
+        fallback[i * 3] = 0.85;
+        fallback[i * 3 + 1] = 0.47;
+        fallback[i * 3 + 2] = 0.34;
       }
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(safeColors, 3));
+      return fallback;
+    })();
 
-    // Add point indices for shader
-    const indices = new Float32Array(pointCount);
-    for (let i = 0; i < pointCount; i++) {
-      indices[i] = i;
+    if (!colorAttrRef.current || colorAttrRef.current.count !== pointCount) {
+      colorAttrRef.current = new THREE.BufferAttribute(safeColors, 3);
+      geo.setAttribute('color', colorAttrRef.current);
+    } else {
+      colorAttrRef.current.array = safeColors;
+      colorAttrRef.current.needsUpdate = true;
     }
-    geo.setAttribute('pointIndex', new THREE.BufferAttribute(indices, 1));
 
-    // Compute bounding sphere for proper frustum culling
+    // Update index attribute
+    if (!indexAttrRef.current || indexAttrRef.current.count !== pointCount) {
+      const indices = new Float32Array(pointCount);
+      for (let i = 0; i < pointCount; i++) indices[i] = i;
+      indexAttrRef.current = new THREE.BufferAttribute(indices, 1);
+      geo.setAttribute('pointIndex', indexAttrRef.current);
+    }
+
     geo.computeBoundingSphere();
-
     return geo;
-  }, [safePositions, colors, pointCount, colorPointCount]);
+  }, [positions, colors, pointCount, colorPointCount]);
 
-  // Dispose geometry when it changes or component unmounts
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
-      geometry.dispose();
+      geometryRef.current?.dispose();
+      geometryRef.current = null;
     };
-  }, [geometry]);
+  }, []);
 
   // Custom shader material - crisp points with proper depth
   // Note: Do NOT include selectedIndex, pointSize, or hoverScale in dependencies
@@ -217,10 +220,19 @@ export function PointCloud({
     }
   }, [material, pointSize, hoverScale, selectedIndex, pointCount]);
 
+  // Throttle hover updates for performance
+  const lastHoverTime = useRef(0);
+  const HOVER_THROTTLE_MS = 16; // ~60fps
+
   // Raycasting for hover detection
   const handlePointerMove = useCallback(
     (_event: ThreeEvent<PointerEvent>) => {
       if (!pointsRef.current) return;
+
+      // Throttle hover detection
+      const now = performance.now();
+      if (now - lastHoverTime.current < HOVER_THROTTLE_MS) return;
+      lastHoverTime.current = now;
 
       // Set raycaster threshold based on point size
       raycaster.params.Points = { threshold: 0.1 };
@@ -234,12 +246,13 @@ export function PointCloud({
           material.uniforms.hoveredIndex.value = index;
 
           if (onHover) {
-            const point = new THREE.Vector3(
+            // Reuse temp vector to avoid allocation
+            tempVector.set(
               positions[index * 3],
               positions[index * 3 + 1],
               positions[index * 3 + 2]
             );
-            onHover(index, point, pointData[index] ?? null);
+            onHover(index, tempVector, pointData[index] ?? null);
           }
         }
       } else if (hoveredIndex !== null) {
@@ -271,12 +284,13 @@ export function PointCloud({
       if (intersects.length > 0) {
         const index = intersects[0].index;
         if (index !== undefined) {
-          const point = new THREE.Vector3(
+          // Reuse temp vector
+          tempVector.set(
             positions[index * 3],
             positions[index * 3 + 1],
             positions[index * 3 + 2]
           );
-          onSelect(index, point, pointData[index] ?? null);
+          onSelect(index, tempVector, pointData[index] ?? null);
         }
       } else {
         onSelect(null, null, null);
@@ -305,4 +319,6 @@ export function PointCloud({
   );
 }
 
+// Memoize to prevent unnecessary re-renders
+export const PointCloud = memo(PointCloudInner);
 export default PointCloud;

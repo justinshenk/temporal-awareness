@@ -223,6 +223,38 @@ class NeuronPatchingResult(BaseSchema):
 
 
 @dataclass
+class AttentionPatchingCorrelation(BaseSchema):
+    """Cross-reference between attention patterns and patching importance.
+
+    Links causally important heads (from patching) with their attention patterns
+    to understand if important heads attend to semantically relevant positions.
+
+    Attributes:
+        head_label: Head identifier (e.g., "L24.H7")
+        layer: Layer index
+        head: Head index
+        patching_score: Combined importance from patching analysis
+        denoising_recovery: Recovery score from denoising
+        noising_disruption: Disruption score from noising
+        attn_to_source: Attention weight to source positions (time_horizon)
+        attn_to_dest: Attention weight to destination positions
+        is_source_attender: Whether head strongly attends to source
+        correlation_type: Classification of head behavior
+    """
+
+    head_label: str
+    layer: int
+    head: int
+    patching_score: float = 0.0
+    denoising_recovery: float = 0.0
+    noising_disruption: float = 0.0
+    attn_to_source: float = 0.0
+    attn_to_dest: float = 0.0
+    is_source_attender: bool = False
+    correlation_type: str = "unknown"  # "source_attender", "dest_attender", "both", "neither"
+
+
+@dataclass
 class LayerPositionResult(BaseSchema):
     """Result for layer x position fine patching.
 

@@ -186,10 +186,32 @@ class GeometryDataLoader:
         self._layers = sorted(layers)
         self._semantic_positions = semantic_positions
 
+    def _parse_position(self, position: str) -> tuple[str, int | None]:
+        """Parse position string into (format_pos, rel_pos).
+
+        Supports formats:
+        - "time_horizon" -> ("time_horizon", None) - combined mode
+        - "time_horizon:0" -> ("time_horizon", 0) - specific rel_pos
+        """
+        if ":" in position:
+            parts = position.rsplit(":", 1)
+            try:
+                return parts[0], int(parts[1])
+            except ValueError:
+                return position, None
+        return position, None
+
     def _get_abs_positions_for_semantic(
-        self, sample_idx: int, semantic_pos: str
+        self, sample_idx: int, semantic_pos: str, rel_pos: int | None = None
     ) -> list[int]:
-        """Get absolute positions for a semantic position in a sample."""
+        """Get absolute positions for a semantic position in a sample.
+
+        Args:
+            sample_idx: Sample index.
+            semantic_pos: Semantic position name (e.g., "time_horizon").
+            rel_pos: If specified, only return the position at this relative offset.
+                     If None, return all positions for the semantic position.
+        """
         if not self._position_mapping or "mappings" not in self._position_mapping:
             return []
 
@@ -198,9 +220,30 @@ class GeometryDataLoader:
                 positions = []
                 for pos_info in sample_mapping.get("positions", []):
                     if pos_info.get("format_pos") == semantic_pos:
-                        positions.append(pos_info["abs_pos"])
+                        if rel_pos is None or pos_info.get("rel_pos") == rel_pos:
+                            positions.append(pos_info["abs_pos"])
                 return positions
         return []
+
+    def get_rel_pos_counts(self) -> dict[str, int]:
+        """Get the maximum rel_pos count for each semantic position.
+
+        Returns a dict mapping semantic position names to the max rel_pos + 1 (count).
+        Useful for showing how many tokens each position spans.
+        """
+        counts: dict[str, int] = {}
+        if not self._position_mapping or "mappings" not in self._position_mapping:
+            return counts
+
+        for sample_mapping in self._position_mapping["mappings"]:
+            for pos_info in sample_mapping.get("positions", []):
+                format_pos = pos_info.get("format_pos")
+                rel_pos = pos_info.get("rel_pos", 0)
+                if format_pos:
+                    current_max = counts.get(format_pos, 0)
+                    counts[format_pos] = max(current_max, rel_pos + 1)
+
+        return counts
 
     @property
     def samples(self) -> list:
@@ -248,6 +291,51 @@ class GeometryDataLoader:
                 result.append(pos)
         return result
 
+    def get_valid_sample_indices(
+        self, layer: int, component: str, position: str
+    ) -> list[int]:
+        """Get list of sample indices that have valid activations for this target.
+
+        Returns the sample indices in the same order as the activations/embeddings.
+        Supports position format "format_pos:rel_pos" for specific relative position.
+        """
+        cache_key = f"L{layer}_{component}_{position}_indices"
+        if cache_key in self._activations_cache:
+            return self._activations_cache[cache_key]
+
+        targets_dir = self.data_dir / "data" / "targets"
+        if not targets_dir.exists():
+            return []
+
+        # Parse position to get format_pos and optional rel_pos
+        format_pos, rel_pos = self._parse_position(position)
+        valid_indices = []
+
+        for sample_idx in range(len(self._samples)):
+            abs_positions = self._get_abs_positions_for_semantic(
+                sample_idx, format_pos, rel_pos
+            )
+            if not abs_positions:
+                continue
+
+            sample_dir = targets_dir / f"sample_{sample_idx}"
+            if not sample_dir.exists():
+                continue
+
+            # Check if at least one activation file exists
+            has_data = False
+            for abs_pos in abs_positions:
+                npy_path = sample_dir / f"L{layer}_{component}_{abs_pos}.npy"
+                if npy_path.exists():
+                    has_data = True
+                    break
+
+            if has_data:
+                valid_indices.append(sample_idx)
+
+        self._activations_cache[cache_key] = valid_indices
+        return valid_indices
+
     def load_activations(
         self, layer: int, component: str, position: str
     ) -> np.ndarray | None:
@@ -258,6 +346,8 @@ class GeometryDataLoader:
         2. Loading the corresponding .npy files
         3. Averaging across positions within each sample (if multiple tokens)
         4. Stacking into (n_samples, d_model) array
+
+        Supports position format "format_pos:rel_pos" for specific relative position.
         """
         cache_key = f"L{layer}_{component}_{position}"
         if cache_key in self._activations_cache:
@@ -267,10 +357,14 @@ class GeometryDataLoader:
         if not targets_dir.exists():
             return None
 
+        # Parse position to get format_pos and optional rel_pos
+        format_pos, rel_pos = self._parse_position(position)
         activations_list = []
 
         for sample_idx in range(len(self._samples)):
-            abs_positions = self._get_abs_positions_for_semantic(sample_idx, position)
+            abs_positions = self._get_abs_positions_for_semantic(
+                sample_idx, format_pos, rel_pos
+            )
             if not abs_positions:
                 continue
 
@@ -298,16 +392,44 @@ class GeometryDataLoader:
         self._activations_cache[cache_key] = result
         return result
 
+    def _get_cache_path(self, method: str, layer: int, component: str, position: str) -> Path:
+        """Get disk cache path for an embedding."""
+        # Sanitize position for filename (replace : with _)
+        safe_pos = position.replace(":", "_")
+        return self.data_dir / "cache" / method / f"L{layer}_{component}_{safe_pos}.npy"
+
+    def _load_from_disk_cache(self, method: str, layer: int, component: str, position: str) -> np.ndarray | None:
+        """Try to load embedding from disk cache."""
+        cache_path = self._get_cache_path(method, layer, component, position)
+        if cache_path.exists():
+            return np.load(cache_path)
+        return None
+
+    def _save_to_disk_cache(self, method: str, layer: int, component: str, position: str, data: np.ndarray) -> None:
+        """Save embedding to disk cache."""
+        cache_path = self._get_cache_path(method, layer, component, position)
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(cache_path, data)
+
     def load_pca(
         self, layer: int, component: str, position: str, n_components: int = 3
     ) -> np.ndarray | None:
         """Load or compute PCA embedding."""
         cache_key = f"L{layer}_{component}_{position}_pca_{n_components}"
 
+        # Check memory cache first
         if cache_key in self._pca_cache:
             return self._pca_cache[cache_key]
 
-        # Try pre-computed PCA from results
+        # Check disk cache
+        disk_result = self._load_from_disk_cache("pca", layer, component, position)
+        if disk_result is not None:
+            if disk_result.shape[1] >= n_components:
+                result = disk_result[:, :n_components]
+                self._pca_cache[cache_key] = result
+                return result
+
+        # Try pre-computed PCA from results (legacy path)
         pca_key = f"L{layer}_{component}_{position}"
         pca_path = self.data_dir / "results" / "pca" / pca_key / "transformed.npy"
         if pca_path.exists():
@@ -315,6 +437,8 @@ class GeometryDataLoader:
             if transformed.shape[1] >= n_components:
                 result = transformed[:, :n_components]
                 self._pca_cache[cache_key] = result
+                # Also save to new cache format
+                self._save_to_disk_cache("pca", layer, component, position, transformed)
                 return result
 
         # Compute from activations
@@ -336,6 +460,8 @@ class GeometryDataLoader:
         else:
             result = transformed
 
+        # Save to disk cache for instant loading next time
+        self._save_to_disk_cache("pca", layer, component, position, result)
         self._pca_cache[cache_key] = result
         return result
 
@@ -348,12 +474,22 @@ class GeometryDataLoader:
         n_neighbors: int = 15,
         min_dist: float = 0.1,
     ) -> np.ndarray | None:
-        """Compute UMAP embedding."""
+        """Load or compute UMAP embedding."""
         cache_key = f"L{layer}_{component}_{position}_umap_{n_components}_{n_neighbors}_{min_dist}"
 
+        # Check memory cache first
         if cache_key in self._umap_cache:
             return self._umap_cache[cache_key]
 
+        # Check disk cache
+        disk_result = self._load_from_disk_cache("umap", layer, component, position)
+        if disk_result is not None:
+            if disk_result.shape[1] >= n_components:
+                result = disk_result[:, :n_components]
+                self._umap_cache[cache_key] = result
+                return result
+
+        # Compute from activations
         activations = self.load_activations(layer, component, position)
         if activations is None or activations.shape[0] < 2:
             return None
@@ -370,6 +506,8 @@ class GeometryDataLoader:
             )
             result = umap.fit_transform(activations).astype(np.float32)
 
+        # Save to disk cache
+        self._save_to_disk_cache("umap", layer, component, position, result)
         self._umap_cache[cache_key] = result
         return result
 
@@ -381,12 +519,22 @@ class GeometryDataLoader:
         n_components: int = 3,
         perplexity: float = 30.0,
     ) -> np.ndarray | None:
-        """Compute t-SNE embedding."""
+        """Load or compute t-SNE embedding."""
         cache_key = f"L{layer}_{component}_{position}_tsne_{n_components}_{perplexity}"
 
+        # Check memory cache first
         if cache_key in self._tsne_cache:
             return self._tsne_cache[cache_key]
 
+        # Check disk cache
+        disk_result = self._load_from_disk_cache("tsne", layer, component, position)
+        if disk_result is not None:
+            if disk_result.shape[1] >= n_components:
+                result = disk_result[:, :n_components]
+                self._tsne_cache[cache_key] = result
+                return result
+
+        # Compute from activations
         activations = self.load_activations(layer, component, position)
         if activations is None or activations.shape[0] < 4:
             return None
@@ -403,6 +551,8 @@ class GeometryDataLoader:
             )
             result = tsne.fit_transform(activations).astype(np.float32)
 
+        # Save to disk cache
+        self._save_to_disk_cache("tsne", layer, component, position, result)
         self._tsne_cache[cache_key] = result
         return result
 
@@ -535,6 +685,7 @@ class GeometryDataLoader:
             "reasoning_ask": "Reasoning Ask",
             "reward_units": "Reward Units",
             "chat_prefix": "Chat Prefix",
+            "chat_suffix": "Chat Suffix",
             "situation_content": "Situation Content",
             "task_content": "Task Content",
             "consider_content": "Consider Content",

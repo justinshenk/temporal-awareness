@@ -27,6 +27,7 @@ class ConfigResponse(BaseModel):
     prompt_template: list[PromptTemplateElement] = Field(default_factory=list, description="Prompt template structure for UI")
     semantic_to_positions: dict[str, list[str]] = Field(default_factory=dict, description="Mapping from semantic positions to token positions (for compatibility)")
     markers: dict[str, str] = Field(default_factory=dict, description="Section markers from prompt format (e.g., situation_marker: 'SITUATION:')")
+    rel_pos_counts: dict[str, int] = Field(default_factory=dict, description="Number of tokens (rel_pos values) for each semantic position")
 
 
 class Point3D(BaseModel):
@@ -46,6 +47,7 @@ class EmbeddingResponse(BaseModel):
     method: str = Field(description="Dimensionality reduction method (pca, umap, tsne)")
     n_samples: int = Field(description="Number of samples")
     coordinates: list[Point3D] = Field(description="3D coordinates for each sample")
+    sample_indices: list[int] = Field(description="Original sample indices for each coordinate")
 
 
 class ColorValues(BaseModel):

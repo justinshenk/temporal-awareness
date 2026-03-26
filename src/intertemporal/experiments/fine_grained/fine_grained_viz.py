@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import numpy as np
 
 from ....common.profiler import profile
@@ -93,6 +94,10 @@ def visualize_fine_grained(
     # Plot 26: Layer-position fine heatmap
     if results.layer_position:
         _plot_layer_position_heatmaps(results.layer_position, output_dir)
+
+    # Plot 27: Head redundancy gap chart
+    if results.head_sweep:
+        _plot_head_redundancy_gap(results.head_sweep, output_dir)
 
     print(f"[viz] Fine-grained patching plots saved to {output_dir}")
 
@@ -291,10 +296,38 @@ def _plot_head_position_heatmap(
 
     ax.set_xlabel("Head", fontsize=11)
     ax.set_ylabel("Position", fontsize=11)
-    ax.set_title("Head x Position Patching Effect", fontsize=12, fontweight="bold")
+    ax.set_title("Head x Position Patching Effect (Denoising)", fontsize=12, fontweight="bold")
 
     plt.tight_layout()
     finalize_plot(output_dir / "20_head_position_heatmap.png")
+
+    # Build noising matrix and create second heatmap
+    noising_matrix = np.zeros((n_pos, n_heads))
+    for hi, pr in enumerate(position_results):
+        for pi, val in enumerate(pr.noising_by_position):
+            noising_matrix[pi, hi] = val
+
+    fig, ax = plt.subplots(figsize=(max(6, n_heads * 1.2), max(8, n_pos * 0.15)))
+    im = ax.imshow(
+        noising_matrix,
+        aspect="auto",
+        cmap="RdBu_r",
+        interpolation="nearest",
+    )
+    plt.colorbar(im, ax=ax, label="Noising Disruption")
+
+    ax.set_xticks(range(n_heads))
+    ax.set_xticklabels(head_labels, rotation=45, ha="right", fontsize=9)
+
+    ax.set_yticks(range(0, n_pos, pos_step))
+    ax.set_yticklabels([f"P{positions[i]}" for i in range(0, n_pos, pos_step)], fontsize=8)
+
+    ax.set_xlabel("Head", fontsize=11)
+    ax.set_ylabel("Position", fontsize=11)
+    ax.set_title("Head x Position Patching Effect (Noising)", fontsize=12, fontweight="bold")
+
+    plt.tight_layout()
+    finalize_plot(output_dir / "20_head_position_heatmap_noising.png")
 
 
 def _plot_path_head_to_mlp(
@@ -502,6 +535,13 @@ def _plot_neuron_ranked_bar(
     ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5)
     ax.grid(axis="y", alpha=0.3)
 
+    # Add legend explaining color meanings
+    legend_elements = [
+        Patch(facecolor="steelblue", alpha=0.8, label="Positive: promotes clean answer"),
+        Patch(facecolor="indianred", alpha=0.8, label="Negative: promotes corrupted answer"),
+    ]
+    ax.legend(handles=legend_elements, loc="upper right", fontsize=9)
+
     plt.tight_layout()
     finalize_plot(output_dir / "24_neuron_ranked_bar.png")
 
@@ -538,6 +578,19 @@ def _plot_cumulative_neuron_curve(
     # Add reference lines
     ax.axhline(y=0.5, color="gray", linestyle="--", linewidth=1, alpha=0.7)
     ax.axhline(y=0.9, color="gray", linestyle="--", linewidth=1, alpha=0.7)
+
+    # Add text annotations for 50%, 80%, 90% thresholds
+    cumulative = np.array(fractions)
+    for threshold, label in [(0.5, "50%"), (0.8, "80%"), (0.9, "90%")]:
+        idx = int(np.searchsorted(cumulative, threshold))
+        if idx < len(ns):
+            ax.annotate(
+                f"{label}: {ns[idx]} neurons",
+                xy=(ns[idx], cumulative[idx]),
+                xytext=(ns[idx] + 3, cumulative[idx] - 0.08),
+                fontsize=9,
+                arrowprops=dict(arrowstyle="->", lw=0.5, color="gray"),
+            )
 
     plt.tight_layout()
     finalize_plot(output_dir / "25_cumulative_neuron_curve.png")
@@ -610,3 +663,62 @@ def _plot_layer_position_heatmaps(
 
             plt.tight_layout()
             finalize_plot(output_dir / f"26_layer_position_{component}_noising.png")
+
+
+def _plot_head_redundancy_gap(head_sweep: HeadSweepResults, output_dir: Path) -> None:
+    """Plot 27: Head redundancy gap chart.
+
+    Shows denoising - noising gap per head, sorted by gap magnitude.
+    Small gap = bottleneck head (unique contribution)
+    Large gap = redundant head (effect can be compensated by other paths)
+    """
+    top_heads = head_sweep.get_top_heads(20, by="combined")
+    if not top_heads:
+        return
+
+    # Compute gaps: denoising - noising
+    # Positive gap means denoising > noising (more recovery than disruption)
+    gaps = [
+        (h.label, h.denoising_recovery - h.noising_disruption)
+        for h in top_heads
+    ]
+    # Sort by absolute gap magnitude (largest gaps first)
+    gaps.sort(key=lambda x: abs(x[1]), reverse=True)
+
+    labels = [g[0] for g in gaps]
+    gap_values = [g[1] for g in gaps]
+    colors = ["steelblue" if v >= 0 else "indianred" for v in gap_values]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    x = np.arange(len(labels))
+    bars = ax.bar(x, gap_values, color=colors, alpha=0.8)
+
+    ax.set_xlabel("Head (sorted by gap magnitude)", fontsize=11)
+    ax.set_ylabel("Denoising - Noising Gap", fontsize=11)
+    ax.set_title("Head Redundancy Analysis: Denoising vs Noising Gap", fontsize=12, fontweight="bold")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
+    ax.axhline(y=0, color="black", linestyle="-", linewidth=0.5)
+    ax.grid(axis="y", alpha=0.3)
+
+    # Add legend explaining interpretation
+    legend_elements = [
+        Patch(facecolor="steelblue", alpha=0.8, label="Positive: denoising > noising (unique info)"),
+        Patch(facecolor="indianred", alpha=0.8, label="Negative: noising > denoising (redundant)"),
+    ]
+    ax.legend(handles=legend_elements, loc="upper right", fontsize=9)
+
+    # Annotate interpretation
+    ax.text(
+        0.02, 0.98,
+        "Small gap = bottleneck (critical)\nLarge gap = redundant (compensatable)",
+        transform=ax.transAxes,
+        fontsize=9,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
+
+    plt.tight_layout()
+    finalize_plot(output_dir / "27_head_redundancy_gap.png")

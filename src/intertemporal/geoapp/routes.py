@@ -5,7 +5,7 @@ import math
 from typing import Literal
 
 import numpy as np
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response
 
 from .data_loader import GeometryDataLoader
 from .models import (
@@ -105,6 +105,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             prompt_template=data_loader.get_prompt_template_structure(),
             semantic_to_positions=data_loader.get_semantic_to_positions_mapping(),
             markers=data_loader.get_markers(),
+            rel_pos_counts=data_loader.get_rel_pos_counts(),
         )
 
     @router.get("/embedding/{layer}/{component}/{position}", response_model=EmbeddingResponse)
@@ -113,6 +114,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         component: str,
         position: str,
         method: Literal["pca", "umap", "tsne"] = Query(default="pca", description="Dimensionality reduction method"),
+        response: Response = None,
     ) -> EmbeddingResponse:
         """Get 3D embedding coordinates for a specific layer/component/position.
 
@@ -153,6 +155,9 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
                 detail=f"No embedding found for L{layer}_{component}_{position}",
             )
 
+        # Get the sample indices that correspond to the embedding rows
+        sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+
         # Convert numpy array to list of Point3D, sanitizing NaN/Infinity
         coordinates = [
             Point3D(
@@ -163,6 +168,10 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             for row in embedding
         ]
 
+        # Set cache headers for browser caching (30 minutes)
+        if response:
+            response.headers["Cache-Control"] = "max-age=1800, stale-while-revalidate=3600"
+
         return EmbeddingResponse(
             layer=layer,
             component=component,
@@ -170,11 +179,13 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             method=method,
             n_samples=len(coordinates),
             coordinates=coordinates,
+            sample_indices=sample_indices,
         )
 
     @router.get("/metadata", response_model=ColorValues)
     async def get_metadata(
         color_by: str = Query(default="log_time_horizon", description="Metadata field to use for coloring"),
+        response: Response = None,
     ) -> ColorValues:
         """Get color values for all samples based on a metadata field.
 
@@ -212,6 +223,10 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         else:
             dtype = "categorical"
             values_list = [str(v) for v in values]
+
+        # Set cache headers (1 hour - metadata doesn't change)
+        if response:
+            response.headers["Cache-Control"] = "max-age=3600, stale-while-revalidate=7200"
 
         return ColorValues(
             color_by=color_by,

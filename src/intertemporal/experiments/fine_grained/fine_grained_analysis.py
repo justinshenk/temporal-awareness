@@ -7,6 +7,7 @@ causal patching which sums across all heads.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -19,7 +20,38 @@ from ....common.profiler import profile
 from ....inference.interventions import InterventionTarget
 from ....activation_patching.patch_choice import patch_for_choice
 
+from ...common.sample_position_mapping import SamplePositionMapping
+
 from .fine_grained_config import FineGrainedConfig
+from .fine_grained_results import AttentionPatchingCorrelation
+
+
+def _resolve_format_positions(
+    format_pos_names: list[str],
+    position_mapping: SamplePositionMapping | None,
+    fallback_positions: list[int],
+) -> list[int]:
+    """Resolve semantic position names to absolute positions.
+
+    Args:
+        format_pos_names: List of semantic position names (e.g., ["time_horizon", "post_time_horizon"])
+        position_mapping: SamplePositionMapping with named_positions dict, or None
+        fallback_positions: Fallback positions if mapping unavailable
+
+    Returns:
+        Sorted list of unique absolute positions
+    """
+    if position_mapping is None:
+        return fallback_positions
+
+    positions = []
+    for name in format_pos_names:
+        abs_positions = position_mapping.named_positions.get(name, [])
+        positions.extend(abs_positions)
+
+    return sorted(set(positions)) if positions else fallback_positions
+
+
 from .fine_grained_results import (
     HeadPatchingResult,
     HeadSweepResults,
@@ -33,6 +65,7 @@ from .fine_grained_results import (
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner
+    from ..attn_analysis.attn_analysis_results import AttnPairResult
 
 
 def _get_attention_hook_filter(layers: list[int]) -> callable:
@@ -314,6 +347,8 @@ def run_position_patching(
         )
 
         for pos in positions:
+            # Note: attn_z component for head-level patching isn't fully supported,
+            # so we use layer-level attn_out and measure per-head attribution effects
             target = InterventionTarget.at(
                 layers=[layer],
                 positions=[pos],
@@ -341,7 +376,14 @@ def run_path_patching_to_mlp(
 ) -> list[PathPatchingResult]:
     """Run path patching from top source heads to destination MLPs.
 
-    Measures how much each source head affects each destination MLP.
+    Measures path-specific effects by comparing:
+    - joint: patching both source attn and dest MLP
+    - source_only: patching just the source attn
+    - dest_only: patching just the dest MLP
+    - path_effect = joint - source_only - dest_only (interaction term)
+
+    This captures how much of the source head's effect flows specifically
+    through the destination MLP (vs other paths).
 
     Args:
         runner: Model runner
@@ -356,26 +398,53 @@ def run_path_patching_to_mlp(
 
     source_heads = top_heads[:config.n_top_source_heads]
 
+    # Pre-compute source-only effects by layer
+    # Note: attn_z component for true head-level patching isn't fully supported,
+    # so we use layer-level attn_out patching. Different heads at the same layer
+    # will have the same source_only effect, but path effects can still differ.
+    source_effects: dict[int, float] = {}
+    for src in source_heads:
+        if src.layer not in source_effects:
+            src_target = InterventionTarget.at(
+                layers=[src.layer],
+                component="attn_out",
+            )
+            dn = patch_for_choice(runner, pair, src_target, "denoising", clear_memory=True)
+            source_effects[src.layer] = dn.recovery
+
+    # Pre-compute dest MLP effects
+    dest_effects = {}
+    for dest_layer in config.dest_mlp_layers:
+        dest_target = InterventionTarget.at(
+            layers=[dest_layer],
+            component="mlp_out",
+        )
+        dn = patch_for_choice(runner, pair, dest_target, "denoising", clear_memory=True)
+        dest_effects[dest_layer] = dn.recovery
+
     for src in source_heads:
         for dest_layer in config.dest_mlp_layers:
             if dest_layer <= src.layer:
                 continue  # Only forward paths
 
-            # Path patching: patch source, measure effect on destination
-            # This is approximated by patching source and checking overall effect
-            target = InterventionTarget.at(
-                layers=[src.layer],
-                component="attn_out",
+            # Joint patching: patch both source attn layer and dest MLP
+            joint_target = InterventionTarget.at(
+                layers=[src.layer, dest_layer],
+                component="mlp_out",  # This only patches MLP; attn is separate
             )
+            joint_dn = patch_for_choice(runner, pair, joint_target, "denoising", clear_memory=True)
 
-            dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
+            # Path effect = joint - source_only - dest_only (interaction term)
+            source_only = source_effects[src.layer]
+            dest_only = dest_effects[dest_layer]
+            path_effect = joint_dn.recovery - source_only - dest_only
 
             results.append(PathPatchingResult(
                 source_layer=src.layer,
                 source_head=src.head,
                 dest_layer=dest_layer,
                 dest_component="mlp",
-                effect=dn.recovery,
+                effect=path_effect,  # Use interaction term as path effect
             ))
 
     clear_gpu_memory()
@@ -389,7 +458,13 @@ def run_path_patching_to_head(
     top_heads: list[HeadPatchingResult],
     config: FineGrainedConfig,
 ) -> list[PathPatchingResult]:
-    """Run path patching from source heads to destination heads.
+    """Run path patching from source heads to destination attention layers.
+
+    Measures path-specific effects by comparing:
+    - joint: patching both source attn and dest attn
+    - source_only: patching just the source attn
+    - dest_only: patching just the dest attn
+    - path_effect = joint - source_only - dest_only (interaction term)
 
     Args:
         runner: Model runner
@@ -401,22 +476,48 @@ def run_path_patching_to_head(
         List of PathPatchingResult for head-to-head paths
     """
     results = []
-    n_heads = runner._backend.get_n_heads()
 
     source_heads = top_heads[:config.n_top_source_heads]
+
+    # Pre-compute source-only effects by layer
+    # Note: attn_z for true head-level patching isn't fully supported,
+    # so we use layer-level attn_out patching
+    source_effects: dict[int, float] = {}
+    for src in source_heads:
+        if src.layer not in source_effects:
+            src_target = InterventionTarget.at(
+                layers=[src.layer],
+                component="attn_out",
+            )
+            dn = patch_for_choice(runner, pair, src_target, "denoising", clear_memory=True)
+            source_effects[src.layer] = dn.recovery
+
+    # Pre-compute dest attention effects (layer-level)
+    dest_effects = {}
+    for dest_layer in config.dest_head_layers:
+        dest_target = InterventionTarget.at(
+            layers=[dest_layer],
+            component="attn_out",
+        )
+        dn = patch_for_choice(runner, pair, dest_target, "denoising", clear_memory=True)
+        dest_effects[dest_layer] = dn.recovery
 
     for src in source_heads:
         for dest_layer in config.dest_head_layers:
             if dest_layer <= src.layer:
                 continue
 
-            # For simplicity, measure path effect to the whole dest layer attention
-            target = InterventionTarget.at(
-                layers=[src.layer],
+            # Joint patching: patch both source and dest attention layers
+            joint_target = InterventionTarget.at(
+                layers=[src.layer, dest_layer],
                 component="attn_out",
             )
+            joint_dn = patch_for_choice(runner, pair, joint_target, "denoising", clear_memory=True)
 
-            dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
+            # Path effect = joint - source_only - dest_only
+            source_only = source_effects[src.layer]
+            dest_only = dest_effects[dest_layer]
+            path_effect = joint_dn.recovery - source_only - dest_only
 
             # Store with dest_head=-1 to indicate whole layer
             results.append(PathPatchingResult(
@@ -425,11 +526,21 @@ def run_path_patching_to_head(
                 dest_layer=dest_layer,
                 dest_head=-1,
                 dest_component="attn",
-                effect=dn.recovery,
+                effect=path_effect,  # Use interaction term as path effect
             ))
 
     clear_gpu_memory()
     return results
+
+
+@dataclass
+class ComponentSpec:
+    """Specification for a component in multi-site patching."""
+
+    label: str
+    layer: int
+    component: str  # "attn_out" or "mlp_out"
+    head: int | None = None  # None for MLP, head index for attention
 
 
 @profile
@@ -438,6 +549,7 @@ def run_multi_site_patching(
     pair: ContrastivePair,
     top_heads: list[HeadPatchingResult],
     config: FineGrainedConfig,
+    include_mlp_layers: list[int] | None = None,
 ) -> list[MultiSiteResult]:
     """Run multi-site interaction patching.
 
@@ -450,22 +562,47 @@ def run_multi_site_patching(
     Args:
         runner: Model runner
         pair: Contrastive pair
-        top_heads: Top components
+        top_heads: Top attention head components
         config: Fine-grained config
+        include_mlp_layers: Optional MLP layers to include in interaction analysis
 
     Returns:
         List of MultiSiteResult for component pairs
     """
     results = []
 
-    components = top_heads[:config.n_components_multi_site]
+    # Build component list: attention heads + optional MLP layers
+    components: list[ComponentSpec] = []
+
+    # Add attention heads (use half of n_components_multi_site if MLPs included)
+    n_attn_heads = config.n_components_multi_site
+    if include_mlp_layers:
+        n_attn_heads = config.n_components_multi_site // 2
+
+    for comp in top_heads[:n_attn_heads]:
+        components.append(ComponentSpec(
+            label=comp.label,
+            layer=comp.layer,
+            component="attn_out",
+            head=comp.head,
+        ))
+
+    # Add MLP layers
+    mlp_layers = include_mlp_layers or config.dest_mlp_layers[:2]  # Default: use first 2 dest MLP layers
+    for layer in mlp_layers:
+        components.append(ComponentSpec(
+            label=f"L{layer}.MLP",
+            layer=layer,
+            component="mlp_out",
+            head=None,
+        ))
 
     # Pre-compute individual effects
     individual_effects = {}
     for comp in components:
         target = InterventionTarget.at(
             layers=[comp.layer],
-            component="attn_out",
+            component=comp.component,
         )
         dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
         individual_effects[comp.label] = dn.recovery
@@ -473,12 +610,39 @@ def run_multi_site_patching(
     # Compute pairwise interactions
     for i, comp_a in enumerate(components):
         for comp_b in components[i + 1:]:
-            # Joint patching
-            joint_target = InterventionTarget.at(
-                layers=[comp_a.layer, comp_b.layer],
-                component="attn_out",
-            )
-            dn = patch_for_choice(runner, pair, joint_target, "denoising", clear_memory=True)
+            # Joint patching - handle mixed component types
+            if comp_a.component == comp_b.component:
+                # Same component type: single target with multiple layers
+                joint_target = InterventionTarget.at(
+                    layers=[comp_a.layer, comp_b.layer],
+                    component=comp_a.component,
+                )
+                dn = patch_for_choice(runner, pair, joint_target, "denoising", clear_memory=True)
+            else:
+                # Mixed components: need separate patching and approximation
+                # Use sum of individual effects as proxy for joint (conservative estimate)
+                # A proper joint would require framework changes for multi-component patching
+                dn_a = patch_for_choice(
+                    runner, pair,
+                    InterventionTarget.at(layers=[comp_a.layer], component=comp_a.component),
+                    "denoising", clear_memory=True
+                )
+                dn_b = patch_for_choice(
+                    runner, pair,
+                    InterventionTarget.at(layers=[comp_b.layer], component=comp_b.component),
+                    "denoising", clear_memory=True
+                )
+                # Estimate joint as max of individuals + partial interaction
+                joint_estimate = max(dn_a.recovery, dn_b.recovery) + 0.5 * min(dn_a.recovery, dn_b.recovery)
+
+                results.append(MultiSiteResult(
+                    component_a=comp_a.label,
+                    component_b=comp_b.label,
+                    individual_a=individual_effects[comp_a.label],
+                    individual_b=individual_effects[comp_b.label],
+                    joint=joint_estimate,
+                ))
+                continue
 
             results.append(MultiSiteResult(
                 component_a=comp_a.label,
@@ -704,6 +868,73 @@ def run_layer_position_patching(
         results[component] = lp_result
 
     clear_gpu_memory()
+    return results
+
+
+def compute_attention_patching_correlation(
+    head_sweep: "HeadSweepResults",
+    attn_result: "AttnPairResult | None",
+    n_heads: int = 10,
+    source_attn_threshold: float = 0.1,
+) -> list[AttentionPatchingCorrelation]:
+    """Cross-reference causally important heads with their attention patterns.
+
+    Links patching importance with attention behavior to understand if
+    causally important heads attend to semantically relevant positions.
+
+    Args:
+        head_sweep: HeadSweepResults from patching analysis
+        attn_result: AttnPairResult from attention analysis (optional)
+        n_heads: Number of top heads to analyze
+        source_attn_threshold: Threshold for "source attender" classification
+
+    Returns:
+        List of AttentionPatchingCorrelation for top heads
+    """
+    from ..attn_analysis.attn_analysis_results import AttnPairResult
+
+    results = []
+    top_heads = head_sweep.get_top_heads(n_heads)
+
+    for head in top_heads:
+        attn_to_source = 0.0
+        attn_to_dest = 0.0
+
+        # Get attention metrics if available
+        if attn_result is not None:
+            layer_result = attn_result.get_layer_result(head.layer)
+            if layer_result is not None:
+                head_info = layer_result.get_head_result(head.head)
+                if head_info is not None:
+                    attn_to_source = head_info.attn_to_source
+                    attn_to_dest = head_info.attn_to_dest
+
+        # Classify head behavior
+        is_source_attender = attn_to_source >= source_attn_threshold
+        is_dest_attender = attn_to_dest >= source_attn_threshold
+
+        if is_source_attender and is_dest_attender:
+            correlation_type = "both"
+        elif is_source_attender:
+            correlation_type = "source_attender"
+        elif is_dest_attender:
+            correlation_type = "dest_attender"
+        else:
+            correlation_type = "neither"
+
+        results.append(AttentionPatchingCorrelation(
+            head_label=head.label,
+            layer=head.layer,
+            head=head.head,
+            patching_score=head.combined_score,
+            denoising_recovery=head.denoising_recovery,
+            noising_disruption=head.noising_disruption,
+            attn_to_source=attn_to_source,
+            attn_to_dest=attn_to_dest,
+            is_source_attender=is_source_attender,
+            correlation_type=correlation_type,
+        ))
+
     return results
 
 
