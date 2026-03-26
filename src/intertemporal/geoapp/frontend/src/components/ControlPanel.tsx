@@ -363,7 +363,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   // Human-readable labels for color options
   const colorByLabels: Record<string, string> = {
     'time_horizon': 'Time Horizon',
-    'chosen_delivery': 'Chose Long-term',
+    'chosen_time': 'Chosen Time',
+    'chosen_reward': 'Chosen Reward',
+    'matches_largest_reward': 'Chose Largest Reward',
+    'matches_rational': 'Chose Rational',
+    'matches_associated': 'Matches Associated',
     'has_horizon': 'Has Horizon',
     'short_term_first': 'Option Order',
     'context_id': 'Context',

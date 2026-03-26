@@ -69,7 +69,12 @@ class GeometryDataLoader:
                     if "chosen_time_months" in choice:
                         self._samples[i]["time_horizon_months"] = choice["chosen_time_months"]
                     if "chose_long_term" in choice:
-                        self._samples[i]["chosen_delivery"] = choice["chose_long_term"]
+                        self._samples[i]["chosen_time"] = choice["chose_long_term"]
+                    if "chosen_reward" in choice:
+                        self._samples[i]["chosen_reward"] = choice["chosen_reward"]
+
+                    # Compute derived color fields
+                    self._compute_derived_fields(i, choice)
 
         # Load metadata
         metadata_path = self.data_dir / "data" / "metadata.json"
@@ -85,6 +90,74 @@ class GeometryDataLoader:
 
         # Discover layers and semantic positions from mapping and files
         self._discover_targets()
+
+    def _compute_derived_fields(self, sample_idx: int, choice: dict) -> None:
+        """Compute derived color fields for a sample based on choice and prompt.
+
+        Computes:
+        - matches_largest_reward: Did they choose the option with higher reward?
+        - matches_rational: For same reward, shorter time is rational
+        - matches_associated: Does choice align with time horizon framing?
+        """
+        sample = self._samples[sample_idx]
+        prompt = sample.get("prompt", {})
+        pp = prompt.get("preference_pair", {})
+
+        short_term = pp.get("short_term", {})
+        long_term = pp.get("long_term", {})
+
+        short_reward = short_term.get("reward", {}).get("value", 0)
+        long_reward = long_term.get("reward", {}).get("value", 0)
+
+        chose_long = choice.get("chose_long_term", False)
+
+        # matches_largest_reward: Did they choose the larger reward?
+        if long_reward > short_reward:
+            sample["matches_largest_reward"] = chose_long
+        elif short_reward > long_reward:
+            sample["matches_largest_reward"] = not chose_long
+        else:
+            # Equal rewards - neither matches "largest", mark as True (rational either way)
+            sample["matches_largest_reward"] = True
+
+        # matches_rational: For same reward, shorter time is rational
+        # For different rewards, choosing larger reward is rational
+        if short_reward == long_reward:
+            # Same reward - shorter time is rational
+            sample["matches_rational"] = not chose_long
+        else:
+            # Different rewards - larger reward is rational
+            sample["matches_rational"] = sample["matches_largest_reward"]
+
+        # matches_associated: Does choice align with time horizon framing?
+        # If time horizon is "short" (e.g., days/weeks), expect short-term choice
+        # If time horizon is "long" (e.g., years/decades), expect long-term choice
+        time_horizon = prompt.get("time_horizon")
+        if time_horizon is None:
+            # No horizon framing - mark as N/A (True for now)
+            sample["matches_associated"] = True
+        else:
+            th_value = time_horizon.get("value", 0)
+            th_unit = time_horizon.get("unit", "months")
+
+            # Convert to months for comparison
+            unit_to_months = {
+                "seconds": 1 / 2592000,
+                "minutes": 1 / 43200,
+                "hours": 1 / 720,
+                "days": 1 / 30,
+                "weeks": 1 / 4.3,
+                "months": 1,
+                "years": 12,
+                "decades": 120,
+                "centuries": 1200,
+                "millennia": 12000,
+            }
+            th_months = th_value * unit_to_months.get(th_unit, 1)
+
+            # Threshold: < 1 month is "short", >= 1 month is "long"
+            horizon_suggests_long = th_months >= 1
+            sample["matches_associated"] = chose_long == horizon_suggests_long
 
     def _discover_targets(self):
         """Discover available layers and semantic positions."""
@@ -388,8 +461,16 @@ class GeometryDataLoader:
                 else:
                     vals.append(-1)
             return np.array(vals)
-        elif color_by == "chosen_delivery":
-            return np.array([s.get("chosen_delivery", False) for s in self._samples])
+        elif color_by == "chosen_time":
+            return np.array([s.get("chosen_time", False) for s in self._samples])
+        elif color_by == "chosen_reward":
+            return np.array([s.get("chosen_reward", 0) for s in self._samples])
+        elif color_by == "matches_largest_reward":
+            return np.array([s.get("matches_largest_reward", False) for s in self._samples])
+        elif color_by == "matches_rational":
+            return np.array([s.get("matches_rational", False) for s in self._samples])
+        elif color_by == "matches_associated":
+            return np.array([s.get("matches_associated", False) for s in self._samples])
         elif color_by == "has_horizon":
             return np.array([
                 self._extract_nested(s, "prompt.time_horizon.value") is not None
@@ -415,7 +496,11 @@ class GeometryDataLoader:
         """Get available color-by options."""
         return [
             "time_horizon",
-            "chosen_delivery",
+            "chosen_time",
+            "chosen_reward",
+            "matches_largest_reward",
+            "matches_rational",
+            "matches_associated",
             "has_horizon",
             "short_term_first",
             "context_id",

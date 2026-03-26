@@ -167,7 +167,7 @@ function App() {
   }, [embedding?.positions, filterMask]);
 
   // Fields that should always use gradient coloring (not categorical)
-  const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx'];
+  const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward'];
 
   // Compute effective color range (user-defined or data-derived)
   const effectiveColorRange = useMemo(() => {
@@ -309,7 +309,11 @@ function App() {
   // Human-readable labels for color options
   const COLOR_LABELS: Record<string, string> = {
     'time_horizon': 'Time Horizon',
-    'chosen_delivery': 'Chosen Delivery',
+    'chosen_time': 'Chosen Time',
+    'chosen_reward': 'Chosen Reward',
+    'matches_largest_reward': 'Chose Largest Reward',
+    'matches_rational': 'Chose Rational',
+    'matches_associated': 'Matches Associated',
     'has_horizon': 'Has Horizon',
     'short_term_first': 'Option Order',
     'context_id': 'Context',
@@ -370,8 +374,14 @@ function App() {
           label = value === 1 ? 'Has horizon' : 'No horizon';
         } else if (colorBy === 'short_term_first') {
           label = value === 1 ? 'Short-term first' : 'Long-term first';
-        } else if (colorBy === 'chosen_delivery') {
+        } else if (colorBy === 'chosen_time') {
           label = value === 1 ? 'Long' : 'Short';
+        } else if (colorBy === 'matches_largest_reward') {
+          label = value === 1 ? 'Yes' : 'No';
+        } else if (colorBy === 'matches_rational') {
+          label = value === 1 ? 'Yes' : 'No';
+        } else if (colorBy === 'matches_associated') {
+          label = value === 1 ? 'Yes' : 'No';
         } else {
           label = String(value);
         }
