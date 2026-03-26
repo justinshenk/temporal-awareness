@@ -68,12 +68,12 @@ export const Card: React.FC<CardProps> = ({
         bg-white/70 backdrop-blur-xl
         border border-white/60
         rounded-2xl
-        shadow-xl shadow-[#faf8f5]0/5
+        shadow-xl shadow-black/5
         overflow-visible
         ${paddingClasses[padding]}
         transition-all duration-300 ease-out
         ${hover || isClickable
-          ? 'hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#faf8f5]0/10 hover:bg-white/80 hover:border-[#D97757]/30/50'
+          ? 'hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/10 hover:bg-white/80 hover:border-[#D97757]/30'
           : ''
         }
         ${isClickable ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D97757]/50' : ''}

@@ -88,6 +88,14 @@ function CameraControlsInner({
     const state = cameraStateRef.current;
     if (!state.isAnimating || !state.targetPosition || !state.targetLookAt) return;
 
+    // Capture current camera position on first frame of animation
+    if (state.animationProgress === 0) {
+      state.startPosition.copy(camera.position);
+      if (controlsRef.current) {
+        state.startTarget.copy(controlsRef.current.target);
+      }
+    }
+
     state.animationProgress += 0.02;
     const t = easeOutCubic(Math.min(state.animationProgress, 1));
 
@@ -97,6 +105,7 @@ function CameraControlsInner({
       const currentTarget = controlsRef.current.target.clone();
       currentTarget.lerpVectors(state.startTarget, state.targetLookAt, t);
       controlsRef.current.target.copy(currentTarget);
+      controlsRef.current.update();
     }
 
     if (state.animationProgress >= 1) {
@@ -207,7 +216,7 @@ export function CameraControlsUI({
             transition: 'all 150ms ease',
             background:
               currentPreset === preset.name
-                ? 'linear-gradient(135deg, #D97757 0%, #61AFEF 100%)'
+                ? 'linear-gradient(135deg, #D97757 0%, #348296 100%)'
                 : 'rgba(248, 244, 255, 0.8)',
             color: currentPreset === preset.name ? '#fff' : '#1a1613',
             boxShadow:
@@ -281,18 +290,14 @@ export function useCameraControls(
   const animateTo = useCallback(
     (position: [number, number, number], target: [number, number, number]) => {
       const state = cameraStateRef.current;
-      state.startPosition.copy(
-        state.targetPosition ?? new THREE.Vector3(...initialPosition)
-      );
-      state.startTarget.copy(
-        state.targetLookAt ?? new THREE.Vector3(...initialTarget)
-      );
+      // Note: startPosition/startTarget are captured from actual camera in useFrame
+      // when animationProgress is 0, so we don't need to set them here
       state.targetPosition = new THREE.Vector3(...position);
       state.targetLookAt = new THREE.Vector3(...target);
       state.animationProgress = 0;
       state.isAnimating = true;
     },
-    [initialPosition, initialTarget]
+    []
   );
 
   const handlePresetClick = useCallback(

@@ -302,6 +302,26 @@ class GeometryDataLoader:
                 result.append(pos)
         return result
 
+    def get_positions_with_data(self, layer: int = 0, component: str = "resid_post") -> set[str]:
+        """Get positions that have actual activation data for the given layer/component.
+
+        This checks which positions have at least one sample with activation files,
+        which is more accurate than just checking the position mapping.
+        """
+        cache_key = f"{self._cache_prefix}|positions_with_data_{layer}_{component}"
+        if cache_key in self._activations_cache:
+            return self._activations_cache[cache_key]
+
+        positions_with_data = set()
+        for pos in self._semantic_positions:
+            # Try to get valid sample indices - if any exist, the position has data
+            indices = self.get_valid_sample_indices(layer, component, pos)
+            if indices:
+                positions_with_data.add(pos)
+
+        self._activations_cache[cache_key] = positions_with_data
+        return positions_with_data
+
     def get_valid_sample_indices(
         self, layer: int, component: str, position: str
     ) -> list[int]:
@@ -657,6 +677,7 @@ class GeometryDataLoader:
         """Get available color-by options."""
         return [
             "time_horizon",
+            "log_time_horizon",
             "chosen_time",
             "chosen_reward",
             "matches_largest_reward",
@@ -741,8 +762,13 @@ class GeometryDataLoader:
         return "Qwen3-4B"
 
     def get_prompt_template_structure(self) -> list[dict]:
-        """Get prompt template structure for UI display."""
-        available = set(self.get_positions())
+        """Get prompt template structure for UI display.
+
+        Positions are marked as available only if they have actual activation data,
+        not just if they appear in the position mapping.
+        """
+        # Use positions that have actual activation data (not just in mapping)
+        available = self.get_positions_with_data(layer=0, component="resid_post")
         labels = self.get_position_labels()
 
         template_order = [

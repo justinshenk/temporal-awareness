@@ -22,6 +22,7 @@ export interface ConfigResponse {
   prompt_template: PromptTemplateElement[];
   semantic_to_positions: Record<string, string[]>;
   markers: Record<string, string>;
+  rel_pos_counts: Record<string, number>;
 }
 
 // Transformed config for easier use in components
@@ -37,6 +38,7 @@ export interface TransformedConfig {
   promptTemplate: PromptTemplateElement[];
   semanticToPositions: Record<string, string[]>;
   markers: Record<string, string>;
+  relPosCounts: Record<string, number>;
 }
 
 interface BackendEmbeddingResponse {
@@ -89,6 +91,7 @@ export interface SampleResponse {
   choiceType: string | null;
   shortTermFirst: boolean | null;
   label?: string;
+  metadata: Record<string, unknown>;
 }
 
 // Hook to fetch app configuration
@@ -109,6 +112,7 @@ export function useConfig() {
         promptTemplate: response.prompt_template || [],
         semanticToPositions: response.semantic_to_positions || {},
         markers: response.markers || {},
+        relPosCounts: response.rel_pos_counts || {},
       };
     },
     staleTime: Infinity, // Config doesn't change during session
@@ -215,6 +219,7 @@ export function useSample(idx: number | null) {
     queryKey: ['sample', idx],
     queryFn: async (): Promise<SampleResponse> => {
       const response = await api.get<BackendSampleResponse>(`/sample/${idx}`);
+      const metadata = response.metadata || {};
       return {
         idx: response.idx,
         text: response.text,
@@ -222,6 +227,8 @@ export function useSample(idx: number | null) {
         timeScale: response.time_scale,
         choiceType: response.choice_type,
         shortTermFirst: response.short_term_first,
+        label: typeof metadata.label === 'string' ? metadata.label : undefined,
+        metadata,
       };
     },
     enabled: idx !== null,
@@ -820,6 +827,7 @@ export function usePrefetch(
 interface TrajectoryPoint {
   x_value: string;
   values: number[];
+  sample_indices: number[];
 }
 
 interface TrajectoryResponse {
@@ -830,12 +838,15 @@ interface TrajectoryResponse {
   x_axis: string;
   x_values: string[];
   n_samples: number;
+  sample_indices: number[];  // Shared indices for layer trajectory
   data: TrajectoryPoint[];
 }
 
 export interface TrajectoryData {
   xValues: string[];
   trajectoryData: Map<string, Float32Array>;
+  sampleIndices: number[];  // For layer trajectory (all x values share same indices)
+  sampleIndicesMap: Map<string, number[]>;  // For position trajectory (per x value)
   nSamples: number;
   isLoading: boolean;
   error: Error | null;
@@ -869,9 +880,25 @@ export function useLayerTrajectory(
     return map;
   }, [data]);
 
+  // For layer trajectory, sample indices are shared (from response level)
+  const sampleIndices = data?.sample_indices || [];
+
+  // Build per-point indices map (all same for layer trajectory)
+  const sampleIndicesMap = useMemo(() => {
+    const map = new Map<string, number[]>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, point.sample_indices);
+      });
+    }
+    return map;
+  }, [data]);
+
   return {
     xValues: data?.x_values || [],
     trajectoryData,
+    sampleIndices,
+    sampleIndicesMap,
     nSamples: data?.n_samples || 0,
     isLoading,
     error: error as Error | null,
@@ -910,9 +937,22 @@ export function usePositionTrajectory(
     return map;
   }, [data]);
 
+  // For position trajectory, each position may have different sample indices
+  const sampleIndicesMap = useMemo(() => {
+    const map = new Map<string, number[]>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, point.sample_indices);
+      });
+    }
+    return map;
+  }, [data]);
+
   return {
     xValues: data?.x_values || [],
     trajectoryData,
+    sampleIndices: [],  // Position trajectory uses per-point indices
+    sampleIndicesMap,
     nSamples: data?.n_samples || 0,
     isLoading,
     error: error as Error | null,

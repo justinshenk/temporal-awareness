@@ -74,7 +74,7 @@ export const Heatmap: React.FC<HeatmapProps> = ({
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center h-48 ${className}`}>
-        <div className="w-6 h-6 border-2 border-[#faf8f5]0 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#D97757] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -160,7 +160,8 @@ export const Heatmap: React.FC<HeatmapProps> = ({
           <div
             className="h-3 w-24 rounded"
             style={{
-              background: 'linear-gradient(to right, #0d0887, #7e03a8, #cc4778, #f89540, #f0f921)',
+              // Plasma colormap matching getPlasmaColor() function
+              background: 'linear-gradient(to right, #0d0887, #6a00a8, #b12a90, #e16462, #fca636, #f0f921)',
             }}
           />
           <span className="text-[10px] text-gray-500 ml-1">

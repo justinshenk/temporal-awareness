@@ -924,7 +924,7 @@ def _plot_pair_attention_flow(
 
     Lines from query positions to key positions, thickness = attention weight.
     For the top N heads by attention to source.
-    Optionally annotates key positions with token identities.
+    Uses compact index-based positioning (not absolute positions).
     """
     if not result.attention_patterns:
         return
@@ -940,75 +940,82 @@ def _plot_pair_attention_flow(
     if not top_heads:
         return
 
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ax = plt.subplots(figsize=(12, 6))
 
-    # Create a flow diagram showing attention from dest to source
-    dest_pos = result.dest_position
+    # Use compact index-based positioning instead of absolute positions
+    # Source positions get indices 0, 1, 2, ... and dest gets the last index
+    source_positions = result.source_positions
+    n_sources = len(source_positions)
+
+    # Map absolute positions to compact indices
+    abs_to_idx = {pos: idx for idx, pos in enumerate(source_positions)}
+    dest_idx = n_sources  # Dest is after all sources
+
     y_positions = {
         'dest': 0.8,
         'src': 0.2
     }
 
+    # Get labels
+    source_labels = _get_source_position_labels(result, mapping)
+    dest_label = _get_format_pos_label(mapping, result.dest_position, include_rel_pos=True, max_len=20)
+    if dest_label.startswith("P") and result.dest_position_names:
+        dest_label = result.dest_position_names[0]
+
+    # Plot source positions using indices
+    src_x = list(range(n_sources))
+    src_colors = plt.cm.Blues(np.linspace(0.4, 0.8, n_sources))
+    ax.scatter(src_x, [y_positions['src']] * n_sources,
+               s=100, c=src_colors, marker='o', zorder=5)
+
     # Plot destination position
-    ax.scatter([dest_pos], [y_positions['dest']], s=200, c='#E91E63',
-               marker='s', zorder=5, label='Dest Position')
+    ax.scatter([dest_idx], [y_positions['dest']], s=200, c='#E91E63',
+               marker='s', zorder=5)
 
-    # Plot source positions
-    src_colors = plt.cm.Blues(np.linspace(0.4, 0.8, len(result.source_positions)))
-    ax.scatter(result.source_positions, [y_positions['src']] * len(result.source_positions),
-               s=100, c=src_colors, marker='o', zorder=5, label='Source Positions')
-
-    # Annotate key positions with token identities if mapping available
-    if mapping is not None:
-        _annotate_key_tokens(ax, result, mapping, y_positions)
-
-    # Draw attention lines for top heads and collect legend handles
+    # Draw attention lines for top heads using actual attention to source positions
     colors = LAYER_COLORS[:len(top_heads)]
     legend_handles = []
     for idx, (layer, head, attn_to_src, top_pos, top_weights) in enumerate(top_heads):
         color = colors[idx % len(colors)]
         label = f'L{layer}.H{head} ({attn_to_src:.3f})'
 
-        # Draw lines to top attended positions
-        if top_pos and top_weights:
-            for pos, weight in zip(top_pos[:3], top_weights[:3]):  # Top 3
-                if pos in result.source_positions or weight > 0.05:
-                    ax.annotate('',
-                                xy=(pos, y_positions['src']),
-                                xytext=(dest_pos, y_positions['dest']),
-                                arrowprops=dict(arrowstyle='->', color=color,
-                                               lw=weight * 10 + 0.5, alpha=0.6))
+        # Get attention weights to source positions from corrupted patterns
+        # (source positions are in corrupted frame)
+        corr_patterns = result.corrupted_attention_patterns.get(layer)
+        if corr_patterns is not None and head < len(corr_patterns):
+            head_attn = corr_patterns[head]
+            for src_pos in source_positions:
+                if src_pos < len(head_attn):
+                    weight = head_attn[src_pos]
+                    if weight > 0.02:  # Only draw visible arrows
+                        src_idx = abs_to_idx[src_pos]
+                        ax.annotate('',
+                                    xy=(src_idx, y_positions['src']),
+                                    xytext=(dest_idx, y_positions['dest']),
+                                    arrowprops=dict(arrowstyle='->', color=color,
+                                                   lw=weight * 15 + 0.5, alpha=0.7))
 
-        # Create legend handle for this head
         legend_handles.append(mpatches.Patch(color=color, label=label))
 
-    ax.set_xlim(min(result.source_positions) - 10 if result.source_positions else 0,
-                dest_pos + 10)
+    # Set axis limits and labels
+    ax.set_xlim(-0.5, dest_idx + 0.5)
     ax.set_ylim(0, 1)
 
-    # Get dest label - use dest_position_names from result if mapping not available
-    dest_label = _get_format_pos_label(mapping, dest_pos, include_rel_pos=True, max_len=20)
-    if dest_label.startswith("P") and result.dest_position_names:
-        # Fallback to first dest position name when mapping unavailable
-        dest_label = result.dest_position_names[0]
-    source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
-
-    # Hide numerical x-axis - use semantic labels instead
-    # Set x-ticks at source and dest positions with semantic labels
-    source_labels = _get_source_position_labels(result, mapping)
-    tick_positions = list(result.source_positions) + [dest_pos]
+    # X-axis with semantic labels
+    tick_positions = src_x + [dest_idx]
     tick_labels = source_labels + [dest_label]
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=8)
+    ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=9)
     ax.set_xlabel('Position (format_pos)', fontsize=10)
 
+    source_names = ', '.join(result.source_position_names) if result.source_position_names else 'source'
     ax.set_title(f'Pair {result.pair_idx}: Attention Flow (Top 5 Heads)\nDest {dest_label} -> {source_names}',
                  fontsize=14)
     ax.set_yticks([y_positions['src'], y_positions['dest']])
     ax.set_yticklabels(['Source\n(Key)', 'Dest\n(Query)'])
-    ax.grid(axis='x', alpha=GRID_ALPHA)
+    ax.grid(axis='x', alpha=GRID_ALPHA, linestyle='--')
 
-    # Add legend outside the plot area
+    # Add legend
     ax.legend(handles=legend_handles, loc='upper left', bbox_to_anchor=(1.02, 1),
               fontsize=9, framealpha=0.9)
 
@@ -1068,47 +1075,88 @@ def _plot_pair_top_attended(
     output_path: Path,
     mapping: "SamplePositionMapping | None" = None,
 ) -> None:
-    """Plot top attended positions for each head with clean vs corrupted comparison.
+    """Plot top attended positions per head, always including configured source positions.
 
-    Uses format_pos labels instead of absolute positions when mapping is provided.
+    Shows attention weights to both the top attended positions AND the configured
+    source positions. Uses format_pos labels for all positions.
     """
     layers = [lr.layer for lr in result.layer_results]
     if not layers:
         return
 
     has_corrupted = bool(result.corrupted_attention_patterns)
+    source_positions_set = set(result.source_positions) if result.source_positions else set()
 
-    # Collect top attended position data
+    # Get source position labels (these are in corrupted frame, mapping is correct)
+    source_labels = _get_source_position_labels(result, mapping)
+    source_pos_to_label = dict(zip(result.source_positions, source_labels))
+
+    # Collect attention data for each head
     head_data = []
     for lr in result.layer_results:
+        if lr.layer not in result.attention_patterns:
+            continue
+
+        clean_patterns = result.attention_patterns[lr.layer]
+        corr_patterns = result.corrupted_attention_patterns.get(lr.layer) if has_corrupted else None
+
         for hi in lr.head_results:
-            if hi.top_attended_positions:
-                # Use stored labels if available, otherwise generate from mapping
-                if hi.top_attended_labels and len(hi.top_attended_labels) >= len(hi.top_attended_positions[:5]):
-                    labels = hi.top_attended_labels[:5]
+            if hi.head_idx >= len(clean_patterns):
+                continue
+
+            clean_head_attn = clean_patterns[hi.head_idx]
+
+            # Start with top attended positions and their stored labels
+            # (stored labels were generated with correct frame mapping during analysis)
+            top_positions = list(hi.top_attended_positions[:5]) if hi.top_attended_positions else []
+            stored_labels = list(hi.top_attended_labels[:5]) if hi.top_attended_labels else []
+
+            # Build position -> label mapping from stored data
+            pos_to_label = {}
+            for i, pos in enumerate(top_positions):
+                if i < len(stored_labels):
+                    pos_to_label[pos] = stored_labels[i]
+
+            # Always include configured source positions (even if not in top 5)
+            for src_pos in result.source_positions:
+                if src_pos not in top_positions:
+                    top_positions.append(src_pos)
+                # Use source position labels (correct frame)
+                pos_to_label[src_pos] = source_pos_to_label.get(src_pos, f"src:{src_pos}")
+
+            # Sort positions for consistent display
+            top_positions = sorted(top_positions)
+
+            # Get labels in sorted order
+            pos_labels = [pos_to_label.get(pos, f"P{pos}") for pos in top_positions]
+
+            # Get attention weights
+            clean_weights = []
+            for pos in top_positions:
+                if pos < len(clean_head_attn):
+                    clean_weights.append(clean_head_attn[pos])
                 else:
-                    labels = [_get_format_pos_label(mapping, p, include_rel_pos=True, max_len=15)
-                              for p in hi.top_attended_positions[:5]]
-                hd = {
-                    'layer': lr.layer,
-                    'head': hi.head_idx,
-                    'attn_to_source': hi.attn_to_source,
-                    'top_pos': hi.top_attended_positions[:5],
-                    'top_labels': labels,
-                    'top_weights': hi.top_attended_weights[:5],
-                    'corrupted_weights': [],
-                }
-                # Extract corrupted attention weights for the same positions
-                if has_corrupted and lr.layer in result.corrupted_attention_patterns:
-                    corr_pattern = result.corrupted_attention_patterns[lr.layer]
-                    if hi.head_idx < len(corr_pattern):
-                        corr_head_attn = corr_pattern[hi.head_idx]
-                        for pos in hd['top_pos']:
-                            if pos < len(corr_head_attn):
-                                hd['corrupted_weights'].append(corr_head_attn[pos])
-                            else:
-                                hd['corrupted_weights'].append(0.0)
-                head_data.append(hd)
+                    clean_weights.append(0.0)
+
+            # Get corrupted attention weights
+            corrupted_weights = []
+            if corr_patterns is not None and hi.head_idx < len(corr_patterns):
+                corr_head_attn = corr_patterns[hi.head_idx]
+                for pos in top_positions:
+                    if pos < len(corr_head_attn):
+                        corrupted_weights.append(corr_head_attn[pos])
+                    else:
+                        corrupted_weights.append(0.0)
+
+            head_data.append({
+                'layer': lr.layer,
+                'head': hi.head_idx,
+                'attn_to_source': hi.attn_to_source,
+                'positions': top_positions,
+                'labels': pos_labels,
+                'clean_weights': clean_weights,
+                'corrupted_weights': corrupted_weights,
+            })
 
     if not head_data:
         return
@@ -1124,28 +1172,26 @@ def _plot_pair_top_attended(
         col = idx % 5
         ax = axes[row, col]
 
-        positions = hd['top_pos']
-        pos_labels = hd['top_labels']
-        clean_weights = hd['top_weights']
+        positions = hd['positions']
+        pos_labels = hd['labels']
+        clean_weights = hd['clean_weights']
         corrupted_weights = hd['corrupted_weights']
 
         y = np.arange(len(positions))
 
         # Draw paired bars: clean (blue) and corrupted (orange)
+        # Highlight source positions in pink
         if corrupted_weights and len(corrupted_weights) == len(clean_weights):
-            # Clean bars (top of each pair)
-            clean_colors = [('#E91E63' if pos in result.source_positions else CLEAN_COLOR)
+            clean_colors = [('#E91E63' if pos in source_positions_set else CLEAN_COLOR)
                            for pos in positions]
             ax.barh(y + bar_height/2, clean_weights, bar_height,
                    color=clean_colors, alpha=0.8)
-            # Corrupted bars (bottom of each pair)
-            corr_colors = [('#FF6B6B' if pos in result.source_positions else CORRUPTED_COLOR)
+            corr_colors = [('#FF6B6B' if pos in source_positions_set else CORRUPTED_COLOR)
                           for pos in positions]
             ax.barh(y - bar_height/2, corrupted_weights, bar_height,
                    color=corr_colors, alpha=0.8)
         else:
-            # Single bars (no corrupted data)
-            colors = [('#E91E63' if pos in result.source_positions else CLEAN_COLOR)
+            colors = [('#E91E63' if pos in source_positions_set else CLEAN_COLOR)
                      for pos in positions]
             ax.barh(y, clean_weights, color=colors, alpha=0.8)
 
@@ -1163,7 +1209,7 @@ def _plot_pair_top_attended(
         col = idx % 5
         axes[row, col].axis('off')
 
-    # Add legend below the plots (to avoid occlusion)
+    # Add legend below the plots
     legend_handles = [
         mpatches.Patch(color=CLEAN_COLOR, label='Clean', alpha=0.8),
         mpatches.Patch(color=CORRUPTED_COLOR, label='Corrupted', alpha=0.8),

@@ -146,7 +146,7 @@ export const Select: React.FC<SelectProps> = ({
           w-full px-4 py-3 text-left
           bg-white/70 backdrop-blur-md
           border border-white/50
-          rounded-xl shadow-lg shadow-[#faf8f5]0/5
+          rounded-xl shadow-lg shadow-black/5
           transition-all duration-300 ease-out
           ${disabled
             ? 'opacity-50 cursor-not-allowed'
@@ -185,7 +185,7 @@ export const Select: React.FC<SelectProps> = ({
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[9999] bg-white/95 backdrop-blur-xl border border-white/60 rounded-xl shadow-2xl shadow-[#faf8f5]0/20 overflow-hidden"
+          className="fixed z-[9999] bg-white/95 backdrop-blur-xl border border-white/60 rounded-xl shadow-2xl shadow-black/20 overflow-hidden"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,

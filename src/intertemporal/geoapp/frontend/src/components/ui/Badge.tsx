@@ -56,7 +56,7 @@ const variantClasses: Record<BadgeVariant, string> = {
 const dotColors: Record<BadgeVariant, string> = {
   default: 'bg-gray-500',
   primary: 'bg-gradient-to-r from-[#D97757] to-[#348296]',
-  secondary: 'bg-[#faf8f5]0',
+  secondary: 'bg-purple-500',
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   error: 'bg-rose-500',
@@ -107,7 +107,6 @@ export const Badge: React.FC<BadgeProps> = ({
             ${dotSizeClasses[size]}
             rounded-full mr-1.5
             ${dotColors[variant]}
-            ${variant === 'primary' ? '' : ''}
           `}
         />
       )}

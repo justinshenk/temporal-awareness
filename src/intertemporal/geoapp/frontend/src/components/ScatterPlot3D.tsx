@@ -5,9 +5,9 @@ import * as THREE from 'three';
 
 import { PointCloud, PointData } from './PointCloud';
 import { Tooltip, TooltipData } from './Tooltip';
-import { OrbitControls } from '@react-three/drei';
 import {
   CameraControlsUI,
+  CameraControlsInner,
   useCameraControls,
 } from './CameraControls';
 
@@ -83,6 +83,15 @@ interface SceneContentProps {
   cameraDistance: number;
   gridSize: number;
   visibility?: Float32Array;
+  // Camera animation state ref
+  cameraStateRef: React.MutableRefObject<{
+    targetPosition: THREE.Vector3 | null;
+    targetLookAt: THREE.Vector3 | null;
+    isAnimating: boolean;
+    animationProgress: number;
+    startPosition: THREE.Vector3;
+    startTarget: THREE.Vector3;
+  }>;
 }
 
 const SceneContent = memo(function SceneContent({
@@ -99,6 +108,7 @@ const SceneContent = memo(function SceneContent({
   cameraDistance,
   gridSize,
   visibility,
+  cameraStateRef,
 }: SceneContentProps) {
   // Performance measurement
   const renderStart = useRef(performance.now());
@@ -115,7 +125,6 @@ const SceneContent = memo(function SceneContent({
   // Track if we've initialized the camera (only set position once)
   const hasInitialized = useRef(false);
   const initialCameraPos = useRef<[number, number, number] | null>(null);
-  const initialTarget = useRef<[number, number, number] | null>(null);
 
   // Store initial camera position only once (first time we have valid data)
   if (!hasInitialized.current && positions.length > 0) {
@@ -125,13 +134,11 @@ const SceneContent = memo(function SceneContent({
       center[1] + offset,
       center[2] + offset,
     ];
-    initialTarget.current = center;
     hasInitialized.current = true;
   }
 
   // Use stored initial position, or fallback for first render
   const cameraPosition = initialCameraPos.current || [5, 5, 5];
-  const targetPosition = initialTarget.current || [0, 0, 0];
 
   return (
     <>
@@ -143,13 +150,13 @@ const SceneContent = memo(function SceneContent({
         far={1000}
       />
 
-      <OrbitControls
-        makeDefault
+      <CameraControlsInner
         enableDamping={true}
         dampingFactor={0.05}
         minDistance={0.1}
         maxDistance={1000}
-        target={targetPosition}
+        cameraStateRef={cameraStateRef}
+        initialTarget={center}
       />
 
       {/* Lighting */}
@@ -252,9 +259,6 @@ function ScatterPlot3DInner({
     return index === -1 ? null : index;
   }, [selectedSampleIdx, pointData]);
 
-  // Camera reset key - incrementing this forces camera to reinitialize
-  const [cameraResetKey, setCameraResetKey] = useState(0);
-
   // Camera controls hook - use data-aware initial position
   const dataAwareInitialPosition = useMemo((): [number, number, number] => {
     const offset = cameraDistance / Math.sqrt(3);
@@ -263,20 +267,10 @@ function ScatterPlot3DInner({
 
   const {
     currentPreset,
-    handlePresetClick: _handlePresetClick,
-    handleResetClick: _handleResetClick,
+    cameraStateRef,
+    handlePresetClick,
+    handleResetClick,
   } = useCameraControls(dataAwareInitialPosition, center);
-
-  // Override reset to force camera remount
-  const handleResetClick = useCallback(() => {
-    setCameraResetKey(k => k + 1);
-  }, []);
-
-  // Preset click also forces remount for simplicity
-  const handlePresetClick = useCallback((_position: [number, number, number], _target: [number, number, number]) => {
-    // For now, just reset - proper preset handling would need more work
-    setCameraResetKey(k => k + 1);
-  }, []);
 
   // Track mouse position for tooltip
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -357,7 +351,6 @@ function ScatterPlot3DInner({
         performance={{ min: 0.5 }}
       >
         <SceneContent
-          key={cameraResetKey}
           positions={positions}
           colors={colors}
           pointData={stablePointData}
@@ -371,6 +364,7 @@ function ScatterPlot3DInner({
           cameraDistance={cameraDistance}
           gridSize={gridSize}
           visibility={visibility}
+          cameraStateRef={cameraStateRef}
         />
       </Canvas>
 

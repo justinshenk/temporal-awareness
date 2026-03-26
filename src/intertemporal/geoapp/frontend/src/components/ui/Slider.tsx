@@ -202,7 +202,7 @@ export const Slider: React.FC<SliderProps> = ({
             px-2.5 py-1 rounded-lg
             bg-gradient-to-r from-[#D97757] to-[#348296]
             text-white text-sm font-medium
-            shadow-lg shadow-[#faf8f5]0/20
+            shadow-lg shadow-black/20
             transition-all duration-200
             ${showTooltipNow
               ? 'opacity-100 translate-y-0'

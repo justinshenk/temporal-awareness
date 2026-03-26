@@ -158,23 +158,37 @@ function App() {
     });
   }, [hasHorizonMeta?.values, embedding?.indices, showNoHorizon, showWithHorizon]);
 
-  // Compute filter mask for trajectory views (aligned with samples 0..n-1)
+  // Get actual sample indices for trajectory views (needed for filter mask and colors)
+  const trajectorySampleIndices = useMemo(() => {
+    if (viewMode === '1DxLayer') {
+      // Layer trajectory - all layers share same indices
+      return layerTrajectory.sampleIndices;
+    } else if (viewMode === '1DxPos') {
+      // Position trajectory - use indices from first position with data
+      const firstPos = positionTrajectory.xValues[0];
+      return firstPos ? (positionTrajectory.sampleIndicesMap.get(firstPos) || []) : [];
+    }
+    return [];
+  }, [viewMode, layerTrajectory.sampleIndices, positionTrajectory.sampleIndicesMap, positionTrajectory.xValues]);
+
+  // Compute filter mask for trajectory views (aligned with trajectorySampleIndices)
   const trajectoryFilterMask = useMemo(() => {
     const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
     if (!isTrajectoryView) return null;
 
-    const sampleCount = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
-    if (!hasHorizonMeta?.values || sampleCount === 0 || (showNoHorizon && showWithHorizon)) {
+    const sampleIndices = trajectorySampleIndices;
+    if (!hasHorizonMeta?.values || sampleIndices.length === 0 || (showNoHorizon && showWithHorizon)) {
       return null;
     }
     if (!showNoHorizon && !showWithHorizon) {
-      return Array(sampleCount).fill(false);
+      return Array(sampleIndices.length).fill(false);
     }
-    return Array.from({ length: sampleCount }, (_, i) => {
-      const hasHorizon = Boolean(hasHorizonMeta.values[i]);
+    // Use actual sample indices to look up metadata
+    return sampleIndices.map(sampleIdx => {
+      const hasHorizon = Boolean(hasHorizonMeta.values[sampleIdx]);
       return hasHorizon ? showWithHorizon : showNoHorizon;
     });
-  }, [hasHorizonMeta?.values, viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples, showNoHorizon, showWithHorizon]);
+  }, [hasHorizonMeta?.values, viewMode, trajectorySampleIndices, showNoHorizon, showWithHorizon]);
 
   // Use appropriate filter mask based on view mode
   const filterMask = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryFilterMask : scatterFilterMask;
@@ -337,22 +351,23 @@ function App() {
     const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
     if (!isTrajectoryView) return new Float32Array(0);
 
-    const numPoints = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
+    const sampleIndices = trajectorySampleIndices;
+    const numPoints = sampleIndices.length;
     if (!metadata?.values || numPoints === 0) {
       return computeColors([], numPoints);
     }
-    const values = metadata.values.slice(0, numPoints);
+    // Get color values for actual sample indices
+    const values = sampleIndices.map(idx => metadata.values[idx]);
     return computeColors(values, numPoints);
-  }, [metadata, viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples, computeColors]);
+  }, [metadata, viewMode, trajectorySampleIndices, computeColors]);
 
-  // Point data for trajectory views
+  // Point data for trajectory views - use actual sample indices
   const trajectoryPointData = useMemo<PointData[]>(() => {
     const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
     if (!isTrajectoryView) return [];
 
-    const numPoints = viewMode === '1DxLayer' ? layerTrajectory.nSamples : positionTrajectory.nSamples;
-    return Array.from({ length: numPoints }, (_, i) => ({ sampleIdx: i }));
-  }, [viewMode, layerTrajectory.nSamples, positionTrajectory.nSamples]);
+    return trajectorySampleIndices.map(sampleIdx => ({ sampleIdx }));
+  }, [viewMode, trajectorySampleIndices]);
 
   // Select colors/pointData based on view mode
   const unfilteredColors = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryColors : scatterColors;
@@ -412,7 +427,7 @@ function App() {
       // Default categorical palette - must match useEmbeddings.ts categoricalColors
       // Anthropic-inspired with high contrast
       const defaultPalette = [
-        '#D97857', // Anthropic terracotta/coral
+        '#D97757', // Anthropic terracotta/coral
         '#348296', // Deep teal (high contrast)
         '#8F70DB', // Purple
         '#F2AD42', // Warm amber
@@ -786,7 +801,7 @@ function App() {
             {legendData && (
               <Legend
                 title={colorByLabel}
-                items={legendData.type === 'categorical' ? legendData.items : legendData.items}
+                items={legendData.items}
                 gradient={legendData.type === 'gradient' ? legendData.gradient : undefined}
                 tiers={legendData.type === 'adaptive' ? legendData.tiers : undefined}
                 tierColors={legendData.type === 'adaptive' ? legendData.colors : undefined}

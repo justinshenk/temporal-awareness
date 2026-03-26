@@ -17,7 +17,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     text-white font-medium
     shadow-lg shadow-[#D97757]/25
     hover:shadow-xl hover:shadow-[#D97757]/30
-    hover:from-[#b86cd0] hover:to-[#ff5a8f]
+    hover:from-[#c5624a] hover:to-[#2a6a7a]
     active:shadow-md active:scale-[0.98]
     disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none
   `,
@@ -25,7 +25,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     bg-white/70 backdrop-blur-md
     border-2 border-[#D97757]/30
     text-[#1a1613] font-medium
-    shadow-md shadow-[#faf8f5]0/10
+    shadow-md shadow-black/10
     hover:border-[#348296]/50 hover:bg-white/90
     hover:shadow-lg hover:shadow-[#D97757]/15
     active:scale-[0.98]
@@ -42,8 +42,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     bg-white/70 backdrop-blur-md
     border border-white/60
     text-[#1a1613]
-    shadow-md shadow-[#faf8f5]0/5
-    hover:bg-white/90 hover:border-[#D97757]/30/50 hover:text-[#348296]
+    shadow-md shadow-black/5
+    hover:bg-white/90 hover:border-[#D97757]/30 hover:text-[#348296]
     hover:shadow-lg hover:shadow-[#D97757]/10
     active:scale-[0.95]
     disabled:text-gray-300 disabled:bg-gray-50 disabled:border-gray-200

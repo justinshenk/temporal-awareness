@@ -17,6 +17,8 @@ export interface ScatterPlot2DProps {
   selectedSampleIdx?: number | null;
   xAxis?: number; // Which component for X axis (0, 1, or 2)
   yAxis?: number; // Which component for Y axis (0, 1, or 2)
+  /** Visibility mask - 1.0 for visible, 0.0 for hidden */
+  visibility?: Float32Array;
 }
 
 export function ScatterPlot2D({
@@ -34,6 +36,7 @@ export function ScatterPlot2D({
   selectedSampleIdx,
   xAxis = 0,
   yAxis = 1,
+  visibility,
 }: ScatterPlot2DProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -277,19 +280,23 @@ export function ScatterPlot2D({
       }
     };
 
+    // Helper to check if point is visible
+    const isVisible = (i: number) => !visibility || visibility[i] >= 0.5;
+
     // Draw non-selected, non-hovered points
     for (let i = 0; i < numPoints; i++) {
       if (i === selectedIndex || i === hoveredIndex) continue;
+      if (!isVisible(i)) continue;
       drawPoint(i, 1);
     }
 
     // Draw hovered point
-    if (hoveredIndex !== null && hoveredIndex !== selectedIndex) {
+    if (hoveredIndex !== null && hoveredIndex !== selectedIndex && isVisible(hoveredIndex)) {
       drawPoint(hoveredIndex, 1.4, 'rgba(255, 255, 255, 0.8)', 2);
     }
 
     // Draw selected point with glow
-    if (selectedIndex !== null) {
+    if (selectedIndex !== null && isVisible(selectedIndex)) {
       const dataX = positions[selectedIndex * 3 + xAxis];
       const dataY = positions[selectedIndex * 3 + yAxis];
       if (isFinite(dataX) && isFinite(dataY)) {
@@ -369,7 +376,7 @@ export function ScatterPlot2D({
       }
     }
 
-  }, [positions, colors, dimensions, bounds, toCanvas, showAxes, showGrid, backgroundColor, pointSize, selectedIndex, hoveredIndex, transform, xAxis, yAxis, padding, dpr]);
+  }, [positions, colors, dimensions, bounds, toCanvas, showAxes, showGrid, backgroundColor, pointSize, selectedIndex, hoveredIndex, transform, xAxis, yAxis, padding, dpr, visibility]);
 
   // Find point at position
   const findPointAt = useCallback((canvasX: number, canvasY: number): number | null => {
@@ -378,6 +385,9 @@ export function ScatterPlot2D({
 
     // Search in reverse to prioritize points drawn on top
     for (let i = numPoints - 1; i >= 0; i--) {
+      // Skip invisible points
+      if (visibility && visibility[i] < 0.5) continue;
+
       const dataX = positions[i * 3 + xAxis];
       const dataY = positions[i * 3 + yAxis];
       if (!isFinite(dataX) || !isFinite(dataY)) continue;
@@ -391,7 +401,7 @@ export function ScatterPlot2D({
       }
     }
     return null;
-  }, [positions, toCanvas, pointSize, transform, xAxis, yAxis]);
+  }, [positions, toCanvas, pointSize, transform, xAxis, yAxis, visibility]);
 
   // Mouse handlers
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -484,6 +494,16 @@ export function ScatterPlot2D({
 
   const numPoints = positions.length / 3;
 
+  // Count visible points
+  const visibleCount = useMemo(() => {
+    if (!visibility) return numPoints;
+    let count = 0;
+    for (let i = 0; i < numPoints; i++) {
+      if (visibility[i] >= 0.5) count++;
+    }
+    return count;
+  }, [visibility, numPoints]);
+
   return (
     <div
       ref={containerRef}
@@ -530,7 +550,7 @@ export function ScatterPlot2D({
           zIndex: 10,
         }}
       >
-        {numPoints.toLocaleString()} points
+        {visibleCount.toLocaleString()}{visibility && visibleCount !== numPoints ? ` / ${numPoints.toLocaleString()}` : ''} points
       </div>
 
       {/* Selected point indicator */}

@@ -257,7 +257,7 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
           return (
             <span
               key={idx}
-              className="bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20 text-[#7c3aed] font-semibold px-1.5 py-0.5 rounded"
+              className="bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20 text-[#8F70DB] font-semibold px-1.5 py-0.5 rounded"
             >
               {part}
             </span>
@@ -455,6 +455,11 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                     {selectedSample.choiceType === 'short_term'
                       ? 'Short-term'
                       : 'Long-term'}
+                  </Badge>
+                )}
+                {selectedSample.timeScale && (
+                  <Badge variant="primary" size="sm">
+                    {selectedSample.timeScale}
                   </Badge>
                 )}
                 {selectedSample.timeHorizon !== null && selectedSample.timeHorizon >= 0 && (

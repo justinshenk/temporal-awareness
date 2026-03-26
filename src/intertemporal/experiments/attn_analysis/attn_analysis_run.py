@@ -165,14 +165,11 @@ def run_attn_analysis(
                     if pos_info.rel_pos is not None and pos_info.rel_pos >= 0:
                         label = f"{label}:{pos_info.rel_pos}"
                     top_labels.append(label)
-                elif pos_info and pos_info.decoded_token:
-                    # Show token content when no format_pos available
-                    token = pos_info.decoded_token.strip()
-                    if len(token) > 10:
-                        token = token[:9] + "…"
-                    # Clean up for display
-                    token = repr(token)[1:-1]
-                    top_labels.append(f'"{token}"')
+                elif pos_info and pos_info.traj_section:
+                    # Use traj_section with position offset as fallback
+                    # (this shouldn't happen if mapping is complete)
+                    section = pos_info.traj_section
+                    top_labels.append(f"{section}:{pos_info.abs_pos}")
                 else:
                     top_labels.append(f"P{pos}")
 
@@ -194,8 +191,9 @@ def run_attn_analysis(
             if corrupted_a is not None:
                 corrupted_head_attn = corrupted_a[head_idx]
                 min_len = min(len(clean_head_attn), len(corrupted_head_attn))
-                clean_vec = clean_head_attn[:min_len]
-                corr_vec = corrupted_head_attn[:min_len]
+                # Use float32 for accurate computation (model may output float16)
+                clean_vec = clean_head_attn[:min_len].float()
+                corr_vec = corrupted_head_attn[:min_len].float()
                 diff = clean_vec - corr_vec
 
                 attn_pattern_diff = float(torch.norm(diff))
@@ -204,7 +202,8 @@ def run_attn_analysis(
 
                 dot = torch.dot(clean_vec, corr_vec)
                 norm_product = clean_vec.norm() * corr_vec.norm() + 1e-10
-                attn_pattern_cosine = float(dot / norm_product)
+                # Clamp to valid range (numerical precision can cause > 1.0)
+                attn_pattern_cosine = float(torch.clamp(dot / norm_product, -1.0, 1.0))
 
             head_results.append(HeadAttnInfo(
                 head_idx=head_idx,

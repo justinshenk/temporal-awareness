@@ -149,6 +149,7 @@ class TrajectoryPoint(BaseModel):
 
     x_value: str = Field(description="X-axis value (layer number or position name)")
     values: list[float] = Field(description="PC1 values for all samples at this x position")
+    sample_indices: list[int] = Field(description="Sample indices corresponding to each value")
 
 
 class TrajectoryResponse(BaseModel):
@@ -161,6 +162,7 @@ class TrajectoryResponse(BaseModel):
     x_axis: str = Field(description="What the x-axis represents: 'layer' or 'position'")
     x_values: list[str] = Field(description="X-axis values in order")
     n_samples: int = Field(description="Number of samples")
+    sample_indices: list[int] = Field(default_factory=list, description="Sample indices (for layer trajectory where all layers share same indices)")
     data: list[TrajectoryPoint] = Field(description="PC1 values at each x position")
 
 

@@ -103,7 +103,7 @@ export const Tabs: React.FC<TabsProps> = ({
           bg-white/50 backdrop-blur-md
           border border-white/60
           rounded-xl p-1
-          shadow-lg shadow-[#faf8f5]0/5
+          shadow-lg shadow-black/5
         "
       >
         {/* Animated indicator */}
@@ -122,6 +122,7 @@ export const Tabs: React.FC<TabsProps> = ({
         {tabs.map((tab, index) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
             ref={(el) => {
               if (el) tabRefs.current.set(tab.id, el);
             }}

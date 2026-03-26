@@ -561,8 +561,20 @@ def _plot_neuron_ranked_bar(
     ax.bar(x, effects, color=colors, alpha=0.8)
 
     ax.set_xlabel("Neuron (sorted by effect)", fontsize=11)
-    ax.set_ylabel("Effect on Correct Logit", fontsize=11)
-    ax.set_title(f"Top Neurons at L{target_layer}: Ablation Effect", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Differential Contribution to Logit", fontsize=11)
+    ax.set_title(f"Top Neurons at L{target_layer}: Differential Contribution", fontsize=12, fontweight="bold")
+
+    # Add note explaining this is differential contribution, not ablation
+    ax.text(
+        0.02, 0.98,
+        "Effect = (clean_act − corrupt_act) × W_out_alignment\n"
+        "This measures what changes between conditions,\n"
+        "not what happens when neurons are ablated.",
+        transform=ax.transAxes,
+        fontsize=8,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.8),
+    )
 
     ax.set_xticks(x[::5])
     ax.set_xticklabels(labels[::5], rotation=45, ha="right", fontsize=8)

@@ -500,6 +500,19 @@ def step_fine_patching(
     n_total = len(ctx.fine_grained_patching)
     log(f"[fine] Fine patching: {n_loaded} loaded from cache, {n_total} total")
 
+    # Compute attention-patching correlations if both attention and fine-grained data available
+    from .fine_grained import compute_attention_patching_correlation
+    for pair_idx in ctx.fine_grained_patching:
+        fine_result = ctx.fine_grained_patching[pair_idx]
+        attn_result = ctx.attn_analysis.get(pair_idx)
+        if fine_result.head_sweep and attn_result:
+            correlations = compute_attention_patching_correlation(
+                fine_result.head_sweep, attn_result, n_heads=10
+            )
+            fine_result.attention_correlations = correlations
+            ctx.save_fine_grained_pair(pair_idx)
+            log(f"[fine] Computed attention-patching correlation for pair {pair_idx}")
+
 
 @profile("step_process_results")
 def step_process_results(ctx: ExperimentContext) -> None:

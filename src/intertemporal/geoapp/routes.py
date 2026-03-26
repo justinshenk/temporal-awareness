@@ -570,10 +570,13 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         data = []
         x_values = []
         n_samples = 0
+        shared_sample_indices: list[int] = []
 
         for layer in layers:
             embedding = data_loader.load_pca(layer, component, position, n_components=3)
             if embedding is not None:
+                # Get sample indices for this layer/component/position
+                sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
                 # Extract PC1 (first column) and normalize
                 pc1_values = embedding[:, 0].astype(float).tolist()
                 n_samples = len(pc1_values)
@@ -581,7 +584,11 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
                 data.append(TrajectoryPoint(
                     x_value=str(layer),
                     values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                    sample_indices=sample_indices,
                 ))
+                # For layer trajectory, all layers share the same sample indices (same position)
+                if not shared_sample_indices:
+                    shared_sample_indices = sample_indices
 
         return TrajectoryResponse(
             component=component,
@@ -590,6 +597,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             x_axis="layer",
             x_values=x_values,
             n_samples=n_samples,
+            sample_indices=shared_sample_indices,
             data=data,
         )
 
@@ -623,12 +631,15 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         for pos in positions:
             embedding = data_loader.load_pca(layer, component, pos, n_components=3)
             if embedding is not None:
+                # Get sample indices for this layer/component/position
+                sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
                 pc1_values = embedding[:, 0].astype(float).tolist()
                 n_samples = len(pc1_values)
                 x_values.append(pos)
                 data.append(TrajectoryPoint(
                     x_value=pos,
                     values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                    sample_indices=sample_indices,
                 ))
 
         return TrajectoryResponse(
@@ -638,6 +649,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             x_axis="position",
             x_values=x_values,
             n_samples=n_samples,
+            sample_indices=[],  # Position trajectory has per-point indices since each position may differ
             data=data,
         )
 
