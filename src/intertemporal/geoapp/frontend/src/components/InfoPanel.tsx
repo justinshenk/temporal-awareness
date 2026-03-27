@@ -112,7 +112,7 @@ interface ParsedSection {
 const DEFAULT_MARKERS: Record<string, string> = {
   situation_marker: 'SITUATION:',
   task_marker: 'TASK:',
-  consider_marker: 'CONSIDER:',
+  objective_marker: 'CONSIDER:',
   action_marker: 'ACTION:',
   format_marker: 'FORMAT:',
 };
@@ -135,7 +135,7 @@ const parsePromptText = (text: string, markers?: Record<string, string>): Parsed
   const effectiveMarkers = markers && Object.keys(markers).length > 0 ? markers : DEFAULT_MARKERS;
 
   // Get section names from markers in order
-  const markerOrder = ['situation_marker', 'task_marker', 'consider_marker', 'action_marker', 'format_marker'];
+  const markerOrder = ['situation_marker', 'task_marker', 'objective_marker', 'action_marker', 'format_marker'];
   const sectionNames = markerOrder
     .filter(key => key in effectiveMarkers)
     .map(key => getSectionName(effectiveMarkers[key]));

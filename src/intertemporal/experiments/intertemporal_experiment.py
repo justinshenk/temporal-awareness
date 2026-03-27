@@ -59,9 +59,7 @@ def step_preference_data(
 ) -> None:
     """Load or generate preference data."""
     if try_loading_data:
-        result = load_preference_data(
-            ctx.cfg.get_prefix(), get_pref_dataset_dir()
-        )
+        result = load_preference_data(ctx.cfg.get_prefix(), get_pref_dataset_dir())
         if result:
             ctx.pref_data, ctx.prompt_dataset = result
     if not ctx.pref_data:

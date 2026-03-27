@@ -184,7 +184,7 @@ CORE_POSITIONS = [
     # Section tails (conclusions of each section)
     "situation_tail",
     "task_tail",
-    "consider_tail",
+    "objective_tail",
     "action_tail",
     "format_tail",
     "options_tail",

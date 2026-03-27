@@ -570,9 +570,9 @@ def build_position_mapping_from_sample_mappings(
        by mapping extra dst positions to the nearest src position
 
     This ensures that semantic regions are properly bounded. For example,
-    if src has consider_tail[65-76] and dst has consider_tail[65-76] followed
+    if src has objective_tail[65-76] and dst has objective_tail[65-76] followed
     by constraint[77-94], anchoring on BOTH first and last prevents
-    consider_tail positions from bleeding into constraint positions.
+    objective_tail positions from bleeding into constraint positions.
 
     Args:
         src_mapping: SamplePositionMapping for source sequence

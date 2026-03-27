@@ -19,8 +19,8 @@ class RewardValue(BaseSchema):
 
     def __str__(self) -> str:
         if self.unit:
-            return f"{self.value:.0f} {self.unit}"
-        return f"{self.value:.0f}"
+            return f"{self.value:,.0f} {self.unit}"
+        return f"{self.value:,.0f}"
 
 
 # =============================================================================

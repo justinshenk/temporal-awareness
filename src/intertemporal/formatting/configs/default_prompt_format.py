@@ -16,17 +16,17 @@ class DefaultPromptFormat(PromptFormatConfig):
     task_template: str = """[task_marker] You, [role], are tasked to [task_in_question]:
 [left_term_label] [left_term_reward] [reward_units] in [left_term_time]
 [right_term_label] [right_term_reward] [reward_units] in [right_term_time]"""
-    consider_template: str = (
-        "[consider_marker] Think deeply about which option is preferable."
+    objective_template: str = (
+        "[objective_marker] Think deeply about which option is preferable."
     )
     constraint_template: str = "[constraint_marker] [constraint_prefix] [time_horizon]."
     action_template: str = (
         "[action_marker] Select one of the two options. [reasoning_ask]"
     )
 
-    response_template: str = """[format_marker] Respond in this format:\n
+    response_template: str = """\n[format_marker] Respond in this format:
 [format_choice_prefix] <[left_term_label] or [right_term_label]>.
-[format_reasoning_prefix] <reasoning in 1-3 sentences>"""
+[format_reasoning_prefix] <reasoning in 1-3 sentences>\n"""
 
     def get_id(self):
         content = (
@@ -41,22 +41,22 @@ class DefaultPromptFormat(PromptFormatConfig):
         parts = [
             self.situation_template,
             self.task_template,
-            self.consider_template,
+            self.objective_template,
         ]
         if time_horizon is not None:
             parts.append(self.constraint_template)
         parts.append(self.action_template)
-        return "\n\n".join(parts)
+        return "\n".join(parts)
 
     prompt_const_keywords: dict = field(
         default_factory=lambda: {
             "situation_marker": "SITUATION:",
             "task_marker": "TASK:",
-            "consider_marker": "CONSIDER:",
+            "objective_marker": "OBJECTIVE:",
             "constraint_marker": "CONSTRAINT:",
             "action_marker": "ACTION:",
             "format_marker": "FORMAT:",
-            "constraint_prefix": "You are primarily concerned about outcome in:",
+            "constraint_prefix": "You must select the option that provides the greatest benefit for:",
             "format_choice_prefix": "I choose:",
             "format_reasoning_prefix": "My reasoning:",
         }
@@ -101,7 +101,7 @@ class DefaultPromptFormat(PromptFormatConfig):
         return {
             "situation": self.prompt_const_keywords["situation_marker"],
             "task": self.prompt_const_keywords["task_marker"],
-            "consider": self.prompt_const_keywords["consider_marker"],
+            "consider": self.prompt_const_keywords["objective_marker"],
             "constraint": self.prompt_const_keywords["constraint_marker"],
             "action": self.prompt_const_keywords["action_marker"],
             "format": self.prompt_const_keywords["format_marker"],

@@ -40,9 +40,11 @@ def _assert_no_overlapping_positions(named_positions: dict[str, list[int]]) -> N
     # Find overlaps
     overlaps = {pos: names for pos, names in pos_to_names.items() if len(names) > 1}
     if overlaps:
-        overlap_strs = [f"pos {pos}: {names}" for pos, names in sorted(overlaps.items())]
+        overlap_strs = [
+            f"pos {pos}: {names}" for pos, names in sorted(overlaps.items())
+        ]
         raise AssertionError(
-            f"Overlapping positions in named_positions:\n  " + "\n  ".join(overlap_strs)
+            "Overlapping positions in named_positions:\n  " + "\n  ".join(overlap_strs)
         )
 
 
@@ -166,7 +168,11 @@ class DatasetPositionMapping(DatasetPositionMappingBase):
 
 
 def _find_substring_token_range(
-    tokens: list[str], text: str, substring: str, verify: bool = True, occurrence: int = 1
+    tokens: list[str],
+    text: str,
+    substring: str,
+    verify: bool = True,
+    occurrence: int = 1,
 ) -> list[int]:
     """Find token positions spanning a substring in text.
 
@@ -328,21 +334,33 @@ def _build_named_positions(
 
     # === Prompt Markers ===
     markers = {
-        "situation_marker": fmt.prompt_const_keywords.get("situation_marker", "SITUATION:"),
+        "situation_marker": fmt.prompt_const_keywords.get(
+            "situation_marker", "SITUATION:"
+        ),
         "task_marker": fmt.prompt_const_keywords.get("task_marker", "TASK:"),
-        "consider_marker": fmt.prompt_const_keywords.get("consider_marker", "CONSIDER:"),
-        "constraint_marker": fmt.prompt_const_keywords.get("constraint_marker", "CONSTRAINT:"),
+        "objective_marker": fmt.prompt_const_keywords.get(
+            "objective_marker", "CONSIDER:"
+        ),
+        "constraint_marker": fmt.prompt_const_keywords.get(
+            "constraint_marker", "CONSTRAINT:"
+        ),
         "action_marker": fmt.prompt_const_keywords.get("action_marker", "ACTION:"),
         "format_marker": fmt.prompt_const_keywords.get("format_marker", "FORMAT:"),
-        "format_choice_prefix": fmt.prompt_const_keywords.get("format_choice_prefix", "I choose:"),
-        "format_reasoning_prefix": fmt.prompt_const_keywords.get("format_reasoning_prefix", "My reasoning:"),
+        "format_choice_prefix": fmt.prompt_const_keywords.get(
+            "format_choice_prefix", "I choose:"
+        ),
+        "format_reasoning_prefix": fmt.prompt_const_keywords.get(
+            "format_reasoning_prefix", "My reasoning:"
+        ),
     }
 
     marker_positions_list = []
     for name, marker_text in markers.items():
         char_pos = prompt_text.find(marker_text)
         if char_pos >= 0:
-            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, marker_text)
+            positions = _find_substring_token_range(
+                prompt_tokens_decoded, prompt_text, marker_text
+            )
             if positions:
                 named_positions[name] = positions
                 marker_positions_list.append((char_pos, name, marker_text, positions))
@@ -374,11 +392,19 @@ def _build_named_positions(
 
     # === Option Labels (a), b) etc.) ===
     # These appear in the task section
-    left_label = pair.short_term.label if sample.short_term_first else pair.long_term.label
-    right_label = pair.long_term.label if sample.short_term_first else pair.short_term.label
+    left_label = (
+        pair.short_term.label if sample.short_term_first else pair.long_term.label
+    )
+    right_label = (
+        pair.long_term.label if sample.short_term_first else pair.short_term.label
+    )
 
-    left_label_pos = _find_substring_token_range(prompt_tokens_decoded, prompt_text, left_label)
-    right_label_pos = _find_substring_token_range(prompt_tokens_decoded, prompt_text, right_label)
+    left_label_pos = _find_substring_token_range(
+        prompt_tokens_decoded, prompt_text, left_label
+    )
+    right_label_pos = _find_substring_token_range(
+        prompt_tokens_decoded, prompt_text, right_label
+    )
 
     if left_label_pos:
         named_positions["left_label"] = left_label_pos
@@ -395,7 +421,9 @@ def _build_named_positions(
         if constraint_marker_char >= 0:
             # Search for time_horizon only AFTER the CONSTRAINT marker
             time_horizon_str = str(sample.prompt.time_horizon)
-            time_horizon_char = prompt_text.find(time_horizon_str, constraint_marker_char)
+            time_horizon_char = prompt_text.find(
+                time_horizon_str, constraint_marker_char
+            )
 
             if time_horizon_char >= 0:
                 # Find token positions for this specific occurrence
@@ -408,7 +436,10 @@ def _build_named_positions(
                     tok_end = char_count + len(tok)
 
                     # Token overlaps with the time_horizon range
-                    if tok_end > time_horizon_char and tok_start < time_horizon_char_end:
+                    if (
+                        tok_end > time_horizon_char
+                        and tok_start < time_horizon_char_end
+                    ):
                         time_horizon_positions.append(i)
 
                     char_count = tok_end
@@ -440,11 +471,16 @@ def _build_named_positions(
                         for i, tok in enumerate(prompt_tokens_decoded):
                             tok_start = char_count
                             tok_end = char_count + len(tok)
-                            if tok_start >= time_horizon_end_char and tok_start < action_marker_char:
+                            if (
+                                tok_start >= time_horizon_end_char
+                                and tok_start < action_marker_char
+                            ):
                                 post_time_horizon_positions.append(i)
                             char_count = tok_end
                         if post_time_horizon_positions:
-                            named_positions["post_time_horizon"] = post_time_horizon_positions
+                            named_positions["post_time_horizon"] = (
+                                post_time_horizon_positions
+                            )
 
     # Determine left/right based on presentation order
     if sample.short_term_first:
@@ -469,13 +505,21 @@ def _build_named_positions(
     # Right option (appears second in prompt)
     # Use occurrence=2 if right value matches left value (same string appears twice)
     right_time_occurrence = 2 if str(right_option.time) == str(left_option.time) else 1
-    right_reward_occurrence = 2 if str(right_option.reward) == str(left_option.reward) else 1
+    right_reward_occurrence = (
+        2 if str(right_option.reward) == str(left_option.reward) else 1
+    )
 
     right_time_pos = _find_time_value_positions(
-        prompt_tokens_decoded, prompt_text, right_option.time, occurrence=right_time_occurrence
+        prompt_tokens_decoded,
+        prompt_text,
+        right_option.time,
+        occurrence=right_time_occurrence,
     )
     right_reward_pos = _find_reward_value_positions(
-        prompt_tokens_decoded, prompt_text, right_option.reward, occurrence=right_reward_occurrence
+        prompt_tokens_decoded,
+        prompt_text,
+        right_option.reward,
+        occurrence=right_reward_occurrence,
     )
     if right_time_pos:
         named_positions["right_time"] = right_time_pos
@@ -484,11 +528,13 @@ def _build_named_positions(
 
     # === Response Regions ===
     # Note: "response" is captured by traj_section, not format_pos
-    response_text = full_text[len(prompt_text):]
+    response_text = full_text[len(prompt_text) :]
     response_tokens = decoded_tokens[prompt_len:]
 
     # Choice prefix and choice label (e.g., "a)" or "b)")
-    choice_prefix_text = fmt.response_const_keywords.get("response_choice_prefix", "I choose: ")
+    choice_prefix_text = fmt.response_const_keywords.get(
+        "response_choice_prefix", "I choose: "
+    )
     choice_prefix_core = choice_prefix_text.rstrip()
     choice_prefix_pos = response_text.find(choice_prefix_core)
     if choice_prefix_pos >= 0:
@@ -496,27 +542,35 @@ def _build_named_positions(
             response_tokens, response_text, choice_prefix_core
         )
         if prefix_positions:
-            named_positions["response_choice_prefix"] = [p + prompt_len for p in prefix_positions]
+            named_positions["response_choice_prefix"] = [
+                p + prompt_len for p in prefix_positions
+            ]
 
         # Find the full choice label (e.g., "a)" or "b)") after the prefix
         choice_start_char = choice_prefix_pos + len(choice_prefix_core)
         # Try both labels from the preference pair
         short_label = pair.short_term.label  # e.g., "a)"
-        long_label = pair.long_term.label    # e.g., "b)"
+        long_label = pair.long_term.label  # e.g., "b)"
 
         # Find which label appears after the choice prefix
         for label in [short_label, long_label]:
             label_pos = response_text.find(label, choice_start_char)
-            if label_pos >= 0 and label_pos < choice_start_char + 10:  # Must be near prefix
+            if (
+                label_pos >= 0 and label_pos < choice_start_char + 10
+            ):  # Must be near prefix
                 choice_positions = _find_substring_token_range(
                     response_tokens, response_text, label
                 )
                 if choice_positions:
-                    named_positions["response_choice"] = [p + prompt_len for p in choice_positions]
+                    named_positions["response_choice"] = [
+                        p + prompt_len for p in choice_positions
+                    ]
                     break
 
     # Reasoning prefix and content
-    reasoning_prefix_text = fmt.response_const_keywords.get("response_reasoning_prefix", "My reasoning: ")
+    reasoning_prefix_text = fmt.response_const_keywords.get(
+        "response_reasoning_prefix", "My reasoning: "
+    )
     reasoning_prefix_core = reasoning_prefix_text.rstrip()
     reasoning_prefix_pos = response_text.find(reasoning_prefix_core)
     if reasoning_prefix_pos >= 0:
@@ -524,7 +578,9 @@ def _build_named_positions(
             response_tokens, response_text, reasoning_prefix_core
         )
         if prefix_positions:
-            named_positions["response_reasoning_prefix"] = [p + prompt_len for p in prefix_positions]
+            named_positions["response_reasoning_prefix"] = [
+                p + prompt_len for p in prefix_positions
+            ]
 
         reasoning_content_start = reasoning_prefix_pos + len(reasoning_prefix_text)
         char_count = 0
@@ -539,7 +595,9 @@ def _build_named_positions(
 
     # Clamp all positions
     for key in named_positions:
-        named_positions[key] = [max(0, min(p, full_len - 1)) for p in named_positions[key]]
+        named_positions[key] = [
+            max(0, min(p, full_len - 1)) for p in named_positions[key]
+        ]
 
     # Remove empty entries
     named_positions = {k: v for k, v in named_positions.items() if v}
@@ -556,7 +614,7 @@ def _build_named_positions(
     section_markers = {
         "situation_marker": "situation_content",
         "task_marker": "task_content",
-        "consider_marker": "consider_content",
+        "objective_marker": "objective_content",
         "constraint_marker": "constraint_content",
         "action_marker": "action_content",
         "format_marker": "format_content",
@@ -591,7 +649,13 @@ def _build_named_positions(
 
     # Detect chat template suffix at end of prompt
     # Look for common chat template patterns: <|im_end|>, <|im_start|>, assistant, etc.
-    chat_template_tokens = {"<|im_end|>", "<|im_start|>", "assistant", "<|eot_id|>", "<|start_header_id|>"}
+    chat_template_tokens = {
+        "<|im_end|>",
+        "<|im_start|>",
+        "assistant",
+        "<|eot_id|>",
+        "<|start_header_id|>",
+    }
     chat_suffix_start_pos = None
 
     # Scan from end of prompt to find where chat suffix begins
@@ -606,7 +670,11 @@ def _build_named_positions(
                 chat_suffix_start_pos = i
             continue
 
-        if tok_stripped in chat_template_tokens or tok_stripped.startswith("<|") or tok_stripped.endswith("|>"):
+        if (
+            tok_stripped in chat_template_tokens
+            or tok_stripped.startswith("<|")
+            or tok_stripped.endswith("|>")
+        ):
             chat_suffix_start_pos = i
         else:
             # Stop scanning once we hit non-chat-template token
@@ -655,9 +723,9 @@ def _build_named_positions(
                 break
             char_count += len(tok)
 
-    # Find consider_marker position for options region boundary
-    consider_marker_text = markers.get("consider_marker", "CONSIDER:")
-    consider_marker_char = prompt_text.find(consider_marker_text)
+    # Find objective_marker position for options region boundary
+    objective_marker_text = markers.get("objective_marker", "CONSIDER:")
+    objective_marker_char = prompt_text.find(objective_marker_text)
 
     for idx, (char_pos, marker_name, marker_text) in enumerate(marker_boundaries):
         if marker_name not in section_markers:
@@ -699,10 +767,12 @@ def _build_named_positions(
             tail_positions[f"{section_name}_tail"] = max(content_positions)
 
     # Add option_content: unassigned positions in options region
-    # options_tail is the last position before consider_marker
+    # options_tail is the last position before objective_marker
     if options_start_char is not None:
-        # Options region extends from left_label to just before consider_marker
-        options_region_end = consider_marker_char if consider_marker_char >= 0 else len(prompt_text)
+        # Options region extends from left_label to just before objective_marker
+        options_region_end = (
+            objective_marker_char if objective_marker_char >= 0 else len(prompt_text)
+        )
 
         char_count = 0
         option_content_positions = []
@@ -712,7 +782,7 @@ def _build_named_positions(
                 break
             tok_start = char_count
             tok_end = char_count + len(tok)
-            # Token is in options region if it starts after options_start and before consider_marker
+            # Token is in options region if it starts after options_start and before objective_marker
             if tok_start >= options_start_char and tok_start < options_region_end:
                 last_option_pos = i
                 if i not in assigned_positions:
@@ -730,14 +800,16 @@ def _build_named_positions(
             named_positions["options_tail"] = [options_tail_pos]
 
     # Add tail positions (last position of each content section)
-    # Special case: consider_tail should be BEFORE time_horizon if it exists
-    if "consider_tail" in tail_positions and "time_horizon" in named_positions:
+    # Special case: objective_tail should be BEFORE time_horizon if it exists
+    if "objective_tail" in tail_positions and "time_horizon" in named_positions:
         time_horizon_start = min(named_positions["time_horizon"])
         # Find the position just before time_horizon
-        consider_positions = named_positions.get("consider_content", [])
-        positions_before_horizon = [p for p in consider_positions if p < time_horizon_start]
+        objective_positions = named_positions.get("objective_content", [])
+        positions_before_horizon = [
+            p for p in objective_positions if p < time_horizon_start
+        ]
         if positions_before_horizon:
-            tail_positions["consider_tail"] = max(positions_before_horizon)
+            tail_positions["objective_tail"] = max(positions_before_horizon)
 
     # Special case: task_tail should be BEFORE options (left_label) if it exists
     if "task_tail" in tail_positions and "left_label" in named_positions:
@@ -752,7 +824,10 @@ def _build_named_positions(
         named_positions[tail_name] = [tail_pos]
         # Remove tail position from corresponding content list to avoid overlap
         content_name = tail_name.replace("_tail", "_content")
-        if content_name in named_positions and tail_pos in named_positions[content_name]:
+        if (
+            content_name in named_positions
+            and tail_pos in named_positions[content_name]
+        ):
             named_positions[content_name].remove(tail_pos)
 
     # Add chat_prefix_tail and chat_suffix_tail if those regions exist
@@ -774,8 +849,7 @@ def _build_named_positions(
     # Assign prompt_other: any remaining unassigned prompt tokens
     # (includes chat template suffix if present)
     prompt_other_positions = [
-        i for i in range(prompt_len)
-        if i not in assigned_positions
+        i for i in range(prompt_len) if i not in assigned_positions
     ]
     if prompt_other_positions:
         named_positions["prompt_other"] = prompt_other_positions
@@ -783,8 +857,7 @@ def _build_named_positions(
 
     # Assign response_other: unassigned response tokens
     response_other_positions = [
-        i for i in range(prompt_len, full_len)
-        if i not in assigned_positions
+        i for i in range(prompt_len, full_len) if i not in assigned_positions
     ]
     if response_other_positions:
         named_positions["response_other"] = response_other_positions

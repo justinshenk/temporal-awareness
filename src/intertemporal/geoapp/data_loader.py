@@ -743,7 +743,7 @@ class GeometryDataLoader:
             "response_reasoning": "Reasoning Content",
             "situation_marker": "SITUATION:",
             "task_marker": "TASK:",
-            "consider_marker": "CONSIDER:",
+            "objective_marker": "CONSIDER:",
             "action_marker": "ACTION:",
             "format_marker": "FORMAT:",
             "format_choice_prefix": "Format Choice Prefix",
@@ -763,7 +763,7 @@ class GeometryDataLoader:
             "chat_suffix": "Chat Suffix",
             "situation_content": "Situation Content",
             "task_content": "Task Content",
-            "consider_content": "Consider Content",
+            "objective_content": "Consider Content",
             "action_content": "Action Content",
             "format_content": "Format Content",
             "prompt_other": "Other Prompt Tokens",
@@ -771,7 +771,7 @@ class GeometryDataLoader:
             # Section tail positions (last token of each section)
             "situation_tail": "Situation Tail",
             "task_tail": "Task Tail",
-            "consider_tail": "Consider Tail",
+            "objective_tail": "Consider Tail",
             "action_tail": "Action Tail",
             "format_tail": "Format Tail",
             "options_tail": "Options Tail (end of right_time)",
@@ -797,7 +797,7 @@ class GeometryDataLoader:
         fmt = DefaultPromptFormat()
         markers = {}
         marker_keys = [
-            "situation_marker", "task_marker", "consider_marker",
+            "situation_marker", "task_marker", "objective_marker",
             "action_marker", "format_marker",
         ]
         for key in marker_keys:
@@ -831,7 +831,7 @@ class GeometryDataLoader:
             ("right_label", "variable"),
             ("right_reward", "variable"),
             ("right_time", "variable"),
-            ("consider_marker", "marker"),
+            ("objective_marker", "marker"),
             ("time_horizon", "variable"),
             ("post_time_horizon", "variable"),
             ("action_marker", "marker"),

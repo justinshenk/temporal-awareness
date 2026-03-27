@@ -165,8 +165,8 @@ export function PositionSelector({
 
         {/* CONSIDER + Time Horizon */}
         <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('consider_marker', 'CONSIDER:')}
-          {renderPos('consider_content', 'content')}
+          {renderPos('objective_marker', 'CONSIDER:')}
+          {renderPos('objective_content', 'content')}
         </div>
         <div className="pl-3 flex flex-wrap items-center gap-0.5">
           <span className="text-gray-400 text-[10px]">Concerned about outcome in</span>

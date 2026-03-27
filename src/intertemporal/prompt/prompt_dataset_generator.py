@@ -30,6 +30,9 @@ from ..common.preference_types import (
     TimeValue,
 )
 
+# Time horizon padding: 20 chars with 25% left / 75% right padding
+TIME_HORIZON_MIN_LENGTH = 20
+
 
 class PromptDatasetGenerator:
     """
@@ -123,7 +126,7 @@ class PromptDatasetGenerator:
             elif months >= 1:
                 # Use months for 1+ months
                 result.append(TimeValue(value=round(months, 1), unit="months"))
-            elif months >= 1/4:  # ~1 week
+            elif months >= 1 / 4:  # ~1 week
                 # Use weeks for 1+ weeks
                 weeks = months * 4.33  # ~4.33 weeks per month
                 result.append(TimeValue(value=round(weeks, 1), unit="weeks"))
@@ -227,22 +230,28 @@ class PromptDatasetGenerator:
         # Use provided time strings or format explicitly
         # Options: no padding (min_length=0)
         # Horizon: padded to 12 chars (25% left, 75% right)
-        left_time = left_time_str if left_time_str else left_option.time.to_string(min_length=0)
-        right_time = right_time_str if right_time_str else right_option.time.to_string(min_length=0)
+        left_time = (
+            left_time_str if left_time_str else left_option.time.to_string(min_length=0)
+        )
+        right_time = (
+            right_time_str
+            if right_time_str
+            else right_option.time.to_string(min_length=0)
+        )
         horizon_str = (
             horizon_time_str
             if horizon_time_str
-            else (time_horizon.to_string(min_length=12) if time_horizon else "")
+            else (time_horizon.to_string(min_length=TIME_HORIZON_MIN_LENGTH) if time_horizon else "")
         )
 
         # Build var_keywords values dict
         var_values = {
             "time_horizon": horizon_str,
             "left_term_label": labels[0],
-            "left_term_reward": f"{round(left_option.reward.value)}",
+            "left_term_reward": f"{round(left_option.reward.value):,}",
             "left_term_time": left_time,
             "right_term_label": labels[1],
-            "right_term_reward": f"{round(right_option.reward.value)}",
+            "right_term_reward": f"{round(right_option.reward.value):,}",
             "right_term_time": right_time,
         }
 
@@ -412,10 +421,10 @@ class PromptDatasetGenerator:
         _, left_time_str = apply_time_variation(left_option.time, variation)
         _, right_time_str = apply_time_variation(right_option.time, variation)
 
-        # Apply time variation to horizon if present
+        # Apply time variation to horizon if present (with padding)
         horizon_time_str = None
         if time_horizon is not None:
-            _, horizon_time_str = apply_time_variation(time_horizon, variation)
+            _, horizon_time_str = apply_time_variation(time_horizon, variation, min_length=TIME_HORIZON_MIN_LENGTH)
 
         question_text = self.format_question(
             left_option,
@@ -522,7 +531,9 @@ class PromptDatasetGenerator:
             # Filter: short_term time must be less than long_term time
             if short_term_data[1].to_months() >= long_term_data[1].to_months():
                 continue
-            sample = self.create_sample(sample_idx, short_term_data, long_term_data, *rest)
+            sample = self.create_sample(
+                sample_idx, short_term_data, long_term_data, *rest
+            )
             samples.append(sample)
             sample_idx += 1
 

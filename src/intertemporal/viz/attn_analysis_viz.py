@@ -100,7 +100,7 @@ def _get_format_pos_label(
             "response_reasoning_prefix": "reas_pre",
             "format_choice_prefix": "fmt_ch",
             "format_reasoning_prefix": "fmt_reas",
-            "consider_marker": "consid",
+            "objective_marker": "consid",
             "action_marker": "action",
             "format_marker": "format",
             "situation_marker": "situa",

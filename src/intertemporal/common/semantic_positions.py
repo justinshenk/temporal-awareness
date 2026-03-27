@@ -33,7 +33,7 @@ PROMPT_SRC_POSITIONS = PROMPT_CONSTRAINT_POSITIONS + PROMPT_INFO_POSITIONS
 PROMPT_SECTION_TAILS = [
     "task_tail",
     "options_tail",
-    "consider_tail",
+    "objective_tail",
     "action_tail",
     "format_tail",
     "chat_suffix",

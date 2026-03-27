@@ -13,21 +13,21 @@ from __future__ import annotations
 ###########################
 
 BASE_CONTEXT = {
-    "reward_unit": "housing units",
-    "role": "the city administration",
-    "situation": "Plan for housing development in the city.",
-    "domain": "housing",
+    "reward_unit": "$",
+    "role": "head of household",
+    "situation": "Decide on investment.",
+    "domain": "finance",
 }
 
-SHORT_REWARDS = [1000, 2500]
-LONG_REWARDS = [30000, 100000]
+SHORT_REWARDS = [10, 1000]
+LONG_REWARDS = [100000, 100000000]
 
 LONG_TIMES = [
     {"value": 10, "unit": "years"},
-    {"value": 30, "unit": "years"},
+    {"value": 3, "unit": "decades"},
 ]
 SHORT_TIMES = [
-    {"value": 0.5, "unit": "years"},
+    {"value": 1, "unit": "months"},
     {"value": 1, "unit": "years"},
 ]
 
@@ -105,8 +105,8 @@ HOR_NONE = [None]
 
 HOR_BINARY = [
     None,
-    {"value": 1, "unit": "months"},  # Short horizon
-    {"value": 50, "unit": "years"},  # Long horizon
+    {"value": 6, "unit": "months"},  # Short horizon
+    {"value": 3, "unit": "decades"},  # Long horizon
 ]
 
 HOR_FEW = [
@@ -158,6 +158,8 @@ NANO_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": HOR_BINARY,
+    "round_time_units": True,
+    "round_reward_units": True,
 }
 
 MULTIFORMAT_NANO_CFG = {

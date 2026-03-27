@@ -56,10 +56,10 @@ FORMAT_POS_COLORS = {
     "right_reward": "#00ACC1",       # Cyan
     "right_reward_units": "#26C6DA", # Light cyan
     "right_time": "#4DD0E1",         # Very light cyan
-    # === CONSIDER (purple spectrum - similar family) ===
-    "consider_marker": "#6A1B9A",    # Deep purple
-    "consider_content": "#CE93D8",   # Light purple
-    "consider_tail": "#AB47BC",      # Medium purple
+    # === OBJECTIVE (purple spectrum - similar family) ===
+    "objective_marker": "#6A1B9A",    # Deep purple
+    "objective_content": "#CE93D8",   # Light purple
+    "objective_tail": "#AB47BC",      # Medium purple
     # === CONSTRAINT (red spectrum - time_horizon DISTINCT) ===
     "constraint_marker": "#C62828",  # Dark red
     "constraint_content": "#EF9A9A", # Light red
@@ -99,7 +99,7 @@ CATEGORY_PREFIXES = [
     ("left_", "Options"),  # Left options
     ("right_", "Options"),  # Right options (same group)
     ("option", "Options"),  # option_content, options_tail
-    ("consider_", "Consider"),
+    ("objective_", "Objective"),
     ("constraint_", "Constraint"),
     ("time_horizon", "Constraint"),  # Special: no underscore prefix
     ("post_time_horizon", "Constraint"),  # Special: no underscore prefix
@@ -821,10 +821,10 @@ def _plot_position_mapping_grid(
     # Sort by category
     category_order = [
         # Markers first
-        "situation_marker", "task_marker", "consider_marker", "action_marker", "format_marker",
+        "situation_marker", "task_marker", "objective_marker", "action_marker", "format_marker",
         "format_choice_prefix", "format_reasoning_prefix",
         # Content regions
-        "situation_content", "task_content", "consider_content", "action_content", "format_content",
+        "situation_content", "task_content", "objective_content", "action_content", "format_content",
         # Variable positions
         "time_horizon", "post_time_horizon",
         "left_label", "left_reward", "left_time",
