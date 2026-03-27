@@ -5,6 +5,7 @@ then patch confident long examples from short examples and vice versa.
 
 import argparse
 import json
+import pickle
 import subprocess
 import sys
 import warnings
@@ -35,6 +36,13 @@ CONFIG_PATH = Path(__file__).parent / "config"
 torch.set_grad_enabled(False)
 
 LayerComponent = tuple[int, str]
+LayerComponentNode = tuple[LayerComponent, int]
+NODES_PATH = (
+    Path(__file__).parent.parent.parent.parent
+    / "data"
+    / "selected_nodes"
+    / "final_200_QnA.pkl"
+)
 
 
 def tensor_to_float(tensor: torch.Tensor) -> float:
@@ -96,19 +104,58 @@ def sanitize_filename(value: str) -> str:
     return "".join(char if char.isalnum() or char in "._-" else "_" for char in value)
 
 
-def select_patch_layer_components(model: Any) -> list[LayerComponent]:
-    """Patch all z and mlp_hidden activations across the full model depth."""
-    num_layers = getattr(getattr(model, "config", None), "num_hidden_layers", None)
-    if num_layers is None:
-        num_layers = getattr(getattr(model, "config", None), "n_layer", None)
-    if num_layers is None:
-        raise AttributeError("Could not determine model layer count from model.config")
+def str_to_layer_component(value: str) -> LayerComponent:
+    """Parse a node component spec like ``z/12``."""
+    component, layer = value.split("/")
+    return int(layer), component
 
-    return [
-        (layer, component)
-        for layer in range(int(num_layers))
-        for component in ("z", "mlp_hidden")
-    ]
+
+def load_node_specs(
+    nodes_path: Path,
+    node_classes: list[str],
+) -> list[LayerComponentNode]:
+    """Load and flatten node specs for the requested node classes."""
+    node_lookup = pickle.load(nodes_path.open("rb"))
+    nodes = [node_lookup[node_class] for node_class in node_classes]
+    nodes = [item for sublist in nodes for item in sublist]
+    nodes = [(str_to_layer_component(item[0]), item[1]) for item in nodes]
+    return list(set(nodes))
+
+
+def unique_layer_components(
+    layer_component_nodes: list[LayerComponentNode],
+) -> list[LayerComponent]:
+    """Preserve order while dropping duplicate layer/component requests."""
+    return list(
+        dict.fromkeys(layer_component for layer_component, _ in layer_component_nodes)
+    )
+
+
+def patch_selected_nodes(
+    target_activations: Any,
+    source_activations: Any,
+    layer_component_nodes: list[LayerComponentNode],
+) -> Any:
+    """Return target activations with only the selected nodes copied from source."""
+    patched_activations = target_activations.clone()
+    patched_activations.split_heads()
+    source_activations.split_heads()
+
+    for (layer, component), node in layer_component_nodes:
+        if component == "z":
+            patched_activations[(layer, component)][:, :, node, :] = source_activations[
+                (layer, component)
+            ][:, :, node, :]
+        elif component == "mlp_hidden":
+            patched_activations[(layer, component)][:, :, node] = source_activations[
+                (layer, component)
+            ][:, :, node]
+        else:
+            raise ValueError(f"Unsupported component for patching: {component}")
+
+    patched_activations.merge_heads()
+    source_activations.merge_heads()
+    return patched_activations
 
 
 def slice_batch_dict(batch_dict: Any, start: int, end: int) -> Any:
@@ -220,6 +267,7 @@ def collect_directional_patched_responses(
     *,
     target_records: list[dict[str, Any]],
     source_records: list[dict[str, Any]],
+    layer_component_nodes: list[LayerComponentNode],
     tokenizer: Any,
     model: Any,
     token_id_short: int,
@@ -239,7 +287,7 @@ def collect_directional_patched_responses(
             f"but only found {len(source_records)}"
         )
 
-    patch_layer_components = select_patch_layer_components(model)
+    patch_layer_components = unique_layer_components(layer_component_nodes)
     rng = np.random.default_rng(seed)
     patched_responses: list[dict[str, Any]] = []
 
@@ -267,12 +315,23 @@ def collect_directional_patched_responses(
             patch_layer_components,
             return_logits=True,
         )
+        target_acts, _ = get_activations(
+            model,
+            target_batch,
+            patch_layer_components,
+            return_logits=True,
+        )
+        patched_acts = patch_selected_nodes(
+            target_acts,
+            source_acts,
+            layer_component_nodes,
+        )
 
         _, patch_logits = patch_activations(
             model,
             target_batch,
             patch_layer_components,
-            source_acts,
+            patched_acts,
             return_logits=True,
         )
 
@@ -318,7 +377,9 @@ def collect_directional_patched_responses(
 
 def run_bidirectional_classification_activation_patch(
     config_path: Path,
+    node_classes: list[str],
     *,
+    nodes_path: Path = NODES_PATH,
     min_logit_diff: float = 1.0,
     num_random_sources: int = 5,
     model: Any = None,
@@ -351,6 +412,7 @@ def run_bidirectional_classification_activation_patch(
     short_label, long_label = option_keys
     input_file_path = data_loc / data_file
     save_loc.mkdir(parents=True, exist_ok=True)
+    layer_component_nodes = load_node_specs(nodes_path, node_classes)
 
     from mech_interp_toolkit.utils import load_model_tokenizer_config, set_global_seed
 
@@ -390,6 +452,7 @@ def run_bidirectional_classification_activation_patch(
     patched_long_from_short = collect_directional_patched_responses(
         target_records=confident_long,
         source_records=confident_short,
+        layer_component_nodes=layer_component_nodes,
         tokenizer=tokenizer,
         model=model,
         token_id_short=token_id_short,
@@ -403,6 +466,7 @@ def run_bidirectional_classification_activation_patch(
     patched_short_from_long = collect_directional_patched_responses(
         target_records=confident_short,
         source_records=confident_long,
+        layer_component_nodes=layer_component_nodes,
         tokenizer=tokenizer,
         model=model,
         token_id_short=token_id_short,
@@ -423,12 +487,15 @@ def run_bidirectional_classification_activation_patch(
             "min_logit_diff": min_logit_diff,
             "num_random_sources": num_random_sources,
             "seed": seed,
+            "node_classes": node_classes,
+            "node_count": len(layer_component_nodes),
             "n_base_examples": len(base_responses),
             "n_confident_short": len(confident_short),
             "n_confident_long": len(confident_long),
             "n_patched_long_from_short": len(patched_long_from_short),
             "n_patched_short_from_long": len(patched_short_from_long),
-            "patch_components": ["z", "mlp_hidden"],
+            "nodes_path": str(nodes_path),
+            "patch_components": [list(item) for item in unique_layer_components(layer_component_nodes)],
             "config": config,
         },
         "base_responses": base_responses,
@@ -439,7 +506,7 @@ def run_bidirectional_classification_activation_patch(
     }
 
     output_path = save_loc / (
-        f"{sanitize_filename(output_filename)}__bidirectional_activation_patch.json"
+        f"{sanitize_filename(output_filename)}__{sanitize_filename('__'.join(node_classes))}__bidirectional_activation_patch.json"
     )
     with output_path.open("w", encoding="utf-8") as f:
         json.dump(output_payload, f, indent=2)
@@ -449,7 +516,9 @@ def run_bidirectional_classification_activation_patch(
 
 def run_classification_short_to_long_activation_patch(
     config_path: Path,
+    node_classes: list[str],
     *,
+    nodes_path: Path = NODES_PATH,
     min_logit_diff: float = 1.0,
     num_random_sources: int = 5,
     model: Any = None,
@@ -458,6 +527,8 @@ def run_classification_short_to_long_activation_patch(
     """Backward-compatible wrapper for notebook and CLI usage."""
     return run_bidirectional_classification_activation_patch(
         config_path,
+        node_classes,
+        nodes_path=nodes_path,
         min_logit_diff=min_logit_diff,
         num_random_sources=num_random_sources,
         model=model,
@@ -476,6 +547,13 @@ def main() -> None:
         help="Path to config YAML file.",
     )
     parser.add_argument(
+        "--node-class",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Class of nodes to patch, loaded from NODES_PATH.",
+    )
+    parser.add_argument(
         "--min-logit-diff",
         type=float,
         default=1.0,
@@ -491,6 +569,7 @@ def main() -> None:
     args = parser.parse_args()
     run_bidirectional_classification_activation_patch(
         args.config,
+        args.node_class,
         min_logit_diff=args.min_logit_diff,
         num_random_sources=args.num_random_sources,
     )
