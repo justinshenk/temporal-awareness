@@ -108,6 +108,15 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def resolve_config_path(config_path: Path) -> Path:
+    """Resolve config paths relative to the local config directory by default."""
+    if config_path.is_absolute():
+        return config_path
+    if config_path.exists():
+        return config_path
+    return CONFIG_PATH / config_path
+
+
 def str_to_layer_component(s: str):
     comp, layer = s.split("/")
     return int(layer), comp
@@ -137,29 +146,19 @@ def scale_selected_nodes(
     activations.merge_heads()
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run!")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        required=True,
-        help="Path to config YAML file (e.g., step_numbers.yaml)",
-    )
+def run_cross_task_generalization(
+    config_path: Path,
+    node_classes: list[str],
+    *,
+    nodes_path: Path = NODES_PATH,
+    model=None,
+    tokenizer=None,
+) -> tuple[Any, Any]:
+    """Run cross-task generalization from Python or notebooks."""
+    config = load_config(resolve_config_path(config_path))
 
-    parser.add_argument(
-        "--node-class",
-        type=str,
-        nargs="+",
-        required=True,
-        help="class of nodes to patch",
-    )
-
-    args = parser.parse_args()
-
-    config = load_config(CONFIG_PATH / args.config)
-    node_classes = args.node_class
-
-    nodes = [pickle.load(NODES_PATH.open("rb"))[x] for x in node_classes]
+    node_lookup = pickle.load(nodes_path.open("rb"))
+    nodes = [node_lookup[x] for x in node_classes]
     nodes = [item for sublist in nodes for item in sublist]
     nodes = [(str_to_layer_component(x[0]), x[1]) for x in nodes]
     nodes = list(set(nodes))
@@ -189,14 +188,14 @@ def main() -> None:
 
     set_global_seed(seed)
 
-    # Suffix prompts the model to complete with option character
-    model, tokenizer, _ = load_model_tokenizer_config(
-        model_name=model_name,
-        suffix=prompt_suffix,
-        system_prompt=system_prompt,
-        attn_type="eager",
-        dtype=dtype,
-    )
+    if model is None or tokenizer is None:
+        model, tokenizer, _ = load_model_tokenizer_config(
+            model_name=model_name,
+            suffix=prompt_suffix,
+            system_prompt=system_prompt,
+            attn_type="eager",
+            dtype=dtype,
+        )
 
     system_prompt_length = (
         len(tokenizer.tokenizer.encode(system_prompt, add_special_tokens=False)) + 1
@@ -293,6 +292,29 @@ def main() -> None:
         save_loc / f"cross_task_generalization__{data_stem}__{node_class_stem}.npz"
     )
     np.savez_compressed(output_file, **output_arrays)
+
+    return model, tokenizer
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run!")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to config YAML file (e.g., step_numbers.yaml)",
+    )
+
+    parser.add_argument(
+        "--node-class",
+        type=str,
+        nargs="+",
+        required=True,
+        help="class of nodes to patch",
+    )
+
+    args = parser.parse_args()
+    run_cross_task_generalization(args.config, args.node_class)
 
 
 if __name__ == "__main__":
