@@ -24,12 +24,20 @@ from ...attribution_patching import (
 )
 from .diffmeans import run_diffmeans_analysis, DiffMeansAggregatedResults
 from .geo import run_geo_analysis, GeoAggregatedResults
+from ..geometry import (
+    GeometryConfig,
+    TargetSpec,
+    generate_geo_samples,
+    run_geo_analysis as run_geometry_analysis,
+)
 from .mlp_analysis import run_mlp_analysis, MLPAggregatedResults
 from .attn_analysis import run_attn_analysis, AttnAggregatedResults, AttnAnalysisConfig
+from .attn_analysis.attn_analysis_run import resolve_positions
 from ..common.sample_position_mapping import SamplePositionMapping
 from .fine_grained import (
     FineGrainedConfig,
     run_fine_grained_analysis,
+    compute_attention_patching_correlation,
 )
 from .processing import (
     ProcessedResults,
@@ -77,11 +85,11 @@ def step_preference_data(
 
     # Build and save horizon analysis
     horizon_analysis = build_horizon_analysis(ctx.pref_pairs)
-    save_horizon_analysis(horizon_analysis, ctx.output_dir)
+    save_horizon_analysis(horizon_analysis, ctx.get_analysis_dir())
 
     # Build and save pair analysis (labels and order)
     pair_analysis = build_pair_analysis(ctx.pref_pairs)
-    save_pair_analysis(pair_analysis, ctx.output_dir)
+    save_pair_analysis(pair_analysis, ctx.get_analysis_dir())
 
 
 @profile("step_attribution_patching")
@@ -97,19 +105,19 @@ def step_attribution_patching(
     # Build settings from config (only override defaults for fields present in att_cfg)
     settings = AttributionSettings.from_dict(att_cfg)
 
-    ctx.att_agg = AttrPatchAggregatedResults()
+    ctx.attrib_agg = AttrPatchAggregatedResults()
 
     # Detect cached pairs first when loading from cache (unless no_cache is set)
     cached_pair_indices = set()
     use_cache = try_loading_data and not att_cfg.get("no_cache", False)
     if use_cache:
-        cached_pair_indices = set(ctx.detect_cached_att_pairs())
+        cached_pair_indices = set(ctx.detect_cached_attrib_pairs())
 
     # Load all cached pairs
     for pair_idx in sorted(cached_pair_indices):
-        if ctx.load_att_pair(pair_idx):
-            result = ctx.att_patching[pair_idx]
-            ctx.att_agg.add(result)
+        if ctx.load_attrib_pair(pair_idx):
+            result = ctx.attrib_patching[pair_idx]
+            ctx.attrib_agg.add(result)
             log(f"[attr] Loaded cached pair {pair_idx + 1}")
 
     # Process any new pairs that aren't cached
@@ -119,15 +127,15 @@ def step_attribution_patching(
 
         log_progress(pair_idx + 1, len(ctx.pairs), "[attr] Processing pair ")
         result = attribute_pair(ctx.runner, pair, settings=settings)
-        ctx.att_patching[pair_idx] = result
-        ctx.att_agg.add(result)
-        ctx.save_att_pair(pair_idx)
+        ctx.attrib_patching[pair_idx] = result
+        ctx.attrib_agg.add(result)
+        ctx.save_attrib_pair(pair_idx)
 
     n_loaded = len(cached_pair_indices)
-    n_total = len(ctx.att_agg.denoising) + len(ctx.att_agg.noising)
+    n_total = len(ctx.attrib_agg.denoising) + len(ctx.attrib_agg.noising)
     log(f"[attr] Attribution: {n_loaded} loaded from cache, {n_total} total")
-    ctx.att_agg.print_summary()
-    ctx.save_att_agg()
+    ctx.attrib_agg.print_summary()
+    ctx.save_attrib_agg()
 
 
 @profile("step_coarse_activation_patching")
@@ -252,9 +260,6 @@ def step_geo(
     ctx: ExperimentContext, try_loading_data: bool = False
 ) -> None:
     """Run geometric (PCA) analysis on residual stream activations."""
-    from ..common.sample_position_mapping import SamplePositionMapping
-    from .attn_analysis.attn_analysis_run import resolve_positions
-
     geo_cfg = ctx.cfg.geo
     if not geo_cfg.get("enabled", False):
         log("[geo] Geo analysis disabled, skipping")
@@ -318,6 +323,65 @@ def step_geo(
     log(f"[geo] Geo: {n_loaded} loaded from cache, {n_total} total")
     ctx.geo_agg.print_summary()
     ctx.save_geo_agg()
+
+    # Run full geometry pipeline analysis if configured
+    geometry_cfg = geo_cfg.get("geometry_pipeline", {})
+    if geometry_cfg.get("enabled", False):
+        _run_geometry_pipeline_analysis(ctx, geometry_cfg, use_cache)
+
+
+def _run_geometry_pipeline_analysis(
+    ctx: ExperimentContext,
+    geometry_cfg: dict,
+    use_cache: bool,
+) -> None:
+    """Run full geometry pipeline analysis (linear probes, cross-position similarity, etc.)."""
+    from ..common.semantic_positions import PROMPT_POSITIONS, RESPONSE_POSITIONS
+
+    log("[geo] Running geometry pipeline analysis...")
+
+    # Get configuration
+    layers = geometry_cfg.get("layers", [0, 12, 19, 21, 24, 28, 31, 35])
+    components = geometry_cfg.get("components", ["resid_pre", "attn_out", "mlp_out", "resid_post"])
+    positions = geometry_cfg.get("positions", PROMPT_POSITIONS + RESPONSE_POSITIONS)
+    n_pca_components = geometry_cfg.get("n_pca_components", 10)
+    skip_viz = geometry_cfg.get("skip_viz", False)
+    skip_per_target_plots = geometry_cfg.get("skip_per_target_plots", True)
+
+    # Build target specs
+    targets = [
+        TargetSpec(layer=layer, component=component, position=position)
+        for layer in layers
+        for component in components
+        for position in positions
+    ]
+
+    # Build geometry config
+    geometry_output_dir = ctx.output_dir / "geometry"
+    config = GeometryConfig(
+        targets=targets,
+        output_dir=geometry_output_dir,
+        model=ctx.pref_data.model if ctx.pref_data else "meta-llama/Llama-3.1-8B-Instruct",
+        seed=42,
+        n_pca_components=n_pca_components,
+    )
+
+    log(f"[geo] Geometry pipeline: {len(targets)} targets, output: {geometry_output_dir}")
+
+    # Run Phase 1: Generate samples
+    data = generate_geo_samples(config, use_cache=use_cache)
+
+    # Run Phase 2: Analysis
+    results = run_geometry_analysis(
+        data,
+        config,
+        skip_viz=skip_viz,
+        skip_per_target_plots=skip_per_target_plots,
+        run_cross_position_similarity=True,
+        run_continuous_time_probe=True,
+    )
+
+    log(f"[geo] Geometry pipeline complete: {results['summary']['n_samples']} samples analyzed")
 
 
 @profile("step_mlp_analysis")
@@ -522,7 +586,6 @@ def step_fine_patching(
     log(f"[fine] Fine patching: {n_loaded} loaded from cache, {n_total} total")
 
     # Compute attention-patching correlations if both attention and fine-grained data available
-    from .fine_grained import compute_attention_patching_correlation
     for pair_idx in ctx.fine_grained_patching:
         fine_result = ctx.fine_grained_patching[pair_idx]
         attn_result = ctx.attn_analysis.get(pair_idx)
@@ -553,7 +616,7 @@ def step_process_results(ctx: ExperimentContext) -> None:
         process_coarse_results(ctx)
 
     # Attribution method agreement analysis (independent of coarse patching)
-    if ctx.att_agg and (ctx.att_agg.denoising_agg or ctx.att_agg.noising_agg):
+    if ctx.attrib_agg and (ctx.attrib_agg.denoising_agg or ctx.attrib_agg.noising_agg):
         process_attribution_agreement(ctx)
 
     if not ctx.processed_results.component_comparison and not ctx.processed_results.attribution_agreement:
@@ -592,8 +655,8 @@ def step_visualize_results(
         ctx.output_dir,
         coarse_agg_by_component=ctx.coarse_agg_by_component or None,
         coarse_patching=ctx.coarse_patching or None,
-        att_agg=ctx.att_agg,
-        att_patching=ctx.att_patching or None,
+        attrib_agg=ctx.attrib_agg,
+        attrib_patching=ctx.attrib_patching or None,
         fine_agg=ctx.fine_agg,
         fine_patching=ctx.fine_patching or None,
         diffmeans_agg=ctx.diffmeans_agg,

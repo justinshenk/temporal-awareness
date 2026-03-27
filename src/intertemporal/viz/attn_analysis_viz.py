@@ -398,7 +398,7 @@ def _plot_top_attending_heads(agg: AttnAggregatedResults, output_path: Path) -> 
         ax = axes[0, i]
 
         # Get consistent heads for this layer
-        consistent = agg.get_consistent_source_heads(layer, min_attn=0.05, min_pairs=1)
+        consistent = agg.get_consistent_source_heads(layer, min_attn=0.02, min_pairs=1)
 
         if consistent:
             heads = [h[0] for h in consistent[:10]]  # Top 10
@@ -631,7 +631,7 @@ def _plot_cross_layer_consistency(agg: AttnAggregatedResults, output_path: Path)
     if not all_heads:
         # Fallback: use top attending heads
         for layer in layers:
-            consistent = agg.get_consistent_source_heads(layer, min_attn=0.05, min_pairs=1)
+            consistent = agg.get_consistent_source_heads(layer, min_attn=0.02, min_pairs=1)
             for head_idx, mean_attn, n_pairs in consistent[:3]:
                 all_heads.append((layer, head_idx, mean_attn))
 

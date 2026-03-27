@@ -32,6 +32,7 @@ from .geo import GeoAggregatedResults, GeoPairResult
 from .mlp_analysis import MLPAggregatedResults, MLPPairResult
 from .fine_grained import FineGrainedResults, visualize_fine_grained
 from .processing import ProcessedResults
+from ..common.sample_position_mapping import SamplePositionMapping
 
 if TYPE_CHECKING:
     from ...activation_patching import ActPatchAggregatedResult, ActPatchPairResult
@@ -66,17 +67,9 @@ def detect_cached_components(exp_dir: Path) -> list[str]:
     components = []
     pair_0 = get_pair_dir(exp_dir, 0)
     if pair_0.exists():
-        # Check new structure: coarse/sweep_*
         coarse_dir = pair_0 / "coarse"
         if coarse_dir.exists():
             for d in coarse_dir.iterdir():
-                if d.is_dir() and d.name.startswith("sweep_"):
-                    comp = d.name.replace("sweep_", "")
-                    if (d / "coarse_results.json").exists():
-                        components.append(comp)
-        # Fallback to legacy structure: sweep_* at root
-        if not components:
-            for d in pair_0.iterdir():
                 if d.is_dir() and d.name.startswith("sweep_"):
                     comp = d.name.replace("sweep_", "")
                     if (d / "coarse_results.json").exists():
@@ -131,14 +124,9 @@ def load_coarse_results_for_pair(
 
     coarse_results = {}
     for component in components:
-        # Try new structure first
         results_path = pair_dir / "coarse" / f"sweep_{component}" / "coarse_results.json"
-        # Fallback to legacy structure
-        if not results_path.exists():
-            results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
         if results_path.exists():
             result = CoarseActPatchResults.from_json(results_path)
-            # Add label_pairs if not already present
             if label_pairs and result.label_pairs is None:
                 result.label_pairs = label_pairs
             coarse_results[component] = result
@@ -159,14 +147,9 @@ def load_coarse_aggregated(
         Dict mapping component name to aggregated results
     """
     coarse_agg = {}
-    coarse_dir = exp_dir / "agg_coarse"
+    coarse_dir = exp_dir / "aggregated" / "coarse"
     for component in components:
         agg_path = coarse_dir / f"{component}.json"
-        # Fallback to legacy paths
-        if not agg_path.exists():
-            agg_path = exp_dir / "agg" / "coarse" / f"{component}.json"
-        if not agg_path.exists():
-            agg_path = exp_dir / "coarse_agg" / f"{component}.json"
         if agg_path.exists():
             coarse_agg[component] = CoarseActPatchAggregatedResults.from_json(agg_path)
     return coarse_agg
@@ -206,15 +189,10 @@ def rebuild_coarse_aggregated(
 
         # Load and add results for each component
         for component in components:
-            # Try new structure first
             results_path = pair_dir / "coarse" / f"sweep_{component}" / "coarse_results.json"
-            # Fallback to legacy structure
-            if not results_path.exists():
-                results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
             if results_path.exists():
                 result = CoarseActPatchResults.from_json(results_path)
                 result.sample_id = pair_idx
-                # Add label_pairs if not already present
                 if label_pairs and result.label_pairs is None:
                     result.label_pairs = label_pairs
                 coarse_agg[component].add(result)
@@ -225,10 +203,8 @@ def rebuild_coarse_aggregated(
     return {comp: agg for comp, agg in coarse_agg.items() if agg.n_samples > 0}
 
 
-def load_att_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
+def load_attrib_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
     """Load aggregated attribution results from cache.
-
-    Tries new folder structure first, then legacy path.
 
     Args:
         exp_dir: Path to experiment directory
@@ -236,25 +212,14 @@ def load_att_agg(exp_dir: Path) -> AttrPatchAggregatedResults | None:
     Returns:
         AttrPatchAggregatedResults or None if not found
     """
-    # Try new folder structure first
-    att_dir = exp_dir / "agg_att"
-    if (att_dir / "att_agg.json").exists():
-        return AttrPatchAggregatedResults.from_json(att_dir / "att_agg.json")
-
-    # Fallback to legacy paths
-    legacy_paths = [
-        exp_dir / "att_agg" / "att_agg.json",
-        exp_dir / "agg" / "att" / "att_agg.json",
-        exp_dir / "att_agg.json",
-    ]
-    for path in legacy_paths:
-        if path.exists():
-            return AttrPatchAggregatedResults.from_json(path)
-
+    attrib_dir = exp_dir / "aggregated" / "attrib"
+    path = attrib_dir / "attrib_agg.json"
+    if path.exists():
+        return AttrPatchAggregatedResults.from_json(path)
     return None
 
 
-def load_att_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
+def load_attrib_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
     """Load per-pair attribution results from cache.
 
     Args:
@@ -263,14 +228,9 @@ def load_att_pair_result(pair_dir: Path) -> AttrPatchPairResult | None:
     Returns:
         AttrPatchPairResult or None if not found
     """
-    # Try new path first
-    att_path = pair_dir / "att_patching" / "att_results.json"
-    if att_path.exists():
-        return AttrPatchPairResult.from_json(att_path)
-    # Fallback to legacy path
-    legacy_path = pair_dir / "att" / "att_results.json"
-    if legacy_path.exists():
-        return AttrPatchPairResult.from_json(legacy_path)
+    path = pair_dir / "attrib" / "attrib_results.json"
+    if path.exists():
+        return AttrPatchPairResult.from_json(path)
     return None
 
 
@@ -283,10 +243,7 @@ def load_diffmeans_agg(exp_dir: Path) -> DiffMeansAggregatedResults | None:
     Returns:
         DiffMeansAggregatedResults or None if not found
     """
-    path = exp_dir / "agg_diffmeans" / "diffmeans_agg.json"
-    # Fallback to legacy path
-    if not path.exists():
-        path = exp_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
+    path = exp_dir / "aggregated" / "diffmeans" / "diffmeans_agg.json"
     if path.exists():
         return DiffMeansAggregatedResults.from_json(path)
     return None
@@ -316,7 +273,7 @@ def load_geo_agg(exp_dir: Path) -> GeoAggregatedResults | None:
     Returns:
         GeoAggregatedResults or None if not found
     """
-    path = exp_dir / "agg_geo" / "geo_agg.json"
+    path = exp_dir / "aggregated" / "geo" / "geo_agg.json"
     if path.exists():
         return GeoAggregatedResults.from_json(path)
     return None
@@ -346,7 +303,7 @@ def load_mlp_agg(exp_dir: Path) -> MLPAggregatedResults | None:
     Returns:
         MLPAggregatedResults or None if not found
     """
-    path = exp_dir / "agg_mlp" / "mlp_analysis_agg.json"
+    path = exp_dir / "aggregated" / "mlp" / "mlp_analysis_agg.json"
     if path.exists():
         return MLPAggregatedResults.from_json(path)
     return None
@@ -376,12 +333,7 @@ def load_attn_agg(exp_dir: Path) -> AttnAggregatedResults | None:
     Returns:
         AttnAggregatedResults or None if not found
     """
-    # Try current location (matches experiment_context.py save location)
-    path = exp_dir / "agg_attn_patterns" / "attn_analysis_agg.json"
-    if path.exists():
-        return AttnAggregatedResults.from_json(path)
-    # Fallback to alternative name
-    path = exp_dir / "agg_attn" / "attn_analysis_agg.json"
+    path = exp_dir / "aggregated" / "attn" / "attn_agg.json"
     if path.exists():
         return AttnAggregatedResults.from_json(path)
     return None
@@ -396,14 +348,9 @@ def load_attn_pair(pair_dir: Path) -> AttnPairResult | None:
     Returns:
         AttnPairResult or None if not found
     """
-    # Try new path first
-    path = pair_dir / "attn" / "attn_analysis.json"
+    path = pair_dir / "attn" / "attn_results.json"
     if path.exists():
         return AttnPairResult.from_json(path)
-    # Fallback to legacy path
-    legacy_path = pair_dir / "attn_analysis" / "attn_analysis.json"
-    if legacy_path.exists():
-        return AttnPairResult.from_json(legacy_path)
     return None
 
 
@@ -428,8 +375,8 @@ def generate_viz(
     # Optional in-memory data (if None, loads from cache)
     coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] | None = None,
     coarse_patching: dict[tuple[int, str], CoarseActPatchResults] | None = None,
-    att_agg: "AttrPatchAggregatedResults | None" = None,
-    att_patching: dict[int, "AttrPatchPairResult"] | None = None,
+    attrib_agg: "AttrPatchAggregatedResults | None" = None,
+    attrib_patching: dict[int, "AttrPatchPairResult"] | None = None,
     fine_agg: "ActPatchAggregatedResult | None" = None,
     fine_patching: dict[int, "ActPatchPairResult"] | None = None,
     diffmeans_agg: DiffMeansAggregatedResults | None = None,
@@ -461,8 +408,8 @@ def generate_viz(
         exp_dir: Path to experiment directory
         coarse_agg_by_component: In-memory aggregated coarse results
         coarse_patching: In-memory per-pair coarse results keyed by (pair_idx, component)
-        att_agg: In-memory aggregated attribution results
-        att_patching: In-memory per-pair attribution results
+        attrib_agg: In-memory aggregated attribution results
+        attrib_patching: In-memory per-pair attribution results
         fine_agg: In-memory aggregated fine patching results
         fine_patching: In-memory per-pair fine patching results
         diffmeans_patching: In-memory per-pair diffmeans results
@@ -501,9 +448,9 @@ def generate_viz(
             log(f"[viz] Rebuilt aggregation from {coarse_agg_by_component[components[0]].n_samples} pairs")
 
     # Load attribution patching aggregated results from cache if not provided
-    if att_agg is None:
-        att_agg = load_att_agg(exp_dir)
-        if att_agg:
+    if attrib_agg is None:
+        attrib_agg = load_attrib_agg(exp_dir)
+        if attrib_agg:
             log("[viz] Loaded attribution aggregated results from cache")
 
     # Load diffmeans aggregated results from cache if not provided
@@ -513,14 +460,14 @@ def generate_viz(
             log("[viz] Loaded diffmeans aggregated results from cache")
 
     # Generate aggregated visualizations
-    if att_agg:
-        visualize_all_att_aggregated_slices(att_agg, exp_dir / "agg_att")
+    if attrib_agg:
+        visualize_all_att_aggregated_slices(attrib_agg, exp_dir / "aggregated" / "attrib")
         log("[viz] Generated attribution aggregated visualizations")
 
     if coarse_agg_by_component:
         visualize_all_aggregated(
             coarse_agg_by_component,
-            exp_dir / "agg_coarse",
+            exp_dir / "aggregated" / "coarse",
             pref_pairs,
             exp_dir,
             processed_results,
@@ -531,7 +478,7 @@ def generate_viz(
         visualize_fine_patching(fine_agg, exp_dir / "agg_fine")
 
     if diffmeans_agg:
-        visualize_diffmeans(diffmeans_agg, exp_dir / "agg_diffmeans")
+        visualize_diffmeans(diffmeans_agg, exp_dir / "aggregated" / "diffmeans")
         log("[viz] Generated diffmeans visualizations")
 
     # Load geo aggregated results from cache if not provided
@@ -541,7 +488,7 @@ def generate_viz(
             log("[viz] Loaded geo aggregated results from cache")
 
     if geo_agg:
-        visualize_geo(geo_agg, exp_dir / "agg_geo", pref_pairs=pref_pairs)
+        visualize_geo(geo_agg, exp_dir / "aggregated" / "geo", pref_pairs=pref_pairs)
         log("[viz] Generated geo visualizations")
 
     # Load MLP analysis aggregated results from cache if not provided
@@ -551,7 +498,7 @@ def generate_viz(
             log("[viz] Loaded MLP analysis aggregated results from cache")
 
     if mlp_agg:
-        visualize_mlp_analysis(mlp_agg, exp_dir / "agg_mlp")
+        visualize_mlp_analysis(mlp_agg, exp_dir / "aggregated" / "mlp")
         log("[viz] Generated MLP analysis visualizations")
 
     # Load attention analysis aggregated results from cache if not provided
@@ -561,7 +508,7 @@ def generate_viz(
             log("[viz] Loaded attention analysis aggregated results from cache")
 
     if attn_agg:
-        visualize_attn_analysis(attn_agg, exp_dir / "agg_attn_patterns")
+        visualize_attn_analysis(attn_agg, exp_dir / "aggregated" / "attn")
         log("[viz] Generated attention analysis visualizations")
 
     # Skip per-pair visualizations if only_agg is True
@@ -591,7 +538,7 @@ def generate_viz(
 
         pair = pairs[pair_idx] if pairs and pair_idx < len(pairs) else None
         # Try in-memory first, then load from cache
-        att_result = att_patching.get(pair_idx) if att_patching else load_att_pair_result(pair_dir)
+        att_result = attrib_patching.get(pair_idx) if attrib_patching else load_attrib_pair_result(pair_dir)
         fine_result = fine_patching.get(pair_idx) if fine_patching else None
         diffmeans_result = (
             diffmeans_patching.get(pair_idx)
@@ -643,7 +590,6 @@ def generate_viz(
                 # Build mapping for token annotations if pref_pairs available
                 mapping = None
                 if pref_pairs and pair_idx < len(pref_pairs) and runner:
-                    from ..common.sample_position_mapping import SamplePositionMapping
                     pref_pair = pref_pairs[pair_idx]
                     # Use long_term sample (corrupted) which has the time_horizon
                     mapping = SamplePositionMapping.build_from_preference(

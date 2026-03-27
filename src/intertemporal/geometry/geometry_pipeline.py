@@ -4,11 +4,16 @@ Memory-optimized implementation:
 - Streaming extraction (per-target files on disk)
 - Streaming analysis (one target at a time)
 - Memory-efficient plotting with explicit cleanup
+
+The pipeline is split into two phases:
+1. generate_geo_samples: Generate samples and extract activations
+2. run_geo_analysis: Run analysis and generate visualizations
 """
 
 import gc
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from .geometry_analysis import (
     compute_continuous_time_probe,
@@ -17,6 +22,7 @@ from .geometry_analysis import (
 )
 from .geometry_config import GeometryConfig
 from .geometry_data import (
+    ActivationData,
     collect_samples,
     extract_activations,
     load_cached_data,
@@ -24,47 +30,32 @@ from .geometry_data import (
 from .geometry_logit_lens import LogitLensResult, run_logit_lens_from_cache
 from .geometry_plotting import generate_all_plots, plot_logit_lens
 
+if TYPE_CHECKING:
+    from .geometry_data import ActivationDataset
+
 logger = logging.getLogger(__name__)
 
 
-def run_geometry_pipeline(
+def generate_geo_samples(
     config: GeometryConfig,
     use_cache: bool = True,
-    skip_extraction: bool = False,
-    skip_viz: bool = False,
-    skip_per_target_plots: bool = False,
-    run_cross_position_similarity: bool = True,
-    run_continuous_time_probe: bool = True,
-    run_logit_lens: bool = False,
-    logit_lens_runner=None,
-) -> dict:
-    """Run the full geometric visualization pipeline.
+) -> ActivationData:
+    """Generate samples and extract activations.
 
-    Memory-optimized:
-    - Activations stored on disk per-target (never all in RAM)
-    - Analysis streams through targets one at a time
-    - Results cached to disk for incremental re-runs
+    This is Phase 1 of the geometry pipeline. It handles:
+    - Loading cached data if available
+    - Generating new samples from the dataset
+    - Extracting activations for all targets (streaming to disk)
 
     Args:
         config: Pipeline configuration
         use_cache: Whether to use cached data if available
-        skip_extraction: Skip sample generation and extraction (requires cache)
-        skip_viz: Skip all visualization (extraction and analysis only)
-        skip_per_target_plots: Skip per-target plots (09_targets folder)
-        run_cross_position_similarity: Run cross-position cosine similarity analysis
-            (compares PC0 directions at source vs destination positions)
-        run_continuous_time_probe: Run continuous time horizon regression
-            (predicts time_horizon_months from source position activations)
-        run_logit_lens: Run logit lens analysis with LayerNorm correction.
-            Requires logit_lens_runner to be provided.
-        logit_lens_runner: ModelRunner with TransformerLens backend for logit lens.
-            Required if run_logit_lens is True.
 
     Returns:
-        Dictionary with summary (not full results to save memory)
+        ActivationData object containing samples and activation paths
     """
     logger.info("=" * 60)
-    logger.info("Geometric Visualization Pipeline (Memory-Optimized)")
+    logger.info("Geometry Pipeline - Phase 1: Sample Generation")
     logger.info("=" * 60)
 
     # Ensure output directory exists
@@ -74,32 +65,69 @@ def run_geometry_pipeline(
     with open(config.output_dir / "config.json", "w") as f:
         json.dump(config.to_dict(), f, indent=2)
 
-    # Step 1: Load or extract data
+    # Try to load cached data
     data = None
     if use_cache:
         data = load_cached_data(config)
         if data is not None:
             logger.info(f"Loaded cached data: {len(data.samples)} samples, {len(data.get_target_keys())} targets")
+            return data
 
-    if data is None:
-        if skip_extraction:
-            raise ValueError("No cached data available and skip_extraction=True")
+    # Generate samples
+    logger.info("\n" + "=" * 60)
+    logger.info("Generating Samples")
+    logger.info("=" * 60)
+    dataset = collect_samples(config.output_dir)
 
-        # Generate samples
-        logger.info("\n" + "=" * 60)
-        logger.info("Generating Samples")
-        logger.info("=" * 60)
-        dataset = collect_samples(config.output_dir)
+    # Extract activations (streaming to disk)
+    logger.info("\n" + "=" * 60)
+    logger.info("Extracting Activations (Streaming)")
+    logger.info("=" * 60)
+    data = extract_activations(dataset, config.targets, config)
 
-        # Extract activations (streaming to disk)
-        logger.info("\n" + "=" * 60)
-        logger.info("Extracting Activations (Streaming)")
-        logger.info("=" * 60)
-        data = extract_activations(dataset, config.targets, config)
+    # Clear dataset to free memory
+    del dataset
+    gc.collect()
 
-        # Clear dataset to free memory
-        del dataset
-        gc.collect()
+    return data
+
+
+def run_geo_analysis(
+    data: ActivationData,
+    config: GeometryConfig,
+    skip_viz: bool = False,
+    skip_per_target_plots: bool = False,
+    run_cross_position_similarity: bool = True,
+    run_continuous_time_probe: bool = True,
+    run_logit_lens: bool = False,
+    logit_lens_runner=None,
+) -> dict:
+    """Run analysis and generate visualizations.
+
+    This is Phase 2 of the geometry pipeline. It handles:
+    - Linear probe analysis (streaming, one target at a time)
+    - PCA analysis
+    - Cross-position similarity analysis
+    - Continuous time probe analysis
+    - Logit lens analysis (optional)
+    - Plot generation
+
+    Args:
+        data: ActivationData from generate_geo_samples
+        config: Pipeline configuration
+        skip_viz: Skip all visualization
+        skip_per_target_plots: Skip per-target plots (09_targets folder)
+        run_cross_position_similarity: Run cross-position cosine similarity analysis
+        run_continuous_time_probe: Run continuous time horizon regression
+        run_logit_lens: Run logit lens analysis (requires logit_lens_runner)
+        logit_lens_runner: ModelRunner with TransformerLens backend for logit lens
+
+    Returns:
+        Dictionary with summary results
+    """
+    logger.info("=" * 60)
+    logger.info("Geometry Pipeline - Phase 2: Analysis")
+    logger.info("=" * 60)
 
     # Verify we have targets
     available_targets = set(data.get_target_keys())
@@ -112,7 +140,7 @@ def run_geometry_pipeline(
     # Targets actually analyzed = intersection of requested and available
     analyzed_targets = requested_targets & available_targets
 
-    # Step 2: Run streaming analysis (one target at a time)
+    # Run streaming analysis (one target at a time)
     logger.info("\n" + "=" * 60)
     logger.info("Running Streaming Analysis")
     logger.info("=" * 60)
@@ -121,7 +149,7 @@ def run_geometry_pipeline(
     # Force GC before additional analyses
     gc.collect()
 
-    # Step 2b: Run continuous time probe on source positions (optional)
+    # Run continuous time probe on source positions (optional)
     continuous_time_results = None
     if run_continuous_time_probe:
         logger.info("\n" + "=" * 60)
@@ -129,7 +157,7 @@ def run_geometry_pipeline(
         logger.info("=" * 60)
         continuous_time_results = compute_continuous_time_probe(data, config)
 
-    # Step 2c: Compute cross-position similarity (optional)
+    # Compute cross-position similarity (optional)
     cross_position_results = None
     if run_cross_position_similarity:
         logger.info("\n" + "=" * 60)
@@ -137,7 +165,7 @@ def run_geometry_pipeline(
         logger.info("=" * 60)
         cross_position_results = compute_cross_position_similarity(pca_results, config)
 
-    # Step 2d: Run logit lens analysis (optional)
+    # Run logit lens analysis (optional)
     logit_lens_result = None
     if run_logit_lens:
         if logit_lens_runner is None:
@@ -159,7 +187,7 @@ def run_geometry_pipeline(
     # Force GC before plotting
     gc.collect()
 
-    # Step 3: Generate plots (unless skipped)
+    # Generate plots (unless skipped)
     if not skip_viz:
         logger.info("\n" + "=" * 60)
         logger.info("Generating Plots")
@@ -171,7 +199,7 @@ def run_geometry_pipeline(
             skip_per_target_plots=skip_per_target_plots,
         )
 
-        # Step 3b: Generate logit lens plots (if available)
+        # Generate logit lens plots (if available)
         if logit_lens_result is not None:
             logger.info("Generating logit lens plots...")
             logit_lens_plot_dir = config.output_dir / "plots" / "12_logit_lens"
@@ -182,6 +210,44 @@ def run_geometry_pipeline(
         logger.info("=" * 60)
 
     # Build summary (minimal memory)
+    summary = _build_summary(
+        data, analyzed_targets, linear_probe_results, pca_results,
+        continuous_time_results, cross_position_results, logit_lens_result,
+    )
+
+    with open(config.output_dir / "summary.json", "w") as f:
+        json.dump(summary, f, indent=2)
+
+    # Print summary
+    _print_summary(
+        data, analyzed_targets, linear_probe_results,
+        continuous_time_results, logit_lens_result, config,
+    )
+
+    # Clear results from memory (they're on disk)
+    data.clear_cache()
+    del linear_probe_results, pca_results, embedding_results
+    if continuous_time_results is not None:
+        del continuous_time_results
+    if cross_position_results is not None:
+        del cross_position_results
+    if logit_lens_result is not None:
+        del logit_lens_result
+    gc.collect()
+
+    return {"summary": summary}
+
+
+def _build_summary(
+    data: ActivationData,
+    analyzed_targets: set,
+    linear_probe_results: dict,
+    pca_results: dict,
+    continuous_time_results: dict | None,
+    cross_position_results: dict | None,
+    logit_lens_result: LogitLensResult | None,
+) -> dict:
+    """Build summary dictionary from analysis results."""
     summary = {
         "n_samples": len(data.samples),
         "n_targets": len(analyzed_targets),
@@ -214,10 +280,18 @@ def run_geometry_pipeline(
     if logit_lens_result is not None:
         summary["logit_lens"] = logit_lens_result.to_dict()
 
-    with open(config.output_dir / "summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
+    return summary
 
-    # Print summary
+
+def _print_summary(
+    data: ActivationData,
+    analyzed_targets: set,
+    linear_probe_results: dict,
+    continuous_time_results: dict | None,
+    logit_lens_result: LogitLensResult | None,
+    config: GeometryConfig,
+) -> None:
+    """Print summary to logger."""
     logger.info("\n" + "=" * 60)
     logger.info("Summary")
     logger.info("=" * 60)
@@ -254,15 +328,58 @@ def run_geometry_pipeline(
 
     logger.info(f"\nResults saved to {config.output_dir}")
 
-    # Clear results from memory (they're on disk)
-    data.clear_cache()
-    del linear_probe_results, pca_results, embedding_results
-    if continuous_time_results is not None:
-        del continuous_time_results
-    if cross_position_results is not None:
-        del cross_position_results
-    if logit_lens_result is not None:
-        del logit_lens_result
-    gc.collect()
 
-    return {"summary": summary}
+def run_geometry_pipeline(
+    config: GeometryConfig,
+    use_cache: bool = True,
+    skip_extraction: bool = False,
+    skip_viz: bool = False,
+    skip_per_target_plots: bool = False,
+    run_cross_position_similarity: bool = True,
+    run_continuous_time_probe: bool = True,
+    run_logit_lens: bool = False,
+    logit_lens_runner=None,
+) -> dict:
+    """Run the full geometric visualization pipeline.
+
+    This is a convenience wrapper that calls:
+    1. generate_geo_samples() - Phase 1: Sample generation and extraction
+    2. run_geo_analysis() - Phase 2: Analysis and visualization
+
+    For more control, call these functions separately.
+
+    Args:
+        config: Pipeline configuration
+        use_cache: Whether to use cached data if available
+        skip_extraction: Skip sample generation and extraction (requires cache)
+        skip_viz: Skip all visualization (extraction and analysis only)
+        skip_per_target_plots: Skip per-target plots (09_targets folder)
+        run_cross_position_similarity: Run cross-position cosine similarity analysis
+        run_continuous_time_probe: Run continuous time horizon regression
+        run_logit_lens: Run logit lens analysis (requires logit_lens_runner)
+        logit_lens_runner: ModelRunner with TransformerLens backend for logit lens
+
+    Returns:
+        Dictionary with summary (not full results to save memory)
+    """
+    # Phase 1: Generate samples or load from cache
+    if skip_extraction:
+        # Must use cache
+        data = load_cached_data(config)
+        if data is None:
+            raise ValueError("No cached data available and skip_extraction=True")
+        logger.info(f"Loaded cached data: {len(data.samples)} samples, {len(data.get_target_keys())} targets")
+    else:
+        data = generate_geo_samples(config, use_cache=use_cache)
+
+    # Phase 2: Run analysis
+    return run_geo_analysis(
+        data,
+        config,
+        skip_viz=skip_viz,
+        skip_per_target_plots=skip_per_target_plots,
+        run_cross_position_similarity=run_cross_position_similarity,
+        run_continuous_time_probe=run_continuous_time_probe,
+        run_logit_lens=run_logit_lens,
+        logit_lens_runner=logit_lens_runner,
+    )

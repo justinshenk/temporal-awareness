@@ -319,7 +319,7 @@ def process_attribution_agreement(ctx: ExperimentContext) -> None:
     from .method_agreement import analyze_attribution_agreement
 
     log("[process] Computing attribution method agreement...")
-    agreement_results = analyze_attribution_agreement(ctx.att_agg, top_k=20)
+    agreement_results = analyze_attribution_agreement(ctx.attrib_agg, top_k=20)
 
     for mode, result in agreement_results.items():
         ctx.processed_results.attribution_agreement[mode] = MethodAgreementResults(

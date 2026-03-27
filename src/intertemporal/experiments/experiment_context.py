@@ -38,6 +38,8 @@ from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
 from ..common.contrastive_preferences import ContrastivePreferences
 from ..preference import PreferenceDataset
+from ..common.sample_position_mapping import SamplePositionMapping
+from ..viz.tokenization_viz import visualize_tokenization_from_position_mapping
 from .experiment_config import ExperimentConfig
 
 
@@ -68,13 +70,13 @@ class ExperimentContext:
         default_factory=dict
     )
     fine_patching: dict[int, ActPatchPairResult] = field(default_factory=dict)
-    att_patching: dict[int, AttrPatchPairResult] = field(default_factory=dict)
+    attrib_patching: dict[int, AttrPatchPairResult] = field(default_factory=dict)
 
     coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] = field(
         default_factory=dict
     )
     fine_agg: ActPatchAggregatedResult | None = None
-    att_agg: AttrPatchAggregatedResults | None = None
+    attrib_agg: AttrPatchAggregatedResults | None = None
 
     # Diffmeans results
     diffmeans_patching: dict[int, DiffMeansPairResult] = field(default_factory=dict)
@@ -197,8 +199,8 @@ class ExperimentContext:
 
     def get_union_target(self, component: str = "resid_post") -> InterventionTarget:
         """Get union target from attribution or coarse patching aggregates."""
-        if self.att_agg:
-            target = self.att_agg.get_target()
+        if self.attrib_agg:
+            target = self.attrib_agg.get_target()
             if target:
                 return target
 
@@ -250,6 +252,7 @@ class ExperimentContext:
     def get_coarse_pair_path(self, pair_idx: int, component: str) -> Path:
         return (
             self.get_pair_dir(pair_idx)
+            / "coarse"
             / f"sweep_{component}"
             / "coarse_results.json"
         )
@@ -276,7 +279,7 @@ class ExperimentContext:
 
     def get_coarse_agg_dir(self) -> Path:
         """Get the directory for aggregated coarse patching results."""
-        return self.output_dir / "agg_coarse"
+        return self.output_dir / "aggregated" / "coarse"
 
     def save_coarse_agg(self) -> None:
         """Save all component aggregated results."""
@@ -295,11 +298,6 @@ class ExperimentContext:
         any_loaded = False
         for component in components:
             path = coarse_dir / f"{component}.json"
-            # Fallback to legacy paths
-            if not path.exists():
-                path = self.output_dir / "agg" / "coarse" / f"{component}.json"
-            if not path.exists():
-                path = self.output_dir / "coarse_agg" / f"{component}.json"
             if path.exists():
                 self.coarse_agg_by_component[component] = (
                     CoarseActPatchAggregatedResults.from_json(path)
@@ -307,98 +305,68 @@ class ExperimentContext:
                 any_loaded = True
         return any_loaded
 
-    def get_att_agg_dir(self) -> Path:
+    def get_attrib_agg_dir(self) -> Path:
         """Get the directory for aggregated attribution results."""
-        return self.output_dir / "agg_att"
+        return self.output_dir / "aggregated" / "attrib"
 
-    def get_att_agg_path(self) -> Path:
-        """Legacy path for backwards compatibility check."""
-        return self.output_dir / "att_agg.json"
-
-    def save_att_agg(self) -> None:
+    def save_attrib_agg(self) -> None:
         """Save aggregated attribution results to folder structure."""
-        if not self.att_agg:
+        if not self.attrib_agg:
             return
 
-        att_dir = self.get_att_agg_dir()
+        att_dir = self.get_attrib_agg_dir()
         att_dir.mkdir(parents=True, exist_ok=True)
         log(f"[attr] Saving aggregated results to {att_dir}...")
 
         # Save denoising and noising separately
-        if self.att_agg.denoising_agg:
+        if self.attrib_agg.denoising_agg:
             save_json(
-                self.att_agg.denoising_agg.to_dict(),
+                self.attrib_agg.denoising_agg.to_dict(),
                 att_dir / "denoising.json",
             )
-        if self.att_agg.noising_agg:
+        if self.attrib_agg.noising_agg:
             save_json(
-                self.att_agg.noising_agg.to_dict(),
+                self.attrib_agg.noising_agg.to_dict(),
                 att_dir / "noising.json",
             )
 
         # Also save the full aggregated result for compatibility
-        save_json(self.att_agg.to_dict(), att_dir / "att_agg.json")
+        save_json(self.attrib_agg.to_dict(), att_dir / "attrib_agg.json")
         log("[attr] Saved.")
 
-    def load_att_agg(self) -> bool:
-        """Load aggregated attribution results from folder or legacy path."""
-        # Try new folder structure first
-        att_dir = self.get_att_agg_dir()
-        if (att_dir / "att_agg.json").exists():
-            self.att_agg = AttrPatchAggregatedResults.from_json(
-                att_dir / "att_agg.json"
-            )
+    def load_attrib_agg(self) -> bool:
+        """Load aggregated attribution results."""
+        attrib_dir = self.get_attrib_agg_dir()
+        path = attrib_dir / "attrib_agg.json"
+        if path.exists():
+            self.attrib_agg = AttrPatchAggregatedResults.from_json(path)
             return True
-
-        # Fallback to legacy paths
-        legacy_paths = [
-            self.output_dir / "att_agg" / "att_agg.json",
-            self.output_dir / "agg" / "att" / "att_agg.json",
-            self.get_att_agg_path(),
-        ]
-        for path in legacy_paths:
-            if path.exists():
-                self.att_agg = AttrPatchAggregatedResults.from_json(path)
-                return True
-
         return False
 
-    def get_att_pair_dir(self, pair_idx: int) -> Path:
+    def get_attrib_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair attribution results."""
-        return self.get_pair_dir(pair_idx) / "att_patching"
+        return self.get_pair_dir(pair_idx) / "attrib"
 
-    def get_att_pair_path(self, pair_idx: int) -> Path:
+    def get_attrib_pair_path(self, pair_idx: int) -> Path:
         """Get path for per-pair attribution results JSON."""
-        return self.get_att_pair_dir(pair_idx) / "att_results.json"
+        return self.get_attrib_pair_dir(pair_idx) / "attrib_results.json"
 
-    def save_att_pair(self, pair_idx: int) -> None:
+    def save_attrib_pair(self, pair_idx: int) -> None:
         """Save per-pair attribution results."""
-        if pair_idx not in self.att_patching:
+        if pair_idx not in self.attrib_patching:
             return
-        result = self.att_patching[pair_idx]
-        path = self.get_att_pair_path(pair_idx)
+        result = self.attrib_patching[pair_idx]
+        path = self.get_attrib_pair_path(pair_idx)
         path.parent.mkdir(parents=True, exist_ok=True)
         save_json(result.to_dict(), path)
 
-    def load_att_pair(self, pair_idx: int) -> bool:
+    def load_attrib_pair(self, pair_idx: int) -> bool:
         """Load per-pair attribution results."""
-        path = self.get_att_pair_path(pair_idx)
+        path = self.get_attrib_pair_path(pair_idx)
         if path.exists():
-            self.att_patching[pair_idx] = AttrPatchPairResult.from_json(path)
+            self.attrib_patching[pair_idx] = AttrPatchPairResult.from_json(path)
             return True
         return False
-
-    def detect_cached_att_pairs_legacy(self) -> list[int]:
-        """Detect which pairs have cached attribution results (legacy path)."""
-        cached = []
-        if not self.pairs_dir.exists():
-            return cached
-        for pair_dir in self.pairs_dir.glob("pair_*"):
-            att_path = pair_dir / "att_patching" / "att_results.json"
-            if att_path.exists():
-                pair_idx = int(pair_dir.name.split("_")[1])
-                cached.append(pair_idx)
-        return sorted(cached)
 
     def get_contrastive_pref_path(self, pair_idx: int) -> Path:
         """Get path for per-pair contrastive preference JSON."""
@@ -433,9 +401,6 @@ class ExperimentContext:
         Builds SamplePositionMapping from the corrupted trajectory and saves it.
         Also generates tokenization.png visualization from the mapping.
         """
-        from ..common.sample_position_mapping import SamplePositionMapping
-        from ..viz.tokenization_viz import visualize_tokenization_from_position_mapping
-
         pref = self.get_pref_pair(pair_idx)
         if pref is None:
             return
@@ -542,7 +507,7 @@ class ExperimentContext:
 
     def get_diffmeans_agg_dir(self) -> Path:
         """Get directory for aggregated diffmeans results."""
-        return self.output_dir / "agg_diffmeans"
+        return self.output_dir / "aggregated" / "diffmeans"
 
     def save_diffmeans_agg(self) -> None:
         """Save aggregated diffmeans results."""
@@ -558,9 +523,6 @@ class ExperimentContext:
     def load_diffmeans_agg(self) -> bool:
         """Load aggregated diffmeans results."""
         path = self.get_diffmeans_agg_dir() / "diffmeans_agg.json"
-        # Fallback to legacy path
-        if not path.exists():
-            path = self.output_dir / "agg" / "diffmeans" / "diffmeans_agg.json"
         if path.exists():
             self.diffmeans_agg = DiffMeansAggregatedResults.from_json(path)
             return True
@@ -608,7 +570,7 @@ class ExperimentContext:
 
     def get_geo_agg_dir(self) -> Path:
         """Get directory for aggregated geo results."""
-        return self.output_dir / "agg_geo"
+        return self.output_dir / "aggregated" / "geo"
 
     def save_geo_agg(self) -> None:
         """Save aggregated geo results."""
@@ -644,10 +606,10 @@ class ExperimentContext:
 
     # ─── Unload methods for memory management ───
 
-    def unload_att_agg(self) -> None:
+    def unload_attrib_agg(self) -> None:
         """Clear attribution aggregated results from memory."""
-        self.att_agg = None
-        self.att_patching.clear()
+        self.attrib_agg = None
+        self.attrib_patching.clear()
 
     def unload_coarse_agg(self, component: str | None = None) -> None:
         """Clear coarse aggregated results from memory.
@@ -677,7 +639,7 @@ class ExperimentContext:
 
     def unload_all(self) -> None:
         """Clear all aggregated results from memory."""
-        self.unload_att_agg()
+        self.unload_attrib_agg()
         self.unload_coarse_agg()
         self.unload_fine_agg()
         self.unload_diffmeans_agg()
@@ -699,13 +661,13 @@ class ExperimentContext:
             pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
-            results_path = pair_dir / f"sweep_{component}" / "coarse_results.json"
+            results_path = pair_dir / "coarse" / f"sweep_{component}" / "coarse_results.json"
             if results_path.exists():
                 cached.append(pair_idx)
             pair_idx += 1
         return cached
 
-    def detect_cached_att_pairs(self) -> list[int]:
+    def detect_cached_attrib_pairs(self) -> list[int]:
         """Detect all pair indices that have cached attribution results.
 
         Returns:
@@ -717,9 +679,7 @@ class ExperimentContext:
             pair_dir = self.get_pair_dir(pair_idx)
             if not pair_dir.exists():
                 break
-            # Check for att_patching subdirectory with any results
-            att_dir = pair_dir / "att_patching"
-            if att_dir.exists() and any(att_dir.iterdir()):
+            if self.get_attrib_pair_path(pair_idx).exists():
                 cached.append(pair_idx)
             pair_idx += 1
         return cached
@@ -733,24 +693,31 @@ class ExperimentContext:
         components = []
         pair_0 = self.get_pair_dir(0)
         if pair_0.exists():
-            for d in pair_0.iterdir():
-                if d.is_dir() and d.name.startswith("sweep_"):
-                    comp = d.name.replace("sweep_", "")
-                    if (d / "coarse_results.json").exists():
-                        components.append(comp)
+            coarse_dir = pair_0 / "coarse"
+            if coarse_dir.exists():
+                for d in coarse_dir.iterdir():
+                    if d.is_dir() and d.name.startswith("sweep_"):
+                        comp = d.name.replace("sweep_", "")
+                        if (d / "coarse_results.json").exists():
+                            components.append(comp)
         return components
 
     # ─── Processed results save/load methods ───
 
+    def get_analysis_dir(self) -> Path:
+        """Get directory for analysis results (processed, horizon, pair)."""
+        return self.output_dir / "aggregated" / "analysis"
+
     def get_processed_results_path(self) -> Path:
         """Get path for processed results JSON."""
-        return self.output_dir / "processed_results.json"
+        return self.get_analysis_dir() / "processed_results.json"
 
     def save_processed_results(self) -> None:
         """Save processed results to disk."""
         if not self.processed_results:
             return
         path = self.get_processed_results_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
         log(f"[process] Saving processed results to {path}...")
         save_json(self.processed_results.to_dict(), path)
         log("[process] Saved.")
@@ -784,7 +751,7 @@ class ExperimentContext:
 
     def get_mlp_agg_dir(self) -> Path:
         """Get directory for aggregated MLP analysis results."""
-        return self.output_dir / "agg_mlp"
+        return self.output_dir / "aggregated" / "mlp"
 
     def save_mlp_agg(self) -> None:
         """Save aggregated MLP analysis results."""
@@ -822,11 +789,11 @@ class ExperimentContext:
 
     def get_attn_analysis_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair attention analysis results."""
-        return self.get_pair_dir(pair_idx) / "attn_analysis"
+        return self.get_pair_dir(pair_idx) / "attn"
 
     def get_attn_analysis_pair_path(self, pair_idx: int) -> Path:
         """Get path for per-pair attention analysis results JSON."""
-        return self.get_attn_analysis_pair_dir(pair_idx) / "attn_analysis.json"
+        return self.get_attn_analysis_pair_dir(pair_idx) / "attn_results.json"
 
     def save_attn_analysis_pair(self, pair_idx: int, store_patterns: bool = False) -> None:
         """Save per-pair attention analysis results.
@@ -855,7 +822,7 @@ class ExperimentContext:
 
     def get_attn_agg_dir(self) -> Path:
         """Get directory for aggregated attention analysis results."""
-        return self.output_dir / "agg_attn_patterns"
+        return self.output_dir / "aggregated" / "attn"
 
     def save_attn_agg(self) -> None:
         """Save aggregated attention analysis results."""
@@ -863,14 +830,14 @@ class ExperimentContext:
             return
         agg_dir = self.get_attn_agg_dir()
         agg_dir.mkdir(parents=True, exist_ok=True)
-        path = agg_dir / "attn_analysis_agg.json"
+        path = agg_dir / "attn_agg.json"
         log(f"[attn] Saving aggregated results to {path}...")
         save_json(self.attn_agg.to_dict(), path)
         log("[attn] Saved.")
 
     def load_attn_agg(self) -> bool:
         """Load aggregated attention analysis results."""
-        path = self.get_attn_agg_dir() / "attn_analysis_agg.json"
+        path = self.get_attn_agg_dir() / "attn_agg.json"
         if path.exists():
             self.attn_agg = AttnAggregatedResults.from_json(path)
             return True

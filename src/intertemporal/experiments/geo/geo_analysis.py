@@ -15,6 +15,12 @@ from sklearn.decomposition import PCA
 
 from ....common.logging import log
 from .geo_results import GeoPCALayerResult, GeoPCAPositionResult, GeoPairResult
+from .geo_utils import (
+    cosine_similarity,
+    explained_variance_to_list,
+    get_logit_diff_direction,
+    get_resid_post_activations,
+)
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner
@@ -52,7 +58,9 @@ def run_geo_analysis(
     n_layers = runner.n_layers
 
     # Get logit difference direction for alignment check
-    logit_diff_direction = _get_logit_diff_direction(runner, pair)
+    short_token = pair.clean_traj.token_ids[-1]
+    long_token = pair.corrupted_traj.token_ids[-1]
+    logit_diff_direction = get_logit_diff_direction(runner, short_token, long_token)
 
     # Determine positions to analyze
     if positions is None:
@@ -65,8 +73,8 @@ def run_geo_analysis(
         layers = list(range(n_layers))
 
     # Get activations for both clean and corrupted
-    clean_acts = _get_resid_post_activations(runner, pair.clean_traj.token_ids)
-    corrupted_acts = _get_resid_post_activations(runner, pair.corrupted_traj.token_ids)
+    clean_acts = get_resid_post_activations(runner, pair.clean_traj.token_ids)
+    corrupted_acts = get_resid_post_activations(runner, pair.corrupted_traj.token_ids)
 
     position_results = []
     clean_len = len(pair.clean_traj.token_ids)
@@ -103,8 +111,7 @@ def run_geo_analysis(
             X_pca = pca.fit_transform(X)
 
             # Replace NaN explained variance with 0 (happens when variance is near zero)
-            explained_variance = pca.explained_variance_ratio_.tolist()
-            explained_variance = [0.0 if (isinstance(v, float) and np.isnan(v)) else v for v in explained_variance]
+            explained_variance = explained_variance_to_list(pca.explained_variance_ratio_)
 
             # Clean is sample 0, corrupted is sample 1
             clean_pc = X_pca[0].tolist()
@@ -119,8 +126,7 @@ def run_geo_analysis(
             if logit_diff_direction is not None:
                 # Project logit diff direction onto PC1
                 pc1_direction = pca.components_[0]
-                alignment = _cosine_similarity(pc1_direction, logit_diff_direction)
-                logit_diff_alignment = float(alignment)
+                logit_diff_alignment = cosine_similarity(pc1_direction, logit_diff_direction)
 
             layer_results.append(GeoPCALayerResult(
                 layer=layer,
@@ -147,89 +153,3 @@ def run_geo_analysis(
         pair_idx=pair_idx,
         position_results=position_results,
     )
-
-
-def _get_resid_post_activations(
-    runner: "BinaryChoiceRunner",
-    tokens: list[int],
-) -> dict[int, np.ndarray]:
-    """Get resid_post activations at all layers.
-
-    Returns:
-        Dict mapping layer -> activations [seq_len, d_model]
-    """
-    import torch
-
-    result = {}
-
-    # Run model with cache
-    input_ids = torch.tensor([tokens], device=runner.device)
-
-    with torch.no_grad():
-        _, cache = runner._backend.run_with_cache(input_ids, names_filter=None)
-
-    # Parse cache results
-    for key, value in cache.items():
-        if not key.startswith("blocks."):
-            continue
-
-        parts = key.split(".")
-        if len(parts) < 3:
-            continue
-
-        try:
-            layer = int(parts[1])
-        except ValueError:
-            continue
-
-        hook_part = parts[2]
-        if hook_part == "hook_resid_post":
-            # value is [batch, seq_len, d_model], take first batch element
-            result[layer] = value[0].cpu().numpy()
-
-    return result
-
-
-def _get_logit_diff_direction(
-    runner: "BinaryChoiceRunner",
-    pair: "ContrastivePair",
-) -> np.ndarray | None:
-    """Get the logit difference direction in embedding space.
-
-    This is the direction from long_term token embedding to short_term token embedding.
-    Used to check if PCA separation aligns with the task-relevant direction.
-
-    Returns:
-        Normalized direction vector or None if unavailable
-    """
-    try:
-        # Get the unembedding matrix
-        W_U = runner._backend.get_unembedding_matrix()  # [vocab, d_model]
-
-        # Get token IDs for short and long labels
-        short_token = pair.clean_traj.token_ids[-1]  # Last token is the choice
-        long_token = pair.corrupted_traj.token_ids[-1]
-
-        # Get embeddings
-        short_emb = W_U[short_token].cpu().numpy()
-        long_emb = W_U[long_token].cpu().numpy()
-
-        # Direction from long to short (positive = more short-like)
-        direction = short_emb - long_emb
-
-        # Normalize
-        norm = np.linalg.norm(direction)
-        if norm > 1e-8:
-            return direction / norm
-        return None
-    except (AttributeError, IndexError):
-        return None
-
-
-def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Compute cosine similarity between two vectors."""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a < 1e-8 or norm_b < 1e-8:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
