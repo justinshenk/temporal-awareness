@@ -459,57 +459,6 @@ def run_streaming_analysis(
 
 
 # =============================================================================
-# Legacy Functions (backwards compatibility)
-# =============================================================================
-
-
-def linear_probe_analysis(
-    data: ActivationData, config: GeometryConfig
-) -> dict[str, LinearProbeResult]:
-    """Run linear probe analysis. Uses streaming internally."""
-    linear_results, _, _ = run_streaming_analysis(data, config)
-    return linear_results
-
-
-def pca_correlation_analysis(
-    data: ActivationData, config: GeometryConfig
-) -> dict[str, PCAResult]:
-    """Run PCA analysis. Returns cached results."""
-    results_dir = config.output_dir / "results" / "pca"
-    pca_results = {}
-
-    for target_key in data.get_target_keys():
-        safe_key = _safe_key(target_key)
-        pca_path = results_dir / safe_key
-        if pca_path.exists():
-            try:
-                pca_results[target_key] = PCAResult.load(pca_path)
-            except Exception:
-                pass
-
-    return pca_results
-
-
-def compute_embeddings(
-    data: ActivationData, config: GeometryConfig, pca_results: dict[str, PCAResult]
-) -> dict[str, EmbeddingResult]:
-    """Compute embeddings. Returns cached results."""
-    results_dir = config.output_dir / "results" / "embeddings"
-    embedding_results = {}
-
-    for target_key in data.get_target_keys():
-        safe_key = _safe_key(target_key)
-        embedding_path = results_dir / safe_key
-        if embedding_path.exists():
-            try:
-                embedding_results[target_key] = EmbeddingResult.load(embedding_path)
-            except Exception:
-                pass
-
-    return embedding_results
-
-
-# =============================================================================
 # Cross-Position Cosine Similarity Analysis
 # =============================================================================
 

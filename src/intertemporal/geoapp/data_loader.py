@@ -1,9 +1,11 @@
 """Data loader for geometry output with position mapping format.
 
 The format stores:
-- Per-sample activation files: targets/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
-- Position mapping: sample_position_mapping.json maps abs_pos -> semantic format_pos
-- samples.json with prompt/preference info
+- Per-sample activation files: samples/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
+- Per-sample position mapping: samples/sample_{idx}/position_mapping.json
+- Per-sample prompt sample: samples/sample_{idx}/prompt_sample.json
+- Per-sample preference sample: samples/sample_{idx}/preference_sample.json
+- Per-sample choice info: samples/sample_{idx}/choice.json
 
 This loader aggregates activations by semantic position across samples.
 """
@@ -16,6 +18,7 @@ os.environ["NUMBA_THREADING_LAYER"] = "workqueue"
 import json
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -63,41 +66,54 @@ class GeometryDataLoader:
         self._load_data()
 
     def _load_data(self):
-        """Load samples, position mapping, and discover available targets."""
-        # Load samples
-        samples_path = self.data_dir / "data" / "samples.json"
-        if samples_path.exists():
-            with open(samples_path) as f:
-                self._samples = json.load(f)
+        """Load samples, position mapping, and discover available targets.
 
-        # Load choices and merge into samples
-        choices_path = self.data_dir / "data" / "choices.json"
-        if choices_path.exists():
-            with open(choices_path) as f:
-                choices = json.load(f)
-            for i, choice in enumerate(choices):
-                if i < len(self._samples):
-                    if "chosen_time_months" in choice:
-                        self._samples[i]["time_horizon_months"] = choice["chosen_time_months"]
-                    if "chose_long_term" in choice:
-                        self._samples[i]["chosen_time"] = choice["chose_long_term"]
-                    if "chosen_reward" in choice:
-                        self._samples[i]["chosen_reward"] = choice["chosen_reward"]
-
-                    # Compute derived color fields
-                    self._compute_derived_fields(i, choice)
-
+        Data is loaded from per-sample files in samples/sample_*/
+        """
         # Load metadata
         metadata_path = self.data_dir / "data" / "metadata.json"
         if metadata_path.exists():
             with open(metadata_path) as f:
                 self._metadata = json.load(f)
 
-        # Load position mapping
-        mapping_path = self.data_dir / "data" / "sample_position_mapping.json"
-        if mapping_path.exists():
-            with open(mapping_path) as f:
-                self._position_mapping = json.load(f)
+        # Load from per-sample files
+        samples_dir = self.data_dir / "data" / "samples"
+        mappings = []
+        if samples_dir.exists():
+            for sample_dir in sorted(samples_dir.glob("sample_*")):
+                sample_idx = len(self._samples)
+
+                # Load prompt sample
+                prompt_path = sample_dir / "prompt_sample.json"
+                if prompt_path.exists():
+                    with open(prompt_path) as f:
+                        sample = json.load(f)
+                    self._samples.append(sample)
+
+                    # Load and merge choice info
+                    choice_path = sample_dir / "choice.json"
+                    if choice_path.exists():
+                        with open(choice_path) as f:
+                            choice = json.load(f)
+                        if "chosen_time_months" in choice:
+                            sample["time_horizon_months"] = choice["chosen_time_months"]
+                        if "chose_long_term" in choice:
+                            sample["chosen_time"] = choice["chose_long_term"]
+                        if "chosen_reward" in choice:
+                            sample["chosen_reward"] = choice["chosen_reward"]
+                        if "choice_prob" in choice:
+                            sample["choice_prob"] = choice["choice_prob"]
+
+                        # Compute derived color fields
+                        self._compute_derived_fields(sample_idx, choice)
+
+                # Load position mapping
+                mapping_file = sample_dir / "position_mapping.json"
+                if mapping_file.exists():
+                    with open(mapping_file) as f:
+                        mappings.append(json.load(f))
+
+        self._position_mapping = {"mappings": mappings} if mappings else {}
 
         # Discover layers and semantic positions from mapping and files
         self._discover_targets()
@@ -184,10 +200,10 @@ class GeometryDataLoader:
                         semantic_positions.add(format_pos)
 
         # Get layers from target files
-        targets_dir = self.data_dir / "data" / "targets"
-        if targets_dir.exists():
+        samples_dir = self.data_dir / "data" / "samples"
+        if samples_dir.exists():
             # Check first sample directory for layer info
-            sample_dirs = sorted(targets_dir.glob("sample_*"))
+            sample_dirs = sorted(samples_dir.glob("sample_*"))
             if sample_dirs:
                 for npy_file in sample_dirs[0].glob("L*_*.npy"):
                     match = re.match(r"L(\d+)_", npy_file.stem)
@@ -334,8 +350,8 @@ class GeometryDataLoader:
         if cache_key in self._activations_cache:
             return self._activations_cache[cache_key]
 
-        targets_dir = self.data_dir / "data" / "targets"
-        if not targets_dir.exists():
+        samples_dir = self.data_dir / "data" / "samples"
+        if not samples_dir.exists():
             return []
 
         # Parse position to get format_pos and optional rel_pos
@@ -349,7 +365,7 @@ class GeometryDataLoader:
             if not abs_positions:
                 continue
 
-            sample_dir = targets_dir / f"sample_{sample_idx}"
+            sample_dir = samples_dir / f"sample_{sample_idx}"
             if not sample_dir.exists():
                 continue
 
@@ -374,7 +390,7 @@ class GeometryDataLoader:
 
         Aggregates activations across all samples by:
         1. Finding absolute positions for the semantic position in each sample
-        2. Loading the corresponding .npy files
+        2. Loading the corresponding .npy files (parallelized for I/O)
         3. Averaging across positions within each sample (if multiple tokens)
         4. Stacking into (n_samples, d_model) array
 
@@ -384,13 +400,16 @@ class GeometryDataLoader:
         if cache_key in self._activations_cache:
             return self._activations_cache[cache_key]
 
-        targets_dir = self.data_dir / "data" / "targets"
-        if not targets_dir.exists():
+        samples_dir = self.data_dir / "data" / "samples"
+        if not samples_dir.exists():
             return None
 
         # Parse position to get format_pos and optional rel_pos
         format_pos, rel_pos = self._parse_position(position)
-        activations_list = []
+
+        # Collect all files to load with their sample index
+        load_tasks: list[tuple[int, Path]] = []  # (sample_idx, npy_path)
+        sample_to_paths: dict[int, list[Path]] = {}
 
         for sample_idx in range(len(self._samples)):
             abs_positions = self._get_abs_positions_for_semantic(
@@ -399,17 +418,41 @@ class GeometryDataLoader:
             if not abs_positions:
                 continue
 
-            sample_dir = targets_dir / f"sample_{sample_idx}"
+            sample_dir = samples_dir / f"sample_{sample_idx}"
             if not sample_dir.exists():
                 continue
 
-            # Load activations for all absolute positions and average
-            sample_activations = []
+            paths_for_sample = []
             for abs_pos in abs_positions:
                 npy_path = sample_dir / f"L{layer}_{component}_{abs_pos}.npy"
                 if npy_path.exists():
-                    act = np.load(npy_path)
-                    sample_activations.append(act)
+                    paths_for_sample.append(npy_path)
+                    load_tasks.append((sample_idx, npy_path))
+
+            if paths_for_sample:
+                sample_to_paths[sample_idx] = paths_for_sample
+
+        if not load_tasks:
+            return None
+
+        # Parallel I/O for loading .npy files
+        loaded_data: dict[Path, np.ndarray] = {}
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            future_to_path = {executor.submit(np.load, path): path for _, path in load_tasks}
+            for future in as_completed(future_to_path):
+                path = future_to_path[future]
+                try:
+                    loaded_data[path] = future.result()
+                except Exception:
+                    pass  # Skip failed loads
+
+        # Aggregate per sample
+        activations_list = []
+        for sample_idx in sorted(sample_to_paths.keys()):
+            sample_activations = []
+            for path in sample_to_paths[sample_idx]:
+                if path in loaded_data:
+                    sample_activations.append(loaded_data[path])
 
             if sample_activations:
                 # Average across token positions within sample
@@ -725,6 +768,13 @@ class GeometryDataLoader:
             "format_content": "Format Content",
             "prompt_other": "Other Prompt Tokens",
             "response_other": "Other Response Tokens",
+            # Section tail positions (last token of each section)
+            "situation_tail": "Situation Tail",
+            "task_tail": "Task Tail",
+            "consider_tail": "Consider Tail",
+            "action_tail": "Action Tail",
+            "format_tail": "Format Tail",
+            "options_tail": "Options Tail (end of right_time)",
         }
         # Add any missing positions
         for pos in self._semantic_positions:
@@ -759,7 +809,7 @@ class GeometryDataLoader:
         """Get the model name from metadata."""
         if self._metadata and "model_name" in self._metadata:
             return self._metadata["model_name"]
-        return "Qwen3-4B"
+        return ""
 
     def get_prompt_template_structure(self) -> list[dict]:
         """Get prompt template structure for UI display.

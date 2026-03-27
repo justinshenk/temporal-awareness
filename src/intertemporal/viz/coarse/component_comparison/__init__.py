@@ -6,12 +6,6 @@ resid_pre, attn_out, mlp_out, resid_post.
 
 from __future__ import annotations
 
-from .comp_constants import COMPONENTS, COMPONENT_COLORS, SUBDIRS
-from .comp_main import plot_all_component_comparisons
+from .....common.auto_export import auto_export
 
-__all__ = [
-    "COMPONENTS",
-    "COMPONENT_COLORS",
-    "SUBDIRS",
-    "plot_all_component_comparisons",
-]
+__all__ = auto_export(__file__, __name__, globals())

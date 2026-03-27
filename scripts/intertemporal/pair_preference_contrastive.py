@@ -69,6 +69,11 @@ def get_args():
         default=None,
         help='JSON to override PrefPairSubsampleStrategy defaults. E.g.: \'{"smart_reduce": "diverse"}\'',
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run full analysis with all configurations (default: just run default config)",
+    )
     return parser.parse_args()
 
 
@@ -103,14 +108,16 @@ class PairMetrics:
     long_h_7yr: float  # % long-chooser has 7yr horizon
     long_h_15yr: float  # % long-chooser has 15yr horizon
     long_h_none: float  # % long-chooser has no horizon
-    # Rationality/Association
+    # Rationality/Association/Largest Reward
     both_rational: float  # % both rational (when computable)
     both_associated: float  # % both associated (when computable)
+    both_largest_reward: float  # % both chose largest reward (when computable)
     # Content
     same_rewards: float  # % same reward values
     same_times: float  # % same delivery times
     same_order: float  # % same option order (both short-first or both long-first)
     same_option: float  # % both same rewards AND same delivery times
+    same_length: float  # % same trajectory length
     # Confidence
     mean_conf: float  # mean min_choice_prob
 
@@ -136,10 +143,12 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
             long_h_none=0,
             both_rational=0,
             both_associated=0,
+            both_largest_reward=0,
             same_rewards=0,
             same_times=0,
             same_order=0,
             same_option=0,
+            same_length=0,
             mean_conf=0,
         )
 
@@ -188,7 +197,7 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
     long_h_15yr = sum(1 for p in pairs if h_approx(p.long_term.time_horizon, 15.0)) / n
     long_h_none = sum(1 for p in pairs if p.long_term.time_horizon is None) / n
 
-    # Rationality (when computable)
+    # Rationality (when computable - requires both have horizon)
     if n_both > 0:
         both_rational = sum(1 for p in both_h_pairs if p.both_rational) / n_both
         both_associated = sum(1 for p in both_h_pairs if p.both_associated) / n_both
@@ -196,11 +205,23 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
         both_rational = 0
         both_associated = 0
 
+    # Largest reward (when computable)
+    lr_computable = [
+        p for p in pairs
+        if p.short_term.matches_largest_reward is not None
+        and p.long_term.matches_largest_reward is not None
+    ]
+    if lr_computable:
+        both_largest_reward = sum(1 for p in lr_computable if p.both_largest_reward) / len(lr_computable)
+    else:
+        both_largest_reward = 0
+
     # Content variation
     same_rewards = sum(1 for p in pairs if p.same_rewards) / n
     same_times = sum(1 for p in pairs if p.same_times) / n
     same_order = sum(1 for p in pairs if p.same_order) / n
     same_option = sum(1 for p in pairs if p.same_rewards and p.same_times) / n
+    same_length = sum(1 for p in pairs if p.same_length) / n
 
     # Confidence
     mean_conf = sum(p.min_choice_prob for p in pairs) / n
@@ -222,10 +243,12 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
         long_h_none=long_h_none * 100,
         both_rational=both_rational * 100,
         both_associated=both_associated * 100,
+        both_largest_reward=both_largest_reward * 100,
         same_rewards=same_rewards * 100,
         same_times=same_times * 100,
         same_order=same_order * 100,
         same_option=same_option * 100,
+        same_length=same_length * 100,
         mean_conf=mean_conf * 100,
     )
 
@@ -273,9 +296,11 @@ def print_detailed_metrics(m: PairMetrics) -> None:
     print(f"    Same times:           {m.same_times:5.1f}%")
     print(f"    Same option ($ + T):  {m.same_option:5.1f}%")
     print(f"    Same order:           {m.same_order:5.1f}%")
+    print(f"    Same length:          {m.same_length:5.1f}%")
     print("  Quality:")
     print(f"    Both rational:        {m.both_rational:5.1f}%")
     print(f"    Both associated:      {m.both_associated:5.1f}%")
+    print(f"    Both largest reward:  {m.both_largest_reward:5.1f}%")
     print(f"    Mean confidence:      {m.mean_conf:5.1f}%")
 
 
@@ -708,7 +733,7 @@ def main() -> int:
 
     pref_dataset = PreferenceDataset.from_json(str(args.input))
 
-    print(pref_dataset)
+    # print(pref_dataset)
 
     print(f"\nDataset: {pref_dataset.prompt_dataset_id} | Model: {pref_dataset.model}")
     print(f"Samples: {len(pref_dataset.preferences)}")
@@ -717,16 +742,15 @@ def main() -> int:
     analysis = analyze_preferences(pref_dataset)
     print_analysis(analysis)
 
-    print_section_break()
-    print(f"{'#' * 80}")
-    print("  CONTRASTIVE PAIRS ANALYSIS - ALL CONFIGURATIONS")
-    print(f"{'#' * 80}")
+    # Default: just run get_contrastive_preferences with defaults and print
+    # --all: run full analysis with all configurations
+    # --subsample: run single config with provided subsample
+    if args.all:
+        print_section_break()
+        print(f"{'#' * 80}")
+        print("  CONTRASTIVE PAIRS ANALYSIS - ALL CONFIGURATIONS")
+        print(f"{'#' * 80}")
 
-    # Run all configurations (or just the provided subsample if specified)
-    if subsample:
-        # User provided specific subsample - run just that config
-        run_single_config(pref_dataset, req=req, subsample=subsample)
-    else:
         # Run all configurations for comparison
         run_all_configs(pref_dataset, req=req)
 
@@ -734,6 +758,23 @@ def main() -> int:
 
         # Run confidence sweep
         run_confidence_sweep(pref_dataset, req=req)
+    elif subsample:
+        # User provided specific subsample - run just that config
+        run_single_config(pref_dataset, req=req, subsample=subsample)
+    else:
+        # Default: get pairs with defaults and print analysis
+        print_default_requirements(req)
+
+        pairs = get_contrastive_preferences(pref_dataset, req=req)
+
+        print(f"\n{'#' * 80}")
+        print(f"  CONTRASTIVE PAIRS: {len(pairs)} pairs")
+        print(f"{'#' * 80}")
+
+        print_contrastive_pairs(pairs)
+
+        metrics = extract_metrics("DEFAULT", pairs)
+        print_detailed_metrics(metrics)
 
     return 0
 

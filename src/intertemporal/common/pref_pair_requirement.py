@@ -10,8 +10,6 @@ from ...common.base_schema import BaseSchema
 if TYPE_CHECKING:
     from .contrastive_preferences import ContrastivePreferences
 
-__all__ = ["PrefPairRequirement"]
-
 
 @dataclass
 class PrefPairRequirement(BaseSchema):

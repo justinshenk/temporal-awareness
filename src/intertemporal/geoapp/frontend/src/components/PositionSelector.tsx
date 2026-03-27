@@ -119,6 +119,11 @@ export function PositionSelector({
     <div className="text-[11px]">
       {/* Prompt Template Visualization */}
       <div className="p-2 bg-white border border-gray-200 rounded-lg space-y-1.5 font-mono leading-relaxed">
+        {/* Prompt label - mirrors MODEL RESPONSE label */}
+        <div className="pb-1.5 border-b-2 border-red-400 -mx-2 px-2 -mt-2 pt-2 mb-1 bg-red-50/50 rounded-t-lg">
+          <span className="text-red-600 font-bold text-[10px]">PROMPT:</span>
+        </div>
+
         {/* Chat prefix - VERY FIRST (position 0): <|im_start|>user\n */}
         <div className="flex flex-wrap items-center gap-0.5 text-gray-400 pb-1 border-b border-dashed border-gray-200">
           {renderPos('chat_prefix', 'chat_prefix')}

@@ -11,11 +11,6 @@ Features:
 - Sample detail inspection on click
 """
 
-from .data_loader import GeometryDataLoader
-from .server import create_app, run_app
+from ...common.auto_export import auto_export
 
-__all__ = [
-    "GeometryDataLoader",
-    "create_app",
-    "run_app",
-]
+__all__ = auto_export(__file__, __name__, globals())

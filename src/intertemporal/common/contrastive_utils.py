@@ -14,13 +14,6 @@ from .preference_types import PreferenceSample
 if TYPE_CHECKING:
     from ..preference import PreferenceDataset
 
-__all__ = [
-    "get_contrastive_preferences",
-    # Re-export for backwards compatibility
-    "PrefPairRequirement",
-    "PrefPairSubsampleStrategy",
-]
-
 log = logging.getLogger(__name__)
 
 
@@ -126,7 +119,11 @@ def _calculate_max_per_sample(
     """Calculate max_per_sample from target_pairs if specified."""
     max_per_sample = strat.max_per_sample
 
-    if strat.target_pairs is not None and strat.target_pairs > 0 and max_per_sample is None:
+    if (
+        strat.target_pairs is not None
+        and strat.target_pairs > 0
+        and max_per_sample is None
+    ):
         n_short = len(short_choosers)
         n_long = len(long_choosers)
         n_total = n_short + n_long
@@ -295,12 +292,16 @@ def _apply_prefer_different_horizon(
 
     pairs.sort(key=horizon_priority)
     n_different = sum(
-        1 for p in pairs
-        if parse_horizon_years(p.short_term.time_horizon) != parse_horizon_years(p.long_term.time_horizon)
+        1
+        for p in pairs
+        if parse_horizon_years(p.short_term.time_horizon)
+        != parse_horizon_years(p.long_term.time_horizon)
         and parse_horizon_years(p.short_term.time_horizon) is not None
         and parse_horizon_years(p.long_term.time_horizon) is not None
     )
-    log.info(f"Prefer different horizon: {n_different}/{len(pairs)} pairs have different horizons")
+    log.info(
+        f"Prefer different horizon: {n_different}/{len(pairs)} pairs have different horizons"
+    )
     return pairs
 
 

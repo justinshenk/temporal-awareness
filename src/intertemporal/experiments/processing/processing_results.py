@@ -12,10 +12,14 @@ from typing import TYPE_CHECKING
 
 from ....common.base_schema import BaseSchema
 from ....common.logging import log
-from .method_agreement import MethodAgreementResults
+from .method_agreement import MethodAgreementResults, analyze_attribution_agreement
 
 if TYPE_CHECKING:
     from ..experiment_context import ExperimentContext
+
+# Note: Some imports are done inside functions to avoid circular imports.
+# circuit_analysis, component_analysis, and redundancy_analysis all import
+# dataclasses from this file.
 
 
 @dataclass
@@ -263,6 +267,7 @@ class ProcessedResults(BaseSchema):
 
 def process_coarse_results(ctx: ExperimentContext) -> None:
     """Process coarse patching results into circuit hypothesis."""
+    # Import here to avoid circular imports
     from .circuit_analysis import extract_circuit_hypothesis
     from .component_analysis import (
         compute_cumulative_recovery,
@@ -316,8 +321,6 @@ def process_coarse_results(ctx: ExperimentContext) -> None:
 
 def process_attribution_agreement(ctx: ExperimentContext) -> None:
     """Process attribution patching results into method agreement analysis."""
-    from .method_agreement import analyze_attribution_agreement
-
     log("[process] Computing attribution method agreement...")
     agreement_results = analyze_attribution_agreement(ctx.attrib_agg, top_k=20)
 

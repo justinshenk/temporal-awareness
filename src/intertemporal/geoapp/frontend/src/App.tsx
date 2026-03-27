@@ -54,9 +54,18 @@ function App() {
   const [selectedSampleIdx, setSelectedSampleIdx] = useState<number | null>(null);
 
   // Clear selection when embedding parameters change to avoid stale references
+  // But only for parameters that affect the current view mode
   useEffect(() => {
+    // In 1DxLayer view, layer changes don't affect the data (shows all layers)
+    // In 1DxPos view, position changes don't affect the data (shows all positions)
+    // So we only clear selection for parameters that matter
+    if (viewMode === '1DxLayer' || viewMode === '1DxPos') {
+      // For trajectory views, only component/method changes matter
+      // (and position for 1DxLayer, layer for 1DxPos)
+      return;
+    }
     setSelectedSampleIdx(null);
-  }, [layer, component, position, method]);
+  }, [layer, component, position, method, viewMode]);
 
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
@@ -81,8 +90,9 @@ function App() {
     }
   }, [config, layer, position]);
 
-  // Fetch embedding data via streaming for progressive loading
-  const streamingEmbed = useStreamingEmbedding(layer, component, position, method);
+  // Only fetch embedding data for scatter plots (2D/3D), not trajectory views
+  const isScatterView = viewMode === '2D' || viewMode === '3D';
+  const streamingEmbed = useStreamingEmbedding(layer, component, position, method, isScatterView);
 
   // Convert streaming state to the format expected by the rest of the app
   const embedding = useMemo(() => {
@@ -109,19 +119,22 @@ function App() {
     selectedSampleIdx
   );
 
-  // Prefetch adjacent layers and all color options in background
+  // Prefetch adjacent layers, positions, and all color options in background
+  // Only prefetch for scatter views (trajectory views load all data anyway)
   usePrefetch(
     layer,
     component,
     position,
     method,
     config?.colorByOptions || [],
-    config?.layers || []
+    config?.layers || [],
+    config?.positions || []
   );
 
   // Trigger backend prefetch for adjacent embeddings (fire-and-forget)
   // This precomputes neighboring layers/positions server-side for seamless navigation
-  useBackendPrefetch(layer, component, position, method, !embeddingLoading);
+  // Only for scatter views since trajectory views don't use single-layer embeddings
+  useBackendPrefetch(layer, component, position, method, isScatterView && !embeddingLoading);
 
   // Fetch trajectory data for 1DxLayer view (PC1 across all layers)
   const layerTrajectory = useLayerTrajectory(
@@ -161,12 +174,16 @@ function App() {
       // Layer trajectory - all layers share same indices
       return layerTrajectory.sampleIndices;
     } else if (viewMode === '1DxPos') {
-      // Position trajectory - use indices from first position with data
-      const firstPos = positionTrajectory.xValues[0];
-      return firstPos ? (positionTrajectory.sampleIndicesMap.get(firstPos) || []) : [];
+      // Position trajectory - UNION of all position indices
+      // Each position may have different samples, so we need the union
+      const allIndices = new Set<number>();
+      positionTrajectory.sampleIndicesMap.forEach((indices) => {
+        indices.forEach(idx => allIndices.add(idx));
+      });
+      return Array.from(allIndices).sort((a, b) => a - b);
     }
     return [];
-  }, [viewMode, layerTrajectory.sampleIndices, positionTrajectory.sampleIndicesMap, positionTrajectory.xValues]);
+  }, [viewMode, layerTrajectory.sampleIndices, positionTrajectory.sampleIndicesMap]);
 
   // Compute filter mask for trajectory views (aligned with trajectorySampleIndices)
   const trajectoryFilterMask = useMemo(() => {

@@ -15,6 +15,7 @@ from ..experiments.diffmeans import DiffMeansAggregatedResults, DiffMeansPairRes
 if TYPE_CHECKING:
     from ...binary_choice import BinaryChoiceRunner
     from ...common.contrastive_pair import ContrastivePair
+    from ...common.sample_position_mapping import SamplePositionMapping
 
 
 # Plot styling constants
@@ -53,23 +54,44 @@ ANNOTATION_COLOR = "#666666"
 
 # Position colors for multi-position plots
 POSITION_COLORS = [
-    "#E91E63",  # P86 - Pink
-    "#9C27B0",  # P87 - Purple
-    "#673AB7",  # P88 - Deep Purple
-    "#2196F3",  # P145 - Blue
-    "#607D8B",  # Other - Grey
+    "#E91E63",  # Pink
+    "#9C27B0",  # Purple
+    "#673AB7",  # Deep Purple
+    "#2196F3",  # Blue
+    "#607D8B",  # Grey
 ]
+
+
+def _get_position_label(
+    pos: int, mapping: "SamplePositionMapping | None"
+) -> str:
+    """Get semantic position label or fallback to P{pos}.
+
+    Args:
+        pos: Absolute position index
+        mapping: Optional position mapping with format_pos names
+
+    Returns:
+        Semantic name (e.g., "time_horizon") or fallback "P{pos}"
+    """
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
 
 
 def visualize_diffmeans(
     agg: DiffMeansAggregatedResults,
     output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all diffmeans visualizations.
 
     Args:
         agg: Aggregated diffmeans results
         output_dir: Directory to save plots
+        position_mapping: Optional mapping for semantic position labels
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -106,7 +128,9 @@ def visualize_diffmeans(
     _plot_component_norm_decomposition(agg, output_dir / "component_norm_decomposition.png")
     n_plots += 1
 
-    _plot_diff_norm_by_position(agg, output_dir / "diff_norm_by_position.png")
+    _plot_diff_norm_by_position(
+        agg, output_dir / "diff_norm_by_position.png", position_mapping
+    )
     n_plots += 1
 
     log(f"[diffmeans_viz] Generated {n_plots} plots in {output_dir}")
@@ -834,11 +858,17 @@ def _plot_component_norm_decomposition(
 def _plot_diff_norm_by_position(
     agg: DiffMeansAggregatedResults,
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot difference norm trajectories for different positions.
 
     Shows whether the growing difference is localized to specific positions
     or spreading everywhere.
+
+    Args:
+        agg: Aggregated results
+        output_path: Path to save the plot
+        position_mapping: Optional mapping for semantic position labels
     """
     all_positions = sorted(agg.get_all_analyzed_positions())
     if not all_positions:
@@ -873,7 +903,7 @@ def _plot_diff_norm_by_position(
             alpha=MEAN_LINE_ALPHA,
             marker=MEAN_MARKER,
             markersize=MEAN_MARKER_SIZE - 1,
-            label=f"P{pos}",
+            label=_get_position_label(pos, position_mapping),
         )
 
     ax.set_xlabel("Layer")

@@ -219,15 +219,28 @@ def _get_source_position_labels(
             labels.append(f"{abbrev1}:{i}")
         labels.append(f"{abbrev2}:0")
     else:
-        # Multiple names - just use generic labels
-        for name in names:
+        # Multiple names - distribute positions among names evenly
+        # This is a fallback when we can't determine exact assignment
+        n_per_name = len(source_positions) // len(names)
+        remainder = len(source_positions) % len(names)
+        idx = 0
+        for name_idx, name in enumerate(names):
             abbrev = abbrevs.get(name, name) if abbreviate else name
-            if name not in name_counts:
-                name_counts[name] = 0
-            labels.append(f"{abbrev}:{name_counts[name]}")
-            name_counts[name] += 1
+            # Assign extra positions to earlier names
+            count = n_per_name + (1 if name_idx < remainder else 0)
+            for i in range(count):
+                labels.append(f"{abbrev}:{i}")
+                idx += 1
+                if idx >= len(source_positions):
+                    break
+            if idx >= len(source_positions):
+                break
 
-    return labels
+    # Ensure we return exactly len(source_positions) labels
+    while len(labels) < len(source_positions):
+        labels.append(f"P{source_positions[len(labels)]}")
+
+    return labels[:len(source_positions)]
 
 
 def visualize_attn_analysis(

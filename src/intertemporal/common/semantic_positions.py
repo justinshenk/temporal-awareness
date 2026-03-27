@@ -6,19 +6,17 @@ throughout the analysis pipeline.
 
 # Prompt positions (where time horizon info is encoded)
 PROMPT_POSITIONS = [
+    "task_tail",
+    "consider_tail",
     "time_horizon",
     "post_time_horizon",
-    "left_label",
-    "left_reward",
-    "left_time",
-    "right_label",
-    "right_reward",
-    "right_time",
+    "action_tail",
+    "format_tail",
+    "chat_suffix",
 ]
 
 # Response positions (where model output is generated)
 RESPONSE_POSITIONS = [
-    "chat_suffix",
     "response_choice_prefix",
     "response_choice",
     "response_reasoning_prefix",

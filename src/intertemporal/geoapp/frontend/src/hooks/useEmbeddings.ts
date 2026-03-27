@@ -165,7 +165,8 @@ export function useStreamingEmbedding(
   layer: number,
   component: string,
   position: string,
-  method: string
+  method: string,
+  enabled: boolean = true
 ) {
   const [state, setState] = useState<StreamingEmbeddingState>({
     positions: [],
@@ -178,8 +179,16 @@ export function useStreamingEmbedding(
     progress: 0,
   });
 
+  // Track what params the current data was fetched for
+  const [cachedParams, setCachedParams] = useState<string | null>(null);
+  const currentParams = `${layer}|${component}|${position}|${method}`;
+
   useEffect(() => {
-    if (layer < 0 || !component || !position || !method) return;
+    // Skip fetching if disabled or invalid params
+    if (!enabled || layer < 0 || !component || !position || !method) return;
+
+    // Skip if we already have valid data for these params
+    if (cachedParams === currentParams && state.isComplete) return;
 
     // Reset state for new request
     setState({
@@ -192,6 +201,7 @@ export function useStreamingEmbedding(
       error: null,
       progress: 0,
     });
+    setCachedParams(currentParams);
 
     const url = `/api/embedding/${layer}/${component}/${encodeURIComponent(position)}/stream?method=${method}&chunk_size=500`;
     const eventSource = new EventSource(url);
@@ -199,6 +209,8 @@ export function useStreamingEmbedding(
     let allPositions: number[] = [];
     let allIndices: number[] = [];
     let totalPoints = 0;
+
+    let lastReportedProgress = 0;
 
     eventSource.onmessage = (event) => {
       try {
@@ -229,14 +241,19 @@ export function useStreamingEmbedding(
           const loadedPoints = data.end_idx as number;
           const progress = Math.round((loadedPoints / totalPoints) * 100);
 
-          // Update state with current progress - spread to trigger re-render
-          setState(prev => ({
-            ...prev,
-            positions: [...allPositions.slice(0, loadedPoints * 3)],
-            indices: [...allIndices.slice(0, loadedPoints)],
-            loadedPoints,
-            progress,
-          }));
+          // Batch updates: only update every 5% or on first chunk
+          const shouldUpdate = progress === 100 || progress - lastReportedProgress >= 5 || lastReportedProgress === 0;
+          if (shouldUpdate) {
+            lastReportedProgress = progress;
+            // Update state with current progress - spread to trigger re-render
+            setState(prev => ({
+              ...prev,
+              positions: [...allPositions.slice(0, loadedPoints * 3)],
+              indices: [...allIndices.slice(0, loadedPoints)],
+              loadedPoints,
+              progress,
+            }));
+          }
         } else if (data.type === 'complete') {
           setState(prev => ({
             ...prev,
@@ -272,7 +289,7 @@ export function useStreamingEmbedding(
     return () => {
       eventSource.close();
     };
-  }, [layer, component, position, method]);
+  }, [layer, component, position, method, enabled, cachedParams, currentParams, state.isComplete]);
 
   return state;
 }
@@ -814,18 +831,12 @@ export function useBackendPrefetch(
   useEffect(() => {
     if (!enabled || layer < 0 || !component || !position || !method) return;
 
-    // Debounce prefetch to avoid flooding server during rapid navigation
-    const timeoutId = setTimeout(() => {
-      // Fire-and-forget prefetch request to backend
-      // This precomputes adjacent layers/positions server-side for faster navigation
-      const prefetchUrl = `/warmup/prefetch?layer=${layer}&component=${encodeURIComponent(component)}&position=${encodeURIComponent(position)}&method=${method}`;
+    // Fire immediately - no debounce for seamless navigation
+    const prefetchUrl = `/warmup/prefetch?layer=${layer}&component=${encodeURIComponent(component)}&position=${encodeURIComponent(position)}&method=${method}`;
 
-      api.post<WarmupStatusResponse>(prefetchUrl).catch(() => {
-        // Silently ignore prefetch failures - it's just an optimization
-      });
-    }, 500); // Wait 500ms before prefetching
-
-    return () => clearTimeout(timeoutId);
+    api.post<WarmupStatusResponse>(prefetchUrl).catch(() => {
+      // Silently ignore prefetch failures - it's just an optimization
+    });
   }, [layer, component, position, method, enabled]);
 }
 
@@ -876,7 +887,8 @@ export function usePrefetch(
   position: string,
   method: string,
   colorByOptions: string[],
-  layers: number[]
+  layers: number[],
+  positions: string[] = []
 ) {
   const queryClient = useQueryClient();
 
@@ -931,20 +943,25 @@ export function usePrefetch(
     });
 
     // Prefetch adjacent layers in background
-    const currentIdx = layers.indexOf(currentLayer);
-    // Only prefetch if currentLayer is found in the layers array
-    const adjacentLayers = currentIdx >= 0
-      ? [layers[currentIdx - 1], layers[currentIdx + 1]].filter(l => l !== undefined)
+    const currentLayerIdx = layers.indexOf(currentLayer);
+    const adjacentLayers = currentLayerIdx >= 0
+      ? [layers[currentLayerIdx - 1], layers[currentLayerIdx + 1]].filter(l => l !== undefined)
       : [];
 
+    // Prefetch adjacent positions in background
+    const currentPosIdx = positions.indexOf(position);
+    const adjacentPositions = currentPosIdx >= 0
+      ? [positions[currentPosIdx - 1], positions[currentPosIdx + 1]].filter(p => p !== undefined)
+      : [];
+
+    // Prefetch embeddings for adjacent layers (same position)
     adjacentLayers.forEach((layer) => {
       queryClient.prefetchQuery({
         queryKey: ['embedding', layer, component, position, method],
         queryFn: async (): Promise<EmbeddingResponse> => {
           const response = await api.get<BackendEmbeddingResponse>(
-            `/embedding/${layer}/${component}/${position}?method=${method.toLowerCase()}`
+            `/embedding/${layer}/${component}/${encodeURIComponent(position)}?method=${method.toLowerCase()}`
           );
-          // Backend now returns flat array directly
           return {
             positions: response.coordinates_flat,
             indices: response.sample_indices,
@@ -954,7 +971,25 @@ export function usePrefetch(
         staleTime: 1000 * 60 * 5, // 5 minutes
       });
     });
-  }, [queryClient, currentLayer, component, position, method, colorByOptions, layers]);
+
+    // Prefetch embeddings for adjacent positions (same layer)
+    adjacentPositions.forEach((pos) => {
+      queryClient.prefetchQuery({
+        queryKey: ['embedding', currentLayer, component, pos, method],
+        queryFn: async (): Promise<EmbeddingResponse> => {
+          const response = await api.get<BackendEmbeddingResponse>(
+            `/embedding/${currentLayer}/${component}/${encodeURIComponent(pos)}?method=${method.toLowerCase()}`
+          );
+          return {
+            positions: response.coordinates_flat,
+            indices: response.sample_indices,
+            metrics: {},
+          };
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      });
+    });
+  }, [queryClient, currentLayer, component, position, method, colorByOptions, layers, positions]);
 }
 
 // Types for trajectory data

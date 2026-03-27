@@ -9,9 +9,6 @@ from typing import Callable
 
 from .patching_types import COMPONENTS, PATCHING_COMPONENTS
 
-# Alias for backwards compatibility
-ATTRIBUTION_COMPONENTS = PATCHING_COMPONENTS
-
 
 def hook_name(layer: int, component: str) -> str:
     """Generate hook name: blocks.{layer}.hook_{component}

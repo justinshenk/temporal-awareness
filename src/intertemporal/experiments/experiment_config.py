@@ -8,32 +8,29 @@ from ...common import BaseSchema
 from ..preference import PreferenceDataset
 from ..prompt import PromptDatasetConfig
 
-# Default coarse patching settings (empty dict or empty lists = skip)
 # component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_PATCH: dict = {
     "enabled": True,
-    "no_cache": False,
+    "no_cache": True,
     "layer_steps": [1],
-    "pos_steps": [5],
-    "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
-    # "components": ["resid_post"],
+    "pos_steps": [10],
+    # "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
+    "components": ["resid_post"],
 }
 
-# Default attribution patching settings (empty dict = skip)
 # methods: "standard", "eap", "eap_ig"
 # components: "resid_post", "attn_out", "mlp_out"
 # quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
-# Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
 ATT_PATCH: dict = {
     "enabled": True,
-    "no_cache": False,
+    "no_cache": True,
     "ig_steps": 30,
-    "methods": ["standard", "eap_ig", "eap"],
-    "components": ["mlp_out", "attn_out", "resid_post"],
-    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
-    # "methods": ["standard"],
-    # "components": ["mlp_out"],
-    # "quadrature": ["midpoint"],
+    # "methods": ["standard", "eap_ig", "eap"],
+    # "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
+    # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    "methods": ["standard"],
+    "components": ["attn_out", "mlp_out"],
+    "quadrature": ["midpoint"],
 }
 
 
@@ -44,29 +41,16 @@ VIZ: dict = {
     "only_agg": False,  # If True, skip per-pair visualizations
 }
 
-# Default geometric analysis settings (PCA of residual stream)
-# Positions use format_pos names from SamplePositionMapping
+
 GEO: dict = {
     "enabled": True,
     "no_cache": True,
     "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
     "positions": [
-        # Prompt structure markers
-        "situation_marker",
-        "task_marker",
-        "consider_marker",
-        "action_marker",
-        "format_marker",
-        # Variable positions (time horizon and options)
+        # Key prompt positions (time horizon determines the decision)
         "time_horizon",
         "post_time_horizon",
-        "left_label",
-        "left_reward",
-        "left_time",
-        "right_label",
-        "right_reward",
-        "right_time",
-        # Response positions
+        # Response positions (where decision is manifested)
         "chat_suffix",
         "response_choice_prefix",
         "response_choice",
@@ -76,21 +60,28 @@ GEO: dict = {
     "n_components": 5,
 }
 
-# Default difference-in-means settings
+
 DIFFMEANS: dict = {
     "enabled": True,
     "no_cache": True,
     "n_components": 10,  # Number of SVD components to track
 }
 
-# Default fine-grained activation patching settings
-# Uses FAST attribution for heads/neurons (not sweeps), then causal patching for position/path/multi-site
 FINE_PATCH: dict = {
     "enabled": True,
     "no_cache": True,
     # Head attribution (fast - uses specified layers, not sweep)
     "head_patching_enabled": True,
-    "head_layers": [19, 21, 24, 28, 29, 30],  # Key attention layers (fast attribution)
+    "head_layers": [
+        19,
+        21,
+        24,
+        28,
+        29,
+        30,
+        31,
+        34,
+    ],  # Key attention layers (fast attribution)
     # Position patching for top heads (causal)
     "position_patching_enabled": True,
     "n_top_heads_for_position": 10,
@@ -98,8 +89,8 @@ FINE_PATCH: dict = {
     # Path patching (causal)
     "path_patching_enabled": True,
     "source_layers": [19, 21, 24],
-    "dest_mlp_layers": [28, 29, 31, 34],
-    "dest_head_layers": [28, 29, 30, 31],
+    "dest_mlp_layers": [28, 29, 30, 31, 34],
+    "dest_head_layers": [28, 29, 30, 31, 34],
     "n_top_source_heads": 5,
     # Multi-site interaction (causal)
     "multi_site_enabled": True,
@@ -107,7 +98,7 @@ FINE_PATCH: dict = {
     # Neuron attribution (fast - uses specified layer, not sweep)
     "neuron_patching_enabled": True,
     "neuron_target_layer": 31,
-    "mlp_layers": [24, 28, 31],  # Key MLP layers (fast attribution)
+    "mlp_layers": [19, 24, 28, 31, 34],  # Key MLP layers (fast attribution)
     "n_top_neurons": 50,
     # Layer-position fine heatmap (causal)
     "layer_position_enabled": True,
@@ -119,7 +110,7 @@ FINE_PATCH: dict = {
 MLP_ANALYSIS: dict = {
     "enabled": True,
     "no_cache": True,
-    "layers": [35, 31, 28, 21, 24, 19],  # Key MLP layers for horizon processing
+    "layers": [19, 21, 24, 28, 31, 34, 35],  # Key MLP layers for horizon processing
     "n_top_neurons": 50,  # Number of top neurons to track per layer
 }
 
@@ -127,7 +118,16 @@ MLP_ANALYSIS: dict = {
 ATTN_ANALYSIS: dict = {
     "enabled": True,
     "no_cache": True,
-    "layers": [19, 21, 24],  # Key attention layers for horizon processing
+    "layers": [
+        18,
+        19,
+        21,
+        24,
+        28,
+        31,
+        34,
+        35,
+    ],  # Key attention layers for horizon processing
     "store_patterns": True,  # Whether to store full attention patterns
     "dynamic_threshold": 0.05,  # Threshold for detecting dynamic attention changes
 }

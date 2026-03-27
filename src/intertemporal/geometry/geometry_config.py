@@ -61,6 +61,15 @@ SEMANTIC_POSITIONS = {
     "time_horizon",
     "post_time_horizon",
 
+    # Section tail positions (last token of each section)
+    # Useful for probing what the model has "concluded" about each section
+    "situation_tail",
+    "task_tail",
+    "consider_tail",  # Positioned BEFORE time_horizon when it exists
+    "action_tail",
+    "format_tail",
+    "options_tail",  # Last token of right_time (end of options in task)
+
     # Response positions
     "response_choice_prefix",
     "response_choice",
@@ -201,7 +210,67 @@ class GeometryConfig:
 
 
 # =============================================================================
-# Recommended Targets
+# Target Generation
+# =============================================================================
+
+# Core semantic positions that should always be extracted
+# These are the most important for understanding model behavior
+CORE_POSITIONS = [
+    # Response positions (where choice is decoded)
+    "response_choice",
+    "response_choice_prefix",
+    # Time/reward values
+    "time_horizon",
+    "post_time_horizon",
+    "left_time",
+    "right_time",
+    "left_reward",
+    "right_reward",
+    # Labels
+    "left_label",
+    "right_label",
+    # Section tails (conclusions of each section)
+    "situation_tail",
+    "task_tail",
+    "consider_tail",
+    "action_tail",
+    "format_tail",
+    "options_tail",
+    # Chat template
+    "chat_suffix",
+]
+
+
+def generate_all_targets(
+    layers: list[int],
+    positions: list[str] | None = None,
+    components: list[str] | None = None,
+) -> list[TargetSpec]:
+    """Generate comprehensive targets for all layer/position/component combinations.
+
+    Args:
+        layers: List of layer indices to extract
+        positions: Semantic positions to extract (default: CORE_POSITIONS)
+        components: Components to extract (default: all 4)
+
+    Returns:
+        List of TargetSpec for all combinations
+    """
+    if positions is None:
+        positions = CORE_POSITIONS
+    if components is None:
+        components = ["resid_pre", "resid_post", "mlp_out", "attn_out"]
+
+    targets = []
+    for layer in layers:
+        for component in components:
+            for position in positions:
+                targets.append(TargetSpec(layer, component, position))
+    return targets
+
+
+# =============================================================================
+# Recommended Targets (legacy - use generate_all_targets for comprehensive extraction)
 # =============================================================================
 
 RECOMMENDED_TARGETS = [

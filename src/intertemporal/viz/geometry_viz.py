@@ -14,6 +14,7 @@ from ..experiments.geo import GeoAggregatedResults, GeoPairResult
 
 if TYPE_CHECKING:
     from ..common.contrastive_preferences import ContrastivePreferences
+    from ..common.sample_position_mapping import SamplePositionMapping
 
 
 # Plot styling constants
@@ -118,10 +119,30 @@ def _setup_grid(ax: plt.Axes) -> None:
     ax.grid(True, which="minor", alpha=MINOR_GRID_ALPHA, linewidth=MINOR_GRID_LINE_WIDTH)
 
 
+def _get_position_label(
+    pos: int, mapping: "SamplePositionMapping | None"
+) -> str:
+    """Get semantic position label or fallback to pos {pos}.
+
+    Args:
+        pos: Absolute position index
+        mapping: Optional position mapping with format_pos names
+
+    Returns:
+        Semantic name (e.g., "time_horizon") or fallback "pos {pos}"
+    """
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"pos {pos}"
+
+
 def visualize_geo(
     agg: GeoAggregatedResults,
     output_dir: Path,
     pref_pairs: list["ContrastivePreferences"] | None = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all geo visualizations.
 
@@ -136,6 +157,7 @@ def visualize_geo(
         agg: Aggregated geo results
         output_dir: Directory to save plots
         pref_pairs: Optional preference pairs for time horizon coloring
+        position_mapping: Optional mapping for semantic position labels
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -147,18 +169,20 @@ def visualize_geo(
     n_plots = 0
 
     # Generate consolidated plots (all positions in one figure)
-    _plot_consolidated_separation(agg, output_dir / "separation.png")
+    _plot_consolidated_separation(agg, output_dir / "separation.png", position_mapping)
     n_plots += 1
-    _plot_consolidated_variance(agg, output_dir / "variance.png")
+    _plot_consolidated_variance(agg, output_dir / "variance.png", position_mapping)
     n_plots += 1
-    _plot_consolidated_alignment(agg, output_dir / "alignment.png")
+    _plot_consolidated_alignment(agg, output_dir / "alignment.png", position_mapping)
     n_plots += 1
-    _plot_consolidated_pca_scatter(agg, output_dir / "pca_scatter.png")
+    _plot_consolidated_pca_scatter(agg, output_dir / "pca_scatter.png", position_mapping)
     n_plots += 1
 
     # Time horizon colored PCA scatter (if pref_pairs available)
     if pref_pairs:
-        _plot_pca_scatter_by_horizon(agg, pref_pairs, output_dir / "pca_scatter_horizon.png")
+        _plot_pca_scatter_by_horizon(
+            agg, pref_pairs, output_dir / "pca_scatter_horizon.png", position_mapping
+        )
         n_plots += 1
 
     log(f"[geometry_viz] Generated {n_plots} plots in {output_dir}")
@@ -167,6 +191,7 @@ def visualize_geo(
 def visualize_geo_pair(
     result: GeoPairResult,
     output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate geo visualizations for a single pair.
 
@@ -177,6 +202,7 @@ def visualize_geo_pair(
     Args:
         result: Per-pair geo results
         output_dir: Directory to save plots
+        position_mapping: Optional mapping for semantic position labels
     """
     if not result.position_results:
         return
@@ -205,7 +231,7 @@ def visualize_geo_pair(
                 alpha=0.8,
                 marker=MEAN_MARKER,
                 markersize=MEAN_MARKER_SIZE - 2,
-                label=f"pos {pos_result.position}",
+                label=_get_position_label(pos_result.position, position_mapping),
             )
             has_separation_data = True
 
@@ -234,7 +260,7 @@ def visualize_geo_pair(
                 alpha=0.8,
                 marker=MEAN_MARKER,
                 markersize=MEAN_MARKER_SIZE - 2,
-                label=f"pos {pos_result.position}",
+                label=_get_position_label(pos_result.position, position_mapping),
             )
             has_variance_data = True
 
@@ -263,6 +289,7 @@ def _get_position_colors(positions: list[int]) -> dict[int, str]:
 def _plot_consolidated_separation(
     agg: GeoAggregatedResults,
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot separation trajectory for all positions on one figure."""
     positions = agg.positions_analyzed
@@ -282,7 +309,7 @@ def _plot_consolidated_separation(
                 alpha=0.8,
                 marker=MEAN_MARKER,
                 markersize=MEAN_MARKER_SIZE - 2,
-                label=f"pos {position}",
+                label=_get_position_label(position, position_mapping),
             )
 
     ax.set_xlabel("Layer")
@@ -299,6 +326,7 @@ def _plot_consolidated_separation(
 def _plot_consolidated_variance(
     agg: GeoAggregatedResults,
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot PC1 variance trajectory for all positions on one figure."""
     positions = agg.positions_analyzed
@@ -318,7 +346,7 @@ def _plot_consolidated_variance(
                 alpha=0.8,
                 marker=MEAN_MARKER,
                 markersize=MEAN_MARKER_SIZE - 2,
-                label=f"pos {position}",
+                label=_get_position_label(position, position_mapping),
             )
 
     ax.set_xlabel("Layer")
@@ -335,6 +363,7 @@ def _plot_consolidated_variance(
 def _plot_consolidated_alignment(
     agg: GeoAggregatedResults,
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot PC1 alignment with logit diff for all positions on one figure."""
     positions = agg.positions_analyzed
@@ -367,7 +396,7 @@ def _plot_consolidated_alignment(
                 alpha=0.8,
                 marker=MEAN_MARKER,
                 markersize=MEAN_MARKER_SIZE - 2,
-                label=f"pos {position}",
+                label=_get_position_label(position, position_mapping),
             )
             has_data = True
 
@@ -390,6 +419,7 @@ def _plot_consolidated_alignment(
 def _plot_consolidated_pca_scatter(
     agg: GeoAggregatedResults,
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot 2D PCA scatter for all positions at key layers.
 
@@ -462,7 +492,8 @@ def _plot_consolidated_pca_scatter(
 
             # Row label (position)
             if col_idx == 0:
-                ax.set_ylabel(f"Pos {position}\nPC2", fontsize=8)
+                pos_label = _get_position_label(position, position_mapping)
+                ax.set_ylabel(f"{pos_label}\nPC2", fontsize=8)
 
             # Column label (layer)
             if row_idx == 0:
@@ -484,6 +515,7 @@ def _plot_pca_scatter_by_horizon(
     agg: GeoAggregatedResults,
     pref_pairs: list["ContrastivePreferences"],
     output_path: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot PCA scatter with points colored by time horizon.
 
@@ -598,7 +630,8 @@ def _plot_pca_scatter_by_horizon(
 
             # Row label (position)
             if col_idx == 0:
-                ax.set_ylabel(f"Pos {position}\nPC2", fontsize=8)
+                pos_label = _get_position_label(position, position_mapping)
+                ax.set_ylabel(f"{pos_label}\nPC2", fontsize=8)
 
             # Column label (layer)
             if row_idx == 0:

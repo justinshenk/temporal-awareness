@@ -82,7 +82,7 @@ def plot_all_component_comparisons(
     plot_overview(layer_data, pos_data, results_by_component, overview_dir)
     plot_decomposition(layer_data, pos_data, decomp_dir, processed_results)
     plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results)
-    plot_synthesis(layer_data, pos_data, synthesis_dir, processed_results)
+    plot_synthesis(synthesis_dir, processed_results)
 
     # Generate README
     _generate_readme(output_dir)

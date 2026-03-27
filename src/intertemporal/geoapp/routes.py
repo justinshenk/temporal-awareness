@@ -616,14 +616,17 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             layers = data_loader.get_layers()
             positions = data_loader.get_positions()
 
-            # Find current index and prefetch +/- 1 (reduced from +/- 2)
+            # Find current layer index and prefetch +/- 2 layers
             layer_idx = layers.index(layer) if layer in layers else 0
             adjacent_layers = [
-                layers[i] for i in range(max(0, layer_idx - 1), min(len(layers), layer_idx + 2))
+                layers[i] for i in range(max(0, layer_idx - 2), min(len(layers), layer_idx + 3))
             ]
 
-            # Prefetch only current position (removed adjacent positions)
-            adjacent_positions = [position] if position in positions else []
+            # Find current position index and prefetch +/- 2 positions
+            pos_idx = positions.index(position) if position in positions else 0
+            adjacent_positions = [
+                positions[i] for i in range(max(0, pos_idx - 2), min(len(positions), pos_idx + 3))
+            ]
 
             # Quick prefetch for PCA only (UMAP/t-SNE are too slow)
             for l in adjacent_layers:

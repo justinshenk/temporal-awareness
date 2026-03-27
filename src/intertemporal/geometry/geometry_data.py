@@ -2,18 +2,20 @@
 
 Structure:
     data/
-        samples.json              - PromptSample list
-        choices.json              - ChoiceInfo list
         metadata.json             - Dataset metadata
-        sample_position_mapping.json - Maps abs_pos -> format_pos per sample
-        prompt_dataset.json       - Full PromptDataset
-        preference_dataset.json   - Full PreferenceDataset
-        targets/
+        prompt_dataset.json       - Full PromptDataset (if generated)
+        samples/
             sample_0/
+                position_mapping.json   - Maps abs_pos -> format_pos for this sample
+                preference_sample.json  - PreferenceSample with choice info
+                choice.json             - ChoiceInfo (quick access)
                 L35_resid_post_129.npy  - Activation at position 129
                 L35_resid_post_130.npy
             sample_1/
                 ...
+
+    preference_datasets/          - Global preference dataset location
+        {prompt_dataset_id}_{model}_{name}.json
 """
 
 import gc
@@ -119,7 +121,7 @@ class ActivationData:
         """Get path to sample's activation folder."""
         if self._data_dir is None:
             raise ValueError("Data directory not set")
-        return self._data_dir / "targets" / f"sample_{sample_idx}"
+        return self._data_dir / "samples" / f"sample_{sample_idx}"
 
     def load_activation(
         self, sample_idx: int, layer: int, component: str, abs_pos: int
@@ -229,7 +231,10 @@ class ActivationData:
             potential_component = "_".join(parts[1:i])
             potential_format_pos = "_".join(parts[i:])
             if self.position_mappings and self.position_mappings.get(0):
-                if potential_format_pos in self.position_mappings.get(0).named_positions:
+                if (
+                    potential_format_pos
+                    in self.position_mappings.get(0).named_positions
+                ):
                     component = potential_component
                     format_pos = potential_format_pos
                     break
@@ -264,19 +269,12 @@ class ActivationData:
         gc.collect()
 
     def save(self, path: Path):
-        """Save metadata (activations already saved during extraction)."""
+        """Save metadata only.
+
+        Per-sample data (preference_sample.json, choice.json, position_mapping.json)
+        is saved during extraction in extract_activations().
+        """
         path.mkdir(parents=True, exist_ok=True)
-
-        # Save samples
-        samples_data = [s.to_dict() for s in self.samples]
-        with open(path / "samples.json", "w") as f:
-            json.dump(samples_data, f, indent=4)
-
-        # Save choices
-        if self.choices:
-            choices_data = [c.to_dict() for c in self.choices]
-            with open(path / "choices.json", "w") as f:
-                json.dump(choices_data, f, indent=2)
 
         # Save metadata
         metadata = {
@@ -286,44 +284,65 @@ class ActivationData:
         with open(path / "metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
-        logger.info(f"Saved {self.n_samples} samples to {path}")
+        logger.info(f"Saved metadata for {self.n_samples} samples to {path}")
 
     @classmethod
     def load(cls, path: Path) -> "ActivationData":
-        """Load from disk."""
-        # Load samples
-        with open(path / "samples.json") as f:
-            samples_data = json.load(f)
-        samples = [PromptSample.from_dict(s) for s in samples_data]
+        """Load from disk.
 
-        # Load choices
-        choices = None
-        choices_path = path / "choices.json"
-        if choices_path.exists():
-            with open(choices_path) as f:
-                choices_data = json.load(f)
-            choices = [ChoiceInfo.from_dict(c) for c in choices_data]
-
-        # Load metadata
+        Data is loaded from per-sample files in samples/sample_*/
+        """
+        # Load metadata first to get n_samples
         metadata_path = path / "metadata.json"
         if metadata_path.exists():
             with open(metadata_path) as f:
                 metadata = json.load(f)
-            n_samples = metadata.get("n_samples", len(samples))
+            n_samples = metadata.get("n_samples", 0)
             compressed = metadata.get("compressed", False)
         else:
-            n_samples = len(samples)
+            # Fall back to counting sample directories
+            samples_dir = path / "samples"
+            if samples_dir.exists():
+                n_samples = len(list(samples_dir.glob("sample_*")))
+            else:
+                n_samples = 0
             compressed = False
 
-        # Load position mappings
-        position_mappings = None
-        mapping_path = path / "sample_position_mapping.json"
-        if mapping_path.exists():
-            position_mappings = DatasetPositionMapping.load(mapping_path)
+        # Load from per-sample files
+        samples_dir = path / "samples"
+        samples = []
+        choices = []
+        position_mappings = DatasetPositionMapping()
+
+        for sample_idx in range(n_samples):
+            sample_dir = samples_dir / f"sample_{sample_idx}"
+            if not sample_dir.exists():
+                continue
+
+            # Load prompt sample
+            prompt_path = sample_dir / "prompt_sample.json"
+            if prompt_path.exists():
+                with open(prompt_path) as f:
+                    prompt_data = json.load(f)
+                samples.append(PromptSample.from_dict(prompt_data))
+
+            # Load choice info
+            choice_path = sample_dir / "choice.json"
+            if choice_path.exists():
+                with open(choice_path) as f:
+                    choice_data = json.load(f)
+                choices.append(ChoiceInfo.from_dict(choice_data))
+
+            # Load position mapping
+            mapping_path = sample_dir / "position_mapping.json"
+            if mapping_path.exists():
+                with open(mapping_path) as f:
+                    mapping_data = json.load(f)
+                position_mappings.add(SamplePositionMapping.from_dict(mapping_data))
 
         data = cls(
             samples=samples,
-            choices=choices,
+            choices=choices if choices else None,
             position_mappings=position_mappings,
             n_samples=n_samples,
             _data_dir=path,
@@ -359,15 +378,45 @@ def _format_prompt_sample(sample: PromptSample) -> str:
     )
 
 
-def collect_samples(output_dir: Path | None = None) -> "PromptDataset":
-    """Generate samples with diverse time horizons."""
+def collect_samples(
+    output_dir: Path | None = None, try_load: bool = True
+) -> "PromptDataset":
+    """Load or generate samples with diverse time horizons.
+
+    Args:
+        output_dir: Output directory. If provided and try_load=True, will attempt
+            to load existing prompt_dataset.json from here first.
+        try_load: If True, try to load existing data before generating.
+
+    Returns:
+        PromptDataset with samples.
+    """
     from ..data.default_datasets import GEOMETRY_CFG
-    from ..prompt import PromptDatasetConfig, PromptDatasetGenerator
+    from ..prompt import PromptDataset, PromptDatasetConfig, PromptDatasetGenerator
 
-    dataset_config = PromptDatasetConfig.from_dict(GEOMETRY_CFG)
-    dataset = PromptDatasetGenerator(dataset_config).generate()
+    dataset = None
 
-    logger.info(f"Generated {len(dataset.samples)} samples")
+    # Try to load existing dataset
+    if try_load and output_dir is not None:
+        prompt_dataset_path = output_dir / "data" / "prompt_dataset.json"
+        if prompt_dataset_path.exists():
+            logger.info(f"Loading existing prompt dataset from {prompt_dataset_path}")
+            dataset = PromptDataset.from_json(prompt_dataset_path)
+            logger.info(f"Loaded {len(dataset.samples)} samples")
+
+    # Generate if not loaded
+    if dataset is None:
+        logger.info("Generating new prompt dataset...")
+        dataset_config = PromptDatasetConfig.from_dict(GEOMETRY_CFG)
+        dataset = PromptDatasetGenerator(dataset_config).generate()
+        logger.info(f"Generated {len(dataset.samples)} samples")
+
+        # Save generated dataset
+        if output_dir is not None:
+            data_dir = output_dir / "data"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            dataset.save_as_json(data_dir / "prompt_dataset.json")
+            logger.info(f"Saved prompt dataset to {data_dir / 'prompt_dataset.json'}")
 
     # Print first few prompt samples
     n_preview = min(5, len(dataset.samples))
@@ -383,12 +432,6 @@ def collect_samples(output_dir: Path | None = None) -> "PromptDataset":
         for line in dataset.samples[0].text.split("\n"):
             logger.info(f"  | {line}")
 
-    if output_dir is not None:
-        data_dir = output_dir / "data"
-        data_dir.mkdir(parents=True, exist_ok=True)
-        dataset.save_as_json(data_dir / "prompt_dataset.json")
-        logger.info(f"Saved prompt dataset to {data_dir / 'prompt_dataset.json'}")
-
     return dataset
 
 
@@ -403,12 +446,15 @@ def extract_activations(
     """Extract activations organized by sample with absolute positions.
 
     Output structure:
-        targets/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
-
-    Use sample_position_mapping.json to map abs_pos -> format_pos.
+        samples/sample_{idx}/
+            position_mapping.json     - Maps abs_pos -> format_pos for this sample
+            prompt_sample.json        - Original PromptSample
+            preference_sample.json    - PreferenceSample with choice
+            choice.json               - Quick access to choice info
+            L{layer}_{component}_{abs_pos}.npy - Activations
     """
     from ..formatting.prompt_formats import find_prompt_format_config
-    from ..preference import PreferenceDataset, PreferenceQuerier, PreferenceQueryConfig
+    from ..preference import PreferenceQuerier, PreferenceQueryConfig
 
     logger.info(f"Loading model {config.model}...")
 
@@ -425,8 +471,8 @@ def extract_activations(
 
     # Setup output
     data_dir = config.output_dir / "data"
-    targets_dir = data_dir / "targets"
-    targets_dir.mkdir(parents=True, exist_ok=True)
+    samples_dir = data_dir / "samples"
+    samples_dir.mkdir(parents=True, exist_ok=True)
 
     compressed = config.use_compressed_storage
 
@@ -441,7 +487,9 @@ def extract_activations(
 
     for i, sample in enumerate(samples):
         if i % 50 == 0:
-            logger.info(f"  Sample {i}/{len(samples)} | valid: {valid_idx} | skipped: {skipped}")
+            logger.info(
+                f"  Sample {i}/{len(samples)} | valid: {valid_idx} | skipped: {skipped}"
+            )
 
         prompt_format = find_prompt_format_config(sample.formatting_id)
         choice_prefix = prompt_format.get_response_prefix_before_choice()
@@ -459,7 +507,7 @@ def extract_activations(
             pos_mapping = SamplePositionMapping.build(sample, pref, runner)
 
             # Create sample folder
-            sample_dir = targets_dir / f"sample_{valid_idx}"
+            sample_dir = samples_dir / f"sample_{valid_idx}"
             sample_dir.mkdir(parents=True, exist_ok=True)
 
             # Extract and save activations
@@ -488,7 +536,19 @@ def extract_activations(
                 pref.internals = None
                 continue
 
-            # Record choice info
+            # Save per-sample position mapping
+            with open(sample_dir / "position_mapping.json", "w") as f:
+                json.dump(pos_mapping.to_dict(), f)
+
+            # Save per-sample prompt sample
+            with open(sample_dir / "prompt_sample.json", "w") as f:
+                json.dump(sample.to_dict(), f)
+
+            # Save per-sample preference sample
+            with open(sample_dir / "preference_sample.json", "w") as f:
+                json.dump(pref.to_dict(), f)
+
+            # Record and save choice info
             pair = sample.prompt.preference_pair
             chose_long = pref.chose_long_term
             if chose_long:
@@ -498,12 +558,17 @@ def extract_activations(
                 chosen_time = pair.short_term.time.to_months()
                 chosen_reward = pair.short_term.reward.value
 
-            choices.append(ChoiceInfo(
+            choice_info = ChoiceInfo(
                 chose_long_term=chose_long,
                 chosen_time_months=chosen_time,
                 chosen_reward=chosen_reward,
                 choice_prob=pref.choice_prob,
-            ))
+            )
+            choices.append(choice_info)
+
+            # Save per-sample choice info
+            with open(sample_dir / "choice.json", "w") as f:
+                json.dump(choice_info.to_dict(), f)
 
             valid_samples.append(sample)
             position_mappings.add(pos_mapping)
@@ -542,22 +607,8 @@ def extract_activations(
         _compressed=compressed,
     )
 
-    # Save everything
+    # Save metadata
     data.save(data_dir)
-
-    # Save position mappings
-    position_mappings.save(data_dir / "sample_position_mapping.json")
-    logger.info(f"Saved position mappings to {data_dir / 'sample_position_mapping.json'}")
-
-    # Save preference dataset
-    pref_dataset = PreferenceDataset(
-        prompt_dataset_id=dataset.dataset_id,
-        model=config.model,
-        preferences=valid_preferences,
-        prompt_dataset_name=dataset.config.name,
-    )
-    pref_dataset.save_as_json(data_dir / "preference_dataset.json", with_internals=False)
-    logger.info(f"Saved preference dataset to {data_dir / 'preference_dataset.json'}")
 
     return data
 
@@ -571,7 +622,8 @@ def load_cached_data(config: GeometryConfig) -> ActivationData | None:
     """Load cached data if available."""
     cache_path = config.output_dir / "data"
 
-    if not (cache_path / "samples.json").exists():
+    # Check for metadata.json or samples/ directory
+    if not (cache_path / "metadata.json").exists() and not (cache_path / "samples").exists():
         return None
 
     try:

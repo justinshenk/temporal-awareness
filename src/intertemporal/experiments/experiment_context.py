@@ -39,7 +39,11 @@ from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequ
 from ..common.contrastive_preferences import ContrastivePreferences
 from ..preference import PreferenceDataset
 from ..common.sample_position_mapping import SamplePositionMapping
-from ..viz.tokenization_viz import visualize_tokenization_from_position_mapping
+from ..viz.tokenization_viz import (
+    visualize_position_mapping_pair,
+    visualize_tokenization,
+    visualize_tokenization_from_position_mapping,
+)
 from .experiment_config import ExperimentConfig
 
 
@@ -391,37 +395,126 @@ class ExperimentContext:
             self.save_contrastive_pref(pair_idx)
         log(f"[ctx] Saved contrastive preferences for {len(self.pairs)} pairs")
 
-    def get_position_mapping_path(self, pair_idx: int) -> Path:
-        """Get path for per-pair position mapping JSON."""
+    def get_position_mapping_path(self, pair_idx: int, sample: str = "long") -> Path:
+        """Get path for per-pair position mapping JSON.
+
+        Args:
+            pair_idx: Index of the pair
+            sample: "long" for long-term/corrupted, "short" for short-term/clean
+        """
+        if sample == "short":
+            return self.get_pair_dir(pair_idx) / "position_mapping_short.json"
         return self.get_pair_dir(pair_idx) / "sample_position_mapping.json"
 
     def save_position_mapping(self, pair_idx: int) -> None:
-        """Save position mapping for a pair.
+        """Save position mappings for both samples in a pair.
 
-        Builds SamplePositionMapping from the corrupted trajectory and saves it.
-        Also generates tokenization.png visualization from the mapping.
+        Builds SamplePositionMapping for both short-term (clean) and long-term
+        (corrupted) trajectories, saves them, and generates position_mapping.png
+        showing both side-by-side.
         """
         pref = self.get_pref_pair(pair_idx)
         if pref is None:
             return
 
-        # Build mapping from corrupted (long_term) sample
-        mapping = SamplePositionMapping.build_from_preference(
-            pref.long_term, self.runner, sample_idx=pair_idx
+        pair_dir = self.get_pair_dir(pair_idx)
+        pair_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build mapping for short-term (clean) sample
+        mapping_short = SamplePositionMapping.build_from_preference(
+            pref.short_term, self.runner, sample_idx=0
+        )
+        save_json(mapping_short.to_dict(), self.get_position_mapping_path(pair_idx, "short"))
+
+        # Build mapping for long-term (corrupted) sample
+        mapping_long = SamplePositionMapping.build_from_preference(
+            pref.long_term, self.runner, sample_idx=1
+        )
+        save_json(mapping_long.to_dict(), self.get_position_mapping_path(pair_idx, "long"))
+
+        # Generate combined position mapping visualization showing both samples
+        visualize_position_mapping_pair(
+            mapping_short, mapping_long,
+            pair_dir / "position_mapping.png"
         )
 
-        path = self.get_position_mapping_path(pair_idx)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        save_json(mapping.to_dict(), path)
-
-        # Generate tokenization visualization from the mapping
-        visualize_tokenization_from_position_mapping(path)
+        # Generate tokenization divergence visualization
+        if self.pairs and pair_idx < len(self.pairs) and self.runner is not None:
+            visualize_tokenization([self.pairs[pair_idx]], self.runner, pair_dir, max_pairs=1)
 
     def save_all_position_mappings(self) -> None:
         """Save position mappings for all pairs."""
         for pair_idx in range(len(self.pairs)):
             self.save_position_mapping(pair_idx)
         log(f"[ctx] Saved position mappings for {len(self.pairs)} pairs")
+
+    def load_position_mapping(
+        self, pair_idx: int, sample: str = "long"
+    ) -> SamplePositionMapping | None:
+        """Load position mapping from cached pair directory.
+
+        Args:
+            pair_idx: Index of the pair to load mapping for
+            sample: "long" for long-term/corrupted, "short" for short-term/clean
+
+        Returns:
+            SamplePositionMapping if found, None otherwise
+        """
+        path = self.get_position_mapping_path(pair_idx, sample)
+        if path.exists():
+            data = json.loads(path.read_text())
+            return SamplePositionMapping.from_dict(data)
+        return None
+
+    def get_position_mapping(
+        self, pair_idx: int, sample: str = "long"
+    ) -> SamplePositionMapping | None:
+        """Get position mapping for a pair, loading from cache or building if needed.
+
+        Args:
+            pair_idx: Index of the pair
+            sample: "long" for long-term/corrupted, "short" for short-term/clean
+
+        Returns:
+            SamplePositionMapping if available, None otherwise
+        """
+        # Try loading from cache first
+        mapping = self.load_position_mapping(pair_idx, sample)
+        if mapping is not None:
+            return mapping
+
+        # Build from preference if available
+        pref = self.get_pref_pair(pair_idx)
+        if pref is not None and self._runner is not None:
+            pref_sample = pref.long_term if sample == "long" else pref.short_term
+            return SamplePositionMapping.build_from_preference(
+                pref_sample, self._runner, sample_idx=pair_idx
+            )
+
+        return None
+
+    def get_representative_position_mapping(self) -> SamplePositionMapping | None:
+        """Get a representative position mapping for visualization labeling.
+
+        This method provides a position mapping that can be used for converting
+        absolute positions to semantic format_pos names in visualizations.
+        All pairs have the same format_pos names (just different absolute positions),
+        so the first pair's mapping is representative.
+
+        Priority:
+        1. Build from pref_pairs if runner is available (live run)
+        2. Load from cached position mapping (regeneration from cache)
+
+        Returns:
+            SamplePositionMapping if available, None otherwise
+        """
+        # Try building from pref_pairs if available (live run)
+        if self._pref_pairs and self._runner:
+            return SamplePositionMapping.build_from_preference(
+                self._pref_pairs[0].long_term, self._runner, sample_idx=0
+            )
+        # Otherwise try loading from cache (regeneration)
+        return self.load_position_mapping(0)
 
     def get_fine_agg_path(self) -> Path:
         return self.output_dir / "fine_agg.json"
@@ -637,12 +730,35 @@ class ExperimentContext:
         self.diffmeans_agg = None
         self.diffmeans_patching.clear()
 
+    def unload_geo_agg(self) -> None:
+        """Clear geo aggregated results from memory."""
+        self.geo_agg = None
+        self.geo_patching.clear()
+
+    def unload_mlp_agg(self) -> None:
+        """Clear MLP aggregated results from memory."""
+        self.mlp_agg = None
+        self.mlp_analysis.clear()
+
+    def unload_attn_agg(self) -> None:
+        """Clear attention aggregated results from memory."""
+        self.attn_agg = None
+        self.attn_analysis.clear()
+
+    def unload_fine_grained_agg(self) -> None:
+        """Clear fine-grained patching results from memory."""
+        self.fine_grained_patching.clear()
+
     def unload_all(self) -> None:
         """Clear all aggregated results from memory."""
         self.unload_attrib_agg()
         self.unload_coarse_agg()
         self.unload_fine_agg()
         self.unload_diffmeans_agg()
+        self.unload_geo_agg()
+        self.unload_mlp_agg()
+        self.unload_attn_agg()
+        self.unload_fine_grained_agg()
 
     # ─── Cache detection methods ───
 

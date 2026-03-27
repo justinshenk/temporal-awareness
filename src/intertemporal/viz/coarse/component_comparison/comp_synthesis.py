@@ -11,29 +11,19 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
-from .....activation_patching.coarse import SweepStepResults
 from .....intertemporal.experiments.processing import (
     CircuitHypothesis,
     ComponentComparisonResults,
-    extract_circuit_hypothesis,
 )
 from .comp_utils import save_plot
 
 
 def plot_synthesis(
-    layer_data: dict[str, SweepStepResults | None],
-    pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
-    processed_results: ComponentComparisonResults | None = None,
+    processed_results: ComponentComparisonResults,
 ) -> None:
     """Generate circuit synthesis plots and text summary."""
-    # Use pre-computed circuit hypothesis if available
-    if processed_results and processed_results.circuit:
-        circuit = processed_results.circuit
-    else:
-        # Fallback to computing inline (for backwards compatibility)
-        circuit = extract_circuit_hypothesis(layer_data, pos_data)
-
+    circuit = processed_results.circuit
     _plot_information_flow_diagram(circuit, output_dir)
     _generate_circuit_summary(circuit, output_dir)
 

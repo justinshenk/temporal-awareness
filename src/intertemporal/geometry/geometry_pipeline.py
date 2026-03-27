@@ -92,7 +92,7 @@ def generate_geo_samples(
     return data
 
 
-def run_geo_analysis(
+def analyze_geometry_data(
     data: ActivationData,
     config: GeometryConfig,
     skip_viz: bool = False,
@@ -102,7 +102,7 @@ def run_geo_analysis(
     run_logit_lens: bool = False,
     logit_lens_runner=None,
 ) -> dict:
-    """Run analysis and generate visualizations.
+    """Run analysis and generate visualizations on extracted activations.
 
     This is Phase 2 of the geometry pipeline. It handles:
     - Linear probe analysis (streaming, one target at a time)
@@ -373,7 +373,7 @@ def run_geometry_pipeline(
         data = generate_geo_samples(config, use_cache=use_cache)
 
     # Phase 2: Run analysis
-    return run_geo_analysis(
+    return analyze_geometry_data(
         data,
         config,
         skip_viz=skip_viz,

@@ -369,6 +369,23 @@ def load_fine_grained_pair(pair_dir: Path) -> FineGrainedResults | None:
     return None
 
 
+def load_position_mapping(exp_dir: Path, pair_idx: int = 0) -> SamplePositionMapping | None:
+    """Load position mapping from cache if available.
+
+    Args:
+        exp_dir: Experiment directory
+        pair_idx: Pair index to load mapping from (default: 0)
+
+    Returns:
+        SamplePositionMapping if cache exists, None otherwise
+    """
+    path = get_pair_dir(exp_dir, pair_idx) / "sample_position_mapping.json"
+    if path.exists():
+        data = load_json(path)
+        return SamplePositionMapping.from_dict(data)
+    return None
+
+
 def generate_viz(
     exp_dir: Path,
     *,
@@ -477,8 +494,25 @@ def generate_viz(
     if fine_agg:
         visualize_fine_patching(fine_agg, exp_dir / "agg_fine")
 
+    # Build position mapping for semantic position labels (using first pair as representative)
+    # Priority: build from live data if available, otherwise load from cache
+    position_mapping = None
+    if pref_pairs and runner:
+        position_mapping = SamplePositionMapping.build_from_preference(
+            pref_pairs[0].long_term, runner, sample_idx=0
+        )
+    else:
+        # Try loading from cache (for regeneration from cached data)
+        position_mapping = load_position_mapping(exp_dir)
+        if position_mapping:
+            log("[viz] Loaded position mapping from cache")
+
     if diffmeans_agg:
-        visualize_diffmeans(diffmeans_agg, exp_dir / "aggregated" / "diffmeans")
+        visualize_diffmeans(
+            diffmeans_agg,
+            exp_dir / "aggregated" / "diffmeans",
+            position_mapping=position_mapping,
+        )
         log("[viz] Generated diffmeans visualizations")
 
     # Load geo aggregated results from cache if not provided
@@ -488,7 +522,12 @@ def generate_viz(
             log("[viz] Loaded geo aggregated results from cache")
 
     if geo_agg:
-        visualize_geo(geo_agg, exp_dir / "aggregated" / "geo", pref_pairs=pref_pairs)
+        visualize_geo(
+            geo_agg,
+            exp_dir / "aggregated" / "geo",
+            pref_pairs=pref_pairs,
+            position_mapping=position_mapping,
+        )
         log("[viz] Generated geo visualizations")
 
     # Load MLP analysis aggregated results from cache if not provided

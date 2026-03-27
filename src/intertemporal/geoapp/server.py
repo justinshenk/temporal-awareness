@@ -22,7 +22,8 @@ from ..geoapp.data_loader import GeometryDataLoader
 from .routes import create_router
 
 # Background executor for prefetching - separate from request handling
-_prefetch_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="prefetch")
+# Use 4 workers to parallelize prefetch of multiple layers/positions
+_prefetch_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="prefetch")
 
 # Default paths
 DEFAULT_DATA_DIR = Path("out/geometry")
@@ -101,6 +102,37 @@ def create_app(
     api_router = create_router(data_loader)
     app.include_router(api_router)
 
+    # Startup event to precompute priority embeddings
+    @app.on_event("startup")
+    async def precompute_common():
+        """Precompute embeddings for first, middle, and last layers on startup."""
+        def _precompute():
+            layers = data_loader.get_layers()
+            positions = data_loader.get_positions()
+            if not layers or not positions:
+                return
+
+            # Priority layers: first, middle, last
+            priority_layers = [
+                layers[0],
+                layers[len(layers) // 2],
+                layers[-1],
+            ]
+            # Deduplicate while preserving order
+            priority_layers = list(dict.fromkeys(priority_layers))
+
+            # Top 5 positions
+            priority_positions = positions[:5]
+
+            print(f"[STARTUP] Precomputing PCA for {len(priority_layers)} layers x {len(priority_positions)} positions")
+            for layer in priority_layers:
+                for pos in priority_positions:
+                    data_loader.load_pca(layer, "resid_post", pos)
+            print("[STARTUP] Precomputation complete")
+
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(_prefetch_executor, _precompute)
+
     # Mount static files for frontend if directory exists
     if frontend_dir.exists():
         app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
@@ -128,7 +160,6 @@ def run_app(
     frontend_dir: Path | str | None = None,
     host: str = "127.0.0.1",
     port: int = 8000,
-    warmup: bool = False,  # Ignored - kept for backward compatibility
     reload: bool = False,
 ) -> None:
     """Run the FastAPI application with uvicorn.
@@ -142,7 +173,6 @@ def run_app(
         frontend_dir: Directory containing built React frontend.
         host: Host to bind to. Defaults to 127.0.0.1.
         port: Port to bind to. Defaults to 8000.
-        warmup: DEPRECATED - ignored. Streaming architecture loads on-demand.
         reload: Enable auto-reload for development. Defaults to False.
     """
     # Store config in environment for factory function

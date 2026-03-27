@@ -1,6 +1,9 @@
 """Sample position mapping for token-level analysis.
 
 Maps each absolute token position to semantic position information.
+
+This module contains the domain-specific SamplePositionMapping class with
+build methods. The generic base classes are in src.common.position_mapping_base.
 """
 
 from __future__ import annotations
@@ -9,50 +12,49 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from src.common import BaseSchema
+from src.common import (
+    DatasetPositionMappingBase,
+    SamplePositionMappingBase,
+    TokenPositionInfo,
+)
+from ..data.default_datasets import BASE_CONTEXT
+from ..formatting.configs.default_prompt_format import DefaultPromptFormat
+from ..formatting.prompt_formats import find_prompt_format_config
+from ..prompt.prompt_dataset_config import ContextConfig
 
 if TYPE_CHECKING:
     from .preference_types import PreferenceSample, PromptSample
 
 
-@dataclass
-class TokenPositionInfo(BaseSchema):
-    """Info for a single token position.
+def _assert_no_overlapping_positions(named_positions: dict[str, list[int]]) -> None:
+    """Assert that no absolute position appears in multiple named_positions.
 
-    Attributes:
-        abs_pos: Absolute position index in the sequence
-        decoded_token: The decoded token string at this position
-        traj_section: Either "prompt" or "response"
-        format_pos: Semantic position name (e.g., "response_choice_prefix"), or None
-        rel_pos: Relative position within format_pos (0-indexed), -1 if not in named position
+    Raises:
+        AssertionError: If any position is assigned to multiple names.
     """
+    pos_to_names: dict[int, list[str]] = {}
+    for name, positions in named_positions.items():
+        for pos in positions:
+            if pos not in pos_to_names:
+                pos_to_names[pos] = []
+            pos_to_names[pos].append(name)
 
-    abs_pos: int
-    decoded_token: str
-    traj_section: str  # "prompt" or "response"
-    format_pos: str | None = None
-    rel_pos: int = -1
+    # Find overlaps
+    overlaps = {pos: names for pos, names in pos_to_names.items() if len(names) > 1}
+    if overlaps:
+        overlap_strs = [f"pos {pos}: {names}" for pos, names in sorted(overlaps.items())]
+        raise AssertionError(
+            f"Overlapping positions in named_positions:\n  " + "\n  ".join(overlap_strs)
+        )
 
 
 @dataclass
-class SamplePositionMapping(BaseSchema):
-    """Position mapping for a single sample.
+class SamplePositionMapping(SamplePositionMappingBase):
+    """Position mapping for a single sample with domain-specific build methods.
 
-    Maps every absolute token position to its semantic meaning.
-
-    Attributes:
-        sample_idx: Index of the sample
-        prompt_len: Number of tokens in the prompt
-        full_len: Total number of tokens (prompt + response)
-        positions: List of TokenPositionInfo, indexed by abs_pos
-        named_positions: Dict mapping format_pos names to list of abs_pos indices
+    Inherits generic position mapping functionality from SamplePositionMappingBase.
+    Adds build methods specific to intertemporal preference experiments.
     """
-
-    sample_idx: int
-    prompt_len: int
-    full_len: int
-    positions: list[TokenPositionInfo] = field(default_factory=list)
-    named_positions: dict[str, list[int]] = field(default_factory=dict)
 
     @classmethod
     def build(
@@ -71,8 +73,6 @@ class SamplePositionMapping(BaseSchema):
         Returns:
             SamplePositionMapping with all positions mapped
         """
-        from ..formatting.configs.default_prompt_format import DefaultPromptFormat
-
         # Get tokenizer if runner was passed
         if hasattr(tokenizer, "_tokenizer"):
             tokenizer = tokenizer._tokenizer
@@ -124,6 +124,8 @@ class SamplePositionMapping(BaseSchema):
                 )
             )
 
+        _assert_no_overlapping_positions(named_positions)
+
         return cls(
             sample_idx=sample.sample_idx,
             prompt_len=prompt_len,
@@ -131,22 +133,6 @@ class SamplePositionMapping(BaseSchema):
             positions=positions,
             named_positions=named_positions,
         )
-
-    def get_position(self, abs_pos: int) -> TokenPositionInfo | None:
-        """Get position info by absolute position."""
-        if 0 <= abs_pos < len(self.positions):
-            return self.positions[abs_pos]
-        return None
-
-    def get_positions_by_name(self, format_pos: str) -> list[TokenPositionInfo]:
-        """Get all positions for a named format position."""
-        if format_pos not in self.named_positions:
-            return []
-        return [self.positions[i] for i in self.named_positions[format_pos]]
-
-    def get_format_pos_names(self) -> list[str]:
-        """Get list of all format position names in this sample."""
-        return list(self.named_positions.keys())
 
     @classmethod
     def build_from_preference(
@@ -168,8 +154,6 @@ class SamplePositionMapping(BaseSchema):
         Returns:
             SamplePositionMapping with positions mapped
         """
-        from ..formatting.prompt_formats import find_prompt_format_config
-
         # Get tokenizer if runner was passed
         if hasattr(tokenizer, "_tokenizer"):
             tokenizer = tokenizer._tokenizer
@@ -221,6 +205,8 @@ class SamplePositionMapping(BaseSchema):
                 )
             )
 
+        _assert_no_overlapping_positions(named_positions)
+
         return cls(
             sample_idx=sample_idx,
             prompt_len=prompt_len,
@@ -231,12 +217,15 @@ class SamplePositionMapping(BaseSchema):
 
 
 @dataclass
-class DatasetPositionMapping(BaseSchema):
-    """Position mappings for all samples in a dataset."""
+class DatasetPositionMapping(DatasetPositionMappingBase):
+    """Position mappings for all samples in a dataset.
+
+    Extends DatasetPositionMappingBase with domain-specific type hints.
+    """
 
     mappings: list[SamplePositionMapping] = field(default_factory=list)
 
-    def add(self, mapping: SamplePositionMapping):
+    def add(self, mapping: SamplePositionMapping) -> None:
         """Add a sample mapping."""
         self.mappings.append(mapping)
 
@@ -246,30 +235,6 @@ class DatasetPositionMapping(BaseSchema):
             if m.sample_idx == sample_idx:
                 return m
         return None
-
-    def __len__(self) -> int:
-        return len(self.mappings)
-
-    def __iter__(self):
-        return iter(self.mappings)
-
-    def save(self, path: Path):
-        """Save to JSON file."""
-        import json
-
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
-
-    @classmethod
-    def load(cls, path: Path) -> "DatasetPositionMapping":
-        """Load from JSON file."""
-        import json
-
-        with open(path) as f:
-            data = json.load(f)
-        return cls.from_dict(data)
 
 
 # =============================================================================
@@ -340,8 +305,6 @@ def _build_named_positions(
     This mirrors the logic in geometry_data.resolve_positions but works
     with pre-decoded tokens.
     """
-    from ..formatting.configs.default_prompt_format import DefaultPromptFormat
-
     prompt_tokens_decoded = decoded_tokens[:prompt_len]
     prompt_text = "".join(prompt_tokens_decoded)
     full_text = "".join(decoded_tokens)
@@ -374,9 +337,6 @@ def _build_named_positions(
 
     # === Context Keywords ===
     # Get context values - use defaults merged with BASE_CONTEXT
-    from ..data.default_datasets import BASE_CONTEXT
-    from ..prompt.prompt_dataset_config import ContextConfig
-
     # Build context with defaults + BASE_CONTEXT overrides
     ctx = ContextConfig.from_dict(BASE_CONTEXT)
 
@@ -623,6 +583,36 @@ def _build_named_positions(
             assigned_positions.update(chat_suffix_positions)
 
     # Assign content regions between section markers
+    # Also track tail positions for each section
+    tail_positions: dict[str, int] = {}
+
+    # Find options region boundaries (for splitting task_content)
+    options_start_char = None
+    options_end_char = None
+    if "left_label" in named_positions:
+        # Find char position of left_label start
+        left_label_pos = min(named_positions["left_label"])
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == left_label_pos:
+                options_start_char = char_count
+                break
+            char_count += len(tok)
+
+    if "right_time" in named_positions:
+        # Find char position after right_time ends
+        right_time_pos = max(named_positions["right_time"])
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == right_time_pos:
+                options_end_char = char_count + len(tok)
+                break
+            char_count += len(tok)
+
+    # Find consider_marker position for options region boundary
+    consider_marker_text = markers.get("consider_marker", "CONSIDER:")
+    consider_marker_char = prompt_text.find(consider_marker_text)
+
     for idx, (char_pos, marker_name, marker_text) in enumerate(marker_boundaries):
         if marker_name not in section_markers:
             continue
@@ -637,6 +627,11 @@ def _build_named_positions(
             # For last section, stop at chat suffix if present
             next_marker_char = chat_suffix_start_char
 
+        # For task section, stop content before options begin
+        content_end_char = next_marker_char
+        if marker_name == "task_marker" and options_start_char is not None:
+            content_end_char = options_start_char
+
         # Find unassigned tokens in this content region
         char_count = 0
         content_positions = []
@@ -645,14 +640,88 @@ def _build_named_positions(
                 break
             tok_start = char_count
             tok_end = char_count + len(tok)
-            # Token is in content region if it starts after marker ends and before next marker
-            if tok_start >= marker_end_char and tok_start < next_marker_char:
+            # Token is in content region if it starts after marker ends and before boundary
+            if tok_start >= marker_end_char and tok_start < content_end_char:
                 if i not in assigned_positions:
                     content_positions.append(i)
             char_count = tok_end
         if content_positions:
             named_positions[content_name] = content_positions
             assigned_positions.update(content_positions)
+            # Derive tail name from section marker (situation_marker -> situation_tail)
+            section_name = marker_name.replace("_marker", "")
+            tail_positions[f"{section_name}_tail"] = max(content_positions)
+
+    # Add option_content: unassigned positions in options region
+    # options_tail is the last position before consider_marker
+    if options_start_char is not None:
+        # Options region extends from left_label to just before consider_marker
+        options_region_end = consider_marker_char if consider_marker_char >= 0 else len(prompt_text)
+
+        char_count = 0
+        option_content_positions = []
+        last_option_pos = None
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i >= prompt_len:
+                break
+            tok_start = char_count
+            tok_end = char_count + len(tok)
+            # Token is in options region if it starts after options_start and before consider_marker
+            if tok_start >= options_start_char and tok_start < options_region_end:
+                last_option_pos = i
+                if i not in assigned_positions:
+                    option_content_positions.append(i)
+            char_count = tok_end
+
+        if option_content_positions:
+            named_positions["option_content"] = option_content_positions
+            assigned_positions.update(option_content_positions)
+
+        # options_tail is the last position in the options region (before consider_marker)
+        if last_option_pos is not None:
+            named_positions["options_tail"] = [last_option_pos]
+
+    # Add tail positions (last position of each content section)
+    # Special case: consider_tail should be BEFORE time_horizon if it exists
+    if "consider_tail" in tail_positions and "time_horizon" in named_positions:
+        time_horizon_start = min(named_positions["time_horizon"])
+        # Find the position just before time_horizon
+        consider_positions = named_positions.get("consider_content", [])
+        positions_before_horizon = [p for p in consider_positions if p < time_horizon_start]
+        if positions_before_horizon:
+            tail_positions["consider_tail"] = max(positions_before_horizon)
+
+    # Special case: task_tail should be BEFORE options (left_label) if it exists
+    if "task_tail" in tail_positions and "left_label" in named_positions:
+        left_label_start = min(named_positions["left_label"])
+        # Find the position just before left_label
+        task_positions = named_positions.get("task_content", [])
+        positions_before_options = [p for p in task_positions if p < left_label_start]
+        if positions_before_options:
+            tail_positions["task_tail"] = max(positions_before_options)
+
+    for tail_name, tail_pos in tail_positions.items():
+        named_positions[tail_name] = [tail_pos]
+        # Remove tail position from corresponding content list to avoid overlap
+        content_name = tail_name.replace("_tail", "_content")
+        if content_name in named_positions and tail_pos in named_positions[content_name]:
+            named_positions[content_name].remove(tail_pos)
+
+    # Add chat_prefix_tail and chat_suffix_tail if those regions exist
+    if "chat_prefix" in named_positions and named_positions["chat_prefix"]:
+        tail_pos = max(named_positions["chat_prefix"])
+        named_positions["chat_prefix_tail"] = [tail_pos]
+        named_positions["chat_prefix"].remove(tail_pos)
+    if "chat_suffix" in named_positions and named_positions["chat_suffix"]:
+        tail_pos = max(named_positions["chat_suffix"])
+        named_positions["chat_suffix_tail"] = [tail_pos]
+        named_positions["chat_suffix"].remove(tail_pos)
+
+    # Remove options_tail from option_content if present
+    if "options_tail" in named_positions and "option_content" in named_positions:
+        tail_pos = named_positions["options_tail"][0]
+        if tail_pos in named_positions["option_content"]:
+            named_positions["option_content"].remove(tail_pos)
 
     # Assign prompt_other: any remaining unassigned prompt tokens
     # (includes chat template suffix if present)
@@ -699,6 +768,18 @@ def _format_time_for_search(time_years: float) -> str | None:
 
     # Decimal years
     return f"{time_years} years"
+
+
+def _format_reward_for_search(reward: float) -> str | None:
+    """Format a reward value for searching in text.
+
+    Handles common formats like "1,750", "54,772", etc.
+    Note: The unit (e.g., "dollars") is separate and not included here.
+    """
+    if reward is None or reward <= 0:
+        return None
+    # Format with thousands separator
+    return f"{reward:,.0f}"
 
 
 def _build_named_positions_from_preference(
@@ -782,6 +863,26 @@ def _build_named_positions_from_preference(
             positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, time_str)
             if positions:
                 named_positions["right_time"] = positions
+
+    # Find option rewards (left/right based on presentation order)
+    if pref.short_term_first:
+        left_reward, right_reward = pref.short_term_reward, pref.long_term_reward
+    else:
+        left_reward, right_reward = pref.long_term_reward, pref.short_term_reward
+
+    if left_reward is not None:
+        reward_str = _format_reward_for_search(left_reward)
+        if reward_str:
+            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, reward_str)
+            if positions:
+                named_positions["left_reward"] = positions
+
+    if right_reward is not None:
+        reward_str = _format_reward_for_search(right_reward)
+        if reward_str:
+            positions = _find_substring_token_range(prompt_tokens_decoded, prompt_text, reward_str)
+            if positions:
+                named_positions["right_reward"] = positions
 
     # Find post_time_horizon region if we found time_horizon
     if "time_horizon" in named_positions:
@@ -889,5 +990,213 @@ def _build_named_positions_from_preference(
         named_positions[key] = [max(0, min(p, full_len - 1)) for p in named_positions[key]]
         if not named_positions[key]:
             del named_positions[key]
+
+    # === Fill in content regions for remaining unassigned positions ===
+    assigned_positions = set()
+    for positions in named_positions.values():
+        assigned_positions.update(positions)
+
+    # Section markers define content region boundaries
+    section_markers = {
+        "situation_marker": "situation_content",
+        "task_marker": "task_content",
+        "consider_marker": "consider_content",
+        "action_marker": "action_content",
+        "format_marker": "format_content",
+    }
+
+    # Build ordered list of section marker boundaries
+    section_boundaries = []
+    for name in section_markers:
+        if name in markers:
+            marker_text = markers[name]
+            char_pos = prompt_text.find(marker_text)
+            if char_pos >= 0:
+                section_boundaries.append((char_pos, name, marker_text))
+    section_boundaries.sort(key=lambda x: x[0])
+
+    # Assign chat_prefix: all unassigned prompt tokens before first section marker
+    if section_boundaries:
+        first_marker_char = section_boundaries[0][0]
+        chat_prefix_positions = []
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i >= prompt_len:
+                break
+            tok_end = char_count + len(tok)
+            if tok_end <= first_marker_char and i not in assigned_positions:
+                chat_prefix_positions.append(i)
+            char_count = tok_end
+        if chat_prefix_positions:
+            named_positions["chat_prefix"] = chat_prefix_positions
+            assigned_positions.update(chat_prefix_positions)
+
+    # Calculate chat suffix start position
+    chat_suffix_start_char = len(prompt_text)
+    if "chat_suffix" in named_positions and named_positions["chat_suffix"]:
+        chat_suffix_start_pos = min(named_positions["chat_suffix"])
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == chat_suffix_start_pos:
+                chat_suffix_start_char = char_count
+                break
+            char_count += len(tok)
+        assigned_positions.update(named_positions["chat_suffix"])
+
+    # Assign content regions between section markers
+    # Also track tail positions for each section
+    tail_positions: dict[str, int] = {}
+
+    # Find options region boundaries (for splitting task_content)
+    options_start_char = None
+    options_end_char = None
+    if "left_label" in named_positions:
+        # Find char position of left_label start
+        left_label_pos = min(named_positions["left_label"])
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == left_label_pos:
+                options_start_char = char_count
+                break
+            char_count += len(tok)
+
+    if "right_time" in named_positions:
+        # Find char position after right_time ends
+        right_time_pos = max(named_positions["right_time"])
+        char_count = 0
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i == right_time_pos:
+                options_end_char = char_count + len(tok)
+                break
+            char_count += len(tok)
+
+    # Find consider_marker position for options region boundary
+    consider_marker_text = markers.get("consider_marker", "CONSIDER:")
+    consider_marker_char = prompt_text.find(consider_marker_text)
+
+    for idx, (char_pos, marker_name, marker_text) in enumerate(section_boundaries):
+        if marker_name not in section_markers:
+            continue
+
+        content_name = section_markers[marker_name]
+        marker_end_char = char_pos + len(marker_text)
+
+        # Find where next marker starts (or chat suffix, or end of prompt)
+        if idx + 1 < len(section_boundaries):
+            next_marker_char = section_boundaries[idx + 1][0]
+        else:
+            next_marker_char = chat_suffix_start_char
+
+        # For task section, stop content before options begin
+        content_end_char = next_marker_char
+        if marker_name == "task_marker" and options_start_char is not None:
+            content_end_char = options_start_char
+
+        # Find unassigned tokens in this content region
+        char_count = 0
+        content_positions = []
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i >= prompt_len:
+                break
+            tok_start = char_count
+            tok_end = char_count + len(tok)
+            if tok_start >= marker_end_char and tok_start < content_end_char:
+                if i not in assigned_positions:
+                    content_positions.append(i)
+            char_count = tok_end
+        if content_positions:
+            named_positions[content_name] = content_positions
+            assigned_positions.update(content_positions)
+            # Derive tail name from section marker (situation_marker -> situation_tail)
+            section_name = marker_name.replace("_marker", "")
+            tail_positions[f"{section_name}_tail"] = max(content_positions)
+
+    # Add option_content: unassigned positions in options region
+    # options_tail is the last position before consider_marker
+    if options_start_char is not None:
+        # Options region extends from left_label to just before consider_marker
+        options_region_end = consider_marker_char if consider_marker_char >= 0 else len(prompt_text)
+
+        char_count = 0
+        option_content_positions = []
+        last_option_pos = None
+        for i, tok in enumerate(prompt_tokens_decoded):
+            if i >= prompt_len:
+                break
+            tok_start = char_count
+            tok_end = char_count + len(tok)
+            # Token is in options region if it starts after options_start and before consider_marker
+            if tok_start >= options_start_char and tok_start < options_region_end:
+                last_option_pos = i
+                if i not in assigned_positions:
+                    option_content_positions.append(i)
+            char_count = tok_end
+
+        if option_content_positions:
+            named_positions["option_content"] = option_content_positions
+            assigned_positions.update(option_content_positions)
+
+        # options_tail is the last position in the options region (before consider_marker)
+        if last_option_pos is not None:
+            named_positions["options_tail"] = [last_option_pos]
+
+    # Add tail positions (last position of each content section)
+    # Special case: consider_tail should be BEFORE time_horizon if it exists
+    if "consider_tail" in tail_positions and "time_horizon" in named_positions:
+        time_horizon_start = min(named_positions["time_horizon"])
+        # Find the position just before time_horizon
+        consider_positions = named_positions.get("consider_content", [])
+        positions_before_horizon = [p for p in consider_positions if p < time_horizon_start]
+        if positions_before_horizon:
+            tail_positions["consider_tail"] = max(positions_before_horizon)
+
+    # Special case: task_tail should be BEFORE options (left_label) if it exists
+    if "task_tail" in tail_positions and "left_label" in named_positions:
+        left_label_start = min(named_positions["left_label"])
+        # Find the position just before left_label
+        task_positions = named_positions.get("task_content", [])
+        positions_before_options = [p for p in task_positions if p < left_label_start]
+        if positions_before_options:
+            tail_positions["task_tail"] = max(positions_before_options)
+
+    for tail_name, tail_pos in tail_positions.items():
+        named_positions[tail_name] = [tail_pos]
+        # Remove tail position from corresponding content list to avoid overlap
+        content_name = tail_name.replace("_tail", "_content")
+        if content_name in named_positions and tail_pos in named_positions[content_name]:
+            named_positions[content_name].remove(tail_pos)
+
+    # Add chat_prefix_tail and chat_suffix_tail if those regions exist
+    if "chat_prefix" in named_positions and named_positions["chat_prefix"]:
+        tail_pos = max(named_positions["chat_prefix"])
+        named_positions["chat_prefix_tail"] = [tail_pos]
+        named_positions["chat_prefix"].remove(tail_pos)
+    if "chat_suffix" in named_positions and named_positions["chat_suffix"]:
+        tail_pos = max(named_positions["chat_suffix"])
+        named_positions["chat_suffix_tail"] = [tail_pos]
+        named_positions["chat_suffix"].remove(tail_pos)
+
+    # Remove options_tail from option_content if present
+    if "options_tail" in named_positions and "option_content" in named_positions:
+        tail_pos = named_positions["options_tail"][0]
+        if tail_pos in named_positions["option_content"]:
+            named_positions["option_content"].remove(tail_pos)
+
+    # Assign prompt_other: any remaining unassigned prompt tokens
+    prompt_other_positions = [
+        i for i in range(prompt_len)
+        if i not in assigned_positions
+    ]
+    if prompt_other_positions:
+        named_positions["prompt_other"] = prompt_other_positions
+        assigned_positions.update(prompt_other_positions)
+
+    # Assign response_other: unassigned response tokens
+    response_other_positions = [
+        i for i in range(prompt_len, full_len)
+        if i not in assigned_positions
+    ]
+    if response_other_positions:
+        named_positions["response_other"] = response_other_positions
 
     return named_positions

@@ -137,10 +137,18 @@ class ContrastivePairsAnalysis:
     n_only_short_associated: int = 0
     n_only_long_associated: int = 0
 
+    # Largest reward (only counted when both values are not None)
+    n_largest_reward_computable: int = 0
+    n_both_largest_reward: int = 0
+    n_neither_largest_reward: int = 0
+    n_only_short_largest_reward: int = 0
+    n_only_long_largest_reward: int = 0
+
     # Content variation
     n_same_rewards: int = 0
     n_same_times: int = 0
     n_same_labels: int = 0
+    n_same_length: int = 0
 
     # Confidence
     confidence_buckets: dict[str, int] = field(default_factory=dict)
@@ -215,6 +223,20 @@ def analyze_contrastive_pairs(
             else:
                 analysis.n_only_long_associated += 1
 
+        # Largest reward - only count when both are computable
+        lr_short = pair.short_term.matches_largest_reward
+        lr_long = pair.long_term.matches_largest_reward
+        if lr_short is not None and lr_long is not None:
+            analysis.n_largest_reward_computable += 1
+            if lr_short and lr_long:
+                analysis.n_both_largest_reward += 1
+            elif not lr_short and not lr_long:
+                analysis.n_neither_largest_reward += 1
+            elif lr_short and not lr_long:
+                analysis.n_only_short_largest_reward += 1
+            else:
+                analysis.n_only_long_largest_reward += 1
+
         # Content
         if pair.same_rewards:
             analysis.n_same_rewards += 1
@@ -222,6 +244,8 @@ def analyze_contrastive_pairs(
             analysis.n_same_times += 1
         if pair.same_labels:
             analysis.n_same_labels += 1
+        if pair.same_length:
+            analysis.n_same_length += 1
 
         # Confidence
         conf = pair.min_choice_prob
@@ -409,6 +433,23 @@ def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
         log("  Not computable (requires both samples to have horizon)")
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Largest Reward Summary
+    # ─────────────────────────────────────────────────────────────────────────
+    _section("LARGEST REWARD")
+    log("")
+    n_lr = analysis.n_largest_reward_computable
+    n_not_computable = n - n_lr
+    if n_not_computable > 0:
+        log(f"  Computable: {_stat(n_lr, n)}")
+    if n_lr > 0:
+        log(f"  Both largest:      {_stat(analysis.n_both_largest_reward, n_lr)}")
+        log(f"  Neither largest:   {_stat(analysis.n_neither_largest_reward, n_lr)}")
+        log(f"  Only short largest:{_stat(analysis.n_only_short_largest_reward, n_lr)}")
+        log(f"  Only long largest: {_stat(analysis.n_only_long_largest_reward, n_lr)}")
+    elif n_not_computable == n:
+        log("  Not computable (requires reward values)")
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Content Variation
     # ─────────────────────────────────────────────────────────────────────────
     _section("CONTENT VARIATION")
@@ -416,6 +457,7 @@ def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
     log(f"  Same rewards:        {_stat(analysis.n_same_rewards, n)}")
     log(f"  Same delivery times: {_stat(analysis.n_same_times, n)}")
     log(f"  Same labels:         {_stat(analysis.n_same_labels, n)}")
+    log(f"  Same length:         {_stat(analysis.n_same_length, n)}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # By Reward Ratio (only if multiple ratios)
