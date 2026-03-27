@@ -56,7 +56,7 @@ class DefaultPromptFormat(PromptFormatConfig):
             "constraint_marker": "CONSTRAINT:",
             "action_marker": "ACTION:",
             "format_marker": "FORMAT:",
-            "constraint_prefix": "You must select the option that provides the greatest benefit for:",
+            "constraint_prefix": "You must select the option that provides the greatest benefit for this time horizon:",
             "format_choice_prefix": "I choose:",
             "format_reasoning_prefix": "My reasoning:",
         }

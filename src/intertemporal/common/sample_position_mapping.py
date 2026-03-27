@@ -19,6 +19,7 @@ from src.common import (
 from ..data.default_datasets import BASE_CONTEXT
 from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..prompt.prompt_dataset_config import ContextConfig
+from ..prompt.prompt_dataset_generator import TIME_HORIZON_MIN_LENGTH
 
 if TYPE_CHECKING:
     from .preference_types import PreferenceSample, PromptSample
@@ -344,6 +345,9 @@ def _build_named_positions(
         "constraint_marker": fmt.prompt_const_keywords.get(
             "constraint_marker", "CONSTRAINT:"
         ),
+        "constraint_prefix": fmt.prompt_const_keywords.get(
+            "constraint_prefix", "You must select the option that provides the greatest benefit for:"
+        ),
         "action_marker": fmt.prompt_const_keywords.get("action_marker", "ACTION:"),
         "format_marker": fmt.prompt_const_keywords.get("format_marker", "FORMAT:"),
         "format_choice_prefix": fmt.prompt_const_keywords.get(
@@ -420,66 +424,43 @@ def _build_named_positions(
 
         if constraint_marker_char >= 0:
             # Search for time_horizon only AFTER the CONSTRAINT marker
-            time_horizon_str = str(sample.prompt.time_horizon)
+            # Use the same padding as in prompt generation
+            time_horizon_str = sample.prompt.time_horizon.to_string(
+                min_length=TIME_HORIZON_MIN_LENGTH
+            )
             time_horizon_char = prompt_text.find(
                 time_horizon_str, constraint_marker_char
             )
 
             if time_horizon_char >= 0:
-                # Find token positions for this specific occurrence
-                char_count = 0
-                time_horizon_positions = []
-                time_horizon_char_end = time_horizon_char + len(time_horizon_str)
-
-                for i, tok in enumerate(prompt_tokens_decoded):
-                    tok_start = char_count
-                    tok_end = char_count + len(tok)
-
-                    # Token overlaps with the time_horizon range
-                    if (
-                        tok_end > time_horizon_char
-                        and tok_start < time_horizon_char_end
-                    ):
-                        time_horizon_positions.append(i)
-
-                    char_count = tok_end
-                    if tok_start >= time_horizon_char_end:
-                        break
+                # Use _find_substring_token_range for proper boundary handling
+                # This ensures boundary tokens that extend past the time_horizon
+                # are correctly handled (excluded if inside part is whitespace
+                # and outside part has invalid chars like '.')
+                time_horizon_positions = _find_substring_token_range(
+                    prompt_tokens_decoded,
+                    prompt_text,
+                    time_horizon_str,
+                    verify=True,
+                )
 
                 if time_horizon_positions:
                     named_positions["time_horizon"] = time_horizon_positions
 
-                    # post_time_horizon: only the period/newline after time_horizon until ACTION
-                    action_marker_text = markers.get("action_marker", "ACTION:")
-                    action_marker_char = prompt_text.find(action_marker_text)
-
-                    if action_marker_char >= 0:
-                        # Get char position after time_horizon ends
-                        time_horizon_end_pos = max(time_horizon_positions)
-                        char_count = 0
-                        for i, tok in enumerate(prompt_tokens_decoded):
-                            if i == time_horizon_end_pos:
-                                time_horizon_end_char = char_count + len(tok)
-                                break
-                            char_count += len(tok)
-                        else:
-                            time_horizon_end_char = len(prompt_text)
-
-                        # Find tokens between time_horizon end and action_marker
-                        post_time_horizon_positions = []
-                        char_count = 0
-                        for i, tok in enumerate(prompt_tokens_decoded):
-                            tok_start = char_count
-                            tok_end = char_count + len(tok)
-                            if (
-                                tok_start >= time_horizon_end_char
-                                and tok_start < action_marker_char
-                            ):
-                                post_time_horizon_positions.append(i)
-                            char_count = tok_end
-                        if post_time_horizon_positions:
-                            named_positions["post_time_horizon"] = (
-                                post_time_horizon_positions
+                    # post_time_horizon: ONLY the single token immediately after time_horizon
+                    # (typically the period "." or ".\n")
+                    # Skip if that token is already claimed by action_marker
+                    time_horizon_end_pos = max(time_horizon_positions)
+                    next_token_pos = time_horizon_end_pos + 1
+                    if next_token_pos < len(prompt_tokens_decoded):
+                        # Check if this token is part of action_marker
+                        action_marker_positions = named_positions.get("action_marker", [])
+                        if next_token_pos not in action_marker_positions:
+                            named_positions["post_time_horizon"] = [next_token_pos]
+                            # Assert only ONE post_time_horizon
+                            assert len(named_positions["post_time_horizon"]) == 1, (
+                                f"post_time_horizon must have exactly 1 position, "
+                                f"got {len(named_positions['post_time_horizon'])}"
                             )
 
     # Determine left/right based on presentation order

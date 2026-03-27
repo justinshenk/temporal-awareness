@@ -60,7 +60,9 @@ def canonicalize_unit(unit: str) -> str:
     raise ValueError(f"Unknown time unit: {unit}")
 
 
-def format_time_value(value: float, unit: str, min_length: int = 0) -> str:
+def format_time_value(
+    value: float, unit: str, min_length: int = 0, with_dot: bool = True
+) -> str:
     """Format a time value with appropriate unit singularization.
 
     Args:
@@ -85,6 +87,10 @@ def format_time_value(value: float, unit: str, min_length: int = 0) -> str:
         pad_left = pad_total // 4  # 25% on left
         pad_right = pad_total - pad_left  # 75% on right
         result = " " * pad_left + result + " " * pad_right
+
+    if with_dot:
+        result += "."
+
     return result
 
 
@@ -130,16 +136,18 @@ class TimeValue(BaseSchema):
             value=self.to_unit(target_unit), unit=canonicalize_unit(target_unit)
         )
 
-    def to_string(self, min_length: int = 0) -> str:
+    def to_string(self, min_length: int = 20, with_dot: bool = True) -> str:
         """Format as string with optional padding.
 
         Args:
             min_length: Minimum length, padded 25% left / 75% right
         """
-        return format_time_value(self.value, self.unit, min_length=min_length)
+        return format_time_value(
+            self.value, self.unit, min_length=min_length, with_dot=with_dot
+        )
 
     def __str__(self) -> str:
-        return self.to_string(min_length=0)
+        return self.to_string(min_length=0, with_dot=False)
 
     def __lt__(self, other: TimeValue) -> bool:
         return self.to_years() < other.to_years()

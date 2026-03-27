@@ -13,9 +13,10 @@ from __future__ import annotations
 ###########################
 
 BASE_CONTEXT = {
-    "reward_unit": "$",
-    "role": "head of household",
-    "situation": "Decide on investment.",
+    "reward_unit": "dollars",
+    "role": "the head of the household",
+    "situation": "Plan for the future of the household based on the stated objectives and constraints.",
+    "task_in_question": "choose the best investment",
     "domain": "finance",
 }
 
