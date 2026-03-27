@@ -166,7 +166,7 @@ class DatasetPositionMapping(DatasetPositionMappingBase):
 
 
 def _find_substring_token_range(
-    tokens: list[str], text: str, substring: str, verify: bool = True
+    tokens: list[str], text: str, substring: str, verify: bool = True, occurrence: int = 1
 ) -> list[int]:
     """Find token positions spanning a substring in text.
 
@@ -180,11 +180,20 @@ def _find_substring_token_range(
         text: Full text (joined tokens)
         substring: The substring to find
         verify: If True, assert that joined tokens match substring content
+        occurrence: Which occurrence to find (1=first, 2=second, etc.)
 
     Returns:
         List of token indices that span the substring
     """
-    char_idx = text.find(substring)
+    # Find the Nth occurrence
+    char_idx = -1
+    search_start = 0
+    for _ in range(occurrence):
+        char_idx = text.find(substring, search_start)
+        if char_idx == -1:
+            return []
+        search_start = char_idx + 1
+
     if char_idx == -1:
         return []
 
@@ -260,28 +269,40 @@ def _find_substring_token_range(
 
 
 def _find_time_value_positions(
-    tokens: list[str], text: str, time_val
+    tokens: list[str], text: str, time_val, occurrence: int = 1
 ) -> list[int]:
     """Find token positions for a TimeValue's formatted string.
 
     Searches for the complete formatted time (e.g., "  1 month  ") as a unit,
     including any padding from format_time_value().
+
+    Args:
+        tokens: List of decoded tokens
+        text: Full text (joined tokens)
+        time_val: TimeValue to find
+        occurrence: Which occurrence to find (1=first, 2=second, etc.)
     """
     formatted = str(time_val)  # e.g., "  1 month  " with padding
-    return _find_substring_token_range(tokens, text, formatted)
+    return _find_substring_token_range(tokens, text, formatted, occurrence=occurrence)
 
 
 def _find_reward_value_positions(
-    tokens: list[str], text: str, reward_val
+    tokens: list[str], text: str, reward_val, occurrence: int = 1
 ) -> list[int]:
     """Find token positions for a RewardValue's formatted string.
 
     Searches for the complete formatted reward (e.g., "1,000 dollars") as a unit,
     not split into parts, to avoid matching partial strings elsewhere.
+
+    Args:
+        tokens: List of decoded tokens
+        text: Full text (joined tokens)
+        reward_val: RewardValue to find
+        occurrence: Which occurrence to find (1=first, 2=second, etc.)
     """
     # Format as "value unit" (e.g., "1,000 dollars")
     formatted = str(reward_val)  # Uses RewardValue.__str__
-    return _find_substring_token_range(tokens, text, formatted)
+    return _find_substring_token_range(tokens, text, formatted, occurrence=occurrence)
 
 
 def _build_named_positions(
@@ -365,39 +386,65 @@ def _build_named_positions(
         named_positions["right_label"] = right_label_pos
 
     # === Variable Positions (rewards, times) ===
+    # time_horizon appears AFTER the CONSTRAINT marker, so search only in that section
     if sample.prompt.time_horizon is not None:
-        time_horizon_positions = _find_time_value_positions(
-            prompt_tokens_decoded, prompt_text, sample.prompt.time_horizon
-        )
-        if time_horizon_positions:
-            named_positions["time_horizon"] = time_horizon_positions
+        # Find CONSTRAINT marker position first
+        constraint_marker_text = markers.get("constraint_marker", "CONSTRAINT:")
+        constraint_marker_char = prompt_text.find(constraint_marker_text)
 
-            # Find post_time_horizon: positions between time_horizon and action_marker
-            action_marker_text = markers.get("action_marker", "ACTION:")
-            action_marker_char = prompt_text.find(action_marker_text)
-            if action_marker_char >= 0:
-                # Get char position after time_horizon ends
-                time_horizon_end_pos = max(time_horizon_positions)
-                char_count = 0
-                for i, tok in enumerate(prompt_tokens_decoded):
-                    if i == time_horizon_end_pos:
-                        time_horizon_end_char = char_count + len(tok)
-                        break
-                    char_count += len(tok)
-                else:
-                    time_horizon_end_char = len(prompt_text)
+        if constraint_marker_char >= 0:
+            # Search for time_horizon only AFTER the CONSTRAINT marker
+            time_horizon_str = str(sample.prompt.time_horizon)
+            time_horizon_char = prompt_text.find(time_horizon_str, constraint_marker_char)
 
-                # Find tokens between time_horizon end and action_marker
-                post_time_horizon_positions = []
+            if time_horizon_char >= 0:
+                # Find token positions for this specific occurrence
                 char_count = 0
+                time_horizon_positions = []
+                time_horizon_char_end = time_horizon_char + len(time_horizon_str)
+
                 for i, tok in enumerate(prompt_tokens_decoded):
                     tok_start = char_count
                     tok_end = char_count + len(tok)
-                    if tok_start >= time_horizon_end_char and tok_start < action_marker_char:
-                        post_time_horizon_positions.append(i)
+
+                    # Token overlaps with the time_horizon range
+                    if tok_end > time_horizon_char and tok_start < time_horizon_char_end:
+                        time_horizon_positions.append(i)
+
                     char_count = tok_end
-                if post_time_horizon_positions:
-                    named_positions["post_time_horizon"] = post_time_horizon_positions
+                    if tok_start >= time_horizon_char_end:
+                        break
+
+                if time_horizon_positions:
+                    named_positions["time_horizon"] = time_horizon_positions
+
+                    # post_time_horizon: only the period/newline after time_horizon until ACTION
+                    action_marker_text = markers.get("action_marker", "ACTION:")
+                    action_marker_char = prompt_text.find(action_marker_text)
+
+                    if action_marker_char >= 0:
+                        # Get char position after time_horizon ends
+                        time_horizon_end_pos = max(time_horizon_positions)
+                        char_count = 0
+                        for i, tok in enumerate(prompt_tokens_decoded):
+                            if i == time_horizon_end_pos:
+                                time_horizon_end_char = char_count + len(tok)
+                                break
+                            char_count += len(tok)
+                        else:
+                            time_horizon_end_char = len(prompt_text)
+
+                        # Find tokens between time_horizon end and action_marker
+                        post_time_horizon_positions = []
+                        char_count = 0
+                        for i, tok in enumerate(prompt_tokens_decoded):
+                            tok_start = char_count
+                            tok_end = char_count + len(tok)
+                            if tok_start >= time_horizon_end_char and tok_start < action_marker_char:
+                                post_time_horizon_positions.append(i)
+                            char_count = tok_end
+                        if post_time_horizon_positions:
+                            named_positions["post_time_horizon"] = post_time_horizon_positions
 
     # Determine left/right based on presentation order
     if sample.short_term_first:
@@ -420,11 +467,15 @@ def _build_named_positions(
         named_positions["left_reward"] = left_reward_pos
 
     # Right option (appears second in prompt)
+    # Use occurrence=2 if right value matches left value (same string appears twice)
+    right_time_occurrence = 2 if str(right_option.time) == str(left_option.time) else 1
+    right_reward_occurrence = 2 if str(right_option.reward) == str(left_option.reward) else 1
+
     right_time_pos = _find_time_value_positions(
-        prompt_tokens_decoded, prompt_text, right_option.time
+        prompt_tokens_decoded, prompt_text, right_option.time, occurrence=right_time_occurrence
     )
     right_reward_pos = _find_reward_value_positions(
-        prompt_tokens_decoded, prompt_text, right_option.reward
+        prompt_tokens_decoded, prompt_text, right_option.reward, occurrence=right_reward_occurrence
     )
     if right_time_pos:
         named_positions["right_time"] = right_time_pos

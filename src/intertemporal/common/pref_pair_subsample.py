@@ -94,6 +94,13 @@ class PrefPairSubsampleStrategy(BaseSchema):
 
     skip_filtering: bool = False
 
+    add_no_horizon: bool | int = False
+    """Include pairs where both samples have no horizon.
+    - False: don't add any
+    - True: add all
+    - int: add up to this many (that weren't already included)
+    """
+
     @classmethod
     def Default(cls) -> "PrefPairSubsampleStrategy":
         """Return the default subsampling strategy."""
@@ -103,6 +110,7 @@ class PrefPairSubsampleStrategy(BaseSchema):
         strategy.target_pairs = 100
         strategy.selection_strategy = "round_robin"
         strategy.ensure_diversity = True
+        strategy.add_no_horizon = 10
         return strategy
 
     def apply_balanced_horizon_pairs(
@@ -125,7 +133,9 @@ class PrefPairSubsampleStrategy(BaseSchema):
         estimated_active_combos = max(1, n_combos // 2)
         max_per_h = max(2, int(self.target_pairs * 2 / estimated_active_combos) + 1)
 
-        return PrefPairSubsampleStrategy(**{**self.to_dict(), "max_per_horizon_pair": max_per_h})
+        return PrefPairSubsampleStrategy(
+            **{**self.to_dict(), "max_per_horizon_pair": max_per_h}
+        )
 
     @classmethod
     def NoSubsample(cls) -> "PrefPairSubsampleStrategy":

@@ -76,6 +76,14 @@ def get_contrastive_preferences(
         req, groups, strat
     )
 
+    # Extract no-horizon pairs before filtering (if add_no_horizon is set)
+    no_horizon_pairs: list[ContrastivePreferences] = []
+    if strat.add_no_horizon:
+        no_horizon_pairs = [
+            p for p in pairs
+            if p.short_term.time_horizon is None and p.long_term.time_horizon is None
+        ]
+
     # Apply filters in order
     # 1. First: reorder for diversity (round_robin cycles through horizon×content groups)
     pairs = _apply_selection_strategy(pairs, strat)
@@ -91,6 +99,25 @@ def get_contrastive_preferences(
     pairs = _apply_max_per_sample(pairs, max_per_sample)
     # 3. Finally: truncate to target
     pairs = _apply_target_pairs(pairs, strat)
+
+    # Add back no-horizon pairs that weren't already included
+    if strat.add_no_horizon and no_horizon_pairs:
+        existing_pair_keys = {
+            (p.short_term.sample_idx, p.long_term.sample_idx) for p in pairs
+        }
+        # Determine max to add: True means unlimited, int means that many
+        max_to_add = len(no_horizon_pairs) if strat.add_no_horizon is True else int(strat.add_no_horizon)
+        added = 0
+        for p in no_horizon_pairs:
+            if added >= max_to_add:
+                break
+            key = (p.short_term.sample_idx, p.long_term.sample_idx)
+            if key not in existing_pair_keys:
+                pairs.append(p)
+                existing_pair_keys.add(key)
+                added += 1
+        if added > 0:
+            print(f"[add_no_horizon] Added {added} no-horizon pairs")
 
     print(
         f"[contrastive] {len(short_choosers)} short, {len(long_choosers)} long -> "
