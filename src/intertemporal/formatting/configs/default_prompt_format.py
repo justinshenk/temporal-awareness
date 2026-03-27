@@ -24,7 +24,7 @@ class DefaultPromptFormat(PromptFormatConfig):
         "[action_marker] Select one of the two options. [reasoning_ask]"
     )
 
-    response_template: str = """[format_marker] Respond in this format:
+    response_template: str = """[format_marker] Respond in this format:\n
 [format_choice_prefix] <[left_term_label] or [right_term_label]>.
 [format_reasoning_prefix] <reasoning in 1-3 sentences>"""
 
