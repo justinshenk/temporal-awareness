@@ -409,6 +409,7 @@ def generate_viz(
     # Optional context for richer visualizations
     pairs: list["ContrastivePair"] | None = None,
     pref_pairs: list["ContrastivePreferences"] | None = None,
+    position_mappings: dict[int, tuple[SamplePositionMapping, SamplePositionMapping]] | None = None,
     runner: "BinaryChoiceRunner | None" = None,
     save_token_trees_fn: callable | None = None,
     # Components to process (auto-detected from cache if None)
@@ -494,15 +495,12 @@ def generate_viz(
     if fine_agg:
         visualize_fine_patching(fine_agg, exp_dir / "agg_fine")
 
-    # Build position mapping for semantic position labels (using first pair as representative)
-    # Priority: build from live data if available, otherwise load from cache
+    # Get representative position mapping for aggregated viz (use first pair's long_term)
     position_mapping = None
-    if pref_pairs and runner:
-        position_mapping = SamplePositionMapping.build_from_preference(
-            pref_pairs[0].long_term, runner, sample_idx=0
-        )
-    else:
-        # Try loading from cache (for regeneration from cached data)
+    if position_mappings and 0 in position_mappings:
+        position_mapping = position_mappings[0][1]  # long_term mapping from pair 0
+    elif position_mappings is None:
+        # Try loading from cache
         position_mapping = load_position_mapping(exp_dir)
         if position_mapping:
             log("[viz] Loaded position mapping from cache")
@@ -626,19 +624,15 @@ def generate_viz(
                 visualize_mlp_pair(mlp_result, pair_dir / "mlp_analysis")
             if attn_result:
                 # Pass runner for QK analysis (plot 8) if TransformerLens backend
-                # Build mapping for token annotations if pref_pairs available
-                mapping = None
-                if pref_pairs and pair_idx < len(pref_pairs) and runner:
-                    pref_pair = pref_pairs[pair_idx]
-                    # Use long_term sample (corrupted) which has the time_horizon
-                    mapping = SamplePositionMapping.build_from_preference(
-                        pref_pair.long_term, runner, sample_idx=pair_idx
-                    )
+                # Get per-pair position mapping (use long_term)
+                pair_mapping = None
+                if position_mappings and pair_idx in position_mappings:
+                    pair_mapping = position_mappings[pair_idx][1]  # long_term
                 visualize_attn_pair(
                     attn_result,
                     pair_dir / "attn",
                     runner=runner,
-                    mapping=mapping,
+                    mapping=pair_mapping,
                 )
             if diffmeans_result:
                 # OV projection (plot 7) is in diffmeans_viz - requires runner and pair

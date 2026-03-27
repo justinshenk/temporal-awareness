@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import hashlib
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -19,16 +19,22 @@ class DefaultPromptFormat(PromptFormatConfig):
     consider_template: str = (
         "[consider_marker] Think deeply about which option is preferable."
     )
-    time_horizon_spec_template: str = (
-        "You are primarily concerned about outcome in [time_horizon]."
-    )
+    constraint_template: str = "[constraint_marker] [constraint_prefix] [time_horizon]."
     action_template: str = (
-        "[action_marker] Select one of the two options, and [reasoning_ask]"
+        "[action_marker] Select one of the two options. [reasoning_ask]"
     )
 
     response_template: str = """[format_marker] Respond in this format:
 [format_choice_prefix] <[left_term_label] or [right_term_label]>.
 [format_reasoning_prefix] <reasoning in 1-3 sentences>"""
+
+    def get_id(self):
+        content = (
+            self.question_template(None)
+            + self.question_template(TimeValue(0))
+            + self.response_template
+        )
+        return hashlib.md5(content.encode()).hexdigest()[:16]
 
     def question_template(self, time_horizon: Optional[TimeValue] = None) -> str:
         """Assemble the question template, including time-horizon spec when present."""
@@ -38,17 +44,19 @@ class DefaultPromptFormat(PromptFormatConfig):
             self.consider_template,
         ]
         if time_horizon is not None:
-            parts.append(self.time_horizon_spec_template)
+            parts.append(self.constraint_template)
         parts.append(self.action_template)
-        return "\n".join(parts)
+        return "\n\n".join(parts)
 
     prompt_const_keywords: dict = field(
         default_factory=lambda: {
             "situation_marker": "SITUATION:",
             "task_marker": "TASK:",
             "consider_marker": "CONSIDER:",
+            "constraint_marker": "CONSTRAINT:",
             "action_marker": "ACTION:",
             "format_marker": "FORMAT:",
+            "constraint_prefix": "You are primarily concerned about outcome in:",
             "format_choice_prefix": "I choose:",
             "format_reasoning_prefix": "My reasoning:",
         }
@@ -94,6 +102,7 @@ class DefaultPromptFormat(PromptFormatConfig):
             "situation": self.prompt_const_keywords["situation_marker"],
             "task": self.prompt_const_keywords["task_marker"],
             "consider": self.prompt_const_keywords["consider_marker"],
+            "constraint": self.prompt_const_keywords["constraint_marker"],
             "action": self.prompt_const_keywords["action_marker"],
             "format": self.prompt_const_keywords["format_marker"],
         }
@@ -110,27 +119,5 @@ class DefaultPromptFormat(PromptFormatConfig):
             ],
         }
 
-    def get_anchor_texts(self) -> list[str]:
-        """Return text anchors for position alignment between sequences.
-
-        Extracts text values from get_interesting_positions().
-        These are structural markers that appear at corresponding positions
-        across different prompts, useful for aligning token positions.
-        """
-        return list(self.prompt_const_keywords.values()) + list(
-            self.response_const_keywords.values()
-        )
-
-    def get_prompt_marker_before_time_horizon(self) -> str:
-        """Return the exact text prefix before the model's choice.
-
-        This is used to locate where the model's choice token appears.
-        """
-        return self.prompt_const_keywords["consider_marker"]
-
     def get_response_prefix_before_choice(self) -> str:
-        """Return the exact text prefix before the model's choice.
-
-        This is used to locate where the model's choice token appears.
-        """
         return self.response_const_keywords["response_choice_prefix"]

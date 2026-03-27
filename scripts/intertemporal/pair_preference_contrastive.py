@@ -23,16 +23,16 @@ from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 from src.intertemporal.preference import (
     PreferenceDataset,
     analyze_preferences,
+    analyze_samples,
     print_analysis,
 )
 from src.intertemporal.prompt import PromptDatasetConfig
-from src.intertemporal.common.contrastive_utils import (
-    get_contrastive_preferences,
-    PrefPairRequirement,
-    PrefPairSubsampleStrategy,
-)
+from src.intertemporal.common.contrastive_utils import get_contrastive_preferences
+from src.intertemporal.common.pref_pair_requirement import PrefPairRequirement
+from src.intertemporal.common.pref_pair_subsample import PrefPairSubsampleStrategy
 from src.intertemporal.common.contrastive_preferences import ContrastivePreferences
 from src.intertemporal.common.contrastive_analysis import print_contrastive_pairs
+from src.common.profiler import profile, P
 
 
 def get_default_pref_dataset_path() -> Path:
@@ -411,6 +411,57 @@ def print_insights(metrics_list: list[PairMetrics]) -> None:
         print("   L:7y/L:15/L:no split is 33/33/33 (vs baseline 18/41/41)")
 
 
+def print_section(
+    section_name: str,
+    samples: list,
+    pairs: list[ContrastivePreferences] | None,
+    model_name: str,
+) -> None:
+    """Print a complete section with PREFERENCE ANALYSIS and CONTRASTIVE PAIRS.
+
+    Args:
+        section_name: Header for the section (e.g., "ALL SAMPLES", "FILTERED PAIRS")
+        samples: List of PreferenceSample for preference analysis
+        pairs: List of ContrastivePreferences for pair analysis (None to skip)
+        model_name: Model name for the analysis header
+    """
+    n_samples = len(samples)
+    n_pairs = len(pairs) if pairs else 0
+
+    # Section header
+    print(f"\n{'#' * 80}")
+    if pairs:
+        print(f"  {section_name} ({n_pairs} pairs, {n_samples} samples)")
+    else:
+        print(f"  {section_name} ({n_samples} samples)")
+    print(f"{'#' * 80}")
+
+    # 1. PREFERENCE ANALYSIS
+    sample_analysis = analyze_samples(samples, model_name=model_name)
+    print_analysis(sample_analysis)
+
+    # 2. CONTRASTIVE PAIRS ANALYSIS
+    if pairs:
+        print_contrastive_pairs(pairs)
+        metrics = extract_metrics(section_name, pairs)
+        print_detailed_metrics(metrics)
+    else:
+        # Show placeholder for consistency
+        n_short = sum(1 for s in samples if s.choice_term == "short_term")
+        n_long = sum(1 for s in samples if s.choice_term == "long_term")
+        n_possible = n_short * n_long
+        print(f"""
+{'#' * 80}
+  CONTRASTIVE PAIRS: {n_possible:,} possible (not generated)
+{'#' * 80}
+
+  Short-choosers: {n_short}
+  Long-choosers:  {n_long}
+
+  (Pair analysis skipped for unfiltered - {n_possible:,} pairs too slow)
+""")
+
+
 def print_default_requirements(req: PrefPairRequirement | None = None) -> None:
     """Print the PrefPairRequirement settings."""
     if req is None:
@@ -696,6 +747,45 @@ def run_confidence_sweep(
     print_simple_table(metrics_list, "Confidence sweep with smart-reduce diverse")
 
 
+@profile
+def run_unfiltered_section(pref_dataset: PreferenceDataset) -> None:
+    """Run Section 1: All pairs (unfiltered)."""
+    unfiltered_pairs = get_contrastive_preferences(
+        pref_dataset,
+        strat=PrefPairSubsampleStrategy.NoSubsample(),
+    )
+    print_section(
+        section_name="SECTION 1: ALL PAIRS (UNFILTERED)",
+        samples=pref_dataset.preferences,
+        pairs=unfiltered_pairs,
+        model_name=pref_dataset.model_name,
+    )
+
+
+@profile
+def run_filtered_section(
+    pref_dataset: PreferenceDataset,
+    req: PrefPairRequirement | None,
+) -> None:
+    """Run Section 2: Filtered pairs."""
+    print("\n" * 20)
+    print_default_requirements(req)
+
+    pairs = get_contrastive_preferences(
+        pref_dataset,
+        req=req,
+        strat=PrefPairSubsampleStrategy.Default(),
+    )
+    samples = [s for p in pairs for s in (p.short_term, p.long_term)]
+
+    print_section(
+        section_name="SECTION 2: FILTERED PAIRS",
+        samples=samples,
+        pairs=pairs,
+        model_name=pref_dataset.model_name,
+    )
+
+
 def main() -> int:
     args = get_args()
 
@@ -738,9 +828,7 @@ def main() -> int:
     print(f"\nDataset: {pref_dataset.prompt_dataset_id} | Model: {pref_dataset.model}")
     print(f"Samples: {len(pref_dataset.preferences)}")
 
-    # Print preference analysis
-    analysis = analyze_preferences(pref_dataset)
-    print_analysis(analysis)
+    run_unfiltered_section(pref_dataset)
 
     # Default: just run get_contrastive_preferences with defaults and print
     # --all: run full analysis with all configurations
@@ -762,20 +850,9 @@ def main() -> int:
         # User provided specific subsample - run just that config
         run_single_config(pref_dataset, req=req, subsample=subsample)
     else:
-        # Default: get pairs with defaults and print analysis
-        print_default_requirements(req)
+        run_filtered_section(pref_dataset, req)
 
-        pairs = get_contrastive_preferences(pref_dataset, req=req)
-
-        print(f"\n{'#' * 80}")
-        print(f"  CONTRASTIVE PAIRS: {len(pairs)} pairs")
-        print(f"{'#' * 80}")
-
-        print_contrastive_pairs(pairs)
-
-        metrics = extract_metrics("DEFAULT", pairs)
-        print_detailed_metrics(metrics)
-
+    P.report()
     return 0
 
 

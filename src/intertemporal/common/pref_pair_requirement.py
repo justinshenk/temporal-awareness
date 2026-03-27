@@ -52,6 +52,10 @@ class PrefPairRequirement(BaseSchema):
     only_long_horizon: bool = False
     only_one_horizon: bool = False
 
+    # Constraint requirements (horizon presence consistency)
+    same_constraint: bool = False  # both_horizon OR neither_horizon
+    different_constraint: bool = False  # only_one_horizon
+
     # Rational choice requirements
     both_rational: bool = False
     neither_rational: bool = False
@@ -77,6 +81,13 @@ class PrefPairRequirement(BaseSchema):
     same_length: bool = False
     different_length: bool = False
 
+    @classmethod
+    def Default(cls) -> "PrefPairRequirement":
+        """Return the default PrefPairRequirement"""
+        req = cls()
+        req.same_constraint = False
+        return req
+
     def verify(self) -> None:
         """Verify requirements are logically consistent.
 
@@ -94,6 +105,7 @@ class PrefPairRequirement(BaseSchema):
             ("same_rewards", "different_rewards"),
             ("same_times", "different_times"),
             ("same_horizon", "different_horizon"),
+            ("same_constraint", "different_constraint"),
             ("same_length", "different_length"),
             ("both_rational", "neither_rational"),
             ("both_associated", "neither_associated"),
@@ -163,7 +175,9 @@ class PrefPairRequirement(BaseSchema):
             "only_short_largest_reward",
             "only_long_largest_reward",
         ]
-        active_largest_reward = [r for r in largest_reward_exclusive if getattr(self, r)]
+        active_largest_reward = [
+            r for r in largest_reward_exclusive if getattr(self, r)
+        ]
         if len(active_largest_reward) > 1:
             errors.append(
                 f"Largest reward requirements are mutually exclusive: {active_largest_reward}"
@@ -226,6 +240,12 @@ class PrefPairRequirement(BaseSchema):
         if self.only_long_horizon and not pair.only_long_horizon:
             return False
         if self.only_one_horizon and not pair.only_one_horizon:
+            return False
+
+        # Constraint checks (horizon presence consistency)
+        if self.same_constraint and not pair.same_constraint:
+            return False
+        if self.different_constraint and not pair.different_constraint:
             return False
 
         # Rational checks

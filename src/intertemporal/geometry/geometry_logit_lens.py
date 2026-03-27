@@ -226,49 +226,44 @@ def run_logit_lens_analysis(
         if sample_idx % 50 == 0:
             logger.info(f"  Processing sample {sample_idx}/{n_samples}")
 
-        try:
-            # Get the formatted prompt
-            prompt_format = find_prompt_format_config(sample.formatting_id)
-            choice_prefix = prompt_format.get_response_prefix_before_choice()
+        # Get the formatted prompt
+        prompt_format = find_prompt_format_config(sample.formatting_id)
+        choice_prefix = prompt_format.get_response_prefix_before_choice()
 
-            # Run the model to get response position
-            pref = querier.query_sample(
-                sample, runner, choice_prefix, activation_names=[]
-            )
+        # Run the model to get response position
+        pref = querier.query_sample(
+            sample, runner, choice_prefix, activation_names=[]
+        )
 
-            if pref.chosen_traj is None:
-                continue
-
-            # Get token IDs including response
-            full_tokens = pref.chosen_traj.token_ids
-            prompt_len = pref.prompt_token_count
-
-            # Response position is first token of response
-            response_position = prompt_len
-
-            # Create input tensor
-            input_ids = torch.tensor([full_tokens], device=runner.device)
-
-            # Run logit lens
-            logit_diffs, cosine_sims = compute_logit_lens(
-                runner,
-                input_ids,
-                response_position,
-                token_a,
-                token_b,
-                layers,
-            )
-
-            all_logit_diffs[:, sample_idx] = logit_diffs
-            all_cosine_sims[:, sample_idx] = cosine_sims
-
-            # Clean up
-            pref.internals = None
-            del pref
-
-        except Exception as e:
-            logger.warning(f"  Skipping sample {sample_idx}: {e}")
+        if pref.chosen_traj is None:
             continue
+
+        # Get token IDs including response
+        full_tokens = pref.chosen_traj.token_ids
+        prompt_len = pref.prompt_token_count
+
+        # Response position is first token of response
+        response_position = prompt_len
+
+        # Create input tensor
+        input_ids = torch.tensor([full_tokens], device=runner.device)
+
+        # Run logit lens
+        logit_diffs, cosine_sims = compute_logit_lens(
+            runner,
+            input_ids,
+            response_position,
+            token_a,
+            token_b,
+            layers,
+        )
+
+        all_logit_diffs[:, sample_idx] = logit_diffs
+        all_cosine_sims[:, sample_idx] = cosine_sims
+
+        # Clean up
+        pref.internals = None
+        del pref
 
         # Periodic GC
         if sample_idx % 100 == 0:

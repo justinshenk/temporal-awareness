@@ -136,9 +136,9 @@ def _plot_redundancy_gap(
 
     layers = sorted(all_layers)
     n_layers = len(layers)
-    plot_components = ["attn_out", "mlp_out", "resid_post"]
+    plot_components = COMPONENTS  # Include all: resid_pre, attn_out, mlp_out, resid_post
 
-    bar_width = 0.25
+    bar_width = 0.2  # Narrower bars for 4 components
     x = np.arange(n_layers)
 
     fig, ax = create_figure(figsize=(max(12, n_layers * 0.4), 6))
@@ -176,7 +176,7 @@ def _plot_redundancy_gap(
 
     # Tick labels - always rotate 45° and show every other label if cramped
     # Lower threshold to 15 to handle L18-L34 range (17 layers) mentioned in feedback
-    ax.set_xticks(x + bar_width)
+    ax.set_xticks(x + bar_width * 1.5)  # Center ticks for 4 components
     if n_layers > 15:
         # Show every other label to avoid cramping
         tick_labels = [f"L{lyr}" if i % 2 == 0 else "" for i, lyr in enumerate(layers)]
@@ -211,7 +211,7 @@ def _plot_redundancy_gap_sorted(
         return
 
     layers = sorted(all_layers)
-    plot_components = ["attn_out", "mlp_out", "resid_post"]
+    plot_components = COMPONENTS  # Include all: resid_pre, attn_out, mlp_out, resid_post
 
     # Build gaps
     gaps_by_comp = {}
@@ -241,7 +241,7 @@ def _plot_redundancy_gap_sorted(
     sorted_indices = [x[2] for x in sorted_by_gap]
 
     n_layers = len(sorted_layers)
-    bar_width = 0.25
+    bar_width = 0.2  # Narrower bars for 4 components
     x = np.arange(n_layers)
 
     fig, ax = create_figure(figsize=(max(12, n_layers * 0.4), 6))
@@ -254,7 +254,7 @@ def _plot_redundancy_gap_sorted(
     ax.set_xlabel("Layer (sorted by |gap|)", fontsize=12, fontweight="bold")
     ax.set_ylabel("Redundancy Gap (Disruption - Recovery)", fontsize=12, fontweight="bold")
     ax.set_title("Redundancy Gap - Sorted by Magnitude", fontsize=14, fontweight="bold")
-    ax.set_xticks(x + bar_width)
+    ax.set_xticks(x + bar_width * 1.5)  # Center ticks for 4 components
     ax.set_xticklabels([f"L{lyr}" for lyr in sorted_layers], rotation=45, ha="right")
     ax.legend(loc="best")
     setup_grid(ax)

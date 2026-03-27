@@ -24,72 +24,132 @@ from ...viz.token_coloring import (
 TOKENIZATION_CACHE_FILENAME = "tokenization_viz_cache.json"
 
 # Color palette for format positions - distinct, visually appealing colors
-# Pattern: marker=saturated, content=light, tail=medium (lighter than marker)
+# Pattern: marker=saturated, content=light, tail=medium
+# Similar colors within section, EXCEPT: left/right options, time_horizon, responses
 FORMAT_POS_COLORS = {
-    # === SITUATION (orange spectrum) ===
+    # === CHAT (gray spectrum) ===
+    "chat_prefix": "#78909C",        # Blue-gray
+    "chat_prefix_tail": "#90A4AE",   # Light blue-gray
+    "chat_suffix": "#78909C",        # Blue-gray
+    "chat_suffix_tail": "#90A4AE",   # Light blue-gray
+    # === SITUATION (orange spectrum - similar family) ===
     "situation_marker": "#E65100",   # Deep orange
-    "situation_content": "#FFE0B2",  # Light orange
-    "situation_tail": "#FF9800",     # Medium orange (lighter than marker)
-    # === TASK (blue spectrum) ===
+    "situation_content": "#FFCC80",  # Light orange
+    "situation_tail": "#FFB74D",     # Medium orange
+    "situation": "#FFA726",          # Orange (context keyword)
+    "role": "#FF9800",               # Orange (context keyword)
+    # === TASK (blue spectrum - similar family) ===
     "task_marker": "#1565C0",        # Strong blue
     "task_content": "#90CAF9",       # Light blue
-    "task_tail": "#42A5F5",          # Medium blue (lighter than marker)
-    # === CONSIDER (purple spectrum) ===
+    "task_tail": "#64B5F6",          # Medium blue
+    "task_in_question": "#42A5F5",   # Blue (context keyword)
+    # === OPTIONS (DISTINCT colors for left vs right) ===
+    "option_content": "#B2DFDB",     # Very light teal (neutral)
+    "options_tail": "#80CBC4",       # Light teal (neutral)
+    # Left option (olive-green - each distinct)
+    "left_label": "#7CB342",         # Lime green
+    "left_reward": "#558B2F",        # Dark olive
+    "left_reward_units": "#689F38",  # Olive
+    "left_time": "#8BC34A",          # Light lime
+    # Right option (teal-cyan - each distinct)
+    "right_label": "#00838F",        # Dark cyan
+    "right_reward": "#00ACC1",       # Cyan
+    "right_reward_units": "#26C6DA", # Light cyan
+    "right_time": "#4DD0E1",         # Very light cyan
+    # === CONSIDER (purple spectrum - similar family) ===
     "consider_marker": "#6A1B9A",    # Deep purple
     "consider_content": "#CE93D8",   # Light purple
-    "consider_tail": "#AB47BC",      # Medium purple (lighter than marker)
-    # Key variable positions in consider section
-    "time_horizon": "#D32F2F",       # Red - IMPORTANT
-    "post_time_horizon": "#EF9A9A",  # Light red
-    # === ACTION (green spectrum) ===
+    "consider_tail": "#AB47BC",      # Medium purple
+    # === CONSTRAINT (red spectrum - time_horizon DISTINCT) ===
+    "constraint_marker": "#C62828",  # Dark red
+    "constraint_content": "#EF9A9A", # Light red
+    "constraint_tail": "#E57373",    # Medium red
+    "time_horizon": "#FF5722",       # Deep orange - DISTINCT, stands out
+    "post_time_horizon": "#FF8A65",  # Light orange - DISTINCT
+    # === ACTION (green spectrum - similar family) ===
     "action_marker": "#2E7D32",      # Forest green
     "action_content": "#A5D6A7",     # Light green
-    "action_tail": "#66BB6A",        # Medium green (lighter than marker)
-    # === FORMAT (brown spectrum) ===
+    "action_tail": "#66BB6A",        # Medium green
+    # === FORMAT (brown spectrum - similar family) ===
     "format_marker": "#4E342E",      # Dark brown
     "format_content": "#BCAAA4",     # Light brown
-    "format_tail": "#8D6E63",        # Medium brown (lighter than marker)
-    "format_choice_prefix": "#AD1457",     # Deep pink
-    "format_reasoning_prefix": "#00838F",  # Dark cyan
-    # === OPTIONS (in task section) ===
-    # Left option (olive-yellow spectrum)
-    "left_label": "#558B2F",         # Olive green
-    "left_reward": "#9E9D24",        # Yellow-green
-    "left_time": "#F9A825",          # Amber
-    # Right option (blue-teal spectrum)
-    "right_label": "#0277BD",        # Light blue
-    "right_reward": "#00897B",       # Teal
-    "right_time": "#00695C",         # Dark teal
-    # Options region
-    "option_content": "#B2DFDB",     # Light teal (between option values)
-    "options_tail": "#4DD0E1",        # Light cyan (lighter shade for options end)
-    # === RESPONSE (purple-indigo spectrum) ===
-    "response_choice_prefix": "#7B1FA2",   # Purple
-    "response_choice": "#512DA8",          # Deep purple
-    "response_reasoning_prefix": "#303F9F",  # Indigo
-    "response_reasoning": "#7986CB",       # Light indigo
-    # === CHAT (gray spectrum) ===
-    "chat_prefix": "#546E7A",        # Blue-gray
-    "chat_prefix_tail": "#90A4AE",   # Light blue-gray (lighter than prefix)
-    "chat_suffix": "#37474F",        # Dark blue-gray
-    "chat_suffix_tail": "#607D8B",   # Medium blue-gray (lighter than suffix)
-    # === OTHER (neutral) ===
+    "format_tail": "#8D6E63",        # Medium brown
+    "format_choice_prefix": "#6D4C41",    # Medium-dark brown
+    "format_reasoning_prefix": "#A1887F", # Light-medium brown
+    "reasoning_ask": "#D7CCC8",      # Very light brown (context keyword)
+    # === RESPONSE (indigo-purple - each DISTINCT) ===
+    "response_choice_prefix": "#5C6BC0",  # Light indigo
+    "response_choice": "#3F51B5",         # Indigo
+    "response_reasoning_prefix": "#7986CB", # Lighter indigo
+    "response_reasoning": "#9FA8DA",       # Very light indigo
+    "response_other": "#C5CAE9",           # Very light indigo
+    # === OTHER ===
     "prompt_other": "#CFD8DC",       # Light gray
-    "response_other": "#ECEFF1",     # Very light gray
 }
 
-# Define legend sections for organized display
-LEGEND_SECTIONS = {
-    "Situation": ["situation_marker", "situation_content", "situation_tail"],
-    "Task": ["task_marker", "task_content", "task_tail"],
-    "Consider": ["consider_marker", "consider_content", "consider_tail", "time_horizon", "post_time_horizon"],
-    "Action": ["action_marker", "action_content", "action_tail"],
-    "Format": ["format_marker", "format_content", "format_tail", "format_choice_prefix", "format_reasoning_prefix"],
-    "Options": ["left_label", "left_reward", "left_time", "right_label", "right_reward", "right_time", "option_content", "options_tail"],
-    "Response": ["response_choice_prefix", "response_choice", "response_reasoning_prefix", "response_reasoning"],
-    "Chat": ["chat_prefix", "chat_prefix_tail", "chat_suffix", "chat_suffix_tail"],
-    "Other": ["prompt_other", "response_other"],
-}
+# Category prefixes for dynamic legend grouping (order matters for display)
+# Maps prefix -> display name
+CATEGORY_PREFIXES = [
+    ("chat_", "Chat"),
+    ("situation_", "Situation"),
+    ("situation", "Situation"),  # Context keyword (exact match)
+    ("role", "Situation"),       # Context keyword (exact match)
+    ("task_", "Task"),
+    ("task_in_question", "Task"),  # Context keyword (exact match)
+    ("left_", "Options"),  # Left options
+    ("right_", "Options"),  # Right options (same group)
+    ("option", "Options"),  # option_content, options_tail
+    ("consider_", "Consider"),
+    ("constraint_", "Constraint"),
+    ("time_horizon", "Constraint"),  # Special: no underscore prefix
+    ("post_time_horizon", "Constraint"),  # Special: no underscore prefix
+    ("action_", "Action"),
+    ("format_", "Format"),
+    ("reasoning_ask", "Format"),  # Context keyword (exact match)
+    ("response_", "Response"),
+]
+
+
+def _get_category_for_format_pos(format_pos: str) -> str:
+    """Get the legend category for a format_pos name."""
+    for prefix, category in CATEGORY_PREFIXES:
+        if format_pos.startswith(prefix) or format_pos == prefix:
+            return category
+    return "Other"
+
+
+def _build_dynamic_legend_sections(unique_formats: set[str]) -> list[tuple[str, list[str]]]:
+    """Build legend sections dynamically from format_pos values present in data.
+
+    Args:
+        unique_formats: Set of format_pos names present in the visualization
+
+    Returns:
+        List of (section_name, [format_pos_names]) tuples in display order
+    """
+    # Group by category
+    category_items: dict[str, list[str]] = {}
+    for fmt in unique_formats:
+        category = _get_category_for_format_pos(fmt)
+        if category not in category_items:
+            category_items[category] = []
+        category_items[category].append(fmt)
+
+    # Define display order for categories
+    category_order = ["Chat", "Situation", "Task", "Options", "Consider", "Constraint", "Action", "Format", "Response", "Other"]
+
+    # Build result in order
+    result = []
+    for category in category_order:
+        if category in category_items:
+            # Sort items within category: markers first, then content, then tail
+            items = sorted(category_items[category], key=lambda x: (
+                0 if "marker" in x else (1 if "content" in x else (2 if "label" in x or "reward" in x or "time" in x else (3 if "tail" in x else 4))),
+                x  # Secondary: alphabetical
+            ))
+            result.append((category, items))
+
+    return result
 
 
 @dataclass
@@ -801,23 +861,183 @@ def _plot_position_mapping_grid(
     _finalize_plot(save_path)
 
 
+def visualize_pair_alignment(
+    pair_mapping: "PairPositionMapping",
+    save_path: Path,
+) -> None:
+    """Visualize position alignment between two samples.
+
+    Creates exactly 4 rows split into 2 sections:
+
+    Section 1 (SRC → DST):
+    - Row 1: All src tokens in one horizontal line
+    - Row 2: The dst token each src maps to (aligned below)
+
+    Section 2 (DST → SRC):
+    - Row 3: All dst tokens in one horizontal line
+    - Row 4: The src token that maps to each dst (aligned below)
+
+    Colors indicate:
+    - Green: Anchor (exact semantic match)
+    - Blue: Interpolated but tokens match
+    - Orange: Interpolated, tokens differ
+    - Gray: No mapping (extra dst positions)
+
+    Args:
+        pair_mapping: PairPositionMapping with src_tokens, dst_tokens, mapping, anchors
+        save_path: Path to save the PNG
+    """
+    from ...common.token_positions import PairPositionMapping
+
+    src_tokens = pair_mapping.src_tokens
+    dst_tokens = pair_mapping.dst_tokens
+    mapping = pair_mapping.mapping
+    anchor_set = set(tuple(a) for a in pair_mapping.anchors)
+    inv_mapping = pair_mapping.inv_mapping_complete
+
+    src_len = pair_mapping.src_len
+    dst_len = pair_mapping.dst_len
+    max_len = max(src_len, dst_len)
+
+    # Figure: wide enough for all tokens, 4 rows total
+    cell_width = 0.6
+    fig_width = max(max_len * cell_width + 2, 20)
+    fig_height = 9  # Increased height for better spacing
+    fig = plt.figure(figsize=(fig_width, fig_height))
+
+    # Title at very top with enough space
+    fig.suptitle(
+        f"Position Alignment: src_len={src_len}, dst_len={dst_len}",
+        fontsize=14, fontweight="bold", y=0.96
+    )
+
+    def get_color(src_pos, dst_pos, src_tok, dst_tok, is_anchor):
+        """Get color based on alignment type."""
+        if is_anchor:
+            return "#4CAF50"  # Green - anchor
+        elif src_tok == dst_tok:
+            return "#2196F3"  # Blue - same token
+        else:
+            return "#FF9800"  # Orange - interpolated, different
+
+    def draw_token_box(ax, col, row, token, pos_num, color):
+        """Draw a single token box."""
+        rect = mpatches.FancyBboxPatch(
+            (col - 0.45, row - 0.4), 0.9, 0.8,
+            boxstyle="round,pad=0.02,rounding_size=0.05",
+            facecolor=color, edgecolor="black", linewidth=0.5, alpha=0.85
+        )
+        ax.add_patch(rect)
+
+        # Token text
+        tok_display = token.replace("\n", "\\n").replace("\t", "\\t")
+        if len(tok_display) > 6:
+            tok_display = tok_display[:5] + ".."
+        ax.text(col, row + 0.05, tok_display, ha="center", va="center",
+                fontsize=5, fontfamily="monospace", fontweight="bold")
+
+        # Position number (smaller, below token)
+        ax.text(col, row - 0.25, str(pos_num), ha="center", va="center",
+                fontsize=4, color="#333333")
+
+    # === Section 1: SRC → DST (top half) - leave room for title ===
+    ax1 = fig.add_axes([0.01, 0.52, 0.98, 0.38])
+    ax1.set_title("SRC → DST: Row 1 = src tokens, Row 2 = mapped dst tokens", fontsize=10, pad=8)
+    ax1.set_xlim(-0.5, src_len - 0.5)
+    ax1.set_ylim(-0.5, 1.5)
+    ax1.invert_yaxis()
+    ax1.axis("off")
+
+    for src_pos in range(src_len):
+        dst_pos = mapping.get(src_pos, src_pos)
+        src_tok = src_tokens[src_pos] if src_pos < len(src_tokens) else "?"
+        dst_tok = dst_tokens[dst_pos] if dst_pos < len(dst_tokens) else "?"
+        is_anchor = (src_pos, dst_pos) in anchor_set
+        color = get_color(src_pos, dst_pos, src_tok, dst_tok, is_anchor)
+
+        # Row 0: src token
+        draw_token_box(ax1, src_pos, 0, src_tok, src_pos, color)
+        # Row 1: mapped dst token
+        draw_token_box(ax1, src_pos, 1, dst_tok, dst_pos, color)
+
+    # === Section 2: DST → SRC (bottom half) ===
+    ax2 = fig.add_axes([0.01, 0.06, 0.98, 0.42])
+    ax2.set_title("DST → SRC: Row 1 = dst tokens, Row 2 = source that maps here", fontsize=10, pad=5)
+    ax2.set_xlim(-0.5, dst_len - 0.5)
+    ax2.set_ylim(-0.5, 1.5)
+    ax2.invert_yaxis()
+    ax2.axis("off")
+
+    # Find which src positions have multiple dst mapping to them (shared)
+    from collections import Counter
+    src_usage = Counter(inv_mapping.values())
+    shared_src = {src for src, count in src_usage.items() if count > 1}
+
+    for dst_pos in range(dst_len):
+        dst_tok = dst_tokens[dst_pos] if dst_pos < len(dst_tokens) else "?"
+        src_pos = inv_mapping.get(dst_pos)
+
+        if src_pos is not None:
+            src_tok = src_tokens[src_pos] if src_pos < len(src_tokens) else "?"
+            is_anchor = (src_pos, dst_pos) in anchor_set
+            is_shared = src_pos in shared_src and not is_anchor
+            if is_anchor:
+                color = "#4CAF50"  # Green - anchor
+            elif is_shared:
+                color = "#4CAF50"  # Green - shared with anchor (same semantic region)
+            elif src_tok == dst_tok:
+                color = "#2196F3"  # Blue - same token
+            else:
+                color = "#FF9800"  # Orange - different
+            src_label = src_pos
+        else:
+            src_tok = "∅"
+            color = "#9E9E9E"  # Gray - no mapping
+            src_label = "-"
+
+        # Row 0: dst token
+        draw_token_box(ax2, dst_pos, 0, dst_tok, dst_pos, color)
+        # Row 1: src that maps here
+        draw_token_box(ax2, dst_pos, 1, src_tok, src_label, color)
+
+    # Legend
+    legend_elements = [
+        mpatches.Patch(facecolor="#4CAF50", edgecolor="black", label="Anchor/Shared"),
+        mpatches.Patch(facecolor="#2196F3", edgecolor="black", label="Match"),
+        mpatches.Patch(facecolor="#FF9800", edgecolor="black", label="Differ"),
+        mpatches.Patch(facecolor="#9E9E9E", edgecolor="black", label="No map"),
+    ]
+    fig.legend(handles=legend_elements, loc="upper right", fontsize=8,
+               ncol=4, framealpha=0.9, bbox_to_anchor=(0.99, 0.99))
+
+    _finalize_plot(save_path)
+
+
 def visualize_position_mapping_pair(
     mapping_short: "SamplePositionMapping",
     mapping_long: "SamplePositionMapping",
     save_path: Path,
     max_response_tokens: int = 100,
+    pair_mapping: "PairPositionMapping | None" = None,
 ) -> None:
     """Visualize position mappings for both samples in a contrastive pair.
 
     Creates a two-panel visualization showing the short-term (clean) and
     long-term (corrupted) samples side-by-side with format_pos coloring.
+    If pair_mapping is provided, shows the position correspondence with
+    anchors highlighted.
 
     Args:
         mapping_short: Position mapping for short-term (clean) sample
         mapping_long: Position mapping for long-term (corrupted) sample
         save_path: Path to save the PNG
         max_response_tokens: Max response tokens to show per sample
+        pair_mapping: Optional PairPositionMapping showing src->dst alignment
     """
+    # Build anchor set for highlighting
+    anchor_set = set()
+    if pair_mapping:
+        anchor_set = set(tuple(a) for a in pair_mapping.anchors)
     # Calculate dimensions
     tokens_per_row = 15
 
@@ -950,19 +1170,11 @@ def visualize_position_mapping_pair(
         if pos_info.format_pos:
             unique_formats.add(pos_info.format_pos)
 
-    # Section order for legend
-    section_order = ["Chat", "Situation", "Task", "Options", "Consider", "Action", "Format", "Response"]
+    # Build dynamic legend sections from present format_pos values
+    sections_with_items = _build_dynamic_legend_sections(unique_formats)
 
     # Count total items to calculate spacing
-    total_items = 0
-    sections_with_items = []
-    for section_name in section_order:
-        if section_name not in LEGEND_SECTIONS:
-            continue
-        present_items = [item for item in LEGEND_SECTIONS[section_name] if item in unique_formats]
-        if present_items:
-            sections_with_items.append((section_name, present_items))
-            total_items += len(present_items) + 1  # +1 for header
+    total_items = sum(len(items) + 1 for _, items in sections_with_items)  # +1 for header
 
     # Calculate spacing
     available_height = 0.96

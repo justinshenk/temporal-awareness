@@ -319,6 +319,66 @@ def process_coarse_results(ctx: ExperimentContext) -> None:
     )
 
 
+def compute_component_comparison_from_pair(
+    results_by_component: dict[str, "CoarseActPatchResults"],
+) -> "ComponentComparisonResults | None":
+    """Compute ComponentComparisonResults from per-pair coarse results.
+
+    This is used for per-pair visualization when we don't have aggregated data.
+
+    Args:
+        results_by_component: Dict mapping component name to per-pair results
+
+    Returns:
+        ComponentComparisonResults if computation succeeds, None otherwise
+    """
+    from ....activation_patching.coarse import CoarseActPatchResults
+    from .circuit_analysis import extract_circuit_hypothesis
+    from .component_analysis import (
+        compute_cumulative_recovery,
+        detect_hub_regions,
+        rank_component_importance,
+    )
+    from .redundancy_analysis import compute_redundancy_gaps
+
+    layer_data: dict = {}
+    pos_data: dict = {}
+
+    for component, result in results_by_component.items():
+        if not result:
+            continue
+        layer_data[component] = result.get_layer_results_for_step(1)
+        pos_data[component] = result.get_position_results_for_step(1)
+
+    if not layer_data:
+        return None
+
+    circuit = None
+    redundancy = None
+    cumulative = None
+    importance = None
+    position_analysis = None
+
+    if layer_data and pos_data:
+        circuit = extract_circuit_hypothesis(layer_data, pos_data)
+
+    if layer_data:
+        redundancy = compute_redundancy_gaps(layer_data)
+        cumulative = compute_cumulative_recovery(layer_data)
+        importance = rank_component_importance(layer_data)
+
+    if pos_data:
+        position_analysis = detect_hub_regions(pos_data)
+
+    return ComponentComparisonResults(
+        circuit=circuit,
+        redundancy=redundancy,
+        cumulative=cumulative,
+        component_importance=importance,
+        position_analysis=position_analysis,
+    )
+
+
 def process_attribution_agreement(ctx: ExperimentContext) -> None:
     """Process attribution patching results into method agreement analysis."""
     log("[process] Computing attribution method agreement...")

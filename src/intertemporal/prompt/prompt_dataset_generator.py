@@ -224,23 +224,25 @@ class PromptDatasetGenerator:
         # Assemble question template (conditionally includes time-horizon spec)
         prompt = pf.question_template(time_horizon)
 
-        # Use provided time strings or default to str(time)
-        left_time = left_time_str if left_time_str else str(left_option.time)
-        right_time = right_time_str if right_time_str else str(right_option.time)
+        # Use provided time strings or format explicitly
+        # Options: no padding (min_length=0)
+        # Horizon: padded to 12 chars (25% left, 75% right)
+        left_time = left_time_str if left_time_str else left_option.time.to_string(min_length=0)
+        right_time = right_time_str if right_time_str else right_option.time.to_string(min_length=0)
         horizon_str = (
             horizon_time_str
             if horizon_time_str
-            else (str(time_horizon) if time_horizon else "")
+            else (time_horizon.to_string(min_length=12) if time_horizon else "")
         )
 
         # Build var_keywords values dict
         var_values = {
             "time_horizon": horizon_str,
             "left_term_label": labels[0],
-            "left_term_reward": f"{round(left_option.reward.value):,}",
+            "left_term_reward": f"{round(left_option.reward.value)}",
             "left_term_time": left_time,
             "right_term_label": labels[1],
-            "right_term_reward": f"{round(right_option.reward.value):,}",
+            "right_term_reward": f"{round(right_option.reward.value)}",
             "right_term_time": right_time,
         }
 

@@ -7,8 +7,12 @@ import json
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
-from ...common.token_positions import build_position_mapping
+from ...common.token_positions import (
+    build_position_mapping_from_sample_mappings,
+    decode_token_ids,
+)
 from .preference_types import PreferenceSample
+from .sample_position_mapping import SamplePositionMapping
 
 
 @dataclass
@@ -26,15 +30,17 @@ class ContrastivePreferences(BaseSchema):
     def get_contrastive_pair(
         self,
         runner: BinaryChoiceRunner,
-        anchor_texts: list[str] | None = None,
-        first_interesting_marker: str | None = None,
+        short_term_mapping: SamplePositionMapping,
+        long_term_mapping: SamplePositionMapping,
     ) -> ContrastivePair | None:
         """Build a ContrastivePair from the two preference samples.
 
         Args:
             runner: BinaryChoiceRunner for tokenizer access
-            anchor_texts: Text markers for position alignment (defaults to choice labels)
-            first_interesting_marker: Marker for first interesting position
+            short_term_mapping: SamplePositionMapping for short_term sample
+            long_term_mapping: SamplePositionMapping for long_term sample
+
+        Alignment is done based on format_pos groups from the SamplePositionMappings.
 
         Returns None if either sample fails verification.
         """
@@ -45,10 +51,15 @@ class ContrastivePreferences(BaseSchema):
         long_traj = self.long_term.chosen_traj
         assert short_traj is not None and long_traj is not None
 
-        position_mapping = build_position_mapping(
-            runner._tokenizer, short_traj, long_traj, anchor_texts
+        # Use format_pos-based alignment
+        src_tokens = decode_token_ids(runner._tokenizer, short_traj.token_ids)
+        dst_tokens = decode_token_ids(runner._tokenizer, long_traj.token_ids)
+        position_mapping = build_position_mapping_from_sample_mappings(
+            short_term_mapping,
+            long_term_mapping,
+            src_tokens=src_tokens,
+            dst_tokens=dst_tokens,
         )
-        position_mapping.first_interesting_marker = first_interesting_marker
 
         return ContrastivePair(
             clean_traj=short_traj,
@@ -211,6 +222,20 @@ class ContrastivePreferences(BaseSchema):
     def only_one_horizon(self) -> bool:
         """Exactly one sample has a time horizon."""
         return self.only_short_horizon or self.only_long_horizon
+
+    @property
+    def same_constraint(self) -> bool:
+        """Both samples have the same constraint status (both have horizon OR both don't).
+
+        This is useful for ensuring alignment in contrastive analysis - we want to
+        compare samples where the constraint presence is consistent.
+        """
+        return self.both_horizon or self.neither_horizon
+
+    @property
+    def different_constraint(self) -> bool:
+        """Samples have different constraint status (one has horizon, one doesn't)."""
+        return self.only_one_horizon
 
     # =========================================================================
     # Rational Choice Properties

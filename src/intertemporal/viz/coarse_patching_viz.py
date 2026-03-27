@@ -193,6 +193,8 @@ def visualize_component_comparison(
         output_dir: Directory to save plots
         step_size: Step size to use for data extraction
     """
+    from ..experiments.processing import compute_component_comparison_from_pair
+
     if not results_by_component:
         print("[viz] No component results for comparison plots")
         return
@@ -200,7 +202,10 @@ def visualize_component_comparison(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_all_component_comparisons(results_by_component, output_dir, step_size)
+    # Compute processed_results for synthesis plots
+    processed_results = compute_component_comparison_from_pair(results_by_component)
+
+    plot_all_component_comparisons(results_by_component, output_dir, step_size, processed_results)
 
 
 @profile

@@ -18,6 +18,8 @@ def plot_overview(
     pos_data: dict[str, SweepStepResults | None],
     results_by_component: dict[str, CoarseActPatchResults],
     output_dir: Path,
+    layer_step_size: int = 1,
+    pos_step_size: int = 10,
 ) -> None:
     """Generate all overview plots."""
     _plot_layer_heatmap(layer_data, output_dir, "denoising")
@@ -26,7 +28,7 @@ def plot_overview(
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "noising")
     _plot_position_heatmap(pos_data, output_dir, "denoising")
     _plot_position_heatmap(pos_data, output_dir, "noising")
-    _plot_layer_position_heatmap(results_by_component, output_dir)
+    _plot_layer_position_heatmap(results_by_component, output_dir, layer_step_size, pos_step_size)
 
 
 def _build_layer_matrix(
@@ -231,14 +233,16 @@ def _plot_position_heatmap(
 def _plot_layer_position_heatmap(
     results_by_component: dict[str, CoarseActPatchResults],
     output_dir: Path,
+    layer_step_size: int = 1,
+    pos_step_size: int = 10,
 ) -> None:
     """Plot Layer × Position 2D localization heatmap."""
     result = results_by_component.get("resid_post") or next(iter(results_by_component.values()), None)
     if not result:
         return
 
-    layer_data = result.get_layer_results_for_step(1)
-    pos_data = result.get_position_results_for_step(1)
+    layer_data = result.get_layer_results_for_step(layer_step_size)
+    pos_data = result.get_position_results_for_step(pos_step_size)
 
     if not layer_data or not pos_data:
         return

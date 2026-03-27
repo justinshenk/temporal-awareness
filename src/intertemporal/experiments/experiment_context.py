@@ -38,8 +38,10 @@ from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
 from ..common.contrastive_preferences import ContrastivePreferences
 from ..preference import PreferenceDataset
+from ..prompt import PromptDataset
 from ..common.sample_position_mapping import SamplePositionMapping
 from ..viz.tokenization_viz import (
+    visualize_pair_alignment,
     visualize_position_mapping_pair,
     visualize_tokenization,
     visualize_tokenization_from_position_mapping,
@@ -53,6 +55,7 @@ class ExperimentContext:
 
     cfg: ExperimentConfig
     pref_data: PreferenceDataset | None = None
+    prompt_dataset: PromptDataset | None = None
 
     output_dir: Path | None = field(default=None)
     timestamp: str = field(default_factory=get_timestamp)
@@ -68,6 +71,10 @@ class ExperimentContext:
     _runner: BinaryChoiceRunner | None = field(default=None, init=False)
     _pref_pairs: list[ContrastivePreferences] | None = field(default=None, init=False)
     _pair_to_pref_idx: dict[int, int] = field(default_factory=dict, init=False)
+    # Position mappings per pair: {pair_idx: (short_mapping, long_mapping)}
+    _position_mappings: dict[int, tuple[SamplePositionMapping, SamplePositionMapping]] = field(
+        default_factory=dict, init=False
+    )
 
     # coarse_patching keyed by (pair_idx, component) tuple
     coarse_patching: dict[tuple[int, str], CoarseActPatchResults] = field(
@@ -138,11 +145,6 @@ class ExperimentContext:
         selected = all_prefs[:n_select]
         log(f"[ctx] Found {len(all_prefs)} contrastive prefs, using {len(selected)}")
 
-        # Get position mapping config from prompt format
-        fmt = self.pref_data.prompt_format_config
-        anchor_texts = fmt.get_anchor_texts()
-        first_interesting = fmt.get_prompt_marker_before_time_horizon()
-
         # Build pairs
         self._pairs = []
         self._pref_pairs = []
@@ -150,18 +152,53 @@ class ExperimentContext:
 
         for i, pref in enumerate(selected):
             log_progress(i + 1, len(selected), prefix="[ctx] Building pair ")
+
+            # Build SamplePositionMappings from PromptSample (uses structured Prompt)
+            short_prompt_sample = self.get_prompt_sample(pref.short_term.sample_idx)
+            long_prompt_sample = self.get_prompt_sample(pref.long_term.sample_idx)
+
+            if not short_prompt_sample or not long_prompt_sample:
+                raise ValueError(
+                    f"prompt_dataset required but missing PromptSample for "
+                    f"sample_idx {pref.short_term.sample_idx} or {pref.long_term.sample_idx}"
+                )
+
+            short_term_mapping = SamplePositionMapping.build(
+                short_prompt_sample, self.runner, pref=pref.short_term
+            )
+            long_term_mapping = SamplePositionMapping.build(
+                long_prompt_sample, self.runner, pref=pref.long_term
+            )
+
             pair = pref.get_contrastive_pair(
                 self.runner,
-                anchor_texts=anchor_texts,
-                first_interesting_marker=first_interesting,
+                short_term_mapping=short_term_mapping,
+                long_term_mapping=long_term_mapping,
             )
             if pair:
                 idx = len(self._pairs)
                 self._pairs.append(pair)
                 self._pref_pairs.append(pref)
                 self._pair_to_pref_idx[idx] = idx
+                self._position_mappings[idx] = (short_term_mapping, long_term_mapping)
 
         log(f"[ctx] Built {len(self._pairs)} valid pairs")
+
+    def get_prompt_sample(self, sample_idx: int):
+        """Get PromptSample by sample_idx from prompt_dataset."""
+        if self.prompt_dataset is None:
+            return None
+        for sample in self.prompt_dataset.samples:
+            if sample.sample_idx == sample_idx:
+                return sample
+        return None
+
+    @property
+    def position_mappings(self) -> dict[int, tuple[SamplePositionMapping, SamplePositionMapping]]:
+        """Position mappings per pair: {pair_idx: (short_mapping, long_mapping)}."""
+        if not self._position_mappings and self._pairs is None:
+            _ = self.pairs  # Trigger lazy loading
+        return self._position_mappings
 
     @property
     def pref_pairs(self) -> list[ContrastivePreferences]:
@@ -421,22 +458,33 @@ class ExperimentContext:
         pair_dir.mkdir(parents=True, exist_ok=True)
 
         # Build mapping for short-term (clean) sample
-        mapping_short = SamplePositionMapping.build_from_preference(
-            pref.short_term, self.runner, sample_idx=0
+        short_prompt_sample = self.get_prompt_sample(pref.short_term.sample_idx)
+        if not short_prompt_sample:
+            raise ValueError(f"Missing PromptSample for sample_idx {pref.short_term.sample_idx}")
+        mapping_short = SamplePositionMapping.build(
+            short_prompt_sample, self.runner, pref=pref.short_term
         )
         save_json(mapping_short.to_dict(), self.get_position_mapping_path(pair_idx, "short"))
 
         # Build mapping for long-term (corrupted) sample
-        mapping_long = SamplePositionMapping.build_from_preference(
-            pref.long_term, self.runner, sample_idx=1
+        long_prompt_sample = self.get_prompt_sample(pref.long_term.sample_idx)
+        if not long_prompt_sample:
+            raise ValueError(f"Missing PromptSample for sample_idx {pref.long_term.sample_idx}")
+        mapping_long = SamplePositionMapping.build(
+            long_prompt_sample, self.runner, pref=pref.long_term
         )
         save_json(mapping_long.to_dict(), self.get_position_mapping_path(pair_idx, "long"))
 
+        # Save the PairPositionMapping directly (the cross-sample alignment)
+        if self.pairs and pair_idx < len(self.pairs):
+            pair_pos_mapping = self.pairs[pair_idx].position_mapping
+            save_json(pair_pos_mapping.to_dict(), pair_dir / "pair_position_mapping.json")
+
+            # Generate alignment visualization showing src<->dst mapping
+            visualize_pair_alignment(pair_pos_mapping, pair_dir / "pair_position_mapping.png")
+
         # Generate combined position mapping visualization showing both samples
-        visualize_position_mapping_pair(
-            mapping_short, mapping_long,
-            pair_dir / "position_mapping.png"
-        )
+        visualize_position_mapping_pair(mapping_short, mapping_long, pair_dir / "position_mapping.png")
 
         # Generate tokenization divergence visualization
         if self.pairs and pair_idx < len(self.pairs) and self.runner is not None:
@@ -483,13 +531,13 @@ class ExperimentContext:
         if mapping is not None:
             return mapping
 
-        # Build from preference if available
-        pref = self.get_pref_pair(pair_idx)
-        if pref is not None and self._runner is not None:
-            pref_sample = pref.long_term if sample == "long" else pref.short_term
-            return SamplePositionMapping.build_from_preference(
-                pref_sample, self._runner, sample_idx=pair_idx
-            )
+        # Build from PromptSample + PreferenceSample if available
+        pref_pair = self.get_pref_pair(pair_idx)
+        if pref_pair is not None and self._runner is not None:
+            pref = pref_pair.long_term if sample == "long" else pref_pair.short_term
+            prompt_sample = self.get_prompt_sample(pref.sample_idx)
+            if prompt_sample:
+                return SamplePositionMapping.build(prompt_sample, self._runner, pref=pref)
 
         return None
 
@@ -508,11 +556,12 @@ class ExperimentContext:
         Returns:
             SamplePositionMapping if available, None otherwise
         """
-        # Try building from pref_pairs if available (live run)
-        if self._pref_pairs and self._runner:
-            return SamplePositionMapping.build_from_preference(
-                self._pref_pairs[0].long_term, self._runner, sample_idx=0
-            )
+        # Try building from prompt_dataset + pref_pairs if available (live run)
+        if self._pref_pairs and self._runner and self.prompt_dataset:
+            pref = self._pref_pairs[0].long_term
+            prompt_sample = self.get_prompt_sample(pref.sample_idx)
+            if prompt_sample:
+                return SamplePositionMapping.build(prompt_sample, self._runner, pref=pref)
         # Otherwise try loading from cache (regeneration)
         return self.load_position_mapping(0)
 

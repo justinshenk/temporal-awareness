@@ -494,105 +494,100 @@ def extract_activations(
         prompt_format = find_prompt_format_config(sample.formatting_id)
         choice_prefix = prompt_format.get_response_prefix_before_choice()
 
-        try:
-            pref = querier.query_sample(
-                sample, runner, choice_prefix, activation_names=hook_names
-            )
+        pref = querier.query_sample(
+            sample, runner, choice_prefix, activation_names=hook_names
+        )
 
-            if pref.chosen_traj is None:
-                skipped += 1
-                continue
-
-            # Build position mapping (this gives us abs_pos -> format_pos)
-            pos_mapping = SamplePositionMapping.build(sample, pref, runner)
-
-            # Create sample folder
-            sample_dir = samples_dir / f"sample_{valid_idx}"
-            sample_dir.mkdir(parents=True, exist_ok=True)
-
-            # Extract and save activations
-            sample_has_data = False
-            for target in targets:
-                abs_positions = pos_mapping.named_positions.get(target.position, [])
-                if not abs_positions:
-                    continue
-
-                abs_pos = abs_positions[0]  # Use first position
-
-                try:
-                    act = pref.internals.activations[target.hook_name][abs_pos, :]
-                    act_np = act.numpy().astype(ACTIVATION_DTYPE)
-
-                    filename = f"L{target.layer}_{target.component}_{abs_pos}"
-                    _save_array(sample_dir / filename, act_np, compressed=compressed)
-                    sample_has_data = True
-
-                except (ValueError, KeyError, IndexError):
-                    continue
-
-            if not sample_has_data:
-                sample_dir.rmdir()
-                skipped += 1
-                pref.internals = None
-                continue
-
-            # Save per-sample position mapping
-            with open(sample_dir / "position_mapping.json", "w") as f:
-                json.dump(pos_mapping.to_dict(), f)
-
-            # Save per-sample prompt sample
-            with open(sample_dir / "prompt_sample.json", "w") as f:
-                json.dump(sample.to_dict(), f)
-
-            # Save per-sample preference sample
-            with open(sample_dir / "preference_sample.json", "w") as f:
-                json.dump(pref.to_dict(), f)
-
-            # Record and save choice info
-            pair = sample.prompt.preference_pair
-            chose_long = pref.chose_long_term
-            if chose_long:
-                chosen_time = pair.long_term.time.to_months()
-                chosen_reward = pair.long_term.reward.value
-            else:
-                chosen_time = pair.short_term.time.to_months()
-                chosen_reward = pair.short_term.reward.value
-
-            choice_info = ChoiceInfo(
-                chose_long_term=chose_long,
-                chosen_time_months=chosen_time,
-                chosen_reward=chosen_reward,
-                choice_prob=pref.choice_prob,
-            )
-            choices.append(choice_info)
-
-            # Save per-sample choice info
-            with open(sample_dir / "choice.json", "w") as f:
-                json.dump(choice_info.to_dict(), f)
-
-            valid_samples.append(sample)
-            position_mappings.add(pos_mapping)
-            pref.internals = None
-            valid_preferences.append(pref)
-
-            # Log first few preference samples
-            if valid_idx < 5:
-                choice_str = "long_term" if chose_long else "short_term"
-                logger.info(
-                    f"  Preference sample {valid_idx}: "
-                    f"chose={choice_str} ({pref.choice_prob:.2%}) | "
-                    f"reward={chosen_reward:,.0f} in {chosen_time:.1f}mo"
-                )
-
-            valid_idx += 1
-
-            if valid_idx % 100 == 0:
-                gc.collect()
-
-        except Exception as e:
-            logger.warning(f"  Skipping sample {i}: {e}")
+        if pref.chosen_traj is None:
             skipped += 1
             continue
+
+        # Build position mapping (this gives us abs_pos -> format_pos)
+        # NOTE: This MUST NOT fail - position mapping validation will crash if there are issues
+        pos_mapping = SamplePositionMapping.build(sample, runner, pref=pref)
+
+        # Create sample folder
+        sample_dir = samples_dir / f"sample_{valid_idx}"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+
+        # Extract and save activations
+        sample_has_data = False
+        for target in targets:
+            abs_positions = pos_mapping.named_positions.get(target.position, [])
+            if not abs_positions:
+                continue
+
+            abs_pos = abs_positions[0]  # Use first position
+
+            try:
+                act = pref.internals.activations[target.hook_name][abs_pos, :]
+                act_np = act.numpy().astype(ACTIVATION_DTYPE)
+
+                filename = f"L{target.layer}_{target.component}_{abs_pos}"
+                _save_array(sample_dir / filename, act_np, compressed=compressed)
+                sample_has_data = True
+
+            except (ValueError, KeyError, IndexError):
+                continue
+
+        if not sample_has_data:
+            sample_dir.rmdir()
+            skipped += 1
+            pref.internals = None
+            continue
+
+        # Save per-sample position mapping
+        with open(sample_dir / "position_mapping.json", "w") as f:
+            json.dump(pos_mapping.to_dict(), f)
+
+        # Save per-sample prompt sample
+        with open(sample_dir / "prompt_sample.json", "w") as f:
+            json.dump(sample.to_dict(), f)
+
+        # Save per-sample preference sample
+        with open(sample_dir / "preference_sample.json", "w") as f:
+            json.dump(pref.to_dict(), f)
+
+        # Record and save choice info
+        pair = sample.prompt.preference_pair
+        chose_long = pref.chose_long_term
+        if chose_long:
+            chosen_time = pair.long_term.time.to_months()
+            chosen_reward = pair.long_term.reward.value
+        else:
+            chosen_time = pair.short_term.time.to_months()
+            chosen_reward = pair.short_term.reward.value
+
+        choice_info = ChoiceInfo(
+            chose_long_term=chose_long,
+            chosen_time_months=chosen_time,
+            chosen_reward=chosen_reward,
+            choice_prob=pref.choice_prob,
+        )
+        choices.append(choice_info)
+
+        # Save per-sample choice info
+        with open(sample_dir / "choice.json", "w") as f:
+            json.dump(choice_info.to_dict(), f)
+
+        valid_samples.append(sample)
+        position_mappings.add(pos_mapping)
+        pref.internals = None
+        valid_preferences.append(pref)
+
+        # Log first few preference samples
+        if valid_idx < 5:
+            choice_str = "long_term" if chose_long else "short_term"
+            logger.info(
+                f"  Preference sample {valid_idx}: "
+                f"chose={choice_str} ({pref.choice_prob:.2%}) | "
+                f"reward={chosen_reward:,.0f} in {chosen_time:.1f}mo"
+            )
+
+        valid_idx += 1
+
+        if valid_idx % 100 == 0:
+            gc.collect()
 
     gc.collect()
     logger.info(f"Extracted {valid_idx} valid samples (skipped {skipped})")

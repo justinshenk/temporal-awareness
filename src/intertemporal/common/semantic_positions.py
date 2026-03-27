@@ -4,34 +4,41 @@ These constants define the semantic token positions and layer indices used
 throughout the analysis pipeline.
 """
 
-# Prompt positions (where time horizon info is encoded)
-PROMPT_POSITIONS = [
-    "task_tail",
-    "consider_tail",
+# Response positions (where model output is generated)
+RESPONSE_POSITIONS = ["response_choice_prefix", "response_choice"]
+
+
+DEFAULT_LAYERS = [8, 19, 21, 24, 31, 34]
+
+
+# Prompt positions
+PROMPT_CONSTRAINT_POSITIONS = [
     "time_horizon",
     "post_time_horizon",
+]
+
+PROMPT_INFO_POSITIONS = [
+    "left_label",
+    "right_label",
+    "left_time",
+    "right_time",
+    "left_reward",
+    "right_reward",
+]
+
+
+PROMPT_SRC_POSITIONS = PROMPT_CONSTRAINT_POSITIONS + PROMPT_INFO_POSITIONS
+
+
+PROMPT_SECTION_TAILS = [
+    "task_tail",
+    "options_tail",
+    "consider_tail",
     "action_tail",
     "format_tail",
     "chat_suffix",
+    "chat_suffix_tail",
 ]
 
-# Response positions (where model output is generated)
-RESPONSE_POSITIONS = [
-    "response_choice_prefix",
-    "response_choice",
-    "response_reasoning_prefix",
-    "response_reasoning",
-]
 
-# Layers for circuit attention analysis
-DEFAULT_LAYERS = [19, 21, 24, 31, 34]
-
-# Early layers for intermediate attention analysis
-EARLY_LAYERS = [10, 11, 12, 13, 14, 15, 16, 17]
-
-# Intermediate positions (where info flows from source to dest)
-INTERMEDIATE_POSITIONS = [
-    "action_content",
-    "format_content",
-    "chat_suffix",
-]
+PROMPT_POSITIONS = PROMPT_SRC_POSITIONS + PROMPT_SECTION_TAILS

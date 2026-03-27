@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from ...common.profiler import profile
+
 from ...common.time_value import parse_horizon_years
 from .contrastive_preferences import ContrastivePreferences
 from .pref_pair_requirement import PrefPairRequirement
-from .pref_pair_subsample import PrefPairSubsampleStrategy
+from .pref_pair_subsample import GroupByMode, PrefPairSubsampleStrategy
 from .preference_types import PreferenceSample
 
 if TYPE_CHECKING:
@@ -16,12 +18,13 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+SAMPLES_THRESH = 4
+
 
 def get_contrastive_preferences(
     dataset: "PreferenceDataset",
     req: PrefPairRequirement | None = None,
-    subsample: PrefPairSubsampleStrategy | None = None,
-    **kwargs,
+    strat: PrefPairSubsampleStrategy | None = None,
 ) -> list[ContrastivePreferences]:
     """Find pairs of samples with different choices for contrastive analysis.
 
@@ -29,55 +32,69 @@ def get_contrastive_preferences(
         dataset: PreferenceDataset containing samples to search
         req: Optional PrefPairRequirement specifying filtering requirements
         subsample: Optional PrefPairSubsampleStrategy for reduction settings.
-            If not provided, can pass individual kwargs (legacy interface).
-        **kwargs: Legacy interface - individual subsample strategy fields.
 
     Returns:
         List of ContrastivePreferences pairs sorted by confidence
     """
-    if req is None:
-        req = PrefPairRequirement()
-    req.verify()
 
-    # Build strategy from subsample or kwargs
-    if subsample is not None:
-        strat = subsample
-    elif kwargs:
-        strat = PrefPairSubsampleStrategy.from_dict(kwargs)
-    else:
-        strat = PrefPairSubsampleStrategy()
+    if req is None:
+        req = PrefPairRequirement.Default()
+    req.verify()
 
     # Collect samples by choice
     short_choosers, long_choosers = _collect_samples_by_choice(dataset)
     n_samples = len(short_choosers) + len(long_choosers)
 
+    # Build strategy from subsample
+    if n_samples <= SAMPLES_THRESH:
+        strat = PrefPairSubsampleStrategy.NoSubsample()
+    if strat is None:
+        strat = PrefPairSubsampleStrategy.Default()
+
+    # Build groups based on mode
+    if strat.skip_filtering:
+        groups = _build_groups(short_choosers, long_choosers)
+        pairs, _, _ = _generate_candidate_pairs(req, groups, strat)
+        return pairs
+
     # Apply smart_reduce preset (only if n_samples > 5)
     strat = strat.apply_smart_reduce(n_samples)
+
+    # Apply diversity limits based on data dimensions
+    all_samples = short_choosers + long_choosers
+    n_rewards = len({s.short_term_reward for s in all_samples if s.short_term_reward})
+    n_times = len({s.short_term_time for s in all_samples if s.short_term_time})
+    n_horizons = len({parse_horizon_years(s.time_horizon) for s in all_samples})
+    strat = strat.apply_diversity_limits(n_rewards, n_times)
+    strat = strat.apply_balanced_horizon_pairs(n_horizons)
 
     # Calculate max_per_sample from target_pairs if needed
     max_per_sample = _calculate_max_per_sample(strat, short_choosers, long_choosers)
 
-    # Build groups based on mode
-    groups = _build_groups(strat, short_choosers, long_choosers)
-
-    # Generate candidate pairs within each group
+    groups = _build_groups(short_choosers, long_choosers, strat.group_by)
     pairs, total_candidates, total_passed = _generate_candidate_pairs(
-        groups, req, strat
+        req, groups, strat
     )
 
     # Apply filters in order
+    # 1. First: reorder for diversity (round_robin cycles through horizon×content groups)
+    pairs = _apply_selection_strategy(pairs, strat)
+    # 2. Then: apply per-dimension limits on the diverse-ordered list
     pairs = _apply_deduplication(pairs, strat)
     pairs = _apply_prefer_different_horizon(pairs, strat)
     pairs = _apply_max_per_horizon_pair(pairs, strat)
     pairs = _apply_max_per_reward_ratio(pairs, strat)
+    pairs = _apply_max_per_short_reward(pairs, strat)
+    pairs = _apply_max_per_short_time(pairs, strat)
+    pairs = _apply_max_per_content(pairs, strat)
     pairs = _apply_max_per_confidence_bucket(pairs, strat)
     pairs = _apply_max_per_sample(pairs, max_per_sample)
-    pairs = _apply_selection_strategy(pairs, strat)
+    # 3. Finally: truncate to target
+    pairs = _apply_target_pairs(pairs, strat)
 
-    log.info(
-        f"Contrastive pairs (group_by={strat.group_by}, best_only={strat.best_only}): "
-        f"{len(short_choosers)} short, {len(long_choosers)} long, "
-        f"{total_candidates} candidates, {total_passed} passed, {len(pairs)} final"
+    print(
+        f"[contrastive] {len(short_choosers)} short, {len(long_choosers)} long -> "
+        f"{total_candidates} candidates -> {total_passed} passed -> {len(pairs)} final"
     )
 
     # Sort by minimum choice probability (highest confidence pairs first)
@@ -97,6 +114,7 @@ def get_contrastive_preferences(
 # =============================================================================
 
 
+@profile
 def _collect_samples_by_choice(
     dataset: "PreferenceDataset",
 ) -> tuple[list[PreferenceSample], list[PreferenceSample]]:
@@ -111,6 +129,7 @@ def _collect_samples_by_choice(
     return short_choosers, long_choosers
 
 
+@profile
 def _calculate_max_per_sample(
     strat: PrefPairSubsampleStrategy,
     short_choosers: list[PreferenceSample],
@@ -133,25 +152,26 @@ def _calculate_max_per_sample(
             if min_side > 0:
                 estimated_k = max(1, int(strat.target_pairs / min_side + 0.5))
                 max_per_sample = estimated_k
-                log.info(
-                    f"Target pairs ({strat.target_pairs}): estimated max_per_sample={max_per_sample} "
+                print(
+                    f"[target_pairs={strat.target_pairs}] -> max_per_sample={max_per_sample} "
                     f"(n_short={n_short}, n_long={n_long})"
                 )
 
     return max_per_sample
 
 
+@profile
 def _build_groups(
-    strat: PrefPairSubsampleStrategy,
     short_choosers: list[PreferenceSample],
     long_choosers: list[PreferenceSample],
+    group_mode: GroupByMode = "choice",
 ) -> dict[tuple, tuple[list[PreferenceSample], list[PreferenceSample]]]:
     """Build groups of samples based on grouping mode."""
-    if strat.group_by == "choice":
+    if group_mode == "choice":
         # No grouping - all samples in one group
         return {(): (short_choosers, long_choosers)}
 
-    elif strat.group_by == "horizon":
+    elif group_mode == "horizon":
         # Group by horizon value
         horizon_groups: dict[
             float | None, tuple[list[PreferenceSample], list[PreferenceSample]]
@@ -196,10 +216,11 @@ def _build_groups(
         return content_groups
 
 
+@profile
 def _generate_candidate_pairs(
-    groups: dict[tuple, tuple[list[PreferenceSample], list[PreferenceSample]]],
     req: PrefPairRequirement,
-    strat: PrefPairSubsampleStrategy,
+    groups: dict[tuple, tuple[list[PreferenceSample], list[PreferenceSample]]],
+    strat: PrefPairSubsampleStrategy | None = None,
 ) -> tuple[list[ContrastivePreferences], int, int]:
     """Generate candidate pairs within each group."""
     pairs: list[ContrastivePreferences] = []
@@ -207,7 +228,7 @@ def _generate_candidate_pairs(
     total_passed = 0
 
     for group_key, (group_short, group_long) in groups.items():
-        if strat.best_only:
+        if strat is not None and strat.best_only:
             # Only pair the best (highest confidence) short with best long
             sorted_short = sorted(
                 group_short, key=lambda sample: sample.choice_prob, reverse=True
@@ -246,6 +267,7 @@ def _generate_candidate_pairs(
     return pairs, total_candidates, total_passed
 
 
+@profile
 def _apply_deduplication(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
@@ -276,6 +298,7 @@ def _apply_deduplication(
     return unique_pairs
 
 
+@profile
 def _apply_prefer_different_horizon(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
@@ -305,6 +328,7 @@ def _apply_prefer_different_horizon(
     return pairs
 
 
+@profile
 def _apply_max_per_horizon_pair(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
@@ -313,7 +337,7 @@ def _apply_max_per_horizon_pair(
     if strat.max_per_horizon_pair is None or strat.max_per_horizon_pair <= 0:
         return pairs
 
-    pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
+    # Don't re-sort - preserve round_robin diversity ordering
 
     horizon_pair_counts: dict[tuple, int] = {}
     stratified_pairs: list[ContrastivePreferences] = []
@@ -335,6 +359,7 @@ def _apply_max_per_horizon_pair(
     return stratified_pairs
 
 
+@profile
 def _apply_max_per_reward_ratio(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
@@ -343,7 +368,7 @@ def _apply_max_per_reward_ratio(
     if strat.max_per_reward_ratio is None or strat.max_per_reward_ratio <= 0:
         return pairs
 
-    pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
+    # Don't re-sort - preserve round_robin diversity ordering
 
     ratio_counts: dict[float, int] = {}
     ratio_pairs: list[ContrastivePreferences] = []
@@ -368,6 +393,97 @@ def _apply_max_per_reward_ratio(
     return ratio_pairs
 
 
+@profile
+def _apply_max_per_short_reward(
+    pairs: list[ContrastivePreferences],
+    strat: PrefPairSubsampleStrategy,
+) -> list[ContrastivePreferences]:
+    """Apply max_per_short_reward to ensure diversity in reward amounts."""
+    if strat.max_per_short_reward is None or strat.max_per_short_reward <= 0:
+        return pairs
+
+    # Don't re-sort - preserve round_robin diversity ordering
+
+    reward_counts: dict[float | None, int] = {}
+    result: list[ContrastivePreferences] = []
+
+    for p in pairs:
+        reward = p.short_term.short_term_reward
+        count = reward_counts.get(reward, 0)
+        if count < strat.max_per_short_reward:
+            result.append(p)
+            reward_counts[reward] = count + 1
+
+    print(
+        f"[max_per_short_reward={strat.max_per_short_reward}] {len(pairs)} -> {len(result)} pairs "
+        f"({len(reward_counts)} rewards)"
+    )
+    return result
+
+
+@profile
+def _apply_max_per_short_time(
+    pairs: list[ContrastivePreferences],
+    strat: PrefPairSubsampleStrategy,
+) -> list[ContrastivePreferences]:
+    """Apply max_per_short_time to ensure diversity in delivery times."""
+    if strat.max_per_short_time is None or strat.max_per_short_time <= 0:
+        return pairs
+
+    # Don't re-sort - preserve round_robin diversity ordering
+
+    time_counts: dict[float | None, int] = {}
+    result: list[ContrastivePreferences] = []
+
+    for p in pairs:
+        time = p.short_term.short_term_time
+        count = time_counts.get(time, 0)
+        if count < strat.max_per_short_time:
+            result.append(p)
+            time_counts[time] = count + 1
+
+    print(
+        f"[max_per_short_time={strat.max_per_short_time}] {len(pairs)} -> {len(result)} pairs "
+        f"({len(time_counts)} times)"
+    )
+    return result
+
+
+@profile
+def _apply_max_per_content(
+    pairs: list[ContrastivePreferences],
+    strat: PrefPairSubsampleStrategy,
+) -> list[ContrastivePreferences]:
+    """Apply max_per_content to ensure diversity across all content dimensions."""
+    if strat.max_per_content is None or strat.max_per_content <= 0:
+        return pairs
+
+    # Don't re-sort - preserve round_robin diversity ordering
+
+    content_counts: dict[tuple, int] = {}
+    result: list[ContrastivePreferences] = []
+
+    for p in pairs:
+        # Use short_term sample's content (since we're pairing different choices)
+        key = (
+            p.short_term.short_term_reward,
+            p.short_term.long_term_reward,
+            p.short_term.short_term_time,
+            p.short_term.long_term_time,
+        )
+        count = content_counts.get(key, 0)
+        if count < strat.max_per_content:
+            result.append(p)
+            content_counts[key] = count + 1
+
+    print(
+        f"[max_per_content={strat.max_per_content}] {len(pairs)} -> {len(result)} pairs "
+        f"({len(content_counts)} content combos)"
+    )
+    return result
+
+
+@profile
 def _apply_max_per_confidence_bucket(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
@@ -405,6 +521,7 @@ def _apply_max_per_confidence_bucket(
     return bucket_pairs
 
 
+@profile
 def _apply_max_per_sample(
     pairs: list[ContrastivePreferences],
     max_per_sample: int | None,
@@ -413,7 +530,7 @@ def _apply_max_per_sample(
     if max_per_sample is None or max_per_sample <= 0:
         return pairs
 
-    pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
+    # Don't re-sort - preserve round_robin diversity ordering
 
     sample_usage: dict[int, int] = {}
     limited_pairs: list[ContrastivePreferences] = []
@@ -430,52 +547,88 @@ def _apply_max_per_sample(
             sample_usage[short_idx] = short_count + 1
             sample_usage[long_idx] = long_count + 1
 
-    log.info(
-        f"Max per sample ({max_per_sample}): {len(pairs)} -> {len(limited_pairs)} pairs"
+    print(
+        f"[max_per_sample={max_per_sample}] {len(pairs)} -> {len(limited_pairs)} pairs"
     )
     return limited_pairs
 
 
+@profile
 def _apply_selection_strategy(
     pairs: list[ContrastivePreferences],
     strat: PrefPairSubsampleStrategy,
 ) -> list[ContrastivePreferences]:
-    """Apply selection strategy for final ordering."""
+    """Apply selection strategy for final ordering.
+
+    Round-robin selection cycles through multiple dimensions to ensure diversity:
+    - Horizon combinations (short_horizon, long_horizon)
+    - Content combinations (short_reward, long_reward, short_time, long_time)
+
+    This ensures the final pairs have diversity across all dimensions.
+    """
     if strat.selection_strategy != "round_robin" or len(pairs) == 0:
         return pairs
 
-    # Group pairs by horizon combination
-    horizon_groups: dict[tuple, list[ContrastivePreferences]] = {}
+    # Group pairs by (horizon_combo, content_combo) for maximum diversity
+    # This ensures we cycle through both horizons AND content
+    diversity_groups: dict[tuple, list[ContrastivePreferences]] = {}
     for p in pairs:
         h_short = parse_horizon_years(p.short_term.time_horizon)
         h_long = parse_horizon_years(p.long_term.time_horizon)
-        key = (h_short, h_long)
-        if key not in horizon_groups:
-            horizon_groups[key] = []
-        horizon_groups[key].append(p)
+        # Use short_term sample's content (reward/time combination)
+        content_key = (
+            p.short_term.short_term_reward,
+            p.short_term.long_term_reward,
+            p.short_term.short_term_time,
+            p.short_term.long_term_time,
+        )
+        key = (h_short, h_long, content_key)
+        if key not in diversity_groups:
+            diversity_groups[key] = []
+        diversity_groups[key].append(p)
 
     # Sort each group by confidence
-    for group_pairs in horizon_groups.values():
+    for group_pairs in diversity_groups.values():
         group_pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
 
     # Round-robin selection across groups
     round_robin_pairs: list[ContrastivePreferences] = []
-    group_keys = list(horizon_groups.keys())
+    group_keys = list(diversity_groups.keys())
     indices = {k: 0 for k in group_keys}
 
     while len(round_robin_pairs) < len(pairs):
         added_any = False
         for key in group_keys:
             idx = indices[key]
-            if idx < len(horizon_groups[key]):
-                round_robin_pairs.append(horizon_groups[key][idx])
+            if idx < len(diversity_groups[key]):
+                round_robin_pairs.append(diversity_groups[key][idx])
                 indices[key] = idx + 1
                 added_any = True
         if not added_any:
             break
 
-    log.info(
-        f"Round-robin selection: {len(horizon_groups)} horizon groups, "
-        f"interleaved {len(round_robin_pairs)} pairs"
+    # Count unique dimensions for logging
+    unique_horizons = len({(k[0], k[1]) for k in group_keys})
+    unique_contents = len({k[2] for k in group_keys})
+    print(
+        f"[round_robin] {len(diversity_groups)} groups "
+        f"({unique_horizons} horizon combos × {unique_contents} content combos)"
     )
     return round_robin_pairs
+
+
+@profile
+def _apply_target_pairs(
+    pairs: list[ContrastivePreferences],
+    strat: PrefPairSubsampleStrategy,
+) -> list[ContrastivePreferences]:
+    """Truncate to target_pairs if specified."""
+    if strat.target_pairs is None or strat.target_pairs <= 0:
+        return pairs
+    if len(pairs) <= strat.target_pairs:
+        return pairs
+
+    # Already sorted by confidence, just truncate
+    truncated = pairs[: strat.target_pairs]
+    print(f"[target_pairs={strat.target_pairs}] {len(pairs)} -> {len(truncated)} pairs")
+    return truncated

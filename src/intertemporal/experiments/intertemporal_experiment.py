@@ -43,7 +43,7 @@ from .processing import (
 from ..common import get_pref_dataset_dir
 from ..preference import (
     generate_preference_data,
-    load_and_merge_preference_data,
+    load_preference_data,
     analyze_preferences,
     print_analysis,
 )
@@ -59,11 +59,13 @@ def step_preference_data(
 ) -> None:
     """Load or generate preference data."""
     if try_loading_data:
-        ctx.pref_data = load_and_merge_preference_data(
+        result = load_preference_data(
             ctx.cfg.get_prefix(), get_pref_dataset_dir()
         )
+        if result:
+            ctx.pref_data, ctx.prompt_dataset = result
     if not ctx.pref_data:
-        ctx.pref_data = generate_preference_data(
+        ctx.pref_data, ctx.prompt_dataset = generate_preference_data(
             model=ctx.cfg.model,
             dataset_config=ctx.cfg.dataset_config,
             max_samples=ctx.cfg.max_samples,
@@ -568,6 +570,7 @@ def step_visualize_results(
         processed_results=ctx.processed_results,
         pairs=ctx.pairs if ctx._pairs else None,
         pref_pairs=ctx.pref_pairs if ctx._pref_pairs else None,
+        position_mappings=ctx.position_mappings if ctx._position_mappings else None,
         runner=ctx.runner if ctx._runner else None,
         save_token_trees_fn=ctx.save_token_trees,
         components=components,
@@ -592,7 +595,7 @@ def run_experiment(
     """
     ctx = ExperimentContext(cfg, output_dir=output_dir, backend=backend)
 
-    step_preference_data(ctx, try_loading_data=True)
+    step_preference_data(ctx, try_loading_data=False)
 
     step_attribution_patching(ctx, try_loading_data=try_loading_data)
 

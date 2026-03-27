@@ -91,3 +91,6 @@ class PromptDatasetConfig(BaseSchema):
     def get_filename(self) -> str:
         """Get the filename for saving this prompt dataset."""
         return f"{self.name}_{self.get_id()}.json"
+
+    def _extra_id(self) -> str:
+        return self.prompt_format_config.get_id()

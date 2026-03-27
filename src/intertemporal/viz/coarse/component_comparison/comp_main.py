@@ -79,10 +79,11 @@ def plot_all_component_comparisons(
 
     # Generate plots by category
     plot_sanity_checks(layer_data, sanity_dir)
-    plot_overview(layer_data, pos_data, results_by_component, overview_dir)
+    plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size)
     plot_decomposition(layer_data, pos_data, decomp_dir, processed_results)
     plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results)
-    plot_synthesis(synthesis_dir, processed_results)
+    if processed_results is not None:
+        plot_synthesis(synthesis_dir, processed_results)
 
     # Generate README
     _generate_readme(output_dir)

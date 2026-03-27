@@ -316,6 +316,11 @@ def main() -> int:
         else:
             # --rename NAME: use custom folder name
             output_dir = get_experiment_dir() / args.rename
+            if output_dir.exists():
+                raise SystemExit(
+                    f"Error: Experiment folder already exists: {output_dir}\n"
+                    f"Use --cache {args.rename} to reuse cached data, or choose a different name."
+                )
 
     # Create experiment config after all config modifications
     exp_cfg = ExperimentConfig.from_dict(config_dict)
