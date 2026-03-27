@@ -223,7 +223,7 @@ def run_cross_task_generalization(
     # Pre-tokenize all batches once per order to avoid redundant work across num_steps iterations
     tokenized_clean = [tokenizer(b) for b in all_clean_prompts]
     layer_components = [x[0] for x in nodes]
-    scale_factors = [0.5, 1.5]
+    scale_factors = [0.25, 0.5, 1.5, 2]
     base_metrics_short: list[np.ndarray] = []
     base_metrics_long: list[np.ndarray] = []
     patch_metrics_by_scale = {
