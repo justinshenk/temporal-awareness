@@ -19,7 +19,9 @@ class DefaultPromptFormat(PromptFormatConfig):
     objective_template: str = (
         "[objective_marker] Think deeply about which option is preferable."
     )
-    constraint_template: str = "[constraint_marker] [constraint_prefix] [time_horizon]."
+    constraint_template: str = (
+        "[constraint_marker] [constraint_prefix] [time_horizon]\n"
+    )
     action_template: str = (
         "[action_marker] Select one of the two options. [reasoning_ask]"
     )

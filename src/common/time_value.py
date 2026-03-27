@@ -61,7 +61,7 @@ def canonicalize_unit(unit: str) -> str:
 
 
 def format_time_value(
-    value: float, unit: str, min_length: int = 0, with_dot: bool = True
+    value: float, unit: str, min_length: int = 0, with_dot: bool = False
 ) -> str:
     """Format a time value with appropriate unit singularization.
 
@@ -82,14 +82,19 @@ def format_time_value(
         elif unit.endswith("s") and not unit.endswith("ss"):
             unit = unit[:-1]
     result = f"{val_str} {unit}"
-    if min_length > 0 and len(result) < min_length:
-        pad_total = min_length - len(result)
-        pad_left = pad_total // 4  # 25% on left
-        pad_right = pad_total - pad_left  # 75% on right
-        result = " " * pad_left + result + " " * pad_right
-
     if with_dot:
         result += "."
+
+    if min_length > 0 and len(result) < min_length:
+        # Position text at 25% from left edge of total width
+        # (not 25% of padding, but 25% of total min_length)
+        pad_left = min_length // 4  # Text starts at 25% mark
+        pad_right = min_length - len(result) - pad_left
+        if pad_right < 0:
+            # Content too long, just use remaining space on right
+            pad_right = 0
+            pad_left = min_length - len(result)
+        result = " " * pad_left + result + " " * pad_right
 
     return result
 
@@ -136,11 +141,12 @@ class TimeValue(BaseSchema):
             value=self.to_unit(target_unit), unit=canonicalize_unit(target_unit)
         )
 
-    def to_string(self, min_length: int = 20, with_dot: bool = True) -> str:
+    def to_string(self, min_length: int = 0, with_dot: bool = True) -> str:
         """Format as string with optional padding.
 
         Args:
             min_length: Minimum length, padded 25% left / 75% right
+            with_dot: Include trailing period (default True for time_horizon)
         """
         return format_time_value(
             self.value, self.unit, min_length=min_length, with_dot=with_dot
