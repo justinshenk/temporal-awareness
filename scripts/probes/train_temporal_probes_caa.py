@@ -174,7 +174,7 @@ def create_probe_dataset(model, decoder_blocks, tokenizer, pairs):
     return X_by_layer, y
 
 
-def train_probes(X_by_layer, y, output_dir='research/probes'):
+def train_probes(X_by_layer, y, output_dir='research/probes', model_name='gpt2'):
     """
     Train a linear probe for each layer.
 
@@ -221,7 +221,7 @@ def train_probes(X_by_layer, y, output_dir='research/probes'):
         print(f"  Test Accuracy: {test_acc:.3f}")
 
         # Save probe
-        probe_file = Path(output_dir) / f'temporal_caa_layer_{layer}_probe.pkl'
+        probe_file = Path(output_dir) / f'temporal_caa_layer_{model_name}_{layer}_probe.pkl'
         with open(probe_file, 'wb') as f:
             pickle.dump(probe, f)
 
@@ -283,7 +283,7 @@ def train_probes(X_by_layer, y, output_dir='research/probes'):
     print()
 
     # Save results
-    results_file = Path(output_dir).parent / 'results' / 'temporal_probe_results_caa.csv'
+    results_file = Path(output_dir).parent / 'results' / f'{model_name}_temporal_probe_results_caa.csv'
     results_file.parent.mkdir(parents=True, exist_ok=True)
     results_df.to_csv(results_file, index=False)
     print(f"✓ Results saved to {results_file}\n")
@@ -376,11 +376,11 @@ def main(args):
     X_by_layer, y = create_probe_dataset(model, decoder_blocks, tokenizer, pairs)
 
     # Train probes
-    results_df = train_probes(X_by_layer, y, output_dir)
+    results_df = train_probes(X_by_layer, y, output_dir, model_name)
 
     # Detailed evaluation on best layer
     best_layer = results_df.loc[results_df['test_accuracy'].idxmax(), 'layer']
-    probe_path = Path(output_dir) / f'temporal_caa_layer_{int(best_layer)}_probe.pkl'
+    probe_path = Path(output_dir) / f'temporal_caa_layer_{model_name}_{int(best_layer)}_probe.pkl'
 
     detailed_evaluation(model, tokenizer, pairs, probe_path, int(best_layer))
 

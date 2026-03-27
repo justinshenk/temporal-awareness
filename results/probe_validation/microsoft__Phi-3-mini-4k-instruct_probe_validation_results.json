@@ -1,0 +1,422 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate that probes detect semantic temporal features, not keywords",
+    "timestamp": "2026-03-27T12:05:21.642496+00:00",
+    "random_seed": 42,
+    "model": {
+      "name": "microsoft/Phi-3-mini-4k-instruct",
+      "tag": "microsoft__Phi-3-mini-4k-instruct",
+      "source": "huggingface"
+    },
+    "package_versions": {
+      "torch": "2.7.1+cu118",
+      "transformers": "5.3.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.1"
+    },
+    "compute": {
+      "device": "cuda",
+      "cuda_available": true,
+      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_count": 1
+    },
+    "git_commit": "c97e33d9b284cddd6686a8e7d4b36af506161344",
+    "git_branch": "oversight-in-real-time",
+    "git_dirty": true
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope/temporal_scope_caa.json",
+      "sha256": "fb244dd73df0389edf9123257d4671c55270469703021b3e229d3d60c0f0f5df"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope/temporal_scope_implicit.json",
+      "sha256": "393079e5c767298fc2fbb68a3d306a8167e9bcef8b59dc813d9267ca4688e444"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "probe_type": "LogisticRegression",
+    "probe_max_iter": 1000,
+    "batch_size": 2,
+    "max_length": 256,
+    "attn_implementation": "eager",
+    "local_files_only": true,
+    "probe_source_dir": "research/probes",
+    "explicit_results_csv": "research/results/microsoft__Phi-3-mini-4k-instruct_temporal_probe_results_caa.csv"
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "cv_mean": 0.625,
+      "cv_std": 0.125,
+      "test_acc": 0.75
+    },
+    {
+      "layer": 1,
+      "cv_mean": 0.6625,
+      "cv_std": 0.1510380746699321,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 2,
+      "cv_mean": 0.7125,
+      "cv_std": 0.1920286436967152,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 3,
+      "cv_mean": 0.6875,
+      "cv_std": 0.1767766952966369,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 4,
+      "cv_mean": 0.775,
+      "cv_std": 0.1089724735885168,
+      "test_acc": 0.75
+    },
+    {
+      "layer": 5,
+      "cv_mean": 0.725,
+      "cv_std": 0.1015504800579495,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 6,
+      "cv_mean": 0.7625,
+      "cv_std": 0.1211919964354082,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 7,
+      "cv_mean": 0.8125,
+      "cv_std": 0.0684653196881457,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 8,
+      "cv_mean": 0.775,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 9,
+      "cv_mean": 0.8125,
+      "cv_std": 0.0883883476483184,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 10,
+      "cv_mean": 0.85,
+      "cv_std": 0.0637377439199098,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 11,
+      "cv_mean": 0.8625,
+      "cv_std": 0.0728868986855662,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 12,
+      "cv_mean": 0.875,
+      "cv_std": 0.0790569415042094,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 13,
+      "cv_mean": 0.8625,
+      "cv_std": 0.0918558653543691,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 14,
+      "cv_mean": 0.925,
+      "cv_std": 0.0467707173346742,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 15,
+      "cv_mean": 0.9125,
+      "cv_std": 0.0637377439199098,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 16,
+      "cv_mean": 0.9,
+      "cv_std": 0.075,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 17,
+      "cv_mean": 0.9125,
+      "cv_std": 0.0637377439199098,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 18,
+      "cv_mean": 0.9125,
+      "cv_std": 0.0637377439199098,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 19,
+      "cv_mean": 0.85,
+      "cv_std": 0.0935414346693485,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 20,
+      "cv_mean": 0.85,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 21,
+      "cv_mean": 0.85,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 22,
+      "cv_mean": 0.825,
+      "cv_std": 0.0918558653543691,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 23,
+      "cv_mean": 0.825,
+      "cv_std": 0.0918558653543691,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 24,
+      "cv_mean": 0.825,
+      "cv_std": 0.0999999999999999,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 25,
+      "cv_mean": 0.8125,
+      "cv_std": 0.1118033988749894,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 26,
+      "cv_mean": 0.8,
+      "cv_std": 0.1334634781503914,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 27,
+      "cv_mean": 0.825,
+      "cv_std": 0.1211919964354082,
+      "test_acc": 0.95
+    },
+    {
+      "layer": 28,
+      "cv_mean": 0.8625,
+      "cv_std": 0.0728868986855662,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 29,
+      "cv_mean": 0.85,
+      "cv_std": 0.1015504800579495,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 30,
+      "cv_mean": 0.85,
+      "cv_std": 0.0637377439199098,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 31,
+      "cv_mean": 0.8375,
+      "cv_std": 0.05,
+      "test_acc": 0.85
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "implicit_acc": 0.55
+    },
+    {
+      "layer": 1,
+      "implicit_acc": 0.55
+    },
+    {
+      "layer": 2,
+      "implicit_acc": 0.57
+    },
+    {
+      "layer": 3,
+      "implicit_acc": 0.59
+    },
+    {
+      "layer": 4,
+      "implicit_acc": 0.62
+    },
+    {
+      "layer": 5,
+      "implicit_acc": 0.66
+    },
+    {
+      "layer": 6,
+      "implicit_acc": 0.71
+    },
+    {
+      "layer": 7,
+      "implicit_acc": 0.71
+    },
+    {
+      "layer": 8,
+      "implicit_acc": 0.75
+    },
+    {
+      "layer": 9,
+      "implicit_acc": 0.75
+    },
+    {
+      "layer": 10,
+      "implicit_acc": 0.76
+    },
+    {
+      "layer": 11,
+      "implicit_acc": 0.79
+    },
+    {
+      "layer": 12,
+      "implicit_acc": 0.74
+    },
+    {
+      "layer": 13,
+      "implicit_acc": 0.74
+    },
+    {
+      "layer": 14,
+      "implicit_acc": 0.75
+    },
+    {
+      "layer": 15,
+      "implicit_acc": 0.76
+    },
+    {
+      "layer": 16,
+      "implicit_acc": 0.74
+    },
+    {
+      "layer": 17,
+      "implicit_acc": 0.75
+    },
+    {
+      "layer": 18,
+      "implicit_acc": 0.72
+    },
+    {
+      "layer": 19,
+      "implicit_acc": 0.72
+    },
+    {
+      "layer": 20,
+      "implicit_acc": 0.75
+    },
+    {
+      "layer": 21,
+      "implicit_acc": 0.78
+    },
+    {
+      "layer": 22,
+      "implicit_acc": 0.78
+    },
+    {
+      "layer": 23,
+      "implicit_acc": 0.81
+    },
+    {
+      "layer": 24,
+      "implicit_acc": 0.82
+    },
+    {
+      "layer": 25,
+      "implicit_acc": 0.8
+    },
+    {
+      "layer": 26,
+      "implicit_acc": 0.79
+    },
+    {
+      "layer": 27,
+      "implicit_acc": 0.77
+    },
+    {
+      "layer": 28,
+      "implicit_acc": 0.84
+    },
+    {
+      "layer": 29,
+      "implicit_acc": 0.85
+    },
+    {
+      "layer": 30,
+      "implicit_acc": 0.83
+    },
+    {
+      "layer": 31,
+      "implicit_acc": 0.88
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 31,
+    "best_implicit_accuracy": 0.88,
+    "validation_passed": true,
+    "semantic_layers": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ],
+    "weak_layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "lexical_layers": [],
+    "mean_explicit_accuracy": 0.875,
+    "mean_implicit_accuracy": 0.7384375,
+    "mean_generalization_gap": 0.1365625
+  }
+}
