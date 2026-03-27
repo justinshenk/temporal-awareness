@@ -4,6 +4,7 @@ then patch confident long examples from short examples and vice versa.
 """
 
 import argparse
+import gc
 import json
 import pickle
 import subprocess
@@ -51,6 +52,13 @@ def tensor_to_float(tensor: torch.Tensor) -> float:
     if cpu_tensor.dtype == torch.bfloat16:
         cpu_tensor = cpu_tensor.to(torch.float32)
     return float(cpu_tensor.item())
+
+
+def clear_cuda_cache() -> None:
+    """Release Python references and clear CUDA allocator cache when available."""
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def load_config(config_path: Path) -> dict[str, Any]:
@@ -218,7 +226,7 @@ def collect_base_responses(
     for batch_records in tqdm(chunk_list(records, batch_size), desc="Base responses"):
         batch_prompts = [record["question"] for record in batch_records]
         batch_dict = tokenizer(batch_prompts)
-        _, logits = get_activations(
+        base_acts, logits = get_activations(
             model,
             batch_dict,
             base_layer_components,
@@ -259,6 +267,9 @@ def collect_base_responses(
                 confident_long.append(response_record)
             else:
                 raise ValueError(f"Unexpected label {record['label']!r}")
+
+        del base_acts, logits, batch_dict
+        clear_cuda_cache()
 
     return base_responses, confident_short, confident_long
 
@@ -387,6 +398,17 @@ def collect_directional_patched_responses(
                     "correct_logit_diff": logit_diff,
                 }
             )
+
+        del (
+            source_acts,
+            target_acts,
+            patched_acts,
+            patch_logits,
+            combined_batch,
+            source_batch,
+            target_batch,
+        )
+        clear_cuda_cache()
 
     return patched_responses
 
