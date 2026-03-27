@@ -268,6 +268,7 @@ def collect_directional_patched_responses(
     target_records: list[dict[str, Any]],
     source_records: list[dict[str, Any]],
     layer_component_nodes: list[LayerComponentNode],
+    batch_size: int,
     tokenizer: Any,
     model: Any,
     token_id_short: int,
@@ -291,24 +292,37 @@ def collect_directional_patched_responses(
     rng = np.random.default_rng(seed)
     patched_responses: list[dict[str, Any]] = []
 
-    for target_record in tqdm(target_records, desc=f"Patched responses ({direction_name})"):
+    pair_records: list[dict[str, Any]] = []
+    for target_record in target_records:
         source_indices = rng.choice(
             len(source_records),
             size=num_random_sources,
             replace=False,
         )
         sampled_source_records = [source_records[int(index)] for index in source_indices]
-        source_prompts = [record["question"] for record in sampled_source_records]
-        target_prompts = [target_record["question"]] * num_random_sources
+        for patch_index, source_record in enumerate(sampled_source_records):
+            pair_records.append(
+                {
+                    "target_record": target_record,
+                    "source_record": source_record,
+                    "patch_index": patch_index,
+                }
+            )
 
+    for pair_batch in tqdm(
+        chunk_list(pair_records, batch_size),
+        desc=f"Patched responses ({direction_name})",
+    ):
+        source_prompts = [
+            pair_record["source_record"]["question"] for pair_record in pair_batch
+        ]
+        target_prompts = [
+            pair_record["target_record"]["question"] for pair_record in pair_batch
+        ]
         combined_batch = tokenizer(source_prompts + target_prompts)
-        source_batch = slice_batch_dict(combined_batch, 0, num_random_sources)
-        target_batch = slice_batch_dict(
-            combined_batch,
-            num_random_sources,
-            2 * num_random_sources,
-        )
-
+        pair_count = len(pair_batch)
+        source_batch = slice_batch_dict(combined_batch, 0, pair_count)
+        target_batch = slice_batch_dict(combined_batch, pair_count, 2 * pair_count)
         source_acts, _ = get_activations(
             model,
             source_batch,
@@ -335,7 +349,9 @@ def collect_directional_patched_responses(
             return_logits=True,
         )
 
-        for patch_idx, source_record in enumerate(sampled_source_records):
+        for patch_idx, pair_record in enumerate(pair_batch):
+            target_record = pair_record["target_record"]
+            source_record = pair_record["source_record"]
             short_logit = tensor_to_float(patch_logits[patch_idx, -1, token_id_short])  # type: ignore[index]
             long_logit = tensor_to_float(patch_logits[patch_idx, -1, token_id_long])  # type: ignore[index]
             response = predicted_label(short_logit, long_logit, short_label, long_label)
@@ -364,7 +380,7 @@ def collect_directional_patched_responses(
                         "correct_logit_diff"
                     ],
                     "patch_direction": direction_name,
-                    "patch_index": patch_idx,
+                    "patch_index": pair_record["patch_index"],
                     "response": response,
                     "short_logit": short_logit,
                     "long_logit": long_logit,
@@ -453,6 +469,7 @@ def run_bidirectional_classification_activation_patch(
         target_records=confident_long,
         source_records=confident_short,
         layer_component_nodes=layer_component_nodes,
+        batch_size=batch_size,
         tokenizer=tokenizer,
         model=model,
         token_id_short=token_id_short,
@@ -467,6 +484,7 @@ def run_bidirectional_classification_activation_patch(
         target_records=confident_short,
         source_records=confident_long,
         layer_component_nodes=layer_component_nodes,
+        batch_size=batch_size,
         tokenizer=tokenizer,
         model=model,
         token_id_short=token_id_short,
@@ -489,6 +507,7 @@ def run_bidirectional_classification_activation_patch(
             "seed": seed,
             "node_classes": node_classes,
             "node_count": len(layer_component_nodes),
+            "patch_batch_size_limit": batch_size,
             "n_base_examples": len(base_responses),
             "n_confident_short": len(confident_short),
             "n_confident_long": len(confident_long),
