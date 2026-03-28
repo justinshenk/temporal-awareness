@@ -26,6 +26,8 @@ from pathlib import Path
 
 import numpy as np
 
+from src.common.file_io import save_json
+
 from ..common.preference_types import PromptSample
 from ..common.sample_position_mapping import (
     DatasetPositionMapping,
@@ -173,6 +175,8 @@ class ActivationData:
         """Get list of available target keys (for analysis compatibility).
 
         Target key format: L{layer}_{component}_{format_pos}
+
+        Only returns keys for positions that actually have activation files.
         """
         if self._target_keys:
             return self._target_keys.copy()
@@ -186,24 +190,39 @@ class ActivationData:
         if first_mapping is None:
             return []
 
-        # Scan sample_0 folder for available (layer, component) combinations
+        # Scan sample_0 folder for available (layer, component, abs_pos) combinations
         sample_dir = self.get_sample_dir(0)
         if not sample_dir.exists():
             return []
 
-        layer_components = set()
+        # Build reverse mapping: abs_pos -> format_pos for sample_0
+        abs_pos_to_format_pos: dict[int, str] = {}
+        for format_pos, abs_positions in first_mapping.named_positions.items():
+            if abs_positions:
+                # Only map the first abs_pos (the one we use for loading)
+                abs_pos_to_format_pos[abs_positions[0]] = format_pos
+
+        # Scan files to get (layer, component, format_pos) tuples that actually exist
+        layer_component_pos: set[tuple[str, str, str]] = set()
         for f in sample_dir.glob("*.npy"):
             parts = f.stem.split("_")
             if len(parts) >= 3:
                 layer = parts[0]  # L35
                 component = "_".join(parts[1:-1])  # resid_post
-                layer_components.add((layer, component))
+                try:
+                    abs_pos = int(parts[-1])  # 127
+                except ValueError:
+                    continue
+                # Map abs_pos back to format_pos
+                format_pos = abs_pos_to_format_pos.get(abs_pos)
+                if format_pos is not None:
+                    layer_component_pos.add((layer, component, format_pos))
 
-        # Build target keys for each (layer, component, format_pos)
-        target_keys = []
-        for layer, component in sorted(layer_components):
-            for format_pos in first_mapping.named_positions.keys():
-                target_keys.append(f"{layer}_{component}_{format_pos}")
+        # Build target keys for each (layer, component, format_pos) that exists
+        target_keys = [
+            f"{layer}_{component}_{format_pos}"
+            for layer, component, format_pos in sorted(layer_component_pos)
+        ]
 
         self._target_keys = target_keys
         return target_keys.copy()
@@ -217,27 +236,31 @@ class ActivationData:
         if target_key in self._cache:
             return self._cache[target_key]
 
-        # Parse target key
+        # Parse target key using KNOWN valid components
+        # Format: L{layer}_{component}_{format_pos}
+        # Components are: resid_pre, resid_post, mlp_out, attn_out
+        VALID_COMPONENTS = ["resid_pre", "resid_post", "mlp_out", "attn_out"]
+
         parts = target_key.split("_")
         layer = int(parts[0][1:])  # L35 -> 35
-        component = "_".join(parts[1:-1])  # resid_post, mlp_out, etc.
-        format_pos = parts[-1]  # response_choice, time_horizon, etc.
 
-        # Handle multi-word format_pos
-        # Target key might be L35_resid_post_response_choice_prefix
-        # We need to figure out where component ends and format_pos starts
-        # Try progressively longer format_pos
-        for i in range(2, len(parts)):
-            potential_component = "_".join(parts[1:i])
-            potential_format_pos = "_".join(parts[i:])
-            if self.position_mappings and self.position_mappings.get(0):
-                if (
-                    potential_format_pos
-                    in self.position_mappings.get(0).named_positions
-                ):
-                    component = potential_component
-                    format_pos = potential_format_pos
-                    break
+        # Find component by matching against known valid components
+        component = None
+        format_pos = None
+
+        # Try each valid component and see if it matches the start of remaining parts
+        for valid_comp in VALID_COMPONENTS:
+            comp_parts = valid_comp.split("_")
+            comp_len = len(comp_parts)
+
+            # Check if parts[1:1+comp_len] matches this component
+            if len(parts) > comp_len and "_".join(parts[1:1+comp_len]) == valid_comp:
+                component = valid_comp
+                format_pos = "_".join(parts[1+comp_len:])
+                break
+
+        if component is None or format_pos is None:
+            raise ValueError(f"Could not parse target key: {target_key}")
 
         activations = self.load_activations_by_format_pos(layer, component, format_pos)
         self._cache[target_key] = activations
@@ -537,16 +560,13 @@ def extract_activations(
             continue
 
         # Save per-sample position mapping
-        with open(sample_dir / "position_mapping.json", "w") as f:
-            json.dump(pos_mapping.to_dict(), f)
+        save_json(pos_mapping.to_dict(), sample_dir / "position_mapping.json", readable_text=False)
 
         # Save per-sample prompt sample
-        with open(sample_dir / "prompt_sample.json", "w") as f:
-            json.dump(sample.to_dict(), f)
+        save_json(sample.to_dict(), sample_dir / "prompt_sample.json")
 
         # Save per-sample preference sample
-        with open(sample_dir / "preference_sample.json", "w") as f:
-            json.dump(pref.to_dict(), f)
+        save_json(pref.to_dict(), sample_dir / "preference_sample.json")
 
         # Record and save choice info
         pair = sample.prompt.preference_pair
@@ -567,8 +587,7 @@ def extract_activations(
         choices.append(choice_info)
 
         # Save per-sample choice info
-        with open(sample_dir / "choice.json", "w") as f:
-            json.dump(choice_info.to_dict(), f)
+        save_json(choice_info.to_dict(), sample_dir / "choice.json", readable_text=False)
 
         valid_samples.append(sample)
         position_mappings.add(pos_mapping)

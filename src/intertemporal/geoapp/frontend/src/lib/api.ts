@@ -1,12 +1,39 @@
 const API_BASE = '/api'
 
-interface ApiError {
-  message: string
+// Logging helper
+const log = (category: string, message: string, data?: Record<string, unknown>) => {
+  const ts = new Date().toISOString().slice(11, 23)
+  const dataStr = data ? ` | ${Object.entries(data).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}` : ''
+  console.log(`[${ts}] [CLIENT] [${category}] ${message}${dataStr}`)
+}
+
+// Custom error class for API failures - crashes the app with clear messaging
+export class ApiError extends Error {
   status: number
+  endpoint: string
+
+  constructor(message: string, status: number, endpoint: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.endpoint = endpoint
+  }
+
+  // Returns a user-friendly crash message
+  get crashMessage(): string {
+    if (this.status === 404) {
+      return `DATA MISSING: ${this.endpoint}\n\nPre-computed data not found. Run compute_geometry_analysis.py to generate required data.`
+    }
+    if (this.status === 500) {
+      return `SERVER ERROR: ${this.endpoint}\n\nThe backend crashed. Check server logs for details.`
+    }
+    return `API ERROR (${this.status}): ${this.endpoint}\n\n${this.message}`
+  }
 }
 
 class ApiClient {
   private baseUrl: string
+  private requestId: number = 0
 
   constructor(baseUrl: string = API_BASE) {
     this.baseUrl = baseUrl
@@ -17,6 +44,10 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
+    const reqId = ++this.requestId
+    const startTime = performance.now()
+
+    log('API', `[#${reqId}] ${options.method || 'GET'} ${endpoint}`)
 
     const config: RequestInit = {
       ...options,
@@ -27,24 +58,38 @@ class ApiClient {
     }
 
     const response = await fetch(url, config)
+    const fetchTime = performance.now() - startTime
 
     if (!response.ok) {
-      const error: ApiError = {
-        message: `HTTP error ${response.status}`,
-        status: response.status,
-      }
+      log('API', `[#${reqId}] ERROR ${response.status}`, { elapsed_ms: fetchTime.toFixed(1) })
 
+      let errorMessage = `HTTP error ${response.status}`
       try {
         const errorData = await response.json()
-        error.message = errorData.detail || errorData.message || error.message
+        errorMessage = errorData.detail || errorData.message || errorMessage
       } catch {
         // Use default error message
       }
 
+      // Throw ApiError with full context - this will crash the app
+      const error = new ApiError(errorMessage, response.status, endpoint)
+      console.error(`[API CRASH] ${error.crashMessage}`)
       throw error
     }
 
-    return response.json()
+    const parseStart = performance.now()
+    const data = await response.json()
+    const parseTime = performance.now() - parseStart
+    const totalTime = performance.now() - startTime
+
+    log('API', `[#${reqId}] OK`, {
+      fetch_ms: fetchTime.toFixed(1),
+      parse_ms: parseTime.toFixed(1),
+      total_ms: totalTime.toFixed(1),
+      size_kb: (JSON.stringify(data).length / 1024).toFixed(1)
+    })
+
+    return data
   }
 
   async get<T>(endpoint: string): Promise<T> {

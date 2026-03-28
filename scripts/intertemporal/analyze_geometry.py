@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Geometric visualization of temporal awareness in model activations.
 
-Analyzes how time horizon information is encoded in transformer activations using
-linear probes, PCA correlation analysis, and dimensionality reduction.
+This is a convenience wrapper that runs all 3 geometry pipeline scripts:
+1. generate_geometry_samples.py - Generate samples and extract activations
+2. compute_geometry_analysis.py - Compute analysis and embeddings
+3. visualize_geometry_analysis.py - Generate static plots
+
+For more control, run the individual scripts directly.
 
 Key findings:
 - Time horizon is linearly decodable at response positions (R² ~ 0.98)
@@ -10,92 +14,32 @@ Key findings:
 - The signal emerges strongly in layers 19-24
 
 Usage:
+    # Run full pipeline
     uv run python scripts/intertemporal/analyze_geometry.py
+
+    # Use cached data (skip sample generation)
     uv run python scripts/intertemporal/analyze_geometry.py --cache
-    uv run python scripts/intertemporal/analyze_geometry.py --only-viz
+
+    # Skip visualization
+    uv run python scripts/intertemporal/analyze_geometry.py --no-viz
+
+    # Quick mode (skip per-target plots)
+    uv run python scripts/intertemporal/analyze_geometry.py --quick
 """
 
 import argparse
 import logging
-import shutil
+import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.intertemporal.common.semantic_positions import (
-    PROMPT_POSITIONS,
-    RESPONSE_POSITIONS,
-)
-from src.intertemporal.data.default_configs import DEFAULT_MODEL
-from src.intertemporal.geometry import GeometryConfig, TargetSpec, run_geometry_pipeline
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Analysis Configuration
-# =============================================================================
-
-# Layers selected based on circuit analysis
-LAYERS = [
-    0,  # baseline embedding
-    1,  # early embedding
-    3,  # early embedding
-    12,  # mid-network (before circuit)
-    18,  # just before circuit onset
-    19,  # circuit onset
-    21,  # integration point
-    24,  # top attention layer
-    28,  # secondary MLP processor
-    31,  # most reliable MLP
-    34,  # final processing
-    35,  # penultimate layer
-]
-
-# Activation components to extract
-COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
-
-# Subset of prompt positions for geometry (focus on time horizon)
-GEOMETRY_SOURCE_POSITIONS = ["time_horizon", "post_time_horizon"]
-
-
-def build_targets(
-    layers: list[int],
-    components: list[str],
-    positions: list[str],
-) -> list[TargetSpec]:
-    """Build target specifications for all layer/component/position combinations."""
-    return [
-        TargetSpec(layer=layer, component=component, position=position)
-        for layer in layers
-        for component in components
-        for position in positions
-    ]
-
-
-# All positions for extraction
-ALL_POSITIONS = PROMPT_POSITIONS + RESPONSE_POSITIONS
-
-# Default configuration
-DEFAULT_CONFIG = {
-    "targets": build_targets(LAYERS, COMPONENTS, ALL_POSITIONS),
-    "output_dir": "out/geometry",
-    "model": DEFAULT_MODEL,
-    "seed": 42,
-    "n_pca_components": 10,
-}
-
-
-# =============================================================================
-# CLI
-# =============================================================================
 
 
 def parse_args() -> argparse.Namespace:
@@ -109,12 +53,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache",
         action="store_true",
-        help="Use cached data if available",
+        help="Use cached data if available (skip sample generation)",
     )
     parser.add_argument(
         "--only-viz",
         action="store_true",
-        help="Only run visualization (skip extraction, requires cache)",
+        help="Only run visualization (skip extraction and analysis, requires cache)",
     )
     parser.add_argument(
         "--skip-extraction",
@@ -134,20 +78,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default=DEFAULT_CONFIG["output_dir"],
-        help=f"Output directory (default: {DEFAULT_CONFIG['output_dir']})",
+        default="out/geometry",
+        help="Output directory (default: out/geometry)",
     )
     parser.add_argument(
         "--model",
         type=str,
-        default=DEFAULT_CONFIG["model"],
-        help=f"Model identifier (default: {DEFAULT_CONFIG['model']})",
+        default=None,
+        help="Model identifier (default: from config)",
     )
     parser.add_argument(
         "--seed",
         type=int,
-        default=DEFAULT_CONFIG["seed"],
-        help=f"Random seed (default: {DEFAULT_CONFIG['seed']})",
+        default=42,
+        help="Random seed (default: 42)",
     )
     parser.add_argument(
         "--max-samples",
@@ -155,130 +99,110 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Maximum number of samples to use (default: all)",
     )
+    parser.add_argument(
+        "--full-embeddings",
+        action="store_true",
+        help="Compute all embeddings (PCA + UMAP + t-SNE). Default: PCA only.",
+    )
 
     return parser.parse_args()
 
 
-# =============================================================================
-# Summary Output
-# =============================================================================
+def run_script(script_name: str, args: list[str]) -> int:
+    """Run a script with the given arguments."""
+    script_path = PROJECT_ROOT / "scripts" / "intertemporal" / script_name
+    cmd = ["uv", "run", "python", str(script_path)] + args
+    logger.info(f"Running: {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+    return result.returncode
 
 
-def classify_position(key: str) -> str:
-    """Classify a target key as PROMPT or RESPONSE position."""
-    response_markers = ["response", "choice", "reasoning"]
-    prompt_markers = ["time_horizon", "short_term", "long_term"]
-
-    if any(marker in key for marker in response_markers):
-        return "RESPONSE"
-    if any(marker in key for marker in prompt_markers):
-        return "PROMPT"
-    return "OTHER"
-
-
-def print_summary(results: dict, output_dir: str) -> None:
-    """Print summary of pipeline results."""
-    logger.info("\n" + "=" * 60)
-    logger.info("FINAL SUMMARY")
-    logger.info("=" * 60)
-
-    summary = results.get("summary", {})
-    linear_probe = summary.get("linear_probe", {})
-
-    if linear_probe:
-        logger.info("\nTop Linear Probe R² (ability to decode time horizon):")
-        sorted_items = sorted(
-            linear_probe.items(),
-            key=lambda x: x[1]["r2"],
-            reverse=True,
-        )[:15]
-
-        for key, data in sorted_items:
-            pos_type = classify_position(key)
-            logger.info(
-                f"  [{pos_type}] {key}: R²={data['r2']:.3f} (corr={data['corr']:.3f})"
-            )
-
-    logger.info(f"\nResults saved to: {output_dir}")
-    logger.info("Key outputs:")
-    output_dirs = [
-        "01_dashboard",
-        "02_linear_probe",
-        "03_decision_boundary",
-        "04_trajectories",
-        "05_direction_alignment",
-        "06_scree",
-        "07_component_decomp",
-        "08_component_decomp_3d",
-        "09_targets",
-    ]
-    for d in output_dirs:
-        logger.info(f"  - {output_dir}/plots/{d}/")
-    logger.info(f"  - {output_dir}/summary.json")
-
-
-# =============================================================================
-# Main
-# =============================================================================
-
-
-def backup_existing_output(output_dir: Path) -> None:
-    """Move existing output folder to {output_dir}_{timestamp} if it exists."""
-    if not output_dir.exists():
-        return
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = output_dir.parent / f"{output_dir.name}_{timestamp}"
-    logger.info(f"Moving existing output to: {backup_dir}")
-    shutil.move(str(output_dir), str(backup_dir))
-
-
-def main() -> None:
-    """Run the geometric visualization pipeline."""
+def main() -> int:
+    """Run the geometry visualization pipeline."""
     args = parse_args()
 
-    output_dir = Path(args.output_dir)
-
-    # Backup existing output folder (skip if using cache)
-    if not args.cache and not args.only_viz and not args.skip_extraction:
-        backup_existing_output(output_dir)
-
-    # Build config from defaults + CLI args
-    config = GeometryConfig(
-        targets=DEFAULT_CONFIG["targets"],
-        output_dir=Path(args.output_dir),
-        model=args.model,
-        seed=args.seed,
-        max_samples=args.max_samples,
-        n_pca_components=DEFAULT_CONFIG["n_pca_components"],
-    )
-
-    # Log config summary (not all 396 targets individually)
-    logger.info("Configuration:")
-    logger.info(f"  Model: {config.model}")
-    logger.info(f"  Output: {config.output_dir}")
-    logger.info(f"  Layers: {LAYERS}")
-    logger.info(f"  Components: {COMPONENTS}")
-    logger.info(
-        f"  Positions: {len(ALL_POSITIONS)} ({len(PROMPT_POSITIONS)} prompt + {len(RESPONSE_POSITIONS)} response)"
-    )
-    logger.info(f"  Total targets: {len(config.targets)}")
+    logger.info("=" * 60)
+    logger.info("GEOMETRY VISUALIZATION PIPELINE")
+    logger.info("=" * 60)
 
     # Handle --only-viz (implies --cache and --skip-extraction)
-    use_cache = args.cache or args.only_viz
     skip_extraction = args.skip_extraction or args.only_viz
+    use_cache = args.cache or args.only_viz
 
-    # Run pipeline
-    results = run_geometry_pipeline(
-        config,
-        use_cache=use_cache,
-        skip_extraction=skip_extraction,
-        skip_viz=args.no_viz,
-        skip_per_target_plots=args.quick,
-    )
+    # Script 1: Generate samples (unless skipping)
+    if not skip_extraction:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 1/3: Generate Samples")
+        logger.info("=" * 60)
 
-    print_summary(results, str(config.output_dir))
+        script1_args = ["--output-dir", args.output_dir]
+        if use_cache:
+            script1_args.append("--cache")
+        if args.model:
+            script1_args.extend(["--model", args.model])
+        if args.max_samples:
+            script1_args.extend(["--max-samples", str(args.max_samples)])
+        script1_args.extend(["--seed", str(args.seed)])
+
+        ret = run_script("generate_geometry_samples.py", script1_args)
+        if ret != 0:
+            logger.error("Sample generation failed")
+            return ret
+    else:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 1/3: Generate Samples (SKIPPED)")
+        logger.info("=" * 60)
+
+    # Script 2: Compute analysis (unless only-viz)
+    if not args.only_viz:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 2/3: Compute Analysis")
+        logger.info("=" * 60)
+
+        script2_args = ["--data-dir", args.output_dir]
+        if args.full_embeddings:
+            script2_args.append("--full")
+
+        ret = run_script("compute_geometry_analysis.py", script2_args)
+        if ret != 0:
+            logger.error("Analysis computation failed")
+            return ret
+    else:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 2/3: Compute Analysis (SKIPPED)")
+        logger.info("=" * 60)
+
+    # Script 3: Visualize (unless no-viz)
+    if not args.no_viz:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 3/3: Generate Visualizations")
+        logger.info("=" * 60)
+
+        script3_args = ["--data-dir", args.output_dir]
+        if args.quick:
+            script3_args.append("--quick")
+
+        ret = run_script("visualize_geometry_analysis.py", script3_args)
+        if ret != 0:
+            logger.error("Visualization generation failed")
+            return ret
+    else:
+        logger.info("\n" + "=" * 60)
+        logger.info("Step 3/3: Generate Visualizations (SKIPPED)")
+        logger.info("=" * 60)
+
+    logger.info("\n" + "=" * 60)
+    logger.info("PIPELINE COMPLETE")
+    logger.info("=" * 60)
+    logger.info(f"Output directory: {args.output_dir}")
+    logger.info("Key outputs:")
+    logger.info(f"  - {args.output_dir}/data/         # Raw activations")
+    logger.info(f"  - {args.output_dir}/analysis/     # Analysis results + embeddings")
+    logger.info(f"  - {args.output_dir}/viz/          # Static plots")
+    logger.info(f"  - {args.output_dir}/summary.json  # Summary statistics")
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

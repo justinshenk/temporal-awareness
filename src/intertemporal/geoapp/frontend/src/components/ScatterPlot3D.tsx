@@ -11,6 +11,13 @@ import {
   useCameraControls,
 } from './CameraControls';
 
+// Logging helper
+const log = (message: string, data?: Record<string, unknown>) => {
+  const ts = new Date().toISOString().slice(11, 23);
+  const dataStr = data ? ` | ${Object.entries(data).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ')}` : '';
+  console.log(`[${ts}] [CLIENT] [ScatterPlot3D] ${message}${dataStr}`);
+};
+
 export interface ScatterPlot3DProps {
   positions: Float32Array;
   colors: Float32Array;
@@ -214,6 +221,11 @@ function ScatterPlot3DInner({
   selectedSampleIdx,
   visibility,
 }: ScatterPlot3DProps) {
+  const renderCount = useRef(0);
+  renderCount.current++;
+  const n_points = positions.length / 3;
+  log(`Render #${renderCount.current}`, { n_points, selectedSampleIdx });
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);

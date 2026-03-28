@@ -1,6 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-import { api } from '../lib/api';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { api, ApiError } from '../lib/api';
+
+// Re-export ApiError for use in components
+export { ApiError } from '../lib/api';
+
+// Logging helper
+const log = (category: string, message: string, data?: Record<string, unknown>) => {
+  const ts = new Date().toISOString().slice(11, 23);
+  const dataStr = data ? ` | ${Object.entries(data).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ')}` : '';
+  console.log(`[${ts}] [CLIENT] [${category}] ${message}${dataStr}`);
+};
 
 // Types matching the actual backend API responses
 
@@ -95,11 +105,21 @@ export interface SampleResponse {
 }
 
 // Hook to fetch app configuration
+// CRASH BEHAVIOR: No retries - if config fails, app crashes immediately
 export function useConfig() {
   return useQuery({
     queryKey: ['config'],
     queryFn: async (): Promise<TransformedConfig> => {
+      log('useConfig', 'Fetching config...');
+      const startTime = performance.now();
       const response = await api.get<ConfigResponse>('/config');
+      const elapsed = performance.now() - startTime;
+      log('useConfig', 'Config loaded', {
+        n_layers: response.layers.length,
+        n_positions: response.positions.length,
+        n_samples: response.n_samples,
+        elapsed_ms: elapsed.toFixed(1)
+      });
       return {
         layers: response.layers,
         components: response.components,
@@ -116,10 +136,13 @@ export function useConfig() {
       };
     },
     staleTime: Infinity, // Config doesn't change during session
+    retry: false, // CRASH: No retries - fail immediately if data is missing
+    throwOnError: true, // Propagate errors to error boundary
   });
 }
 
 // Hook to fetch 3D embedding coordinates
+// CRASH BEHAVIOR: No retries - if embedding data is missing, app crashes immediately
 export function useEmbedding(
   layer: number,
   component: string,
@@ -145,6 +168,7 @@ export function useEmbedding(
     enabled: layer >= 0 && !!component && !!position && !!method,
     staleTime: 1000 * 60 * 30, // 30 minutes - embeddings are expensive to compute
     gcTime: 1000 * 60 * 60, // 1 hour - keep in cache for a long time
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 }
 
@@ -160,6 +184,9 @@ export interface StreamingEmbeddingState {
   progress: number; // 0-100
 }
 
+// Global cache for streaming embedding data (persists across component re-renders)
+const streamingCache = new Map<string, StreamingEmbeddingState>();
+
 // Hook for streaming embedding data via SSE
 export function useStreamingEmbedding(
   layer: number,
@@ -168,27 +195,52 @@ export function useStreamingEmbedding(
   method: string,
   enabled: boolean = true
 ) {
-  const [state, setState] = useState<StreamingEmbeddingState>({
-    positions: [],
-    indices: [],
-    totalPoints: 0,
-    loadedPoints: 0,
-    isStreaming: false,
-    isComplete: false,
-    error: null,
-    progress: 0,
+  const currentParams = `${layer}|${component}|${position}|${method}`;
+
+  // Check global cache first for instant restore
+  const cachedData = streamingCache.get(currentParams);
+
+  const [state, setState] = useState<StreamingEmbeddingState>(() => {
+    // Initialize from cache if available
+    if (cachedData && cachedData.isComplete) {
+      log('useStreamingEmbedding', `💾 CACHE HIT (init): L${layer}/${position}`, { loadedPoints: cachedData.loadedPoints });
+      return cachedData;
+    }
+    return {
+      positions: [],
+      indices: [],
+      totalPoints: 0,
+      loadedPoints: 0,
+      isStreaming: false,
+      isComplete: false,
+      error: null,
+      progress: 0,
+    };
   });
 
-  // Track what params the current data was fetched for
-  const [cachedParams, setCachedParams] = useState<string | null>(null);
-  const currentParams = `${layer}|${component}|${position}|${method}`;
+  const streamStartTime = useRef<number>(0);
+  const activeEventSource = useRef<EventSource | null>(null);
 
   useEffect(() => {
     // Skip fetching if disabled or invalid params
     if (!enabled || layer < 0 || !component || !position || !method) return;
 
-    // Skip if we already have valid data for these params
-    if (cachedParams === currentParams && state.isComplete) return;
+    // Check global cache - if we have complete data, use it immediately
+    const cached = streamingCache.get(currentParams);
+    if (cached && cached.isComplete) {
+      log('useStreamingEmbedding', `💾 CACHE HIT: L${layer}/${position}`, { loadedPoints: cached.loadedPoints });
+      setState(cached);
+      return;
+    }
+
+    log('useStreamingEmbedding', `🚀 STARTING SSE: L${layer}/${component}/${position} (${method})`);
+    streamStartTime.current = performance.now();
+
+    // Close any existing connection
+    if (activeEventSource.current) {
+      activeEventSource.current.close();
+      activeEventSource.current = null;
+    }
 
     // Reset state for new request
     setState({
@@ -201,16 +253,18 @@ export function useStreamingEmbedding(
       error: null,
       progress: 0,
     });
-    setCachedParams(currentParams);
 
     const url = `/api/embedding/${layer}/${component}/${encodeURIComponent(position)}/stream?method=${method}&chunk_size=500`;
+    log('useStreamingEmbedding', `📡 Opening EventSource: ${url}`);
     const eventSource = new EventSource(url);
+    activeEventSource.current = eventSource;
 
     let allPositions: number[] = [];
     let allIndices: number[] = [];
     let totalPoints = 0;
 
     let lastReportedProgress = 0;
+    let chunkCount = 0;
 
     eventSource.onmessage = (event) => {
       try {
@@ -218,14 +272,17 @@ export function useStreamingEmbedding(
 
         if (data.type === 'metadata') {
           totalPoints = data.total_points;
-          // Pre-allocate arrays for better performance
-          allPositions = new Array(totalPoints * 3);
-          allIndices = new Array(totalPoints);
+          log('useStreamingEmbedding', 'Received metadata', { totalPoints, chunk_size: data.chunk_size });
+          // Pre-allocate arrays with zeros (NOT sparse arrays!)
+          // Using Array(n).fill(0) ensures all slots have numeric values
+          allPositions = new Array(totalPoints * 3).fill(0);
+          allIndices = new Array(totalPoints).fill(0);
           setState(prev => ({
             ...prev,
             totalPoints,
           }));
         } else if (data.type === 'chunk') {
+          chunkCount++;
           // Copy chunk data into pre-allocated arrays
           const coords = data.coordinates as number[];
           const indices = data.sample_indices as number[];
@@ -245,6 +302,7 @@ export function useStreamingEmbedding(
           const shouldUpdate = progress === 100 || progress - lastReportedProgress >= 5 || lastReportedProgress === 0;
           if (shouldUpdate) {
             lastReportedProgress = progress;
+            log('useStreamingEmbedding', `Chunk ${chunkCount}`, { progress: `${progress}%`, loadedPoints });
             // Update state with current progress - spread to trigger re-render
             setState(prev => ({
               ...prev,
@@ -255,16 +313,30 @@ export function useStreamingEmbedding(
             }));
           }
         } else if (data.type === 'complete') {
-          setState(prev => ({
-            ...prev,
+          const elapsed = performance.now() - streamStartTime.current;
+          log('useStreamingEmbedding', 'Stream complete', {
+            totalPoints,
+            totalChunks: chunkCount,
+            elapsed_ms: elapsed.toFixed(1)
+          });
+          const completedState: StreamingEmbeddingState = {
             positions: allPositions,
             indices: allIndices,
+            totalPoints,
+            loadedPoints: totalPoints,
             isStreaming: false,
             isComplete: true,
+            error: null,
             progress: 100,
-          }));
+          };
+          // Store in global cache for instant restore later
+          streamingCache.set(currentParams, completedState);
+          log('useStreamingEmbedding', `💾 CACHED: ${currentParams}`, { cacheSize: streamingCache.size });
+          setState(completedState);
           eventSource.close();
+          activeEventSource.current = null;
         } else if (data.error) {
+          log('useStreamingEmbedding', 'Stream error', { error: data.error });
           setState(prev => ({
             ...prev,
             isStreaming: false,
@@ -278,33 +350,42 @@ export function useStreamingEmbedding(
     };
 
     eventSource.onerror = () => {
+      log('useStreamingEmbedding', 'SSE connection failed');
       setState(prev => ({
         ...prev,
         isStreaming: false,
         error: new Error('Stream connection failed'),
       }));
       eventSource.close();
+      activeEventSource.current = null;
     };
 
     return () => {
       eventSource.close();
+      activeEventSource.current = null;
     };
-  }, [layer, component, position, method, enabled, cachedParams, currentParams, state.isComplete]);
+  }, [layer, component, position, method, enabled, currentParams]);
 
   return state;
 }
 
 // Hook to fetch metadata for coloring points
+// CRASH BEHAVIOR: No retries - if metadata is missing, app crashes immediately
 export function useMetadata(colorBy: string) {
   return useQuery({
     queryKey: ['metadata', colorBy],
     staleTime: 1000 * 60 * 60, // 1 hour - metadata doesn't change
     gcTime: 1000 * 60 * 120, // 2 hours
+    retry: false, // CRASH: No retries - fail immediately if data is missing
     queryFn: async (): Promise<MetadataResponse> => {
+      log('useMetadata', 'Fetching metadata', { colorBy });
+      const startTime = performance.now();
       // Backend uses snake_case: color_by
       const response = await api.get<BackendMetadataResponse>(
         `/metadata?color_by=${colorBy}`
       );
+      const elapsed = performance.now() - startTime;
+      log('useMetadata', 'Metadata loaded', { colorBy, dtype: response.dtype, n_values: response.values.length, elapsed_ms: elapsed.toFixed(1) });
 
       // Transform based on dtype
       let numericValues: number[];
@@ -360,6 +441,7 @@ export function useMetadata(colorBy: string) {
 }
 
 // Hook to fetch sample details
+// CRASH BEHAVIOR: No retries - if sample data is missing, app crashes immediately
 export function useSample(idx: number | null) {
   return useQuery({
     queryKey: ['sample', idx],
@@ -378,14 +460,17 @@ export function useSample(idx: number | null) {
       };
     },
     enabled: idx !== null,
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 }
 
 // Hook to fetch all samples for filtering
+// CRASH BEHAVIOR: No retries - if samples data is missing, app crashes immediately
 export function useSamples() {
   return useQuery({
     queryKey: ['samples'],
     queryFn: () => api.get<SampleResponse[]>('/samples'),
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 }
 
@@ -795,6 +880,7 @@ export interface HeatmapData {
 }
 
 // Hook to fetch heatmap data
+// CRASH BEHAVIOR: No retries - if heatmap data is missing, app crashes immediately
 export function useHeatmap(component: string, metric: string = 'r2') {
   return useQuery({
     queryKey: ['heatmap', component, metric],
@@ -803,6 +889,7 @@ export function useHeatmap(component: string, metric: string = 'r2') {
     },
     enabled: !!component,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 }
 
@@ -1022,6 +1109,7 @@ export interface TrajectoryData {
 }
 
 // Hook to fetch PC1 trajectory across layers
+// CRASH BEHAVIOR: No retries - if trajectory data is missing, app crashes immediately
 export function useLayerTrajectory(
   component: string,
   position: string,
@@ -1030,12 +1118,18 @@ export function useLayerTrajectory(
   const { data, isLoading, error } = useQuery({
     queryKey: ['trajectory', 'layers', component, position],
     queryFn: async (): Promise<TrajectoryResponse> => {
-      return api.get<TrajectoryResponse>(
+      log('useLayerTrajectory', 'Fetching trajectory', { component, position });
+      const startTime = performance.now();
+      const response = await api.get<TrajectoryResponse>(
         `/trajectory/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}`
       );
+      const elapsed = performance.now() - startTime;
+      log('useLayerTrajectory', 'Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      return response;
     },
     enabled: enabled && !!component && !!position,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 
   // Transform to Map<string, Float32Array>
@@ -1075,6 +1169,7 @@ export function useLayerTrajectory(
 }
 
 // Hook to fetch PC1 trajectory across positions
+// CRASH BEHAVIOR: No retries - if trajectory data is missing, app crashes immediately
 export function usePositionTrajectory(
   layer: number,
   component: string,
@@ -1086,13 +1181,19 @@ export function usePositionTrajectory(
   const { data, isLoading, error } = useQuery({
     queryKey: ['trajectory', 'positions', layer, component, positionsFilter],
     queryFn: async (): Promise<TrajectoryResponse> => {
+      log('usePositionTrajectory', 'Fetching trajectory', { layer, component });
+      const startTime = performance.now();
       const url = `/trajectory/positions/${layer}/${encodeURIComponent(component)}${
         positionsFilter ? `?positions_filter=${encodeURIComponent(positionsFilter)}` : ''
       }`;
-      return api.get<TrajectoryResponse>(url);
+      const response = await api.get<TrajectoryResponse>(url);
+      const elapsed = performance.now() - startTime;
+      log('usePositionTrajectory', 'Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      return response;
     },
     enabled: enabled && layer >= 0 && !!component,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false, // CRASH: No retries - fail immediately if data is missing
   });
 
   // Transform to Map<string, Float32Array>

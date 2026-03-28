@@ -46,7 +46,9 @@ function getRegionColor(posName: string): { base: string; selected: string } {
   if (posName.includes('time_horizon') || posName === 'post_time_horizon') return REGION_COLORS.time_horizon;
   if (posName.startsWith('response_')) return REGION_COLORS.response;
   if (posName.endsWith('_content') || posName === 'chat_prefix') return REGION_COLORS.content;
-  if (['situation', 'role', 'task_in_question', 'reasoning_ask', 'reward_units'].includes(posName)) {
+  if (posName.endsWith('_tail') || posName === 'chat_suffix') return REGION_COLORS.content;
+  if (posName.endsWith('_other')) return REGION_COLORS.content;
+  if (['situation', 'role', 'task_in_question', 'reasoning_ask', 'reward_units', 'constraint_prefix'].includes(posName)) {
     return REGION_COLORS.context;
   }
   return REGION_COLORS.marker;
@@ -128,6 +130,7 @@ export function PositionSelector({
         <div className="flex flex-wrap items-center gap-0.5 text-gray-400 pb-1 border-b border-dashed border-gray-200">
           {renderPos('chat_prefix', 'chat_prefix')}
           <span className="text-[8px]">(&lt;|im_start|&gt;user)</span>
+          {renderPos('chat_prefix_tail')}
         </div>
 
         {/* SITUATION */}
@@ -135,6 +138,7 @@ export function PositionSelector({
           {renderPos('situation_marker', 'SITUATION:')}
           {renderPos('situation')}
           {renderPos('situation_content', 'content')}
+          {renderPos('situation_tail')}
         </div>
 
         {/* TASK */}
@@ -144,6 +148,7 @@ export function PositionSelector({
           {renderPos('role')}
           <span className="text-gray-400 text-[10px]">, are tasked to</span>
           {renderPos('task_in_question', 'task')}
+          {renderPos('task_tail')}
         </div>
 
         {/* Task content and options */}
@@ -161,6 +166,8 @@ export function PositionSelector({
             <span className="text-gray-400 text-[10px]">in</span>
             {renderPos('right_time')}
           </div>
+          {renderPos('option_content')}
+          {renderPos('options_tail')}
         </div>
 
         {/* CONSIDER + Time Horizon */}
@@ -172,6 +179,15 @@ export function PositionSelector({
           <span className="text-gray-400 text-[10px]">Concerned about outcome in</span>
           {renderPos('time_horizon')}
           {renderPos('post_time_horizon', 'after')}
+          {renderPos('objective_tail')}
+        </div>
+
+        {/* CONSTRAINT (optional) */}
+        <div className="flex flex-wrap items-center gap-0.5">
+          {renderPos('constraint_marker', 'CONSTRAINT:')}
+          {renderPos('constraint_prefix')}
+          {renderPos('constraint_content', 'content')}
+          {renderPos('constraint_tail')}
         </div>
 
         {/* ACTION */}
@@ -179,6 +195,7 @@ export function PositionSelector({
           {renderPos('action_marker', 'ACTION:')}
           {renderPos('reasoning_ask')}
           {renderPos('action_content', 'content')}
+          {renderPos('action_tail')}
         </div>
 
         {/* FORMAT */}
@@ -190,6 +207,7 @@ export function PositionSelector({
           {renderPos('format_choice_prefix', 'I choose:')}
           <span className="text-gray-400 text-[10px]">&lt;a or b&gt;.</span>
           {renderPos('format_reasoning_prefix', 'My reasoning:')}
+          {renderPos('format_tail')}
         </div>
 
         {/* Chat suffix - END of prompt, BEFORE model response */}
@@ -197,6 +215,8 @@ export function PositionSelector({
         <div className="pt-1.5 border-t border-dashed border-gray-300 flex flex-wrap items-center gap-0.5 text-gray-400">
           {renderPos('chat_suffix', 'chat_suffix')}
           <span className="text-[8px]">(&lt;|im_end|&gt;...&lt;|im_start|&gt;assistant)</span>
+          {renderPos('chat_suffix_tail')}
+          {renderPos('prompt_other')}
         </div>
 
         {/* Response - MODEL OUTPUT starts here (position 127+) */}
@@ -211,6 +231,9 @@ export function PositionSelector({
           <div className="pl-3 flex flex-wrap items-center gap-0.5">
             {renderPos('response_reasoning_prefix', 'My reasoning:')}
             {renderPos('response_reasoning', 'reasoning')}
+          </div>
+          <div className="pl-3 flex flex-wrap items-center gap-0.5">
+            {renderPos('response_other')}
           </div>
         </div>
       </div>

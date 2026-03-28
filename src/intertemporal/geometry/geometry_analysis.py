@@ -424,12 +424,17 @@ def run_streaming_analysis(
             except Exception as e:
                 logger.warning(f"  Cache load failed for {target_key}: {e}")
 
-        # Load activations
+        # Load activations - CRASH if data missing (no fallbacks!)
         try:
             X = data.load_target(target_key)
-        except Exception as e:
-            logger.warning(f"  Failed to load {target_key}: {e}")
+        except ValueError as e:
+            # Skip positions that legitimately don't exist in some samples
+            # This is expected for optional positions like constraint_prefix
+            logger.info(f"  Skipping {target_key}: {e}")
             continue
+        except Exception as e:
+            # Unexpected errors should crash
+            raise RuntimeError(f"FATAL: Failed to load {target_key}: {e}") from e
 
         # Analyze
         linear_result, pca_result, embedding_result = analyze_single_target(

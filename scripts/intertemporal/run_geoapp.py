@@ -61,11 +61,6 @@ def main():
         action="store_true",
         help="Development mode: run backend only, frontend runs separately",
     )
-    parser.add_argument(
-        "--warmup",
-        action="store_true",
-        help="Pre-compute embeddings on startup",
-    )
 
     args = parser.parse_args()
 
@@ -102,7 +97,6 @@ def main():
             frontend_dir=None,  # Don't serve frontend in dev mode
             host=args.host,
             port=args.port,
-            warmup=args.warmup,
             reload=True,  # Enable auto-reload in dev mode
         )
     else:
@@ -134,7 +128,6 @@ def main():
             frontend_dir=frontend_dist,
             host=args.host,
             port=args.port,
-            warmup=args.warmup,
             reload=False,
         )
 

@@ -317,10 +317,11 @@ def main() -> int:
             # --rename NAME: use custom folder name
             output_dir = get_experiment_dir() / args.rename
             if output_dir.exists():
-                raise SystemExit(
-                    f"Error: Experiment folder already exists: {output_dir}\n"
-                    f"Use --cache {args.rename} to reuse cached data, or choose a different name."
-                )
+                # Move existing folder to *_{timestamp}/ instead of crashing
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_dir = get_experiment_dir() / f"{args.rename}_{timestamp}"
+                print(f"Moving existing output to: {backup_dir}")
+                shutil.move(str(output_dir), str(backup_dir))
 
     # Create experiment config after all config modifications
     exp_cfg = ExperimentConfig.from_dict(config_dict)

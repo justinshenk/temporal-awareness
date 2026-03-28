@@ -14,6 +14,22 @@ FRONTEND_DIR="$PROJECT_ROOT/src/intertemporal/geoapp/frontend"
 # Default data directory
 DATA_DIR="${1:-out/geometry}"
 
+# Create log file with timestamp
+LOG_DIR="$PROJECT_ROOT/temp"
+mkdir -p "$LOG_DIR"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="$LOG_DIR/geoapp_${TIMESTAMP}.log"
+LATEST_LOG="$LOG_DIR/geoapp_latest.log"
+
+# Start logging - tee to both console and file
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Create symlink to latest log
+ln -sf "$LOG_FILE" "$LATEST_LOG"
+echo "[LOG] Logging to: $LOG_FILE"
+echo "[LOG] Latest log symlink: $LATEST_LOG"
+echo ""
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -22,6 +38,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}   GeoViz Explorer - Starting...${NC}"
 echo -e "${BLUE}========================================${NC}"
+echo "[$(date +%H:%M:%S)] Session started"
 echo
 
 # Kill any existing processes from previous runs
@@ -36,27 +53,47 @@ sleep 1
 # Cleanup function to kill background processes on exit
 cleanup() {
     echo
-    echo -e "${BLUE}Shutting down...${NC}"
+    echo "[$(date +%H:%M:%S)] Shutting down..."
     kill $BACKEND_PID 2>/dev/null || true
     kill $FRONTEND_PID 2>/dev/null || true
     pkill -f "run_geoapp.py" 2>/dev/null || true
     pkill -f "vite.*geoapp" 2>/dev/null || true
     lsof -ti:8000 | xargs kill -9 2>/dev/null || true
     lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+    echo "[$(date +%H:%M:%S)] Log saved to: $LOG_FILE"
     exit 0
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# Start backend server - streaming mode (lazy load + smart prefetch)
+# Check if analysis exists, run compute_geometry_analysis.py if not
+ANALYSIS_DIR="$PROJECT_ROOT/$DATA_DIR/analysis"
+EMBEDDINGS_DIR="$ANALYSIS_DIR/embeddings/pca"
+LEGACY_CACHE_DIR="$PROJECT_ROOT/$DATA_DIR/cache/pca"
+
+if [ ! -d "$EMBEDDINGS_DIR" ] && [ ! -d "$LEGACY_CACHE_DIR" ]; then
+    echo -e "${BLUE}----------------------------------------${NC}"
+    echo -e "${BLUE}Pre-computed embeddings not found.${NC}"
+    echo -e "${BLUE}Running compute_geometry_analysis.py...${NC}"
+    echo -e "${BLUE}----------------------------------------${NC}"
+    echo
+    cd "$PROJECT_ROOT"
+    uv run python scripts/intertemporal/compute_geometry_analysis.py --data-dir "$DATA_DIR"
+    echo
+    echo -e "${GREEN}Analysis complete!${NC}"
+    echo
+fi
+
+# Start backend server - load-only mode (no runtime computation)
 echo -e "${GREEN}Starting backend server...${NC}"
 cd "$PROJECT_ROOT"
-uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" --dev &
+uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" &
 BACKEND_PID=$!
 
 # Wait for backend to be ready (check health endpoint)
-echo "Waiting for backend to be ready..."
+# Server preloads ALL 816 embeddings into memory at startup, which takes 5-7 minutes
+echo "Waiting for backend to preload embeddings (this may take 5-7 minutes)..."
 BACKEND_READY=false
-for i in {1..60}; do
+for i in {1..600}; do  # 600 * 1s = 10 minutes timeout
     if curl -s http://localhost:8000/api/config > /dev/null 2>&1; then
         echo ""
         echo -e "${GREEN}Backend is ready!${NC}"
@@ -69,13 +106,18 @@ for i in {1..60}; do
         echo -e "\033[0;31mError: Backend process died unexpectedly${NC}"
         exit 1
     fi
-    sleep 0.5
-    echo -n "."
+    sleep 1
+    # Show progress every 10 seconds
+    if (( i % 10 == 0 )); then
+        echo -n " ${i}s"
+    else
+        echo -n "."
+    fi
 done
 
 if [ "$BACKEND_READY" = false ]; then
     echo ""
-    echo -e "\033[0;31mError: Backend failed to start within 30 seconds${NC}"
+    echo -e "\033[0;31mError: Backend failed to start within 10 minutes${NC}"
     kill $BACKEND_PID 2>/dev/null || true
     exit 1
 fi

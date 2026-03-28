@@ -105,8 +105,13 @@ class HuggingFaceBackend(Backend):
                 ids = torch.cat([bos, ids], dim=1)
         return ids.to(self.runner.device)
 
-    def decode(self, token_ids: torch.Tensor) -> str:
-        return self._tokenizer.decode(token_ids, skip_special_tokens=False)
+    def decode(self, token_ids: torch.Tensor | list) -> str:
+        # Convert to list to avoid potential overflow issues with tensor dtypes
+        if isinstance(token_ids, torch.Tensor):
+            ids = token_ids.cpu().tolist()
+        else:
+            ids = token_ids
+        return self._tokenizer.decode(ids, skip_special_tokens=False)
 
     def _get_component_module(self, layer_idx: int, component: str):
         """Get the module for a specific component within a layer.

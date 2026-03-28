@@ -14,8 +14,8 @@ COARSE_PATCH: dict = {
     "no_cache": True,
     "layer_steps": [1],
     "pos_steps": [15],
-    # "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
-    "components": ["resid_post"],
+    "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
+    # "components": ["resid_post"],
 }
 
 # methods: "standard", "eap", "eap_ig"
@@ -25,17 +25,17 @@ ATT_PATCH: dict = {
     "enabled": True,
     "no_cache": True,
     "ig_steps": 30,
-    # "methods": ["standard", "eap_ig", "eap"],
-    # "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
-    # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
-    "methods": ["standard"],
-    "components": ["attn_out", "mlp_out"],
-    "quadrature": ["midpoint"],
+    "methods": ["standard", "eap_ig", "eap"],
+    "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
+    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    # "methods": ["standard"],
+    # "components": ["attn_out", "mlp_out"],
+    # "quadrature": ["midpoint"],
 }
 
 
 GEO: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
     "positions": [
@@ -54,13 +54,13 @@ GEO: dict = {
 
 
 DIFFMEANS: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "n_components": 10,  # Number of SVD components to track
 }
 
 FINE_PATCH: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     # Head attribution (fast - uses specified layers, not sweep)
     "head_patching_enabled": True,
@@ -100,7 +100,7 @@ FINE_PATCH: dict = {
 
 # Default MLP neuron analysis settings
 MLP_ANALYSIS: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "layers": [19, 21, 24, 28, 31, 34, 35],  # Key MLP layers for horizon processing
     "n_top_neurons": 50,  # Number of top neurons to track per layer
@@ -108,7 +108,7 @@ MLP_ANALYSIS: dict = {
 
 # Default attention pattern analysis settings
 ATTN_ANALYSIS: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": True,
     "layers": [
         18,

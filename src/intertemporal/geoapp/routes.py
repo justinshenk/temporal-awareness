@@ -2,6 +2,7 @@
 
 import asyncio
 import math
+import time
 from typing import Literal
 
 import numpy as np
@@ -10,6 +11,16 @@ from fastapi.responses import StreamingResponse
 import json
 
 from .data_loader import GeometryDataLoader
+
+# Request counter for logging
+_request_counter = 0
+
+def _log(endpoint: str, message: str, **kwargs):
+    """Log with timestamp and request info."""
+    global _request_counter
+    ts = time.strftime("%H:%M:%S")
+    extras = " | ".join(f"{k}={v}" for k, v in kwargs.items()) if kwargs else ""
+    print(f"[{ts}] [SERVER] [{endpoint}] {message}" + (f" | {extras}" if extras else ""))
 from .models import (
     ColorValues,
     ConfigResponse,
@@ -94,12 +105,18 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         """Get available configuration options for the visualization.
 
         Returns layers, components, positions, color options, and position labels.
-        Position labels are enriched with semantic region info for absolute positions.
+        Only returns positions/layers that have precomputed embeddings.
         """
+        _log("/config", "GET request received")
+        # Use ONLY precomputed positions/layers to avoid 500 errors
+        layers = data_loader.get_precomputed_layers()
+        positions = data_loader.get_precomputed_positions()
+        available_methods = data_loader.get_available_methods()
+        _log("/config", f"Returning config", n_layers=len(layers), n_positions=len(positions), n_samples=data_loader.n_samples, methods=available_methods)
         return ConfigResponse(
-            layers=data_loader.get_layers(),
+            layers=layers,
             components=data_loader.get_components(),
-            positions=data_loader.get_positions(),
+            positions=positions,
             color_options=data_loader.get_color_options(),
             n_samples=data_loader.n_samples,
             model_name=data_loader.get_model_name(),
@@ -108,6 +125,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             semantic_to_positions=data_loader.get_semantic_to_positions_mapping(),
             markers=data_loader.get_markers(),
             rel_pos_counts=data_loader.get_rel_pos_counts(),
+            available_methods=available_methods,
         )
 
     @router.get("/embedding/{layer}/{component}/{position}", response_model=EmbeddingResponse)
@@ -129,6 +147,9 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Returns:
             3D coordinates for all samples.
         """
+        _log("/embedding", f"GET request", layer=layer, component=component, position=position, method=method)
+        start_time = time.time()
+
         # Validate layer
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
@@ -137,25 +158,30 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
-        # Validate position
-        if position not in data_loader.get_positions():
-            raise HTTPException(status_code=404, detail=f"Position {position} not found")
+        # Validate position - must have precomputed embeddings
+        precomputed_positions = data_loader.get_precomputed_positions()
+        if position not in precomputed_positions:
+            if position in data_loader.get_positions():
+                # Position exists but no precomputed embedding
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Position '{position}' exists but has no precomputed embeddings. "
+                    f"Available positions: {precomputed_positions}"
+                )
+            raise HTTPException(status_code=404, detail=f"Position '{position}' not found")
 
         # Load embedding based on method
-        if method == "pca":
-            embedding = data_loader.load_pca(layer, component, position, n_components=3)
-        elif method == "umap":
-            embedding = data_loader.load_umap(layer, component, position, n_components=3)
-        elif method == "tsne":
-            embedding = data_loader.load_tsne(layer, component, position, n_components=3)
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
-
-        if embedding is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No embedding found for L{layer}_{component}_{position}",
-            )
+        try:
+            if method == "pca":
+                embedding = data_loader.load_pca(layer, component, position, n_components=3)
+            elif method == "umap":
+                embedding = data_loader.load_umap(layer, component, position, n_components=3)
+            elif method == "tsne":
+                embedding = data_loader.load_tsne(layer, component, position, n_components=3)
+            else:
+                raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
         # Get the sample indices that correspond to the embedding rows
         sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
@@ -171,6 +197,9 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         # Set cache headers for browser caching (30 minutes)
         if response:
             response.headers["Cache-Control"] = "max-age=1800, stale-while-revalidate=3600"
+
+        elapsed = time.time() - start_time
+        _log("/embedding", f"Returning embedding", n_samples=len(sample_indices), n_coords=len(coordinates_flat), elapsed_ms=f"{elapsed*1000:.1f}")
 
         return EmbeddingResponse(
             layer=layer,
@@ -195,19 +224,30 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Sends data in chunks so UI can render progressively.
         Each chunk contains coordinates for chunk_size points.
         """
+        _log("/embedding/stream", f"🚀 SSE request received", layer=layer, component=component, position=position, method=method, chunk_size=chunk_size)
+
         # Validate inputs
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
-        if position not in data_loader.get_positions():
-            raise HTTPException(status_code=404, detail=f"Position {position} not found")
+        precomputed_positions = data_loader.get_precomputed_positions()
+        if position not in precomputed_positions:
+            if position in data_loader.get_positions():
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Position '{position}' exists but has no precomputed embeddings"
+                )
+            raise HTTPException(status_code=404, detail=f"Position '{position}' not found")
 
         async def generate_chunks():
             """Generator that yields SSE chunks."""
             import asyncio
 
-            # Load embedding (this is the slow part)
+            stream_start = time.time()
+            _log("/embedding/stream", f"Loading embedding...", method=method)
+
+            # Load embedding (this is the slow part) - STRICT: raises ValueError if missing
             if method == "pca":
                 embedding = data_loader.load_pca(layer, component, position, n_components=3)
             elif method == "umap":
@@ -215,16 +255,18 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             elif method == "tsne":
                 embedding = data_loader.load_tsne(layer, component, position, n_components=3)
             else:
-                embedding = None
-
-            if embedding is None:
-                yield f"data: {json.dumps({'error': 'No embedding found'})}\n\n"
+                _log("/embedding/stream", f"ERROR: Invalid method {method}")
+                yield f"data: {json.dumps({'error': f'Invalid method: {method}'})}\n\n"
                 return
+
+            load_elapsed = time.time() - stream_start
+            _log("/embedding/stream", f"Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
 
             sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
             clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
 
             total_points = len(sample_indices)
+            _log("/embedding/stream", f"Sending metadata", total_points=total_points)
 
             # Send metadata first
             metadata = {
@@ -240,7 +282,8 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             await asyncio.sleep(0)  # Yield to event loop
 
             # Stream chunks of points
-            for i in range(0, total_points, chunk_size):
+            n_chunks = (total_points + chunk_size - 1) // chunk_size
+            for chunk_num, i in enumerate(range(0, total_points, chunk_size)):
                 end_idx = min(i + chunk_size, total_points)
                 chunk_coords = clean_embedding[i:end_idx].flatten().tolist()
                 chunk_indices = sample_indices[i:end_idx]
@@ -252,9 +295,12 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
                     "coordinates": chunk_coords,
                     "sample_indices": chunk_indices,
                 }
+                _log("/embedding/stream", f"Sending chunk {chunk_num+1}/{n_chunks}", start=i, end=end_idx)
                 yield f"data: {json.dumps(chunk_data)}\n\n"
                 await asyncio.sleep(0)  # Yield to event loop between chunks
 
+            total_elapsed = time.time() - stream_start
+            _log("/embedding/stream", f"Stream complete", total_ms=f"{total_elapsed*1000:.1f}", total_points=total_points)
             # Send completion signal
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
@@ -281,6 +327,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Returns:
             Color values for all samples with data type information.
         """
+        _log("/metadata", f"GET request", color_by=color_by)
         valid_options = data_loader.get_color_options()
         if color_by not in valid_options:
             raise HTTPException(
@@ -314,6 +361,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         if response:
             response.headers["Cache-Control"] = "max-age=3600, stale-while-revalidate=7200"
 
+        _log("/metadata", f"Returning values", dtype=dtype, n_values=len(values_list))
         return ColorValues(
             color_by=color_by,
             values=values_list,
@@ -330,6 +378,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Returns:
             Full sample information including text and metadata.
         """
+        _log("/sample", f"GET request", idx=idx)
         if idx < 0 or idx >= data_loader.n_samples:
             raise HTTPException(
                 status_code=404,
@@ -613,8 +662,9 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
 
         def do_prefetch() -> None:
             """Background prefetch task."""
-            layers = data_loader.get_layers()
-            positions = data_loader.get_positions()
+            # Use ONLY precomputed positions/layers to avoid crashes
+            layers = data_loader.get_precomputed_layers()
+            positions = data_loader.get_precomputed_positions()
 
             # Find current layer index and prefetch +/- 2 layers
             layer_idx = layers.index(layer) if layer in layers else 0
@@ -631,9 +681,13 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             # Quick prefetch for PCA only (UMAP/t-SNE are too slow)
             for l in adjacent_layers:
                 for p in adjacent_positions:
-                    if method == "pca":
-                        data_loader.load_pca(l, component, p)
-                    # Skip UMAP/t-SNE prefetch - too slow
+                    try:
+                        if method == "pca":
+                            data_loader.load_pca(l, component, p)
+                        # Skip UMAP/t-SNE prefetch - too slow
+                    except ValueError:
+                        # Skip missing embeddings silently during prefetch
+                        pass
 
         # Run prefetch in background - return immediately
         background_tasks.add_task(do_prefetch)
@@ -661,12 +715,45 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Returns PC1 values for each sample at each layer, enabling visualization
         of how representations evolve through the model.
         """
+        _log("/trajectory/layers", f"GET request", component=component, position=position)
+        start_time = time.time()
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
         if position not in data_loader.get_positions():
             raise HTTPException(status_code=404, detail=f"Position {position} not found")
 
+        # Try to use pre-cached trajectory data first, fall back to individual PCA
+        try:
+            layers, pc1_matrix, shared_sample_indices = data_loader.load_layer_trajectory(component, position)
+            data = []
+            x_values = []
+            for i, layer in enumerate(layers):
+                pc1_values = pc1_matrix[i].astype(float).tolist()
+                x_values.append(str(layer))
+                data.append(TrajectoryPoint(
+                    x_value=str(layer),
+                    values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                    sample_indices=shared_sample_indices,
+                ))
+            n_samples = len(shared_sample_indices)
+            elapsed = time.time() - start_time
+            _log("/trajectory/layers", f"Returning cached trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+            return TrajectoryResponse(
+                component=component,
+                position=position,
+                method="pca",
+                x_axis="layer",
+                x_values=x_values,
+                n_samples=n_samples,
+                sample_indices=shared_sample_indices,
+                data=data,
+            )
+        except ValueError:
+            # Trajectory cache not available, fall back to individual PCA embeddings
+            pass
+
+        # Fall back to computing from individual PCA embeddings
         layers = data_loader.get_layers()
         data = []
         x_values = []
@@ -674,22 +761,25 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         shared_sample_indices: list[int] = []
 
         for layer in layers:
+            # STRICT: load_pca raises ValueError if embedding is missing
             embedding = data_loader.load_pca(layer, component, position, n_components=3)
-            if embedding is not None:
-                # Get sample indices for this layer/component/position
-                sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-                # Extract PC1 (first column) and normalize
-                pc1_values = embedding[:, 0].astype(float).tolist()
-                n_samples = len(pc1_values)
-                x_values.append(str(layer))
-                data.append(TrajectoryPoint(
-                    x_value=str(layer),
-                    values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                    sample_indices=sample_indices,
-                ))
-                # For layer trajectory, all layers share the same sample indices (same position)
-                if not shared_sample_indices:
-                    shared_sample_indices = sample_indices
+            # Get sample indices for this layer/component/position
+            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+            # Extract PC1 (first column) and normalize
+            pc1_values = embedding[:, 0].astype(float).tolist()
+            n_samples = len(pc1_values)
+            x_values.append(str(layer))
+            data.append(TrajectoryPoint(
+                x_value=str(layer),
+                values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                sample_indices=sample_indices,
+            ))
+            # For layer trajectory, all layers share the same sample indices (same position)
+            if not shared_sample_indices:
+                shared_sample_indices = sample_indices
+
+        elapsed = time.time() - start_time
+        _log("/trajectory/layers", f"Returning trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
 
         return TrajectoryResponse(
             component=component,
@@ -713,6 +803,8 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Returns PC1 values for each sample at each position, enabling visualization
         of how representations vary across different parts of the prompt.
         """
+        _log("/trajectory/positions", f"GET request", layer=layer, component=component, positions_filter=positions_filter or "default")
+        start_time = time.time()
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
 
@@ -725,23 +817,61 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         else:
             positions = data_loader.get_positions()[:10]
 
+        # Try to use pre-cached trajectory data first (only if no filter applied)
+        if not positions_filter:
+            try:
+                cached_positions, pc1_values_list, sample_indices_list = data_loader.load_position_trajectory(layer, component)
+                # Filter to first 10 positions (default behavior)
+                data = []
+                x_values = []
+                n_samples = 0
+                for i, pos in enumerate(cached_positions[:10]):
+                    pc1_arr = pc1_values_list[i]
+                    pc1_values = pc1_arr.astype(float).tolist() if hasattr(pc1_arr, 'astype') else list(pc1_arr)
+                    n_samples = max(n_samples, len(pc1_values))
+                    x_values.append(pos)
+                    data.append(TrajectoryPoint(
+                        x_value=pos,
+                        values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                        sample_indices=sample_indices_list[i] if i < len(sample_indices_list) else [],
+                    ))
+                elapsed = time.time() - start_time
+                _log("/trajectory/positions", f"Returning cached trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+                return TrajectoryResponse(
+                    layer=layer,
+                    component=component,
+                    method="pca",
+                    x_axis="position",
+                    x_values=x_values,
+                    n_samples=n_samples,
+                    sample_indices=[],  # Position trajectory has per-point indices since each position may differ
+                    data=data,
+                )
+            except ValueError:
+                # Trajectory cache not available, fall back to individual PCA embeddings
+                pass
+
+        # Fall back to computing from individual PCA embeddings
         data = []
         x_values = []
         n_samples = 0
 
         for pos in positions:
+            # STRICT: load_pca raises ValueError if embedding is missing
             embedding = data_loader.load_pca(layer, component, pos, n_components=3)
-            if embedding is not None:
-                # Get sample indices for this layer/component/position
-                sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
-                pc1_values = embedding[:, 0].astype(float).tolist()
-                n_samples = len(pc1_values)
-                x_values.append(pos)
-                data.append(TrajectoryPoint(
-                    x_value=pos,
-                    values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                    sample_indices=sample_indices,
-                ))
+            # Get sample indices for this layer/component/position
+            sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
+            pc1_values = embedding[:, 0].astype(float).tolist()
+            n_samples = len(pc1_values)
+            x_values.append(pos)
+            data.append(TrajectoryPoint(
+                x_value=pos,
+                values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                sample_indices=sample_indices,
+            ))
+
+        elapsed = time.time() - start_time
+        _log("/trajectory/positions", f"Returning trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
 
         return TrajectoryResponse(
             layer=layer,

@@ -593,7 +593,7 @@ def run_experiment(
     """
     ctx = ExperimentContext(cfg, output_dir=output_dir, backend=backend)
 
-    step_preference_data(ctx, try_loading_data=False)
+    step_preference_data(ctx, try_loading_data=True)
 
     step_attribution_patching(ctx, try_loading_data=try_loading_data)
 

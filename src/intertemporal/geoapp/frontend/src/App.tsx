@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot } from './components';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
@@ -21,6 +21,13 @@ import {
   TimeScaleType,
 } from './hooks/useEmbeddings';
 
+// Logging helper
+const log = (category: string, message: string, data?: Record<string, unknown>) => {
+  const ts = new Date().toISOString().slice(11, 23);
+  const dataStr = data ? ` | ${Object.entries(data).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ')}` : '';
+  console.log(`[${ts}] [CLIENT] [${category}] ${message}${dataStr}`);
+};
+
 // Default values - these are fallbacks, actual values come from config
 const DEFAULT_COMPONENT = 'resid_post';
 const DEFAULT_METHOD = 'pca';
@@ -29,6 +36,11 @@ const DEFAULT_COLOR_BY = 'time_horizon';
 type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos';
 
 function App() {
+  // Render counter for debugging
+  const renderCount = useRef(0);
+  renderCount.current++;
+  log('App', `Render #${renderCount.current}`);
+
   // UI state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('3D');
@@ -47,7 +59,7 @@ function App() {
   const [colorRangeMax, setColorRangeMax] = useState<number | null>(null);
 
   // Time scale transfer function controls
-  const [timeScaleType, setTimeScaleType] = useState<TimeScaleType>('linear');
+  const [timeScaleType, setTimeScaleType] = useState<TimeScaleType>('adaptive');
   const [blendMix, setBlendMix] = useState(0.5);
 
   // Selection state
@@ -70,29 +82,52 @@ function App() {
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
 
+  // Log loading states
+  useEffect(() => {
+    if (configLoading) {
+      log('App', '⏳ WAITING FOR: Config from server');
+    }
+  }, [configLoading]);
+
   // Initialize layer and position from config when it first loads
   useEffect(() => {
     if (config) {
-      // Set layer to first available if not yet set or invalid
+      // Set layer to LAST available if not yet set or invalid (highest layer = most processed)
       if (layer < 0 || !config.layers.includes(layer)) {
-        const firstLayer = config.layers[0];
-        if (firstLayer !== undefined) {
-          setLayer(firstLayer);
+        const lastLayer = config.layers[config.layers.length - 1];
+        if (lastLayer !== undefined) {
+          log('App', 'Initializing layer from config', { layer: lastLayer });
+          setLayer(lastLayer);
         }
       }
-      // Set position to first available if not yet set or invalid
+      // Set position to LAST available if not yet set or invalid
       if (!position || !config.positions.includes(position)) {
-        const firstPosition = config.positions[0];
-        if (firstPosition) {
-          setPosition(firstPosition);
+        const lastPosition = config.positions[config.positions.length - 1];
+        if (lastPosition) {
+          log('App', 'Initializing position from config', { position: lastPosition });
+          setPosition(lastPosition);
         }
       }
     }
   }, [config, layer, position]);
 
+  // Log state changes
+  useEffect(() => {
+    log('App', 'State changed', { layer, component, position, method, colorBy, viewMode });
+  }, [layer, component, position, method, colorBy, viewMode]);
+
   // Only fetch embedding data for scatter plots (2D/3D), not trajectory views
   const isScatterView = viewMode === '2D' || viewMode === '3D';
   const streamingEmbed = useStreamingEmbedding(layer, component, position, method, isScatterView);
+
+  // Log when waiting for embedding
+  useEffect(() => {
+    if (isScatterView && streamingEmbed.isStreaming && streamingEmbed.loadedPoints === 0) {
+      log('App', `⏳ WAITING FOR: Embedding stream L${layer}/${component}/${position} (${method})`);
+    } else if (isScatterView && streamingEmbed.isStreaming) {
+      log('App', `📥 STREAMING: ${streamingEmbed.progress}% loaded (${streamingEmbed.loadedPoints} points)`);
+    }
+  }, [isScatterView, streamingEmbed.isStreaming, streamingEmbed.loadedPoints, streamingEmbed.progress, layer, component, position, method]);
 
   // Convert streaming state to the format expected by the rest of the app
   const embedding = useMemo(() => {
@@ -110,6 +145,13 @@ function App() {
 
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMetadata(colorBy);
+
+  // Log when waiting for metadata
+  useEffect(() => {
+    if (metadataLoading) {
+      log('App', `⏳ WAITING FOR: Metadata (color_by=${colorBy})`);
+    }
+  }, [metadataLoading, colorBy]);
 
   // Fetch has_horizon metadata for filtering
   const { data: hasHorizonMeta, error: hasHorizonError } = useMetadata('has_horizon');
@@ -150,6 +192,19 @@ function App() {
     undefined, // Use default named positions
     viewMode === '1DxPos'
   );
+
+  // Log when waiting for trajectory data
+  useEffect(() => {
+    if (viewMode === '1DxLayer' && layerTrajectory.isLoading) {
+      log('App', `⏳ WAITING FOR: Layer trajectory (${position} @ ${component})`);
+    }
+  }, [viewMode, layerTrajectory.isLoading, position, component]);
+
+  useEffect(() => {
+    if (viewMode === '1DxPos' && positionTrajectory.isLoading) {
+      log('App', `⏳ WAITING FOR: Position trajectory (L${layer} @ ${component})`);
+    }
+  }, [viewMode, positionTrajectory.isLoading, layer, component]);
 
   // Compute filter mask for 2D/3D views (aligned with embedding.indices)
   const scatterFilterMask = useMemo(() => {
@@ -209,10 +264,14 @@ function App() {
 
   // Compute positions Float32Array - NO filtering, positions stay fixed
   const positions = useMemo(() => {
+    const startTime = performance.now();
     if (!embedding?.positions) {
       return new Float32Array(0);
     }
-    return toFloat32Array(embedding.positions);
+    const result = toFloat32Array(embedding.positions);
+    const elapsed = performance.now() - startTime;
+    log('App', 'Computed positions', { n_points: result.length / 3, elapsed_ms: elapsed.toFixed(2) });
+    return result;
   }, [embedding?.positions]);
 
   // Compute visibility Float32Array from scatterFilterMask
@@ -261,6 +320,7 @@ function App() {
 
   // Compute colors Float32Array - NO filtering, visibility handles hiding
   const colors = useMemo(() => {
+    const startTime = performance.now();
     if (!metadata?.values || metadata.values.length === 0 || !embedding?.indices) {
       // Default gradient colors if no metadata
       const numPoints = positions.length / 3;
@@ -283,22 +343,27 @@ function App() {
     const forceGradient = GRADIENT_FIELDS.includes(colorBy);
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
+    let result: Float32Array;
     if (isCategorical) {
-      return categoricalColors(embeddingValues, uniqueValues.size);
+      result = categoricalColors(embeddingValues, uniqueValues.size);
     } else {
       // For time-related fields, use special coloring with gray for no-horizon (value 0)
       const isTimeField = colorBy === 'time_horizon' ;
       if (isTimeField) {
-        return timeGradientColors(
+        result = timeGradientColors(
           embeddingValues,
           effectiveColorRange.min,
           effectiveColorRange.max,
           timeScaleType,
           blendMix
         );
+      } else {
+        result = valuesToColors(embeddingValues, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
       }
-      return valuesToColors(embeddingValues, effectiveColorRange.min, effectiveColorRange.max, 'turbo');
     }
+    const elapsed = performance.now() - startTime;
+    log('App', 'Computed colors', { n_points: result.length / 3, colorBy, isCategorical, elapsed_ms: elapsed.toFixed(2) });
+    return result;
   }, [metadata, embedding?.indices, positions.length, colorBy, effectiveColorRange, timeScaleType, blendMix]);
 
   // Create point data array (with filtering)
@@ -567,6 +632,19 @@ function App() {
   const positions_options = config?.positions || [];
   const methods = config?.methods || [DEFAULT_METHOD];
   const colorByOptions = config?.colorByOptions || [DEFAULT_COLOR_BY];
+
+  // Log overall loading state
+  useEffect(() => {
+    if (isLoading) {
+      const waiting: string[] = [];
+      if (configLoading) waiting.push('config');
+      if (embeddingLoading) waiting.push('embedding');
+      if (metadataLoading) waiting.push('metadata');
+      log('App', `🔄 LOADING: Waiting for [${waiting.join(', ')}]`);
+    } else {
+      log('App', `✅ READY: All data loaded`);
+    }
+  }, [isLoading, configLoading, embeddingLoading, metadataLoading]);
 
   // Check if all samples have been filtered out
   const allSamplesFiltered = !isLoading && embedding?.positions && embedding.positions.length > 0 && positions.length === 0;

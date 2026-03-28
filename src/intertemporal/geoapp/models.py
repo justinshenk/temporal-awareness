@@ -28,6 +28,7 @@ class ConfigResponse(BaseModel):
     semantic_to_positions: dict[str, list[str]] = Field(default_factory=dict, description="Mapping from semantic positions to token positions (for compatibility)")
     markers: dict[str, str] = Field(default_factory=dict, description="Section markers from prompt format (e.g., situation_marker: 'SITUATION:')")
     rel_pos_counts: dict[str, int] = Field(default_factory=dict, description="Number of tokens (rel_pos values) for each semantic position")
+    available_methods: list[str] = Field(default_factory=lambda: ["pca"], description="Available dimensionality reduction methods (pca, umap, tsne)")
 
 
 class Point3D(BaseModel):

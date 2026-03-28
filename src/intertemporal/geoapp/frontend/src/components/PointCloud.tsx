@@ -2,6 +2,13 @@ import { useRef, useMemo, useCallback, useState, useEffect, memo } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 
+// Logging helper
+const log = (message: string, data?: Record<string, unknown>) => {
+  const ts = new Date().toISOString().slice(11, 23);
+  const dataStr = data ? ` | ${Object.entries(data).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ')}` : '';
+  console.log(`[${ts}] [CLIENT] [PointCloud] ${message}${dataStr}`);
+};
+
 export interface PointData {
   sampleIdx: number;
   timeHorizon?: number;
@@ -130,12 +137,20 @@ function PointCloudInner({
   visibility,
   disablePointerEvents = false,
 }: PointCloudProps) {
+  const renderCount = useRef(0);
+  renderCount.current++;
+
   const pointsRef = useRef<THREE.Points>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { raycaster, gl } = useThree();
 
   const pointCount = positions.length / 3;
   const colorPointCount = colors.length / 3;
+
+  // Log only on significant renders (every 10th or first)
+  if (renderCount.current === 1 || renderCount.current % 10 === 0) {
+    log(`Render #${renderCount.current}`, { pointCount, selectedIndex });
+  }
 
   // Use refs to avoid recreating geometry/material
   const geometryRef = useRef<THREE.BufferGeometry | null>(null);
@@ -146,13 +161,16 @@ function PointCloudInner({
 
   // Create or update geometry - avoid full recreation
   const geometry = useMemo(() => {
+    const startTime = performance.now();
     // Create new geometry only if we don't have one or point count changed significantly
+    const isNewGeometry = !geometryRef.current;
     if (!geometryRef.current) {
       geometryRef.current = new THREE.BufferGeometry();
     }
     const geo = geometryRef.current;
 
     // Update position attribute
+    const isNewPositionAttr = !positionAttrRef.current || positionAttrRef.current.count !== pointCount;
     if (!positionAttrRef.current || positionAttrRef.current.count !== pointCount) {
       positionAttrRef.current = new THREE.BufferAttribute(positions, 3);
       geo.setAttribute('position', positionAttrRef.current);
@@ -160,6 +178,14 @@ function PointCloudInner({
       positionAttrRef.current.array = positions;
       positionAttrRef.current.needsUpdate = true;
     }
+
+    // Log geometry update
+    log('Geometry update', {
+      isNewGeometry,
+      isNewPositionAttr,
+      pointCount,
+      elapsed_ms: (performance.now() - startTime).toFixed(2)
+    });
 
     // Update color attribute
     const safeColors = colorPointCount === pointCount ? colors : (() => {

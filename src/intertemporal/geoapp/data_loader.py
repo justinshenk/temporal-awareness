@@ -1,5 +1,9 @@
 """Data loader for geometry output with position mapping format.
 
+This is a LOAD-ONLY loader. All embeddings must be pre-computed using
+compute_geometry_analysis.py. The loader will NOT compute embeddings
+at runtime - it only loads from analysis/embeddings/.
+
 The format stores:
 - Per-sample activation files: samples/sample_{idx}/L{layer}_{component}_{abs_pos}.npy
 - Per-sample position mapping: samples/sample_{idx}/position_mapping.json
@@ -7,28 +11,30 @@ The format stores:
 - Per-sample preference sample: samples/sample_{idx}/preference_sample.json
 - Per-sample choice info: samples/sample_{idx}/choice.json
 
+Pre-computed embeddings are loaded from:
+- analysis/embeddings/pca/L{layer}_{component}_{position}.npy
+- analysis/embeddings/umap/L{layer}_{component}_{position}.npy
+- analysis/embeddings/tsne/L{layer}_{component}_{position}.npy
+
 This loader aggregates activations by semantic position across samples.
 """
 
-import os
-
-os.environ["NUMBA_NUM_THREADS"] = "1"
-os.environ["NUMBA_THREADING_LAYER"] = "workqueue"
-
 import json
 import re
-import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from umap import UMAP
 
-_compute_lock = threading.Lock()
+
+def _log(component: str, message: str, **kwargs):
+    """Log with timestamp and component info."""
+    ts = time.strftime("%H:%M:%S")
+    extras = " | ".join(f"{k}={v}" for k, v in kwargs.items()) if kwargs else ""
+    print(f"[{ts}] [LOADER] [{component}] {message}" + (f" | {extras}" if extras else ""))
 
 # Module-level caches that survive server reloads (uvicorn --reload)
 # This prevents losing warmup work when files change and server restarts
@@ -57,6 +63,10 @@ class GeometryDataLoader:
     _umap_cache: dict = field(default_factory=lambda: _GLOBAL_UMAP_CACHE, repr=False)
     _tsne_cache: dict = field(default_factory=lambda: _GLOBAL_TSNE_CACHE, repr=False)
     _activations_cache: dict = field(default_factory=lambda: _GLOBAL_ACTIVATIONS_CACHE, repr=False)
+    # Cache for preloaded metadata values (color options)
+    _metadata_cache: dict = field(default_factory=dict, repr=False)
+    # Summary from summary.json - contains precomputed positions/layers
+    _summary: dict = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         if isinstance(self.data_dir, str):
@@ -69,64 +79,134 @@ class GeometryDataLoader:
         """Load samples, position mapping, and discover available targets.
 
         Data is loaded from per-sample files in samples/sample_*/
+
+        Raises:
+            ValueError: If required data is missing (metadata, samples, position mappings).
         """
-        # Load metadata
+        start_time = time.time()
+        _log("load_data", f"Starting data load from {self.data_dir}")
+
+        # Load metadata - REQUIRED
         metadata_path = self.data_dir / "data" / "metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path) as f:
-                self._metadata = json.load(f)
+        if not metadata_path.exists():
+            raise ValueError(
+                f"Required metadata file not found: {metadata_path}\n"
+                "Run compute_geometry_analysis.py to generate data first."
+            )
+        with open(metadata_path) as f:
+            self._metadata = json.load(f)
 
-        # Load from per-sample files
+        # Load from per-sample files - REQUIRED
         samples_dir = self.data_dir / "data" / "samples"
+        if not samples_dir.exists():
+            raise ValueError(
+                f"Required samples directory not found: {samples_dir}\n"
+                "Run compute_geometry_analysis.py to generate data first."
+            )
+
         mappings = []
-        if samples_dir.exists():
-            for sample_dir in sorted(samples_dir.glob("sample_*")):
-                sample_idx = len(self._samples)
+        sample_dirs = sorted(samples_dir.glob("sample_*"))
+        if not sample_dirs:
+            raise ValueError(
+                f"No sample directories found in: {samples_dir}\n"
+                "Run compute_geometry_analysis.py to generate data first."
+            )
 
-                # Load prompt sample
-                prompt_path = sample_dir / "prompt_sample.json"
-                if prompt_path.exists():
-                    with open(prompt_path) as f:
-                        sample = json.load(f)
-                    self._samples.append(sample)
+        for sample_dir in sample_dirs:
+            sample_idx = len(self._samples)
 
-                    # Load and merge choice info
-                    choice_path = sample_dir / "choice.json"
-                    if choice_path.exists():
-                        with open(choice_path) as f:
-                            choice = json.load(f)
-                        if "chosen_time_months" in choice:
-                            sample["time_horizon_months"] = choice["chosen_time_months"]
-                        if "chose_long_term" in choice:
-                            sample["chosen_time"] = choice["chose_long_term"]
-                        if "chosen_reward" in choice:
-                            sample["chosen_reward"] = choice["chosen_reward"]
-                        if "choice_prob" in choice:
-                            sample["choice_prob"] = choice["choice_prob"]
+            # Load prompt sample - REQUIRED for each sample
+            prompt_path = sample_dir / "prompt_sample.json"
+            if not prompt_path.exists():
+                raise ValueError(
+                    f"Required prompt_sample.json not found: {prompt_path}\n"
+                    "Data may be corrupted. Re-run compute_geometry_analysis.py."
+                )
+            with open(prompt_path) as f:
+                sample = json.load(f)
+            self._samples.append(sample)
 
-                        # Compute derived color fields
-                        self._compute_derived_fields(sample_idx, choice)
+            # Load and merge choice info - REQUIRED
+            choice_path = sample_dir / "choice.json"
+            if not choice_path.exists():
+                raise ValueError(
+                    f"Required choice.json not found: {choice_path}\n"
+                    "Data may be corrupted. Re-run compute_geometry_analysis.py."
+                )
+            with open(choice_path) as f:
+                choice = json.load(f)
+            if "chosen_time_months" in choice:
+                sample["time_horizon_months"] = choice["chosen_time_months"]
+            if "chose_long_term" in choice:
+                sample["chosen_time"] = choice["chose_long_term"]
+            if "chosen_reward" in choice:
+                sample["chosen_reward"] = choice["chosen_reward"]
+            if "choice_prob" in choice:
+                sample["choice_prob"] = choice["choice_prob"]
 
-                # Load position mapping
-                mapping_file = sample_dir / "position_mapping.json"
-                if mapping_file.exists():
-                    with open(mapping_file) as f:
-                        mappings.append(json.load(f))
+            # Load pre-computed color fields from choice.json
+            precomputed_fields = [
+                "log_time_horizon",
+                "option_time_delta",
+                "option_reward_delta",
+                "option_confidence_delta",
+            ]
+            for field_name in precomputed_fields:
+                if field_name in choice:
+                    sample[field_name] = choice[field_name]
 
-        self._position_mapping = {"mappings": mappings} if mappings else {}
+            # Compute derived color fields (only for fields not already in choice.json)
+            self._compute_derived_fields(sample_idx, choice)
+
+            # Load position mapping - REQUIRED
+            mapping_file = sample_dir / "position_mapping.json"
+            if not mapping_file.exists():
+                raise ValueError(
+                    f"Required position_mapping.json not found: {mapping_file}\n"
+                    "Data may be corrupted. Re-run compute_geometry_analysis.py."
+                )
+            with open(mapping_file) as f:
+                mappings.append(json.load(f))
+
+        self._position_mapping = {"mappings": mappings}
 
         # Discover layers and semantic positions from mapping and files
         self._discover_targets()
 
+        # Load summary.json to get precomputed positions/layers
+        summary_path = self.data_dir / "summary.json"
+        if summary_path.exists():
+            with open(summary_path) as f:
+                self._summary = json.load(f)
+        else:
+            self._summary = {}
+
+        elapsed = time.time() - start_time
+        _log("load_data", f"Data loaded", n_samples=len(self._samples), n_layers=len(self._layers), n_positions=len(self._semantic_positions), elapsed_ms=f"{elapsed*1000:.1f}")
+
     def _compute_derived_fields(self, sample_idx: int, choice: dict) -> None:
         """Compute derived color fields for a sample based on choice and prompt.
 
-        Computes:
+        Computes (only if not already present in sample from choice.json):
         - matches_largest_reward: Did they choose the option with higher reward?
         - matches_rational: For same reward, shorter time is rational
         - matches_associated: Does choice align with time horizon framing?
+        - log_time_horizon: Log10 of time horizon in months
+        - option_time_delta: Time difference between options
+        - option_reward_delta: Reward difference between options
+        - option_confidence_delta: |choice_prob - 0.5| * 2
         """
         sample = self._samples[sample_idx]
+
+        # Skip computation for fields that already exist (loaded from choice.json)
+        needs_computation = not all(
+            field in sample for field in [
+                "matches_largest_reward", "matches_rational", "matches_associated"
+            ]
+        )
+        if not needs_computation:
+            return
+
         prompt = sample.get("prompt", {})
         pp = prompt.get("preference_pair", {})
 
@@ -318,6 +398,62 @@ class GeometryDataLoader:
                 result.append(pos)
         return result
 
+    def get_precomputed_positions(self) -> list[str]:
+        """Get positions that have precomputed embeddings (from summary.json).
+
+        Returns only positions that have PCA embeddings precomputed.
+        Falls back to get_positions() if summary.json is not available.
+        """
+        if self._summary and "positions" in self._summary:
+            return self._summary["positions"]
+        # Fallback: return all semantic positions (may include ones without embeddings)
+        return self.get_positions()
+
+    def get_precomputed_layers(self) -> list[int]:
+        """Get layers that have precomputed embeddings (from summary.json).
+
+        Returns only layers that have PCA embeddings precomputed.
+        Falls back to get_layers() if summary.json is not available.
+        """
+        if self._summary and "layers" in self._summary:
+            return self._summary["layers"]
+        return self.get_layers()
+
+    def get_available_methods(self) -> list[str]:
+        """Get available dimensionality reduction methods.
+
+        Checks which methods have precomputed embeddings.
+        A method is considered available only if it has at least 80% of the
+        files that PCA has (to avoid showing methods with incomplete data).
+        Returns at least ["pca"] since PCA is always required.
+        """
+        methods = ["pca"]  # PCA is always required
+
+        # Count PCA files as baseline
+        pca_dir = self.data_dir / "analysis" / "embeddings" / "pca"
+        pca_count = len(list(pca_dir.glob("*.npy"))) if pca_dir.exists() else 0
+        if pca_count == 0:
+            return methods  # No PCA = nothing else can be available
+
+        # Require at least 80% of PCA file count to be considered available
+        threshold = pca_count * 0.8
+
+        # Check UMAP
+        umap_dir = self.data_dir / "analysis" / "embeddings" / "umap"
+        if umap_dir.exists():
+            umap_count = len(list(umap_dir.glob("*.npy")))
+            if umap_count >= threshold:
+                methods.append("umap")
+
+        # Check t-SNE
+        tsne_dir = self.data_dir / "analysis" / "embeddings" / "tsne"
+        if tsne_dir.exists():
+            tsne_count = len(list(tsne_dir.glob("*.npy")))
+            if tsne_count >= threshold:
+                methods.append("tsne")
+
+        return methods
+
     def get_positions_with_data(self, layer: int = 0, component: str = "resid_post") -> set[str]:
         """Get positions that have actual activation data for the given layer/component.
 
@@ -385,7 +521,7 @@ class GeometryDataLoader:
 
     def load_activations(
         self, layer: int, component: str, position: str
-    ) -> np.ndarray | None:
+    ) -> np.ndarray:
         """Load aggregated activations for a semantic position.
 
         Aggregates activations across all samples by:
@@ -395,14 +531,24 @@ class GeometryDataLoader:
         4. Stacking into (n_samples, d_model) array
 
         Supports position format "format_pos:rel_pos" for specific relative position.
+
+        Raises:
+            ValueError: If activation files do not exist or fail to load (STRICT mode).
         """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}"
         if cache_key in self._activations_cache:
+            _log("load_activations", f"Cache HIT", key=f"L{layer}_{component}_{position}")
             return self._activations_cache[cache_key]
+
+        _log("load_activations", f"Cache MISS - loading from disk", key=f"L{layer}_{component}_{position}")
+        start_time = time.time()
 
         samples_dir = self.data_dir / "data" / "samples"
         if not samples_dir.exists():
-            return None
+            raise ValueError(
+                f"Samples directory not found: {samples_dir}\n"
+                "Run compute_geometry_analysis.py to generate data first."
+            )
 
         # Parse position to get format_pos and optional rel_pos
         format_pos, rel_pos = self._parse_position(position)
@@ -433,9 +579,12 @@ class GeometryDataLoader:
                 sample_to_paths[sample_idx] = paths_for_sample
 
         if not load_tasks:
-            return None
+            raise ValueError(
+                f"No activation files found for L{layer}_{component}_{position}.\n"
+                "Run compute_geometry_analysis.py to generate activation data first."
+            )
 
-        # Parallel I/O for loading .npy files
+        # Parallel I/O for loading .npy files - STRICT: crash on any failure
         loaded_data: dict[Path, np.ndarray] = {}
         with ThreadPoolExecutor(max_workers=8) as executor:
             future_to_path = {executor.submit(np.load, path): path for _, path in load_tasks}
@@ -443,8 +592,12 @@ class GeometryDataLoader:
                 path = future_to_path[future]
                 try:
                     loaded_data[path] = future.result()
-                except Exception:
-                    pass  # Skip failed loads
+                except Exception as e:
+                    raise ValueError(
+                        f"Failed to load activation file: {path}\n"
+                        f"Error: {e}\n"
+                        "Data may be corrupted. Re-run compute_geometry_analysis.py."
+                    ) from e
 
         # Aggregate per sample
         activations_list = []
@@ -460,84 +613,119 @@ class GeometryDataLoader:
                 activations_list.append(avg_activation)
 
         if not activations_list:
-            return None
+            raise ValueError(
+                f"No valid activations loaded for L{layer}_{component}_{position}.\n"
+                "All activation files failed to load. Data may be corrupted."
+            )
 
         result = np.stack(activations_list).astype(np.float32)
         self._activations_cache[cache_key] = result
+
+        elapsed = time.time() - start_time
+        _log("load_activations", f"Loaded activations", shape=result.shape, n_files=len(load_tasks), elapsed_ms=f"{elapsed*1000:.1f}")
         return result
 
-    def _get_cache_path(self, method: str, layer: int, component: str, position: str) -> Path:
-        """Get disk cache path for an embedding."""
+    def _get_embedding_path(self, method: str, layer: int, component: str, position: str) -> Path:
+        """Get path to pre-computed embedding file.
+
+        Embeddings are stored in analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
+        """
         # Sanitize position for filename (replace : with _)
+        safe_pos = position.replace(":", "_")
+        return self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{safe_pos}.npy"
+
+    def _get_legacy_cache_path(self, method: str, layer: int, component: str, position: str) -> Path:
+        """Get legacy cache path (for backwards compatibility)."""
         safe_pos = position.replace(":", "_")
         return self.data_dir / "cache" / method / f"L{layer}_{component}_{safe_pos}.npy"
 
-    def _load_from_disk_cache(self, method: str, layer: int, component: str, position: str) -> np.ndarray | None:
-        """Try to load embedding from disk cache."""
-        cache_path = self._get_cache_path(method, layer, component, position)
-        if cache_path.exists():
-            return np.load(cache_path)
-        return None
+    def _load_embedding(self, method: str, layer: int, component: str, position: str) -> np.ndarray | None:
+        """Load pre-computed embedding from disk.
 
-    def _save_to_disk_cache(self, method: str, layer: int, component: str, position: str, data: np.ndarray) -> None:
-        """Save embedding to disk cache."""
-        cache_path = self._get_cache_path(method, layer, component, position)
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        np.save(cache_path, data)
+        Checks multiple paths for backwards compatibility:
+        1. analysis/embeddings/{method}/L{layer}_{component}_{position}.npy (new flat structure)
+        2. analysis/embeddings/L{layer}_{component}_{position}/{method}_embedding.npy (streaming analysis output)
+        3. cache/{method}/L{layer}_{component}_{position}.npy (legacy cache)
+
+        Returns None if not found - does NOT compute.
+        """
+        safe_pos = position.replace(":", "_")
+        key = f"L{layer}_{component}_{safe_pos}"
+
+        # Try new flat path first
+        new_path = self._get_embedding_path(method, layer, component, position)
+        if new_path.exists():
+            return np.load(new_path)
+
+        # Try streaming analysis output (subdirectory per target)
+        streaming_path = self.data_dir / "analysis" / "embeddings" / key / f"{method}_embedding.npy"
+        if streaming_path.exists():
+            return np.load(streaming_path)
+
+        # Try legacy cache path
+        legacy_path = self._get_legacy_cache_path(method, layer, component, position)
+        if legacy_path.exists():
+            return np.load(legacy_path)
+
+        return None
 
     def load_pca(
         self, layer: int, component: str, position: str, n_components: int = 3
-    ) -> np.ndarray | None:
-        """Load or compute PCA embedding."""
+    ) -> np.ndarray:
+        """Load pre-computed PCA embedding.
+
+        This is a LOAD-ONLY method. It does NOT compute PCA.
+        Run compute_geometry_analysis.py to pre-compute embeddings.
+
+        Raises:
+            ValueError: If embedding file does not exist (STRICT mode).
+        """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_pca_{n_components}"
+        key_short = f"L{layer}_{component}_{position}"
 
         # Check memory cache first
         if cache_key in self._pca_cache:
+            _log("load_pca", f"Memory cache HIT", key=key_short)
             return self._pca_cache[cache_key]
 
-        # Check disk cache
-        disk_result = self._load_from_disk_cache("pca", layer, component, position)
+        _log("load_pca", f"Memory cache MISS", key=key_short)
+        start_time = time.time()
+
+        # Load from pre-computed embeddings
+        disk_result = self._load_embedding("pca", layer, component, position)
         if disk_result is not None:
             if disk_result.shape[1] >= n_components:
                 result = disk_result[:, :n_components]
-                self._pca_cache[cache_key] = result
-                return result
+            else:
+                # Pad if needed
+                result = np.zeros((disk_result.shape[0], n_components), dtype=np.float32)
+                result[:, :disk_result.shape[1]] = disk_result
+            self._pca_cache[cache_key] = result
+            elapsed = time.time() - start_time
+            _log("load_pca", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            return result
 
-        # Try pre-computed PCA from results (legacy path)
+        # Try legacy results path (analysis pipeline output)
         pca_key = f"L{layer}_{component}_{position}"
-        pca_path = self.data_dir / "results" / "pca" / pca_key / "transformed.npy"
-        if pca_path.exists():
-            transformed = np.load(pca_path)
-            if transformed.shape[1] >= n_components:
-                result = transformed[:, :n_components]
-                self._pca_cache[cache_key] = result
-                # Also save to new cache format
-                self._save_to_disk_cache("pca", layer, component, position, transformed)
-                return result
+        for results_dir in ["analysis", "results"]:
+            pca_path = self.data_dir / results_dir / "pca" / pca_key / "transformed.npy"
+            if pca_path.exists():
+                transformed = np.load(pca_path)
+                if transformed.shape[1] >= n_components:
+                    result = transformed[:, :n_components]
+                    self._pca_cache[cache_key] = result
+                    elapsed = time.time() - start_time
+                    _log("load_pca", f"Loaded from {results_dir}/pca", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+                    return result
 
-        # Compute from activations
-        activations = self.load_activations(layer, component, position)
-        if activations is None:
-            return None
-
-        n_comp = min(n_components, activations.shape[0] - 1, activations.shape[1])
-        if n_comp < 1:
-            return None
-
-        pca = PCA(n_components=n_comp)
-        transformed = pca.fit_transform(activations).astype(np.float32)
-
-        if transformed.shape[1] < n_components:
-            padded = np.zeros((transformed.shape[0], n_components), dtype=np.float32)
-            padded[:, : transformed.shape[1]] = transformed
-            result = padded
-        else:
-            result = transformed
-
-        # Save to disk cache for instant loading next time
-        self._save_to_disk_cache("pca", layer, component, position, result)
-        self._pca_cache[cache_key] = result
-        return result
+        # Not found - CRASH: embeddings MUST be pre-computed
+        raise ValueError(
+            f"PCA embedding not found for L{layer}_{component}_{position}.\n"
+            f"Checked paths:\n"
+            f"  - {self._get_embedding_path('pca', layer, component, position)}\n"
+            f"  - {self._get_legacy_cache_path('pca', layer, component, position)}\n"
+            "Run compute_geometry_analysis.py to pre-compute embeddings first."
+        )
 
     def load_umap(
         self,
@@ -547,43 +735,45 @@ class GeometryDataLoader:
         n_components: int = 3,
         n_neighbors: int = 15,
         min_dist: float = 0.1,
-    ) -> np.ndarray | None:
-        """Load or compute UMAP embedding."""
+    ) -> np.ndarray:
+        """Load pre-computed UMAP embedding.
+
+        This is a LOAD-ONLY method. It does NOT compute UMAP.
+        Run compute_geometry_analysis.py --full to pre-compute UMAP embeddings.
+
+        Raises:
+            ValueError: If embedding file does not exist (STRICT mode).
+        """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_umap_{n_components}_{n_neighbors}_{min_dist}"
+        key_short = f"L{layer}_{component}_{position}"
 
         # Check memory cache first
         if cache_key in self._umap_cache:
+            _log("load_umap", f"Memory cache HIT", key=key_short)
             return self._umap_cache[cache_key]
 
-        # Check disk cache
-        disk_result = self._load_from_disk_cache("umap", layer, component, position)
+        _log("load_umap", f"Memory cache MISS", key=key_short)
+        start_time = time.time()
+
+        # Load from pre-computed embeddings
+        disk_result = self._load_embedding("umap", layer, component, position)
         if disk_result is not None:
             if disk_result.shape[1] >= n_components:
                 result = disk_result[:, :n_components]
-                self._umap_cache[cache_key] = result
-                return result
+            else:
+                result = np.zeros((disk_result.shape[0], n_components), dtype=np.float32)
+                result[:, :disk_result.shape[1]] = disk_result
+            self._umap_cache[cache_key] = result
+            elapsed = time.time() - start_time
+            _log("load_umap", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            return result
 
-        # Compute from activations
-        activations = self.load_activations(layer, component, position)
-        if activations is None or activations.shape[0] < 2:
-            return None
-
-        if activations.shape[0] < n_neighbors:
-            n_neighbors = max(2, activations.shape[0] - 1)
-
-        with _compute_lock:
-            umap = UMAP(
-                n_components=n_components,
-                n_neighbors=n_neighbors,
-                min_dist=min_dist,
-                random_state=42,
-            )
-            result = umap.fit_transform(activations).astype(np.float32)
-
-        # Save to disk cache
-        self._save_to_disk_cache("umap", layer, component, position, result)
-        self._umap_cache[cache_key] = result
-        return result
+        # Not found - CRASH: embeddings MUST be pre-computed
+        raise ValueError(
+            f"UMAP embedding not found for L{layer}_{component}_{position}.\n"
+            f"Checked path: {self._get_embedding_path('umap', layer, component, position)}\n"
+            "Run compute_geometry_analysis.py --full to pre-compute UMAP embeddings."
+        )
 
     def load_tsne(
         self,
@@ -592,43 +782,45 @@ class GeometryDataLoader:
         position: str,
         n_components: int = 3,
         perplexity: float = 30.0,
-    ) -> np.ndarray | None:
-        """Load or compute t-SNE embedding."""
+    ) -> np.ndarray:
+        """Load pre-computed t-SNE embedding.
+
+        This is a LOAD-ONLY method. It does NOT compute t-SNE.
+        Run compute_geometry_analysis.py --full to pre-compute t-SNE embeddings.
+
+        Raises:
+            ValueError: If embedding file does not exist (STRICT mode).
+        """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_tsne_{n_components}_{perplexity}"
+        key_short = f"L{layer}_{component}_{position}"
 
         # Check memory cache first
         if cache_key in self._tsne_cache:
+            _log("load_tsne", f"Memory cache HIT", key=key_short)
             return self._tsne_cache[cache_key]
 
-        # Check disk cache
-        disk_result = self._load_from_disk_cache("tsne", layer, component, position)
+        _log("load_tsne", f"Memory cache MISS", key=key_short)
+        start_time = time.time()
+
+        # Load from pre-computed embeddings
+        disk_result = self._load_embedding("tsne", layer, component, position)
         if disk_result is not None:
             if disk_result.shape[1] >= n_components:
                 result = disk_result[:, :n_components]
-                self._tsne_cache[cache_key] = result
-                return result
+            else:
+                result = np.zeros((disk_result.shape[0], n_components), dtype=np.float32)
+                result[:, :disk_result.shape[1]] = disk_result
+            self._tsne_cache[cache_key] = result
+            elapsed = time.time() - start_time
+            _log("load_tsne", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            return result
 
-        # Compute from activations
-        activations = self.load_activations(layer, component, position)
-        if activations is None or activations.shape[0] < 4:
-            return None
-
-        effective_perplexity = min(perplexity, max(1.0, (activations.shape[0] - 1) / 3))
-
-        with _compute_lock:
-            tsne = TSNE(
-                n_components=n_components,
-                perplexity=effective_perplexity,
-                random_state=42,
-                max_iter=1000,
-                init="pca",
-            )
-            result = tsne.fit_transform(activations).astype(np.float32)
-
-        # Save to disk cache
-        self._save_to_disk_cache("tsne", layer, component, position, result)
-        self._tsne_cache[cache_key] = result
-        return result
+        # Not found - CRASH: embeddings MUST be pre-computed
+        raise ValueError(
+            f"t-SNE embedding not found for L{layer}_{component}_{position}.\n"
+            f"Checked path: {self._get_embedding_path('tsne', layer, component, position)}\n"
+            "Run compute_geometry_analysis.py --full to pre-compute t-SNE embeddings."
+        )
 
     def _extract_nested(self, sample: dict, path: str, default=None):
         """Extract value from nested dict using dot notation."""
@@ -659,10 +851,28 @@ class GeometryDataLoader:
         return value * conversions.get(unit_lower, 1.0)
 
     def get_sample_metadata(self, color_by: str) -> np.ndarray:
-        """Get sample metadata for coloring."""
+        """Get sample metadata for coloring.
+
+        First checks metadata cache, then falls back to sample fields or computation.
+        """
         if not self._samples:
             return np.array([])
 
+        # Check metadata cache first
+        cache_key = f"{self._cache_prefix}|metadata_{color_by}"
+        if cache_key in self._metadata_cache:
+            return self._metadata_cache[cache_key]
+
+        result = self._compute_metadata_values(color_by)
+        self._metadata_cache[cache_key] = result
+        return result
+
+    def _compute_metadata_values(self, color_by: str) -> np.ndarray:
+        """Compute metadata values for coloring.
+
+        Uses pre-computed values from sample fields (loaded from choice.json)
+        when available, otherwise computes on demand.
+        """
         if color_by == "time_horizon":
             vals = []
             for s in self._samples:
@@ -675,6 +885,10 @@ class GeometryDataLoader:
                 vals.append(th)
             return np.array(vals)
         elif color_by == "log_time_horizon":
+            # Check if pre-computed in samples (from choice.json)
+            if self._samples and "log_time_horizon" in self._samples[0]:
+                return np.array([s.get("log_time_horizon", -1) for s in self._samples])
+            # Fallback to computation
             vals = []
             for s in self._samples:
                 th_value = self._extract_nested(s, "prompt.time_horizon.value")
@@ -706,6 +920,57 @@ class GeometryDataLoader:
             return np.array([s.get("context_id", 0) for s in self._samples])
         elif color_by == "sample_idx":
             return np.arange(len(self._samples))
+        elif color_by == "choice_confidence":
+            # Choice probability (how confident the model was in its choice)
+            return np.array([s.get("choice_prob", 0.5) for s in self._samples])
+        elif color_by == "option_confidence_delta":
+            # Check if pre-computed in samples (from choice.json)
+            if self._samples and "option_confidence_delta" in self._samples[0]:
+                return np.array([s.get("option_confidence_delta", 0) for s in self._samples])
+            # Fallback: |choice_prob - 0.5| * 2: 0 = uncertain, 1 = very confident
+            vals = []
+            for s in self._samples:
+                prob = s.get("choice_prob", 0.5)
+                vals.append(abs(prob - 0.5) * 2)
+            return np.array(vals)
+        elif color_by == "option_time_delta":
+            # Check if pre-computed in samples (from choice.json)
+            if self._samples and "option_time_delta" in self._samples[0]:
+                return np.array([s.get("option_time_delta", 0) for s in self._samples])
+            # Fallback: difference in time between long_term and short_term options (in months)
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    short_time = pp.get("short_term", {}).get("time", {})
+                    long_time = pp.get("long_term", {}).get("time", {})
+                    short_months = self._convert_to_months(
+                        short_time.get("value", 0),
+                        short_time.get("unit", "months")
+                    )
+                    long_months = self._convert_to_months(
+                        long_time.get("value", 0),
+                        long_time.get("unit", "months")
+                    )
+                    vals.append(long_months - short_months)
+                else:
+                    vals.append(0)
+            return np.array(vals)
+        elif color_by == "option_reward_delta":
+            # Check if pre-computed in samples (from choice.json)
+            if self._samples and "option_reward_delta" in self._samples[0]:
+                return np.array([s.get("option_reward_delta", 0) for s in self._samples])
+            # Fallback: difference in reward between long_term and short_term options
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    short_reward = pp.get("short_term", {}).get("reward", {}).get("value", 0)
+                    long_reward = pp.get("long_term", {}).get("reward", {}).get("value", 0)
+                    vals.append(long_reward - short_reward)
+                else:
+                    vals.append(0)
+            return np.array(vals)
         else:
             return np.arange(len(self._samples))
 
@@ -723,6 +988,10 @@ class GeometryDataLoader:
             "log_time_horizon",
             "chosen_time",
             "chosen_reward",
+            "choice_confidence",
+            "option_confidence_delta",
+            "option_time_delta",
+            "option_reward_delta",
             "matches_largest_reward",
             "matches_rational",
             "matches_associated",
@@ -904,7 +1173,11 @@ class GeometryDataLoader:
         positions: list[str] | None = None,
         progress_callback: Callable[[int, int, str], None] | None = None,
     ) -> int:
-        """Pre-compute embeddings."""
+        """Pre-load embeddings into memory cache.
+
+        Loads pre-computed embeddings from disk into memory for faster access.
+        Does NOT compute any embeddings - they must already exist on disk.
+        """
         if methods is None:
             methods = ["pca", "umap", "tsne"]
         if layers is None:
@@ -957,3 +1230,215 @@ class GeometryDataLoader:
         if mapping:
             return mapping.get("positions", [])
         return []
+
+    def preload_all_metadata(self) -> int:
+        """Preload all metadata/color values into memory cache.
+
+        Returns the number of color options loaded.
+        """
+        color_options = self.get_color_options()
+        loaded = 0
+        for color_by in color_options:
+            # STRICT: crash on any failure - metadata MUST be valid
+            cache_key = f"{self._cache_prefix}|metadata_{color_by}"
+            if cache_key not in self._metadata_cache:
+                values = self.get_sample_metadata(color_by)
+                self._metadata_cache[cache_key] = values
+            loaded += 1
+        return loaded
+
+    def preload_all_tokens(self) -> int:
+        """Preload token mappings for all samples.
+
+        Token mappings are already loaded in _position_mapping during _load_data(),
+        so this just validates they're accessible. Returns the number of samples
+        with valid token mappings.
+        """
+        loaded = 0
+        for sample_idx in range(len(self._samples)):
+            tokens = self.get_tokens_for_sample(sample_idx)
+            if tokens:
+                loaded += 1
+        return loaded
+
+    def warmup_all(
+        self,
+        methods: list[str] | None = None,
+        layers: list[int] | None = None,
+        components: list[str] | None = None,
+        positions: list[str] | None = None,
+        include_metadata: bool = True,
+        include_tokens: bool = True,
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> dict[str, int]:
+        """Comprehensive preload of ALL data into memory.
+
+        Loads:
+        - All embeddings (PCA, UMAP, t-SNE) in parallel
+        - All metadata/color values
+        - All token mappings
+        - All valid sample indices
+
+        Args:
+            methods: Methods to load (default: pca, umap, tsne)
+            layers: Layers to load (default: all from data)
+            components: Components to load (default: all)
+            positions: Positions to load (default: all from get_positions())
+            include_metadata: Whether to preload metadata
+            include_tokens: Whether to preload token mappings
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Dict with counts of loaded items
+        """
+        if methods is None:
+            methods = ["pca", "umap", "tsne"]
+        if layers is None:
+            layers = self._layers
+        if components is None:
+            components = self.get_components()
+        if positions is None:
+            positions = self.get_positions()
+
+        results = {
+            "embeddings": 0,
+            "metadata": 0,
+            "tokens": 0,
+            "sample_indices": 0,
+        }
+
+        # Count total tasks for progress
+        embedding_tasks = len(methods) * len(layers) * len(components) * len(positions)
+        metadata_tasks = len(self.get_color_options()) if include_metadata else 0
+        token_tasks = 1 if include_tokens else 0  # Tokens are one bulk operation
+        total_tasks = embedding_tasks + metadata_tasks + token_tasks
+
+        current_task = [0]  # Use list for mutable reference in closure
+
+        # Helper to report progress
+        def report(desc: str):
+            current_task[0] += 1
+            if progress_callback:
+                progress_callback(current_task[0], total_tasks, desc)
+
+        # Load all embeddings using parallel loading
+        def load_single_embedding(args):
+            method, layer, component, position = args
+            result = None
+            if method == "pca":
+                result = self.load_pca(layer, component, position)
+            elif method == "umap":
+                result = self.load_umap(layer, component, position)
+            elif method == "tsne":
+                result = self.load_tsne(layer, component, position)
+            # Also load sample indices
+            self.get_valid_sample_indices(layer, component, position)
+            return result is not None
+
+        # Build list of all embedding tasks
+        embedding_args = [
+            (method, layer, component, position)
+            for method in methods
+            for layer in layers
+            for component in components
+            for position in positions
+        ]
+
+        # Parallel embedding loading
+        _log("warmup_all", f"Loading {len(embedding_args)} embeddings in parallel...")
+        with ThreadPoolExecutor(max_workers=16) as executor:
+            futures = {executor.submit(load_single_embedding, args): args for args in embedding_args}
+            for future in as_completed(futures):
+                if future.result():
+                    results["embeddings"] += 1
+                report(f"Embedding {results['embeddings']}/{len(embedding_args)}")
+
+        # Preload metadata - STRICT: crash on any failure
+        if include_metadata:
+            _log("warmup_all", "Loading all metadata/color values...")
+            for color_by in self.get_color_options():
+                # No try/except - let exceptions propagate
+                cache_key = f"{self._cache_prefix}|metadata_{color_by}"
+                if cache_key not in self._metadata_cache:
+                    values = self.get_sample_metadata(color_by)
+                    self._metadata_cache[cache_key] = values
+                results["metadata"] += 1
+                report(f"Metadata: {color_by}")
+
+        # Preload tokens (validate they're accessible)
+        if include_tokens:
+            _log("warmup_all", "Validating token mappings...")
+            results["tokens"] = self.preload_all_tokens()
+            report("Token mappings validated")
+
+        return results
+
+    def load_layer_trajectory(
+        self,
+        component: str,
+        position: str,
+    ) -> tuple[list[int], np.ndarray, list[int]]:
+        """Load pre-cached layer trajectory data (PC1 across all layers).
+
+        Returns:
+            Tuple of (layers, pc1_values, sample_indices).
+            pc1_values has shape (n_layers, n_samples).
+
+        Raises:
+            ValueError: If trajectory cache file does not exist (STRICT mode).
+        """
+        # Check analysis/trajectories first (new path), then cache/trajectories (legacy)
+        cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{position}.npz"
+        if not cache_file.exists():
+            legacy_file = self.data_dir / "cache" / "trajectories" / f"layers_{component}_{position}.npz"
+            if legacy_file.exists():
+                cache_file = legacy_file
+            else:
+                raise ValueError(
+                    f"Layer trajectory cache not found: {cache_file}\n"
+                    "Run compute_geometry_analysis.py to generate trajectory data first."
+                )
+
+        # STRICT: crash on any failure - trajectory data MUST be valid
+        data = np.load(cache_file)
+        layers = data["layers"].tolist()
+        pc1_values = data["pc1_values"]  # shape: (n_layers, n_samples)
+        sample_indices = data["sample_indices"].tolist()
+        _log("trajectory", f"Loaded cached layer trajectory", comp=component, position=position)
+        return layers, pc1_values, sample_indices
+
+    def load_position_trajectory(
+        self,
+        layer: int,
+        component: str,
+    ) -> tuple[list[str], list[np.ndarray], list[list[int]]]:
+        """Load pre-cached position trajectory data (PC1 across all positions).
+
+        Returns:
+            Tuple of (positions, pc1_values_list, sample_indices_per_position).
+            pc1_values_list is a list of PC1 arrays (one per position, may have different lengths).
+            sample_indices_per_position is a list of sample index lists (one per position).
+
+        Raises:
+            ValueError: If trajectory cache file does not exist (STRICT mode).
+        """
+        # Check analysis/trajectories first (new path), then cache/trajectories (legacy)
+        cache_file = self.data_dir / "analysis" / "trajectories" / f"positions_L{layer}_{component}.npz"
+        if not cache_file.exists():
+            legacy_file = self.data_dir / "cache" / "trajectories" / f"positions_L{layer}_{component}.npz"
+            if legacy_file.exists():
+                cache_file = legacy_file
+            else:
+                raise ValueError(
+                    f"Position trajectory cache not found: {cache_file}\n"
+                    "Run compute_geometry_analysis.py to generate trajectory data first."
+                )
+
+        # STRICT: crash on any failure - trajectory data MUST be valid
+        data = np.load(cache_file, allow_pickle=True)
+        positions = data["positions"].tolist()
+        # pc1_values is stored as object array - each element is a 1D array
+        pc1_values_list = [arr for arr in data["pc1_values"]]
+        sample_indices_list = [list(arr) for arr in data["sample_indices_list"]]
+        _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component)
+        return positions, pc1_values_list, sample_indices_list
