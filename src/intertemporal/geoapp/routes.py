@@ -240,6 +240,20 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
                 )
             raise HTTPException(status_code=404, detail=f"Position '{position}' not found")
 
+        # Validate method is available (UMAP/t-SNE may not be precomputed)
+        available_methods = data_loader.get_available_methods()
+        if method not in available_methods:
+            async def error_generator():
+                yield f"data: {json.dumps({'error': f'Method {method} not available. Available methods: {available_methods}'})}\n\n"
+            return StreamingResponse(
+                error_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                },
+            )
+
         async def generate_chunks():
             """Generator that yields SSE chunks."""
             import asyncio
@@ -404,7 +418,10 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             time_horizon_months = None
 
         # Extract known fields
-        known_fields = {"text", "time_horizon_months", "time_scale", "choice_type", "short_term_first"}
+        known_fields = {
+            "text", "time_horizon_months", "time_scale", "choice_type", "short_term_first",
+            "response_label", "response_term", "response_text", "choice_prob"
+        }
         metadata = {k: v for k, v in sample_info.items() if k not in known_fields}
 
         return SampleResponse(
@@ -414,6 +431,10 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             time_scale=sample_info.get("time_scale"),
             choice_type=sample_info.get("choice_type"),
             short_term_first=sample_info.get("short_term_first"),
+            response_label=sample_info.get("response_label"),
+            response_term=sample_info.get("response_term"),
+            response_text=sample_info.get("response_text"),
+            choice_confidence=sample_info.get("choice_prob"),
             metadata=metadata,
         )
 

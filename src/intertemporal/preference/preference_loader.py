@@ -94,13 +94,29 @@ def load_preference_data(
     pref_data = PreferenceDataset.from_json(files[0], with_internals=with_internals)
 
     # Try to load corresponding PromptDataset
+    # Prompt files are named: {name}_{dataset_id}.json
+    # Use the prompt_dataset_id from the loaded preference data
     prompt_dataset = None
     prompt_dir = prompt_directory or get_prompt_dataset_dir()
-    prompt_files = list(Path(prompt_dir).glob(f"{prefix}*.json"))
-    if prompt_files:
-        # Use newest file
-        prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-        prompt_dataset = PromptDataset.from_json(prompt_files[0])
+
+    # Try exact match first: {name}_{id}.json
+    if pref_data.prompt_dataset_name:
+        exact_path = Path(prompt_dir) / f"{pref_data.prompt_dataset_name}_{pref_data.prompt_dataset_id}.json"
+        if exact_path.exists():
+            prompt_dataset = PromptDataset.from_json(exact_path)
+
+    # Fallback: search for any file containing the dataset_id
+    if prompt_dataset is None:
+        prompt_files = list(Path(prompt_dir).glob(f"*{pref_data.prompt_dataset_id}*.json"))
+        if prompt_files:
+            # Use newest file
+            prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            print(f"\n{'='*60}")
+            print(f"WARNING: Using fallback glob to find prompt dataset")
+            print(f"  Expected: {pref_data.prompt_dataset_name}_{pref_data.prompt_dataset_id}.json")
+            print(f"  Found: {prompt_files[0].name}")
+            print(f"{'='*60}\n")
+            prompt_dataset = PromptDataset.from_json(prompt_files[0])
 
     return pref_data, prompt_dataset
 

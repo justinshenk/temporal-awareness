@@ -295,7 +295,7 @@ function App() {
   }, [positions.length, scatterFilterMask]);
 
   // Fields that should always use gradient coloring (not categorical)
-  const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward'];
+  const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward', 'option_reward_delta', 'option_time_delta', 'option_confidence_delta'];
 
   // Compute effective color range (user-defined or data-derived)
   const effectiveColorRange = useMemo(() => {
@@ -474,6 +474,9 @@ function App() {
     'short_term_first': 'Option Order',
     'context_id': 'Context',
     'sample_idx': 'Sample Index',
+    'option_reward_delta': 'Option Reward Delta',
+    'option_time_delta': 'Option Time Delta',
+    'option_confidence_delta': 'Option Confidence Delta',
   };
 
   // Generate legend data
@@ -702,7 +705,7 @@ function App() {
         </aside>
 
         {/* Main Visualization Area */}
-        <main className="flex-1 p-4 flex flex-col min-w-0">
+        <main className="flex-1 p-4 flex flex-col min-w-0 min-h-0">
           {/* Error State */}
           {(embeddingError || metadataError || hasHorizonError || layerTrajectory.error || positionTrajectory.error) && (
             <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700">
@@ -752,8 +755,8 @@ function App() {
             </div>
           </div>
 
-          {/* Visualization Area */}
-          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60">
+          {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
+          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 min-h-[400px]">
             {allSamplesFiltered ? (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb]">
                 <div className="text-center p-8">
@@ -830,7 +833,7 @@ function App() {
                 onPointSelect={handlePointSelect}
                 backgroundColor="#faf8f5"
                 initialCameraPosition={[8, 6, 8]}
-                className="w-full h-full"
+                className="absolute inset-0"
                 selectedSampleIdx={selectedSampleIdx}
                 visibility={visibility}
               />
@@ -844,10 +847,11 @@ function App() {
                 showGrid={true}
                 onPointSelect={handlePointSelect}
                 backgroundColor="#faf8f5"
-                className="w-full h-full"
+                className="absolute inset-0"
                 selectedSampleIdx={selectedSampleIdx}
                 xAxis={0}
                 yAxis={1}
+                visibility={visibility}
               />
             ) : viewMode === '1DxLayer' ? (
               <TrajectoryPlot
@@ -963,6 +967,10 @@ function App() {
                       choiceType: selectedSample.choiceType,
                       shortTermFirst: selectedSample.shortTermFirst,
                       label: selectedSample.label,
+                      responseLabel: selectedSample.responseLabel,
+                      responseTerm: selectedSample.responseTerm,
+                      responseText: selectedSample.responseText,
+                      choiceConfidence: selectedSample.choiceConfidence,
                     }
                   : null
               }

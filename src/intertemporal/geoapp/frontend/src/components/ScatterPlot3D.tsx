@@ -411,7 +411,7 @@ function ScatterPlot3DInner({
           depth: true,
         }}
         dpr={1} // Fixed DPR for consistent performance
-        style={{ background: backgroundColor }}
+        style={{ background: backgroundColor, width: '100%', height: '100%' }}
         performance={{ min: 0.5 }}
       >
         <SceneContent

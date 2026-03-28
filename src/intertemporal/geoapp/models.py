@@ -69,6 +69,10 @@ class SampleResponse(BaseModel):
     time_scale: str | None = Field(default=None, description="Time scale category")
     choice_type: str | None = Field(default=None, description="Type of intertemporal choice")
     short_term_first: bool | None = Field(default=None, description="Whether short-term option appears first")
+    response_label: str | None = Field(default=None, description="Model's chosen option label (e.g., 'a)' or 'b)')")
+    response_term: str | None = Field(default=None, description="Which term was chosen: 'short_term' or 'long_term'")
+    response_text: str | None = Field(default=None, description="Full response text from the model")
+    choice_confidence: float | None = Field(default=None, description="Model's confidence in the choice (0-1)")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional sample metadata")
 
 

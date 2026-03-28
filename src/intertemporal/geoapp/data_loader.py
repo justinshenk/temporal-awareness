@@ -144,6 +144,19 @@ class GeometryDataLoader:
             if "choice_prob" in choice:
                 sample["choice_prob"] = choice["choice_prob"]
 
+            # Load preference_sample.json for response data (optional)
+            preference_path = sample_dir / "preference_sample.json"
+            if preference_path.exists():
+                with open(preference_path) as f:
+                    preference = json.load(f)
+                # Store response-related fields
+                if "choice_label" in preference:
+                    sample["response_label"] = preference["choice_label"]
+                if "choice_term" in preference:
+                    sample["response_term"] = preference["choice_term"]
+                if "response_text" in preference and preference["response_text"]:
+                    sample["response_text"] = preference["response_text"]
+
             # Load pre-computed color fields from choice.json
             precomputed_fields = [
                 "log_time_horizon",

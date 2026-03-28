@@ -11,6 +11,10 @@ interface SampleInfo {
   choiceType: string | null;
   shortTermFirst: boolean | null;
   label?: string;
+  responseLabel?: string | null;
+  responseTerm?: string | null;
+  responseText?: string | null;
+  choiceConfidence?: number | null;
 }
 
 // Format time horizon (in months) to human-readable string
@@ -484,7 +488,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 <div className="max-h-64 overflow-y-auto pr-1">
                   <FormattedPrompt
                     text={selectedSample.text}
-                    selectedOption={selectedSample.label}
+                    selectedOption={selectedSample.responseLabel || selectedSample.label}
                     markers={markers}
                   />
                 </div>
@@ -498,10 +502,41 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                 />
               </div>
 
-              {/* Label if available */}
-              {selectedSample.label && (
-                <div className="text-xs text-[#1a1613]/50">
-                  Label: {selectedSample.label}
+              {/* Model Response Section */}
+              {(selectedSample.responseLabel || selectedSample.responseTerm) && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2.5">
+                  <div className="flex items-center gap-1.5 mb-1.5 text-emerald-700">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      RESPONSE
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedSample.responseLabel && (
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                        {selectedSample.responseLabel.replace(/[).]/, '').toUpperCase()}
+                      </span>
+                    )}
+                    <span className="text-sm text-[#1a1613] font-medium">
+                      {selectedSample.responseTerm === 'long_term' ? 'Long-term option' :
+                       selectedSample.responseTerm === 'short_term' ? 'Short-term option' :
+                       selectedSample.responseTerm || 'Unknown'}
+                    </span>
+                    {selectedSample.choiceConfidence !== null && selectedSample.choiceConfidence !== undefined && (
+                      <span className="ml-auto text-xs text-emerald-600">
+                        {(selectedSample.choiceConfidence * 100).toFixed(1)}% confident
+                      </span>
+                    )}
+                  </div>
+                  {selectedSample.responseText && (
+                    <div className="mt-2 pt-2 border-t border-emerald-200">
+                      <p className="text-sm text-[#1a1613]/80 whitespace-pre-wrap">
+                        {selectedSample.responseText}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

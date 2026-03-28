@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { api, ApiError } from '../lib/api';
+import api from '../lib/api';
 
 // Re-export ApiError for use in components
 export { ApiError } from '../lib/api';
@@ -90,6 +90,10 @@ interface BackendSampleResponse {
   time_scale: string | null;
   choice_type: string | null;
   short_term_first: boolean | null;
+  response_label: string | null;
+  response_term: string | null;
+  response_text: string | null;
+  choice_confidence: number | null;
   metadata: Record<string, unknown>;
 }
 
@@ -101,6 +105,10 @@ export interface SampleResponse {
   choiceType: string | null;
   shortTermFirst: boolean | null;
   label?: string;
+  responseLabel: string | null;
+  responseTerm: string | null;
+  responseText: string | null;
+  choiceConfidence: number | null;
   metadata: Record<string, unknown>;
 }
 
@@ -456,6 +464,10 @@ export function useSample(idx: number | null) {
         choiceType: response.choice_type,
         shortTermFirst: response.short_term_first,
         label: typeof metadata.label === 'string' ? metadata.label : undefined,
+        responseLabel: response.response_label,
+        responseTerm: response.response_term,
+        responseText: response.response_text,
+        choiceConfidence: response.choice_confidence,
         metadata,
       };
     },

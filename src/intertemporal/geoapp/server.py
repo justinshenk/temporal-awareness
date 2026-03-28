@@ -9,6 +9,8 @@ Architecture: Load-Only Pattern
 
 import json
 import os
+import resource
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -255,12 +257,22 @@ def create_app(
 
         total_elapsed = time.time() - start_time
 
+        # Get memory usage after preloading
+        mem_usage = resource.getrusage(resource.RUSAGE_SELF)
+        mem_mb = mem_usage.ru_maxrss / (1024 * 1024)  # Convert to MB (macOS returns bytes)
+        # On Linux, ru_maxrss is in KB, so we'd divide by 1024 only
+        if sys.platform == "linux":
+            mem_mb = mem_usage.ru_maxrss / 1024
+
         print()
         print("  PRELOAD COMPLETE")
         print(f"    Total time: {total_elapsed:.1f}s")
         print(f"    Embeddings: {results['embeddings']}")
         print(f"    Metadata options: {metadata_count}")
         print(f"    Token mappings: {token_count}")
+        print()
+        print("  MEMORY USAGE:")
+        print(f"    Peak RSS: {mem_mb:.1f} MB")
         print()
         print("  All visualizations will be served INSTANTLY from memory.")
         print("=" * 60)
