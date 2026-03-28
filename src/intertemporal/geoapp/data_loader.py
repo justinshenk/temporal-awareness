@@ -154,8 +154,14 @@ class GeometryDataLoader:
                     sample["response_label"] = preference["choice_label"]
                 if "choice_term" in preference:
                     sample["response_term"] = preference["choice_term"]
+                # Get response text - prefer response_text if set, else derive from response_texts[choice_idx]
                 if "response_text" in preference and preference["response_text"]:
                     sample["response_text"] = preference["response_text"]
+                elif "response_texts" in preference and "choice_idx" in preference:
+                    choice_idx = preference["choice_idx"]
+                    response_texts = preference["response_texts"]
+                    if isinstance(response_texts, list) and 0 <= choice_idx < len(response_texts):
+                        sample["response_text"] = response_texts[choice_idx]
 
             # Load pre-computed color fields from choice.json
             precomputed_fields = [
@@ -939,7 +945,8 @@ class GeometryDataLoader:
         elif color_by == "option_confidence_delta":
             # Check if pre-computed in samples (from choice.json)
             if self._samples and "option_confidence_delta" in self._samples[0]:
-                return np.array([s.get("option_confidence_delta", 0) for s in self._samples])
+                # Use 'or 0' to handle None values (key exists but value is None)
+                return np.array([s.get("option_confidence_delta") or 0 for s in self._samples])
             # Fallback: |choice_prob - 0.5| * 2: 0 = uncertain, 1 = very confident
             vals = []
             for s in self._samples:
@@ -949,7 +956,8 @@ class GeometryDataLoader:
         elif color_by == "option_time_delta":
             # Check if pre-computed in samples (from choice.json)
             if self._samples and "option_time_delta" in self._samples[0]:
-                return np.array([s.get("option_time_delta", 0) for s in self._samples])
+                # Use 'or 0' to handle None values (key exists but value is None)
+                return np.array([s.get("option_time_delta") or 0 for s in self._samples])
             # Fallback: difference in time between long_term and short_term options (in months)
             vals = []
             for s in self._samples:
@@ -972,7 +980,8 @@ class GeometryDataLoader:
         elif color_by == "option_reward_delta":
             # Check if pre-computed in samples (from choice.json)
             if self._samples and "option_reward_delta" in self._samples[0]:
-                return np.array([s.get("option_reward_delta", 0) for s in self._samples])
+                # Use 'or 0' to handle None values (key exists but value is None)
+                return np.array([s.get("option_reward_delta") or 0 for s in self._samples])
             # Fallback: difference in reward between long_term and short_term options
             vals = []
             for s in self._samples:

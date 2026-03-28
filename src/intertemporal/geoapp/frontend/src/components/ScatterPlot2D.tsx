@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect, memo } from 'react';
 import { PointData } from './PointCloud';
 import { Tooltip, TooltipData } from './Tooltip';
 
@@ -21,7 +21,7 @@ export interface ScatterPlot2DProps {
   visibility?: Float32Array;
 }
 
-export function ScatterPlot2D({
+function ScatterPlot2DInner({
   positions,
   colors,
   pointData = [],
@@ -248,7 +248,10 @@ export function ScatterPlot2D({
 
     // Draw points (non-selected first, then hovered, then selected)
     const numPoints = positions.length / 3;
-    const drawPoint = (i: number, sizeMultiplier: number = 1, strokeColor?: string, strokeWidth?: number) => {
+    // Base alpha for points - slightly transparent for better overlap visualization
+    const baseAlpha = numPoints > 1000 ? 0.7 : numPoints > 500 ? 0.8 : 0.9;
+
+    const drawPoint = (i: number, sizeMultiplier: number = 1, strokeColor?: string, strokeWidth?: number, alpha: number = baseAlpha) => {
       const dataX = positions[i * 3 + xAxis];
       const dataY = positions[i * 3 + yAxis];
 
@@ -270,7 +273,7 @@ export function ScatterPlot2D({
 
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
       ctx.fill();
 
       if (strokeColor) {
@@ -287,12 +290,12 @@ export function ScatterPlot2D({
     for (let i = 0; i < numPoints; i++) {
       if (i === selectedIndex || i === hoveredIndex) continue;
       if (!isVisible(i)) continue;
-      drawPoint(i, 1);
+      drawPoint(i, 1, undefined, undefined, baseAlpha);
     }
 
-    // Draw hovered point
+    // Draw hovered point with full opacity
     if (hoveredIndex !== null && hoveredIndex !== selectedIndex && isVisible(hoveredIndex)) {
-      drawPoint(hoveredIndex, 1.4, 'rgba(255, 255, 255, 0.8)', 2);
+      drawPoint(hoveredIndex, 1.4, 'rgba(255, 255, 255, 0.8)', 2, 1.0);
     }
 
     // Draw selected point with glow
@@ -459,13 +462,22 @@ export function ScatterPlot2D({
     }
   }, [findPointAt, pointData, onPointSelect, isPanning]);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.max(0.2, Math.min(10, prev.scale * delta)),
-    }));
+  // Handle wheel zoom with native event listener (passive: false for preventDefault)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setTransform(prev => ({
+        ...prev,
+        scale: Math.max(0.2, Math.min(10, prev.scale * delta)),
+      }));
+    };
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -520,7 +532,6 @@ export function ScatterPlot2D({
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
@@ -663,4 +674,6 @@ export function ScatterPlot2D({
   );
 }
 
+// Memoize to prevent unnecessary re-renders when parent state changes
+export const ScatterPlot2D = memo(ScatterPlot2DInner);
 export default ScatterPlot2D;

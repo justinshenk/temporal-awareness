@@ -152,6 +152,9 @@ const SceneContent = memo(function SceneContent({
 
   return (
     <>
+      {/* Set scene background color (required with alpha: false in Canvas gl config) */}
+      <color attach="background" args={['#faf8f5']} />
+
       <PerspectiveCamera
         makeDefault
         position={cameraPosition}
@@ -405,7 +408,7 @@ function ScatterPlot3DInner({
       <Canvas
         gl={{
           antialias: false, // Disable for performance
-          alpha: true,
+          alpha: false, // Opaque context for proper point rendering
           powerPreference: 'high-performance',
           stencil: false,
           depth: true,

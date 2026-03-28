@@ -26,6 +26,7 @@ export interface ConfigResponse {
   components: string[];
   positions: string[];
   color_options: string[];
+  available_methods: string[];
   n_samples: number;
   model_name: string;
   position_labels: Record<string, string>;
@@ -132,7 +133,7 @@ export function useConfig() {
         layers: response.layers,
         components: response.components,
         positions: response.positions,
-        methods: ['pca', 'umap', 'tsne'],  // Fixed methods supported by backend
+        methods: response.available_methods || ['pca'],  // Use backend's available methods
         colorByOptions: response.color_options,
         totalSamples: response.n_samples,
         modelName: response.model_name || '',

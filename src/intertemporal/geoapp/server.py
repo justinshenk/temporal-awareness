@@ -219,6 +219,37 @@ def create_app(
                 "\nRun: uv run python scripts/intertemporal/compute_geometry_analysis.py"
             )
 
+        print(f"    PCA embeddings: {pca_count} files (REQUIRED - OK)")
+
+        # PHASE 0.5: Validate available methods
+        # This determines what buttons the frontend will show
+        print()
+        print("  Phase 0.5: Checking available dimensionality reduction methods...")
+        available_methods = data_loader.get_available_methods()
+
+        print()
+        print("  " + "-" * 56)
+        print("  AVAILABLE METHODS (frontend will only show these):")
+        print("  " + "-" * 56)
+        for method in ["pca", "umap", "tsne"]:
+            if method in available_methods:
+                print(f"    [{method.upper()}] AVAILABLE")
+            else:
+                method_dir = embeddings_dir / method
+                if method_dir.exists():
+                    file_count = len(list(method_dir.glob("*.npy")))
+                    threshold = int(pca_count * 0.8)
+                    print(f"    [{method.upper()}] NOT AVAILABLE (only {file_count}/{threshold} files, need 80% of PCA)")
+                else:
+                    print(f"    [{method.upper()}] NOT AVAILABLE (no precomputed embeddings)")
+        print("  " + "-" * 56)
+        print()
+
+        if len(available_methods) == 1:
+            print("  NOTE: Only PCA is available. UMAP/t-SNE buttons will NOT appear in UI.")
+            print("        To enable them, run: uv run python scripts/intertemporal/compute_geometry_analysis.py --umap --tsne")
+            print()
+
         # Use warmup_all for comprehensive parallel preloading
         print(f"  Found {pca_count} PCA embedding files (all required files present)")
         print(f"  Samples: {data_loader.n_samples}")
