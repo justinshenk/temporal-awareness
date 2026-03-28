@@ -183,12 +183,21 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
-        # Get the sample indices that correspond to the embedding rows
-        sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-
         # Optimized conversion: sanitize NaN/Infinity in bulk using numpy
         # Replace NaN/Inf with 0.0 in-place
         clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Use embedding size as n_samples - it's the authoritative source
+        n_samples = clean_embedding.shape[0]
+
+        # Get sample indices but truncate to embedding size if needed
+        sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+        if len(sample_indices) != n_samples:
+            _log("/embedding", f"WARNING: sample_indices ({len(sample_indices)}) != embedding rows ({n_samples})")
+            if len(sample_indices) > n_samples:
+                sample_indices = sample_indices[:n_samples]
+            else:
+                sample_indices = list(sample_indices) + list(range(len(sample_indices), n_samples))
 
         # Convert to flat list of floats for maximum performance
         # Format: [x0, y0, z0, x1, y1, z1, ...] - frontend will reshape
@@ -199,14 +208,14 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             response.headers["Cache-Control"] = "max-age=1800, stale-while-revalidate=3600"
 
         elapsed = time.time() - start_time
-        _log("/embedding", f"Returning embedding", n_samples=len(sample_indices), n_coords=len(coordinates_flat), elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("/embedding", f"Returning embedding", n_samples=n_samples, n_coords=len(coordinates_flat), elapsed_ms=f"{elapsed*1000:.1f}")
 
         return EmbeddingResponse(
             layer=layer,
             component=component,
             position=position,
             method=method,
-            n_samples=len(sample_indices),
+            n_samples=n_samples,
             coordinates_flat=coordinates_flat,
             sample_indices=sample_indices,
         )
@@ -276,10 +285,23 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             load_elapsed = time.time() - stream_start
             _log("/embedding/stream", f"Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
 
-            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
             clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
 
-            total_points = len(sample_indices)
+            # Use embedding size as total_points - the embedding is authoritative
+            total_points = clean_embedding.shape[0]
+
+            # Get sample indices but truncate to embedding size
+            # This handles the case where get_valid_sample_indices returns more
+            # indices than the embedding has rows (due to mismatch in filtering)
+            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+            if len(sample_indices) > total_points:
+                _log("/embedding/stream", f"WARNING: sample_indices ({len(sample_indices)}) > embedding rows ({total_points}), truncating")
+                sample_indices = sample_indices[:total_points]
+            elif len(sample_indices) < total_points:
+                _log("/embedding/stream", f"WARNING: sample_indices ({len(sample_indices)}) < embedding rows ({total_points}), padding")
+                # Pad with sequential indices if needed
+                sample_indices = list(sample_indices) + list(range(len(sample_indices), total_points))
+
             _log("/embedding/stream", f"Sending metadata", total_points=total_points)
 
             # Send metadata first

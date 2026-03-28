@@ -604,6 +604,10 @@ def generate_viz(
         )
 
         if pair_coarse or att_result or fine_result or diffmeans_result or geo_result or mlp_result or attn_result or fine_grained_result:
+            # Get position mapping for this pair (use long_term)
+            pair_position_mapping = None
+            if position_mappings and pair_idx in position_mappings:
+                pair_position_mapping = position_mappings[pair_idx][1]  # long_term
             visualize_pair_results(
                 pair_idx=pair_idx,
                 pair_out_dir=pair_dir,
@@ -617,6 +621,7 @@ def generate_viz(
                 geo_result=geo_result,
                 try_loading_cache=True,
                 save_token_trees_fn=save_token_trees_fn,
+                position_mapping=pair_position_mapping,
             )
 
             # MLP and attention per-pair visualizations
@@ -643,7 +648,10 @@ def generate_viz(
                     pair=pair,
                 )
             if fine_grained_result:
-                visualize_fine_grained(fine_grained_result, pair_dir / "fine_grained")
+                # Reuse pair_mapping from above if available
+                if pair_mapping is None and position_mappings and pair_idx in position_mappings:
+                    pair_mapping = position_mappings[pair_idx][1]  # long_term
+                visualize_fine_grained(fine_grained_result, pair_dir / "fine_grained", pair_mapping)
 
             log(f"[viz] Generated pair {pair_idx} visualizations")
 

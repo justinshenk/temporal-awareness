@@ -81,6 +81,13 @@
 5. **Document Results**: Add review section to `tasks/todo.md`
 6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
 
+### Cross-Context Task Tracking
+- **ALWAYS write task understanding to .md files** - Before starting complex tasks, write understanding to `tasks/current_task.md`
+- Include: goal, key files, expected inputs/outputs, concrete examples
+- This persists across context windows and prevents re-learning the same task
+- Update the file as you learn more about the task
+- Reference this file at session start to avoid losing progress
+
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.

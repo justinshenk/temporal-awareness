@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
+import numpy as np
+
 from ..common.profiler import profile
 from .act_patch_results import ActPatchPairResult, ActPatchTargetResult
 from .intervened_choice import IntervenedChoice
@@ -10,7 +14,14 @@ from ..common.contrastive_pair import ContrastivePair
 from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import hook_filter_for_component, hook_filter_exact, hook_name
 from ..common.patching_types import PatchingMode
+from ..inference.interventions.intervention_factory import (
+    zero_ablation_intervention,
+    mean_ablation_intervention,
+    gaussian_noise_intervention,
+)
 from ..inference.interventions.intervention_target import InterventionTarget
+
+AblationMode = Literal["zero_ablation", "mean_ablation", "gaussian_noise"]
 
 
 def patch_for_choice(
@@ -269,3 +280,115 @@ def patch_pair(
             clear_gpu_memory()
 
     return result
+
+
+@profile
+def ablate_for_choice(
+    runner: BinaryChoiceRunner,
+    pair: ContrastivePair,
+    target: InterventionTarget,
+    mode: AblationMode,
+    run_on: Literal["clean", "corrupted"] = "clean",
+    mean_activations: np.ndarray | None = None,
+    noise_sigma: float = 1.0,
+    clear_memory: bool = True,
+) -> IntervenedChoice:
+    """Run ablation (knockout) experiment - tests circuit necessity.
+
+    Unlike activation patching which patches in activations from another prompt,
+    ablation sets activations to a fixed value (zero, mean, or noise) to test
+    whether a component is necessary for the behavior.
+
+    Args:
+        runner: BinaryChoiceRunner for model inference
+        pair: ContrastivePair
+        target: InterventionTarget specifying layers and positions to ablate
+        mode: Ablation mode:
+            - "zero_ablation": Set activations to zero
+            - "mean_ablation": Set activations to pre-computed mean
+            - "gaussian_noise": Add Gaussian noise to activations
+        run_on: Which prompt to run ablation on ("clean" or "corrupted")
+        mean_activations: Pre-computed mean activations (required for mean_ablation)
+        noise_sigma: Standard deviation for Gaussian noise (default: 1.0)
+        clear_memory: Whether to clear GPU memory after each step
+
+    Returns:
+        IntervenedChoice with baseline and ablated results.
+    """
+    component = target.component or "resid_post"
+    names_filter = hook_filter_for_component(component)
+    d_model = runner.d_model
+
+    # Resolve layers from target
+    layers = target.resolve_layers(runner.n_layers)
+    positions = target.positions
+
+    # Get baseline choices (no caching needed for ablation)
+    same_labels = pair.clean_labels == pair.corrupted_labels
+
+    if same_labels:
+        labels = pair.clean_labels
+        clean_choice = runner.choose(pair.clean_prompt, pair.choice_prefix, labels)
+        corrupted_choice = runner.choose(pair.corrupted_prompt, pair.choice_prefix, labels)
+    else:
+        all_labels = [pair.clean_labels, pair.corrupted_labels]
+        clean_grouped = runner.multilabel_choose(pair.clean_prompt, pair.choice_prefix, all_labels)
+        corrupted_grouped = runner.multilabel_choose(pair.corrupted_prompt, pair.choice_prefix, all_labels)
+        clean_choice = clean_grouped
+        corrupted_choice = corrupted_grouped
+        labels = all_labels
+
+    # Create ablation interventions for each layer
+    interventions = []
+    for layer in layers:
+        if mode == "zero_ablation":
+            inv = zero_ablation_intervention(layer, d_model, positions, component)
+        elif mode == "mean_ablation":
+            if mean_activations is None:
+                raise ValueError("mean_activations required for mean_ablation mode")
+            inv = mean_ablation_intervention(layer, mean_activations, positions, component)
+        elif mode == "gaussian_noise":
+            inv = gaussian_noise_intervention(layer, d_model, noise_sigma, positions, component)
+        else:
+            raise ValueError(f"Unknown ablation mode: {mode}")
+        interventions.append(inv)
+
+    if clear_memory:
+        clear_gpu_memory()
+
+    # Run with ablation interventions
+    run_prompt = pair.clean_prompt if run_on == "clean" else pair.corrupted_prompt
+
+    final_layer_hook = hook_name(runner.n_layers - 1, "resid_post")
+    tcb_filter = hook_filter_exact(final_layer_hook)
+
+    if same_labels:
+        ablated_choice = runner.choose(
+            run_prompt,
+            pair.choice_prefix,
+            labels,
+            intervention=interventions,
+            with_cache=True,
+            names_filter=tcb_filter,
+        )
+    else:
+        ablated_choice = runner.multilabel_choose(
+            run_prompt,
+            pair.choice_prefix,
+            labels,
+            intervention=interventions,
+            with_cache=True,
+            names_filter=tcb_filter,
+        )
+
+    if clear_memory:
+        if hasattr(ablated_choice, 'pop_heavy'):
+            ablated_choice.pop_heavy()
+        clear_gpu_memory()
+
+    return IntervenedChoice(
+        baseline_clean=clean_choice,
+        baseline_corrupted=corrupted_choice,
+        intervened=ablated_choice,
+        mode=mode,
+    )

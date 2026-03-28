@@ -35,11 +35,26 @@ from .fine_grained_results import (
     AttentionPatchingCorrelation,
 )
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ....common.position_mapping import SamplePositionMapping
+
+
+def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
+    """Get semantic label for a position if available, else fall back to P{pos}."""
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
+
 
 @profile
 def visualize_fine_grained(
     results: FineGrainedResults | None,
     output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all fine-grained patching visualizations.
 
@@ -48,6 +63,7 @@ def visualize_fine_grained(
     Args:
         results: FineGrainedResults from run_fine_grained_analysis
         output_dir: Directory to save plots
+        position_mapping: Optional mapping for semantic position labels
     """
     if results is None:
         print("[viz] No fine-grained results to visualize")
@@ -70,7 +86,7 @@ def visualize_fine_grained(
 
     # Plot 20: Head x position heatmap
     if results.position_results:
-        _plot_head_position_heatmap(results.position_results, output_dir)
+        _plot_head_position_heatmap(results.position_results, output_dir, position_mapping)
 
     # Plot 21: Path patching head-to-MLP
     if results.path_to_mlp:
@@ -94,7 +110,7 @@ def visualize_fine_grained(
 
     # Plot 26: Layer-position fine heatmap
     if results.layer_position:
-        _plot_layer_position_heatmaps(results.layer_position, output_dir)
+        _plot_layer_position_heatmaps(results.layer_position, output_dir, position_mapping)
 
     # Plot 27: Head redundancy gap chart
     if results.head_sweep:
@@ -265,6 +281,7 @@ def _plot_head_scatter(head_sweep: HeadSweepResults, output_dir: Path) -> None:
 def _plot_head_position_heatmap(
     position_results: list[PositionPatchingResult],
     output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot 20: Head x position patching heatmap.
 
@@ -301,7 +318,7 @@ def _plot_head_position_heatmap(
     # Show subset of position labels
     pos_step = max(1, n_pos // 20)
     ax.set_yticks(range(0, n_pos, pos_step))
-    ax.set_yticklabels([f"P{positions[i]}" for i in range(0, n_pos, pos_step)], fontsize=8)
+    ax.set_yticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8)
 
     ax.set_xlabel("Head", fontsize=11)
     ax.set_ylabel("Position", fontsize=11)
@@ -345,7 +362,7 @@ def _plot_head_position_heatmap(
     ax.set_xticklabels(head_labels, rotation=45, ha="right", fontsize=9)
 
     ax.set_yticks(range(0, n_pos, pos_step))
-    ax.set_yticklabels([f"P{positions[i]}" for i in range(0, n_pos, pos_step)], fontsize=8)
+    ax.set_yticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8)
 
     ax.set_xlabel("Head", fontsize=11)
     ax.set_ylabel("Position", fontsize=11)
@@ -645,6 +662,7 @@ def _plot_cumulative_neuron_curve(
 def _plot_layer_position_heatmaps(
     layer_position: dict[str, LayerPositionResult],
     output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot 26: Layer-position fine patching heatmap.
 
@@ -677,7 +695,7 @@ def _plot_layer_position_heatmaps(
 
         pos_step = max(1, n_pos // 15)
         ax.set_xticks(range(0, n_pos, pos_step))
-        ax.set_xticklabels([f"P{positions[i]}" for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
+        ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
 
         ax.set_xlabel("Position", fontsize=11)
         ax.set_ylabel("Layer", fontsize=11)
@@ -701,7 +719,7 @@ def _plot_layer_position_heatmaps(
             ax.set_yticklabels([f"L{l}" for l in layers], fontsize=8)
 
             ax.set_xticks(range(0, n_pos, pos_step))
-            ax.set_xticklabels([f"P{positions[i]}" for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
+            ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
 
             ax.set_xlabel("Position", fontsize=11)
             ax.set_ylabel("Layer", fontsize=11)

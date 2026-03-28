@@ -86,7 +86,7 @@ FINE_PATCH: dict = {
     "n_top_source_heads": 5,
     # Multi-site interaction (causal)
     "multi_site_enabled": True,
-    "n_components_multi_site": 10,
+    "n_components_multi_site": 5,  # Reduced from 10 for memory efficiency
     # Neuron attribution (fast - uses specified layer, not sweep)
     "neuron_patching_enabled": True,
     "neuron_target_layer": 31,

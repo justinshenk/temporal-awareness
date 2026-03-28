@@ -379,7 +379,7 @@ def run_streaming_analysis(
 
     Memory efficient: loads each target, analyzes, saves to disk, unloads.
     """
-    results_dir = config.output_dir / "results"
+    results_dir = config.output_dir / "analysis"
     linear_dir = results_dir / "linear_probe"
     pca_dir = results_dir / "pca"
     embedding_dir = results_dir / "embeddings"
@@ -583,7 +583,7 @@ def compute_cross_position_similarity(
         elif position in dest_positions:
             layer_component_targets[lc_key]["dest"][position] = pca_result
 
-    results_dir = config.output_dir / "results" / "cross_position_similarity"
+    results_dir = config.output_dir / "analysis" / "cross_position_similarity"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     results = {}
@@ -765,7 +765,7 @@ def compute_continuous_time_probe(
     target_keys = data.get_target_keys()
     time_horizons = _get_time_horizons_months(data)
 
-    results_dir = config.output_dir / "results" / "continuous_time_probe"
+    results_dir = config.output_dir / "analysis" / "continuous_time_probe"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     results = {}
@@ -1078,7 +1078,7 @@ def run_no_horizon_analysis(
     Returns:
         Dictionary mapping target_key -> NoHorizonProjectionResult
     """
-    results_dir = config.output_dir / "results" / "no_horizon"
+    results_dir = config.output_dir / "analysis" / "no_horizon"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     target_keys = data.get_target_keys()

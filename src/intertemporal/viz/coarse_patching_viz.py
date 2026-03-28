@@ -32,6 +32,7 @@ from .coarse.coarse_sanity import plot_sanity_check
 from .coarse.fork_comparison import plot_fork_comparison
 
 if TYPE_CHECKING:
+    from ...common.position_mapping import SamplePositionMapping
     from ...intertemporal.experiments.processing import ProcessedResults
 from .coarse.sweep_plots import (
     ExtractionMode,
@@ -177,6 +178,7 @@ def visualize_component_comparison(
     results_by_component: dict[str, CoarseActPatchResults],
     output_dir: Path,
     step_size: int = 1,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Visualize multi-component comparison plots.
 
@@ -192,6 +194,7 @@ def visualize_component_comparison(
         results_by_component: Dict mapping component name to its results
         output_dir: Directory to save plots
         step_size: Step size to use for data extraction
+        position_mapping: Optional mapping for semantic position labels
     """
     from ..experiments.processing import compute_component_comparison_from_pair
 
@@ -205,7 +208,7 @@ def visualize_component_comparison(
     # Compute processed_results for synthesis plots
     processed_results = compute_component_comparison_from_pair(results_by_component)
 
-    plot_all_component_comparisons(results_by_component, output_dir, step_size, processed_results)
+    plot_all_component_comparisons(results_by_component, output_dir, step_size, processed_results, position_mapping)
 
 
 @profile

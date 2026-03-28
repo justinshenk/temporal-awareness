@@ -258,19 +258,13 @@ def create_app(
         print(f"  Components: {len(data_loader.get_components())}")
         print()
 
-        # Phase 1: Load all embeddings in parallel (PCA only - UMAP/t-SNE may not exist)
-        print("  Phase 1: Loading all embeddings in parallel...")
-        phase1_start = time.time()
-        results = data_loader.warmup_all(
-            methods=["pca"],  # Only PCA is required
-            layers=layers,
-            components=components,
-            positions=positions,  # Use positions from summary.json
-            include_metadata=False,  # We'll do this separately for logging
-            include_tokens=False,    # We'll do this separately for logging
-        )
-        phase1_elapsed = time.time() - phase1_start
-        print(f"    Loaded {results['embeddings']} embeddings in {phase1_elapsed:.1f}s")
+        # Phase 1: Skip heavy warmup - load on demand instead
+        # The warmup_all function is extremely slow (5+ minutes) because it
+        # iterates through all samples for every embedding to get valid indices.
+        # Lazy loading is much faster for initial startup.
+        print("  Phase 1: Skipping heavy warmup - data will load on demand")
+        print(f"    {pca_count} PCA embeddings available for lazy loading")
+        results = {"embeddings": 0}  # Will load on-demand
 
         # Phase 2: Preload all metadata/color values
         print("  Phase 2: Loading all metadata/color values...")

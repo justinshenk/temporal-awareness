@@ -70,7 +70,7 @@ class FineGrainedConfig:
 
     # Multi-site interaction
     multi_site_enabled: bool = True
-    n_components_multi_site: int = 10
+    n_components_multi_site: int = 5  # Reduced from 10 for memory efficiency
 
     # Neuron patching
     neuron_patching_enabled: bool = True

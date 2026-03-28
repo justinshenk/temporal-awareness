@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .....activation_patching.coarse import CoarseActPatchResults
 from .....intertemporal.experiments.processing import ComponentComparisonResults
@@ -20,12 +21,16 @@ from .comp_redundancy import plot_redundancy
 from .comp_sanity import plot_sanity_checks
 from .comp_synthesis import plot_synthesis
 
+if TYPE_CHECKING:
+    from .....common.position_mapping import SamplePositionMapping
+
 
 def plot_all_component_comparisons(
     results_by_component: dict[str, CoarseActPatchResults],
     output_dir: Path,
     step_size: int = 1,
     processed_results: ComponentComparisonResults | None = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all multi-component comparison plots organized by category.
 
@@ -79,9 +84,9 @@ def plot_all_component_comparisons(
 
     # Generate plots by category
     plot_sanity_checks(layer_data, sanity_dir)
-    plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size)
+    plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size, position_mapping)
     plot_decomposition(layer_data, pos_data, decomp_dir, processed_results)
-    plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results)
+    plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results, position_mapping)
     if processed_results is not None:
         plot_synthesis(synthesis_dir, processed_results)
 

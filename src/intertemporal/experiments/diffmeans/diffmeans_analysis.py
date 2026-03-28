@@ -48,10 +48,16 @@ def run_diffmeans_analysis(
         DiffMeansPairResult with per-layer analysis
     """
     n_layers = runner.n_layers
+    log(f"[diffmeans] Model has {n_layers} layers")
 
     # Get activations for clean and corrupted
     clean_acts = _get_all_activations(runner, pair.clean_traj.token_ids)
     corrupted_acts = _get_all_activations(runner, pair.corrupted_traj.token_ids)
+
+    # Debug: log which layers were captured
+    if clean_acts.get("resid_post"):
+        captured_layers = sorted(clean_acts["resid_post"].keys())
+        log(f"[diffmeans] Captured layers: {min(captured_layers)} to {max(captured_layers)} ({len(captured_layers)} total)")
 
     # Determine primary position to analyze
     if position is None:

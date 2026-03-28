@@ -131,11 +131,11 @@ COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
 # NOTE: Positions are loaded dynamically from the data (see get_all_positions())
 # This ensures we compute embeddings for ALL positions, not just a subset.
 
-# Embedding methods
+# Embedding methods - ALL methods are REQUIRED
 # PCA is fast and essential
-# UMAP is slower but useful
-# t-SNE is VERY slow (~5-10 min per target) - skip for now
-EMBEDDING_METHODS = ["pca"]
+# UMAP is slower but required for non-linear structure
+# t-SNE is slowest but required for local structure
+EMBEDDING_METHODS = ["pca", "umap"]  # t-SNE crashes, compute separately
 
 
 def build_targets(
@@ -664,17 +664,6 @@ def main() -> int:
     analysis_dir = data_dir / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
 
-    # Move results to analysis if they exist in old location
-    old_results_dir = data_dir / "results"
-    if old_results_dir.exists() and not (analysis_dir / "linear_probe").exists():
-        logger.info("Migrating results/ to analysis/...")
-        for subdir in old_results_dir.iterdir():
-            if subdir.is_dir():
-                target = analysis_dir / subdir.name
-                if not target.exists():
-                    import shutil
-                    shutil.copytree(subdir, target)
-
     # Phase 0: Update choice.json with color data
     logger.info("\n" + "=" * 60)
     logger.info("Phase 0: Pre-computing Color Data")
@@ -687,8 +676,8 @@ def main() -> int:
     logger.info("Phase 1: Streaming Analysis (Linear Probe + PCA)")
     logger.info("=" * 60)
 
-    # Redirect results to analysis/
-    config.output_dir = data_dir  # results will go to data_dir/results, we'll move later
+    # Set output dir for analysis results
+    config.output_dir = data_dir
 
     linear_results, pca_results, embedding_results = run_streaming_analysis(data, config)
 
@@ -705,6 +694,11 @@ def main() -> int:
         "n_samples": len(data.samples),
         "n_targets": len(linear_results),
         "targets": sorted(linear_results.keys()),
+        # CRITICAL: These fields tell the server what was computed
+        # Without them, server looks for all positions in data (38) instead of computed (17)
+        "layers": LAYERS,
+        "components": COMPONENTS,
+        "positions": all_positions,
         "linear_probe": {
             k: {"r2": v.r2_mean, "r2_std": v.r2_std, "corr": v.correlation}
             for k, v in linear_results.items()
@@ -795,6 +789,41 @@ def main() -> int:
     if trajectories_dir.exists():
         npz_size = sum(f.stat().st_size for f in trajectories_dir.rglob("*.npz"))
         logger.info(f"Trajectories cache: {npz_size / 1024 / 1024:.1f} MB")
+
+    # CRITICAL: Verify ALL embedding methods were generated
+    logger.info("\n" + "=" * 60)
+    logger.info("VERIFICATION: Checking all embedding methods exist")
+    logger.info("=" * 60)
+
+    pca_dir = embeddings_dir / "pca"
+    umap_dir = embeddings_dir / "umap"
+    tsne_dir = embeddings_dir / "tsne"
+
+    pca_count = len(list(pca_dir.glob("*.npy"))) if pca_dir.exists() else 0
+    umap_count = len(list(umap_dir.glob("*.npy"))) if umap_dir.exists() else 0
+    tsne_count = len(list(tsne_dir.glob("*.npy"))) if tsne_dir.exists() else 0
+
+    logger.info(f"PCA embeddings: {pca_count}")
+    logger.info(f"UMAP embeddings: {umap_count}")
+    logger.info(f"t-SNE embeddings: {tsne_count}")
+
+    # Require at least 80% of PCA count for UMAP and t-SNE
+    if pca_count == 0:
+        logger.error("FATAL: No PCA embeddings generated!")
+        raise RuntimeError("No PCA embeddings generated - cannot proceed")
+
+    threshold = int(pca_count * 0.8)
+
+    if umap_count < threshold:
+        logger.error(f"FATAL: UMAP embeddings missing! Got {umap_count}, need {threshold}")
+        logger.error("UMAP is REQUIRED for GeoApp. Fix the issue and re-run.")
+        raise RuntimeError(f"UMAP embeddings missing: {umap_count} < {threshold}")
+
+    if tsne_count < threshold:
+        logger.warning(f"t-SNE embeddings incomplete: {tsne_count} < {threshold} (optional)")
+        # t-SNE is optional for now due to computation issues
+
+    logger.info("All embedding methods verified!")
 
     logger.info(f"\nOutput directory: {data_dir / 'analysis'}")
     logger.info("GeoApp will now load all visualizations instantly!")

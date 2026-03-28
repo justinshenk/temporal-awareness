@@ -223,6 +223,10 @@ def compute_eap_ig(
             # Clean up intermediate trajectory each step
             del interp_traj, component_grads
 
+            # Periodic aggressive GPU memory cleanup (every 3 steps)
+            if (step_idx + 1) % 3 == 0:
+                clear_gpu_memory(aggressive=True)
+
     # Save values before cleanup
     clean_pos_map = aligned.clean_pos_map
     corrupted_pos_map = aligned.corrupted_pos_map

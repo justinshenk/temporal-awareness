@@ -158,22 +158,12 @@ def load_analysis_results(
 ]:
     """Load analysis results from disk.
 
-    Looks in both analysis/ (new) and results/ (legacy) directories.
+    Uses analysis/ directory (same as geoapp).
     """
-    # Try analysis/ first, then results/ for legacy
-    analysis_dirs = [
-        data_dir / "analysis",
-        data_dir / "results",
-    ]
+    results_dir = data_dir / "analysis"
 
-    results_dir = None
-    for d in analysis_dirs:
-        if d.exists():
-            results_dir = d
-            break
-
-    if results_dir is None:
-        raise FileNotFoundError(f"No analysis results found in {data_dir}")
+    if not results_dir.exists():
+        raise FileNotFoundError(f"No analysis results found in {results_dir}")
 
     logger.info(f"Loading analysis results from {results_dir}...")
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ...common import profile
+from ...common.device_utils import clear_gpu_memory
 from ...common.logging import log, log_progress
 from ...activation_patching.coarse import (
     run_coarse_act_patching,
@@ -126,6 +127,9 @@ def step_attribution_patching(
         ctx.attrib_agg.add(result)
         ctx.save_attrib_pair(pair_idx)
 
+        # Clear GPU memory between pairs to prevent accumulation
+        clear_gpu_memory(aggressive=True)
+
     n_loaded = len(cached_pair_indices)
     n_total = len(ctx.attrib_agg.denoising) + len(ctx.attrib_agg.noising)
     log(f"[attr] Attribution: {n_loaded} loaded from cache, {n_total} total")
@@ -184,6 +188,9 @@ def step_coarse_activation_patching(
             ctx.coarse_patching[(pair_idx, component)] = result
             ctx.coarse_agg_by_component[component].add(result)
             ctx.save_coarse_pair(pair_idx, component)
+
+            # Clear GPU memory between pairs
+            clear_gpu_memory(aggressive=True)
 
         n_loaded = len(cached_pair_indices)
         n_total = ctx.coarse_agg_by_component[component].n_samples
@@ -476,6 +483,9 @@ def step_fine_patching(ctx: ExperimentContext, try_loading_data: bool = False) -
         result.sample_id = pair_idx
         ctx.fine_grained_patching[pair_idx] = result
         ctx.save_fine_grained_pair(pair_idx)
+
+        # Clear GPU memory between pairs
+        clear_gpu_memory(aggressive=True)
 
     n_loaded = len(cached_pair_indices)
     n_total = len(ctx.fine_grained_patching)

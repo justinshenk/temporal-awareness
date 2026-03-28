@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -14,26 +14,40 @@ from .....intertemporal.experiments.processing import ComponentComparisonResults
 from .comp_constants import COMPONENTS, COMPONENT_COLORS
 from .comp_utils import adjust_labels, create_figure, get_sqrt_colors, save_plot, setup_grid
 
+if TYPE_CHECKING:
+    from .....common.position_mapping import SamplePositionMapping
+
+
+def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
+    """Get semantic label for a position if available, else fall back to P{pos}."""
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
+
 
 def plot_redundancy(
     layer_data: dict[str, SweepStepResults | None],
     pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
     processed_results: ComponentComparisonResults | None = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all redundancy analysis plots."""
     _plot_noise_vs_denoise(layer_data, output_dir, "layer")
-    _plot_noise_vs_denoise(pos_data, output_dir, "position")
+    _plot_noise_vs_denoise(pos_data, output_dir, "position", position_mapping)
     _plot_redundancy_gap(layer_data, output_dir)
     _plot_redundancy_gap_sorted(layer_data, output_dir)
     _plot_difference_heatmap(layer_data, output_dir, "layer")
-    _plot_difference_heatmap(pos_data, output_dir, "position")
+    _plot_difference_heatmap(pos_data, output_dir, "position", position_mapping)
 
 
 def _plot_noise_vs_denoise(
     data: dict[str, SweepStepResults | None],
     output_dir: Path,
     sweep_type: Literal["layer", "position"],
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot noising vs denoising scatter for each component with ALL points labeled."""
     # Get all indices
@@ -70,7 +84,10 @@ def _plot_noise_vs_denoise(
             if rec is not None and dis is not None:
                 recoveries.append(rec)
                 disruptions.append(dis)
-                labels.append(f"{'L' if sweep_type == 'layer' else 'P'}{idx}")
+                if sweep_type == "layer":
+                    labels.append(f"L{idx}")
+                else:
+                    labels.append(_get_position_label(idx, position_mapping))
                 raw_indices.append(idx)
 
         if not recoveries:
@@ -267,6 +284,7 @@ def _plot_difference_heatmap(
     data: dict[str, SweepStepResults | None],
     output_dir: Path,
     sweep_type: Literal["layer", "position"],
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot difference heatmap (noising - denoising) showing redundancy per cell."""
     all_indices = set()
@@ -317,14 +335,22 @@ def _plot_difference_heatmap(
     ax.set_xticks(range(n_components))
     ax.set_xticklabels(COMPONENTS, rotation=45, ha="right")
 
-    prefix = "L" if sweep_type == "layer" else "P"
-    if n_indices > 30:
-        step = max(1, n_indices // 20)
-        ax.set_yticks(range(0, n_indices, step))
-        ax.set_yticklabels([f"{prefix}{indices_flipped[i]}" for i in range(0, n_indices, step)])
+    if sweep_type == "layer":
+        if n_indices > 30:
+            step = max(1, n_indices // 20)
+            ax.set_yticks(range(0, n_indices, step))
+            ax.set_yticklabels([f"L{indices_flipped[i]}" for i in range(0, n_indices, step)])
+        else:
+            ax.set_yticks(range(n_indices))
+            ax.set_yticklabels([f"L{idx}" for idx in indices_flipped])
     else:
-        ax.set_yticks(range(n_indices))
-        ax.set_yticklabels([f"{prefix}{idx}" for idx in indices_flipped])
+        if n_indices > 30:
+            step = max(1, n_indices // 20)
+            ax.set_yticks(range(0, n_indices, step))
+            ax.set_yticklabels([_get_position_label(indices_flipped[i], position_mapping) for i in range(0, n_indices, step)])
+        else:
+            ax.set_yticks(range(n_indices))
+            ax.set_yticklabels([_get_position_label(idx, position_mapping) for idx in indices_flipped])
 
     ax.set_xlabel("Component", fontsize=12, fontweight="bold")
     ax.set_ylabel(sweep_type.title(), fontsize=12, fontweight="bold")

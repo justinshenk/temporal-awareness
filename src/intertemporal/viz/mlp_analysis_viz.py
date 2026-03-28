@@ -1081,9 +1081,12 @@ def _plot_cross_layer_neuron_patterns(
                     vals_i.append(lr_i.total_logit_contribution)
                     vals_j.append(lr_j.total_logit_contribution)
 
-            if len(vals_i) > 1:
+            # Require minimum 5 pairs for meaningful correlation
+            if len(vals_i) >= 5:
                 corr = np.corrcoef(vals_i, vals_j)[0, 1]
                 corr_matrix[i, j] = corr if not np.isnan(corr) else 0
+            else:
+                corr_matrix[i, j] = np.nan  # Mark insufficient data
 
     # Create figure with two panels
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))

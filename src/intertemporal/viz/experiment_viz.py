@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from ...activation_patching.coarse import CoarseActPatchResult
     from ...attribution_patching import AttrPatchResult
     from ...common.contrastive_pair import ContrastivePair
+    from ...common.position_mapping import SamplePositionMapping
     from ..experiments.diffmeans import DiffMeansPairResult
     from ..experiments.fine_grained import FineGrainedResults
     from ..experiments.geo import GeoPairResult
@@ -44,6 +45,7 @@ def visualize_pair_results(
     geo_result: "GeoPairResult | None" = None,
     try_loading_cache: bool = False,
     save_token_trees_fn: Any = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Visualize all results for a single contrastive pair.
 
@@ -64,6 +66,7 @@ def visualize_pair_results(
         geo_result: Geometric (PCA) analysis result for this pair
         try_loading_cache: If True, try loading tokenization from cache
         save_token_trees_fn: Optional callback to save token trees
+        position_mapping: Optional mapping for semantic position labels
     """
     pair_out_dir = Path(pair_out_dir)
     pair_out_dir.mkdir(parents=True, exist_ok=True)
@@ -119,11 +122,12 @@ def visualize_pair_results(
         visualize_component_comparison(
             coarse_results,
             pair_out_dir / "coarse" / "component_comparison",
+            position_mapping=position_mapping,
         )
 
     # Step 6: Diffmeans visualization
     if diffmeans_result is not None and diffmeans_result.layer_results:
-        visualize_diffmeans_pair(diffmeans_result, pair_out_dir / "diffmeans")
+        visualize_diffmeans_pair(diffmeans_result, pair_out_dir / "diffmeans", runner=runner, pair=pair)
 
     # Step 7: Geo visualization
     if geo_result is not None and geo_result.position_results:
@@ -131,7 +135,7 @@ def visualize_pair_results(
 
     # Step 8: Fine-grained patching visualization (plots 17-26)
     if fine_grained_result is not None:
-        visualize_fine_grained(fine_grained_result, pair_out_dir / "fine_grained")
+        visualize_fine_grained(fine_grained_result, pair_out_dir / "fine_grained", position_mapping)
 
 
 def _ensure_tokenization_and_get_coloring(

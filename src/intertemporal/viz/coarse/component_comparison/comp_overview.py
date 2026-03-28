@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +11,18 @@ import numpy as np
 from .....activation_patching.coarse import CoarseActPatchResults, SweepStepResults
 from .comp_constants import COMPONENTS
 from .comp_utils import create_figure, save_plot
+
+if TYPE_CHECKING:
+    from .....common.position_mapping import SamplePositionMapping
+
+
+def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
+    """Get semantic label for a position if available, else fall back to P{pos}."""
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
 
 
 def plot_overview(
@@ -20,15 +32,16 @@ def plot_overview(
     output_dir: Path,
     layer_step_size: int = 1,
     pos_step_size: int = 10,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate all overview plots."""
     _plot_layer_heatmap(layer_data, output_dir, "denoising")
     _plot_layer_heatmap(layer_data, output_dir, "noising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "denoising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "noising")
-    _plot_position_heatmap(pos_data, output_dir, "denoising")
-    _plot_position_heatmap(pos_data, output_dir, "noising")
-    _plot_layer_position_heatmap(results_by_component, output_dir, layer_step_size, pos_step_size)
+    _plot_position_heatmap(pos_data, output_dir, "denoising", position_mapping)
+    _plot_position_heatmap(pos_data, output_dir, "noising", position_mapping)
+    _plot_layer_position_heatmap(results_by_component, output_dir, layer_step_size, pos_step_size, position_mapping)
 
 
 def _build_layer_matrix(
@@ -160,6 +173,7 @@ def _plot_position_heatmap(
     pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
     mode: Literal["denoising", "noising"],
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot position heatmap with UNIFORM spacing and text annotations."""
     all_positions = set()
@@ -215,10 +229,10 @@ def _plot_position_heatmap(
     if n_positions > 40:
         step = max(1, n_positions // 25)
         ax.set_yticks(range(0, n_positions, step))
-        ax.set_yticklabels([f"P{positions_flipped[i]}" for i in range(0, n_positions, step)])
+        ax.set_yticklabels([_get_position_label(positions_flipped[i], position_mapping) for i in range(0, n_positions, step)])
     else:
         ax.set_yticks(range(n_positions))
-        ax.set_yticklabels([f"P{p}" for p in positions_flipped])
+        ax.set_yticklabels([_get_position_label(p, position_mapping) for p in positions_flipped])
 
     ax.set_xlabel("Component", fontsize=12, fontweight="bold")
     ax.set_ylabel("Position", fontsize=12, fontweight="bold")
@@ -235,6 +249,7 @@ def _plot_layer_position_heatmap(
     output_dir: Path,
     layer_step_size: int = 1,
     pos_step_size: int = 10,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Plot Layer × Position 2D localization heatmap."""
     result = results_by_component.get("resid_post") or next(iter(results_by_component.values()), None)
@@ -286,10 +301,10 @@ def _plot_layer_position_heatmap(
         if n_positions > 20:
             step = max(1, n_positions // 15)
             ax.set_xticks(range(0, n_positions, step))
-            ax.set_xticklabels([f"P{positions[i]}" for i in range(0, n_positions, step)], rotation=45, ha="right")
+            ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_positions, step)], rotation=45, ha="right")
         else:
             ax.set_xticks(range(n_positions))
-            ax.set_xticklabels([f"P{p}" for p in positions], rotation=45, ha="right")
+            ax.set_xticklabels([_get_position_label(p, position_mapping) for p in positions], rotation=45, ha="right")
 
         # Layer labels
         if n_layers > 20:

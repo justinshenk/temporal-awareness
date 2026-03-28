@@ -180,7 +180,7 @@ def analyze_geometry_data(
             )
             if logit_lens_result is not None:
                 # Save logit lens results
-                logit_lens_dir = config.output_dir / "results" / "logit_lens"
+                logit_lens_dir = config.output_dir / "analysis" / "logit_lens"
                 logit_lens_result.save(logit_lens_dir)
                 logger.info(f"Saved logit lens results to {logit_lens_dir}")
 

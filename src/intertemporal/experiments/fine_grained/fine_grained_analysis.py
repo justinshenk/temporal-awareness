@@ -675,7 +675,7 @@ def run_multi_site_patching(
             head=None,
         ))
 
-    # Pre-compute individual effects
+    # Pre-compute individual effects with aggressive memory clearing
     individual_effects = {}
     for comp in components:
         target = InterventionTarget.at(
@@ -684,8 +684,9 @@ def run_multi_site_patching(
         )
         dn = patch_for_choice(runner, pair, target, "denoising", clear_memory=True)
         individual_effects[comp.label] = dn.recovery
+        clear_gpu_memory(aggressive=True)  # Aggressive cleanup between operations
 
-    # Compute pairwise interactions
+    # Compute pairwise interactions with aggressive memory clearing
     for i, comp_a in enumerate(components):
         for comp_b in components[i + 1:]:
             # Joint patching - handle mixed component types
@@ -696,6 +697,7 @@ def run_multi_site_patching(
                     component=comp_a.component,
                 )
                 dn = patch_for_choice(runner, pair, joint_target, "denoising", clear_memory=True)
+                clear_gpu_memory(aggressive=True)
             else:
                 # Mixed components: need separate patching and approximation
                 # Use sum of individual effects as proxy for joint (conservative estimate)
@@ -705,11 +707,13 @@ def run_multi_site_patching(
                     InterventionTarget.at(layers=[comp_a.layer], component=comp_a.component),
                     "denoising", clear_memory=True
                 )
+                clear_gpu_memory(aggressive=True)
                 dn_b = patch_for_choice(
                     runner, pair,
                     InterventionTarget.at(layers=[comp_b.layer], component=comp_b.component),
                     "denoising", clear_memory=True
                 )
+                clear_gpu_memory(aggressive=True)
                 # Estimate joint as max of individuals + partial interaction
                 joint_estimate = max(dn_a.recovery, dn_b.recovery) + 0.5 * min(dn_a.recovery, dn_b.recovery)
 
@@ -730,7 +734,7 @@ def run_multi_site_patching(
                 joint=dn.recovery,
             ))
 
-    clear_gpu_memory()
+    clear_gpu_memory(aggressive=True)
     return results
 
 
@@ -944,11 +948,18 @@ def run_layer_position_patching(
                 ns = patch_for_choice(runner, pair, target, "noising", clear_memory=True)
                 noising_grid[li, pi] = ns.disruption
 
+                # Periodic aggressive cleanup every 10 operations
+                if count % 10 == 0:
+                    clear_gpu_memory(aggressive=True)
+
         lp_result.denoising_grid = denoising_grid
         lp_result.noising_grid = noising_grid
         results[component] = lp_result
 
-    clear_gpu_memory()
+        # Clear memory between components
+        clear_gpu_memory(aggressive=True)
+
+    clear_gpu_memory(aggressive=True)
     return results
 
 

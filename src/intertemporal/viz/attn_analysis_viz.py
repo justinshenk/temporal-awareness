@@ -914,8 +914,11 @@ def _plot_pair_attention_heatmaps(
         ax.set_title(f'Layer {layer}')
 
         # Set x-axis ticks with format_pos labels
-        ax.set_xticks(range(len(source_positions)))
-        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        # Adaptive fontsize based on number of positions
+        n_positions = len(source_positions)
+        xfontsize = max(6, min(9, 12 - n_positions // 3))
+        ax.set_xticks(range(n_positions))
+        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=xfontsize)
         ax.set_xlabel('Source Position')
 
         plt.colorbar(im, ax=ax, label='Attention', shrink=0.8)
@@ -1382,8 +1385,11 @@ def _plot_pair_attention_diff(
         ax.set_title(f'Layer {layer}')
 
         # Set x-axis ticks with format_pos labels
-        ax.set_xticks(range(len(source_positions)))
-        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=9)
+        # Adaptive fontsize based on number of positions
+        n_positions = len(source_positions)
+        xfontsize = max(6, min(9, 12 - n_positions // 3))
+        ax.set_xticks(range(n_positions))
+        ax.set_xticklabels(pos_labels, rotation=45, ha='right', fontsize=xfontsize)
         ax.set_xlabel('Source Position')
 
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
