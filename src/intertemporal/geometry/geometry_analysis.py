@@ -7,7 +7,6 @@ Memory-optimized implementation:
 - Store only essential PCA components
 """
 
-import gc
 import json
 import logging
 import re
@@ -21,6 +20,8 @@ from sklearn.linear_model import Ridge
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+from src.common.device_utils import clear_gpu_memory
 
 from .geometry_config import (
     GeometryConfig,
@@ -456,7 +457,7 @@ def run_streaming_analysis(
 
         # Periodic GC
         if i % ANALYSIS_GC_INTERVAL == 0:
-            gc.collect()
+            clear_gpu_memory(aggressive=True)
 
     logger.info(f"Analysis complete: {len(linear_results)} targets")
 
@@ -1120,7 +1121,7 @@ def run_no_horizon_analysis(
         data.unload_target(target_key)
 
         if i % ANALYSIS_GC_INTERVAL == 0:
-            gc.collect()
+            clear_gpu_memory(aggressive=True)
 
     logger.info(f"No-horizon analysis complete: {len(results)} targets with results")
 

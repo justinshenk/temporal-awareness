@@ -11,6 +11,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 
@@ -19,6 +20,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
+from src.common.device_utils import clear_gpu_memory
+
 from .geometry_analysis import EmbeddingResult, LinearProbeResult, NoHorizonProjectionResult, PCAResult
 from .geometry_config import (
     GeometryConfig,
@@ -26,7 +29,10 @@ from .geometry_config import (
     PLOT_GC_INTERVAL,
     MAX_TRAJECTORY_SAMPLES,
 )
-from .geometry_data import ActivationData, get_time_horizon_months
+from .geometry_data import ActivationData, VisualizationData, get_time_horizon_months
+
+# Type alias for either data type
+PlotData = Union[ActivationData, VisualizationData]
 
 
 def _months_to_years(months: float) -> float:
@@ -75,12 +81,18 @@ class ColoringScheme:
     categories: list[str] | None = None
 
 
-def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
-    """Get all available coloring schemes from the data."""
+def get_coloring_schemes(data: PlotData) -> list[ColoringScheme]:
+    """Get all available coloring schemes from the data.
+
+    Supports both ActivationData (full) and VisualizationData (lightweight).
+    """
     schemes = []
 
-    # Get raw time values
-    horizons_months = np.array([get_time_horizon_months(s) for s in data.samples], dtype=ACTIVATION_DTYPE)
+    # Get raw time values - handle both data types
+    if isinstance(data, VisualizationData):
+        horizons_months = np.array(data.time_horizons_months, dtype=ACTIVATION_DTYPE)
+    else:
+        horizons_months = np.array([get_time_horizon_months(s) for s in data.samples], dtype=ACTIVATION_DTYPE)
     horizons = np.array([_months_to_years(m) for m in horizons_months], dtype=ACTIVATION_DTYPE)
 
     # Time scale categories (weeks, months, years, decades)
@@ -184,9 +196,16 @@ def get_coloring_schemes(data: ActivationData) -> list[ColoringScheme]:
     return schemes
 
 
-def _get_horizons(data: ActivationData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extract horizon arrays from data (in years)."""
-    horizons = np.array([_months_to_years(get_time_horizon_months(s)) for s in data.samples], dtype=ACTIVATION_DTYPE)
+def _get_horizons(data: PlotData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Extract horizon arrays from data (in years).
+
+    Supports both ActivationData (full) and VisualizationData (lightweight).
+    """
+    if isinstance(data, VisualizationData):
+        horizons_months = np.array(data.time_horizons_months, dtype=ACTIVATION_DTYPE)
+    else:
+        horizons_months = np.array([get_time_horizon_months(s) for s in data.samples], dtype=ACTIVATION_DTYPE)
+    horizons = np.array([_months_to_years(m) for m in horizons_months], dtype=ACTIVATION_DTYPE)
     log_horizons = np.log10(horizons + 0.1).astype(ACTIVATION_DTYPE)
     buckets = np.digitize(horizons, [1, 5, 10]).astype(np.int8)
     return horizons, log_horizons, buckets
@@ -332,7 +351,7 @@ def plot_summary_dashboard(
 
 
 def plot_trajectory(
-    data: "ActivationData",
+    data: PlotData,
     pca_results: dict[str, "PCAResult"],
     output_dir: Path,
 ):
@@ -726,7 +745,7 @@ def plot_direction_alignment(
 
 
 def plot_decision_boundary(
-    data: "ActivationData",
+    data: PlotData,
     linear_probe_results: dict[str, "LinearProbeResult"],
     output_dir: Path,
 ):
@@ -890,7 +909,7 @@ def plot_scree(
 
 
 def plot_linear_probe_summary(
-    data: ActivationData,
+    data: PlotData,
     results: dict[str, LinearProbeResult],
     output_dir: Path,
     top_n: int = 30,
@@ -2229,7 +2248,7 @@ def _get_pos_color(pos: str) -> str:
 
 
 def generate_all_plots(
-    data: ActivationData,
+    data: PlotData,
     linear_probe_results: dict[str, LinearProbeResult],
     pca_results: dict[str, PCAResult],
     embedding_results: dict[str, EmbeddingResult],
@@ -2280,56 +2299,56 @@ def generate_all_plots(
     dashboard_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating summary dashboard heatmaps...")
     plot_summary_dashboard(linear_probe_results, pca_results, dashboard_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 2: Linear probe summary
     linear_dir = output_dir / "02_linear_probe"
     linear_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating linear probe summary...")
     plot_linear_probe_summary(data, linear_probe_results, linear_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 3: Decision boundary
     boundary_dir = output_dir / "03_decision_boundary"
     boundary_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating decision boundary plot...")
     plot_decision_boundary(data, linear_probe_results, boundary_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 4: Trajectory plots
     traj_dir = output_dir / "04_trajectories"
     traj_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating trajectory plots...")
     plot_trajectory(data, pca_results, traj_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 5: Direction alignment
     align_dir = output_dir / "05_direction_alignment"
     align_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating direction alignment plots...")
     plot_direction_alignment(pca_results, align_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 6: Scree plots
     scree_dir = output_dir / "06_scree"
     scree_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating scree plots...")
     plot_scree(pca_results, scree_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 7: Component decomposition (2D)
     decomp_dir = output_dir / "07_component_decomp"
     decomp_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating component decomposition plots...")
     plot_component_decomposition(linear_probe_results, pca_results, schemes, decomp_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Priority 8: Component decomposition (3D)
     decomp_3d_dir = output_dir / "08_component_decomp_3d"
     decomp_3d_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generating 3D component decomposition plots...")
     plot_component_decomposition_3d(linear_probe_results, pca_results, schemes, decomp_3d_dir)
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Per-target plots - skip with --quick flag
     # Generates flat files: {target_key}_summary.png, {target_key}_time_scale.html, {target_key}_choice_type.html
@@ -2355,7 +2374,7 @@ def generate_all_plots(
             _plot_target_summary(target_key, pca_result, time_scheme, choice_scheme, targets_dir)
 
             if idx % PLOT_GC_INTERVAL == 0:
-                gc.collect()
+                clear_gpu_memory(aggressive=True)
 
     # Optional: Cross-position similarity plots
     if cross_position_results:
@@ -2363,7 +2382,7 @@ def generate_all_plots(
         cross_pos_dir.mkdir(parents=True, exist_ok=True)
         logger.info("Generating cross-position similarity plots...")
         plot_cross_position_similarity(cross_position_results, cross_pos_dir)
-        gc.collect()
+        clear_gpu_memory(aggressive=True)
 
     # Optional: Continuous time probe plots
     if continuous_time_results:
@@ -2371,7 +2390,7 @@ def generate_all_plots(
         continuous_dir.mkdir(parents=True, exist_ok=True)
         logger.info("Generating continuous time probe plots...")
         plot_continuous_time_probe(continuous_time_results, continuous_dir)
-        gc.collect()
+        clear_gpu_memory(aggressive=True)
 
     # Optional: No-horizon projection plots
     if no_horizon_results:
@@ -2379,6 +2398,6 @@ def generate_all_plots(
         no_horizon_dir.mkdir(parents=True, exist_ok=True)
         logger.info("Generating no-horizon projection plots...")
         plot_no_horizon_projection(no_horizon_results, no_horizon_dir)
-        gc.collect()
+        clear_gpu_memory(aggressive=True)
 
     logger.info(f"All plots saved to {output_dir}")

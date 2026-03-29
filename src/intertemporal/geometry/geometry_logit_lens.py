@@ -9,7 +9,6 @@ Key formula (CORRECT VERSION):
     logit_diff = logits[:, token_a] - logits[:, token_b]
 """
 
-import gc
 import json
 import logging
 from dataclasses import dataclass
@@ -17,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
+
+from src.common.device_utils import clear_gpu_memory
 
 from .geometry_config import ACTIVATION_DTYPE
 
@@ -267,7 +268,7 @@ def run_logit_lens_analysis(
 
         # Periodic GC
         if sample_idx % 100 == 0:
-            gc.collect()
+            clear_gpu_memory(aggressive=True)
 
     logger.info(f"Logit lens analysis complete")
 
@@ -405,7 +406,7 @@ def run_logit_lens_from_cache(
         data.unload_target(target_key)
 
         if layer_idx % 10 == 0:
-            gc.collect()
+            clear_gpu_memory(aggressive=True)
 
     logger.info(f"Logit lens analysis complete")
 

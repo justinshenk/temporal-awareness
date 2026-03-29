@@ -18,7 +18,6 @@ Structure:
         {prompt_dataset_id}_{model}_{name}.json
 """
 
-import gc
 import json
 import logging
 from dataclasses import dataclass, field
@@ -26,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
+from src.common.device_utils import clear_gpu_memory
 from src.common.file_io import save_json
 
 from ..common.preference_types import PromptSample
@@ -278,7 +278,7 @@ class ActivationData:
     def clear_cache(self):
         """Clear all cached activations."""
         self._cache.clear()
-        gc.collect()
+        clear_gpu_memory(aggressive=True)
 
     def iter_targets(self):
         """Iterate over targets (for analysis compatibility)."""
@@ -289,7 +289,7 @@ class ActivationData:
                 self.unload_target(key)
             except (ValueError, FileNotFoundError):
                 continue
-        gc.collect()
+        clear_gpu_memory(aggressive=True)
 
     def save(self, path: Path):
         """Save metadata only.
@@ -606,9 +606,9 @@ def extract_activations(
         valid_idx += 1
 
         if valid_idx % 100 == 0:
-            gc.collect()
+            clear_gpu_memory(aggressive=True)
 
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
     logger.info(f"Extracted {valid_idx} valid samples (skipped {skipped})")
 
     # Create data container
@@ -645,3 +645,62 @@ def load_cached_data(config: GeometryConfig) -> ActivationData | None:
     except Exception as e:
         logger.warning(f"Failed to load cache: {e}")
         return None
+
+
+@dataclass
+@dataclass(slots=True)
+class VisualizationData:
+    """Lightweight data container for visualization only.
+
+    Contains only what's needed for plotting - no full prompt text or position mappings.
+    """
+    n_samples: int
+    time_horizons_months: list[float]  # Time horizon in months for each sample
+    choices: list[ChoiceInfo]  # Choice info for each sample
+
+
+def load_visualization_data(config: GeometryConfig) -> VisualizationData | None:
+    """Load minimal data needed for visualization (memory efficient).
+
+    Only loads choice.json files, not full prompt samples or position mappings.
+    Uses pre-computed time_horizon_months from choice.json.
+    """
+    cache_path = config.output_dir / "data"
+
+    if not (cache_path / "metadata.json").exists() and not (cache_path / "samples").exists():
+        return None
+
+    # Load metadata
+    metadata_path = cache_path / "metadata.json"
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        n_samples = metadata.get("n_samples", 0)
+    else:
+        samples_dir = cache_path / "samples"
+        n_samples = len(list(samples_dir.glob("sample_*"))) if samples_dir.exists() else 0
+
+    # Only load choice.json files (small, has all color data)
+    samples_dir = cache_path / "samples"
+    choices = []
+    time_horizons_months = []
+
+    for sample_idx in range(n_samples):
+        sample_dir = samples_dir / f"sample_{sample_idx}"
+        if not sample_dir.exists():
+            continue
+
+        choice_path = sample_dir / "choice.json"
+        if choice_path.exists():
+            with open(choice_path) as f:
+                choice_data = json.load(f)
+            choices.append(ChoiceInfo.from_dict(choice_data))
+            # Get time_horizon_months from pre-computed color data (default 60 months = 5 years)
+            time_horizons_months.append(choice_data.get("time_horizon_months", 60.0))
+
+    logger.info(f"Loaded visualization data for {n_samples} samples (lightweight mode)")
+    return VisualizationData(
+        n_samples=n_samples,
+        time_horizons_months=time_horizons_months,
+        choices=choices,
+    )

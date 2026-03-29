@@ -57,7 +57,8 @@ from src.intertemporal.geometry.geometry_analysis import (
     LinearProbeResult,
     PCAResult,
 )
-from src.intertemporal.geometry.geometry_data import load_cached_data
+from src.common.device_utils import clear_gpu_memory
+from src.intertemporal.geometry.geometry_data import load_visualization_data
 from src.intertemporal.geometry.geometry_plotting import generate_all_plots
 
 logging.basicConfig(
@@ -180,6 +181,7 @@ def load_analysis_results(
                     logger.warning(f"Failed to load linear probe result from {target_dir}: {e}")
 
     logger.info(f"Loaded {len(linear_probe_results)} linear probe results")
+    clear_gpu_memory(aggressive=True)
 
     # Load PCA results
     pca_results = {}
@@ -194,6 +196,7 @@ def load_analysis_results(
                     logger.warning(f"Failed to load PCA result from {target_dir}: {e}")
 
     logger.info(f"Loaded {len(pca_results)} PCA results")
+    clear_gpu_memory(aggressive=True)
 
     # Load embedding results
     embedding_results = {}
@@ -208,6 +211,7 @@ def load_analysis_results(
                     logger.warning(f"Failed to load embedding result from {target_dir}: {e}")
 
     logger.info(f"Loaded {len(embedding_results)} embedding results")
+    clear_gpu_memory(aggressive=True)
 
     # Load cross-position similarity results (optional)
     cross_position_results = None
@@ -238,6 +242,7 @@ def load_analysis_results(
                     pass
         logger.info(f"Loaded {len(continuous_time_results)} continuous time probe results")
 
+    clear_gpu_memory(aggressive=True)
     return (
         linear_probe_results,
         pca_results,
@@ -273,18 +278,18 @@ def main() -> int:
         n_pca_components=DEFAULT_CONFIG["n_pca_components"],
     )
 
-    # Load data
+    # Load data (lightweight mode - only load what's needed for plotting)
     logger.info("=" * 60)
     logger.info("VISUALIZE GEOMETRY ANALYSIS")
     logger.info("=" * 60)
     logger.info(f"Data directory: {data_dir}")
 
-    data = load_cached_data(config)
+    data = load_visualization_data(config)
     if data is None:
         logger.error("Failed to load data. Run generate_geometry_samples.py first.")
         return 1
 
-    logger.info(f"Loaded {len(data.samples)} samples")
+    logger.info(f"Loaded {data.n_samples} samples (lightweight mode)")
 
     # Load analysis results
     try:
@@ -337,7 +342,8 @@ def main() -> int:
         plots_dir.rename(viz_dir)
         logger.info(f"Moved output from plots/ to {args.output_subdir}/")
 
-    gc.collect()
+    # Clear memory aggressively
+    clear_gpu_memory(aggressive=True)
 
     logger.info("\n" + "=" * 60)
     logger.info("VISUALIZATION COMPLETE")

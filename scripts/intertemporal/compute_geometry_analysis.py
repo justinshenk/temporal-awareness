@@ -51,7 +51,6 @@ Usage:
 """
 
 import argparse
-import gc
 import json
 import logging
 import math
@@ -63,6 +62,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.common.device_utils import clear_gpu_memory
 from src.common.time_value import TimeValue
 from src.intertemporal.common.semantic_positions import (
     PROMPT_POSITIONS,
@@ -290,6 +290,7 @@ def compute_color_data_for_sample(
         matches_associated = None
 
     return {
+        "time_horizon_months": time_horizon_months,  # Raw value for plotting
         "log_time_horizon": log_time_horizon,
         "option_time_delta": option_time_delta,
         "option_reward_delta": option_reward_delta,
@@ -498,7 +499,7 @@ def compute_embeddings(
                 # Print progress every 10 targets
                 if current_target % 10 == 0:
                     print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    gc.collect()
+                    clear_gpu_memory(aggressive=True)
 
     print(f"[VERBOSE] Embeddings complete: {computed} computed, {cached} cached", flush=True)
     logger.info(f"Embeddings complete: {computed} computed, {cached} cached")
@@ -741,7 +742,7 @@ def main() -> int:
         except OSError:
             pass
 
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Phase 2: Compute embeddings for GeoApp (ALL methods, ALL components)
     logger.info("\n" + "=" * 60)
@@ -759,7 +760,7 @@ def main() -> int:
         positions=all_positions,
     )
 
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Phase 3: Compute trajectories (all components, all positions)
     logger.info("\n" + "=" * 60)

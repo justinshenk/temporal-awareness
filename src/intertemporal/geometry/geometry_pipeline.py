@@ -10,10 +10,11 @@ The pipeline is split into two phases:
 2. run_geo_analysis: Run analysis and generate visualizations
 """
 
-import gc
 import json
 import logging
 from typing import TYPE_CHECKING
+
+from src.common.device_utils import clear_gpu_memory
 
 from .geometry_analysis import (
     compute_continuous_time_probe,
@@ -87,7 +88,7 @@ def generate_geo_samples(
 
     # Clear dataset to free memory
     del dataset
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     return data
 
@@ -147,7 +148,7 @@ def analyze_geometry_data(
     linear_probe_results, pca_results, embedding_results = run_streaming_analysis(data, config)
 
     # Force GC before additional analyses
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Run continuous time probe on source positions (optional)
     continuous_time_results = None
@@ -185,7 +186,7 @@ def analyze_geometry_data(
                 logger.info(f"Saved logit lens results to {logit_lens_dir}")
 
     # Force GC before plotting
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     # Generate plots (unless skipped)
     if not skip_viz:
@@ -233,7 +234,7 @@ def analyze_geometry_data(
         del cross_position_results
     if logit_lens_result is not None:
         del logit_lens_result
-    gc.collect()
+    clear_gpu_memory(aggressive=True)
 
     return {"summary": summary}
 
