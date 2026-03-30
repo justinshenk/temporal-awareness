@@ -11,6 +11,7 @@ license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "latents @ git+https://github.com/justinshenk/latents.git",
+    "huggingface_hub>=0.31.0",
     "torch>=2.0.0",
     "transformer_lens>=3.0.0b1",
     "transformers>=5.0.0",
@@ -18,6 +19,8 @@ dependencies = [
     "scikit-learn>=1.3.0",
     "matplotlib>=3.7.0",
     "pandas>=2.0.0",
+    "scipy>=1.11.0",
+    "seaborn>=0.13.0",
     "tqdm>=4.65.0",
     "pyyaml>=6.0",
     "httpx>=0.27.0",
@@ -32,9 +35,15 @@ dependencies = [
     "umap-learn>=0.5.11",
 ]
 
+[project.scripts]
+temporal-awareness-eap-ig-workflow = "src.workflows.eap_ig_workflow:main"
+
 [project.optional-dependencies]
 dev = ["pytest", "black", "ruff"]
 api = ["openai>=1.0.0", "anthropic>=0.25.0", "tiktoken>=0.5.0"]
+eap_ig = [
+    "mech_interp_toolkit @ git+https://github.com/SD-interp/mech-interp-toolkit.git@789b12ce0f448d1cd5747be9b743a950e6cb7a90"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
