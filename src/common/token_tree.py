@@ -104,14 +104,24 @@ class TokenTree(BaseSchema):
         return len(self.groups)
 
     def pop_heavy(self) -> None:
-        """Pop full_logits from all trajectories.
+        """Remove heavy data from tree to reduce memory/serialization size.
 
-        Returns:
-            Dict mapping trajectory index to its full_logits tensor.
-            Only includes trajectories that had full_logits.
+        Clears:
+        - full_logits from all trajectories
+        - vocab_logits from all nodes and forks (full vocabulary distributions)
         """
         for traj in self.trajs:
             traj.pop_heavy()
+
+        # Clear vocab_logits from nodes (full vocab distributions at branch points)
+        if self.nodes:
+            for node in self.nodes:
+                node.vocab_logits = None
+
+        # Clear vocab_logits from forks
+        if self.forks:
+            for fork in self.forks:
+                fork.vocab_logits = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "TokenTree":
@@ -179,6 +189,7 @@ class _TreeAccumulator:
     trajs: list[TokenTrajectory]
     nodes: list[BranchingNode] = field(default_factory=list)
     forks: list[BinaryFork] = field(default_factory=list)
+    fork_keys: set[tuple[int, int]] = field(default_factory=set)  # O(1) fork lookup
     traj_to_groups: list[tuple[int, ...]] = field(
         default_factory=list
     )  # traj_idx -> groups
@@ -603,19 +614,20 @@ def _create_forks_for_node(
                 if b_i.token_id == b_j.token_id:
                     continue
 
-                # Check if this fork already exists
-                fork_exists = any(
-                    (
-                        f.next_token_ids == (b_i.token_id, b_j.token_id)
-                        or f.next_token_ids == (b_j.token_id, b_i.token_id)
-                    )
-                    for f in acc.forks
+                # Check if this fork already exists using O(1) set lookup
+                # Include fork_arm (g_i, g_j) in key to distinguish between
+                # different label pairs that may have the same token IDs
+                fork_key = (
+                    g_i, g_j,
+                    min(b_i.token_id, b_j.token_id),
+                    max(b_i.token_id, b_j.token_id),
                 )
-                if fork_exists:
+                if fork_key in acc.fork_keys:
                     continue
 
                 # Create fork with g_i's branch first (deterministic ordering)
                 fork_idx = len(acc.forks)
+                acc.fork_keys.add(fork_key)
                 acc.forks.append(
                     BinaryFork(
                         next_token_ids=(b_i.token_id, b_j.token_id),

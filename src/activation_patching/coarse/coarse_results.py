@@ -61,6 +61,8 @@ class CoarseActPatchResults(BaseSchema):
     sanity_result: ActPatchTargetResult | None = None
     layer_results: dict[int, SweepStepResults] = field(default_factory=dict)
     position_results: dict[int, SweepStepResults] = field(default_factory=dict)
+    # Label pairs for multilabel experiments: (("a)", "b)"), ("[i]", "[ii]"), ...)
+    label_pairs: tuple[tuple[str, str], ...] | None = None
 
     @property
     def layer_step_sizes(self) -> list[int]:
@@ -71,6 +73,13 @@ class CoarseActPatchResults(BaseSchema):
     def position_step_sizes(self) -> list[int]:
         """Available position step sizes."""
         return sorted(self.position_results.keys())
+
+    @property
+    def component(self) -> str:
+        """Component used for patching (from sanity_result target)."""
+        if self.sanity_result and self.sanity_result.target:
+            return self.sanity_result.target.component or "resid_post"
+        return "resid_post"
 
     def get_layer_results_for_step(self, step_size: int) -> SweepStepResults:
         """Get layer results for a specific step size."""
@@ -192,6 +201,13 @@ class CoarseActPatchAggregatedResults(BaseSchema):
             sizes.update(r.position_step_sizes)
         return sorted(sizes)
 
+    @property
+    def component(self) -> str:
+        """Component used for patching (from first sample)."""
+        if self.by_sample:
+            return next(iter(self.by_sample.values())).component
+        return "resid_post"
+
     def mean_sanity_score(self) -> float:
         """Mean sanity check score across samples."""
         scores = [
@@ -277,6 +293,22 @@ class CoarseActPatchAggregatedResults(BaseSchema):
                 print(
                     f"  [step={step_size}] Best layers: {best} (scores: {scores_str})"
                 )
+
+    def filter_by_pairs(self, pair_indices: list[int]) -> CoarseActPatchAggregatedResults:
+        """Return a new aggregated result containing only the specified pairs.
+
+        Args:
+            pair_indices: List of sample IDs to keep
+
+        Returns:
+            New CoarseActPatchAggregatedResults with only the specified samples
+        """
+        filtered = CoarseActPatchAggregatedResults()
+        pair_set = set(pair_indices)
+        for sample_id, result in self.by_sample.items():
+            if sample_id in pair_set:
+                filtered.by_sample[sample_id] = result
+        return filtered
 
     def pop_heavy(self) -> None:
         """Remove heavy data from all results."""

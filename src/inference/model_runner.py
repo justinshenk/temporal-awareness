@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import torch
 
-from ..common.device_utils import get_device
+from ..common.device_utils import get_device, clear_gpu_memory
 from ..common.profiler import profile
 from .interventions import Intervention, Interventions
 from .backends import (
@@ -16,6 +16,8 @@ from .backends import (
     PyveneBackend,
     HuggingFaceBackend,
     MLXBackend,
+    OpenAIBackend,
+    AnthropicBackend,
     get_recommended_backend_inference,
 )
 from .generated_trajectory import (
@@ -34,6 +36,28 @@ class ModelRunner:
         dtype: Optional[torch.dtype] = None,
         backend: ModelBackend = get_recommended_backend_inference(),
     ):
+        # Parse cloud API model specs (e.g., "openai:gpt-4o", "anthropic:claude-sonnet-4-20250514")
+        if model_name.startswith("openai:"):
+            self.model_name = model_name[7:]  # Strip "openai:" prefix
+            self._backend = ModelBackend.OPENAI
+            self.device = "cpu"  # Not applicable for API
+            self.dtype = torch.float32
+            self._model = None
+            self._init_openai()
+            self._is_chat_model = True  # API models are always chat
+            print(f"Model loaded: OpenAI API {self.model_name}")
+            return
+        elif model_name.startswith("anthropic:"):
+            self.model_name = model_name[10:]  # Strip "anthropic:" prefix
+            self._backend = ModelBackend.ANTHROPIC
+            self.device = "cpu"  # Not applicable for API
+            self.dtype = torch.float32
+            self._model = None
+            self._init_anthropic()
+            self._is_chat_model = True  # API models are always chat
+            print(f"Model loaded: Anthropic API {self.model_name}")
+            return
+
         self.model_name = model_name
 
         if device is None:
@@ -57,7 +81,15 @@ class ModelRunner:
         elif backend == ModelBackend.HUGGINGFACE:
             self._init_huggingface()
         elif backend == ModelBackend.MLX:
-            self._init_mlx()
+            try:
+                self._init_mlx()
+            except ValueError as e:
+                if "not supported" in str(e):
+                    print("MLX doesn't support this model, using HuggingFace...")
+                    self._backend = ModelBackend.HUGGINGFACE
+                    self._init_huggingface()
+                else:
+                    raise
         else:
             raise ValueError(f"Unknown backend: {backend}")
 
@@ -66,6 +98,7 @@ class ModelRunner:
 
         print(f"Model loaded: {backend} {model_name} (chat={self._is_chat_model})")
         print(f"  n_layers={self.n_layers}, d_model={self.d_model}\n")
+        clear_gpu_memory()
 
     ############################
     #            API           #
@@ -94,6 +127,11 @@ class ModelRunner:
     @property
     def eos_token(self) -> str | None:
         return self._tokenizer.eos_token
+
+    @property
+    def is_cloud_api(self) -> bool:
+        """Whether this runner uses a cloud API backend (no local model)."""
+        return self._backend.is_cloud_api
 
     @property
     def n_layers(self) -> int:
@@ -143,6 +181,17 @@ class ModelRunner:
         Convenience method that accepts a list instead of tensor.
         """
         return self._backend.decode(torch.tensor(token_ids))
+
+    def tokenize(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Tokenize text into tensor of token IDs.
+
+        Alias for encode() - returns token IDs tensor of shape [1, seq_len].
+        """
+        return self.encode(
+            text, add_special_tokens=add_special_tokens, prepend_bos=prepend_bos
+        )
 
     # High-level API
 
@@ -209,20 +258,12 @@ class ModelRunner:
         Returns:
             GeneratedTrajectory with full logits (not just logprobs)
         """
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
 
         all_token_ids = list(token_ids)
         all_logits: list[torch.Tensor] = []
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-
-        with ctx:
+        with self._inference_context():
             for _ in range(max_new_tokens):
                 input_ids = torch.tensor([all_token_ids], device=self.device)
                 logits_batch = self._backend.run_with_intervention(
@@ -288,6 +329,49 @@ class ModelRunner:
 
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
+    def _pad_token_ids_batch(
+        self, token_ids_batch: list[list[int]]
+    ) -> torch.Tensor:
+        """Pad a batch of token ID sequences to the same length.
+
+        Args:
+            token_ids_batch: List of variable-length token ID sequences
+
+        Returns:
+            Padded tensor of shape [batch_size, max_seq_len]
+        """
+        max_len = max(len(ids) for ids in token_ids_batch)
+        pad_token = self._tokenizer.pad_token_id or 0
+        padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
+        return torch.tensor(padded, device=self.device)
+
+    def _inference_context(self):
+        """Return the appropriate inference context manager for the backend.
+
+        Returns:
+            torch.inference_mode() if supported, otherwise torch.no_grad()
+        """
+        if self._backend.supports_inference_mode:
+            return torch.inference_mode()
+        return torch.no_grad()
+
+    def _normalize_interventions(
+        self, intervention: Interventions | None
+    ) -> list[Intervention]:
+        """Normalize intervention(s) to a list.
+
+        Args:
+            intervention: Single intervention, list of interventions, or None
+
+        Returns:
+            List of interventions (empty list if None)
+        """
+        if intervention is None:
+            return []
+        if isinstance(intervention, Intervention):
+            return [intervention]
+        return intervention
+
     @profile
     def compute_trajectory(
         self,
@@ -311,23 +395,28 @@ class ModelRunner:
         self,
         token_ids_batch: list[list[int]],
     ) -> list[GeneratedTrajectory]:
-        max_len = max(len(ids) for ids in token_ids_batch)
-        pad_token = self._tokenizer.pad_token_id or 0
-        padded = [ids + [pad_token] * (max_len - len(ids)) for ids in token_ids_batch]
-        input_ids_batch = torch.tensor(padded, device=self.device)
+        if self.is_cloud_api:
+            raise NotImplementedError(
+                "Cloud API backends don't support compute_trajectories_batch. "
+                "Use BinaryChoiceRunner.choose() which calls the polymorphic "
+                "compute_binary_choice_trajectories() method instead."
+            )
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        if not token_ids_batch:
+            return []
+
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+
+        with self._inference_context():
             logits_batch = self._backend.forward(
                 input_ids_batch
             )  # [batch, seq_len, vocab_size]
-        return calculate_trajectories_for_batch(
+
+        trajs = calculate_trajectories_for_batch(
             token_ids_batch, logits_batch, self.device
         )
+        del logits_batch, input_ids_batch
+        return trajs
 
     # Basic Interpretability APIs
 
@@ -373,9 +462,7 @@ class ModelRunner:
         """
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
         return self._backend.run_with_intervention(input_ids, interventions)
 
     # Complex Interpretability APIs
@@ -391,9 +478,7 @@ class ModelRunner:
         """Run forward with intervention AND capture activations with gradients."""
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        interventions = self._normalize_interventions(intervention)
         return self._backend.run_with_intervention_and_cache(
             input_ids, interventions, names_filter
         )
@@ -420,23 +505,104 @@ class ModelRunner:
         names_filter: Optional[callable] = None,
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
+        interventions = self._normalize_interventions(intervention)
 
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
-
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             logits_batch = self._backend.run_with_intervention(
                 input_ids, interventions
             )  # [1, seq_len, vocab_size]
 
         logits = logits_batch[0]  # [seq_len, vocab_size]
         return GeneratedTrajectory.from_inference(token_ids, logits, self.device)
+
+    @profile
+    def compute_trajectories_batch_with_intervention(
+        self,
+        token_ids_batch: list[list[int]],
+        intervention: Interventions | None = None,
+    ) -> list[GeneratedTrajectory]:
+        """Batch version of compute_trajectory_with_intervention.
+
+        Args:
+            token_ids_batch: List of token ID sequences
+            intervention: Intervention(s) to apply
+
+        Returns:
+            List of GeneratedTrajectory objects
+        """
+        if self.is_cloud_api:
+            raise NotImplementedError(
+                "Cloud API backends don't support batched intervention forward passes."
+            )
+
+        if not token_ids_batch:
+            return []
+
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+        interventions = self._normalize_interventions(intervention)
+
+        with self._inference_context():
+            logits_batch = self._backend.run_with_intervention(
+                input_ids_batch, interventions
+            )  # [batch, seq_len, vocab_size]
+
+        trajs = calculate_trajectories_for_batch(
+            token_ids_batch, logits_batch, self.device
+        )
+        del logits_batch, input_ids_batch
+        return trajs
+
+    @profile
+    def compute_trajectories_batch_with_intervention_and_cache(
+        self,
+        token_ids_batch: list[list[int]],
+        intervention: Interventions | None = None,
+        names_filter: Optional[callable] = None,
+    ) -> list[GeneratedTrajectory]:
+        """Batch version of compute_trajectory_with_intervention_and_cache.
+
+        Args:
+            token_ids_batch: List of token ID sequences
+            intervention: Intervention(s) to apply
+            names_filter: Filter for which hooks to cache
+
+        Returns:
+            List of GeneratedTrajectory objects with internals cache attached
+        """
+        if self.is_cloud_api:
+            raise NotImplementedError(
+                "Cloud API backends don't support batched intervention forward passes."
+            )
+
+        if not token_ids_batch:
+            return []
+
+        input_ids_batch = self._pad_token_ids_batch(token_ids_batch)
+        interventions = self._normalize_interventions(intervention)
+
+        with self._inference_context():
+            logits_batch, internals_cache = self._backend.run_with_intervention_and_cache(
+                input_ids_batch, interventions, names_filter
+            )  # [batch, seq_len, vocab_size]
+
+        # Build trajectories with per-batch internals attached
+        results = []
+        for i, token_ids in enumerate(token_ids_batch):
+            seq_len = len(token_ids)
+            logits = logits_batch[i, :seq_len, :]
+            # Split cache by batch index - each cache tensor has shape [batch, seq_len, ...]
+            # Keep shape [1, seq_len, ...] to match sequential API
+            batch_cache = {
+                name: tensor[i : i + 1, :seq_len]
+                for name, tensor in internals_cache.items()
+            }
+            traj = GeneratedTrajectory.from_inference(
+                token_ids, logits, self.device, internals=batch_cache
+            )
+            results.append(traj)
+
+        del logits_batch, input_ids_batch
+        return results
 
     @profile
     def compute_trajectory_with_cache(
@@ -447,12 +613,7 @@ class ModelRunner:
     ) -> GeneratedTrajectory:
         input_ids = torch.tensor([token_ids], device=self.device)
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             logits_batch, internals_cache = self._backend.run_with_cache(
                 input_ids, names_filter, past_kv_cache
             )  # [1, seq_len, vocab_size]
@@ -468,24 +629,33 @@ class ModelRunner:
         token_ids: list[int],
         intervention: Interventions | None = None,
         names_filter: Optional[callable] = None,
+        with_grad: bool = False,
     ) -> GeneratedTrajectory:
+        """Run forward with interventions and capture activations.
+
+        Args:
+            token_ids: Input token IDs
+            intervention: Intervention(s) to apply
+            names_filter: Filter for which hooks to cache
+            with_grad: If True, keep gradients enabled (required for EAP-IG)
+
+        Returns:
+            GeneratedTrajectory with internals cache
+        """
         input_ids = torch.tensor([token_ids], device=self.device)
+        interventions = self._normalize_interventions(intervention)
 
-        interventions = (
-            [intervention] if isinstance(intervention, Intervention) else intervention
-        )
+        def run_forward():
+            return self._backend.run_with_intervention_and_cache(
+                input_ids, interventions, names_filter
+            )
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
-            logits_batch, internals_cache = (
-                self._backend.run_with_intervention_and_cache(
-                    input_ids, interventions, names_filter
-                )
-            )  # [1, seq_len, vocab_size]
+        if with_grad:
+            # Keep gradients enabled for attribution
+            logits_batch, internals_cache = run_forward()
+        else:
+            with self._inference_context():
+                logits_batch, internals_cache = run_forward()
 
         logits = logits_batch[0]  # [seq_len, vocab_size]
         return GeneratedTrajectory.from_inference(
@@ -546,22 +716,28 @@ class ModelRunner:
         return self._backend.get_W_E()
 
     @property
-    def W_U(self) -> torch.Tensor:
+    def W_U(self) -> torch.Tensor | None:
         """Unembedding matrix W_U.
 
         Returns:
-            Unembedding matrix of shape [d_model, vocab_size]
+            Unembedding matrix of shape [d_model, vocab_size], or None if unsupported
         """
-        return self._backend.get_W_U()
+        try:
+            return self._backend.get_W_U()
+        except NotImplementedError:
+            return None
 
     @property
     def b_U(self) -> torch.Tensor | None:
         """Unembedding bias b_U.
 
         Returns:
-            Unembedding bias of shape [vocab_size], or None if no bias
+            Unembedding bias of shape [vocab_size], or None if no bias/unsupported
         """
-        return self._backend.get_b_U()
+        try:
+            return self._backend.get_b_U()
+        except NotImplementedError:
+            return None
 
     # Basic Forward API
 
@@ -583,12 +759,7 @@ class ModelRunner:
         formatted = self.apply_chat_template(prompt)
         input_ids = self.encode(formatted, prepend_bos=prepend_bos)
 
-        ctx = (
-            torch.inference_mode()
-            if self._backend.supports_inference_mode
-            else torch.no_grad()
-        )
-        with ctx:
+        with self._inference_context():
             return self._backend.forward(input_ids)
 
     # KV Cache APIs
@@ -618,12 +789,25 @@ class ModelRunner:
         ]
 
     def apply_chat_template(self, prompt: str) -> str:
+        # Cloud API backends handle chat formatting internally
+        if self.is_cloud_api:
+            return prompt
+
         if not self._is_chat_model:
             # print(f"apply_chat_template: {self.model_name} is not chat model")
             return prompt
         tokenizer = self._tokenizer
         if hasattr(tokenizer, "apply_chat_template"):
             # print(f"apply_chat_template: True for {self.model_name}")
+            # Some models (e.g., Qwen 3.5) use enable_thinking parameter,
+            # while others (e.g., Qwen 3) use prefix-based soft switch
+            if self._disables_thinking_via_template:
+                return tokenizer.apply_chat_template(
+                    [{"role": "user", "content": prompt}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                )
             return tokenizer.apply_chat_template(
                 [{"role": "user", "content": prompt}],
                 tokenize=False,
@@ -656,7 +840,10 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (nnsight)...")
         self._model = LanguageModel(
-            self.model_name, device_map=self.device, dtype=self.dtype
+            self.model_name,
+            device_map=self.device,
+            dtype=self.dtype,
+            trust_remote_code=True,
         )
         self._backend = NNsightBackend(self)
 
@@ -665,10 +852,12 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (pyvene)...")
         self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype
+            self.model_name, torch_dtype=self.dtype, trust_remote_code=True
         ).to(self.device)
         self._model.eval()
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name, trust_remote_code=True
+        )
         self._backend = PyveneBackend(self, tokenizer)
 
     def _init_huggingface(self) -> None:
@@ -676,10 +865,12 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (HuggingFace)...")
         self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype
+            self.model_name, torch_dtype=self.dtype, trust_remote_code=True
         ).to(self.device)
         self._model.eval()
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name, trust_remote_code=True
+        )
         self._backend = HuggingFaceBackend(self, tokenizer)
 
     def _init_mlx(self) -> None:
@@ -688,6 +879,12 @@ class ModelRunner:
         print(f"Loading {self.model_name} (MLX)...")
         self._model, tokenizer = load(self.model_name)
         self._backend = MLXBackend(self, tokenizer)
+
+    def _init_openai(self) -> None:
+        self._backend = OpenAIBackend(self, model=self.model_name)
+
+    def _init_anthropic(self) -> None:
+        self._backend = AnthropicBackend(self, model=self.model_name)
 
     def _detect_chat_model(self, model_name: str) -> bool:
         """Detect if model is a chat/instruct model based on name.
@@ -755,16 +952,35 @@ class ModelRunner:
     @property
     def is_reasoning_model(self) -> bool:
         """Whether this model supports thinking/reasoning mode."""
+        if self.is_cloud_api:
+            return False
         if not hasattr(self, "_is_reasoning_model"):
             self._is_reasoning_model = self._detect_reasoning_model()
         return self._is_reasoning_model
 
     @property
+    def _disables_thinking_via_template(self) -> bool:
+        """Whether thinking is disabled via chat template param (not prefix).
+
+        Qwen 3.5 uses enable_thinking=False in apply_chat_template,
+        while Qwen 3 uses empty thinking prefix (<think></think>).
+        """
+        if not hasattr(self, "_cached_disables_thinking_via_template"):
+            name = self.model_name.lower()
+            self._cached_disables_thinking_via_template = any(
+                x in name for x in ["qwen3.5", "qwen-3.5", "qwen_3.5"]
+            )
+        return self._cached_disables_thinking_via_template
+
+    @property
     def skip_thinking_prefix(self) -> str:
         """Prefix to skip thinking mode for reasoning models.
 
-        Returns empty string for non-reasoning models.
+        Returns empty string for non-reasoning models, cloud API backends,
+        and models that disable thinking via chat template parameter.
         """
+        if self.is_cloud_api or self._disables_thinking_via_template:
+            return ""
         if self.is_reasoning_model:
             return "<think>\n</think>\n\n"
         return ""

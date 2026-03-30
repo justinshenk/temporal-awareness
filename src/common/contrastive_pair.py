@@ -9,6 +9,7 @@ from .base_schema import BaseSchema
 from .choice import LabeledSimpleBinaryChoice
 from .hook_utils import hook_name
 from .patching_types import PatchingMode
+from .time_value import TimeValue
 from .token_positions import PositionMapping
 from .token_trajectory import TokenTrajectory
 
@@ -43,6 +44,7 @@ class ContrastivePair(BaseSchema):
     sample_id: int = 0
     prompt_token_counts: tuple[int, int] | None = None
     choice_divergent_positions: tuple[int, int] | None = None
+    time_horizons: tuple[TimeValue, TimeValue] | None = None
 
     # =========================================================================
     # Text and Label Properties
@@ -77,6 +79,16 @@ class ContrastivePair(BaseSchema):
         if self.choice_divergent_positions is None:
             return None
         return self.choice_divergent_positions[1]
+
+    # =========================================================================
+    # Characteristics
+    # =========================================================================
+
+    @property
+    def same_labels(self) -> bool:
+        if self.clean_labels is None or self.corrupted_labels is None:
+            return False
+        return self.clean_labels == self.corrupted_labels
 
     # =========================================================================
     # Length Properties
@@ -150,7 +162,9 @@ class ContrastivePair(BaseSchema):
         clean_internals = self._get_choice_internals(clean_choice)
         corrupted_internals = self._get_choice_internals(corrupted_choice)
 
-        source_internals = clean_internals if mode == "denoising" else corrupted_internals
+        source_internals = (
+            clean_internals if mode == "denoising" else corrupted_internals
+        )
         if not source_internals:
             raise ValueError(f"Missing internals in source choice for {mode} mode")
 
@@ -160,13 +174,20 @@ class ContrastivePair(BaseSchema):
         component = target.component or "resid_post"
 
         if DEBUG_INTERVENTIONS:
-            print(f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}")
+            print(
+                f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}"
+            )
 
         interventions = []
         for layer in layers:
             intervention = self._make_layer_intervention(
-                layer, component, target, mode,
-                clean_internals, corrupted_internals, alpha
+                layer,
+                component,
+                target,
+                mode,
+                clean_internals,
+                corrupted_internals,
+                alpha,
             )
             if intervention:
                 interventions.append(intervention)
@@ -184,6 +205,7 @@ class ContrastivePair(BaseSchema):
     def _get_available_layers(self, internals: dict) -> list[int]:
         """Get available layers from internals dict."""
         from .hook_utils import parse_hook_name
+
         layers = set()
         for name in internals.keys():
             parsed = parse_hook_name(name)
@@ -264,8 +286,12 @@ class ContrastivePair(BaseSchema):
         if DEBUG_INTERVENTIONS and layer == 0:
             print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
             print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
-            print(f"[intervention]   running_len={running_len}, target.positions={positions}")
-            print(f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}")
+            print(
+                f"[intervention]   running_len={running_len}, target.positions={positions}"
+            )
+            print(
+                f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}"
+            )
             print(f"[intervention]   patch_vals.shape={patch_vals.shape}")
             print(f"[intervention]   patch_target={patch_target}")
 

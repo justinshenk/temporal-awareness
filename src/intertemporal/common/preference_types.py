@@ -56,7 +56,6 @@ class Prompt(BaseSchema):
 
     preference_pair: PreferencePair
     time_horizon: Optional[TimeValue] = None
-    text: str = ""
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -114,8 +113,11 @@ class PromptSample(BaseSchema):
 
     sample_idx: int
     prompt: Prompt
+    text: str = ""
 
-    formatting_id: int | None = None
+    formatting_id: str | None = None  # Name of the prompt format config used
+    context_id: int | None = None
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -152,9 +154,11 @@ class PreferenceSample(BaseSchema):
     internals_paths: dict | None = None
     decoding_mismatch: bool | None = None
 
-    formatting_id: int | None = None
+    formatting_id: str | None = None
+    context_id: int | None = None
     matches_rational: bool | None = None
     matches_associated: bool | None = None
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def choice_idx(self) -> int:

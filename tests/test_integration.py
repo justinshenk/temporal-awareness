@@ -1153,7 +1153,6 @@ def make_sample(
     return PromptSample(
         sample_idx=sample_idx,
         prompt=Prompt(
-            text=text,
             preference_pair=PreferencePair(
                 short_term=IntertemporalOption(
                     label=short_label,
@@ -1167,6 +1166,7 @@ def make_sample(
                 ),
             ),
         ),
+        text=text,
     )
 
 

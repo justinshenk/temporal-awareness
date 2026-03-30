@@ -9,6 +9,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+from ..data.default_configs import DEFAULT_MODEL
 from .sae_paths import FilepathConfig
 
 
@@ -44,20 +45,36 @@ class PipelineStage(str, Enum):
 
 @dataclass
 class PipelineConfig:
-    model: str = "Qwen/Qwen2.5-1.5B-Instruct"
+    model: str = DEFAULT_MODEL
     samples_per_iter: int = 2000
     max_iterations: int = 10
     seed: int = 42
-    layers: list[int] = field(default_factory=lambda: [8, 14])
+
+    # Layers to analyze (priority order from circuit analysis)
+    layers: list[int] = field(default_factory=lambda: [21, 31, 24, 19, 34, 25])
+
+    # Components to extract activations from
+    components: list[str] = field(
+        default_factory=lambda: ["resid_post", "mlp_out", "attn_out", "resid_pre"]
+    )
+
+    # Named positions to extract (source, dest, secondary_source)
+    position_names: list[str] = field(
+        default_factory=lambda: ["dest", "source", "secondary_source"]
+    )
+
+    # SAE hyperparameters
     num_time_horizons_bins: list[int] = field(default_factory=lambda: [10, 15, 20, 30])
     topk_values: list[int] = field(default_factory=lambda: [2, 3])
+
+    # Generation and training parameters
     max_new_tokens: int = 256
     max_epochs: int = 1
     patience: int = 1000
     batch_size: int = 128
 
     def compute_id(self) -> str:
-        key = f"{self.model}_{self.layers}_{self.num_time_horizons_bins}_{self.topk_values}"
+        key = f"{self.model}_{self.layers}_{self.components}_{self.position_names}_{self.num_time_horizons_bins}_{self.topk_values}"
         return hashlib.md5(key.encode()).hexdigest()[:12]
 
     def to_dict(self) -> dict:

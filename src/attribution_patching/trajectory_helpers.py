@@ -91,12 +91,20 @@ def get_caches_for_attribution(
         grad_cache is a reference to either clean_cache or corr_cache
     """
     if grad_at == "corrupted":
-        _, clean_cache = get_cache(runner, pair, "clean", mode, names_filter, with_grad=False)
-        grad_logits, corr_cache = get_cache(runner, pair, "corrupted", mode, names_filter, with_grad=True)
+        _, clean_cache = get_cache(
+            runner, pair, "clean", mode, names_filter, with_grad=False
+        )
+        grad_logits, corr_cache = get_cache(
+            runner, pair, "corrupted", mode, names_filter, with_grad=True
+        )
         grad_cache = corr_cache
     else:  # grad_at == "clean"
-        grad_logits, clean_cache = get_cache(runner, pair, "clean", mode, names_filter, with_grad=True)
-        _, corr_cache = get_cache(runner, pair, "corrupted", mode, names_filter, with_grad=False)
+        grad_logits, clean_cache = get_cache(
+            runner, pair, "clean", mode, names_filter, with_grad=True
+        )
+        _, corr_cache = get_cache(
+            runner, pair, "corrupted", mode, names_filter, with_grad=False
+        )
         grad_cache = clean_cache
 
     return grad_logits, clean_cache, corr_cache, grad_cache

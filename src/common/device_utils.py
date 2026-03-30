@@ -83,9 +83,53 @@ def check_memory_trend() -> None:
 
 
 def clear_gpu_memory() -> None:
-    """Clear GPU memory caches for CUDA and MPS."""
+    """Clear GPU memory caches for CUDA, MPS, and MLX."""
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     if torch.backends.mps.is_available():
         torch.mps.empty_cache()
+    # Clear MLX memory if available
+    try:
+        import mlx.core as mx
+        mx.clear_cache()
+    except (ImportError, AttributeError):
+        pass
+
+
+class ProgressTracker:
+    """Track iteration progress with periodic memory logging and cleanup.
+
+    Usage:
+        tracker = ProgressTracker(total=100, progress_every=10, memory_every=50)
+        for i, item in enumerate(items):
+            tracker.step(i)  # Handles progress, memory logging, and cleanup
+            process(item)
+    """
+
+    def __init__(
+        self,
+        total: int,
+        progress_every: int = 10,
+        memory_every: int = 50,
+        prefix: str = "  ",
+        log_memory_verbose: bool = True,
+    ):
+        self.total = total
+        self.progress_every = progress_every
+        self.memory_every = memory_every
+        self.prefix = prefix
+        self.log_memory_verbose = log_memory_verbose
+
+    def step(self, i: int) -> None:
+        """Called each iteration to handle progress/memory tracking."""
+        iteration = i + 1
+
+        if iteration % self.progress_every == 0:
+            self._log_progress(iteration)
+
+        if iteration % self.memory_every == 0:
+            log_memory(f"after sample {iteration}", iteration=i, verbose=self.log_memory_verbose)
+
+    def _log_progress(self, iteration: int) -> None:
+        print(f"{self.prefix}{iteration}/{self.total}", end="", flush=True)

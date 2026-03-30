@@ -1,4 +1,4 @@
-"""Combined attribution runner and utilities."""
+"""Attribution runner - computes attribution scores for all configured methods."""
 
 from __future__ import annotations
 
@@ -8,12 +8,24 @@ import numpy as np
 
 from ..common.contrastive_pair import ContrastivePair
 from ..common.profiler import P
-from ..common.patching_types import GradTarget, PatchingMode
+from ..common.patching_types import PatchingMode
 
-from .attribution_settings import GradPoint
-from .eap import compute_eap
+from .attribution_key import (
+    AttributionKey,
+    STANDARD_COMPONENTS,
+    EAP_COMPONENTS,
+)
+
+# Map component names to their short form in EAP/EAP-IG results
+COMPONENT_TO_EAP_KEY = {
+    "resid_post": "resid",
+    "attn_out": "attn",
+    "mlp_out": "mlp",
+}
+from .attribution_eap import compute_eap
 from .eap_ig import compute_eap_ig
 from .embedding_alignment import PaddingStrategy
+from .attribution_quadrature import QuadratureMethod
 from .standard_attribution import compute_attribution
 
 if TYPE_CHECKING:
@@ -21,50 +33,7 @@ if TYPE_CHECKING:
     from .attribution_metric import AttributionMetric
 
 
-def _run_methods_for_grad_point(
-    runner: "BinaryChoiceRunner",
-    pair: ContrastivePair,
-    metric: "AttributionMetric",
-    mode: PatchingMode,
-    methods: list[str],
-    ig_steps: int,
-    padding_strategy: PaddingStrategy,
-    grad_at: GradTarget,
-) -> dict[str, np.ndarray]:
-    """Run attribution methods for a single gradient point."""
-    results = {}
-
-    if "standard" in methods:
-        with P("standard_attribution"):
-            for comp in ["resid_post", "attn_out", "mlp_out"]:
-                key = comp.replace("_post", "").replace("_out", "")
-                results[key] = compute_attribution(
-                    runner, pair, metric, mode, comp, grad_at=grad_at
-                )
-
-    if "eap" in methods:
-        with P("eap"):
-            eap = compute_eap(runner, pair, metric, mode, grad_at=grad_at)
-            results["eap_attn"] = eap["attn"]
-            results["eap_mlp"] = eap["mlp"]
-
-    if "eap_ig" in methods:
-        with P("eap_ig"):
-            eap_ig = compute_eap_ig(
-                runner, pair, metric, mode, ig_steps, padding_strategy,
-                grad_at=grad_at
-            )
-            results["eap_ig_attn"] = eap_ig["attn"]
-            results["eap_ig_mlp"] = eap_ig["mlp"]
-            if "aligned_len" in eap_ig:
-                results["eap_ig_aligned_len"] = eap_ig["aligned_len"]
-                results["eap_ig_clean_pos_map"] = eap_ig["clean_pos_map"]
-                results["eap_ig_corrupted_pos_map"] = eap_ig["corrupted_pos_map"]
-
-    return results
-
-
-def run_all_attribution_methods(
+def run_attribution(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
@@ -72,44 +41,61 @@ def run_all_attribution_methods(
     methods: list[str] | None = None,
     ig_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
-    grad_at: GradPoint = "both",
-) -> dict[str, np.ndarray]:
-    """Run specified attribution methods and return results.
+    quadratures: list[QuadratureMethod] | None = None,
+) -> dict[AttributionKey, np.ndarray]:
+    """Run attribution methods and return results keyed by AttributionKey.
 
     Args:
         runner: Model runner
-        pair: Contrastive pair with trajectories
+        pair: Contrastive pair
         metric: Attribution metric
         mode: "denoising" or "noising"
-        methods: Methods to run (default: ["standard", "eap"])
-            - "standard": Standard attribution (clean-corrupted)*grad
-            - "eap": Edge Attribution Patching
-            - "eap_ig": EAP with Integrated Gradients
+        methods: Methods to run (default: ["eap_ig"])
         ig_steps: Integration steps for EAP-IG
-        padding_strategy: How to pad segments for EAP-IG
-        grad_at: Where to compute gradients ("clean", "corrupted", or "both")
+        padding_strategy: Padding for EAP-IG
+        quadratures: Quadrature methods for EAP/EAP-IG
 
     Returns:
-        Dict with keys like 'resid', 'attn', 'mlp', 'eap_attn', 'eap_ig_attn', etc.
-        When grad_at="both", keys are suffixed with "_clean" or "_corrupted".
+        Dict mapping AttributionKey to scores [n_layers, seq_len]
     """
     if methods is None:
-        methods = ["standard", "eap"]
+        methods = ["eap_ig"]
+    if quadratures is None:
+        quadratures = [QuadratureMethod.CHEBYSHEV]
 
-    if grad_at == "both":
-        results = {}
-        for point in ["clean", "corrupted"]:
-            point_results = _run_methods_for_grad_point(
-                runner, pair, metric, mode, methods, ig_steps,
-                padding_strategy, point
-            )
-            for key, val in point_results.items():
-                results[f"{key}_{point}"] = val
-        return results
+    results: dict[AttributionKey, np.ndarray] = {}
 
-    return _run_methods_for_grad_point(
-        runner, pair, metric, mode, methods, ig_steps, padding_strategy, grad_at
-    )
+    # Standard: one result per component, no quadrature
+    if "standard" in methods:
+        with P("standard_attribution"):
+            for comp in STANDARD_COMPONENTS:
+                key = AttributionKey.standard(comp)
+                results[key] = compute_attribution(runner, pair, metric, mode, comp)
+
+    # EAP: per quadrature, all components
+    if "eap" in methods:
+        with P("eap"):
+            for quad in quadratures:
+                eap_raw = compute_eap(runner, pair, metric, mode)
+                for comp in EAP_COMPONENTS:
+                    eap_key = COMPONENT_TO_EAP_KEY[comp]
+                    key = AttributionKey.eap(comp, quad.value)
+                    results[key] = eap_raw[eap_key]
+
+    # EAP-IG: per quadrature, all components
+    if "eap_ig" in methods:
+        with P("eap_ig"):
+            for quad in quadratures:
+                eap_ig_raw = compute_eap_ig(
+                    runner, pair, metric, mode,
+                    ig_steps, padding_strategy, quadrature=quad,
+                )
+                for comp in EAP_COMPONENTS:
+                    eap_key = COMPONENT_TO_EAP_KEY[comp]
+                    key = AttributionKey.eap_ig(comp, quad.value)
+                    results[key] = eap_ig_raw[eap_key]
+
+    return results
 
 
 def find_top_attributions(
@@ -117,18 +103,13 @@ def find_top_attributions(
     layers: list[int],
     n_top: int = 5,
 ) -> list[tuple[int, int, float]]:
-    """Find top N attribution scores by absolute value.
-
-    Args:
-        scores: Attribution scores [n_layers, seq_len]
-        layers: Layer indices corresponding to rows
-        n_top: Number of top scores to return
-
-    Returns:
-        List of (layer, position, score) tuples sorted by |score|
-    """
+    """Find top N attribution scores by absolute value."""
     flat_indices = np.argsort(np.abs(scores).ravel())[::-1][:n_top]
     return [
-        (layers[idx // scores.shape[1]], idx % scores.shape[1], float(scores.ravel()[idx]))
+        (
+            layers[idx // scores.shape[1]],
+            idx % scores.shape[1],
+            float(scores.ravel()[idx]),
+        )
         for idx in flat_indices
     ]

@@ -27,7 +27,7 @@ Usage:
 from src.common.auto_export import auto_export
 
 # Explicit import needed: 'profile' is excluded by auto_export (stdlib collision)
-from .decorators import profile
+from .profiler_decorators import profile
 
 __all__ = auto_export(__file__, __name__, globals())
 __all__.append("profile")  # Add back excluded name

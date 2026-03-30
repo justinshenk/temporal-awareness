@@ -1,155 +1,196 @@
-"""Combined LLM generation + activation extraction in a single model load.
+"""Position-based activation extraction for SAE analysis.
 
-Loads the model once, generates responses, then runs run_with_cache on each
-sample to extract sentence-level activations from all layers.
+Extracts activations at specific token positions (source, dest, secondary_source)
+across multiple components (resid_pre, resid_post, mlp_out, attn_out).
 
-Returns data in the format expected by the pipeline:
-- updated_samples: list of dicts with response_text, sentences, labels
-- activations: list of {sentence_idx: {layer_key: ndarray}} per sample
+This replaces the previous sentence-level mean-pooling approach with precise
+position-based extraction aligned with circuit analysis findings.
 """
 
 import gc
+from dataclasses import dataclass
 
 import numpy as np
 from tqdm import tqdm
 
 from ...inference.model_runner import ModelRunner
-
-from .sae_activations import Sentence
-from .text_processing import split_into_sentences, parse_llm_choice
 from ...common.device_utils import get_device, clear_gpu_memory
 
-
-def _build_char_to_token_map(text: str, tokenizer) -> dict[int, int]:
-    """Build mapping from character position to token index."""
-    encoding = tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
-    offsets = encoding.get("offset_mapping", [])
-
-    char_to_token = {}
-    for token_idx, (start, end) in enumerate(offsets):
-        for char_pos in range(start, end + 1):
-            if char_pos not in char_to_token:
-                char_to_token[char_pos] = token_idx
-    return char_to_token
-
-
-def _get_token_span_for_sentence(
-    sentence: Sentence,
-    full_text: str,
-    char_to_token: dict[int, int],
-    max_token_idx: int,
-) -> tuple[int, int] | None:
-    """Get (start_token, end_token) for a sentence, or None if not found."""
-    text_pos = full_text.find(sentence.text)
-    if text_pos < 0:
-        return None
-
-    token_start = char_to_token.get(text_pos)
-    token_end = char_to_token.get(text_pos + len(sentence.text) - 1)
-
-    if token_start is None or token_end is None or token_start >= token_end:
-        return None
-
-    # Clamp to valid range
-    token_end = min(token_end, max_token_idx)
-    return (token_start, token_end)
+from .sae_positions import (
+    COMPONENTS,
+    POSITION_NAMES,
+    ResolvedPositions,
+    decode_tokens,
+    get_hook_name,
+    get_names_filter,
+    resolve_positions,
+)
+from .text_processing import parse_llm_choice
+from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 
 
-def _extract_all_layer_activations(
-    cache: dict,
-    full_text: str,
-    sentences: list[Sentence],
-    layers: list[int],
-    char_to_token: dict[int, int],
-) -> dict[int, dict[str, np.ndarray]]:
-    """Extract mean-pooled activations for all sentences across all layers.
+# =============================================================================
+# Data Classes
+# =============================================================================
 
-    Returns: {sentence_idx: {layer_key: activation_array}}
+
+@dataclass
+class PositionActivations:
+    """Activations extracted at specific positions for a single sample.
+
+    Attributes:
+        positions: Resolved token positions
+        activations: Dict mapping (layer, component, position_name) -> activation vector
     """
-    result: dict[int, dict[str, np.ndarray]] = {}
 
-    # Pre-compute token spans for all sentences (layer-independent)
-    # Get max token idx from first available layer
-    max_token_idx = 0
+    positions: ResolvedPositions
+    activations: dict[str, np.ndarray]  # key format: "L{layer}_{component}_P{pos_name}"
+
+    def get(self, layer: int, component: str, position_name: str) -> np.ndarray | None:
+        """Get activation for a specific (layer, component, position) tuple."""
+        key = f"L{layer}_{component}_P{position_name}"
+        return self.activations.get(key)
+
+    def to_dict(self) -> dict:
+        """Convert to serializable dict."""
+        return {
+            "positions": self.positions.to_dict(),
+            "activations": {k: v.tolist() for k, v in self.activations.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "PositionActivations":
+        """Create from serialized dict."""
+        positions = ResolvedPositions(**d["positions"])
+        activations = {k: np.array(v) for k, v in d["activations"].items()}
+        return cls(positions=positions, activations=activations)
+
+
+# =============================================================================
+# Activation Extraction
+# =============================================================================
+
+
+def _extract_position_activations(
+    cache: dict,
+    positions: ResolvedPositions,
+    layers: list[int],
+    components: list[str],
+    position_names: list[str],
+) -> dict[str, np.ndarray]:
+    """Extract activations at specific positions from cache.
+
+    Args:
+        cache: TransformerLens cache from run_with_cache
+        positions: Resolved token positions
+        layers: List of layer indices to extract
+        components: List of component types (resid_pre, resid_post, mlp_out, attn_out)
+        position_names: List of position names to extract (source, dest, secondary_source)
+
+    Returns:
+        Dict mapping "L{layer}_{component}_P{pos_name}" -> activation array (d_model,)
+    """
+    result = {}
+
     for layer in layers:
-        hook_name = f"blocks.{layer}.hook_resid_post"
-        if hook_name in cache:
-            layer_acts = cache[hook_name]
-            if layer_acts.dim() == 3:
-                max_token_idx = layer_acts.shape[1] - 1
-            else:
-                max_token_idx = layer_acts.shape[0] - 1
-            break
-
-    sentence_spans = {}
-    for sentence_idx, sentence in enumerate(sentences):
-        span = _get_token_span_for_sentence(
-            sentence, full_text, char_to_token, max_token_idx
-        )
-        if span is not None:
-            sentence_spans[sentence_idx] = span
-
-    if not sentence_spans:
-        return result
-
-    # Extract activations for each layer
-    for layer in layers:
-        hook_name = f"blocks.{layer}.hook_resid_post"
-        if hook_name not in cache:
-            continue
-
-        layer_acts = cache[hook_name].detach().cpu().float()
-        if layer_acts.dim() == 3:
-            layer_acts = layer_acts.squeeze(0)
-
-        layer_key = f"layer_{layer}"
-
-        for sentence_idx, (token_start, token_end) in sentence_spans.items():
-            segment = layer_acts[token_start : token_end + 1]
-            if segment.shape[0] == 0:
+        for component in components:
+            hook_name = get_hook_name(component, layer)
+            if hook_name not in cache:
                 continue
 
-            act = segment.mean(dim=0).numpy()
-            if not np.isfinite(act).all():
-                continue
+            acts = cache[hook_name].detach().cpu().float()
+            # Remove batch dimension if present
+            if acts.dim() == 3:
+                acts = acts.squeeze(0)
 
-            if sentence_idx not in result:
-                result[sentence_idx] = {}
-            result[sentence_idx][layer_key] = act
+            seq_len = acts.shape[0]
+
+            for pos_name in position_names:
+                pos_idx = positions.get(pos_name)
+                if pos_idx < 0 or pos_idx >= seq_len:
+                    continue
+
+                key = f"L{layer}_{component}_P{pos_name}"
+                act = acts[pos_idx].numpy()
+
+                if np.isfinite(act).all():
+                    result[key] = act
 
     return result
+
+
+def _count_prompt_tokens(formatted_text: str, prompt_text: str, tokenizer) -> int:
+    """Estimate the number of tokens in the prompt portion.
+
+    Args:
+        formatted_text: Full text with chat template applied
+        prompt_text: Original prompt text
+        tokenizer: Tokenizer for encoding
+
+    Returns:
+        Estimated number of prompt tokens
+    """
+    # Encode full text and prompt
+    full_encoding = tokenizer(formatted_text, add_special_tokens=False)
+    prompt_encoding = tokenizer(prompt_text, add_special_tokens=False)
+
+    # Prompt length is roughly the prompt tokens
+    # This is an approximation since chat template adds tokens
+    return len(prompt_encoding["input_ids"])
+
+
+# =============================================================================
+# Main Extraction Functions
+# =============================================================================
 
 
 def generate_and_extract(
     samples: list[dict],
     model_name: str,
     max_new_tokens: int,
-) -> tuple[list[dict], list[dict]]:
-    """Generate LLM responses and extract sentence-level activations.
-
-    Processes one sample at a time: generate response, then extract all layers
-    in a single forward pass via run_with_cache.
+    layers: list[int] | None = None,
+    components: list[str] | None = None,
+    position_names: list[str] | None = None,
+) -> tuple[list[dict], list[PositionActivations]]:
+    """Generate LLM responses and extract position-specific activations.
 
     Args:
-        samples: list of sample dicts from generate_samples
+        samples: List of sample dicts from generate_samples
         model_name: HuggingFace model name
-        max_new_tokens: max tokens to generate
+        max_new_tokens: Max tokens to generate
+        layers: Layers to extract (defaults to all)
+        components: Components to extract (defaults to all)
+        position_names: Positions to extract (defaults to all)
 
     Returns:
         (updated_samples, activations) where:
-        - updated_samples: list of dicts with added response_text, sentences, labels
-        - activations: list of {sentence_idx: {layer_key: ndarray}} per sample
+        - updated_samples: List of dicts with added response_text, llm_choice, positions
+        - activations: List of PositionActivations per sample
     """
     device = get_device()
     print(f"Loading model: {model_name} on {device}")
     runner = ModelRunner(model_name=model_name, device=device)
     tokenizer = runner._tokenizer
-    layers = list(range(runner.n_layers))
+    prompt_format = DefaultPromptFormat()
+
+    # Default to all layers if not specified
+    if layers is None:
+        layers = list(range(runner.n_layers))
+    if components is None:
+        components = COMPONENTS
+    if position_names is None:
+        position_names = POSITION_NAMES
+
+    # Build names filter for efficient caching
+    names_filter = get_names_filter(components, layers)
 
     updated_samples = []
     activations = []
 
-    print(f"Processing {len(samples)} samples ({len(layers)} layers each)...")
+    print(
+        f"Processing {len(samples)} samples "
+        f"({len(layers)} layers x {len(components)} components x {len(position_names)} positions)..."
+    )
 
     for sample in tqdm(samples, desc="Samples"):
         prompt_text = sample["prompt_text"]
@@ -162,7 +203,7 @@ def generate_and_extract(
                 temperature=0.7,
             )
         except Exception as e:
-            print(f"  Generation failed for sample {sample['sample_idx']}: {e}")
+            print(f"  Generation failed for sample {sample.get('sample_idx', '?')}: {e}")
             response_text = ""
 
         choice = parse_llm_choice(
@@ -170,44 +211,170 @@ def generate_and_extract(
             sample["short_term_label"],
             sample["long_term_label"],
         )
-        sentences = split_into_sentences(prompt_text, response_text)
 
+        # Update sample with response info
         updated = dict(sample)
         updated["response_text"] = response_text
         updated["llm_choice"] = choice
-        updated["sentences"] = [s.to_dict() for s in sentences]
-        updated_samples.append(updated)
 
-        # Extract activations for all layers
-        sample_activations = {}
+        # Extract activations at specific positions
+        sample_activations = None
 
-        if sentences:
+        if response_text:
             full_text = prompt_text + response_text
             formatted_text = runner.apply_chat_template(full_text)
-            char_to_token = _build_char_to_token_map(formatted_text, tokenizer)
+            tokens = decode_tokens(tokenizer, tokenizer.encode(formatted_text))
+
+            # Estimate prompt token count
+            prompt_len = _count_prompt_tokens(formatted_text, prompt_text, tokenizer)
+
+            # Resolve positions
+            positions = resolve_positions(tokens, prompt_len, prompt_format)
+            updated["positions"] = positions.to_dict()
 
             try:
-                names_filter = lambda name: "hook_resid_post" in name
                 _, cache = runner.run_with_cache(full_text, names_filter=names_filter)
 
-                sample_activations = _extract_all_layer_activations(
-                    cache, formatted_text, sentences, layers, char_to_token
+                acts = _extract_position_activations(
+                    cache, positions, layers, components, position_names
+                )
+
+                sample_activations = PositionActivations(
+                    positions=positions, activations=acts
                 )
 
                 del cache
             except Exception as e:
-                print(f"  Extraction failed for sample {sample['sample_idx']}: {e}")
+                print(
+                    f"  Extraction failed for sample {sample.get('sample_idx', '?')}: {e}"
+                )
 
             gc.collect()
             clear_gpu_memory()
 
+        updated_samples.append(updated)
         activations.append(sample_activations)
 
-    print(f"Processed {len(updated_samples)} samples")
-    n_sentences = sum(len(a) for a in activations)
-    print(f"  Total sentence activations: {n_sentences}")
+    # Report statistics
+    n_with_acts = sum(1 for a in activations if a is not None)
+    total_keys = sum(len(a.activations) for a in activations if a is not None)
+    print(f"Processed {len(updated_samples)} samples, {n_with_acts} with activations")
+    print(f"  Total activation keys: {total_keys}")
 
     del runner
     clear_gpu_memory()
 
     return updated_samples, activations
+
+
+def extract_activations_only(
+    samples: list[dict],
+    model_name: str,
+    layers: list[int],
+    components: list[str],
+    position_names: list[str],
+) -> list[PositionActivations | None]:
+    """Extract activations from already-generated samples (no generation).
+
+    Use this when samples already have response_text and you just need to
+    extract activations at different positions/layers/components.
+
+    Args:
+        samples: Samples with response_text already populated
+        model_name: Model name for tokenization and activation extraction
+        layers: Layers to extract
+        components: Components to extract
+        position_names: Positions to extract
+
+    Returns:
+        List of PositionActivations (or None for failed extractions)
+    """
+    device = get_device()
+    print(f"Loading model: {model_name} on {device}")
+    runner = ModelRunner(model_name=model_name, device=device)
+    tokenizer = runner._tokenizer
+    prompt_format = DefaultPromptFormat()
+
+    names_filter = get_names_filter(components, layers)
+    activations = []
+
+    print(f"Extracting activations from {len(samples)} samples...")
+
+    for sample in tqdm(samples, desc="Extracting"):
+        prompt_text = sample["prompt_text"]
+        response_text = sample.get("response_text", "")
+
+        if not response_text:
+            activations.append(None)
+            continue
+
+        full_text = prompt_text + response_text
+        formatted_text = runner.apply_chat_template(full_text)
+        tokens = decode_tokens(tokenizer, tokenizer.encode(formatted_text))
+        prompt_len = _count_prompt_tokens(formatted_text, prompt_text, tokenizer)
+
+        positions = resolve_positions(tokens, prompt_len, prompt_format)
+
+        try:
+            _, cache = runner.run_with_cache(full_text, names_filter=names_filter)
+
+            acts = _extract_position_activations(
+                cache, positions, layers, components, position_names
+            )
+
+            activations.append(PositionActivations(positions=positions, activations=acts))
+
+            del cache
+        except Exception as e:
+            print(f"  Extraction failed: {e}")
+            activations.append(None)
+
+        gc.collect()
+        clear_gpu_memory()
+
+    del runner
+    clear_gpu_memory()
+
+    return activations
+
+
+# =============================================================================
+# Training Data Preparation
+# =============================================================================
+
+
+def form_training_data(
+    activations: list[PositionActivations | None],
+    layer: int,
+    component: str,
+    position_name: str,
+) -> tuple[np.ndarray, list[int]]:
+    """Form training data matrix for a specific (layer, component, position) tuple.
+
+    Args:
+        activations: List of PositionActivations from extraction
+        layer: Layer index
+        component: Component type
+        position_name: Position name
+
+    Returns:
+        (X, indices) where X is (n_samples, d_model) and indices maps rows to sample indices
+    """
+    key = f"L{layer}_{component}_P{position_name}"
+
+    vectors = []
+    indices = []
+
+    for i, act in enumerate(activations):
+        if act is None:
+            continue
+        vec = act.activations.get(key)
+        if vec is not None:
+            vectors.append(vec)
+            indices.append(i)
+
+    if not vectors:
+        raise ValueError(f"No activations found for {key}")
+
+    X = np.stack(vectors, axis=0)
+    return X, indices

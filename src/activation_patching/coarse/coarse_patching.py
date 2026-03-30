@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ...common import profile
 from ...common.device_utils import clear_gpu_memory
 from ...binary_choice import BinaryChoiceRunner
 from ...common.contrastive_pair import ContrastivePair
@@ -9,15 +10,13 @@ from .coarse_results import CoarseActPatchResults
 from .sweep_runners import run_sanity_check, run_layer_sweep, run_position_sweep
 
 
-DEBUG_TOGGLE = False
-
-
+@profile
 def run_coarse_act_patching(
     runner: BinaryChoiceRunner,
     pair: ContrastivePair,
-    component: str = "resid_post",
-    min_layer_depth: float = 0.01,
-    max_layer_depth: float = 0.99,
+    min_layer_depth: float = 0.45,
+    max_layer_depth: float = 1.0,
+    component: str | None = None,
     layer_step_sizes: list[int] | None = None,
     pos_step_sizes: list[int] | None = None,
 ) -> CoarseActPatchResults:
@@ -26,23 +25,22 @@ def run_coarse_act_patching(
     Args:
         runner: BinaryChoiceRunner for inference
         pair: ContrastivePair to patch
-        component: Component to patch (default: resid_post)
         min_layer_depth: Start layer as fraction of total layers
         max_layer_depth: End layer as fraction of total layers
+        component: Component to patch
         layer_step_sizes: List of step sizes for layer sweeps
         pos_step_sizes: List of step sizes for position sweeps
 
     Returns:
         CoarseActPatchResults with results organized by step size
     """
+    # Defaults
+    if component is None:
+        component = "resid_post"
     if layer_step_sizes is None:
-        layer_step_sizes = [1, 3, 9, 16]
-    if pos_step_sizes is None:
-        pos_step_sizes = [1, 3, 9, 16]
-
-    if DEBUG_TOGGLE:
         layer_step_sizes = [1]
-        pos_step_sizes = [4]
+    if pos_step_sizes is None:
+        pos_step_sizes = [1]
 
     pair.print_position_mapping_debug("[coarse]")
 
@@ -96,8 +94,16 @@ def run_coarse_act_patching(
     clear_gpu_memory()
     print("[coarse] Done.")
 
+    # Extract label_pairs from sanity result for multilabel experiments
+    label_pairs = None
+    if sanity_result and sanity_result.denoising:
+        baseline = sanity_result.denoising.baseline_clean
+        if baseline and hasattr(baseline, "label_pairs"):
+            label_pairs = baseline.label_pairs
+
     return CoarseActPatchResults(
         sanity_result=sanity_result,
         layer_results=layer_results,
         position_results=position_results,
+        label_pairs=label_pairs,
     )

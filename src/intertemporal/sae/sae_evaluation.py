@@ -1,6 +1,7 @@
 """Evaluation metrics and visualization for SAE clustering."""
 
 import json
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,8 @@ import torch
 import pacmap
 import pacmap.pacmap as _pm
 import umap
+
+logger = logging.getLogger(__name__)
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -192,20 +195,10 @@ def format_horizon(months: float | None) -> str:
     return f"{int(years)}y" if years == int(years) else f"{years:.1f}y"
 
 
-def format_formatting_id(fid: int | None) -> str:
-    if fid is None:
+def format_formatting_id(name: str | None) -> str:
+    if name is None:
         return "none"
-    return f"F{abs(fid) % 1000}"
-
-
-def format_formatting_sign(fid: int | None) -> str:
-    if fid is None:
-        return "none"
-    if fid > 0:
-        return "positive"
-    if fid < 0:
-        return "negative"
-    return "zero"
+    return name
 
 
 def format_bool(val: bool | None) -> str:
@@ -215,32 +208,83 @@ def format_bool(val: bool | None) -> str:
 
 
 def build_colorings(sentences: list[dict], labels: np.ndarray) -> dict[str, list[str]]:
-    """Build categorical label arrays for visualization."""
-    return {
+    """Build categorical label arrays for visualization.
+
+    Handles missing keys gracefully - only includes colorings where data is available.
+    """
+    colorings = {
         "cluster": [f"C{c}" for c in labels],
-        "choice": [CHOICE_NAMES.get(s["llm_choice"], "unknown") for s in sentences],
-        "time_horizon": [format_horizon(s["time_horizon_months"]) for s in sentences],
-        "source": [s["source"] for s in sentences],
-        "section": [s["section"] for s in sentences],
-        "formatting_id": [
-            format_formatting_id(s.get("formatting_id")) for s in sentences
-        ],
-        "formatting_id_sign": [
-            format_formatting_sign(s.get("formatting_id")) for s in sentences
-        ],
-        "matches_rational": [format_bool(s.get("matches_rational")) for s in sentences],
-        "matches_associated": [
-            format_bool(s.get("matches_associated")) for s in sentences
-        ],
     }
+
+    # Choice coloring (llm_choice)
+    if sentences and "llm_choice" in sentences[0]:
+        colorings["choice"] = [
+            CHOICE_NAMES.get(s.get("llm_choice", -1), "unknown") for s in sentences
+        ]
+
+    # Time horizon coloring
+    if sentences and "time_horizon_months" in sentences[0]:
+        colorings["time_horizon"] = [
+            format_horizon(s.get("time_horizon_months")) for s in sentences
+        ]
+
+    # Time horizon bucket (discrete)
+    if sentences and "time_horizon_bucket" in sentences[0]:
+        colorings["horizon_bucket"] = [
+            f"H{s.get('time_horizon_bucket', -1)}" for s in sentences
+        ]
+
+    # Source coloring
+    if sentences and "source" in sentences[0]:
+        colorings["source"] = [s.get("source", "unknown") for s in sentences]
+
+    # Section coloring
+    if sentences and "section" in sentences[0]:
+        colorings["section"] = [s.get("section", "unknown") for s in sentences]
+
+    # Prompt format name coloring
+    if sentences and "formatting_id" in sentences[0]:
+        colorings["formatting_id"] = [
+            format_formatting_id(s.get("formatting_id")) for s in sentences
+        ]
+
+    # Boolean match colorings
+    if sentences and "matches_rational" in sentences[0]:
+        colorings["matches_rational"] = [
+            format_bool(s.get("matches_rational")) for s in sentences
+        ]
+    if sentences and "matches_associated" in sentences[0]:
+        colorings["matches_associated"] = [
+            format_bool(s.get("matches_associated")) for s in sentences
+        ]
+
+    # Short term first
+    if sentences and "short_term_first" in sentences[0]:
+        colorings["short_term_first"] = [
+            format_bool(s.get("short_term_first")) for s in sentences
+        ]
+
+    return colorings
 
 
 def build_gradient_colorings(sentences: list[dict]) -> dict[str, list[float]]:
-    """Build continuous value arrays for gradient visualization."""
-    return {
-        "choice_time_months": [s["llm_choice_time_months"] for s in sentences],
-        "time_horizon_months": [s["time_horizon_months"] for s in sentences],
-    }
+    """Build continuous value arrays for gradient visualization.
+
+    Handles missing keys gracefully - only includes colorings where data is available.
+    """
+    colorings = {}
+
+    if sentences and "llm_choice_time_months" in sentences[0]:
+        colorings["choice_time_months"] = [
+            s.get("llm_choice_time_months", 0.0) for s in sentences
+        ]
+
+    if sentences and "time_horizon_months" in sentences[0]:
+        colorings["time_horizon_months"] = [
+            s.get("time_horizon_months", 0.0) for s in sentences
+        ]
+
+    return colorings
 
 
 # =============================================================================
@@ -259,7 +303,8 @@ def generate_plots(
     embeddings = compute_embeddings(features)
 
     # Categorical colorings
-    for name, color_labels in build_colorings(sentences, labels).items():
+    colorings = build_colorings(sentences, labels)
+    for name, color_labels in colorings.items():
         coloring_dir = analysis_dir / name
         coloring_dir.mkdir(parents=True, exist_ok=True)
         for method, coords in embeddings.items():
@@ -268,11 +313,12 @@ def generate_plots(
                 plot_embedding(
                     coords, color_labels, title, coloring_dir / f"{method}.png"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to plot {method}/{name}: {e}")
 
     # Gradient colorings
-    for name, values in build_gradient_colorings(sentences).items():
+    gradient_colorings = build_gradient_colorings(sentences)
+    for name, values in gradient_colorings.items():
         coloring_dir = analysis_dir / name
         coloring_dir.mkdir(parents=True, exist_ok=True)
         for method, coords in embeddings.items():
@@ -281,8 +327,13 @@ def generate_plots(
                 plot_gradient_embedding(
                     coords, values, title, coloring_dir / f"{method}.png"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to plot gradient {method}/{name}: {e}")
+
+    logger.info(
+        f"Generated {len(embeddings)} embedding methods x "
+        f"({len(colorings)} categorical + {len(gradient_colorings)} gradient) colorings"
+    )
 
 
 # =============================================================================
@@ -311,13 +362,13 @@ def cluster_analysis(
             f"Cluster Distribution ({len(sentences)} sentences)",
             path / "cluster_distribution.png",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to plot cluster distribution: {e}")
 
     try:
         generate_plots(path, features.cpu().numpy(), sentences, labels)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to generate embedding plots: {e}")
 
     print(
         f"    Horizon NMI: {result['horizon_nmi']:.4f}, Choice NMI: {result['choice_nmi']:.4f}, Active: {result['active_clusters']}/{n_clusters}"

@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from typing import Callable
 
-COMPONENTS = ("resid_pre", "resid_post", "attn_out", "mlp_out")
-ATTRIBUTION_COMPONENTS = ("resid_post", "attn_out", "mlp_out")
+from .patching_types import COMPONENTS, PATCHING_COMPONENTS
+
+# Alias for backwards compatibility
+ATTRIBUTION_COMPONENTS = PATCHING_COMPONENTS
 
 
 def hook_name(layer: int, component: str) -> str:

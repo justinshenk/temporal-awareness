@@ -204,11 +204,12 @@ def align_embeddings(
 
     for seg in segments:
         # Extract segment from each sequence
-        clean_seg = clean_embeds[seg.dst_start : seg.dst_end]  # dst = clean (long)
-        corrupted_seg = corrupted_embeds[seg.src_start : seg.src_end]  # src = corrupted (short)
+        # position_mapping convention: src = clean, dst = corrupted
+        clean_seg = clean_embeds[seg.src_start : seg.src_end]
+        corrupted_seg = corrupted_embeds[seg.dst_start : seg.dst_end]
 
-        clean_seg_len = seg.dst_end - seg.dst_start
-        corrupted_seg_len = seg.src_end - seg.src_start
+        clean_seg_len = seg.src_end - seg.src_start
+        corrupted_seg_len = seg.dst_end - seg.dst_start
         max_seg_len = max(clean_seg_len, corrupted_seg_len)
 
         if max_seg_len == 0:
@@ -222,9 +223,10 @@ def align_embeddings(
         aligned_corrupted_parts.append(padded_corrupted)
 
         # Build position maps
+        # position_mapping convention: src = clean, dst = corrupted
         for i in range(max_seg_len):
-            clean_orig_pos = seg.dst_start + i if i < clean_seg_len else None
-            corrupted_orig_pos = seg.src_start + i if i < corrupted_seg_len else None
+            clean_orig_pos = seg.src_start + i if i < clean_seg_len else None
+            corrupted_orig_pos = seg.dst_start + i if i < corrupted_seg_len else None
             clean_pos_map.append(clean_orig_pos)
             corrupted_pos_map.append(corrupted_orig_pos)
 

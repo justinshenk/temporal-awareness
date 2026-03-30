@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Optional
 
 from ...common.file_io import ensure_dir
+from ...common.device_utils import clear_gpu_memory
 from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from .preference_querier import PreferenceQuerier, PreferenceQueryConfig
 from .preference_dataset import PreferenceDataset
 from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
-from ..data.default_configs import DEFAULT_MODEL, DEFAULT_PROMPT_DATASET_CONFIG
+from ..data.default_configs import FULL_EXPERIMENT_CONFIG
 from ...common.profiler import P
 
 
@@ -31,8 +32,8 @@ def generate_preference_data(
 ) -> PreferenceDataset:
     """Generate preference data on-the-fly by querying a model."""
 
-    model = model or DEFAULT_MODEL
-    config_dict = dataset_config or DEFAULT_PROMPT_DATASET_CONFIG
+    model = model or FULL_EXPERIMENT_CONFIG["model"]
+    config_dict = dataset_config or FULL_EXPERIMENT_CONFIG["dataset_config"]
 
     # Generate prompt dataset
     with P("generate_prompt_dataset"):
@@ -53,6 +54,10 @@ def generate_preference_data(
     with P("generate_preference_dataset"):
         pref_data = PreferenceQuerier(query_config).query_dataset(prompt_dataset, model)
 
+    # Strip heavy data (full_logits tensors) before saving to reduce file size
+    pref_data.pop_heavy()
+    clear_gpu_memory()
+
     # Save data
     if save_data:
         with P("saving_preference_dataset"):
@@ -66,7 +71,5 @@ def generate_preference_data(
             pref_data.save_as_json(
                 pref_datasets_dir / pref_data.get_filename(), with_internals=True
             )
-
-    pref_data.pop_heavy()
 
     return pref_data

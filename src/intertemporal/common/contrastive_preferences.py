@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
+import json
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
 from ...common.token_positions import build_position_mapping
-from ..preference import PreferenceDataset
 from .preference_types import PreferenceSample
 
 
@@ -40,11 +39,6 @@ class ContrastivePreferences(BaseSchema):
         Returns None if either sample fails verification.
         """
         if not self.long_term.verify() or not self.short_term.verify():
-            return None
-
-        # Require same formatting - swapped labels cause semantic mismatch in patching
-        if not self.same_formatting:
-            print("  Skipping pair: different label formatting")
             return None
 
         short_traj = self.short_term.chosen_traj
@@ -79,15 +73,81 @@ class ContrastivePreferences(BaseSchema):
                 self.short_term.divergent_position,
                 self.long_term.divergent_position,
             ),
+            time_horizons=(
+                self.short_term.time_horizon,
+                self.long_term.time_horizon,
+            ),
         )
 
+    # =========================================================================
+    # Label/Formatting Properties
+    # =========================================================================
+
     @property
-    def same_formatting(self) -> bool:
-        """Check if both samples use the same label formatting."""
+    def same_labels(self) -> bool:
+        """Check if both samples have the same label text."""
         return (
             self.short_term.short_term_label == self.long_term.short_term_label
             and self.short_term.long_term_label == self.long_term.long_term_label
         )
+
+    @property
+    def same_formatting(self) -> bool:
+        """Check if both samples have the same formatting_id."""
+        return self.short_term.formatting_id == self.long_term.formatting_id
+
+    @property
+    def same_context(self) -> bool:
+        """Check if both samples have the same context_id."""
+        return self.short_term.context_id == self.long_term.context_id
+
+    # =========================================================================
+    # Option Order Properties
+    # =========================================================================
+
+    @property
+    def same_order(self) -> bool:
+        """Check if both samples have the same option order.
+
+        True if both have short_term_first or both have long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order == long_order
+
+    @property
+    def different_order(self) -> bool:
+        """Check if samples have different option orders.
+
+        True if one has short_term_first and the other has long_term_first.
+        """
+        short_order = self.short_term.short_term_first
+        long_order = self.long_term.short_term_first
+        if short_order is None or long_order is None:
+            return False
+        return short_order != long_order
+
+    @property
+    def both_short_term_first(self) -> bool:
+        """Both samples have short_term option listed first."""
+        return (
+            self.short_term.short_term_first is True
+            and self.long_term.short_term_first is True
+        )
+
+    @property
+    def both_long_term_first(self) -> bool:
+        """Both samples have long_term option listed first."""
+        return (
+            self.short_term.short_term_first is False
+            and self.long_term.short_term_first is False
+        )
+
+    # =========================================================================
+    # Reward/Time Properties
+    # =========================================================================
 
     @property
     def same_rewards(self) -> bool:
@@ -105,13 +165,142 @@ class ContrastivePreferences(BaseSchema):
             and self.short_term.long_term_time == self.long_term.long_term_time
         )
 
+    # =========================================================================
+    # Horizon Properties
+    # =========================================================================
+
+    @property
+    def same_horizon(self) -> bool:
+        """Check if both samples have exactly the same time horizon."""
+        if not self.both_horizon:
+            return False
+        return self.short_term.time_horizon == self.long_term.time_horizon
+
+    @property
+    def neither_horizon(self) -> bool:
+        """Neither sample has a time horizon."""
+        return (
+            self.short_term.time_horizon is None and self.long_term.time_horizon is None
+        )
+
+    @property
+    def both_horizon(self) -> bool:
+        """Both samples have a time horizon."""
+        return (
+            self.short_term.time_horizon is not None
+            and self.long_term.time_horizon is not None
+        )
+
+    @property
+    def only_short_horizon(self) -> bool:
+        """Only short_term sample has a time horizon."""
+        return (
+            self.short_term.time_horizon is not None
+            and self.long_term.time_horizon is None
+        )
+
+    @property
+    def only_long_horizon(self) -> bool:
+        """Only long_term sample has a time horizon."""
+        return (
+            self.short_term.time_horizon is None
+            and self.long_term.time_horizon is not None
+        )
+
+    @property
+    def only_one_horizon(self) -> bool:
+        """Exactly one sample has a time horizon."""
+        return self.only_short_horizon or self.only_long_horizon
+
+    # =========================================================================
+    # Rational Choice Properties
+    # =========================================================================
+
+    @property
+    def both_rational(self) -> bool:
+        """Both samples match rational choice."""
+        return (
+            self.short_term.matches_rational is True
+            and self.long_term.matches_rational is True
+        )
+
+    @property
+    def neither_rational(self) -> bool:
+        """Neither sample matches rational choice."""
+        return (
+            self.short_term.matches_rational is False
+            and self.long_term.matches_rational is False
+        )
+
+    @property
+    def only_short_rational(self) -> bool:
+        """Only short_term sample matches rational choice."""
+        return (
+            self.short_term.matches_rational is True
+            and self.long_term.matches_rational is False
+        )
+
+    @property
+    def only_long_rational(self) -> bool:
+        """Only long_term sample matches rational choice."""
+        return (
+            self.short_term.matches_rational is False
+            and self.long_term.matches_rational is True
+        )
+
+    @property
+    def only_one_rational(self) -> bool:
+        """Exactly one sample matches rational choice."""
+        return self.only_short_rational or self.only_long_rational
+
+    # =========================================================================
+    # Associated Choice Properties
+    # =========================================================================
+
+    @property
+    def both_associated(self) -> bool:
+        """Both samples match associated choice."""
+        return (
+            self.short_term.matches_associated is True
+            and self.long_term.matches_associated is True
+        )
+
+    @property
+    def neither_associated(self) -> bool:
+        """Neither sample matches associated choice."""
+        return (
+            self.short_term.matches_associated is False
+            and self.long_term.matches_associated is False
+        )
+
+    @property
+    def only_short_associated(self) -> bool:
+        """Only short_term sample matches associated choice."""
+        return (
+            self.short_term.matches_associated is True
+            and self.long_term.matches_associated is False
+        )
+
+    @property
+    def only_long_associated(self) -> bool:
+        """Only long_term sample matches associated choice."""
+        return (
+            self.short_term.matches_associated is False
+            and self.long_term.matches_associated is True
+        )
+
+    @property
+    def only_one_associated(self) -> bool:
+        """Exactly one sample matches associated choice."""
+        return self.only_short_associated or self.only_long_associated
+
+    # =========================================================================
+    # Choice Probability Properties
+    # =========================================================================
+
     @property
     def min_choice_prob(self) -> float:
-        """Minimum choice probability across both samples.
-
-        Higher values indicate both samples were confident in their choices,
-        making this a better pair for activation patching.
-        """
+        """Minimum choice probability across both samples."""
         return min(self.short_term.choice_prob, self.long_term.choice_prob)
 
     @property
@@ -119,86 +308,74 @@ class ContrastivePreferences(BaseSchema):
         """Mean choice probability across both samples."""
         return (self.short_term.choice_prob + self.long_term.choice_prob) / 2
 
+    # =========================================================================
+    # Serialization
+    # =========================================================================
 
-def get_contrastive_preferences(
-    dataset: PreferenceDataset,
-    require_same_labels: bool = True,
-    debug_by_using_single_sample: bool = False,
-) -> list[ContrastivePreferences]:
-    """Find pairs of samples that differ primarily by time_horizon with different choices.
+    def to_summary_dict(self) -> dict:
+        """Return a lightweight summary dict with key properties only.
 
-    This function groups samples by their content (formatting_id and reward/time values)
-    and finds pairs where:
-    - One sample chose short_term and one chose long_term
-    - The primary difference is the time_horizon (which affects rational choice)
+        Excludes heavy data like choice trees and full trajectories.
+        """
+        return {
+            # Sample indices
+            "short_term_sample_idx": self.short_term.sample_idx,
+            "long_term_sample_idx": self.long_term.sample_idx,
+            # Labels
+            "short_term_labels": [
+                self.short_term.short_term_label,
+                self.short_term.long_term_label,
+            ],
+            "long_term_labels": [
+                self.long_term.short_term_label,
+                self.long_term.long_term_label,
+            ],
+            "same_labels": self.same_labels,
+            # Order
+            "short_term_first": [
+                self.short_term.short_term_first,
+                self.long_term.short_term_first,
+            ],
+            "same_order": self.same_order,
+            # Time horizons
+            "time_horizons": [
+                self.short_term.time_horizon,
+                self.long_term.time_horizon,
+            ],
+            "both_horizon": self.both_horizon,
+            "neither_horizon": self.neither_horizon,
+            # Rewards and times
+            "short_term_reward": self.short_term.short_term_reward,
+            "long_term_reward": self.short_term.long_term_reward,
+            "short_term_time": self.short_term.short_term_time,
+            "long_term_time": self.short_term.long_term_time,
+            # Choice probabilities
+            "choice_probs": [
+                self.short_term.choice_prob,
+                self.long_term.choice_prob,
+            ],
+            "min_choice_prob": self.min_choice_prob,
+            # Rational/associated
+            "matches_rational": [
+                self.short_term.matches_rational,
+                self.long_term.matches_rational,
+            ],
+            "matches_associated": [
+                self.short_term.matches_associated,
+                self.long_term.matches_associated,
+            ],
+            # IDs
+            "formatting_ids": [
+                self.short_term.formatting_id,
+                self.long_term.formatting_id,
+            ],
+            "context_ids": [
+                self.short_term.context_id,
+                self.long_term.context_id,
+            ],
+            "same_formatting": self.same_formatting,
+            "same_context": self.same_context,
+        }
 
-    Args:
-        dataset: PreferenceDataset containing samples to search
-
-    Returns:
-        List of ContrastivePreferences pairs
-    """
-    # Group samples by content (same formatting, rewards, times, but potentially different time_horizon)
-    # Key: (abs(formatting_id), short_reward, long_reward, short_time, long_time)
-    # Use abs(formatting_id) because label swaps (a↔b) result in negated IDs
-    content_groups: dict[tuple, list[PreferenceSample]] = {}
-
-    for pref in dataset.preferences:
-        # Skip samples with unknown choice
-        if pref.choice_term not in ("short_term", "long_term"):
-            continue
-
-        # Build content key - use abs(formatting_id) to group label-swapped variants
-        key = (
-            abs(pref.formatting_id) if pref.formatting_id else 0,
-            pref.short_term_reward,
-            pref.long_term_reward,
-            pref.short_term_time,
-            pref.long_term_time,
-        )
-        if key not in content_groups:
-            content_groups[key] = []
-        content_groups[key].append(pref)
-
-    # Find pairs with different choices within each group
-    pairs: list[ContrastivePreferences] = []
-
-    for key, samples in content_groups.items():
-        # Separate by choice
-        short_choosers = [s for s in samples if s.choice_term == "short_term"]
-        long_choosers = [s for s in samples if s.choice_term == "long_term"]
-
-        # Create pairs
-        for short_sample in short_choosers:
-            for long_sample in long_choosers:
-                # Verify they have different time horizons
-                if short_sample.time_horizon == long_sample.time_horizon:
-                    continue
-
-                # Verify same label formatting (swapped labels cause semantic mismatch)
-                if require_same_labels and (
-                    short_sample.short_term_label != long_sample.short_term_label
-                    or short_sample.long_term_label != long_sample.long_term_label
-                ):
-                    continue
-
-                pairs.append(
-                    ContrastivePreferences(
-                        short_term=short_sample,
-                        long_term=long_sample,
-                    )
-                )
-
-    # Sort by minimum choice probability (highest confidence pairs first)
-    # This prioritizes pairs where both samples were confident in their choices
-    pairs.sort(key=lambda p: p.min_choice_prob, reverse=True)
-
-    if debug_by_using_single_sample:
-        return [
-            ContrastivePreferences(
-                short_term=pairs[0].short_term,
-                long_term=pairs[0].short_term,
-            )
-        ]
-
-    return pairs
+    def to_summary_string(self):
+        return json.dumps(self.to_summary_dict(), indent=4)

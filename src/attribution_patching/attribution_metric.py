@@ -137,8 +137,17 @@ class AttributionMetric(BaseSchema):
             AttributionMetric configured for this pair and mode
         """
         # Get first token IDs for the choice labels
-        clean_label = contrastive_pair.clean_label or ""
-        corrupted_label = contrastive_pair.corrupted_label or ""
+        # clean_labels = (short_term_label, long_term_label) for clean trajectory
+        # corrupted_labels = (short_term_label, long_term_label) for corrupted trajectory
+        # Clean trajectory chose short_term (index 0), corrupted chose long_term (index 1)
+        if contrastive_pair.clean_labels:
+            clean_label = contrastive_pair.clean_labels[0]  # The chosen label in clean
+        else:
+            clean_label = ""
+        if contrastive_pair.corrupted_labels:
+            corrupted_label = contrastive_pair.corrupted_labels[1]  # The chosen label in corrupted
+        else:
+            corrupted_label = ""
 
         clean_ids = runner.encode_ids(clean_label, add_special_tokens=False)
         corrupted_ids = runner.encode_ids(corrupted_label, add_special_tokens=False)

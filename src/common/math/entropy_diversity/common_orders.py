@@ -9,7 +9,7 @@ Provides named functions for commonly-used orders:
 from __future__ import annotations
 
 from ..num_types import Num, Nums
-from .diversity import q_diversity, q_concentration
+from .entropy_diversity import q_diversity, q_concentration
 from .power_mean import power_mean_from_logprobs
 
 

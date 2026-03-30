@@ -6,7 +6,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from .palettes import BAR_COLORS
+from .viz_palettes import BAR_COLORS
 
 
 def finalize_plot(
