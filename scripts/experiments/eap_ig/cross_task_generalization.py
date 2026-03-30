@@ -6,8 +6,6 @@ import argparse
 import json
 import os
 import pickle
-import subprocess
-import sys
 import warnings
 from pathlib import Path
 from typing import Any
@@ -23,25 +21,8 @@ LayerComponentNode = tuple[LayerComponent, int]
 
 warnings.filterwarnings("ignore")
 
-subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "git+https://github.com/SD-interp/mech-interp-toolkit.git",
-    ],
-    check=True,
-)
-
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
-NODES_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "data"
-    / "selected_nodes"
-    / "final_200_QnA.pkl"
-)
 torch.set_grad_enabled(False)
 HF_REPO_ID = os.getenv("HF_REPO_ID", "Temporal_Awareness_EAP_IG")
 SUPPORTED_QUADRATURES = {
@@ -52,6 +33,25 @@ SUPPORTED_QUADRATURES = {
 QUADRATURE_ALIASES = {
     "midpoint": "riemann-midpoint",
 }
+
+
+def resolve_default_nodes_path() -> Path:
+    """Return the preferred selected-node artifact, with legacy fallback."""
+    selected_nodes_dir = (
+        Path(__file__).parent.parent.parent.parent / "data" / "selected_nodes"
+    )
+    preferred_path = selected_nodes_dir / "final_200_eap_ig.pkl"
+    if preferred_path.exists():
+        return preferred_path
+
+    legacy_path = selected_nodes_dir / "final_200_QnA.pkl"
+    if legacy_path.exists():
+        return legacy_path
+
+    return preferred_path
+
+
+NODES_PATH = resolve_default_nodes_path()
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -108,6 +108,18 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def ensure_mech_interp_toolkit_installed() -> None:
+    """Raise a clear error when ``mech_interp_toolkit`` is unavailable."""
+    try:
+        import mech_interp_toolkit  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "mech_interp_toolkit is required for cross-task generalization. "
+            'Install the pinned dependency with `pip install -e ".[eap_ig]"` '
+            "before running this script."
+        ) from exc
+
+
 def resolve_config_path(config_path: Path) -> Path:
     """Resolve config paths relative to the local config directory by default."""
     if config_path.is_absolute():
@@ -155,6 +167,7 @@ def run_cross_task_generalization(
     tokenizer=None,
 ) -> tuple[Any, Any]:
     """Run cross-task generalization from Python or notebooks."""
+    ensure_mech_interp_toolkit_installed()
     config = load_config(resolve_config_path(config_path))
 
     node_lookup = pickle.load(nodes_path.open("rb"))

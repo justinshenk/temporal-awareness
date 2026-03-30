@@ -1,4 +1,4 @@
-"""Patch selected nodes and save one plot per QnA node group."""
+"""Patch selected nodes and save one plot per EAP-IG node group."""
 
 import argparse
 import json
@@ -15,11 +15,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
-DEFAULT_QNA_NODES_PATH = Path("data/selected_nodes/QnA_sufficient(200).pkl")
 torch.set_grad_enabled(False)
 
 LayerComponent = tuple[int, str]
 LayerComponentNode = tuple[LayerComponent, int]
+
+
+def resolve_default_nodes_path() -> Path:
+    """Return the preferred node-group artifact, with legacy fallback."""
+    preferred_path = Path("data/selected_nodes/eap_ig_sufficient(200).pkl")
+    if preferred_path.exists():
+        return preferred_path
+
+    legacy_path = Path("data/selected_nodes/QnA_sufficient(200).pkl")
+    if legacy_path.exists():
+        return legacy_path
+
+    return preferred_path
+
+
+DEFAULT_EAP_IG_NODES_PATH = resolve_default_nodes_path()
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
@@ -164,22 +179,22 @@ def save_scatter_plot(
     plt.close(fig)
 
 
-def load_qna_nodes(nodes_path: Path) -> dict[str, list[str]]:
+def load_eap_ig_nodes(nodes_path: Path) -> dict[str, list[str]]:
     """Load the selected node groups from pickle."""
     with nodes_path.open("rb") as f:
-        qna_nodes = pickle.load(f)
+        eap_ig_nodes = pickle.load(f)
 
-    if not isinstance(qna_nodes, dict):
+    if not isinstance(eap_ig_nodes, dict):
         raise TypeError(
-            f"Expected {nodes_path} to contain a dict, got {type(qna_nodes)!r}"
+            f"Expected {nodes_path} to contain a dict, got {type(eap_ig_nodes)!r}"
         )
 
-    return qna_nodes
+    return eap_ig_nodes
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Patch selected nodes and save one plot per QnA node group."
+        description="Patch selected nodes and save one plot per EAP-IG node group."
     )
     parser.add_argument(
         "--config",
@@ -190,8 +205,8 @@ def main() -> None:
     parser.add_argument(
         "--nodes-path",
         type=Path,
-        default=DEFAULT_QNA_NODES_PATH,
-        help="Path to a pickle file containing qna node groups.",
+        default=DEFAULT_EAP_IG_NODES_PATH,
+        help="Path to a pickle file containing EAP-IG node groups.",
     )
     parser.add_argument(
         "--output-dir",
@@ -220,7 +235,7 @@ def main() -> None:
     system_prompt: str = config["parameters"]["system_prompt"]
 
     input_file_path = data_loc / data_file
-    qna_nodes = load_qna_nodes(args.nodes_path)
+    eap_ig_nodes = load_eap_ig_nodes(args.nodes_path)
 
     try:
         from mech_interp_toolkit.activation_utils import (
@@ -234,7 +249,7 @@ def main() -> None:
     except ImportError as exc:
         raise ImportError(
             "mech_interp_toolkit is required. Install it in the active environment "
-            "before running this script."
+            'with `pip install -e ".[eap_ig]"` before running this script.'
         ) from exc
 
     set_global_seed(seed)
@@ -265,7 +280,7 @@ def main() -> None:
         add_special_tokens=False,
     )[0]
 
-    for node_group_name, node_specs in qna_nodes.items():
+    for node_group_name, node_specs in eap_ig_nodes.items():
         if not node_specs:
             continue
 

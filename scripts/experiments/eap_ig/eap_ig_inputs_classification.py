@@ -7,8 +7,6 @@ import gc
 import json
 import os
 import queue
-import subprocess
-import sys
 import threading
 import warnings
 from pathlib import Path
@@ -21,17 +19,6 @@ from huggingface_hub import HfApi
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
-
-subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "git+https://github.com/SD-interp/mech-interp-toolkit.git",
-    ],
-    check=True,
-)
 
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
@@ -99,6 +86,18 @@ def load_config(config_path: Path) -> dict:
     """
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def ensure_mech_interp_toolkit_installed() -> None:
+    """Raise a clear error when ``mech_interp_toolkit`` is unavailable."""
+    try:
+        import mech_interp_toolkit  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "mech_interp_toolkit is required for the EAP-IG workflow. "
+            'Install the pinned dependency with `pip install -e ".[eap_ig]"` '
+            "before running this script."
+        ) from exc
 
 
 def extract_alnum(s: str) -> str:
@@ -170,6 +169,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    ensure_mech_interp_toolkit_installed()
     config = load_config(CONFIG_PATH / args.config)
 
     model_name: str = config["setup"]["model"]

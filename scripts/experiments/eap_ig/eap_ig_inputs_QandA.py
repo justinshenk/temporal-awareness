@@ -8,8 +8,6 @@ import json
 import os
 import queue
 import re
-import subprocess
-import sys
 import threading
 import warnings
 from pathlib import Path
@@ -115,20 +113,15 @@ def load_config(config_path: Path) -> dict:
 
 
 def ensure_mech_interp_toolkit_installed() -> None:
-    """Install ``mech_interp_toolkit`` into the active environment if needed."""
+    """Raise a clear error when ``mech_interp_toolkit`` is unavailable."""
     try:
         import mech_interp_toolkit  # noqa: F401
-    except ImportError:
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "git+https://github.com/SD-interp/mech-interp-toolkit.git",
-            ],
-            check=True,
-        )
+    except ImportError as exc:
+        raise ImportError(
+            "mech_interp_toolkit is required for the EAP-IG workflow. "
+            'Install the pinned dependency with `pip install -e ".[eap_ig]"` '
+            "before running this script."
+        ) from exc
 
 
 def extract_alnum(s: str) -> str:
@@ -550,8 +543,14 @@ def main() -> None:
         required=True,
         help="Path to config YAML file (e.g., step_numbers.yaml)",
     )
+    parser.add_argument(
+        "--save-to-hf",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Upload generated NPZ files to the configured Hugging Face dataset repo.",
+    )
     args = parser.parse_args()
-    run_eap_ig(args.config)
+    run_eap_ig(args.config, save_to_hf=args.save_to_hf)
 
 
 if __name__ == "__main__":

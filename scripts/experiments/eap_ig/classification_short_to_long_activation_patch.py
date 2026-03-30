@@ -7,8 +7,6 @@ import argparse
 import gc
 import json
 import pickle
-import subprocess
-import sys
 import warnings
 from pathlib import Path
 from typing import Any
@@ -21,29 +19,31 @@ from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "git+https://github.com/SD-interp/mech-interp-toolkit.git",
-    ],
-    check=True,
-)
-
 load_dotenv()
 CONFIG_PATH = Path(__file__).parent / "config"
 torch.set_grad_enabled(False)
 
 LayerComponent = tuple[int, str]
 LayerComponentNode = tuple[LayerComponent, int]
-NODES_PATH = (
-    Path(__file__).parent.parent.parent.parent
-    / "data"
-    / "selected_nodes"
-    / "final_200_QnA.pkl"
-)
+
+
+def resolve_default_nodes_path() -> Path:
+    """Return the preferred selected-node artifact, with legacy fallback."""
+    selected_nodes_dir = (
+        Path(__file__).parent.parent.parent.parent / "data" / "selected_nodes"
+    )
+    preferred_path = selected_nodes_dir / "final_200_eap_ig.pkl"
+    if preferred_path.exists():
+        return preferred_path
+
+    legacy_path = selected_nodes_dir / "final_200_QnA.pkl"
+    if legacy_path.exists():
+        return legacy_path
+
+    return preferred_path
+
+
+NODES_PATH = resolve_default_nodes_path()
 
 
 def tensor_to_float(tensor: torch.Tensor) -> float:
@@ -65,6 +65,18 @@ def load_config(config_path: Path) -> dict[str, Any]:
     """Load configuration from a YAML file."""
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def ensure_mech_interp_toolkit_installed() -> None:
+    """Raise a clear error when ``mech_interp_toolkit`` is unavailable."""
+    try:
+        import mech_interp_toolkit  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            "mech_interp_toolkit is required for activation patching. "
+            'Install the pinned dependency with `pip install -e ".[eap_ig]"` '
+            "before running this script."
+        ) from exc
 
 
 def resolve_config_path(config_path: Path) -> Path:
@@ -418,6 +430,7 @@ def run_bidirectional_classification_activation_patch(
     node_classes: list[str],
     *,
     nodes_path: Path = NODES_PATH,
+    output_filename: str | None = None,
     min_logit_diff: float = 1.0,
     num_random_sources: int = 5,
     model: Any = None,
@@ -428,6 +441,7 @@ def run_bidirectional_classification_activation_patch(
     This entrypoint is intended for Python scripts and notebooks, mirroring the
     structure of ``run_cross_task_generalization``.
     """
+    ensure_mech_interp_toolkit_installed()
     config = load_config(resolve_config_path(config_path))
 
     model_name: str = config["setup"]["model"]
@@ -442,7 +456,7 @@ def run_bidirectional_classification_activation_patch(
     option_keys: list[str] = config["input"]["option_keys"]
     prompt_suffix: str = config["input"]["prompt_suffix"]
     system_prompt: str = config["parameters"]["system_prompt"]
-    output_filename: str = config.get("output", {}).get(
+    resolved_output_filename = output_filename or config.get("output", {}).get(
         "filename",
         Path(data_file).stem,
     )
@@ -547,7 +561,7 @@ def run_bidirectional_classification_activation_patch(
     }
 
     output_path = save_loc / (
-        f"{sanitize_filename(output_filename)}__{sanitize_filename('__'.join(node_classes))}__bidirectional_activation_patch.json"
+        f"{sanitize_filename(resolved_output_filename)}__{sanitize_filename('__'.join(node_classes))}__bidirectional_activation_patch.json"
     )
     with output_path.open("w", encoding="utf-8") as f:
         json.dump(output_payload, f, indent=2)
@@ -560,6 +574,7 @@ def run_classification_short_to_long_activation_patch(
     node_classes: list[str],
     *,
     nodes_path: Path = NODES_PATH,
+    output_filename: str | None = None,
     min_logit_diff: float = 1.0,
     num_random_sources: int = 5,
     model: Any = None,
@@ -570,6 +585,7 @@ def run_classification_short_to_long_activation_patch(
         config_path,
         node_classes,
         nodes_path=nodes_path,
+        output_filename=output_filename,
         min_logit_diff=min_logit_diff,
         num_random_sources=num_random_sources,
         model=model,
@@ -595,6 +611,18 @@ def main() -> None:
         help="Class of nodes to patch, loaded from NODES_PATH.",
     )
     parser.add_argument(
+        "--nodes-path",
+        type=Path,
+        default=NODES_PATH,
+        help="Pickle file containing the selected node classes to load.",
+    )
+    parser.add_argument(
+        "--output-filename",
+        type=str,
+        default=None,
+        help="Override the output filename stem from the config.",
+    )
+    parser.add_argument(
         "--min-logit-diff",
         type=float,
         default=1.0,
@@ -611,6 +639,8 @@ def main() -> None:
     run_bidirectional_classification_activation_patch(
         args.config,
         args.node_class,
+        nodes_path=args.nodes_path,
+        output_filename=args.output_filename,
         min_logit_diff=args.min_logit_diff,
         num_random_sources=args.num_random_sources,
     )
