@@ -1,19 +1,8 @@
-"""Adversarial red-teaming loop for temporal activation probes.
+"""Paper-style adversarial red-teaming loop for temporal activation probes.
 
-This module implements a paper-faithful cold-start black-box red-teaming
-workflow around a GPT-2 mean-mass (MM) temporal probe trained on the
-explicit-expanded dataset.
-
-The attack loop uses prompt+completion pairs as the attack surface:
-1. Train a frozen GPT-2 layer-6 MM probe on the explicit-expanded dataset.
-2. Ask a large attacker model to generate a batch of diverse prompt+completion
-   pairs from scratch.
-3. Score those candidates with the probe.
-4. Feed structured feedback from the scored batch back to the attacker before
-   the next batch.
-
-All generated candidates are stored so they can be judged later by a human or
-an additional model.
+This module keeps the attacker in a single multi-turn conversation and uses a
+separate LLM judge to assign ground-truth temporal labels before computing
+probe failures.
 """
 
 from __future__ import annotations
@@ -22,7 +11,7 @@ import json
 import os
 import re
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Optional
 
@@ -34,7 +23,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 try:
     from anthropic import Anthropic
-except ImportError:  # pragma: no cover - optional for offline resume/analysis flows
+except ImportError:  # pragma: no cover - optional for offline checks
     Anthropic = None
 
 try:
@@ -50,6 +39,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_EXPLICIT_EXPANDED_PATH = (
     REPO_ROOT / "data" / "raw" / "temporal_scope_AB_randomized" / "temporal_scope_explicit_expanded_500.json"
 )
+DEFAULT_MM_PROBE_CHECKPOINT_PATH = (
+    REPO_ROOT
+    / "results"
+    / "checkpoints"
+    / "mmraz_probe_variations_red_team_augmented_20260322-090107"
+    / "mmraz_gpt2_explicit_expanded_plus_redteam_mm_probe_layer_6.json"
+)
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "out" / "mmraz_intertemporal" / "adversarial_red_teaming" / "runs"
 
 
@@ -59,6 +55,13 @@ class ProbeScore:
     margin: float
     confidence: float
     p_long_term: float
+
+
+@dataclass
+class JudgeResult:
+    candidate_id: str
+    label: str
+    reason: str
 
 
 @dataclass
@@ -77,10 +80,10 @@ class AdversarialCandidate:
     probe_margin: float
     probe_confidence: float
     probe_p_long_term: float
+    judge_label: str
+    judge_reason: str
     is_adversarial_success: bool
     created_at: str
-    judge_label: Optional[str] = None
-    judge_confidence: Optional[float] = None
 
     @property
     def joint_text(self) -> str:
@@ -88,7 +91,8 @@ class AdversarialCandidate:
 
 
 @dataclass
-class AttackerApiUsageRecord:
+class MessagesApiUsageRecord:
+    actor: str
     request_type: str
     round_idx: Optional[int]
     message_id: Optional[str]
@@ -109,62 +113,54 @@ class AttackerApiUsageRecord:
 
 
 @dataclass
-class AttackerAttemptFailure:
+class MessagesAttemptFailure:
     attempt_idx: int
     raw_text: Optional[str]
     error: str
-    usage_record: Optional[AttackerApiUsageRecord] = None
+    usage_record: Optional[MessagesApiUsageRecord] = None
 
 
-class AttackerGenerationError(RuntimeError):
+class MessagesGenerationError(RuntimeError):
     def __init__(
         self,
         message: str,
         system_prompt: str,
-        user_prompt: str,
-        failures: list[AttackerAttemptFailure],
+        request_messages: list[dict[str, str]],
+        failures: list[MessagesAttemptFailure],
     ) -> None:
         super().__init__(message)
         self.system_prompt = system_prompt
-        self.user_prompt = user_prompt
+        self.request_messages = request_messages
         self.failures = failures
 
 
 @dataclass
 class RedTeamConfig:
     explicit_dataset_path: str = str(DEFAULT_EXPLICIT_EXPANDED_PATH)
+    mm_probe_checkpoint_path: str = str(DEFAULT_MM_PROBE_CHECKPOINT_PATH)
     output_root: str = str(DEFAULT_OUTPUT_ROOT)
     run_id: Optional[str] = None
-    resume: bool = False
     attacker_model: str = "claude-sonnet-4-20250514"
     attacker_base_url: str = "https://api.anthropic.com"
     attacker_timeout_seconds: float = 180.0
     attacker_max_output_tokens: int = 8000
     attacker_context_window_tokens: Optional[int] = None
+    judge_model: str = "claude-sonnet-4-20250514"
+    judge_base_url: str = "https://api.anthropic.com"
+    judge_timeout_seconds: float = 180.0
+    judge_max_output_tokens: int = 4000
+    judge_context_window_tokens: Optional[int] = None
     random_seed: int = 42
-    num_rounds: int = 50
-    candidates_per_round: int = 20
+    num_rounds: int = 20
+    candidates_per_round: int = 10
     attacker_max_retries: int = 3
+    judge_max_retries: int = 3
     gpt2_model_name: str = "gpt2"
     mm_probe_layer: int = 6
     probe_batch_size: int = 16
     probe_train_test_split: float = 0.2
     probe_random_state: int = 42
     show_progress: bool = True
-
-
-@dataclass
-class ResumedRedTeamRun:
-    config: RedTeamConfig
-    output_dir: Path
-    run_id: str
-    all_candidates: list[AdversarialCandidate]
-    successful_candidates: list[AdversarialCandidate]
-    recent_feedback: list[AdversarialCandidate]
-    attacker_api_usage_records: list[dict[str, Any]]
-    next_round_idx: int
-    prior_probe_metadata: dict[str, Any]
-    final_summary: Optional[dict[str, Any]]
 
 
 def _now_utc() -> str:
@@ -193,167 +189,8 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
             f.write(json.dumps(row, ensure_ascii=True) + "\n")
 
 
-def _read_json(path: Path) -> Any:
-    return json.loads(path.read_text())
-
-
-def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
-        for line_idx, line in enumerate(f, start=1):
-            text = line.strip()
-            if not text:
-                continue
-            try:
-                payload = json.loads(text)
-            except json.JSONDecodeError as exc:
-                raise RuntimeError(f"Invalid JSONL row in {path} at line {line_idx}: {exc}") from exc
-            if not isinstance(payload, dict):
-                raise RuntimeError(f"Expected JSON object in {path} at line {line_idx}, got {type(payload).__name__}")
-            rows.append(payload)
-    return rows
-
-
-def _red_team_config_from_dict(payload: dict[str, Any]) -> RedTeamConfig:
-    field_names = {field.name for field in fields(RedTeamConfig)}
-    config_payload = {key: value for key, value in payload.items() if key in field_names}
-    return RedTeamConfig(**config_payload)
-
-
-def _candidate_from_dict(payload: dict[str, Any]) -> AdversarialCandidate:
-    field_names = {field.name for field in fields(AdversarialCandidate)}
-    candidate_payload = {name: payload.get(name) for name in field_names}
-    return AdversarialCandidate(**candidate_payload)
-
-
-def _candidate_round_path(output_dir: Path, round_idx: int) -> Path:
-    return output_dir / f"round_{round_idx:03d}_candidates.jsonl"
-
-
-def _usage_round_path(output_dir: Path, round_idx: int) -> Path:
-    return output_dir / f"round_{round_idx:03d}_attacker_api_usage.json"
-
-
-def _resolve_run_dir(output_root: Path, run_id: Optional[str]) -> Path:
-    if run_id:
-        run_dir = output_root / run_id
-        if not run_dir.exists():
-            raise FileNotFoundError(f"Run directory not found: {run_dir}")
-        if not run_dir.is_dir():
-            raise NotADirectoryError(f"Run path is not a directory: {run_dir}")
-        return run_dir
-
-    if not output_root.exists():
-        raise FileNotFoundError(f"Output root does not exist: {output_root}")
-
-    candidates = sorted(
-        path
-        for path in output_root.iterdir()
-        if path.is_dir() and (path / "run_config.json").exists()
-    )
-    if not candidates:
-        raise FileNotFoundError(f"No resumable red-teaming runs found under {output_root}")
-    return candidates[-1]
-
-
-def _load_committed_round_candidates(
-    output_dir: Path,
-    round_idx: int,
-    expected_candidates_per_round: int,
-) -> Optional[list[AdversarialCandidate]]:
-    path = _candidate_round_path(output_dir, round_idx)
-    if not path.exists():
-        return None
-
-    try:
-        rows = _read_jsonl(path)
-    except Exception:
-        return None
-    if len(rows) != expected_candidates_per_round:
-        return None
-
-    try:
-        candidates = [_candidate_from_dict(row) for row in rows]
-    except Exception:
-        return None
-    if any(candidate.round_idx != round_idx for candidate in candidates):
-        return None
-    return candidates
-
-
-def _load_resumed_run(config: RedTeamConfig) -> ResumedRedTeamRun:
-    output_root = Path(config.output_root)
-    output_dir = _resolve_run_dir(output_root, config.run_id)
-    run_id = output_dir.name
-
-    run_config_path = output_dir / "run_config.json"
-    if not run_config_path.exists():
-        raise FileNotFoundError(f"Cannot resume run {run_id}: missing {run_config_path}")
-
-    saved_config_payload = _read_json(run_config_path)
-    if not isinstance(saved_config_payload, dict):
-        raise RuntimeError(f"Unexpected run config payload in {run_config_path}: {type(saved_config_payload).__name__}")
-
-    resumed_config = _red_team_config_from_dict(saved_config_payload)
-    resumed_config.output_root = str(output_root)
-    resumed_config.run_id = run_id
-    resumed_config.resume = True
-    resumed_config.show_progress = config.show_progress
-
-    all_candidates: list[AdversarialCandidate] = []
-    recent_feedback: list[AdversarialCandidate] = []
-    next_round_idx = 0
-    while True:
-        batch_candidates = _load_committed_round_candidates(
-            output_dir=output_dir,
-            round_idx=next_round_idx,
-            expected_candidates_per_round=resumed_config.candidates_per_round,
-        )
-        if batch_candidates is None:
-            break
-        all_candidates.extend(batch_candidates)
-        recent_feedback = list(batch_candidates)
-        next_round_idx += 1
-
-    successful_candidates = [candidate for candidate in all_candidates if candidate.is_adversarial_success]
-
-    attacker_api_usage_records: list[dict[str, Any]] = []
-    for round_idx in range(next_round_idx):
-        path = _usage_round_path(output_dir, round_idx)
-        if path.exists():
-            payload = _read_json(path)
-            if isinstance(payload, dict):
-                attacker_api_usage_records.append(payload)
-
-    target_probe_path = output_dir / "target_probe.json"
-    prior_probe_metadata = (
-        _read_json(target_probe_path)
-        if target_probe_path.exists() else {}
-    )
-    if prior_probe_metadata and not isinstance(prior_probe_metadata, dict):
-        raise RuntimeError(
-            f"Unexpected target probe payload in {target_probe_path}: {type(prior_probe_metadata).__name__}"
-        )
-
-    final_summary_path = output_dir / "final_summary.json"
-    final_summary = _read_json(final_summary_path) if final_summary_path.exists() else None
-    if final_summary is not None and not isinstance(final_summary, dict):
-        raise RuntimeError(
-            f"Unexpected final summary payload in {final_summary_path}: {type(final_summary).__name__}"
-        )
-
-    return ResumedRedTeamRun(
-        config=resumed_config,
-        output_dir=output_dir,
-        run_id=run_id,
-        all_candidates=all_candidates,
-        successful_candidates=successful_candidates,
-        recent_feedback=recent_feedback,
-        attacker_api_usage_records=attacker_api_usage_records,
-        next_round_idx=next_round_idx,
-        prior_probe_metadata=prior_probe_metadata,
-        final_summary=final_summary,
-    )
+def _compact_json(payload: Any) -> str:
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
 
 
 def _extract_json_payload(raw_text: str) -> Any:
@@ -361,7 +198,7 @@ def _extract_json_payload(raw_text: str) -> Any:
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.DOTALL).strip()
 
-    candidates: list[str] = [text]
+    candidates = [text]
     balanced_object = _extract_first_balanced_json_object(text)
     if balanced_object is not None:
         candidates.append(balanced_object)
@@ -469,17 +306,17 @@ def _extract_candidate_object_strings(raw_text: str) -> list[str]:
     return objects
 
 
-def _sigmoid(x: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-np.clip(x, -60.0, 60.0)))
-
-
 def _normalize_label(value: str) -> str:
     text = (value or "").strip().lower()
-    if text in {"short_term", "short-term", "short", "immediate", "choose_immediate"}:
+    if text in {"short_term", "short-term", "short", "immediate", "near_term", "near-term"}:
         return LABEL_SHORT
-    if text in {"long_term", "long-term", "long", "future", "choose_long_term"}:
+    if text in {"long_term", "long-term", "long", "future", "enduring"}:
         return LABEL_LONG
     raise ValueError(f"Unsupported temporal label: {value!r}")
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -60.0, 60.0)))
 
 
 def _safe_confidence(prob_long: float, label: str) -> float:
@@ -522,9 +359,9 @@ class GPT2LayerMMProbe:
         self.random_state = random_state
 
         self.device = (
-            "cuda" if torch.cuda.is_available() else (
-                "mps" if torch.backends.mps.is_available() else "cpu"
-            )
+            "cuda"
+            if torch.cuda.is_available()
+            else ("mps" if torch.backends.mps.is_available() else "cpu")
         )
         self.tokenizer = None
         self.model = None
@@ -552,9 +389,7 @@ class GPT2LayerMMProbe:
         if n_layers is None:
             raise ValueError(f"Could not determine layer count for {self.model_name}")
         if self.layer < 0 or self.layer >= n_layers:
-            raise ValueError(
-                f"Requested layer {self.layer} but model has {n_layers} layers"
-            )
+            raise ValueError(f"Requested layer {self.layer} but model has {n_layers} layers")
 
     def _extract_last_token_activations(self, texts: list[str]) -> np.ndarray:
         self._load_model()
@@ -646,9 +481,44 @@ class GPT2LayerMMProbe:
         }
         return dict(self.metadata)
 
+    @classmethod
+    def from_checkpoint(cls, checkpoint_path: Path, batch_size: int) -> "GPT2LayerMMProbe":
+        payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+
+        direction_payload = payload.get("direction")
+        if not isinstance(direction_payload, list) or not direction_payload:
+            raise ValueError(f"Probe checkpoint {checkpoint_path} is missing a valid direction vector.")
+
+        score_scale = payload.get("score_scale")
+        if score_scale is None:
+            raise ValueError(f"Probe checkpoint {checkpoint_path} is missing score_scale.")
+
+        layer = payload.get("layer")
+        if layer is None:
+            raise ValueError(f"Probe checkpoint {checkpoint_path} is missing layer.")
+
+        model_name = str(payload.get("model_name") or "gpt2")
+        explicit_dataset_path = Path(payload.get("explicit_dataset_path") or DEFAULT_EXPLICIT_EXPANDED_PATH)
+        test_split = float(payload.get("test_split", 0.2))
+        random_state = int(payload.get("random_state", 42))
+
+        probe = cls(
+            model_name=model_name,
+            explicit_dataset_path=explicit_dataset_path,
+            layer=int(layer),
+            batch_size=batch_size,
+            test_split=test_split,
+            random_state=random_state,
+        )
+        probe.direction = np.asarray(direction_payload, dtype=np.float32)
+        probe.score_scale = float(score_scale)
+        probe.metadata = {k: v for k, v in payload.items() if k != "direction"}
+        probe.metadata["checkpoint_path"] = str(checkpoint_path)
+        return probe
+
     def score_texts(self, texts: list[str]) -> list[ProbeScore]:
         if self.direction is None or self.score_scale is None:
-            raise RuntimeError("Probe must be trained before scoring.")
+            raise RuntimeError("Probe must be loaded or trained before scoring.")
 
         X = self._extract_last_token_activations(texts)
         scores = X @ self.direction
@@ -668,17 +538,17 @@ class GPT2LayerMMProbe:
         return results
 
 
-class AnthropicMessagesAttacker:
-    """Anthropic Messages API client for adversarial candidate generation."""
-
+class AnthropicMessagesClient:
     def __init__(
         self,
+        actor: str,
         model: str,
         base_url: str,
         timeout_seconds: float,
         max_output_tokens: int,
         context_window_tokens: Optional[int],
     ) -> None:
+        self.actor = actor
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
@@ -692,7 +562,7 @@ class AnthropicMessagesAttacker:
             )
         if Anthropic is None:
             raise RuntimeError(
-                "The anthropic package is not installed. Install it to run attacker generation."
+                "The anthropic package is not installed. Install it to run red-teaming generation."
             )
 
         self.client = Anthropic(
@@ -701,318 +571,18 @@ class AnthropicMessagesAttacker:
             timeout=self.timeout_seconds,
         )
 
-    def generate_candidates(
-        self,
-        round_idx: int,
-        num_rounds: int,
-        k: int,
-        recent_feedback: list[AdversarialCandidate],
-        rolling_summary: dict[str, Any],
-        max_retries: int,
-    ) -> tuple[list[dict[str, str]], str, str, AttackerApiUsageRecord]:
-        system_prompt = self._build_system_prompt()
-        user_prompt = self._build_user_prompt(
-            round_idx=round_idx,
-            num_rounds=num_rounds,
-            k=k,
-            recent_feedback=recent_feedback,
-            rolling_summary=rolling_summary,
-        )
-        failures: list[AttackerAttemptFailure] = []
-        request_max_output_tokens = self.max_output_tokens
-        for attempt_idx in range(max_retries):
-            raw_text: Optional[str] = None
-            usage_record: Optional[AttackerApiUsageRecord] = None
-            try:
-                raw_text, usage_record = self._create_response(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    request_type="candidate_generation",
-                    round_idx=round_idx,
-                    max_output_tokens=request_max_output_tokens,
-                )
-                payload = self._parse_candidates(raw_text, expected_k=k)
-                return payload, system_prompt, user_prompt, usage_record
-            except Exception as exc:
-                failures.append(
-                    AttackerAttemptFailure(
-                        attempt_idx=attempt_idx,
-                        raw_text=raw_text,
-                        error=str(exc),
-                        usage_record=usage_record,
-                    )
-                )
-                request_max_output_tokens = self._next_retry_max_output_tokens(
-                    current_max_output_tokens=request_max_output_tokens,
-                    usage_record=usage_record,
-                )
-        raise AttackerGenerationError(
-            message=f"Failed to generate a valid attacker batch after {max_retries} attempts.",
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            failures=failures,
-        )
-
-    def summarize_completed_run(
-        self,
-        run_id: str,
-        num_rounds: int,
-        candidates_per_round: int,
-        probe_metadata: dict[str, Any],
-        all_candidates: list[AdversarialCandidate],
-        max_retries: int,
-    ) -> tuple[dict[str, Any], str, str, AttackerApiUsageRecord]:
-        system_prompt = self._build_strategy_summary_system_prompt()
-        user_prompt = self._build_strategy_summary_user_prompt(
-            run_id=run_id,
-            num_rounds=num_rounds,
-            candidates_per_round=candidates_per_round,
-            probe_metadata=probe_metadata,
-            all_candidates=all_candidates,
-        )
-        failures: list[AttackerAttemptFailure] = []
-        request_max_output_tokens = self.max_output_tokens
-        for attempt_idx in range(max_retries):
-            raw_text: Optional[str] = None
-            usage_record: Optional[AttackerApiUsageRecord] = None
-            try:
-                raw_text, usage_record = self._create_response(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    request_type="final_strategy_summary",
-                    round_idx=None,
-                    max_output_tokens=request_max_output_tokens,
-                )
-                payload = self._parse_strategy_summary(raw_text)
-                return payload, system_prompt, user_prompt, usage_record
-            except Exception as exc:
-                failures.append(
-                    AttackerAttemptFailure(
-                        attempt_idx=attempt_idx,
-                        raw_text=raw_text,
-                        error=str(exc),
-                        usage_record=usage_record,
-                    )
-                )
-                request_max_output_tokens = self._next_retry_max_output_tokens(
-                    current_max_output_tokens=request_max_output_tokens,
-                    usage_record=usage_record,
-                )
-        raise AttackerGenerationError(
-            message=f"Failed to generate a valid strategy summary after {max_retries} attempts.",
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            failures=failures,
-        )
-
-    def _next_retry_max_output_tokens(
-        self,
-        current_max_output_tokens: int,
-        usage_record: Optional[AttackerApiUsageRecord],
-    ) -> int:
-        if usage_record is None or usage_record.stop_reason != "max_tokens":
-            return current_max_output_tokens
-
-        doubled = current_max_output_tokens * 2
-        if self.context_window_tokens is None:
-            return doubled
-
-        available_budget = max(self.context_window_tokens - usage_record.total_input_tokens, current_max_output_tokens)
-        return max(current_max_output_tokens, min(doubled, available_budget))
-
-    def _build_system_prompt(self) -> str:
-        return (
-            "You are an adversarial red-team generator for a temporal activation probe.\n"
-            "Your job is to generate diverse prompt+completion pairs from scratch that are "
-            "semantically either short-term or long-term, while trying to make a temporal probe "
-            "misclassify them.\n"
-            "Do not paraphrase or lightly edit prior examples. Use earlier rounds only as feedback "
-            "about successful and unsuccessful strategies, then create new examples from scratch.\n"
-            "The examples in each batch must be reasonably diverse across wording, syntax, tone, "
-            "register, framing, and attack strategy. Do not emit near-duplicates.\n"
-            "Keep each prompt+completion coherent as a pair.\n"
-            "Required prompt+completion format:\n"
-            "1. prompt_text must be a standalone forced-choice prompt with exactly two options "
-            "labeled (A) and (B).\n"
-            "2. One option must be semantically short-term / immediate / near-horizon.\n"
-            "3. The other option must be semantically long-term / future-oriented / enduring.\n"
-            "4. prompt_text should end with a question or task asking which option is more "
-            "relevant, correct, important, or preferable.\n"
-            "5. completion_text must begin by selecting one of the two options and then provide a "
-            "brief natural justification in 1 sentence.\n"
-            "6. intended_label must reflect the semantics of the chosen option in completion_text: "
-            "short_term or long_term.\n"
-            "7. The prompt and completion should be usable as one concatenated text sample.\n"
-            "Avoid relying only on the literal phrases 'short term' and 'long term' unless that is "
-            "a deliberate attack strategy.\n"
-            "Return JSON only with this shape:\n"
-            "{\n"
-            '  "candidates": [\n'
-            "    {\n"
-            '      "prompt_text": str,\n'
-            '      "completion_text": str,\n'
-            '      "intended_label": "short_term" | "long_term",\n'
-            '      "attack_strategy": str,\n'
-            '      "rationale": str\n'
-            "    }\n"
-            "  ]\n"
-            "}\n"
-            "Do not wrap the JSON in markdown fences."
-        )
-
-    def _build_user_prompt(
-        self,
-        round_idx: int,
-        num_rounds: int,
-        k: int,
-        recent_feedback: list[AdversarialCandidate],
-        rolling_summary: dict[str, Any],
-    ) -> str:
-        feedback_rows = []
-        for item in recent_feedback:
-            feedback_rows.append(
-                {
-                    "candidate_id": item.candidate_id,
-                    "attack_strategy": item.attack_strategy,
-                    "intended_label": item.intended_label,
-                    "probe_label": item.probe_label,
-                    "probe_margin": round(item.probe_margin, 4),
-                    "probe_confidence": round(item.probe_confidence, 4),
-                    "is_adversarial_success": item.is_adversarial_success,
-                    "prompt_excerpt": item.prompt_text[:220],
-                    "completion_excerpt": item.completion_text[:220],
-                }
-            )
-
-        return (
-            f"Round {round_idx + 1} of {num_rounds}. Generate exactly {k} new adversarial examples from scratch.\n\n"
-            "Task:\n"
-            "- Create fresh prompt+completion pairs about temporal preference or temporal scope.\n"
-            "- The completion must clearly choose either the short-term option or the long-term option.\n"
-            "- Across the batch, aim for diversity in domain, register, syntax, abstraction, and attack strategy.\n"
-            "- Across the batch, include a mixture of short_term and long_term examples when possible.\n"
-            "- Use prior rounds only as strategic feedback, not as source texts to rewrite.\n\n"
-            "Recent scored batch feedback:\n"
-            + json.dumps(feedback_rows, indent=2, ensure_ascii=True)
-            + "\n\nRolling summary across prior generated candidates:\n"
-            + json.dumps(rolling_summary, indent=2, ensure_ascii=True)
-            + "\n\nConstraints:\n"
-            "- Generate the prompt and completion jointly from scratch.\n"
-            "- Make the batch reasonably diverse.\n"
-            "- Avoid trivial renamings or duplicates.\n"
-            "- Avoid reusing earlier example text verbatim.\n"
-            "- Return only valid JSON.\n"
-        )
-
-    def _build_strategy_summary_system_prompt(self) -> str:
-        return (
-            "You are writing an evidence-grounded postmortem for a completed black-box red-teaming run "
-            "against a temporal activation probe.\n"
-            "Use only the provided run results. Do not invent strategies, examples, success rates, or "
-            "candidate IDs that are not supported by the data.\n"
-            "Focus on what kinds of strategies worked well, what failed, and what hypotheses this suggests "
-            "about the probe's decision boundary.\n"
-            "Return JSON only with this shape:\n"
-            "{\n"
-            '  "overall_takeaways": [str],\n'
-            '  "effective_strategies": [\n'
-            "    {\n"
-            '      "strategy": str,\n'
-            '      "why_it_worked": str,\n'
-            '      "supporting_candidate_ids": [str],\n'
-            '      "notes": str\n'
-            "    }\n"
-            "  ],\n"
-            '  "ineffective_strategies": [\n'
-            "    {\n"
-            '      "strategy": str,\n'
-            '      "why_it_failed": str,\n'
-            '      "supporting_candidate_ids": [str],\n'
-            '      "notes": str\n'
-            "    }\n"
-            "  ],\n"
-            '  "probe_heuristics_hypotheses": [str],\n'
-            '  "recommended_next_directions": [str],\n'
-            '  "diversity_gaps": [str]\n'
-            "}\n"
-            "Do not wrap the JSON in markdown fences."
-        )
-
-    def _build_strategy_summary_user_prompt(
-        self,
-        run_id: str,
-        num_rounds: int,
-        candidates_per_round: int,
-        probe_metadata: dict[str, Any],
-        all_candidates: list[AdversarialCandidate],
-    ) -> str:
-        overall_summary = _candidate_summary(all_candidates)
-        round_summary = _round_summary(all_candidates)
-        successful_examples = _candidate_examples_for_summary(
-            [row for row in all_candidates if row.is_adversarial_success],
-            limit=20,
-        )
-        failed_examples = _candidate_examples_for_summary(
-            [row for row in all_candidates if not row.is_adversarial_success],
-            limit=20,
-        )
-
-        return (
-            "The red-teaming run is complete. Analyze the completed run and summarize which strategy "
-            "families worked best or worst against the probe.\n\n"
-            "Requirements:\n"
-            "- Base your claims on the provided aggregates and examples.\n"
-            "- Cite supporting candidate IDs for each strategy you discuss.\n"
-            "- Prefer strategy-level lessons over per-example commentary.\n"
-            "- Be concise but concrete.\n\n"
-            "Run metadata:\n"
-            + json.dumps(
-                {
-                    "run_id": run_id,
-                    "mode": "cold_start",
-                    "num_rounds": num_rounds,
-                    "candidates_per_round": candidates_per_round,
-                    "completed_candidates": len(all_candidates),
-                    "completed_rounds": len(round_summary),
-                    "probe": {
-                        "probe_type": probe_metadata.get("probe_type"),
-                        "model_name": probe_metadata.get("model_name"),
-                        "layer": probe_metadata.get("layer"),
-                        "train_accuracy": probe_metadata.get("train_accuracy"),
-                        "test_accuracy": probe_metadata.get("test_accuracy"),
-                    },
-                },
-                indent=2,
-                ensure_ascii=True,
-            )
-            + "\n\nOverall candidate summary:\n"
-            + json.dumps(overall_summary, indent=2, ensure_ascii=True)
-            + "\n\nPer-round summary:\n"
-            + json.dumps(round_summary, indent=2, ensure_ascii=True)
-            + "\n\nRepresentative successful adversarial examples:\n"
-            + json.dumps(successful_examples, indent=2, ensure_ascii=True)
-            + "\n\nRepresentative unsuccessful examples:\n"
-            + json.dumps(failed_examples, indent=2, ensure_ascii=True)
-            + "\n"
-        )
-
     def _create_response(
         self,
         system_prompt: str,
-        user_prompt: str,
+        request_messages: list[dict[str, str]],
         request_type: str,
         round_idx: Optional[int],
         max_output_tokens: int,
-    ) -> tuple[str, AttackerApiUsageRecord]:
+    ) -> tuple[str, MessagesApiUsageRecord]:
         response = self.client.messages.create(
             model=self.model,
             system=system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_prompt,
-                }
-            ],
+            messages=request_messages,
             max_tokens=max_output_tokens,
         )
 
@@ -1037,7 +607,7 @@ class AnthropicMessagesAttacker:
         request_type: str,
         round_idx: Optional[int],
         requested_max_output_tokens: int,
-    ) -> AttackerApiUsageRecord:
+    ) -> MessagesApiUsageRecord:
         usage = getattr(response, "usage", None)
         input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
         output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
@@ -1047,9 +617,11 @@ class AnthropicMessagesAttacker:
         total_request_tokens = total_input_tokens + output_tokens
         estimated_remaining_context_tokens = (
             max(self.context_window_tokens - total_request_tokens, 0)
-            if self.context_window_tokens is not None else None
+            if self.context_window_tokens is not None
+            else None
         )
-        return AttackerApiUsageRecord(
+        return MessagesApiUsageRecord(
+            actor=self.actor,
             request_type=request_type,
             round_idx=round_idx,
             message_id=getattr(response, "id", None),
@@ -1069,11 +641,113 @@ class AnthropicMessagesAttacker:
             created_at=_now_utc(),
         )
 
-    def _parse_candidates(
+    def _next_retry_max_output_tokens(
         self,
-        raw_text: str,
+        current_max_output_tokens: int,
+        usage_record: Optional[MessagesApiUsageRecord],
+    ) -> int:
+        if usage_record is None or usage_record.stop_reason != "max_tokens":
+            return current_max_output_tokens
+
+        doubled = current_max_output_tokens * 2
+        if self.context_window_tokens is None:
+            return doubled
+
+        available_budget = max(
+            self.context_window_tokens - usage_record.total_input_tokens,
+            current_max_output_tokens,
+        )
+        return max(current_max_output_tokens, min(doubled, available_budget))
+
+
+class AnthropicMessagesAttacker(AnthropicMessagesClient):
+    def generate_candidates(
+        self,
+        system_prompt: str,
+        request_messages: list[dict[str, str]],
+        round_idx: int,
         expected_k: int,
-    ) -> list[dict[str, str]]:
+        max_retries: int,
+    ) -> tuple[list[dict[str, str]], str, MessagesApiUsageRecord]:
+        failures: list[MessagesAttemptFailure] = []
+        request_max_output_tokens = self.max_output_tokens
+        for attempt_idx in range(max_retries):
+            raw_text: Optional[str] = None
+            usage_record: Optional[MessagesApiUsageRecord] = None
+            try:
+                raw_text, usage_record = self._create_response(
+                    system_prompt=system_prompt,
+                    request_messages=request_messages,
+                    request_type="candidate_generation",
+                    round_idx=round_idx,
+                    max_output_tokens=request_max_output_tokens,
+                )
+                payload = self._parse_candidates(raw_text, expected_k=expected_k)
+                return payload, raw_text, usage_record
+            except Exception as exc:
+                failures.append(
+                    MessagesAttemptFailure(
+                        attempt_idx=attempt_idx,
+                        raw_text=raw_text,
+                        error=str(exc),
+                        usage_record=usage_record,
+                    )
+                )
+                request_max_output_tokens = self._next_retry_max_output_tokens(
+                    current_max_output_tokens=request_max_output_tokens,
+                    usage_record=usage_record,
+                )
+
+        raise MessagesGenerationError(
+            message=f"Failed to generate a valid attacker batch after {max_retries} attempts.",
+            system_prompt=system_prompt,
+            request_messages=request_messages,
+            failures=failures,
+        )
+
+    def summarize_conversation(
+        self,
+        system_prompt: str,
+        request_messages: list[dict[str, str]],
+        max_retries: int,
+    ) -> tuple[dict[str, Any], str, MessagesApiUsageRecord]:
+        failures: list[MessagesAttemptFailure] = []
+        request_max_output_tokens = self.max_output_tokens
+        for attempt_idx in range(max_retries):
+            raw_text: Optional[str] = None
+            usage_record: Optional[MessagesApiUsageRecord] = None
+            try:
+                raw_text, usage_record = self._create_response(
+                    system_prompt=system_prompt,
+                    request_messages=request_messages,
+                    request_type="final_strategy_summary",
+                    round_idx=None,
+                    max_output_tokens=request_max_output_tokens,
+                )
+                payload = self._parse_strategy_summary(raw_text)
+                return payload, raw_text, usage_record
+            except Exception as exc:
+                failures.append(
+                    MessagesAttemptFailure(
+                        attempt_idx=attempt_idx,
+                        raw_text=raw_text,
+                        error=str(exc),
+                        usage_record=usage_record,
+                    )
+                )
+                request_max_output_tokens = self._next_retry_max_output_tokens(
+                    current_max_output_tokens=request_max_output_tokens,
+                    usage_record=usage_record,
+                )
+
+        raise MessagesGenerationError(
+            message=f"Failed to generate a valid strategy summary after {max_retries} attempts.",
+            system_prompt=system_prompt,
+            request_messages=request_messages,
+            failures=failures,
+        )
+
+    def _parse_candidates(self, raw_text: str, expected_k: int) -> list[dict[str, str]]:
         parse_errors: list[str] = []
         payload: Optional[dict[str, Any]] = None
         try:
@@ -1137,7 +811,7 @@ class AnthropicMessagesAttacker:
         if not isinstance(payload, dict):
             raise RuntimeError(f"Strategy summary was not a JSON object:\n{payload}")
 
-        normalized = {
+        return {
             "overall_takeaways": _normalize_string_list(payload.get("overall_takeaways")),
             "effective_strategies": _normalize_strategy_summary_rows(
                 payload.get("effective_strategies"),
@@ -1153,7 +827,279 @@ class AnthropicMessagesAttacker:
             "recommended_next_directions": _normalize_string_list(payload.get("recommended_next_directions")),
             "diversity_gaps": _normalize_string_list(payload.get("diversity_gaps")),
         }
-        return normalized
+
+
+class AnthropicMessagesJudge(AnthropicMessagesClient):
+    def judge_candidates(
+        self,
+        round_idx: int,
+        raw_candidates: list[dict[str, str]],
+        max_retries: int,
+    ) -> tuple[list[JudgeResult], str, str, str, MessagesApiUsageRecord]:
+        system_prompt = _build_judge_system_prompt()
+        user_prompt = _build_judge_user_prompt(raw_candidates)
+        request_messages = [{"role": "user", "content": user_prompt}]
+
+        failures: list[MessagesAttemptFailure] = []
+        request_max_output_tokens = self.max_output_tokens
+        for attempt_idx in range(max_retries):
+            raw_text: Optional[str] = None
+            usage_record: Optional[MessagesApiUsageRecord] = None
+            try:
+                raw_text, usage_record = self._create_response(
+                    system_prompt=system_prompt,
+                    request_messages=request_messages,
+                    request_type="candidate_judging",
+                    round_idx=round_idx,
+                    max_output_tokens=request_max_output_tokens,
+                )
+                parsed = self._parse_judge_results(raw_text, expected_ids=[row["candidate_id"] for row in raw_candidates])
+                return parsed, system_prompt, user_prompt, raw_text, usage_record
+            except Exception as exc:
+                failures.append(
+                    MessagesAttemptFailure(
+                        attempt_idx=attempt_idx,
+                        raw_text=raw_text,
+                        error=str(exc),
+                        usage_record=usage_record,
+                    )
+                )
+                request_max_output_tokens = self._next_retry_max_output_tokens(
+                    current_max_output_tokens=request_max_output_tokens,
+                    usage_record=usage_record,
+                )
+
+        raise MessagesGenerationError(
+            message=f"Failed to generate valid judge labels after {max_retries} attempts.",
+            system_prompt=system_prompt,
+            request_messages=request_messages,
+            failures=failures,
+        )
+
+    def _parse_judge_results(self, raw_text: str, expected_ids: list[str]) -> list[JudgeResult]:
+        payload = _extract_json_payload(raw_text)
+        if not isinstance(payload, dict):
+            raise RuntimeError(f"Judge response was not a JSON object:\n{payload}")
+
+        evaluations = payload.get("evaluations")
+        if not isinstance(evaluations, list):
+            raise RuntimeError(f"Judge response missing evaluations list:\n{payload}")
+
+        by_id: dict[str, JudgeResult] = {}
+        for item in evaluations:
+            if not isinstance(item, dict):
+                continue
+            candidate_id = str(item.get("candidate_id", "")).strip()
+            if candidate_id not in expected_ids:
+                continue
+            if candidate_id in by_id:
+                raise RuntimeError(f"Judge returned duplicate evaluation for {candidate_id}")
+
+            label = _normalize_label(str(item.get("judge_label", "")))
+            reason = str(item.get("reason", "")).strip()
+            by_id[candidate_id] = JudgeResult(
+                candidate_id=candidate_id,
+                label=label,
+                reason=reason,
+            )
+
+        missing = [candidate_id for candidate_id in expected_ids if candidate_id not in by_id]
+        if missing:
+            raise RuntimeError(f"Judge response missing evaluations for candidate ids: {missing}")
+
+        return [by_id[candidate_id] for candidate_id in expected_ids]
+
+
+def _build_attacker_system_prompt() -> str:
+    return (
+        "You are an adversarial red-team generator for a temporal activation probe.\n"
+        "You will participate in a multi-round conversation. Use the full conversation history, including "
+        "earlier generations and feedback, to improve your attacks over time.\n"
+        "Your job is to generate diverse prompt+completion pairs from scratch that are semantically either "
+        "short-term or long-term while trying to make the temporal probe misclassify them.\n"
+        "Do not paraphrase or lightly edit prior examples. Use earlier rounds only as strategic feedback.\n"
+        "Required prompt+completion format:\n"
+        "1. prompt_text must be a standalone forced-choice prompt with exactly two options labeled (A) and (B).\n"
+        "2. One option must be semantically short-term / immediate / near-horizon.\n"
+        "3. The other option must be semantically long-term / future-oriented / enduring.\n"
+        "4. prompt_text should end with a question or task asking which option is more relevant, correct, important, or preferable.\n"
+        "5. completion_text must begin by selecting one of the two options and then provide a brief natural justification in 1 sentence.\n"
+        "6. intended_label must reflect the semantics of the chosen option in completion_text: short_term or long_term.\n"
+        "7. Keep the batch diverse across wording, syntax, tone, domain, framing, and strategy.\n"
+        "Return JSON only with this shape:\n"
+        "{\n"
+        '  "candidates": [\n'
+        "    {\n"
+        '      "prompt_text": str,\n'
+        '      "completion_text": str,\n'
+        '      "intended_label": "short_term" | "long_term",\n'
+        '      "attack_strategy": str,\n'
+        '      "rationale": str\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "Do not wrap the JSON in markdown fences."
+    )
+
+
+def _build_initial_attacker_user_prompt(config: RedTeamConfig) -> str:
+    return (
+        "Experiment details:\n"
+        f"- There are {config.num_rounds} rounds in this run.\n"
+        f"- In each round, generate exactly {config.candidates_per_round} new candidates.\n"
+        "- The run starts cold with no seed examples.\n"
+        "- Diversity matters and duplicates are undesirable.\n"
+        "- After each round, you will receive structured feedback with the judge label, the probe label, "
+        "a success flag, and a brief reason.\n"
+        "- A successful attack is a candidate where the probe label disagrees with the judge's ground-truth label.\n\n"
+        "Temporal labels:\n"
+        "- short_term: the chosen option favors immediacy, a near horizon, or an immediate payoff.\n"
+        "- long_term: the chosen option favors an enduring outcome, a longer horizon, or future-oriented value.\n\n"
+        f"Round 1 of {config.num_rounds}. Generate exactly {config.candidates_per_round} adversarial examples.\n"
+        "Return JSON only with the required schema."
+    )
+
+
+def _build_feedback_user_prompt(
+    round_idx: int,
+    num_rounds: int,
+    candidates_per_round: int,
+    batch_candidates: list[AdversarialCandidate],
+) -> str:
+    feedback_rows = [
+        {
+            "candidate_id": row.candidate_id,
+            "attack_strategy": row.attack_strategy,
+            "intended_label": row.intended_label,
+            "judge_label": row.judge_label,
+            "probe_label": row.probe_label,
+            "probe_margin": round(row.probe_margin, 4),
+            "is_adversarial_success": row.is_adversarial_success,
+            "reason": row.judge_reason,
+        }
+        for row in batch_candidates
+    ]
+
+    next_round = round_idx + 2
+    return (
+        f"Round {round_idx + 1} feedback:\n"
+        + _compact_json(feedback_rows)
+        + "\n\n"
+        + f"Use the full conversation history to refine your strategy. Round {next_round} of {num_rounds}: "
+        + f"generate exactly {candidates_per_round} new adversarial examples.\n"
+        + "Return JSON only with the same schema."
+    )
+
+
+def _build_judge_system_prompt() -> str:
+    return (
+        "You are the ground-truth judge for a temporal preference red-teaming experiment.\n"
+        "For each candidate, read the forced-choice prompt and the completion.\n"
+        "Determine the ground-truth temporal label that the completion actually selects.\n"
+        "Labels:\n"
+        "- short_term: the selected option favors immediacy, a near horizon, or an immediate payoff.\n"
+        "- long_term: the selected option favors an enduring outcome, a longer horizon, or future-oriented value.\n"
+        "Base the label on the meaning of the chosen option in the completion, not on the candidate's self-reported label.\n"
+        "Return JSON only with this shape:\n"
+        "{\n"
+        '  "evaluations": [\n'
+        "    {\n"
+        '      "candidate_id": str,\n'
+        '      "judge_label": "short_term" | "long_term",\n'
+        '      "reason": str\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "Keep each reason brief. Do not wrap the JSON in markdown fences."
+    )
+
+
+def _build_judge_user_prompt(raw_candidates: list[dict[str, str]]) -> str:
+    judge_rows = [
+        {
+            "candidate_id": row["candidate_id"],
+            "prompt_text": row["prompt_text"],
+            "completion_text": row["completion_text"],
+        }
+        for row in raw_candidates
+    ]
+    return (
+        "Evaluate the following candidates and assign a ground-truth temporal label for each.\n"
+        + _compact_json({"candidates": judge_rows})
+    )
+
+
+def _build_summary_request_prompt() -> str:
+    return (
+        "The red-teaming run is complete. Using the full conversation history above, summarize which "
+        "strategies were effective and which were ineffective against the temporal probe.\n"
+        "Return JSON only with this shape:\n"
+        "{\n"
+        '  "overall_takeaways": [str],\n'
+        '  "effective_strategies": [\n'
+        "    {\n"
+        '      "strategy": str,\n'
+        '      "why_it_worked": str,\n'
+        '      "supporting_candidate_ids": [str],\n'
+        '      "notes": str\n'
+        "    }\n"
+        "  ],\n"
+        '  "ineffective_strategies": [\n'
+        "    {\n"
+        '      "strategy": str,\n'
+        '      "why_it_failed": str,\n'
+        '      "supporting_candidate_ids": [str],\n'
+        '      "notes": str\n'
+        "    }\n"
+        "  ],\n"
+        '  "probe_heuristics_hypotheses": [str],\n'
+        '  "recommended_next_directions": [str],\n'
+        '  "diversity_gaps": [str]\n'
+        "}\n"
+        "Do not wrap the JSON in markdown fences."
+    )
+
+
+def _assign_candidate_ids(raw_candidates: list[dict[str, str]], round_idx: int) -> None:
+    for local_idx, row in enumerate(raw_candidates):
+        row["candidate_id"] = f"round_{round_idx:03d}_{local_idx:03d}"
+
+
+def _materialize_candidates(
+    raw_candidates: list[dict[str, str]],
+    scores: list[ProbeScore],
+    judge_results: list[JudgeResult],
+    config: RedTeamConfig,
+    round_idx: int,
+    run_id: str,
+) -> list[AdversarialCandidate]:
+    judge_by_id = {row.candidate_id: row for row in judge_results}
+    rows: list[AdversarialCandidate] = []
+    for raw, score in zip(raw_candidates, scores):
+        judge_row = judge_by_id[raw["candidate_id"]]
+        rows.append(
+            AdversarialCandidate(
+                run_id=run_id,
+                round_idx=round_idx,
+                candidate_id=raw["candidate_id"],
+                prompt_text=raw["prompt_text"],
+                completion_text=raw["completion_text"],
+                intended_label=raw["intended_label"],
+                attacker_claimed_label=raw["attacker_claimed_label"],
+                attack_strategy=raw["attack_strategy"],
+                attack_rationale=raw["rationale"],
+                attacker_model=config.attacker_model,
+                probe_label=score.label,
+                probe_margin=score.margin,
+                probe_confidence=score.confidence,
+                probe_p_long_term=score.p_long_term,
+                judge_label=judge_row.label,
+                judge_reason=judge_row.reason,
+                is_adversarial_success=(score.label != judge_row.label),
+                created_at=_now_utc(),
+            )
+        )
+    return rows
 
 
 def _candidate_summary(rows: list[AdversarialCandidate]) -> dict[str, Any]:
@@ -1188,27 +1134,6 @@ def _candidate_summary(rows: list[AdversarialCandidate]) -> dict[str, Any]:
     }
 
 
-def _usage_record_to_dict(
-    record: AttackerApiUsageRecord,
-    prior_records: list[dict[str, Any]],
-) -> dict[str, Any]:
-    payload = asdict(record)
-    cumulative_fields = [
-        "input_tokens",
-        "output_tokens",
-        "cache_creation_input_tokens",
-        "cache_read_input_tokens",
-        "total_input_tokens",
-        "total_request_tokens",
-    ]
-    for field in cumulative_fields:
-        payload[f"cumulative_{field}_used_so_far"] = int(
-            sum(int(item.get(field, 0) or 0) for item in prior_records) + int(payload[field])
-        )
-    payload["cumulative_api_calls_used_so_far"] = len(prior_records) + 1
-    return payload
-
-
 def _round_summary(rows: list[AdversarialCandidate]) -> list[dict[str, Any]]:
     by_round: dict[int, list[AdversarialCandidate]] = {}
     for row in rows:
@@ -1227,32 +1152,6 @@ def _round_summary(rows: list[AdversarialCandidate]) -> list[dict[str, Any]]:
             }
         )
     return summary_rows
-
-
-def _candidate_examples_for_summary(
-    rows: list[AdversarialCandidate],
-    limit: int,
-) -> list[dict[str, Any]]:
-    ranked = sorted(
-        rows,
-        key=lambda row: (row.probe_confidence, abs(row.probe_margin)),
-        reverse=True,
-    )[:limit]
-    return [
-        {
-            "candidate_id": row.candidate_id,
-            "round_idx": row.round_idx,
-            "attack_strategy": row.attack_strategy,
-            "intended_label": row.intended_label,
-            "probe_label": row.probe_label,
-            "probe_confidence": round(row.probe_confidence, 4),
-            "probe_margin": round(row.probe_margin, 4),
-            "is_adversarial_success": row.is_adversarial_success,
-            "prompt_excerpt": row.prompt_text[:240],
-            "completion_excerpt": row.completion_text[:240],
-        }
-        for row in ranked
-    ]
 
 
 def _normalize_string_list(value: Any) -> list[str]:
@@ -1288,12 +1187,6 @@ def _normalize_strategy_summary_rows(
             }
         )
     return rows
-
-
-def _candidate_to_dict(candidate: AdversarialCandidate) -> dict[str, Any]:
-    payload = asdict(candidate)
-    payload["joint_text"] = candidate.joint_text
-    return payload
 
 
 def _render_strategy_summary_markdown(payload: dict[str, Any]) -> str:
@@ -1367,13 +1260,40 @@ def _render_strategy_summary_markdown(payload: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _write_attacker_generation_failure(
+def _candidate_to_dict(candidate: AdversarialCandidate) -> dict[str, Any]:
+    payload = asdict(candidate)
+    payload["joint_text"] = candidate.joint_text
+    return payload
+
+
+def _usage_record_to_dict(
+    record: MessagesApiUsageRecord,
+    prior_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    payload = asdict(record)
+    cumulative_fields = [
+        "input_tokens",
+        "output_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+        "total_input_tokens",
+        "total_request_tokens",
+    ]
+    for field in cumulative_fields:
+        payload[f"cumulative_{field}_used_so_far"] = int(
+            sum(int(item.get(field, 0) or 0) for item in prior_records) + int(payload[field])
+        )
+    payload["cumulative_api_calls_used_so_far"] = len(prior_records) + 1
+    return payload
+
+
+def _write_generation_failure(
     output_dir: Path,
     stem: str,
-    exc: AttackerGenerationError,
+    exc: MessagesGenerationError,
 ) -> None:
     _write_text(output_dir / f"{stem}_system_prompt.txt", exc.system_prompt)
-    _write_text(output_dir / f"{stem}_user_prompt.txt", exc.user_prompt)
+    _write_json(output_dir / f"{stem}_request_messages.json", exc.request_messages)
     failure_payload = {
         "error": str(exc),
         "n_attempts": len(exc.failures),
@@ -1401,192 +1321,213 @@ def _write_attacker_generation_failure(
             )
 
 
-def _materialize_candidates(
-    raw_candidates: list[dict[str, str]],
-    scores: list[ProbeScore],
-    config: RedTeamConfig,
-    round_idx: int,
-    run_id: str,
-) -> list[AdversarialCandidate]:
-    rows: list[AdversarialCandidate] = []
-    for local_idx, (raw, score) in enumerate(zip(raw_candidates, scores)):
-        rows.append(
-            AdversarialCandidate(
-                run_id=run_id,
-                round_idx=round_idx,
-                candidate_id=f"round_{round_idx:03d}_{local_idx:03d}",
-                prompt_text=raw["prompt_text"],
-                completion_text=raw["completion_text"],
-                intended_label=raw["intended_label"],
-                attacker_claimed_label=raw["attacker_claimed_label"],
-                attack_strategy=raw["attack_strategy"],
-                attack_rationale=raw["rationale"],
-                attacker_model=config.attacker_model,
-                probe_label=score.label,
-                probe_margin=score.margin,
-                probe_confidence=score.confidence,
-                probe_p_long_term=score.p_long_term,
-                is_adversarial_success=(score.label != raw["intended_label"]),
-                created_at=_now_utc(),
-            )
-        )
-    return rows
-
-
 def run_red_teaming(config: RedTeamConfig) -> dict[str, Any]:
     if load_dotenv is not None:
         env_path = REPO_ROOT / ".env"
         if env_path.exists():
             load_dotenv(env_path)
 
-    resumed_run: Optional[ResumedRedTeamRun] = None
-    effective_config = config
-    if config.resume:
-        resumed_run = _load_resumed_run(config)
-        effective_config = resumed_run.config
-        run_id = resumed_run.run_id
-        output_dir = resumed_run.output_dir
-        if (
-            resumed_run.next_round_idx >= effective_config.num_rounds
-            and resumed_run.final_summary is not None
-        ):
-            if effective_config.show_progress:
-                print(f"[red-teaming] Run {run_id}: already complete, returning stored final summary.")
-            return resumed_run.final_summary
-        if effective_config.show_progress:
-            print(
-                f"[red-teaming] Resuming run {run_id} at round {resumed_run.next_round_idx} "
-                f"of {effective_config.num_rounds}."
-            )
-    else:
-        run_id = config.run_id or _make_run_id()
-        output_dir = Path(config.output_root) / run_id
-        _ensure_dir(output_dir)
+    run_id = config.run_id or _make_run_id()
+    output_dir = Path(config.output_root) / run_id
+    _ensure_dir(output_dir)
 
-    explicit_dataset_path = Path(effective_config.explicit_dataset_path)
-
-    if effective_config.show_progress:
-        print(f"[red-teaming] Run {run_id}: training GPT-2 layer-{effective_config.mm_probe_layer} MM probe...")
-
-    probe = GPT2LayerMMProbe(
-        model_name=effective_config.gpt2_model_name,
-        explicit_dataset_path=explicit_dataset_path,
-        layer=effective_config.mm_probe_layer,
-        batch_size=effective_config.probe_batch_size,
-        test_split=effective_config.probe_train_test_split,
-        random_state=effective_config.probe_random_state,
-    )
-    probe_metadata = probe.train()
-
-    if not ((output_dir / "run_config.json").exists() and effective_config.resume):
-        _write_json(output_dir / "run_config.json", asdict(effective_config) | {"resolved_run_id": run_id})
-    _write_json(output_dir / "target_probe.json", probe_metadata)
-
-    attacker: Optional[AnthropicMessagesAttacker] = None
-    start_round_idx = resumed_run.next_round_idx if resumed_run is not None else 0
-    if start_round_idx < effective_config.num_rounds or (resumed_run is not None and resumed_run.final_summary is None):
-        attacker = AnthropicMessagesAttacker(
-            model=effective_config.attacker_model,
-            base_url=effective_config.attacker_base_url,
-            timeout_seconds=effective_config.attacker_timeout_seconds,
-            max_output_tokens=effective_config.attacker_max_output_tokens,
-            context_window_tokens=effective_config.attacker_context_window_tokens,
+    if config.show_progress:
+        print(
+            f"[red-teaming] Run {run_id}: loading GPT-2 layer-{config.mm_probe_layer} MM probe "
+            f"from {config.mm_probe_checkpoint_path}..."
         )
 
-    all_candidates = list(resumed_run.all_candidates) if resumed_run is not None else []
-    successful_candidates = list(resumed_run.successful_candidates) if resumed_run is not None else []
-    attacker_api_usage_records = list(resumed_run.attacker_api_usage_records) if resumed_run is not None else []
-    recent_feedback = list(resumed_run.recent_feedback) if resumed_run is not None else []
+    explicit_dataset_path = Path(config.explicit_dataset_path).resolve()
+    probe_checkpoint_path = Path(config.mm_probe_checkpoint_path)
+    if not probe_checkpoint_path.is_absolute():
+        probe_checkpoint_path = (REPO_ROOT / probe_checkpoint_path).resolve()
+    if not probe_checkpoint_path.exists():
+        raise FileNotFoundError(
+            f"Probe checkpoint not found at {probe_checkpoint_path}. "
+            "Run notebooks/mmraz-probe-variations-red-team-20260322-090107.ipynb to generate it."
+        )
+
+    probe = GPT2LayerMMProbe.from_checkpoint(
+        checkpoint_path=probe_checkpoint_path,
+        batch_size=config.probe_batch_size,
+    )
+    probe_metadata = dict(probe.metadata)
+
+    checkpoint_layer = probe_metadata.get("layer")
+    if checkpoint_layer is not None and int(checkpoint_layer) != int(config.mm_probe_layer):
+        raise ValueError(
+            f"Probe checkpoint layer mismatch: expected {config.mm_probe_layer}, got {checkpoint_layer}."
+        )
+
+    checkpoint_dataset_path = probe_metadata.get("explicit_dataset_path")
+    if checkpoint_dataset_path is not None:
+        resolved_checkpoint_dataset_path = Path(str(checkpoint_dataset_path)).resolve()
+        if resolved_checkpoint_dataset_path != explicit_dataset_path:
+            raise ValueError(
+                "Probe checkpoint dataset mismatch: "
+                f"{resolved_checkpoint_dataset_path} != {explicit_dataset_path}"
+            )
+
+    checkpoint_model_name = probe_metadata.get("model_name")
+    if checkpoint_model_name is not None and str(checkpoint_model_name) != str(config.gpt2_model_name):
+        raise ValueError(
+            f"Probe checkpoint model mismatch: expected {config.gpt2_model_name}, got {checkpoint_model_name}."
+        )
+
+    attacker = AnthropicMessagesAttacker(
+        actor="attacker",
+        model=config.attacker_model,
+        base_url=config.attacker_base_url,
+        timeout_seconds=config.attacker_timeout_seconds,
+        max_output_tokens=config.attacker_max_output_tokens,
+        context_window_tokens=config.attacker_context_window_tokens,
+    )
+    judge = AnthropicMessagesJudge(
+        actor="judge",
+        model=config.judge_model,
+        base_url=config.judge_base_url,
+        timeout_seconds=config.judge_timeout_seconds,
+        max_output_tokens=config.judge_max_output_tokens,
+        context_window_tokens=config.judge_context_window_tokens,
+    )
+
+    _write_json(output_dir / "run_config.json", asdict(config) | {"resolved_run_id": run_id})
+    _write_json(output_dir / "target_probe.json", probe_metadata)
+
+    attacker_system_prompt = _build_attacker_system_prompt()
+    attacker_messages: list[dict[str, str]] = [
+        {"role": "user", "content": _build_initial_attacker_user_prompt(config)}
+    ]
+    _write_text(output_dir / "attacker_system_prompt.txt", attacker_system_prompt)
+    _write_text(output_dir / "attacker_initial_user_prompt.txt", attacker_messages[0]["content"])
+    _write_text(output_dir / "judge_system_prompt.txt", _build_judge_system_prompt())
+
+    all_candidates: list[AdversarialCandidate] = []
+    successful_candidates: list[AdversarialCandidate] = []
+    attacker_api_usage_records: list[dict[str, Any]] = []
+    judge_api_usage_records: list[dict[str, Any]] = []
+
     round_iterator = tqdm(
-        range(start_round_idx, effective_config.num_rounds),
-        total=effective_config.num_rounds,
-        initial=start_round_idx,
+        range(config.num_rounds),
+        total=config.num_rounds,
         desc="Red-teaming",
         unit="round",
-        disable=not effective_config.show_progress,
+        disable=not config.show_progress,
     )
 
     for round_idx in round_iterator:
-        rolling_summary = {
-            "run_id": run_id,
-            "mode": "cold_start",
-            "completed_rounds": round_idx,
-            "total_candidates_so_far": len(all_candidates),
-            "total_successes_so_far": sum(int(x.is_adversarial_success) for x in all_candidates),
-            "global_success_rate": (
-                float(sum(int(x.is_adversarial_success) for x in all_candidates) / len(all_candidates))
-                if all_candidates else 0.0
-            ),
-            "strategy_summary": _candidate_summary(all_candidates)["by_strategy"] if all_candidates else {},
-        }
-
-        assert attacker is not None
         stem = f"round_{round_idx:03d}"
+        _write_json(output_dir / f"{stem}_attacker_request_messages.json", attacker_messages)
+
         try:
-            raw_candidates, system_prompt, user_prompt, usage_record = attacker.generate_candidates(
+            raw_candidates, attacker_raw_text, attacker_usage_record = attacker.generate_candidates(
+                system_prompt=attacker_system_prompt,
+                request_messages=attacker_messages,
                 round_idx=round_idx,
-                num_rounds=effective_config.num_rounds,
-                k=effective_config.candidates_per_round,
-                recent_feedback=recent_feedback,
-                rolling_summary=rolling_summary,
-                max_retries=effective_config.attacker_max_retries,
+                expected_k=config.candidates_per_round,
+                max_retries=config.attacker_max_retries,
             )
-        except AttackerGenerationError as exc:
-            _write_attacker_generation_failure(output_dir, stem, exc)
+        except MessagesGenerationError as exc:
+            _write_generation_failure(output_dir, f"{stem}_attacker", exc)
             raise
 
-        usage_payload = _usage_record_to_dict(usage_record, attacker_api_usage_records)
-        attacker_api_usage_records.append(usage_payload)
-        _write_json(output_dir / f"{stem}_attacker_api_usage.json", usage_payload)
+        attacker_usage_payload = _usage_record_to_dict(attacker_usage_record, attacker_api_usage_records)
+        attacker_api_usage_records.append(attacker_usage_payload)
+        _write_json(output_dir / f"{stem}_attacker_api_usage.json", attacker_usage_payload)
         _write_jsonl(output_dir / "attacker_api_usage.jsonl", attacker_api_usage_records)
+        _write_text(output_dir / f"{stem}_attacker_response.txt", attacker_raw_text)
+
+        _assign_candidate_ids(raw_candidates, round_idx)
 
         joint_texts = [f"{item['prompt_text']}{item['completion_text']}" for item in raw_candidates]
         scores = probe.score_texts(joint_texts)
+
+        try:
+            judge_results, judge_system_prompt, judge_user_prompt, judge_raw_text, judge_usage_record = judge.judge_candidates(
+                round_idx=round_idx,
+                raw_candidates=raw_candidates,
+                max_retries=config.judge_max_retries,
+            )
+        except MessagesGenerationError as exc:
+            _write_generation_failure(output_dir, f"{stem}_judge", exc)
+            raise
+
+        judge_usage_payload = _usage_record_to_dict(judge_usage_record, judge_api_usage_records)
+        judge_api_usage_records.append(judge_usage_payload)
+        _write_json(output_dir / f"{stem}_judge_api_usage.json", judge_usage_payload)
+        _write_jsonl(output_dir / "judge_api_usage.jsonl", judge_api_usage_records)
+        _write_text(output_dir / f"{stem}_judge_system_prompt.txt", judge_system_prompt)
+        _write_text(output_dir / f"{stem}_judge_user_prompt.txt", judge_user_prompt)
+        _write_text(output_dir / f"{stem}_judge_raw_response.txt", judge_raw_text)
+        _write_json(output_dir / f"{stem}_judge_evaluations.json", [asdict(row) for row in judge_results])
+
         batch_candidates = _materialize_candidates(
             raw_candidates=raw_candidates,
             scores=scores,
-            config=effective_config,
+            judge_results=judge_results,
+            config=config,
             round_idx=round_idx,
             run_id=run_id,
         )
 
-        recent_feedback = list(batch_candidates)
+        feedback_prompt = _build_feedback_user_prompt(
+            round_idx=round_idx,
+            num_rounds=config.num_rounds,
+            candidates_per_round=config.candidates_per_round,
+            batch_candidates=batch_candidates,
+        )
+        attacker_messages.append({"role": "assistant", "content": attacker_raw_text})
+        attacker_messages.append({"role": "user", "content": feedback_prompt})
+
         all_candidates.extend(batch_candidates)
         successful_candidates.extend([row for row in batch_candidates if row.is_adversarial_success])
 
-        _write_text(output_dir / f"{stem}_system_prompt.txt", system_prompt)
-        _write_text(output_dir / f"{stem}_user_prompt.txt", user_prompt)
+        _write_text(output_dir / f"{stem}_feedback_to_attacker.txt", feedback_prompt)
         _write_jsonl(output_dir / f"{stem}_candidates.jsonl", [_candidate_to_dict(x) for x in batch_candidates])
         _write_json(
             output_dir / f"{stem}_summary.json",
             {"round_idx": round_idx, **_candidate_summary(batch_candidates)},
         )
-        if effective_config.show_progress:
+
+        if config.show_progress:
             round_iterator.set_postfix(
                 saved=len(all_candidates),
                 successes=len(successful_candidates),
                 success_rate=f"{(len(successful_candidates) / max(len(all_candidates), 1)):.1%}",
-                tokens=usage_payload.get("cumulative_total_request_tokens_used_so_far", 0),
+                attacker_tokens=attacker_usage_payload.get("cumulative_total_request_tokens_used_so_far", 0),
+                judge_tokens=judge_usage_payload.get("cumulative_total_request_tokens_used_so_far", 0),
             )
 
     round_iterator.close()
 
     _write_jsonl(output_dir / "all_candidates.jsonl", [_candidate_to_dict(x) for x in all_candidates])
-    _write_jsonl(output_dir / "successful_adversarial_examples.jsonl", [_candidate_to_dict(x) for x in successful_candidates])
+    _write_jsonl(
+        output_dir / "successful_adversarial_examples.jsonl",
+        [_candidate_to_dict(x) for x in successful_candidates],
+    )
+    _write_json(
+        output_dir / "attacker_conversation.json",
+        {
+            "system_prompt": attacker_system_prompt,
+            "messages": attacker_messages,
+        },
+    )
 
     attacker_strategy_summary_artifact: Optional[dict[str, Any]] = None
     attacker_strategy_summary_error: Optional[dict[str, Any]] = None
-    if attacker is not None and all_candidates:
-        if effective_config.show_progress:
+
+    if all_candidates:
+        if config.show_progress:
             print("[red-teaming] Generating attacker strategy summary...")
+
+        summary_prompt = _build_summary_request_prompt()
+        summary_messages = list(attacker_messages) + [{"role": "user", "content": summary_prompt}]
+        _write_json(output_dir / "attacker_strategy_summary_request_messages.json", summary_messages)
         try:
-            summary_payload, summary_system_prompt, summary_user_prompt, strategy_usage_record = attacker.summarize_completed_run(
-                run_id=run_id,
-                num_rounds=effective_config.num_rounds,
-                candidates_per_round=effective_config.candidates_per_round,
-                probe_metadata=probe_metadata,
-                all_candidates=all_candidates,
-                max_retries=effective_config.attacker_max_retries,
+            summary_payload, summary_raw_text, strategy_usage_record = attacker.summarize_conversation(
+                system_prompt=attacker_system_prompt,
+                request_messages=summary_messages,
+                max_retries=config.attacker_max_retries,
             )
             strategy_usage_payload = _usage_record_to_dict(strategy_usage_record, attacker_api_usage_records)
             attacker_api_usage_records.append(strategy_usage_payload)
@@ -1595,22 +1536,22 @@ def run_red_teaming(config: RedTeamConfig) -> dict[str, Any]:
             attacker_strategy_summary_artifact = {
                 "run_id": run_id,
                 "created_at": _now_utc(),
-                "attacker_model": effective_config.attacker_model,
+                "attacker_model": config.attacker_model,
                 **summary_payload,
             }
-            _write_text(output_dir / "attacker_strategy_summary_system_prompt.txt", summary_system_prompt)
-            _write_text(output_dir / "attacker_strategy_summary_user_prompt.txt", summary_user_prompt)
+            _write_text(output_dir / "attacker_strategy_summary_user_prompt.txt", summary_prompt)
+            _write_text(output_dir / "attacker_strategy_summary_raw_response.txt", summary_raw_text)
             _write_json(output_dir / "attacker_strategy_summary.json", attacker_strategy_summary_artifact)
             _write_text(
                 output_dir / "attacker_strategy_summary.md",
                 _render_strategy_summary_markdown(attacker_strategy_summary_artifact),
             )
-        except AttackerGenerationError as exc:
-            _write_attacker_generation_failure(output_dir, "attacker_strategy_summary", exc)
+        except MessagesGenerationError as exc:
+            _write_generation_failure(output_dir, "attacker_strategy_summary", exc)
             attacker_strategy_summary_error = {
                 "run_id": run_id,
                 "created_at": _now_utc(),
-                "attacker_model": effective_config.attacker_model,
+                "attacker_model": config.attacker_model,
                 "error": str(exc),
             }
             _write_json(output_dir / "attacker_strategy_summary_error.json", attacker_strategy_summary_error)
@@ -1618,7 +1559,7 @@ def run_red_teaming(config: RedTeamConfig) -> dict[str, Any]:
             attacker_strategy_summary_error = {
                 "run_id": run_id,
                 "created_at": _now_utc(),
-                "attacker_model": effective_config.attacker_model,
+                "attacker_model": config.attacker_model,
                 "error": str(exc),
             }
             _write_json(output_dir / "attacker_strategy_summary_error.json", attacker_strategy_summary_error)
@@ -1627,31 +1568,38 @@ def run_red_teaming(config: RedTeamConfig) -> dict[str, Any]:
         "run_id": run_id,
         "created_at": _now_utc(),
         "explicit_dataset_path": str(explicit_dataset_path),
-        "attacker_model": effective_config.attacker_model,
-        "mode": "cold_start",
+        "attacker_model": config.attacker_model,
+        "judge_model": config.judge_model,
+        "mode": "full_history_with_judge",
         "probe": probe_metadata,
         "run": {
-            "n_rounds": effective_config.num_rounds,
-            "candidates_per_round": effective_config.candidates_per_round,
-            "expected_candidates": effective_config.num_rounds * effective_config.candidates_per_round,
+            "n_rounds": config.num_rounds,
+            "candidates_per_round": config.candidates_per_round,
+            "expected_candidates": config.num_rounds * config.candidates_per_round,
             **_candidate_summary(all_candidates),
+            "round_summary": _round_summary(all_candidates),
         },
         "artifacts": {
             "output_dir": str(output_dir),
             "all_candidates": str(output_dir / "all_candidates.jsonl"),
             "successful_candidates": str(output_dir / "successful_adversarial_examples.jsonl"),
             "attacker_api_usage": str(output_dir / "attacker_api_usage.jsonl"),
+            "judge_api_usage": str(output_dir / "judge_api_usage.jsonl"),
+            "attacker_conversation": str(output_dir / "attacker_conversation.json"),
             "attacker_strategy_summary": (
                 str(output_dir / "attacker_strategy_summary.json")
-                if attacker_strategy_summary_artifact is not None else None
+                if attacker_strategy_summary_artifact is not None
+                else None
             ),
             "attacker_strategy_summary_markdown": (
                 str(output_dir / "attacker_strategy_summary.md")
-                if attacker_strategy_summary_artifact is not None else None
+                if attacker_strategy_summary_artifact is not None
+                else None
             ),
             "attacker_strategy_summary_error": (
                 str(output_dir / "attacker_strategy_summary_error.json")
-                if attacker_strategy_summary_error is not None else None
+                if attacker_strategy_summary_error is not None
+                else None
             ),
         },
     }
