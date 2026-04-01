@@ -738,12 +738,15 @@ class GeometryDataLoader:
             return np.load(path)
 
         # For per-rel_pos positions, try fallback to combined file
-        # This handles positions with rel_pos count = 1 (only has combined file)
+        # ONLY for positions with rel_pos count = 1 (combined file IS the per-rel_pos data)
         if ":" in position:
             base_pos = position.rsplit(":", 1)[0]
-            fallback_path = self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{base_pos}.npy"
-            if fallback_path.exists():
-                return np.load(fallback_path)
+            rel_pos_counts = self.get_rel_pos_counts()
+            # Only fall back if this position has exactly 1 rel_pos
+            if rel_pos_counts.get(base_pos, 0) == 1:
+                fallback_path = self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{base_pos}.npy"
+                if fallback_path.exists():
+                    return np.load(fallback_path)
 
         return None
 
@@ -1589,11 +1592,15 @@ class GeometryDataLoader:
 
         cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{file_position}.npz"
 
-        # Fall back to combined file for positions with only 1 rel_pos
+        # Fall back to combined file ONLY for positions with rel_pos_count = 1
+        # (meaning the combined file IS the per-rel_pos data)
         if not cache_file.exists() and ":" in position:
-            fallback_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{base_pos}.npz"
-            if fallback_file.exists():
-                cache_file = fallback_file
+            rel_pos_counts = self.get_rel_pos_counts()
+            # Only fall back if this position has exactly 1 rel_pos
+            if rel_pos_counts.get(base_pos, 0) == 1:
+                fallback_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{base_pos}.npz"
+                if fallback_file.exists():
+                    cache_file = fallback_file
 
         if not cache_file.exists():
             raise ValueError(
