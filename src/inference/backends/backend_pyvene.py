@@ -325,7 +325,7 @@ class PyveneBackend(HuggingFaceBackend):
     ) -> str:
         """Generate text, optionally with intervention using pyvene.
 
-        Note: past_kv_cache is accepted for API compatibility but not used.
+        Note: past_kv_cache is only used when no intervention is applied (passed to parent).
         """
         input_ids = self.encode(prompt)
 

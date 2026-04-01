@@ -14,6 +14,13 @@ class PromptTemplateElement(BaseModel):
     available: bool = Field(description="Whether this position has data available")
 
 
+class ExampleSample(BaseModel):
+    """Example sample data for UI illustration."""
+
+    sample_idx: int = Field(description="Index of the example sample")
+    format_texts: dict[str, str] = Field(description="Decoded text for each format position")
+
+
 class ConfigResponse(BaseModel):
     """Response for /api/config endpoint."""
 
@@ -25,10 +32,11 @@ class ConfigResponse(BaseModel):
     model_name: str = Field(default="", description="Name of the model being visualized")
     position_labels: dict[str, str] = Field(default_factory=dict, description="Human-readable labels for positions")
     prompt_template: list[PromptTemplateElement] = Field(default_factory=list, description="Prompt template structure for UI")
-    semantic_to_positions: dict[str, list[str]] = Field(default_factory=dict, description="Mapping from semantic positions to token positions (for compatibility)")
+    semantic_to_positions: dict[str, list[str]] = Field(default_factory=dict, description="Mapping from semantic positions to token positions")
     markers: dict[str, str] = Field(default_factory=dict, description="Section markers from prompt format (e.g., situation_marker: 'SITUATION:')")
     rel_pos_counts: dict[str, int] = Field(default_factory=dict, description="Number of tokens (rel_pos values) for each semantic position")
     available_methods: list[str] = Field(default_factory=lambda: ["pca"], description="Available dimensionality reduction methods (pca, umap, tsne)")
+    example_sample: ExampleSample | None = Field(default=None, description="Example sample with decoded text for UI illustration")
 
 
 class Point3D(BaseModel):

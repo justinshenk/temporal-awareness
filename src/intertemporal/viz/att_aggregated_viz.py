@@ -263,6 +263,7 @@ def _generate_matrix_plots(
                     vmin=vmin,
                     vmax=vmax,
                 )
+                ax.invert_yaxis()  # Layer 0 at bottom
                 cbar = plt.colorbar(im, ax=ax, shrink=0.8)
 
                 # Colorbar label
@@ -303,7 +304,7 @@ def visualize_all_att_aggregated_slices(
     output_dir: Path,
 ) -> None:
     """Visualize aggregated attribution results for all analysis slices."""
-    from .coarse.aggregated.analysis_slices import ANALYSIS_SLICES
+    from ..experiments.coarse.viz.aggregated.analysis_slices import ANALYSIS_SLICES
 
     output_dir = Path(output_dir)
 

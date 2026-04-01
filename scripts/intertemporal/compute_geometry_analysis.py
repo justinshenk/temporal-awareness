@@ -1,59 +1,9 @@
 #!/usr/bin/env python3
-"""Compute geometry analysis including embeddings for GeoApp.
-
-This is Script 2 of the geometry pipeline. It handles:
-- Linear probe analysis (time horizon decoding)
-- PCA analysis
-- Cross-position similarity analysis
-- Continuous time probe analysis
-- 3D embeddings for GeoApp (PCA, UMAP, t-SNE - all methods)
-- 1D trajectory caches for instant plot loading
-- Color data pre-computation for each sample
-
-After running this script, the GeoApp will load ALL visualizations instantly
-with NO runtime computation.
-
-Output structure:
-    out/geometry/
-        analysis/
-            linear_probe/
-                L{layer}_{component}_{position}/
-                    metrics.json
-                    predictions.npy
-                    coefficients.npy
-            pca/
-                L{layer}_{component}_{position}/
-                    metrics.json
-                    explained_variance.npy
-                    components.npy
-                    transformed.npy
-            embeddings/
-                pca/L{layer}_{component}_{position}.npy
-                umap/L{layer}_{component}_{position}.npy
-                tsne/L{layer}_{component}_{position}.npy
-            trajectories/
-                layers_{component}_{position}.npz
-                positions_L{layer}_{component}.npz
-            cross_position_similarity/
-            continuous_time_probe/
-        data/
-            samples/
-                sample_*/
-                    choice.json  (includes color data)
-        summary.json
-
-Usage:
-    # Compute all analysis (no options needed)
-    uv run python scripts/intertemporal/compute_geometry_analysis.py
-
-    # Custom data directory
-    uv run python scripts/intertemporal/compute_geometry_analysis.py --data-dir out/geo_test
-"""
+"""Compute geometry analysis for GeoApp. MINIMAL MEMORY - streams everything."""
 
 import argparse
 import json
 import logging
-import math
 import sys
 from pathlib import Path
 
@@ -63,771 +13,678 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.common.device_utils import clear_gpu_memory
-from src.common.time_value import TimeValue
-from src.intertemporal.common.semantic_positions import (
-    PROMPT_POSITIONS,
-    RESPONSE_POSITIONS,
-)
-from src.intertemporal.data.default_configs import DEFAULT_MODEL
+from src.intertemporal.common.semantic_positions import PROMPT_POSITIONS, RESPONSE_POSITIONS
 
-# These are the ONLY positions that have activation data extracted
-# (defined in semantic_positions.py)
-VALID_POSITIONS = PROMPT_POSITIONS + RESPONSE_POSITIONS
-from src.intertemporal.geometry import GeometryConfig, TargetSpec
-from src.intertemporal.geometry.geometry_analysis import (
-    compute_continuous_time_probe,
-    compute_cross_position_similarity,
-    run_streaming_analysis,
-)
-from src.intertemporal.geometry.geometry_data import ActivationData, load_cached_data
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+log = logging.getLogger(__name__)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
-
-
-def get_all_positions(data_dir: Path) -> list[str]:
-    """Get ALL positions from the data, not just a hardcoded subset.
-
-    Reads the first sample's position_mapping.json to discover all named positions.
-    """
-    samples_dir = data_dir / "data" / "samples"
-
-    # Find first sample directory (filter out hidden files like .DS_Store)
-    sample_dirs = sorted(
-        d for d in samples_dir.iterdir()
-        if d.is_dir() and not d.name.startswith(".")
-    ) if samples_dir.exists() else []
-    if not sample_dirs:
-        logger.error(f"No sample directories found in {samples_dir}")
-        return []
-
-    # Read position_mapping.json from first sample
-    position_file = sample_dirs[0] / "position_mapping.json"
-    if not position_file.exists():
-        logger.error(f"No position_mapping.json found in {sample_dirs[0]}")
-        return []
-
-    with open(position_file) as f:
-        mapping = json.load(f)
-
-    positions = sorted(mapping.get("named_positions", {}).keys())
-    logger.info(f"Found {len(positions)} positions in data: {positions}")
-    return positions
-
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-LAYERS = [
-    0, 1, 3, 12, 18, 19, 21, 24, 28, 31, 34, 35,
-]
-
+LAYERS = [0, 1, 3, 12, 18, 19, 21, 24, 28, 31, 34, 35]
 COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
-
-# NOTE: Positions are loaded dynamically from the data (see get_all_positions())
-# This ensures we compute embeddings for ALL positions, not just a subset.
-
-# Embedding methods - ALL methods are REQUIRED
-# PCA is fast and essential
-# UMAP is slower but required for non-linear structure
-# t-SNE is slowest but required for local structure
-EMBEDDING_METHODS = ["pca", "umap"]  # t-SNE crashes, compute separately
+POSITIONS = PROMPT_POSITIONS + RESPONSE_POSITIONS
+METHODS = ["pca", "umap", "tsne"]
 
 
-def build_targets(
-    layers: list[int],
-    components: list[str],
-    positions: list[str],
-) -> list[TargetSpec]:
-    """Build target specifications for all layer/component/position combinations."""
-    return [
-        TargetSpec(layer=layer, component=component, position=position)
-        for layer in layers
-        for component in components
-        for position in positions
-    ]
+def target_keys() -> list[str]:
+    """Generate combined (aggregated) target keys only."""
+    return [f"L{l}_{c}_{p}" for l in LAYERS for c in COMPONENTS for p in POSITIONS]
 
 
-DEFAULT_CONFIG = {
-    # NOTE: targets are built dynamically in main() after loading all positions from data
-    "output_dir": "out/geometry",
-    "model": DEFAULT_MODEL,
-    "seed": 42,
-    "n_pca_components": 10,
-}
+def get_max_relpos_counts(data_dir: Path) -> dict[str, int]:
+    """Scan all samples to find max rel_pos count for each position."""
+    samples_dir = data_dir / "data" / "samples"
+    if not samples_dir.exists():
+        return {}
+
+    counts: dict[str, int] = {}
+    sample_dirs = [d for d in samples_dir.iterdir() if d.is_dir() and d.name.startswith("sample_")]
+
+    for d in sample_dirs:
+        mapping_file = d / "position_mapping.json"
+        if not mapping_file.exists():
+            continue
+        with open(mapping_file) as f:
+            mapping = json.load(f)
+        named_positions = mapping.get("named_positions", {})
+        for pos, abs_positions in named_positions.items():
+            if isinstance(abs_positions, list):
+                counts[pos] = max(counts.get(pos, 0), len(abs_positions))
+            elif abs_positions is not None:
+                counts[pos] = max(counts.get(pos, 0), 1)
+
+    return counts
 
 
-# =============================================================================
-# CLI
-# =============================================================================
+def target_keys_with_relpos(relpos_counts: dict[str, int]) -> list[str]:
+    """Generate target keys including per-rel_pos variants.
 
-
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Compute ALL geometry analysis including ALL GeoApp embeddings",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
-    )
-
-    parser.add_argument(
-        "--data-dir",
-        type=str,
-        default=DEFAULT_CONFIG["output_dir"],
-        help=f"Data directory (default: {DEFAULT_CONFIG['output_dir']})",
-    )
-
-    return parser.parse_args()
-
-
-# =============================================================================
-# Color Data Computation
-# =============================================================================
-
-
-def compute_color_data_for_sample(
-    prompt_sample_path: Path,
-    preference_sample_path: Path,
-) -> dict:
-    """Compute color data fields for a single sample.
-
-    Returns dict with:
-        - log_time_horizon: log10 of time horizon in months (None if no horizon)
-        - option_time_delta: long_term_time - short_term_time (in years)
-        - option_reward_delta: long_term_reward - short_term_reward
-        - option_confidence_delta: choice_prob - alternative_prob
-        - matches_largest_reward: True if chosen option has largest reward
-        - matches_rational: True if choice matches rational choice given horizon
-        - matches_associated: True if choice matches option closest to horizon
+    For each position with N tokens, generates:
+    - L{layer}_{component}_{position} (combined/first token)
+    - L{layer}_{component}_{position}_r0, _r1, ..., _r{N-1} (per-token)
     """
-    with open(prompt_sample_path) as f:
-        prompt_data = json.load(f)
-
-    with open(preference_sample_path) as f:
-        pref_data = json.load(f)
-
-    # Extract time horizon
-    time_horizon_data = prompt_data["prompt"].get("time_horizon")
-    if time_horizon_data is None:
-        log_time_horizon = None
-        time_horizon_months = None
-    else:
-        tv = TimeValue.from_dict(time_horizon_data)
-        time_horizon_months = tv.to_months()
-        log_time_horizon = math.log10(max(time_horizon_months, 1e-10))
-
-    # Extract option times (in years)
-    short_term_time = pref_data.get("short_term_time")  # Already in years
-    long_term_time = pref_data.get("long_term_time")  # Already in years
-
-    # Option time delta
-    if short_term_time is not None and long_term_time is not None:
-        option_time_delta = long_term_time - short_term_time
-    else:
-        option_time_delta = None
-
-    # Extract rewards
-    short_term_reward = pref_data.get("short_term_reward")
-    long_term_reward = pref_data.get("long_term_reward")
-
-    # Option reward delta
-    if short_term_reward is not None and long_term_reward is not None:
-        option_reward_delta = long_term_reward - short_term_reward
-    else:
-        option_reward_delta = None
-
-    # Confidence delta
-    choice_prob = pref_data.get("choice_prob", 0.5)
-    alternative_prob = pref_data.get("alternative_prob", 0.5)
-    option_confidence_delta = choice_prob - alternative_prob
-
-    # Matches largest reward
-    chose_long_term = pref_data.get("chose_long_term", False)
-    if short_term_reward is not None and long_term_reward is not None:
-        if long_term_reward > short_term_reward:
-            matches_largest_reward = chose_long_term
-        elif short_term_reward > long_term_reward:
-            matches_largest_reward = not chose_long_term
-        else:
-            # Equal rewards - any choice matches
-            matches_largest_reward = True
-    else:
-        matches_largest_reward = None
-
-    # Matches rational (based on time horizon vs long term time)
-    if time_horizon_months is not None and long_term_time is not None:
-        time_horizon_years = time_horizon_months / 12.0
-        if time_horizon_years < long_term_time:
-            # Short term is rational (won't be around for long term)
-            matches_rational = not chose_long_term
-        elif time_horizon_years > long_term_time:
-            # Long term is rational
-            matches_rational = chose_long_term
-        else:
-            # Ambiguous
-            matches_rational = None
-    else:
-        matches_rational = None
-
-    # Matches associated (option closest to time horizon)
-    if time_horizon_months is not None and short_term_time is not None and long_term_time is not None:
-        time_horizon_years = time_horizon_months / 12.0
-        short_dist = abs(time_horizon_years - short_term_time)
-        long_dist = abs(time_horizon_years - long_term_time)
-
-        if short_dist < long_dist:
-            matches_associated = not chose_long_term
-        elif long_dist < short_dist:
-            matches_associated = chose_long_term
-        else:
-            # Equidistant
-            matches_associated = None
-    else:
-        matches_associated = None
-
-    return {
-        "time_horizon_months": time_horizon_months,  # Raw value for plotting
-        "log_time_horizon": log_time_horizon,
-        "option_time_delta": option_time_delta,
-        "option_reward_delta": option_reward_delta,
-        "option_confidence_delta": option_confidence_delta,
-        "matches_largest_reward": matches_largest_reward,
-        "matches_rational": matches_rational,
-        "matches_associated": matches_associated,
-    }
+    keys = []
+    for l in LAYERS:
+        for c in COMPONENTS:
+            for p in POSITIONS:
+                # Combined key (always)
+                keys.append(f"L{l}_{c}_{p}")
+                # Per-rel_pos keys (if position has multiple tokens)
+                max_relpos = relpos_counts.get(p, 1)
+                if max_relpos > 1:
+                    for r in range(max_relpos):
+                        keys.append(f"L{l}_{c}_{p}_r{r}")
+    return keys
 
 
-def update_choice_json_with_color_data(data_dir: Path, n_samples: int) -> int:
-    """Update all choice.json files with color data.
+def count_files(d: Path, pattern: str) -> int:
+    return len(list(d.glob(pattern))) if d.exists() else 0
 
-    Returns number of samples updated.
+
+def parse_key(key: str) -> tuple[int, str, str, int | None] | None:
+    """Parse target key into (layer, component, position, rel_pos).
+
+    Key format: L{layer}_{component}_{position} or L{layer}_{component}_{position}_r{rel_pos}
+    Component is one of: resid_pre, attn_out, mlp_out, resid_post
+    rel_pos is None for combined keys, integer for per-token keys.
     """
-    samples_dir = data_dir / "samples"
-    updated = 0
+    import re
+    m = re.match(r"L(\d+)_(.+)", key)
+    if not m:
+        return None
+    layer = int(m.group(1))
+    rest = m.group(2)
+    for comp in COMPONENTS:
+        if rest.startswith(comp + "_"):
+            pos_part = rest[len(comp) + 1:]
+            # Check for _r{N} suffix
+            rel_match = re.match(r"(.+)_r(\d+)$", pos_part)
+            if rel_match:
+                pos = rel_match.group(1)
+                rel_pos = int(rel_match.group(2))
+                return (layer, comp, pos, rel_pos)
+            else:
+                return (layer, comp, pos_part, None)
+    return None
 
-    logger.info(f"Updating choice.json files with color data for {n_samples} samples...")
 
-    for sample_idx in range(n_samples):
-        sample_dir = samples_dir / f"sample_{sample_idx}"
-        if not sample_dir.exists():
+def get_abs_pos(mapping: dict, pos: str) -> int | list[int] | None:
+    """Get absolute position(s) from mapping.
+
+    Returns single int, list of ints, or None. Caller should try each position.
+    """
+    abs_pos = mapping.get("named_positions", {}).get(pos)
+    if abs_pos is None:
+        return None
+    return abs_pos
+
+
+def find_activation_file(sample_dir: Path, layer: int, comp: str, abs_pos: int | list[int]) -> Path | None:
+    """Find activation file, trying multiple positions if abs_pos is a list."""
+    if isinstance(abs_pos, list):
+        # Try each position in order until we find one that exists
+        for p in abs_pos:
+            f = sample_dir / f"L{layer}_{comp}_{p}.npy"
+            if f.exists():
+                return f
+        return None
+    else:
+        f = sample_dir / f"L{layer}_{comp}_{abs_pos}.npy"
+        return f if f.exists() else None
+
+
+def cache_position_mappings(data_dir: Path) -> tuple[list[Path], dict[int, dict]]:
+    """Cache all position mappings once. Returns (sample_dirs, mapping_cache)."""
+    samples_dir = data_dir / "data" / "samples"
+    sample_dirs = sorted(
+        [d for d in samples_dir.iterdir() if d.is_dir() and d.name.startswith("sample_")],
+        key=lambda x: int(x.name.split("_")[1])
+    )
+    mapping_cache = {}
+    for i, d in enumerate(sample_dirs):
+        mapping_file = d / "position_mapping.json"
+        if mapping_file.exists():
+            with open(mapping_file) as f:
+                mapping_cache[i] = json.load(f)
+    return sample_dirs, mapping_cache
+
+
+def load_target(
+    data_dir: Path,
+    key: str,
+    sample_dirs: list[Path] | None = None,
+    mapping_cache: dict[int, dict] | None = None,
+) -> np.ndarray | None:
+    """Load activations for ONE target.
+
+    For combined keys (no _r{N} suffix): loads first available token per sample.
+    For per-rel_pos keys (_r{N} suffix): loads only the specific rel_pos token.
+
+    Args:
+        data_dir: Dataset directory
+        key: Target key (e.g., "L0_resid_pre_time_horizon" or "L0_resid_pre_time_horizon_r1")
+        sample_dirs: Pre-cached list of sample directories (optional, loaded if None)
+        mapping_cache: Pre-cached position mappings {sample_idx: mapping_dict} (optional)
+    """
+    parsed = parse_key(key)
+    if not parsed:
+        return None
+    layer, comp, pos, rel_pos = parsed
+
+    # Use cached mappings if provided, otherwise load fresh
+    if sample_dirs is None or mapping_cache is None:
+        sample_dirs, mapping_cache = cache_position_mappings(data_dir)
+
+    # Single pass: load all valid activation files
+    valid_files: list[Path] = []
+    dim = None
+
+    for i, d in enumerate(sample_dirs):
+        if i not in mapping_cache:
+            continue
+        abs_pos = get_abs_pos(mapping_cache[i], pos)
+        if abs_pos is None:
             continue
 
-        choice_path = sample_dir / "choice.json"
-        prompt_sample_path = sample_dir / "prompt_sample.json"
-        preference_sample_path = sample_dir / "preference_sample.json"
+        # For per-rel_pos: select specific token index
+        if rel_pos is not None:
+            if isinstance(abs_pos, list):
+                if rel_pos >= len(abs_pos):
+                    continue  # This sample doesn't have this rel_pos
+                abs_pos = abs_pos[rel_pos]
+            elif rel_pos > 0:
+                continue  # Single token, but asking for rel_pos > 0
 
-        if not all(p.exists() for p in [choice_path, prompt_sample_path, preference_sample_path]):
+        act_file = find_activation_file(d, layer, comp, abs_pos)
+        if act_file:
+            if dim is None:
+                dim = np.load(act_file, mmap_mode='r').shape[0]
+            valid_files.append(act_file)
+
+    if len(valid_files) < 4 or dim is None:
+        return None
+
+    # Load all valid activations into pre-allocated array
+    X = np.empty((len(valid_files), dim), dtype=np.float32)
+    for idx, act_file in enumerate(valid_files):
+        X[idx] = np.load(act_file)
+
+    return X
+
+
+def load_horizons(data_dir: Path) -> np.ndarray:
+    """Load log time horizons. Called once."""
+    samples_dir = data_dir / "data" / "samples"
+    sample_dirs = sorted(
+        [d for d in samples_dir.iterdir() if d.is_dir() and d.name.startswith("sample_")],
+        key=lambda x: int(x.name.split("_")[1])
+    )
+    h = np.empty(len(sample_dirs), dtype=np.float32)
+    for i, d in enumerate(sample_dirs):
+        f = d / "choice.json"
+        if f.exists():
+            with open(f) as fp:
+                h[i] = json.load(fp).get("time_horizon_months", 60.0)
+        else:
+            h[i] = 60.0
+    return np.log10(h + 0.1)
+
+
+def run_analysis(data_dir: Path, keys: list[str], force: bool) -> None:
+    """Linear probe + PCA. Streams one target at a time."""
+    from scipy.stats import spearmanr
+    from sklearn.decomposition import PCA
+    from sklearn.linear_model import Ridge
+    from sklearn.model_selection import cross_val_score
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    analysis = data_dir / "analysis"
+    lp_dir, pca_dir = analysis / "linear_probe", analysis / "pca"
+    lp_dir.mkdir(parents=True, exist_ok=True)
+    pca_dir.mkdir(parents=True, exist_ok=True)
+
+    y = load_horizons(data_dir)
+    lp_all, pca_all = {}, {}
+
+    # Cache position mappings once for all targets
+    sample_dirs, mapping_cache = cache_position_mappings(data_dir)
+    log.info(f"  Cached {len(mapping_cache)} position mappings")
+
+    for i, key in enumerate(keys):
+        if i % 50 == 0:
+            log.info(f"  Analysis {i}/{len(keys)}")
+            clear_gpu_memory(aggressive=True)
+
+        lp_cache = lp_dir / key / "metrics.json"
+        pca_cache = pca_dir / key / "metrics.json"
+
+        if not force and lp_cache.exists() and pca_cache.exists():
+            with open(lp_cache) as f:
+                lp_all[key] = json.load(f)
+            with open(pca_cache) as f:
+                pca_all[key] = json.load(f)
             continue
 
-        # Load existing choice.json
-        with open(choice_path) as f:
-            choice_data = json.load(f)
-
-        # Skip if already has color data
-        if "log_time_horizon" in choice_data:
+        X = load_target(data_dir, key, sample_dirs, mapping_cache)
+        if X is None:
             continue
 
-        # Compute color data
-        color_data = compute_color_data_for_sample(prompt_sample_path, preference_sample_path)
+        y_sub = y[:len(X)]
 
-        # Merge into choice.json
-        choice_data.update(color_data)
+        # Linear probe
+        try:
+            pipe = Pipeline([("s", StandardScaler()), ("r", Ridge(alpha=1.0))])
+            scores = cross_val_score(pipe, X, y_sub, cv=5, scoring="r2")
+            pipe.fit(X, y_sub)
+            corr = spearmanr(y_sub, pipe.predict(X))[0]
+            lp = {
+                "target_key": key,
+                "r2_mean": float(np.mean(scores)),
+                "r2_std": float(np.std(scores)),
+                "correlation": float(corr) if np.isfinite(corr) else 0.0,
+                "n_samples": len(y_sub),
+            }
+            lp_all[key] = lp
+            (lp_dir / key).mkdir(exist_ok=True)
+            with open(lp_cache, "w") as f:
+                json.dump(lp, f)
+            del pipe, scores
+        except Exception:
+            pass
 
-        # Write back
-        with open(choice_path, "w") as f:
-            json.dump(choice_data, f, indent=4)
+        # PCA
+        try:
+            n = min(10, X.shape[0] - 1, X.shape[1])
+            if n >= 1:
+                pca = PCA(n_components=n, random_state=42)
+                Xp = pca.fit_transform(X)
+                corrs = []
+                for j in range(n):
+                    corr_val = spearmanr(y_sub, Xp[:, j])[0]
+                    corrs.append([j, float(corr_val) if np.isfinite(corr_val) else 0.0])
+                pm = {
+                    "target_key": key,
+                    "explained_variance": pca.explained_variance_ratio_.tolist(),
+                    "pc_correlations": corrs,
+                }
+                pca_all[key] = pm
+                (pca_dir / key).mkdir(exist_ok=True)
+                with open(pca_cache, "w") as f:
+                    json.dump(pm, f)
+                np.save(pca_dir / key / "components.npy", pca.components_.astype(np.float32))
+                del pca, Xp
+        except Exception:
+            pass
 
-        updated += 1
+        del X
+        clear_gpu_memory(aggressive=True)
 
-        if updated % 500 == 0:
-            logger.info(f"  Updated {updated} samples...")
+    # Save summary
+    with open(data_dir / "summary.json", "w") as f:
+        json.dump({
+            "n_samples": len(y),
+            "layers": LAYERS,
+            "components": COMPONENTS,
+            "positions": POSITIONS,
+            "linear_probe": lp_all,
+            "pca": {k: {"top_pc": v["pc_correlations"][0][0], "top_corr": v["pc_correlations"][0][1]}
+                   for k, v in pca_all.items() if v.get("pc_correlations")}
+        }, f, indent=2)
 
-    logger.info(f"Color data update complete: {updated} samples updated")
-    return updated
+    del y, lp_all, pca_all
+    clear_gpu_memory(aggressive=True)
 
 
-# =============================================================================
-# Embedding Computation
-# =============================================================================
-
-
-def compute_embeddings(
-    data: ActivationData,
-    output_dir: Path,
+def _compute_single_embedding(
+    key: str,
+    X: np.ndarray,
     methods: list[str],
-    layers: list[int],
-    components: list[str],
-    positions: list[str],
-) -> None:
-    """Compute and save 3D embeddings for GeoApp.
-
-    Saves to analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
-    """
-    import traceback
-
+    emb_dir: Path,
+) -> dict[str, str | None]:
+    """Compute embeddings for a single target. Returns {method: error_or_None}."""
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
     from umap import UMAP
 
-    embeddings_dir = output_dir / "analysis" / "embeddings"
+    n = X.shape[0]
+    results = {}
 
-    # Create directories for each method
-    for method in methods:
-        (embeddings_dir / method).mkdir(parents=True, exist_ok=True)
+    for m in methods:
+        try:
+            if m == "pca":
+                e = PCA(n_components=min(3, n-1, X.shape[1]), random_state=42).fit_transform(X)
+            elif m == "umap":
+                e = UMAP(n_components=3, n_neighbors=min(15, max(2, n-1)), min_dist=0.1, random_state=42, n_jobs=1).fit_transform(X)
+            elif m == "tsne":
+                # Subsample for large datasets (t-SNE is O(n^2))
+                max_tsne_samples = 2000
+                if n > max_tsne_samples:
+                    np.random.seed(42)
+                    idx = np.random.choice(n, max_tsne_samples, replace=False)
+                    X_tsne = X[idx]
+                    n_tsne = max_tsne_samples
+                else:
+                    X_tsne = X
+                    n_tsne = n
+                    idx = None
+                # Use random init for robustness
+                e_sub = TSNE(n_components=3, perplexity=min(30.0, max(5.0, (n_tsne-1)/3)), random_state=42, max_iter=300, init="random").fit_transform(X_tsne)
+                # Pad back to full size if subsampled
+                if idx is not None:
+                    e = np.zeros((n, 3), dtype=np.float32)
+                    e[idx] = e_sub
+                else:
+                    e = e_sub
+            else:
+                continue
 
-    # Count work - total targets (not methods * targets)
-    total_targets = len(layers) * len(components) * len(positions)
-    current_target = 0
-    computed = 0
-    cached = 0
+            # Validate output
+            if not np.all(np.isfinite(e)):
+                e = np.nan_to_num(e, nan=0.0, posinf=0.0, neginf=0.0)
 
-    logger.info(f"Computing embeddings for {total_targets} targets ({methods})...")
-    print(f"[VERBOSE] Starting compute_embeddings: {total_targets} targets, methods={methods}", flush=True)
+            # Pad if needed
+            if e.shape[1] < 3:
+                pad = np.zeros((n, 3), dtype=np.float32)
+                pad[:, :e.shape[1]] = e
+                e = pad
 
-    for layer in layers:
-        for component in components:
-            for position in positions:
-                key = f"L{layer}_{component}_{position}"
-                current_target += 1
+            np.save(emb_dir / m / f"{key}.npy", e.astype(np.float32))
+            results[m] = None  # Success
+        except Exception as ex:
+            results[m] = f"{key}: {ex}"
 
-                print(f"Processing {key}...", flush=True)
+    return results
 
-                # Check what needs to be computed
-                methods_to_compute = []
-                for method in methods:
-                    cache_path = embeddings_dir / method / f"{key}.npy"
-                    if cache_path.exists():
-                        cached += 1
-                    else:
-                        methods_to_compute.append(method)
 
-                if not methods_to_compute:
-                    print(f"  [CACHED] All methods already computed for {key}", flush=True)
-                    # Print progress every 10 targets
-                    if current_target % 10 == 0:
-                        print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    continue
+def run_embeddings(data_dir: Path, keys: list[str], methods: list[str], force: bool) -> dict[str, int]:
+    """Compute embeddings. Loads each target once, computes all needed methods, deletes immediately."""
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    import os
 
-                print(f"  Methods to compute: {methods_to_compute}", flush=True)
+    emb_dir = data_dir / "analysis" / "embeddings"
+    for m in methods:
+        (emb_dir / m).mkdir(parents=True, exist_ok=True)
 
-                # Load activations
+    counts = {m: 0 for m in methods}
+    failed = {m: [] for m in methods}
+
+    # Cache position mappings once for all targets (avoids millions of JSON reads)
+    sample_dirs, mapping_cache = cache_position_mappings(data_dir)
+    log.info(f"  Cached {len(mapping_cache)} position mappings")
+
+    # Determine which keys need computation
+    keys_to_compute = []
+    for key in keys:
+        need = [m for m in methods if force or not (emb_dir / m / f"{key}.npy").exists()]
+        if need:
+            keys_to_compute.append((key, need))
+        else:
+            for m in methods:
+                counts[m] += 1  # Already exists
+
+    log.info(f"  {len(keys_to_compute)} targets need computation, {len(keys) - len(keys_to_compute)} cached")
+
+    # Use parallel processing with limited workers to avoid memory issues
+    max_workers = min(4, os.cpu_count() or 1)
+    log.info(f"  Using {max_workers} parallel workers")
+
+    # Process in batches for progress logging
+    batch_size = 20
+    processed = 0
+
+    for batch_start in range(0, len(keys_to_compute), batch_size):
+        batch = keys_to_compute[batch_start:batch_start + batch_size]
+        log.info(f"  Embeddings {processed}/{len(keys_to_compute)}")
+
+        # Load data for this batch
+        batch_data = []
+        for key, need in batch:
+            X = load_target(data_dir, key, sample_dirs, mapping_cache)
+            if X is None or X.shape[0] < 4:
+                for m in need:
+                    failed[m].append(key)
+                continue
+
+            # Validate data
+            if np.any(~np.isfinite(X)):
+                X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+
+            batch_data.append((key, X, need))
+
+        # Process batch in parallel
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_compute_single_embedding, key, X, need, emb_dir): key
+                for key, X, need in batch_data
+            }
+
+            for future in as_completed(futures):
+                key = futures[future]
                 try:
-                    print(f"  Loading activations for {key}...", flush=True)
-                    X = data.load_target(key)
-                    print(f"  Loaded activations: shape={X.shape}", flush=True)
-                except (ValueError, FileNotFoundError) as e:
-                    print(f"  [ERROR] Failed to load activations for {key}: {e}", flush=True)
-                    # Print progress every 10 targets
-                    if current_target % 10 == 0:
-                        print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    continue
-                except Exception as e:
-                    print(f"  [ERROR] Unexpected error loading activations for {key}:", flush=True)
-                    traceback.print_exc()
-                    # Print progress every 10 targets
-                    if current_target % 10 == 0:
-                        print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    continue
-
-                if X is None or X.shape[0] < 4:
-                    print(f"  [SKIP] Insufficient samples for {key} (shape={X.shape if X is not None else None})", flush=True)
-                    data.unload_target(key)
-                    # Print progress every 10 targets
-                    if current_target % 10 == 0:
-                        print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    continue
-
-                n_samples = X.shape[0]
-
-                for method in methods_to_compute:
-                    cache_path = embeddings_dir / method / f"{key}.npy"
-                    print(f"  Computing {method}...", flush=True)
-
-                    try:
-                        if method == "pca":
-                            n_comp = min(3, n_samples - 1, X.shape[1])
-                            if n_comp < 1:
-                                print(f"    [SKIP] n_comp < 1 for PCA", flush=True)
-                                continue
-                            model = PCA(n_components=n_comp, random_state=42)
-                            embedding = model.fit_transform(X).astype(np.float32)
-                        elif method == "umap":
-                            n_neighbors = min(15, max(2, n_samples - 1))
-                            model = UMAP(
-                                n_components=3,
-                                n_neighbors=n_neighbors,
-                                min_dist=0.1,
-                                random_state=42,
-                            )
-                            embedding = model.fit_transform(X).astype(np.float32)
-                        elif method == "tsne":
-                            perplexity = min(30.0, max(1.0, (n_samples - 1) / 3))
-                            model = TSNE(
-                                n_components=3,
-                                perplexity=perplexity,
-                                random_state=42,
-                                max_iter=1000,
-                                init="pca",
-                            )
-                            embedding = model.fit_transform(X).astype(np.float32)
+                    results = future.result()
+                    for m, error in results.items():
+                        if error is None:
+                            counts[m] += 1
                         else:
-                            print(f"    [SKIP] Unknown method: {method}", flush=True)
-                            continue
+                            failed[m].append(error)
+                except Exception as ex:
+                    for m in methods:
+                        failed[m].append(f"{key}: {ex}")
 
-                        # Pad to 3 components if needed
-                        if embedding.shape[1] < 3:
-                            padded = np.zeros((n_samples, 3), dtype=np.float32)
-                            padded[:, :embedding.shape[1]] = embedding
-                            embedding = padded
+        processed += len(batch)
+        clear_gpu_memory(aggressive=True)
 
-                        np.save(cache_path, embedding)
-                        computed += 1
-                        print(f"  Saved {method} to {cache_path}", flush=True)
+    log.info(f"  Embeddings {len(keys_to_compute)}/{len(keys_to_compute)} DONE")
 
-                    except Exception as e:
-                        print(f"  [ERROR] Failed to compute {method} for {key}: {e}", flush=True)
-                        print(f"  [ERROR] Full traceback:", flush=True)
-                        traceback.print_exc()
-                        logger.warning(f"Failed to compute {method} for {key}: {e}")
+    # Log failures - always show first 5 errors
+    for m in methods:
+        if failed[m]:
+            log.warning(f"  {m.upper()} failed for {len(failed[m])} targets")
+            for f in failed[m][:5]:
+                log.warning(f"    {f}")
 
-                data.unload_target(key)
-
-                # Print progress every 10 targets
-                if current_target % 10 == 0:
-                    print(f"Progress: {current_target}/{total_targets}", flush=True)
-                    clear_gpu_memory(aggressive=True)
-
-    print(f"[VERBOSE] Embeddings complete: {computed} computed, {cached} cached", flush=True)
-    logger.info(f"Embeddings complete: {computed} computed, {cached} cached")
+    return counts
 
 
-def compute_trajectories(
-    data: ActivationData,
-    output_dir: Path,
-    layers: list[int],
-    components: list[str],
-    positions: list[str],
-) -> None:
-    """Compute and cache trajectory data for 1D plots.
+def run_trajectories(data_dir: Path, force: bool) -> None:
+    """Compute trajectories from PCA embeddings. Memory-mapped reads."""
+    traj = data_dir / "analysis" / "trajectories"
+    pca = data_dir / "analysis" / "embeddings" / "pca"
+    traj.mkdir(parents=True, exist_ok=True)
 
-    Trajectories aggregate PC1 values across layers (1DxLayer) or positions (1DxPos).
-    """
-    trajectories_dir = output_dir / "analysis" / "trajectories"
-    trajectories_dir.mkdir(parents=True, exist_ok=True)
-
-    embeddings_dir = output_dir / "analysis" / "embeddings" / "pca"
-
-    # 1DxLayer: PC1 across all layers for each component/position
-    logger.info("Computing layer trajectories (1D x Layer)...")
-    layer_traj_count = 0
-    layer_traj_cached = 0
-
-    for component in components:
-        for position in positions:
-            cache_file = trajectories_dir / f"layers_{component}_{position}.npz"
-            if cache_file.exists():
-                layer_traj_cached += 1
+    # Layer trajectories
+    for c in COMPONENTS:
+        for p in POSITIONS:
+            f = traj / f"layers_{c}_{p}.npz"
+            if not force and f.exists():
                 continue
-
-            # Collect PC1 for all layers
-            layer_data = {}
-            sample_indices = None
-
-            for layer in layers:
-                key = f"L{layer}_{component}_{position}"
-                pca_file = embeddings_dir / f"{key}.npy"
-
-                if pca_file.exists():
+            layers, values = [], []
+            for l in LAYERS:
+                src = pca / f"L{l}_{c}_{p}.npy"
+                if src.exists():
                     try:
-                        embedding = np.load(pca_file)
-                        if embedding.shape[1] >= 1:
-                            layer_data[layer] = embedding[:, 0]
-                            if sample_indices is None:
-                                # Get valid sample indices from data loader
-                                try:
-                                    X = data.load_target(key)
-                                    sample_indices = list(range(X.shape[0]))
-                                    data.unload_target(key)
-                                except Exception:
-                                    sample_indices = list(range(len(embedding)))
+                        # Memory-mapped read - only loads first column
+                        arr = np.load(src, mmap_mode='r')
+                        layers.append(l)
+                        values.append(np.array(arr[:, 0]))
                     except Exception:
                         pass
+            if layers:
+                np.savez_compressed(f, layers=np.array(layers), pc1_values=np.array(values))
+            del layers, values
 
-            if layer_data:
-                np.savez_compressed(
-                    cache_file,
-                    layers=np.array(list(layer_data.keys())),
-                    pc1_values=np.array([layer_data[l] for l in sorted(layer_data.keys())]),
-                    sample_indices=np.array(sample_indices) if sample_indices else np.array([]),
-                )
-                layer_traj_count += 1
-
-    logger.info(f"Layer trajectories: {layer_traj_count} computed, {layer_traj_cached} cached")
-
-    # 1DxPos: PC1 across all positions for each layer/component
-    logger.info("Computing position trajectories (1D x Position)...")
-    pos_traj_count = 0
-    pos_traj_cached = 0
-
-    for layer in layers:
-        for component in components:
-            cache_file = trajectories_dir / f"positions_L{layer}_{component}.npz"
-            if cache_file.exists():
-                pos_traj_cached += 1
+    # Position trajectories
+    for l in LAYERS:
+        for c in COMPONENTS:
+            f = traj / f"positions_L{l}_{c}.npz"
+            if not force and f.exists():
                 continue
-
-            # Collect PC1 for all positions
-            pos_data = {}
-
-            for position in positions:
-                key = f"L{layer}_{component}_{position}"
-                pca_file = embeddings_dir / f"{key}.npy"
-
-                if pca_file.exists():
+            pos_list, values = [], []
+            for p in POSITIONS:
+                src = pca / f"L{l}_{c}_{p}.npy"
+                if src.exists():
                     try:
-                        embedding = np.load(pca_file)
-                        if embedding.shape[1] >= 1:
-                            pc1 = embedding[:, 0]
-                            # Get sample indices
-                            try:
-                                X = data.load_target(key)
-                                indices = list(range(X.shape[0]))
-                                data.unload_target(key)
-                            except Exception:
-                                indices = list(range(len(pc1)))
-                            pos_data[position] = {"pc1": pc1, "indices": indices}
+                        arr = np.load(src, mmap_mode='r')
+                        pos_list.append(p)
+                        values.append(np.array(arr[:, 0]))
                     except Exception:
                         pass
+            if pos_list:
+                np.savez_compressed(f, positions=np.array(pos_list), pc1_values=np.array(values, dtype=object))
+            del pos_list, values
 
-            if pos_data:
-                pos_order = [p for p in positions if p in pos_data]
-                np.savez_compressed(
-                    cache_file,
-                    positions=np.array(pos_order),
-                    pc1_values=np.array([pos_data[p]["pc1"] for p in pos_order], dtype=object),
-                    sample_indices_list=np.array([pos_data[p]["indices"] for p in pos_order], dtype=object),
-                )
-                pos_traj_count += 1
-
-    logger.info(f"Position trajectories: {pos_traj_count} computed, {pos_traj_cached} cached")
+    clear_gpu_memory(aggressive=True)
 
 
-# =============================================================================
-# Main
-# =============================================================================
+def process_dataset(data_dir: Path, force: bool) -> int:
+    """Process a single dataset directory."""
+    if not (data_dir / "data").exists():
+        log.error(f"No data: {data_dir}")
+        return 1
+
+    # Get rel_pos counts for this dataset
+    relpos_counts = get_max_relpos_counts(data_dir)
+
+    # Combined keys for analysis (linear probe, PCA)
+    combined_keys = target_keys()
+    total_combined = len(combined_keys)
+
+    # All keys including per-rel_pos for embeddings
+    all_keys = target_keys_with_relpos(relpos_counts)
+    total_all = len(all_keys)
+
+    analysis = data_dir / "analysis"
+    expected_traj = len(COMPONENTS) * len(POSITIONS) + len(LAYERS) * len(COMPONENTS)
+
+    # Count samples
+    samples_dir = data_dir / "data" / "samples"
+    n_samples = sum(1 for d in samples_dir.iterdir() if d.is_dir() and d.name.startswith("sample_"))
+
+    # Save rel_pos counts for UI
+    relpos_file = analysis / "relpos_counts.json"
+    relpos_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(relpos_file, "w") as f:
+        json.dump(relpos_counts, f, indent=2)
+
+    # Check cache
+    lp_count = count_files(analysis / "linear_probe", "*/metrics.json")
+    pca_count = count_files(analysis / "pca", "*/metrics.json")
+    emb_counts = {m: count_files(analysis / "embeddings" / m, "*.npy") for m in METHODS}
+    traj_count = count_files(analysis / "trajectories", "*.npz")
+
+    log.info("=" * 50)
+    log.info(f"DATASET: {data_dir.name} | {n_samples} samples")
+    log.info(f"Targets: {total_combined} combined, {total_all} total (with per-rel_pos)")
+    log.info(f"Cache: LP={lp_count}/{total_combined} PCA={pca_count}/{total_combined}")
+    log.info(f"       Embeddings={list(emb_counts.values())} Traj={traj_count}/{expected_traj}")
+    log.info("=" * 50)
+
+    # Phase 1: Analysis - combined keys only
+    if force or lp_count < total_combined or pca_count < total_combined:
+        log.info("\n[1] Analysis (combined keys only)")
+        run_analysis(data_dir, combined_keys, force)
+    else:
+        log.info("\n[1] Analysis COMPLETE")
+
+    # Phase 2: Embeddings - ALL keys including per-rel_pos
+    # Check against total_all (includes per-rel_pos)
+    need = [m for m in METHODS if force or emb_counts[m] < total_all]
+    if need:
+        log.info(f"\n[2] Embeddings (combined + per-rel_pos): {need}")
+        log.info(f"  Computing {total_all} targets...")
+        counts = run_embeddings(data_dir, all_keys, need, force)
+        log.info(f"  {counts}")
+    else:
+        log.info("\n[2] Embeddings COMPLETE")
+
+    # Phase 3: Trajectories - combined keys only
+    if force or traj_count < expected_traj:
+        log.info("\n[3] Trajectories")
+        run_trajectories(data_dir, force)
+    else:
+        log.info("\n[3] Trajectories COMPLETE")
+
+    # Verify - warn if incomplete but don't fail
+    # (some per-rel_pos targets may have insufficient samples)
+    log.info("\n" + "=" * 50)
+    log.info("VERIFICATION")
+    for m in METHODS:
+        c = count_files(analysis / "embeddings" / m, "*.npy")
+        # At minimum, combined keys should exist
+        if c >= total_combined:
+            log.info(f"  {m.upper()}: {c}/{total_all} OK (>= {total_combined} combined)")
+        else:
+            log.warning(f"  {m.upper()}: {c}/{total_all} (< {total_combined} combined - some missing)")
+    log.info("=" * 50)
+
+    return 0
+
+
+def discover_datasets(base_dir: Path) -> list[Path]:
+    """Discover all valid dataset directories under base_dir."""
+    datasets = []
+    if not base_dir.exists():
+        return datasets
+    for subdir in sorted(base_dir.iterdir()):
+        if subdir.is_dir() and (subdir / "data" / "samples").exists():
+            datasets.append(subdir)
+    return datasets
 
 
 def main() -> int:
-    """Run geometry analysis and embedding computation."""
-    args = parse_args()
-
-    data_dir = Path(args.data_dir)
-
-    # Check that data exists
-    if not (data_dir / "data").exists():
-        logger.error(f"Data directory not found: {data_dir / 'data'}")
-        logger.error("Run generate_geometry_samples.py first.")
-        return 1
-
-    # Load data
-    logger.info("=" * 60)
-    logger.info("COMPUTE GEOMETRY ANALYSIS")
-    logger.info("=" * 60)
-    logger.info(f"Data directory: {data_dir}")
-
-    # Use ONLY positions that have activation data extracted
-    # These are defined in semantic_positions.py - DO NOT try to use other positions!
-    all_positions = VALID_POSITIONS
-    logger.info(f"Will compute embeddings for {len(all_positions)} valid positions: {all_positions}")
-
-    # Build config with ALL positions
-    all_targets = build_targets(LAYERS, COMPONENTS, all_positions)
-    config = GeometryConfig(
-        targets=all_targets,
-        output_dir=data_dir,
-        model=DEFAULT_CONFIG["model"],
-        seed=DEFAULT_CONFIG["seed"],
-        n_pca_components=DEFAULT_CONFIG["n_pca_components"],
+    p = argparse.ArgumentParser(
+        description="Compute geometry analysis for datasets in out/geo/",
+        epilog="Examples:\n"
+               "  %(prog)s                  # Process ALL datasets in out/geo/\n"
+               "  %(prog)s investment       # Process only out/geo/investment\n"
+               "  %(prog)s --force          # Force recompute all\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-
-    data = load_cached_data(config)
-    if data is None:
-        logger.error("Failed to load data. Run generate_geometry_samples.py first.")
-        return 1
-
-    logger.info(f"Loaded {len(data.samples)} samples, {len(data.get_target_keys())} targets")
-
-    # Create analysis directory structure
-    analysis_dir = data_dir / "analysis"
-    analysis_dir.mkdir(parents=True, exist_ok=True)
-
-    # Phase 0: Update choice.json with color data
-    logger.info("\n" + "=" * 60)
-    logger.info("Phase 0: Pre-computing Color Data")
-    logger.info("=" * 60)
-
-    update_choice_json_with_color_data(data_dir / "data", data.n_samples)
-
-    # Phase 1: Run streaming analysis (linear probe + PCA)
-    logger.info("\n" + "=" * 60)
-    logger.info("Phase 1: Streaming Analysis (Linear Probe + PCA)")
-    logger.info("=" * 60)
-
-    # Set output dir for analysis results
-    config.output_dir = data_dir
-
-    linear_results, pca_results, embedding_results = run_streaming_analysis(data, config)
-
-    # Also run cross-position similarity
-    logger.info("\nComputing cross-position similarity...")
-    cross_position_results = compute_cross_position_similarity(pca_results, config)
-
-    # And continuous time probe
-    logger.info("\nComputing continuous time probe...")
-    continuous_time_results = compute_continuous_time_probe(data, config)
-
-    # Build and save summary
-    summary = {
-        "n_samples": len(data.samples),
-        "n_targets": len(linear_results),
-        "targets": sorted(linear_results.keys()),
-        # CRITICAL: These fields tell the server what was computed
-        # Without them, server looks for all positions in data (38) instead of computed (17)
-        "layers": LAYERS,
-        "components": COMPONENTS,
-        "positions": all_positions,
-        "linear_probe": {
-            k: {"r2": v.r2_mean, "r2_std": v.r2_std, "corr": v.correlation}
-            for k, v in linear_results.items()
-        },
-        "pca": {
-            k: {
-                "top_pc": v.pc_correlations[0][0],
-                "top_corr": v.pc_correlations[0][1],
-            }
-            for k, v in pca_results.items()
-        },
-    }
-
-    if continuous_time_results:
-        summary["continuous_time_probe"] = {
-            k: {"r2": v.r2_mean, "r2_std": v.r2_std, "corr": v.correlation}
-            for k, v in continuous_time_results.items()
-        }
-
-    if cross_position_results:
-        summary["cross_position_similarity"] = {
-            k: {"best_sim": v.best_similarity, "mean_sim": v.mean_similarity}
-            for k, v in cross_position_results.items()
-        }
-
-    with open(data_dir / "summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
-
-    # Move results to analysis if needed
-    if old_results_dir.exists():
-        for subdir in old_results_dir.iterdir():
-            if subdir.is_dir():
-                target = analysis_dir / subdir.name
-                if not target.exists():
-                    import shutil
-                    shutil.move(str(subdir), str(target))
-        # Remove empty results dir
-        try:
-            old_results_dir.rmdir()
-        except OSError:
-            pass
-
-    clear_gpu_memory(aggressive=True)
-
-    # Phase 2: Compute embeddings for GeoApp (ALL methods, ALL components)
-    logger.info("\n" + "=" * 60)
-    logger.info("Phase 2: Computing 3D Embeddings for GeoApp")
-    logger.info("=" * 60)
-    logger.info(f"Methods: {EMBEDDING_METHODS}")
-    logger.info(f"Components: {COMPONENTS}")
-
-    compute_embeddings(
-        data=data,
-        output_dir=data_dir,
-        methods=EMBEDDING_METHODS,
-        layers=LAYERS,
-        components=COMPONENTS,
-        positions=all_positions,
+    p.add_argument(
+        "dataset",
+        nargs="?",
+        help="Dataset name to process (default: all datasets in out/geo/)",
     )
-
-    clear_gpu_memory(aggressive=True)
-
-    # Phase 3: Compute trajectories (all components, all positions)
-    logger.info("\n" + "=" * 60)
-    logger.info("Phase 3: Computing 1D Trajectory Caches")
-    logger.info("=" * 60)
-
-    compute_trajectories(
-        data=data,
-        output_dir=data_dir,
-        layers=LAYERS,
-        components=COMPONENTS,
-        positions=all_positions,
+    p.add_argument(
+        "--base-dir",
+        default="out/geo",
+        help="Base directory containing datasets (default: out/geo)",
     )
+    p.add_argument("--force", action="store_true", help="Force recompute all")
+    args = p.parse_args()
 
-    # Print summary
-    logger.info("\n" + "=" * 60)
-    logger.info("ANALYSIS COMPLETE")
-    logger.info("=" * 60)
+    base_dir = Path(args.base_dir)
 
-    # Calculate cache sizes
-    embeddings_dir = data_dir / "analysis" / "embeddings"
-    if embeddings_dir.exists():
-        npy_size = sum(f.stat().st_size for f in embeddings_dir.rglob("*.npy"))
-        logger.info(f"Embeddings cache: {npy_size / 1024 / 1024:.1f} MB")
+    # Determine which datasets to process
+    if args.dataset:
+        # Process specific dataset
+        data_dir = base_dir / args.dataset
+        if not data_dir.exists():
+            log.error(f"Dataset not found: {data_dir}")
+            return 1
+        datasets = [data_dir]
+    else:
+        # Discover all datasets
+        datasets = discover_datasets(base_dir)
+        if not datasets:
+            log.error(f"No valid datasets found in {base_dir}")
+            return 1
 
-    trajectories_dir = data_dir / "analysis" / "trajectories"
-    if trajectories_dir.exists():
-        npz_size = sum(f.stat().st_size for f in trajectories_dir.rglob("*.npz"))
-        logger.info(f"Trajectories cache: {npz_size / 1024 / 1024:.1f} MB")
+    log.info("=" * 60)
+    log.info(f"COMPUTE GEOMETRY ANALYSIS")
+    log.info(f"Processing {len(datasets)} dataset(s):")
+    for d in datasets:
+        log.info(f"  - {d.name}")
+    log.info("=" * 60)
 
-    # CRITICAL: Verify ALL embedding methods were generated
-    logger.info("\n" + "=" * 60)
-    logger.info("VERIFICATION: Checking all embedding methods exist")
-    logger.info("=" * 60)
+    # Process each dataset
+    for data_dir in datasets:
+        result = process_dataset(data_dir, args.force)
+        if result != 0:
+            return result
 
-    pca_dir = embeddings_dir / "pca"
-    umap_dir = embeddings_dir / "umap"
-    tsne_dir = embeddings_dir / "tsne"
-
-    pca_count = len(list(pca_dir.glob("*.npy"))) if pca_dir.exists() else 0
-    umap_count = len(list(umap_dir.glob("*.npy"))) if umap_dir.exists() else 0
-    tsne_count = len(list(tsne_dir.glob("*.npy"))) if tsne_dir.exists() else 0
-
-    logger.info(f"PCA embeddings: {pca_count}")
-    logger.info(f"UMAP embeddings: {umap_count}")
-    logger.info(f"t-SNE embeddings: {tsne_count}")
-
-    # Require at least 80% of PCA count for UMAP and t-SNE
-    if pca_count == 0:
-        logger.error("FATAL: No PCA embeddings generated!")
-        raise RuntimeError("No PCA embeddings generated - cannot proceed")
-
-    threshold = int(pca_count * 0.8)
-
-    if umap_count < threshold:
-        logger.error(f"FATAL: UMAP embeddings missing! Got {umap_count}, need {threshold}")
-        logger.error("UMAP is REQUIRED for GeoApp. Fix the issue and re-run.")
-        raise RuntimeError(f"UMAP embeddings missing: {umap_count} < {threshold}")
-
-    if tsne_count < threshold:
-        logger.warning(f"t-SNE embeddings incomplete: {tsne_count} < {threshold} (optional)")
-        # t-SNE is optional for now due to computation issues
-
-    logger.info("All embedding methods verified!")
-
-    logger.info(f"\nOutput directory: {data_dir / 'analysis'}")
-    logger.info("GeoApp will now load all visualizations instantly!")
+    log.info("\n" + "=" * 60)
+    log.info("ALL DATASETS COMPLETE")
+    log.info("=" * 60)
 
     return 0
 

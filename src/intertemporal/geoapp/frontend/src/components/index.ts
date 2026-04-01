@@ -34,3 +34,6 @@ export type { HeatmapProps } from './Heatmap';
 export { PositionSelector } from './PositionSelector';
 export { TrajectoryPlot } from './TrajectoryPlot';
 export type { TrajectoryPlotProps } from './TrajectoryPlot';
+export { FilterPanel } from './FilterPanel';
+export { ScreePlot } from './ScreePlot';
+export { AlignmentHeatmap } from './AlignmentHeatmap';

@@ -78,8 +78,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="out/geometry",
-        help="Output directory (default: out/geometry)",
+        default="out/geo/geometry",
+        help="Output directory (default: out/geo/geometry)",
     )
     parser.add_argument(
         "--model",

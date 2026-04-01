@@ -356,7 +356,17 @@ class GeometryDataLoader:
 
         Returns a dict mapping semantic position names to the max rel_pos + 1 (count).
         Useful for showing how many tokens each position spans.
+
+        First checks for precomputed relpos_counts.json from compute_geometry_analysis.py.
+        Falls back to computing from position mappings if not found.
         """
+        # Check for precomputed file first
+        relpos_file = self.data_dir / "analysis" / "relpos_counts.json"
+        if relpos_file.exists():
+            with open(relpos_file) as f:
+                return json.load(f)
+
+        # Fallback: compute from position mappings
         counts: dict[str, int] = {}
         if not self._position_mapping or "mappings" not in self._position_mapping:
             return counts
@@ -400,18 +410,28 @@ class GeometryDataLoader:
         return ["resid_pre", "attn_out", "mlp_out", "resid_post"]
 
     def get_positions(self) -> list[str]:
-        """Get available semantic positions."""
-        # Return in a sensible order
-        order = [
+        """Get available semantic positions in canonical order."""
+        # Canonical ordering: prompt positions first (in prompt order), then response positions
+        canonical_order = [
+            # Prompt constraint positions
             "time_horizon", "post_time_horizon",
+            # Prompt info positions (left/right pairs)
+            "left_label", "right_label",
+            "left_time", "right_time",
+            "left_reward", "right_reward",
+            # Prompt section tails (in prompt order)
+            "task_tail", "options_tail", "objective_tail",
+            "action_tail", "format_tail",
+            "chat_suffix", "chat_suffix_tail",
+            # Response positions
             "response_choice_prefix", "response_choice",
             "response_reasoning_prefix", "response_reasoning",
         ]
         result = []
-        for pos in order:
+        for pos in canonical_order:
             if pos in self._semantic_positions:
                 result.append(pos)
-        # Add any remaining positions
+        # Add any remaining positions (shouldn't happen with canonical list)
         for pos in sorted(self._semantic_positions):
             if pos not in result:
                 result.append(pos)
@@ -428,6 +448,53 @@ class GeometryDataLoader:
         # Fallback: return all semantic positions (may include ones without embeddings)
         return self.get_positions()
 
+    def get_positions_in_prompt_order(self) -> list[str]:
+        """Get positions sorted by their actual order in the prompt.
+
+        Uses position_mapping from samples to determine the actual token order,
+        returning positions sorted by their median abs_pos across samples.
+        Falls back to get_precomputed_positions() if mapping is unavailable.
+        """
+        cache_key = f"{self._cache_prefix}|positions_prompt_order"
+        if cache_key in self._activations_cache:
+            return self._activations_cache[cache_key]
+
+        mappings = self._position_mapping.get("mappings", [])
+        if not mappings:
+            return self.get_precomputed_positions()
+
+        # Collect first abs_pos for each semantic position across samples
+        position_abs_pos: dict[str, list[int]] = {}
+        for mapping in mappings[:100]:  # Sample first 100 for efficiency
+            seen_in_sample = {}
+            for p in mapping.get("positions", []):
+                fmt = p.get("format_pos", "")
+                if fmt and fmt not in seen_in_sample:
+                    seen_in_sample[fmt] = p.get("abs_pos", 9999)
+            for pos, abs_pos in seen_in_sample.items():
+                if pos not in position_abs_pos:
+                    position_abs_pos[pos] = []
+                position_abs_pos[pos].append(abs_pos)
+
+        # Calculate median abs_pos for each position
+        position_median = {}
+        for pos, abs_positions in position_abs_pos.items():
+            position_median[pos] = sorted(abs_positions)[len(abs_positions) // 2]
+
+        # Get precomputed positions and sort by their median abs_pos
+        precomputed = self.get_precomputed_positions()
+        result = sorted(
+            [p for p in precomputed if p in position_median],
+            key=lambda p: position_median.get(p, 9999)
+        )
+        # Add any positions not found in mapping at the end
+        for p in precomputed:
+            if p not in result:
+                result.append(p)
+
+        self._activations_cache[cache_key] = result
+        return result
+
     def get_precomputed_layers(self) -> list[int]:
         """Get layers that have precomputed embeddings (from summary.json).
 
@@ -441,35 +508,24 @@ class GeometryDataLoader:
     def get_available_methods(self) -> list[str]:
         """Get available dimensionality reduction methods.
 
-        Checks which methods have precomputed embeddings.
-        A method is considered available only if it has at least 80% of the
-        files that PCA has (to avoid showing methods with incomplete data).
-        Returns at least ["pca"] since PCA is always required.
+        Returns ONLY methods that have complete data (same file count as PCA).
+        Server validates all required methods are present.
         """
-        methods = ["pca"]  # PCA is always required
+        emb_dir = self.data_dir / "analysis" / "embeddings"
+        methods = []
 
-        # Count PCA files as baseline
-        pca_dir = self.data_dir / "analysis" / "embeddings" / "pca"
+        pca_dir = emb_dir / "pca"
         pca_count = len(list(pca_dir.glob("*.npy"))) if pca_dir.exists() else 0
-        if pca_count == 0:
-            return methods  # No PCA = nothing else can be available
+        if pca_count > 0:
+            methods.append("pca")
 
-        # Require at least 80% of PCA file count to be considered available
-        threshold = pca_count * 0.8
+        umap_dir = emb_dir / "umap"
+        if umap_dir.exists() and len(list(umap_dir.glob("*.npy"))) == pca_count:
+            methods.append("umap")
 
-        # Check UMAP
-        umap_dir = self.data_dir / "analysis" / "embeddings" / "umap"
-        if umap_dir.exists():
-            umap_count = len(list(umap_dir.glob("*.npy")))
-            if umap_count >= threshold:
-                methods.append("umap")
-
-        # Check t-SNE
-        tsne_dir = self.data_dir / "analysis" / "embeddings" / "tsne"
-        if tsne_dir.exists():
-            tsne_count = len(list(tsne_dir.glob("*.npy")))
-            if tsne_count >= threshold:
-                methods.append("tsne")
+        tsne_dir = emb_dir / "tsne"
+        if tsne_dir.exists() and len(list(tsne_dir.glob("*.npy"))) == pca_count:
+            methods.append("tsne")
 
         return methods
 
@@ -648,44 +704,34 @@ class GeometryDataLoader:
         """Get path to pre-computed embedding file.
 
         Embeddings are stored in analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
-        """
-        # Sanitize position for filename (replace : with _)
-        safe_pos = position.replace(":", "_")
-        return self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{safe_pos}.npy"
+        For per-rel_pos embeddings: L{layer}_{component}_{position}_r{rel_pos}.npy
 
-    def _get_legacy_cache_path(self, method: str, layer: int, component: str, position: str) -> Path:
-        """Get legacy cache path (for backwards compatibility)."""
-        safe_pos = position.replace(":", "_")
-        return self.data_dir / "cache" / method / f"L{layer}_{component}_{safe_pos}.npy"
+        Position format: "format_pos" or "format_pos:rel_pos"
+        """
+        # Parse position to get base_pos and optional rel_pos
+        if ":" in position:
+            parts = position.rsplit(":", 1)
+            base_pos = parts[0]
+            try:
+                rel_pos = int(parts[1])
+                # Per-rel_pos embedding: add _r{rel_pos} suffix
+                return self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{base_pos}_r{rel_pos}.npy"
+            except ValueError:
+                # Invalid rel_pos, treat as base position
+                pass
+        # Combined embedding (no rel_pos suffix)
+        return self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{position}.npy"
 
     def _load_embedding(self, method: str, layer: int, component: str, position: str) -> np.ndarray | None:
         """Load pre-computed embedding from disk.
 
-        Checks multiple paths for backwards compatibility:
-        1. analysis/embeddings/{method}/L{layer}_{component}_{position}.npy (new flat structure)
-        2. analysis/embeddings/L{layer}_{component}_{position}/{method}_embedding.npy (streaming analysis output)
-        3. cache/{method}/L{layer}_{component}_{position}.npy (legacy cache)
+        Path: analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
 
         Returns None if not found - does NOT compute.
         """
-        safe_pos = position.replace(":", "_")
-        key = f"L{layer}_{component}_{safe_pos}"
-
-        # Try new flat path first
-        new_path = self._get_embedding_path(method, layer, component, position)
-        if new_path.exists():
-            return np.load(new_path)
-
-        # Try streaming analysis output (subdirectory per target)
-        streaming_path = self.data_dir / "analysis" / "embeddings" / key / f"{method}_embedding.npy"
-        if streaming_path.exists():
-            return np.load(streaming_path)
-
-        # Try legacy cache path
-        legacy_path = self._get_legacy_cache_path(method, layer, component, position)
-        if legacy_path.exists():
-            return np.load(legacy_path)
-
+        path = self._get_embedding_path(method, layer, component, position)
+        if path.exists():
+            return np.load(path)
         return None
 
     def load_pca(
@@ -724,25 +770,10 @@ class GeometryDataLoader:
             _log("load_pca", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
             return result
 
-        # Try legacy results path (analysis pipeline output)
-        pca_key = f"L{layer}_{component}_{position}"
-        for results_dir in ["analysis", "results"]:
-            pca_path = self.data_dir / results_dir / "pca" / pca_key / "transformed.npy"
-            if pca_path.exists():
-                transformed = np.load(pca_path)
-                if transformed.shape[1] >= n_components:
-                    result = transformed[:, :n_components]
-                    self._pca_cache[cache_key] = result
-                    elapsed = time.time() - start_time
-                    _log("load_pca", f"Loaded from {results_dir}/pca", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
-                    return result
-
-        # Not found - CRASH: embeddings MUST be pre-computed
+        # Not found - embeddings MUST be pre-computed
         raise ValueError(
             f"PCA embedding not found for L{layer}_{component}_{position}.\n"
-            f"Checked paths:\n"
-            f"  - {self._get_embedding_path('pca', layer, component, position)}\n"
-            f"  - {self._get_legacy_cache_path('pca', layer, component, position)}\n"
+            f"Expected path: {self._get_embedding_path('pca', layer, component, position)}\n"
             "Run compute_geometry_analysis.py to pre-compute embeddings first."
         )
 
@@ -993,6 +1024,90 @@ class GeometryDataLoader:
                 else:
                     vals.append(0)
             return np.array(vals)
+        elif color_by == "reward_ratio":
+            # Ratio of long_term_reward / short_term_reward
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    short_reward = pp.get("short_term", {}).get("reward", {}).get("value", 1)
+                    long_reward = pp.get("long_term", {}).get("reward", {}).get("value", 1)
+                    # Avoid division by zero
+                    if short_reward > 0:
+                        vals.append(long_reward / short_reward)
+                    else:
+                        vals.append(1.0)
+                else:
+                    vals.append(1.0)
+            return np.array(vals)
+        elif color_by == "time_ratio":
+            # Ratio of long_term_time / short_term_time (in same units)
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    short_time = pp.get("short_term", {}).get("time", {})
+                    long_time = pp.get("long_term", {}).get("time", {})
+                    short_months = self._convert_to_months(
+                        short_time.get("value", 1),
+                        short_time.get("unit", "months")
+                    )
+                    long_months = self._convert_to_months(
+                        long_time.get("value", 1),
+                        long_time.get("unit", "months")
+                    )
+                    # Avoid division by zero
+                    if short_months > 0:
+                        vals.append(long_months / short_months)
+                    else:
+                        vals.append(1.0)
+                else:
+                    vals.append(1.0)
+            return np.array(vals)
+        elif color_by == "short_term_reward":
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    vals.append(pp.get("short_term", {}).get("reward", {}).get("value", 0))
+                else:
+                    vals.append(0)
+            return np.array(vals)
+        elif color_by == "short_term_time":
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    short_time = pp.get("short_term", {}).get("time", {})
+                    vals.append(self._convert_to_months(
+                        short_time.get("value", 0),
+                        short_time.get("unit", "months")
+                    ))
+                else:
+                    vals.append(0)
+            return np.array(vals)
+        elif color_by == "long_term_reward":
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    vals.append(pp.get("long_term", {}).get("reward", {}).get("value", 0))
+                else:
+                    vals.append(0)
+            return np.array(vals)
+        elif color_by == "long_term_time":
+            vals = []
+            for s in self._samples:
+                pp = self._extract_nested(s, "prompt.preference_pair", {})
+                if pp:
+                    long_time = pp.get("long_term", {}).get("time", {})
+                    vals.append(self._convert_to_months(
+                        long_time.get("value", 0),
+                        long_time.get("unit", "months")
+                    ))
+                else:
+                    vals.append(0)
+            return np.array(vals)
         else:
             return np.arange(len(self._samples))
 
@@ -1014,6 +1129,12 @@ class GeometryDataLoader:
             "option_confidence_delta",
             "option_time_delta",
             "option_reward_delta",
+            "reward_ratio",
+            "time_ratio",
+            "short_term_reward",
+            "short_term_time",
+            "long_term_reward",
+            "long_term_time",
             "matches_largest_reward",
             "matches_rational",
             "matches_associated",
@@ -1073,14 +1194,6 @@ class GeometryDataLoader:
                 labels[pos] = pos.replace("_", " ").title()
         return labels
 
-    def get_enriched_position_labels(self) -> dict[str, str]:
-        """Get position labels - same as get_position_labels for compatibility."""
-        return self.get_position_labels()
-
-    def get_semantic_to_positions_mapping(self) -> dict[str, list[str]]:
-        """Get mapping from semantic positions to themselves (for API compatibility)."""
-        return {pos: [pos] for pos in self.get_positions()}
-
     def get_markers(self) -> dict[str, str]:
         """Get section markers from DefaultPromptFormat."""
         from ..formatting.configs.default_prompt_format import DefaultPromptFormat
@@ -1105,41 +1218,36 @@ class GeometryDataLoader:
     def get_prompt_template_structure(self) -> list[dict]:
         """Get prompt template structure for UI display.
 
-        Positions are marked as available only if they have actual activation data,
-        not just if they appear in the position mapping.
+        Returns ALL known format positions with availability based on
+        precomputed embeddings.
         """
-        # Use positions that have actual activation data (not just in mapping)
-        available = self.get_positions_with_data(layer=0, component="resid_post")
+        # Use precomputed positions as the source of availability
+        precomputed = set(self.get_precomputed_positions())
         labels = self.get_position_labels()
 
-        template_order = [
-            ("situation_marker", "marker"),
-            ("situation", "variable"),
-            ("task_marker", "marker"),
-            ("left_label", "variable"),
-            ("left_reward", "variable"),
-            ("left_time", "variable"),
-            ("right_label", "variable"),
-            ("right_reward", "variable"),
-            ("right_time", "variable"),
-            ("objective_marker", "marker"),
-            ("time_horizon", "variable"),
-            ("post_time_horizon", "variable"),
-            ("action_marker", "marker"),
-            ("format_marker", "marker"),
-            ("response_choice_prefix", "marker"),
-            ("response_choice", "semantic"),
-            ("response_reasoning_prefix", "marker"),
-            ("response_reasoning", "semantic"),
+        # All known format positions in canonical order
+        all_positions = [
+            "chat_prefix", "chat_prefix_tail",
+            "situation_marker", "situation", "situation_content", "situation_tail",
+            "task_marker", "task_content", "role", "task_in_question", "task_tail",
+            "left_label", "option_content", "left_reward", "left_reward_units", "left_time",
+            "right_label", "right_reward", "right_reward_units", "right_time", "options_tail",
+            "objective_marker", "objective_content", "objective_tail",
+            "time_horizon", "post_time_horizon",
+            "constraint_marker", "constraint_prefix", "constraint_content", "constraint_tail",
+            "action_marker", "action_content", "action_tail", "reasoning_ask",
+            "format_marker", "format_content", "format_choice_prefix", "format_reasoning_prefix", "format_tail",
+            "chat_suffix", "chat_suffix_tail",
+            "response_choice_prefix", "response_choice", "response_reasoning_prefix", "response_reasoning", "response_other",
         ]
 
         elements = []
-        for name, elem_type in template_order:
+        for name in all_positions:
             elements.append({
                 "name": name,
                 "label": labels.get(name, name.replace("_", " ").title()),
-                "type": elem_type,
-                "available": name in available,
+                "type": "semantic",
+                "available": name in precomputed,
             })
         return elements
 
@@ -1252,6 +1360,43 @@ class GeometryDataLoader:
         if mapping:
             return mapping.get("positions", [])
         return []
+
+    def get_example_sample_with_horizon(self) -> dict | None:
+        """Get a sample that has time_horizon for use as an illustration.
+
+        Returns the position mapping with decoded tokens grouped by format_pos,
+        suitable for displaying actual sample text in the UI.
+        """
+        # Find a sample with time_horizon
+        has_horizon_values = self.get_sample_metadata("has_horizon")
+        example_idx = None
+        for idx, has_horizon in enumerate(has_horizon_values):
+            if has_horizon:
+                example_idx = idx
+                break
+
+        if example_idx is None:
+            # Fallback to first sample
+            example_idx = 0
+
+        mapping = self.get_position_mapping_for_sample(example_idx)
+        if not mapping:
+            return None
+
+        # Group tokens by format_pos and concatenate decoded tokens
+        format_texts: dict[str, str] = {}
+        for pos_info in mapping.get("positions", []):
+            format_pos = pos_info.get("format_pos", "")
+            decoded = pos_info.get("decoded_token", "")
+            if format_pos:
+                if format_pos not in format_texts:
+                    format_texts[format_pos] = ""
+                format_texts[format_pos] += decoded
+
+        return {
+            "sample_idx": example_idx,
+            "format_texts": format_texts,
+        }
 
     def preload_all_metadata(self) -> int:
         """Preload all metadata/color values into memory cache.
@@ -1409,19 +1554,13 @@ class GeometryDataLoader:
         Raises:
             ValueError: If trajectory cache file does not exist (STRICT mode).
         """
-        # Check analysis/trajectories first (new path), then cache/trajectories (legacy)
         cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{position}.npz"
         if not cache_file.exists():
-            legacy_file = self.data_dir / "cache" / "trajectories" / f"layers_{component}_{position}.npz"
-            if legacy_file.exists():
-                cache_file = legacy_file
-            else:
-                raise ValueError(
-                    f"Layer trajectory cache not found: {cache_file}\n"
-                    "Run compute_geometry_analysis.py to generate trajectory data first."
-                )
+            raise ValueError(
+                f"Layer trajectory cache not found: {cache_file}\n"
+                "Run compute_geometry_analysis.py to generate trajectory data first."
+            )
 
-        # STRICT: crash on any failure - trajectory data MUST be valid
         data = np.load(cache_file)
         layers = data["layers"].tolist()
         pc1_values = data["pc1_values"]  # shape: (n_layers, n_samples)
@@ -1444,19 +1583,13 @@ class GeometryDataLoader:
         Raises:
             ValueError: If trajectory cache file does not exist (STRICT mode).
         """
-        # Check analysis/trajectories first (new path), then cache/trajectories (legacy)
         cache_file = self.data_dir / "analysis" / "trajectories" / f"positions_L{layer}_{component}.npz"
         if not cache_file.exists():
-            legacy_file = self.data_dir / "cache" / "trajectories" / f"positions_L{layer}_{component}.npz"
-            if legacy_file.exists():
-                cache_file = legacy_file
-            else:
-                raise ValueError(
-                    f"Position trajectory cache not found: {cache_file}\n"
-                    "Run compute_geometry_analysis.py to generate trajectory data first."
-                )
+            raise ValueError(
+                f"Position trajectory cache not found: {cache_file}\n"
+                "Run compute_geometry_analysis.py to generate trajectory data first."
+            )
 
-        # STRICT: crash on any failure - trajectory data MUST be valid
         data = np.load(cache_file, allow_pickle=True)
         positions = data["positions"].tolist()
         # pc1_values is stored as object array - each element is a 1D array
@@ -1464,3 +1597,118 @@ class GeometryDataLoader:
         sample_indices_list = [list(arr) for arr in data["sample_indices_list"]]
         _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component)
         return positions, pc1_values_list, sample_indices_list
+
+    def load_pca_metrics(
+        self,
+        layer: int,
+        component: str,
+        position: str,
+    ) -> dict | None:
+        """Load PCA metrics including variance explained.
+
+        Returns:
+            Dict with 'explained_variance' (list of floats) and other metrics,
+            or None if not found.
+        """
+        # Check analysis/pca first
+        metrics_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{position}" / "metrics.json"
+        if not metrics_file.exists():
+            return None
+
+        with open(metrics_file) as f:
+            return json.load(f)
+
+    def load_pca_components(
+        self,
+        layer: int,
+        component: str,
+        position: str,
+    ) -> np.ndarray | None:
+        """Load PCA components (directions) for direction alignment analysis.
+
+        Returns:
+            Array of shape (n_components, n_features) or None if not found.
+        """
+        components_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{position}" / "components.npy"
+        if not components_file.exists():
+            return None
+
+        return np.load(components_file)
+
+    def get_scree_data(
+        self,
+        position: str,
+        n_components: int = 10,
+    ) -> dict[str, list[dict]]:
+        """Get Scree plot data (variance explained) for all layers and components.
+
+        Returns:
+            Dict with 'series': list of {label, values} where values is cumulative variance.
+        """
+        series = []
+        components = self.get_components()
+
+        for layer in self._layers:
+            for comp in components:
+                metrics = self.load_pca_metrics(layer, comp, position)
+                if metrics and "explained_variance" in metrics:
+                    var_explained = metrics["explained_variance"][:n_components]
+                    # Convert to cumulative
+                    cumulative = []
+                    total = 0.0
+                    for v in var_explained:
+                        total += v
+                        cumulative.append(total)
+
+                    series.append({
+                        "label": f"L{layer}_{comp}",
+                        "layer": layer,
+                        "component": comp,
+                        "values": cumulative,
+                    })
+
+        return {"series": series}
+
+    def get_direction_alignment(
+        self,
+        position: str,
+        pc_index: int = 0,
+    ) -> dict:
+        """Compute direction alignment (cosine similarity) matrix for PC directions.
+
+        Args:
+            position: Semantic position to analyze.
+            pc_index: Which PC to use (0 = PC1, 1 = PC2, etc.)
+
+        Returns:
+            Dict with 'labels', 'matrix' (2D cosine similarity), 'layers', 'components'.
+        """
+        components = self.get_components()
+        labels = []
+        directions = []
+
+        # Collect all PC directions
+        for layer in self._layers:
+            for comp in components:
+                pca_components = self.load_pca_components(layer, comp, position)
+                if pca_components is not None and pca_components.shape[0] > pc_index:
+                    labels.append(f"L{layer}_{comp[:4]}")  # Abbreviated
+                    directions.append(pca_components[pc_index])
+
+        if len(directions) == 0:
+            return {"labels": [], "matrix": [], "error": "No PCA components found"}
+
+        # Stack directions and normalize
+        directions = np.array(directions)
+        norms = np.linalg.norm(directions, axis=1, keepdims=True)
+        norms[norms == 0] = 1  # Avoid division by zero
+        normalized = directions / norms
+
+        # Compute cosine similarity matrix
+        similarity = normalized @ normalized.T
+
+        return {
+            "labels": labels,
+            "matrix": similarity.tolist(),
+            "n_targets": len(labels),
+        }

@@ -26,8 +26,6 @@ class PairPositionMapping(BaseSchema):
         anchor_texts: List of text markers used to find anchor positions.
             Parallel array with anchors - anchor_texts[i] is the text that was matched
             to find anchors[i].
-        first_interesting_marker: Optional marker text indicating the first position
-            of interest (e.g., where answer choices begin).
         src_tokens: Optional list of decoded tokens for source sequence.
         dst_tokens: Optional list of decoded tokens for destination sequence.
     """
@@ -37,7 +35,6 @@ class PairPositionMapping(BaseSchema):
     dst_len: int = 0
     anchors: list[tuple[int, int]] = field(default_factory=list)
     anchor_texts: list[str] = field(default_factory=list)
-    first_interesting_marker: str | None = None
     src_tokens: list[str] = field(default_factory=list)
     dst_tokens: list[str] = field(default_factory=list)
     # Reverse mapping: dst -> src, ensures ALL dst positions have a mapping
@@ -54,16 +51,22 @@ class PairPositionMapping(BaseSchema):
             for src_pos in range(self.src_len):
                 dst_pos = self.mapping.get(src_pos, src_pos)
                 is_anchor = (src_pos, dst_pos) in anchor_set
-                src_token = self.src_tokens[src_pos] if src_pos < len(self.src_tokens) else ""
-                dst_token = self.dst_tokens[dst_pos] if dst_pos < len(self.dst_tokens) else ""
-                alignment.append({
-                    "src_pos": src_pos,
-                    "dst_pos": dst_pos,
-                    "src_token": src_token,
-                    "dst_token": dst_token,
-                    "is_anchor": is_anchor,
-                    "is_interpolated": not is_anchor,
-                })
+                src_token = (
+                    self.src_tokens[src_pos] if src_pos < len(self.src_tokens) else ""
+                )
+                dst_token = (
+                    self.dst_tokens[dst_pos] if dst_pos < len(self.dst_tokens) else ""
+                )
+                alignment.append(
+                    {
+                        "src_pos": src_pos,
+                        "dst_pos": dst_pos,
+                        "src_token": src_token,
+                        "dst_token": dst_token,
+                        "is_anchor": is_anchor,
+                        "is_interpolated": not is_anchor,
+                    }
+                )
             d["alignment"] = alignment
         return d
 
@@ -166,16 +169,6 @@ class PairPositionMapping(BaseSchema):
         """Length of the shorter sequence."""
         return min(self.src_len, self.dst_len)
 
-    @property
-    def first_interesting_pos(self) -> int:
-        if self.first_interesting_marker is None:
-            return 0
-        if self.first_interesting_marker not in self.anchor_texts:
-            return 0
-        idx = self.anchor_texts.index(self.first_interesting_marker)
-        src_pos, dst_pos = self.anchors[idx]
-        return min(src_pos, dst_pos)
-
     def inv(self) -> dict[int, int]:
         """Return inverse mapping (dst -> src)."""
         return {dst: src for src, dst in self.mapping.items()}
@@ -231,7 +224,6 @@ class PairPositionMapping(BaseSchema):
             dst_len=self.src_len,
             anchors=switched_anchors,
             anchor_texts=self.anchor_texts,
-            first_interesting_marker=self.first_interesting_marker,
             src_tokens=self.dst_tokens,
             dst_tokens=self.src_tokens,
             reverse_mapping=new_reverse,
@@ -634,7 +626,9 @@ def build_position_mapping_from_sample_mappings(
 
     # Build reverse mapping (dst -> src) ensuring ALL dst positions are covered
     # For dst positions that don't have a direct src mapping, map to nearest src
-    reverse_mapping = _build_complete_reverse_mapping(mapping, src_len, dst_len, anchors)
+    reverse_mapping = _build_complete_reverse_mapping(
+        mapping, src_len, dst_len, anchors
+    )
 
     return PairPositionMapping(
         mapping=mapping,

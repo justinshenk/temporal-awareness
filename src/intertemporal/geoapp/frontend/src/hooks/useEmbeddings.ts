@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import api from '../lib/api';
+import api, { getDataset } from '../lib/api';
 
 // Re-export ApiError for use in components
 export { ApiError } from '../lib/api';
@@ -21,6 +21,11 @@ export interface PromptTemplateElement {
   available: boolean;
 }
 
+export interface ExampleSample {
+  sample_idx: number;
+  format_texts: Record<string, string>;
+}
+
 export interface ConfigResponse {
   layers: number[];
   components: string[];
@@ -34,6 +39,7 @@ export interface ConfigResponse {
   semantic_to_positions: Record<string, string[]>;
   markers: Record<string, string>;
   rel_pos_counts: Record<string, number>;
+  example_sample: ExampleSample | null;
 }
 
 // Transformed config for easier use in components
@@ -50,6 +56,7 @@ export interface TransformedConfig {
   semanticToPositions: Record<string, string[]>;
   markers: Record<string, string>;
   relPosCounts: Record<string, number>;
+  exampleSample: ExampleSample | null;
 }
 
 interface BackendEmbeddingResponse {
@@ -114,12 +121,12 @@ export interface SampleResponse {
 }
 
 // Hook to fetch app configuration
-// CRASH BEHAVIOR: No retries - if config fails, app crashes immediately
 export function useConfig() {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['config'],
+    queryKey: ['config', dataset],
     queryFn: async (): Promise<TransformedConfig> => {
-      log('useConfig', 'Fetching config...');
+      log('useConfig', `Fetching config for dataset: ${dataset}`);
       const startTime = performance.now();
       const response = await api.get<ConfigResponse>('/config');
       const elapsed = performance.now() - startTime;
@@ -133,7 +140,7 @@ export function useConfig() {
         layers: response.layers,
         components: response.components,
         positions: response.positions,
-        methods: response.available_methods || ['pca'],  // Use backend's available methods
+        methods: response.available_methods || ['pca'],
         colorByOptions: response.color_options,
         totalSamples: response.n_samples,
         modelName: response.model_name || '',
@@ -142,11 +149,13 @@ export function useConfig() {
         semanticToPositions: response.semantic_to_positions || {},
         markers: response.markers || {},
         relPosCounts: response.rel_pos_counts || {},
+        exampleSample: response.example_sample || null,
       };
     },
-    staleTime: Infinity, // Config doesn't change during session
-    retry: false, // CRASH: No retries - fail immediately if data is missing
-    throwOnError: true, // Propagate errors to error boundary
+    staleTime: 5 * 60 * 1000, // 5 minutes - allow refresh if something goes wrong
+    refetchOnMount: true, // Always refetch when component mounts
+    retry: 1, // Retry once on failure
+    retryDelay: 500,
   });
 }
 
@@ -263,7 +272,8 @@ export function useStreamingEmbedding(
       progress: 0,
     });
 
-    const url = `/api/embedding/${layer}/${component}/${encodeURIComponent(position)}/stream?method=${method}&chunk_size=500`;
+    const dataset = getDataset();
+    const url = `/api/${dataset}/embedding/${layer}/${component}/${encodeURIComponent(position)}/stream?method=${method}&chunk_size=500`;
     log('useStreamingEmbedding', `📡 Opening EventSource: ${url}`);
     const eventSource = new EventSource(url);
     activeEventSource.current = eventSource;
@@ -1240,4 +1250,72 @@ export function usePositionTrajectory(
     isLoading,
     error: error as Error | null,
   };
+}
+
+// Types for Scree plot data
+interface ScreeSeries {
+  label: string;
+  layer: number;
+  component: string;
+  values: number[];
+}
+
+export interface ScreeData {
+  series: ScreeSeries[];
+}
+
+// Hook to fetch Scree plot data (cumulative variance explained)
+export function useScreeData(
+  position: string,
+  nComponents: number = 10,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['scree', position, nComponents],
+    queryFn: async (): Promise<ScreeData> => {
+      log('useScreeData', 'Fetching scree data', { position, nComponents });
+      const startTime = performance.now();
+      const response = await api.get<ScreeData>(
+        `/scree/${encodeURIComponent(position)}?n_components=${nComponents}`
+      );
+      const elapsed = performance.now() - startTime;
+      log('useScreeData', 'Scree data loaded', { n_series: response.series?.length || 0, elapsed_ms: elapsed.toFixed(1) });
+      return response;
+    },
+    enabled: enabled && !!position,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    retry: false,
+  });
+}
+
+// Types for Direction Alignment data
+export interface AlignmentData {
+  labels: string[];
+  matrix: number[][];
+  n_targets: number;
+  error?: string;
+}
+
+// Hook to fetch Direction Alignment data (cosine similarity matrix)
+export function useAlignmentData(
+  position: string,
+  pcIndex: number = 0,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ['alignment', position, pcIndex],
+    queryFn: async (): Promise<AlignmentData> => {
+      log('useAlignmentData', 'Fetching alignment data', { position, pcIndex });
+      const startTime = performance.now();
+      const response = await api.get<AlignmentData>(
+        `/alignment/${encodeURIComponent(position)}?pc_index=${pcIndex}`
+      );
+      const elapsed = performance.now() - startTime;
+      log('useAlignmentData', 'Alignment data loaded', { n_targets: response.n_targets, elapsed_ms: elapsed.toFixed(1) });
+      return response;
+    },
+    enabled: enabled && !!position,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    retry: false,
+  });
 }

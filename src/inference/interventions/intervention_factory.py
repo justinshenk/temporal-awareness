@@ -105,7 +105,6 @@ def scale(
 
 def interpolate(
     layer: int,
-    source_values: Union[np.ndarray, list],
     target_values: Union[np.ndarray, list],
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
@@ -117,12 +116,10 @@ def interpolate(
     - alpha=0: keep current activation unchanged
     - alpha=1: fully replace with target_values
 
-    NOTE: source_values is required for API compatibility but IGNORED at runtime.
     The actual current activation is used as the interpolation source.
 
     Args:
         layer: Layer to intervene on
-        source_values: IGNORED - kept for API compatibility only
         target_values: Target activations to interpolate towards
         alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
@@ -131,11 +128,12 @@ def interpolate(
     Returns:
         Intervention that interpolates current activation towards target
     """
+    target_arr = np.array(target_values, dtype=np.float32)
     return Intervention(
         layer=layer,
         mode="interpolate",
-        values=np.array(source_values, dtype=np.float32),
-        target_values=np.array(target_values, dtype=np.float32),
+        values=np.zeros(1, dtype=np.float32),  # Placeholder, not used in interpolate mode
+        target_values=target_arr,
         alpha=alpha,
         target=_target(positions),
         component=component,
@@ -171,7 +169,6 @@ def patch_embeddings(
 
 
 def interpolate_embeddings(
-    source_values: Union[np.ndarray, torch.Tensor],
     target_values: Union[np.ndarray, torch.Tensor],
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
@@ -182,13 +179,10 @@ def interpolate_embeddings(
     - alpha=0: keep current embeddings unchanged
     - alpha=1: fully replace with target_values
 
-    NOTE: source_values is required for API compatibility but IGNORED at runtime.
     The actual current embedding is used as the interpolation source.
-
     Use this for embedding-level EAP-IG.
 
     Args:
-        source_values: IGNORED - kept for API compatibility only
         target_values: Target embeddings to interpolate towards
         alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
@@ -196,14 +190,12 @@ def interpolate_embeddings(
     Returns:
         Intervention that interpolates current embeddings towards target
     """
-    if isinstance(source_values, torch.Tensor):
-        source_values = source_values.detach().cpu().numpy()
     if isinstance(target_values, torch.Tensor):
         target_values = target_values.detach().cpu().numpy()
     return Intervention(
         layer=0,  # Ignored for embedding interventions
         mode="interpolate",
-        values=np.array(source_values, dtype=np.float32),
+        values=np.zeros(1, dtype=np.float32),  # Placeholder, not used in interpolate mode
         target_values=np.array(target_values, dtype=np.float32),
         alpha=alpha,
         target=_target(positions),

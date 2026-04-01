@@ -90,6 +90,7 @@ interface SceneContentProps {
   cameraDistance: number;
   gridSize: number;
   visibility?: Float32Array;
+  backgroundColor: string;
   // Camera animation state ref
   cameraStateRef: React.MutableRefObject<{
     targetPosition: THREE.Vector3 | null;
@@ -117,6 +118,7 @@ const SceneContent = memo(function SceneContent({
   cameraDistance,
   gridSize,
   visibility,
+  backgroundColor,
   cameraStateRef,
   isInteracting,
 }: SceneContentProps) {
@@ -153,7 +155,7 @@ const SceneContent = memo(function SceneContent({
   return (
     <>
       {/* Set scene background color (required with alpha: false in Canvas gl config) */}
-      <color attach="background" args={['#faf8f5']} />
+      <color attach="background" args={[backgroundColor]} />
 
       <PerspectiveCamera
         makeDefault
@@ -431,6 +433,7 @@ function ScatterPlot3DInner({
           cameraDistance={cameraDistance}
           gridSize={gridSize}
           visibility={visibility}
+          backgroundColor={backgroundColor}
           cameraStateRef={cameraStateRef}
           isInteracting={isInteracting}
         />

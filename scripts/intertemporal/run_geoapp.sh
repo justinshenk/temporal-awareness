@@ -2,8 +2,8 @@
 # Run GeoViz Explorer - starts backend, frontend, and opens browser
 #
 # Usage:
-#   ./scripts/intertemporal/run_geoapp.sh
-#   ./scripts/intertemporal/run_geoapp.sh --data-dir out/geo_test
+#   ./scripts/intertemporal/run_geoapp.sh           # Load ALL datasets from out/geo/
+#   ./scripts/intertemporal/run_geoapp.sh geometry  # Load only geometry dataset
 
 set -e
 
@@ -11,8 +11,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/src/intertemporal/geoapp/frontend"
 
-# Default data directory
-DATA_DIR="${1:-out/geometry}"
+# Base directory for datasets
+BASE_DIR="out/geo"
+
+# Dataset argument (optional - if not provided, load all datasets)
+DATASET_ARG="$1"
 
 # Create log file with timestamp
 LOG_DIR="$PROJECT_ROOT/temp"
@@ -33,6 +36,7 @@ echo ""
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}========================================${NC}"
@@ -41,14 +45,22 @@ echo -e "${BLUE}========================================${NC}"
 echo "[$(date +%H:%M:%S)] Session started"
 echo
 
-# Kill any existing processes from previous runs
-echo "Cleaning up any existing processes..."
-pkill -f "run_geoapp.py" 2>/dev/null || true
-pkill -f "vite.*geoapp" 2>/dev/null || true
-# Also kill by port
+# Kill any existing servers on ports 8000 and 3000
+echo "Killing any existing servers on ports 8000 and 3000..."
 lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-sleep 1
+pkill -f "run_geoapp.py" 2>/dev/null || true
+pkill -f "uvicorn" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
+sleep 2
+# Verify ports are free
+if lsof -i:8000 >/dev/null 2>&1 || lsof -i:3000 >/dev/null 2>&1; then
+    echo -e "${RED}Warning: Ports 8000 or 3000 still in use. Forcing...${NC}"
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+    sleep 1
+fi
+echo "Ports cleared."
 
 # Cleanup function to kill background processes on exit
 cleanup() {
@@ -65,36 +77,47 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# Check if analysis exists, run compute_geometry_analysis.py if not
-ANALYSIS_DIR="$PROJECT_ROOT/$DATA_DIR/analysis"
-EMBEDDINGS_DIR="$ANALYSIS_DIR/embeddings/pca"
-LEGACY_CACHE_DIR="$PROJECT_ROOT/$DATA_DIR/cache/pca"
+# Discover or validate datasets
+if [ -n "$DATASET_ARG" ]; then
+    # Single dataset specified
+    DATASETS=("$DATASET_ARG")
+    echo "Loading single dataset: $DATASET_ARG"
+else
+    # Discover all datasets
+    echo "Discovering datasets in $BASE_DIR/..."
+    DATASETS=()
+    for dir in "$PROJECT_ROOT/$BASE_DIR"/*/; do
+        if [ -d "${dir}data/samples" ] && [ -d "${dir}analysis/embeddings" ]; then
+            name=$(basename "$dir")
+            DATASETS+=("$name")
+        fi
+    done
+    if [ ${#DATASETS[@]} -eq 0 ]; then
+        echo -e "${RED}No valid datasets found in $BASE_DIR/${NC}"
+        exit 1
+    fi
+    echo "Found ${#DATASETS[@]} dataset(s): ${DATASETS[*]}"
+fi
+echo
 
-if [ ! -d "$EMBEDDINGS_DIR" ] && [ ! -d "$LEGACY_CACHE_DIR" ]; then
-    echo -e "${BLUE}----------------------------------------${NC}"
-    echo -e "${BLUE}Pre-computed embeddings not found.${NC}"
-    echo -e "${BLUE}Running compute_geometry_analysis.py...${NC}"
-    echo -e "${BLUE}----------------------------------------${NC}"
-    echo
-    cd "$PROJECT_ROOT"
-    uv run python scripts/intertemporal/compute_geometry_analysis.py --data-dir "$DATA_DIR"
-    echo
-    echo -e "${GREEN}Analysis complete!${NC}"
-    echo
+
+# Build the dataset arguments for Python script
+DATASET_ARGS=""
+if [ -n "$DATASET_ARG" ]; then
+    DATASET_ARGS="$DATASET_ARG"
 fi
 
 # Start backend server - load-only mode (no runtime computation)
 echo -e "${GREEN}Starting backend server...${NC}"
 cd "$PROJECT_ROOT"
-uv run python scripts/intertemporal/run_geoapp.py --data-dir "$DATA_DIR" &
+uv run python scripts/intertemporal/run_geoapp.py $DATASET_ARGS &
 BACKEND_PID=$!
 
 # Wait for backend to be ready (check health endpoint)
-# Server preloads ALL 816 embeddings into memory at startup, which takes 5-7 minutes
-echo "Waiting for backend to preload embeddings (this may take 5-7 minutes)..."
+echo "Waiting for backend to preload data..."
 BACKEND_READY=false
 for i in {1..600}; do  # 600 * 1s = 10 minutes timeout
-    if curl -s http://localhost:8000/api/config > /dev/null 2>&1; then
+    if curl -s http://localhost:8000/api/datasets > /dev/null 2>&1; then
         echo ""
         echo -e "${GREEN}Backend is ready!${NC}"
         BACKEND_READY=true
@@ -103,7 +126,7 @@ for i in {1..600}; do  # 600 * 1s = 10 minutes timeout
     # Check if backend process died
     if ! kill -0 $BACKEND_PID 2>/dev/null; then
         echo ""
-        echo -e "\033[0;31mError: Backend process died unexpectedly${NC}"
+        echo -e "${RED}Error: Backend process died unexpectedly${NC}"
         exit 1
     fi
     sleep 1
@@ -117,7 +140,7 @@ done
 
 if [ "$BACKEND_READY" = false ]; then
     echo ""
-    echo -e "\033[0;31mError: Backend failed to start within 10 minutes${NC}"
+    echo -e "${RED}Error: Backend failed to start within 10 minutes${NC}"
     kill $BACKEND_PID 2>/dev/null || true
     exit 1
 fi
@@ -147,10 +170,12 @@ echo ""
 
 # Open browser
 echo -e "${GREEN}Opening browser...${NC}"
+# Open the first dataset by default
+FIRST_DATASET="${DATASETS[0]}"
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    open "http://localhost:3000"
+    open "http://localhost:3000/${FIRST_DATASET}"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    xdg-open "http://localhost:3000" 2>/dev/null || echo "Please open http://localhost:3000 in your browser"
+    xdg-open "http://localhost:3000/${FIRST_DATASET}" 2>/dev/null || echo "Please open http://localhost:3000/${FIRST_DATASET} in your browser"
 fi
 
 echo
@@ -158,7 +183,13 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${GREEN}GeoViz Explorer is running!${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo
-echo "  Frontend: http://localhost:3000"
+echo "  Datasets loaded: ${DATASETS[*]}"
+echo
+echo "  URLs:"
+for dataset in "${DATASETS[@]}"; do
+    echo "    - http://localhost:3000/${dataset}"
+done
+echo
 echo "  Backend:  http://localhost:8000"
 echo "  API Docs: http://localhost:8000/docs"
 echo

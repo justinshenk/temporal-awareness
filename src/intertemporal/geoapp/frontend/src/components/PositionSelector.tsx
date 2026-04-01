@@ -1,275 +1,304 @@
-import { PromptTemplateElement } from '../hooks/useEmbeddings';
+import { useEffect, useState, useMemo } from 'react';
+import { PromptTemplateElement, ExampleSample } from '../hooks/useEmbeddings';
 
 interface PositionSelectorProps {
   position: string;
   promptTemplate: PromptTemplateElement[];
   positionLabels: Record<string, string>;
   onPositionChange: (position: string) => void;
+  exampleSample?: ExampleSample | null;
+  relPosCounts?: Record<string, number>;
+  isDarkMode?: boolean;
 }
 
-// Color scheme for different semantic regions
-const REGION_COLORS: Record<string, { base: string; selected: string }> = {
-  marker: {
-    base: 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700',
-    selected: 'bg-slate-500 text-white border-slate-600',
-  },
-  left: {
-    base: 'bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-800',
-    selected: 'bg-blue-500 text-white border-blue-600',
-  },
-  right: {
-    base: 'bg-indigo-100 hover:bg-indigo-200 border-indigo-300 text-indigo-800',
-    selected: 'bg-indigo-500 text-white border-indigo-600',
-  },
-  time_horizon: {
-    base: 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-800',
-    selected: 'bg-amber-500 text-white border-amber-600',
-  },
-  response: {
-    base: 'bg-green-100 hover:bg-green-200 border-green-300 text-green-800',
-    selected: 'bg-green-500 text-white border-green-600',
-  },
-  content: {
-    base: 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700',
-    selected: 'bg-gray-600 text-white border-gray-700',
-  },
-  context: {
-    base: 'bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-700',
-    selected: 'bg-purple-500 text-white border-purple-600',
-  },
+// Exact colors from Python FORMAT_POS_COLORS
+const FORMAT_POS_COLORS: Record<string, string> = {
+  chat_prefix: '#78909C', chat_prefix_tail: '#90A4AE',
+  chat_suffix: '#78909C', chat_suffix_tail: '#90A4AE',
+  situation_marker: '#E65100', situation_content: '#FFCC80',
+  situation_tail: '#FFB74D', situation: '#FFA726', role: '#FF9800',
+  task_marker: '#1565C0', task_content: '#90CAF9',
+  task_tail: '#64B5F6', task_in_question: '#42A5F5',
+  option_content: '#B2DFDB', options_tail: '#80CBC4',
+  left_label: '#7CB342', left_reward: '#558B2F',
+  left_reward_units: '#689F38', left_time: '#8BC34A',
+  right_label: '#00838F', right_reward: '#00ACC1',
+  right_reward_units: '#26C6DA', right_time: '#4DD0E1',
+  objective_marker: '#6A1B9A', objective_content: '#CE93D8', objective_tail: '#AB47BC',
+  constraint_marker: '#C62828', constraint_content: '#EF9A9A',
+  constraint_tail: '#E57373', constraint_prefix: '#EF5350',
+  time_horizon: '#FF5722', post_time_horizon: '#FF8A65',
+  action_marker: '#2E7D32', action_content: '#A5D6A7', action_tail: '#66BB6A',
+  format_marker: '#4E342E', format_content: '#BCAAA4', format_tail: '#8D6E63',
+  format_choice_prefix: '#6D4C41', format_reasoning_prefix: '#A1887F',
+  reasoning_ask: '#D7CCC8',
+  response_choice_prefix: '#5C6BC0', response_choice: '#3F51B5',
+  response_reasoning_prefix: '#7986CB', response_reasoning: '#9FA8DA',
+  response_other: '#C5CAE9',
+  prompt_other: '#CFD8DC',
 };
 
-function getRegionColor(posName: string): { base: string; selected: string } {
-  if (posName.includes('marker')) return REGION_COLORS.marker;
-  if (posName.startsWith('left_')) return REGION_COLORS.left;
-  if (posName.startsWith('right_')) return REGION_COLORS.right;
-  if (posName.includes('time_horizon') || posName === 'post_time_horizon') return REGION_COLORS.time_horizon;
-  if (posName.startsWith('response_')) return REGION_COLORS.response;
-  if (posName.endsWith('_content') || posName === 'chat_prefix') return REGION_COLORS.content;
-  if (posName.endsWith('_tail') || posName === 'chat_suffix') return REGION_COLORS.content;
-  if (posName.endsWith('_other')) return REGION_COLORS.content;
-  if (['situation', 'role', 'task_in_question', 'reasoning_ask', 'reward_units', 'constraint_prefix'].includes(posName)) {
-    return REGION_COLORS.context;
-  }
-  return REGION_COLORS.marker;
+const DEFAULT_COLOR = '#9E9E9E';
+
+function getPositionColor(posName: string): string {
+  return FORMAT_POS_COLORS[posName] || DEFAULT_COLOR;
 }
 
-interface PositionButtonProps {
-  name: string;
-  label: string;
-  available: boolean;
-  selected: boolean;
-  onClick: () => void;
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function PositionButton({
-  name,
-  label,
-  available,
-  selected,
-  onClick,
-}: PositionButtonProps) {
-  const colors = getRegionColor(name);
+// Canonical order for format positions (prompt order)
+const CANONICAL_ORDER = [
+  'chat_prefix', 'chat_prefix_tail',
+  'situation_marker', 'situation', 'situation_content', 'situation_tail',
+  'task_marker', 'task_content', 'role', 'task_in_question', 'task_tail',
+  'left_label', 'option_content', 'left_reward', 'left_reward_units', 'left_time',
+  'right_label', 'right_reward', 'right_reward_units', 'right_time', 'options_tail',
+  'objective_marker', 'objective_content', 'objective_tail',
+  'time_horizon', 'post_time_horizon',
+  'constraint_marker', 'constraint_prefix', 'constraint_content', 'constraint_tail',
+  'action_marker', 'action_content', 'action_tail', 'reasoning_ask',
+  'format_marker', 'format_content', 'format_choice_prefix', 'format_reasoning_prefix', 'format_tail',
+  'chat_suffix', 'chat_suffix_tail',
+  'response_choice_prefix', 'response_choice', 'response_reasoning_prefix', 'response_reasoning', 'response_other',
+];
 
-  const baseStyle = available
-    ? (selected ? colors.selected + ' ring-2 ring-offset-1 ring-purple-400 shadow-md' : colors.base)
-    : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-400 border-dashed';
-
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        px-1.5 py-0.5 rounded border text-[10px] font-medium transition-all cursor-pointer
-        ${baseStyle}
-      `}
-      title={available ? name : `${name} (no data)`}
-    >
-      [{label}]
-      {!available && <span className="ml-0.5 text-[8px]">∅</span>}
-    </button>
-  );
-}
+// Positions that start the RESPONSE section
+const RESPONSE_POSITIONS = new Set([
+  'response_choice_prefix', 'response_choice', 'response_reasoning_prefix',
+  'response_reasoning', 'response_other'
+]);
 
 export function PositionSelector({
   position,
   promptTemplate,
-  positionLabels,
+  positionLabels: _,
   onPositionChange,
+  exampleSample,
+  relPosCounts,
+  isDarkMode = false,
 }: PositionSelectorProps) {
-  // Build available positions set from promptTemplate
-  const availableSet = new Set(promptTemplate.filter(e => e.available).map(e => e.name));
+  // Parse current position
+  const [currentPosBase, currentRelPos] = position.includes(':')
+    ? [position.split(':')[0], parseInt(position.split(':')[1])]
+    : [position, null];
 
-  // Helper to render a position button
-  const renderPos = (name: string, displayLabel?: string) => {
-    const label = displayLabel || positionLabels[name] || name.replace(/_/g, ' ');
-    const available = availableSet.has(name);
-    const isSelected = position === name;
+  const [relPosMode, setRelPosMode] = useState<'combined' | number>(
+    currentRelPos !== null ? currentRelPos : 'combined'
+  );
+
+  useEffect(() => {
+    setRelPosMode(currentRelPos !== null ? currentRelPos : 'combined');
+  }, [currentRelPos]);
+
+  const availableSet = new Set(promptTemplate.filter(e => e.available).map(e => e.name));
+  const formatTexts = exampleSample?.format_texts || {};
+
+  // Get ALL positions from format_texts, sorted by canonical order
+  const sortedPositions = useMemo(() => {
+    const positions = Object.keys(formatTexts);
+    return positions.sort((a, b) => {
+      const idxA = CANONICAL_ORDER.indexOf(a);
+      const idxB = CANONICAL_ORDER.indexOf(b);
+      // If not in canonical order, put at end
+      const orderA = idxA === -1 ? 999 : idxA;
+      const orderB = idxB === -1 ? 999 : idxB;
+      return orderA - orderB;
+    });
+  }, [formatTexts]);
+
+  // Split into prompt and response positions
+  const promptPositions = sortedPositions.filter(p => !RESPONSE_POSITIONS.has(p));
+  const responsePositions = sortedPositions.filter(p => RESPONSE_POSITIONS.has(p));
+
+  const handlePositionClick = (name: string) => {
+    if (relPosMode === 'combined') {
+      onPositionChange(name);
+    } else {
+      onPositionChange(`${name}:${relPosMode}`);
+    }
+  };
+
+  const handleRelPosModeChange = (mode: 'combined' | number) => {
+    setRelPosMode(mode);
+    if (mode === 'combined') {
+      onPositionChange(currentPosBase);
+    } else {
+      onPositionChange(`${currentPosBase}:${mode}`);
+    }
+  };
+
+  const getText = (name: string): string => {
+    const text = formatTexts[name] || '';
+    const cleaned = text.replace(/\n/g, ' ').trim();
+    if (cleaned.length <= 20) return cleaned || name;
+    return cleaned.slice(0, 19) + '…';
+  };
+
+  const renderToken = (name: string) => {
+    const text = getText(name);
+    const baseColor = getPositionColor(name);
+    const isAvailable = availableSet.has(name);
+    const isSelected = currentPosBase === name;
+
+    // Compute styles based on state
+    const bgColor = isSelected
+      ? baseColor
+      : hexToRgba(baseColor, isAvailable ? 0.3 : 0.15);
+    const borderColor = isSelected
+      ? baseColor
+      : hexToRgba(baseColor, isAvailable ? 0.7 : 0.4);
+    const textColor = isSelected
+      ? 'white'
+      : (isDarkMode ? '#e0e0e0' : '#333');
 
     return (
-      <PositionButton
+      <button
         key={name}
-        name={name}
-        label={label}
-        available={available}
-        selected={isSelected}
-        onClick={() => onPositionChange(name)}
-      />
+        onClick={() => isAvailable && handlePositionClick(name)}
+        disabled={!isAvailable}
+        style={{
+          backgroundColor: bgColor,
+          borderColor: borderColor,
+          color: isAvailable ? textColor : (isDarkMode ? '#666' : '#999'),
+          opacity: isAvailable ? 1 : 0.5,
+        }}
+        className={`
+          px-1 py-0.5 rounded border text-[9px] font-medium transition-all
+          ${isAvailable ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed'}
+          ${isSelected ? 'ring-2 ring-offset-1 ring-purple-400' : ''}
+        `}
+        title={`${name}${!isAvailable ? ' (no data)' : ''}`}
+      >
+        {text}
+      </button>
     );
   };
 
+  if (Object.keys(formatTexts).length === 0) {
+    return (
+      <div style={{
+        padding: '8px',
+        color: isDarkMode ? '#999' : '#666',
+        backgroundColor: isDarkMode ? '#2a2623' : '#fff',
+      }}>
+        No example sample data available
+      </div>
+    );
+  }
+
+  const maxRelPos = relPosCounts?.[currentPosBase] || 1;
+
+  // Use inline styles for reliable light/dark mode
+  const containerBg = isDarkMode ? '#2a2623' : '#ffffff';
+  const containerBorder = isDarkMode ? '#3a3633' : '#e5e7eb';
+  const headerBg = isDarkMode ? 'rgba(185, 28, 28, 0.2)' : 'rgba(254, 242, 242, 0.5)';
+  const responseBg = isDarkMode ? 'rgba(22, 101, 52, 0.2)' : 'rgba(240, 253, 244, 0.5)';
+  const textMuted = isDarkMode ? '#9ca3af' : '#6b7280';
+  const textPrimary = isDarkMode ? '#e5e7eb' : '#1f2937';
+
   return (
-    <div className="text-[11px]">
-      {/* Prompt Template Visualization */}
-      <div className="p-2 bg-white border border-gray-200 rounded-lg space-y-1.5 font-mono leading-relaxed">
-        {/* Prompt label - mirrors MODEL RESPONSE label */}
-        <div className="pb-1.5 border-b-2 border-red-400 -mx-2 px-2 -mt-2 pt-2 mb-1 bg-red-50/50 rounded-t-lg">
-          <span className="text-red-600 font-bold text-[10px]">PROMPT:</span>
+    <div style={{ fontSize: '10px' }}>
+      <div style={{
+        padding: '8px',
+        backgroundColor: containerBg,
+        border: `1px solid ${containerBorder}`,
+        borderRadius: '8px',
+        fontFamily: 'monospace',
+        lineHeight: 1.6,
+      }}>
+        {/* PROMPT header */}
+        <div style={{
+          padding: '4px 8px',
+          margin: '-8px -8px 8px -8px',
+          backgroundColor: headerBg,
+          borderBottom: '2px solid #f87171',
+          borderRadius: '8px 8px 0 0',
+        }}>
+          <span style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '9px' }}>PROMPT:</span>
         </div>
 
-        {/* Chat prefix - VERY FIRST (position 0): <|im_start|>user\n */}
-        <div className="flex flex-wrap items-center gap-0.5 text-gray-400 pb-1 border-b border-dashed border-gray-200">
-          {renderPos('chat_prefix', 'chat_prefix')}
-          <span className="text-[8px]">(&lt;|im_start|&gt;user)</span>
-          {renderPos('chat_prefix_tail')}
+        {/* All prompt positions */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+          {promptPositions.map(renderToken)}
         </div>
 
-        {/* SITUATION */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('situation_marker', 'SITUATION:')}
-          {renderPos('situation')}
-          {renderPos('situation_content', 'content')}
-          {renderPos('situation_tail')}
-        </div>
-
-        {/* TASK */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('task_marker', 'TASK:')}
-          <span className="text-gray-400 text-[10px]">You,</span>
-          {renderPos('role')}
-          <span className="text-gray-400 text-[10px]">, are tasked to</span>
-          {renderPos('task_in_question', 'task')}
-          {renderPos('task_tail')}
-        </div>
-
-        {/* Task content and options */}
-        <div className="pl-3 space-y-1">
-          {renderPos('task_content', 'task content')}
-          <div className="flex flex-wrap items-center gap-0.5">
-            {renderPos('left_label', 'a)')}
-            {renderPos('left_reward')}
-            <span className="text-gray-400 text-[10px]">in</span>
-            {renderPos('left_time')}
-          </div>
-          <div className="flex flex-wrap items-center gap-0.5">
-            {renderPos('right_label', 'b)')}
-            {renderPos('right_reward')}
-            <span className="text-gray-400 text-[10px]">in</span>
-            {renderPos('right_time')}
-          </div>
-          {renderPos('option_content')}
-          {renderPos('options_tail')}
-        </div>
-
-        {/* CONSIDER + Time Horizon */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('objective_marker', 'CONSIDER:')}
-          {renderPos('objective_content', 'content')}
-        </div>
-        <div className="pl-3 flex flex-wrap items-center gap-0.5">
-          <span className="text-gray-400 text-[10px]">Concerned about outcome in</span>
-          {renderPos('time_horizon')}
-          {renderPos('post_time_horizon', 'after')}
-          {renderPos('objective_tail')}
-        </div>
-
-        {/* CONSTRAINT (optional) */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('constraint_marker', 'CONSTRAINT:')}
-          {renderPos('constraint_prefix')}
-          {renderPos('constraint_content', 'content')}
-          {renderPos('constraint_tail')}
-        </div>
-
-        {/* ACTION */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('action_marker', 'ACTION:')}
-          {renderPos('reasoning_ask')}
-          {renderPos('action_content', 'content')}
-          {renderPos('action_tail')}
-        </div>
-
-        {/* FORMAT */}
-        <div className="flex flex-wrap items-center gap-0.5">
-          {renderPos('format_marker', 'FORMAT:')}
-          {renderPos('format_content', 'content')}
-        </div>
-        <div className="pl-3 flex flex-wrap items-center gap-0.5">
-          {renderPos('format_choice_prefix', 'I choose:')}
-          <span className="text-gray-400 text-[10px]">&lt;a or b&gt;.</span>
-          {renderPos('format_reasoning_prefix', 'My reasoning:')}
-          {renderPos('format_tail')}
-        </div>
-
-        {/* Chat suffix - END of prompt, BEFORE model response */}
-        {/* Position ~122: <|im_end|>\n<|im_start|>assistant\n */}
-        <div className="pt-1.5 border-t border-dashed border-gray-300 flex flex-wrap items-center gap-0.5 text-gray-400">
-          {renderPos('chat_suffix', 'chat_suffix')}
-          <span className="text-[8px]">(&lt;|im_end|&gt;...&lt;|im_start|&gt;assistant)</span>
-          {renderPos('chat_suffix_tail')}
-          {renderPos('prompt_other')}
-        </div>
-
-        {/* Response - MODEL OUTPUT starts here (position 127+) */}
-        <div className="pt-1.5 border-t-2 border-green-400 bg-green-50/50 -mx-2 px-2 pb-1 rounded-b-lg">
-          <div className="flex flex-wrap items-center gap-0.5">
-            <span className="text-green-600 font-bold text-[10px]">MODEL RESPONSE:</span>
-          </div>
-          <div className="pl-3 flex flex-wrap items-center gap-0.5">
-            {renderPos('response_choice_prefix', 'I choose:')}
-            {renderPos('response_choice', 'choice')}
-          </div>
-          <div className="pl-3 flex flex-wrap items-center gap-0.5">
-            {renderPos('response_reasoning_prefix', 'My reasoning:')}
-            {renderPos('response_reasoning', 'reasoning')}
-          </div>
-          <div className="pl-3 flex flex-wrap items-center gap-0.5">
-            {renderPos('response_other')}
-          </div>
-        </div>
+        {/* RESPONSE header */}
+        {responsePositions.length > 0 && (
+          <>
+            <div style={{
+              padding: '4px 8px',
+              margin: '8px -8px -8px -8px',
+              backgroundColor: responseBg,
+              borderTop: '2px solid #4ade80',
+              borderRadius: '0 0 8px 8px',
+            }}>
+              <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '9px' }}>RESPONSE:</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginTop: '4px' }}>
+                {responsePositions.map(renderToken)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Legend */}
-      <div className="mt-2 flex flex-wrap gap-2 text-[9px] text-gray-500">
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-blue-200 border border-blue-300" />
-          Left option
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-indigo-200 border border-indigo-300" />
-          Right option
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-amber-200 border border-amber-300" />
-          Time Horizon
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-green-200 border border-green-300" />
-          Response
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-purple-200 border border-purple-300" />
-          Context
-        </span>
-        <span className="flex items-center gap-0.5">
-          <span className="w-2 h-2 rounded bg-gray-200 border border-gray-300" />
-          Content
-        </span>
+      {/* Selected position */}
+      <div style={{ marginTop: '6px', fontSize: '9px', color: textMuted }}>
+        Selected: <span style={{ fontWeight: 600, color: textPrimary }}>{position.replace(/_/g, ' ')}</span>
+        {!availableSet.has(currentPosBase) && (
+          <span style={{ marginLeft: '8px', color: '#ef4444' }}>(no data)</span>
+        )}
       </div>
 
-      {/* Current selection */}
-      <div className="mt-1 text-[9px] text-gray-500">
-        Selected: <span className="font-medium text-gray-700">{position}</span>
-      </div>
+      {/* Rel Pos selector - select specific token index within a position */}
+      {maxRelPos > 1 && (
+        <div style={{
+          marginTop: '8px',
+          paddingTop: '8px',
+          borderTop: `1px solid ${containerBorder}`
+        }}>
+          <div style={{ fontSize: '9px', color: textMuted, marginBottom: '4px' }}>
+            Token index for "{currentPosBase}" ({maxRelPos} tokens):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            <button
+              onClick={() => handleRelPosModeChange('combined')}
+              style={{
+                padding: '2px 8px',
+                fontSize: '9px',
+                borderRadius: '4px',
+                border: `1px solid ${relPosMode === 'combined' ? '#D97757' : containerBorder}`,
+                backgroundColor: relPosMode === 'combined' ? '#D97757' : containerBg,
+                color: relPosMode === 'combined' ? 'white' : textMuted,
+                cursor: 'pointer',
+              }}
+            >
+              All
+            </button>
+            {Array.from({ length: maxRelPos }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => handleRelPosModeChange(i)}
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '9px',
+                  borderRadius: '4px',
+                  border: `1px solid ${relPosMode === i ? '#D97757' : containerBorder}`,
+                  backgroundColor: relPosMode === i ? '#D97757' : containerBg,
+                  color: relPosMode === i ? 'white' : textMuted,
+                  cursor: 'pointer',
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

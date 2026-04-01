@@ -152,7 +152,7 @@ def compute_eap_ig(
             weight = quad.weights[step_idx]
 
             embed_intervention = interpolate_embeddings(
-                source_values=corrupted_np, target_values=clean_np, alpha=alpha,
+                target_values=clean_np, alpha=alpha,
             )
 
             interp_traj = runner.compute_trajectory_with_intervention_and_cache(
@@ -223,9 +223,8 @@ def compute_eap_ig(
             # Clean up intermediate trajectory each step
             del interp_traj, component_grads
 
-            # Periodic aggressive GPU memory cleanup (every 3 steps)
-            if (step_idx + 1) % 3 == 0:
-                clear_gpu_memory(aggressive=True)
+            # Aggressive GPU memory cleanup every step (was every 3 - caused 17GB peak)
+            clear_gpu_memory(aggressive=True)
 
     # Save values before cleanup
     clean_pos_map = aligned.clean_pos_map

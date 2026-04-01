@@ -106,6 +106,7 @@ class GeometryConfig:
         seed: Random seed for reproducibility
         max_samples: Maximum number of samples to use (None = all)
         n_pca_components: Number of PCA components to compute
+        dataset_cfg: Dataset configuration dict (defaults to GEOMETRY_CFG)
 
         # Memory optimization settings
         extraction_buffer_size: Samples to buffer before flushing to disk
@@ -118,6 +119,7 @@ class GeometryConfig:
     seed: int = 42
     max_samples: int | None = None
     n_pca_components: int = 50
+    dataset_cfg: dict | None = None
 
     # Memory optimization settings
     extraction_buffer_size: int = EXTRACTION_BUFFER_SIZE
@@ -140,6 +142,7 @@ class GeometryConfig:
             seed=d.get("seed", 42),
             max_samples=d.get("max_samples"),
             n_pca_components=d.get("n_pca_components", 50),
+            dataset_cfg=d.get("dataset_cfg"),
             extraction_buffer_size=d.get("extraction_buffer_size", EXTRACTION_BUFFER_SIZE),
             use_compressed_storage=d.get("use_compressed_storage", USE_COMPRESSED_STORAGE),
         )
@@ -156,6 +159,7 @@ class GeometryConfig:
             "seed": self.seed,
             "max_samples": self.max_samples,
             "n_pca_components": self.n_pca_components,
+            "dataset_cfg": self.dataset_cfg,
             "extraction_buffer_size": self.extraction_buffer_size,
             "use_compressed_storage": self.use_compressed_storage,
         }
@@ -222,7 +226,7 @@ def generate_all_targets(
 
 
 # =============================================================================
-# Recommended Targets (legacy - use generate_all_targets for comprehensive extraction)
+# Recommended Targets (curated subset - use generate_all_targets for comprehensive extraction)
 # =============================================================================
 
 RECOMMENDED_TARGETS = [

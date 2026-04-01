@@ -4,10 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
 
+// Extract dataset from URL path
+const dataset = window.location.pathname.split('/')[1] || 'geometry';
+
 // Startup logging
 console.log('='.repeat(60));
 console.log('[CLIENT] 🚀 GeoViz Explorer - React App Starting');
-console.log('[CLIENT] 📡 Will connect to API at /api');
+console.log(`[CLIENT] 📊 Dataset: ${dataset}`);
+console.log(`[CLIENT] 📡 Will connect to API at /api/${dataset}`);
 console.log('='.repeat(60));
 
 const queryClient = new QueryClient({

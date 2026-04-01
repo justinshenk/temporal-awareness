@@ -134,15 +134,26 @@ class ActivationData:
         return _load_array(sample_dir / filename)
 
     def load_activations_by_format_pos(
-        self, layer: int, component: str, format_pos: str
+        self, layer: int, component: str, format_pos: str, rel_pos: int | None = None
     ) -> np.ndarray:
         """Load activations for all samples at a given format position.
 
         Uses position mappings to find the absolute position for each sample.
+
+        Args:
+            layer: Transformer layer
+            component: Activation component (resid_pre, attn_out, etc.)
+            format_pos: Semantic position name (e.g., "time_horizon")
+            rel_pos: If specified, load only this token index within the position.
+                     If None, loads the first token (rel_pos=0).
+
         Returns: (n_samples, hidden_dim) array
         """
         if self.position_mappings is None:
             raise ValueError("Position mappings not loaded")
+
+        # Default to first token when rel_pos not specified
+        target_rel_pos = rel_pos if rel_pos is not None else 0
 
         activations = []
         for sample_idx in range(self.n_samples):
@@ -155,7 +166,11 @@ class ActivationData:
             if not abs_positions:
                 continue
 
-            abs_pos = abs_positions[0]  # Use first position
+            # Check if this sample has the requested rel_pos
+            if target_rel_pos >= len(abs_positions):
+                continue
+
+            abs_pos = abs_positions[target_rel_pos]
             try:
                 act = self.load_activation(sample_idx, layer, component, abs_pos)
                 activations.append(act)
@@ -163,20 +178,22 @@ class ActivationData:
                 continue
 
         if not activations:
-            raise ValueError(f"No activations found for {format_pos}")
+            raise ValueError(f"No activations found for {format_pos} (rel_pos={target_rel_pos})")
 
         return np.stack(activations)
 
     # =========================================================================
-    # Compatibility layer for analysis pipeline
+    # Analysis Pipeline Interface
     # =========================================================================
 
     def get_target_keys(self) -> list[str]:
-        """Get list of available target keys (for analysis compatibility).
+        """Get list of available target keys for analysis pipeline.
 
         Target key format: L{layer}_{component}_{format_pos}
 
         Only returns keys for positions that actually have activation files.
+        Note: Returns combined keys only (not per-rel_pos). Per-rel_pos handling
+        is done in compute_geometry_analysis.py.
         """
         if self._target_keys:
             return self._target_keys.copy()
@@ -196,11 +213,11 @@ class ActivationData:
             return []
 
         # Build reverse mapping: abs_pos -> format_pos for sample_0
+        # Map ALL abs_pos values (not just first) to their format_pos
         abs_pos_to_format_pos: dict[int, str] = {}
         for format_pos, abs_positions in first_mapping.named_positions.items():
-            if abs_positions:
-                # Only map the first abs_pos (the one we use for loading)
-                abs_pos_to_format_pos[abs_positions[0]] = format_pos
+            for abs_pos in abs_positions:
+                abs_pos_to_format_pos[abs_pos] = format_pos
 
         # Scan files to get (layer, component, format_pos) tuples that actually exist
         layer_component_pos: set[tuple[str, str, str]] = set()
@@ -228,7 +245,7 @@ class ActivationData:
         return target_keys.copy()
 
     def load_target(self, target_key: str) -> np.ndarray:
-        """Load activations for a target key (for analysis compatibility).
+        """Load activations for a target key.
 
         Target key format: L{layer}_{component}_{format_pos}
         Returns: (n_samples, hidden_dim) array
@@ -267,7 +284,7 @@ class ActivationData:
         return activations
 
     def get_sample_count(self, target_key: str) -> int:
-        """Get sample count for a target (for analysis compatibility)."""
+        """Get sample count for a target."""
         return self.n_samples
 
     def unload_target(self, target_key: str):
@@ -281,7 +298,7 @@ class ActivationData:
         clear_gpu_memory(aggressive=True)
 
     def iter_targets(self):
-        """Iterate over targets (for analysis compatibility)."""
+        """Iterate over targets, yielding (key, activations) pairs."""
         for key in self.get_target_keys():
             try:
                 activations = self.load_target(key)
@@ -402,7 +419,9 @@ def _format_prompt_sample(sample: PromptSample) -> str:
 
 
 def collect_samples(
-    output_dir: Path | None = None, try_load: bool = True
+    output_dir: Path | None = None,
+    try_load: bool = True,
+    dataset_cfg: dict | None = None,
 ) -> "PromptDataset":
     """Load or generate samples with diverse time horizons.
 
@@ -410,12 +429,17 @@ def collect_samples(
         output_dir: Output directory. If provided and try_load=True, will attempt
             to load existing prompt_dataset.json from here first.
         try_load: If True, try to load existing data before generating.
+        dataset_cfg: Dataset configuration dict. If None, uses GEOMETRY_CFG from
+            default_datasets.
 
     Returns:
         PromptDataset with samples.
     """
     from ..data.default_datasets import GEOMETRY_CFG
     from ..prompt import PromptDataset, PromptDatasetConfig, PromptDatasetGenerator
+
+    # Use provided config or default to GEOMETRY_CFG
+    cfg = dataset_cfg if dataset_cfg is not None else GEOMETRY_CFG
 
     dataset = None
 
@@ -429,8 +453,8 @@ def collect_samples(
 
     # Generate if not loaded
     if dataset is None:
-        logger.info("Generating new prompt dataset...")
-        dataset_config = PromptDatasetConfig.from_dict(GEOMETRY_CFG)
+        logger.info(f"Generating new prompt dataset using config: {cfg.get('name', 'unnamed')}")
+        dataset_config = PromptDatasetConfig.from_dict(cfg)
         dataset = PromptDatasetGenerator(dataset_config).generate()
         logger.info(f"Generated {len(dataset.samples)} samples")
 
@@ -533,25 +557,25 @@ def extract_activations(
         sample_dir = samples_dir / f"sample_{valid_idx}"
         sample_dir.mkdir(parents=True, exist_ok=True)
 
-        # Extract and save activations
+        # Extract and save activations for ALL tokens at each position
         sample_has_data = False
         for target in targets:
             abs_positions = pos_mapping.named_positions.get(target.position, [])
             if not abs_positions:
                 continue
 
-            abs_pos = abs_positions[0]  # Use first position
+            # Save ALL tokens at this position (not just the first one)
+            for abs_pos in abs_positions:
+                try:
+                    act = pref.internals.activations[target.hook_name][abs_pos, :]
+                    act_np = act.numpy().astype(ACTIVATION_DTYPE)
 
-            try:
-                act = pref.internals.activations[target.hook_name][abs_pos, :]
-                act_np = act.numpy().astype(ACTIVATION_DTYPE)
+                    filename = f"L{target.layer}_{target.component}_{abs_pos}"
+                    _save_array(sample_dir / filename, act_np, compressed=compressed)
+                    sample_has_data = True
 
-                filename = f"L{target.layer}_{target.component}_{abs_pos}"
-                _save_array(sample_dir / filename, act_np, compressed=compressed)
-                sample_has_data = True
-
-            except (ValueError, KeyError, IndexError):
-                continue
+                except (ValueError, KeyError, IndexError):
+                    continue
 
         if not sample_has_data:
             sample_dir.rmdir()

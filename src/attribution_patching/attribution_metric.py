@@ -39,7 +39,7 @@ class AttributionMetric(BaseSchema):
     """
 
     target_token_ids: tuple[int, int]
-    divergent_position: int = -1  # -1 means last position (legacy behavior)
+    divergent_position: int = -1  # -1 means last position
     clean_logit_diff: float = 0.0
     corrupted_logit_diff: float = 0.0
 

@@ -1,8 +1,10 @@
 import React from 'react';
-import { Badge, BadgeGroup } from './ui/Badge';
 import { Button } from './ui/Button';
 
+type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | 'Scree' | 'Align';
+
 interface HeaderProps {
+  datasetName?: string;
   modelName?: string;
   totalSamples?: number;
   totalLayers?: number;
@@ -11,6 +13,8 @@ interface HeaderProps {
   onDarkModeChange?: (dark: boolean) => void;
   onExport?: () => void;
   isExporting?: boolean;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
   className?: string;
 }
 
@@ -79,6 +83,7 @@ const GlobeIcon = () => (
 );
 
 export const Header: React.FC<HeaderProps> = ({
+  datasetName = '',
   modelName = '',
   totalSamples = 0,
   totalLayers = 0,
@@ -87,55 +92,71 @@ export const Header: React.FC<HeaderProps> = ({
   onDarkModeChange,
   onExport,
   isExporting = false,
+  viewMode = '3D',
+  onViewModeChange,
   className = '',
 }) => {
+  // Build title: "{datasetName} {modelName}" or just one if the other is missing
+  const title = [datasetName, modelName].filter(Boolean).join(' ') || 'Geometry Explorer';
+
   return (
     <header
       className={`
         bg-white/80 backdrop-blur-md
         border-b border-white/60
         sticky top-0 z-50
+        dark:bg-[#1a1613]/90 dark:border-[#1a1613]/60
         ${className}
       `}
     >
-      <div className="px-6 py-4">
+      <div className="px-6 py-3">
         <div className="flex items-center justify-between">
           {/* Logo and Title */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="relative">
               {/* Glow effect */}
               <div className="absolute inset-0 bg-[#D97757] rounded-xl blur-lg opacity-30" />
               {/* Logo container */}
-              <div className="relative w-10 h-10 rounded-xl bg-[#D97757] flex items-center justify-center shadow-lg shadow-[#D97757]/25">
+              <div className="relative w-9 h-9 rounded-xl bg-[#D97757] flex items-center justify-center shadow-lg shadow-[#D97757]/25">
                 <span className="text-white">
                   <GlobeIcon />
                 </span>
               </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-[#1a1613]">
-                {modelName || 'Geometry Explorer'}
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold text-[#1a1613] dark:text-white leading-tight">
+                {title}
               </h1>
+              {/* Stats - small text below title */}
+              <div className="hidden md:flex items-center gap-2 text-xs text-[#1a1613]/60 dark:text-white/60">
+                <span>{totalSamples.toLocaleString()} samples</span>
+                <span>·</span>
+                <span>{totalLayers} layers</span>
+                <span>·</span>
+                <span>{totalPositions} positions</span>
+              </div>
             </div>
           </div>
 
-          {/* Stats Badges */}
-          <div className="hidden md:flex items-center gap-2">
-            <BadgeGroup>
-              <Badge variant="primary" size="md" dot>
-                {totalSamples.toLocaleString()} samples
-              </Badge>
-              <Badge variant="info" size="md">
-                {totalLayers} layers
-              </Badge>
-              <Badge variant="secondary" size="md">
-                {totalPositions} positions
-              </Badge>
-            </BadgeGroup>
+          {/* View Mode Tabs - center/prominent position */}
+          <div className="flex items-center gap-1 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] p-1">
+            {(['2D', '3D', '1DxLayer', '1DxPos', 'Scree', 'Align'] as ViewMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => onViewModeChange?.(mode)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  viewMode === mode
+                    ? 'bg-gradient-to-r from-[#D97757] to-[#348296] text-white shadow-sm'
+                    : 'text-[#1a1613]/70 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-[#3a3633]'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Theme Toggle */}
             <button
               onClick={() => onDarkModeChange?.(!isDarkMode)}
@@ -143,7 +164,9 @@ export const Header: React.FC<HeaderProps> = ({
                 p-2 rounded-lg
                 bg-white/50 border border-white/60
                 text-[#1a1613]
-                hover:bg-white/80 hover:border-[#D97757]/30/50 hover:text-[#348296]
+                dark:bg-[#2a2623] dark:border-[#3a3633] dark:text-white
+                hover:bg-white/80 hover:border-[#D97757]/30 hover:text-[#348296]
+                dark:hover:bg-[#3a3633]
                 transition-all duration-200
                 focus:outline-none focus:ring-2 focus:ring-[#D97757]/50
               "
@@ -166,16 +189,12 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Mobile Stats */}
-        <div className="flex md:hidden items-center gap-2 mt-3 overflow-x-auto pb-1">
-          <Badge variant="primary" size="sm" dot>
-            {totalSamples.toLocaleString()} samples
-          </Badge>
-          <Badge variant="info" size="sm">
-            {totalLayers} layers
-          </Badge>
-          <Badge variant="secondary" size="sm">
-            {totalPositions} positions
-          </Badge>
+        <div className="flex md:hidden items-center gap-2 mt-2 text-xs text-[#1a1613]/60 dark:text-white/60">
+          <span>{totalSamples.toLocaleString()} samples</span>
+          <span>·</span>
+          <span>{totalLayers} layers</span>
+          <span>·</span>
+          <span>{totalPositions} positions</span>
         </div>
       </div>
     </header>

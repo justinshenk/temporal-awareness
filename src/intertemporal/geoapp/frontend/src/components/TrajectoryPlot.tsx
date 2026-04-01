@@ -5,6 +5,18 @@ import { Tooltip, TooltipData } from './Tooltip';
 // Padding constant - outside component to avoid recreation
 const PADDING = { left: 60, right: 30, top: 50, bottom: 60 } as const;
 
+// Helper to determine if a color is dark
+function isDarkColor(hexColor: string): boolean {
+  // Remove # if present
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
 export interface TrajectoryPlotProps {
   /** PC1 values for each point on X-axis: Map<xValue, Float32Array of PC1 values per sample> */
   trajectoryData: Map<string, Float32Array>;
@@ -169,13 +181,20 @@ export function TrajectoryPlot({
     const plotWidth = dimensions.width - PADDING.left - PADDING.right;
     const plotHeight = dimensions.height - PADDING.top - PADDING.bottom;
 
+    // Determine colors based on background brightness
+    const isDark = isDarkColor(backgroundColor);
+    const textColor = isDark ? '#e0e0e0' : '#1a1613';
+    const mutedTextColor = isDark ? '#a0a0a0' : '#7a6b8a';
+    const gridColor = isDark ? 'rgba(100, 100, 120, 0.3)' : 'rgba(200, 180, 220, 0.3)';
+    const axisColor = isDark ? '#808080' : '#7a6b8a';
+
     // Clear canvas
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
     // Show loading state
     if (isLoading) {
-      ctx.fillStyle = '#7a6b8a';
+      ctx.fillStyle = mutedTextColor;
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(
@@ -187,7 +206,7 @@ export function TrajectoryPlot({
     }
 
     if (xValues.length === 0 || trajectoryData.size === 0) {
-      ctx.fillStyle = '#7a6b8a';
+      ctx.fillStyle = mutedTextColor;
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('No data available', dimensions.width / 2, dimensions.height / 2);
@@ -196,7 +215,7 @@ export function TrajectoryPlot({
 
     // Draw grid
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(200, 180, 220, 0.3)';
+      ctx.strokeStyle = gridColor;
       ctx.lineWidth = 1;
 
       // Horizontal grid lines
@@ -220,7 +239,7 @@ export function TrajectoryPlot({
     }
 
     // Draw axes
-    ctx.strokeStyle = '#7a6b8a';
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 1;
 
     // Y axis
@@ -236,7 +255,7 @@ export function TrajectoryPlot({
     ctx.stroke();
 
     // Draw Y axis labels
-    ctx.fillStyle = '#7a6b8a';
+    ctx.fillStyle = mutedTextColor;
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -269,7 +288,7 @@ export function TrajectoryPlot({
 
     // Draw axis titles
     ctx.font = '11px sans-serif';
-    ctx.fillStyle = '#1a1613';
+    ctx.fillStyle = textColor;
 
     // X axis title
     ctx.textAlign = 'center';

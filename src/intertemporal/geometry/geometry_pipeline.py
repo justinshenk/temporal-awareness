@@ -78,7 +78,7 @@ def generate_geo_samples(
     logger.info("\n" + "=" * 60)
     logger.info("Generating Samples")
     logger.info("=" * 60)
-    dataset = collect_samples(config.output_dir)
+    dataset = collect_samples(config.output_dir, dataset_cfg=config.dataset_cfg)
 
     # Extract activations (streaming to disk)
     logger.info("\n" + "=" * 60)

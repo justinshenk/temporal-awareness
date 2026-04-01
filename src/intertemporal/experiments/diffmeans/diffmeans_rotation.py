@@ -4,15 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..geo.geo_utils import cosine_similarity
-
-
-def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
-    """Compute angle in degrees between two vectors."""
-    cos_sim = cosine_similarity(v1, v2)
-    # Clamp to avoid numerical issues with arccos
-    cos_sim = np.clip(cos_sim, -1.0, 1.0)
-    return float(np.degrees(np.arccos(cos_sim)))
+from ....common.math import angle_between, cosine_similarity
 
 
 def compute_rotation_decomposition(

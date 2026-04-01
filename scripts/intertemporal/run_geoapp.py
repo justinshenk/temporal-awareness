@@ -2,14 +2,15 @@
 """Run the Geometry Explorer interactive app.
 
 Usage:
-    # Development mode (backend only, run frontend separately):
-    uv run python scripts/intertemporal/run_geoapp.py --dev
-
-    # Production mode (serves built frontend from FastAPI):
+    # Load all datasets from out/geo/:
     uv run python scripts/intertemporal/run_geoapp.py
 
-    # Custom data directory:
-    uv run python scripts/intertemporal/run_geoapp.py --data-dir out/geo_test
+    # Load only specific dataset(s):
+    uv run python scripts/intertemporal/run_geoapp.py geometry
+    uv run python scripts/intertemporal/run_geoapp.py geometry another_exp
+
+    # Development mode (backend only, run frontend separately):
+    uv run python scripts/intertemporal/run_geoapp.py --dev
 
     # Custom port:
     uv run python scripts/intertemporal/run_geoapp.py --port 8080
@@ -31,6 +32,32 @@ from src.intertemporal.geoapp import run_app
 # Frontend directory location
 FRONTEND_DIR = PROJECT_ROOT / "src" / "intertemporal" / "geoapp" / "frontend"
 
+# Default base directory for datasets
+DEFAULT_BASE_DIR = Path("out/geo")
+
+
+def discover_datasets(base_dir: Path) -> list[tuple[str, Path]]:
+    """Discover all valid dataset directories under base_dir.
+
+    A valid dataset directory has:
+    - data/samples/ subdirectory
+    - analysis/embeddings/ subdirectory
+
+    Returns list of (name, path) tuples.
+    """
+    datasets = []
+    if not base_dir.exists():
+        return datasets
+
+    for subdir in sorted(base_dir.iterdir()):
+        if not subdir.is_dir():
+            continue
+        # Check for required structure
+        if (subdir / "data" / "samples").exists() and (subdir / "analysis" / "embeddings").exists():
+            datasets.append((subdir.name, subdir))
+
+    return datasets
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -39,10 +66,15 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument(
-        "--data-dir",
+        "datasets",
+        nargs="*",
+        help="Dataset names to load from out/geo/ (default: all datasets)",
+    )
+    parser.add_argument(
+        "--base-dir",
         type=str,
-        default="out/geometry",
-        help="Path to geometry output directory (default: out/geometry)",
+        default="out/geo",
+        help="Base directory containing dataset folders (default: out/geo)",
     )
     parser.add_argument(
         "--host",
@@ -64,21 +96,41 @@ def main():
 
     args = parser.parse_args()
 
-    data_dir = Path(args.data_dir)
-    if not data_dir.exists():
-        print(f"Error: Data directory not found: {data_dir}")
-        print("Run the geometry pipeline first to generate data.")
-        sys.exit(1)
+    base_dir = Path(args.base_dir)
+
+    # Determine which datasets to load
+    if args.datasets:
+        # Load specific datasets
+        data_dirs = []
+        for name in args.datasets:
+            path = base_dir / name
+            if not path.exists():
+                print(f"Error: Dataset not found: {path}")
+                sys.exit(1)
+            data_dirs.append((name, path))
+    else:
+        # Discover all datasets
+        data_dirs = discover_datasets(base_dir)
+        if not data_dirs:
+            print(f"Error: No valid datasets found in {base_dir}")
+            print("Run the geometry pipeline first to generate data.")
+            sys.exit(1)
+
+    print("=" * 60)
+    print("Geometry Explorer")
+    print("=" * 60)
+    print()
+    print(f"Loading {len(data_dirs)} dataset(s):")
+    for name, path in data_dirs:
+        print(f"  - {name}: {path}")
+    print()
 
     if args.dev:
         # Development mode
-        print("=" * 60)
-        print("Geometry Explorer - DEVELOPMENT MODE")
-        print("=" * 60)
+        print("MODE: Development (backend only)")
         print()
         print(f"Backend API: http://{args.host}:{args.port}")
         print(f"API Docs:    http://{args.host}:{args.port}/docs")
-        print(f"Data:        {data_dir}")
         print()
         print("-" * 60)
         print("To run the frontend development server:")
@@ -93,7 +145,7 @@ def main():
 
         # Run backend without serving static files
         run_app(
-            data_dir=data_dir,
+            data_dirs=data_dirs,
             frontend_dir=None,  # Don't serve frontend in dev mode
             host=args.host,
             port=args.port,
@@ -114,17 +166,14 @@ def main():
             print("Or use --dev mode to run frontend separately.")
             sys.exit(1)
 
-        print("=" * 60)
-        print("Geometry Explorer - PRODUCTION MODE")
-        print("=" * 60)
+        print("MODE: Production")
         print()
         print(f"App URL:  http://{args.host}:{args.port}")
         print(f"API Docs: http://{args.host}:{args.port}/docs")
-        print(f"Data:     {data_dir}")
         print()
 
         run_app(
-            data_dir=data_dir,
+            data_dirs=data_dirs,
             frontend_dir=frontend_dist,
             host=args.host,
             port=args.port,

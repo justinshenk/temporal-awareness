@@ -1,4 +1,14 @@
-const API_BASE = '/api'
+// Extract dataset name from URL path (e.g., /investment -> investment)
+export function getDataset(): string {
+  const path = window.location.pathname
+  const match = path.match(/^\/([^/]+)/)
+  return match ? match[1] : 'default'
+}
+
+// Dynamic API base that includes dataset name
+function getApiBase(): string {
+  return `/api/${getDataset()}`
+}
 
 // Logging helper
 const log = (category: string, message: string, data?: Record<string, unknown>) => {
@@ -32,11 +42,10 @@ export class ApiError extends Error {
 }
 
 class ApiClient {
-  private baseUrl: string
   private requestId: number = 0
 
-  constructor(baseUrl: string = API_BASE) {
-    this.baseUrl = baseUrl
+  private get baseUrl(): string {
+    return getApiBase()
   }
 
   private async request<T>(

@@ -131,6 +131,22 @@ class ContrastivePair(BaseSchema):
         return self.corrupted_traj
 
     # =========================================================================
+    # Memory Management
+    # =========================================================================
+
+    def pop_heavy(self) -> None:
+        """Clear heavy data from trajectories to free memory.
+
+        Called after patching operations to prevent memory accumulation
+        when processing many pairs. The trajectories may have `internals`
+        dicts containing large activation tensors.
+        """
+        if hasattr(self.clean_traj, "pop_heavy"):
+            self.clean_traj.pop_heavy()
+        if hasattr(self.corrupted_traj, "pop_heavy"):
+            self.corrupted_traj.pop_heavy()
+
+    # =========================================================================
     # Interventions
     # =========================================================================
 
@@ -287,7 +303,9 @@ class ContrastivePair(BaseSchema):
         if is_head_level:
             # For head-level: extract [n_positions, d_head] for specific head
             head_idx = target.head
-            patch_vals = patch_acts[patch_positions, head_idx, :]  # [n_positions, d_head]
+            patch_vals = patch_acts[
+                patch_positions, head_idx, :
+            ]  # [n_positions, d_head]
         else:
             # For standard 3D: extract [n_positions, hidden]
             patch_vals = patch_acts[patch_positions]
@@ -307,7 +325,9 @@ class ContrastivePair(BaseSchema):
         )
 
         if DEBUG_INTERVENTIONS and layer == 0:
-            print(f"[intervention] L{layer} mode={mode} alpha={alpha} head={target.head}")
+            print(
+                f"[intervention] L{layer} mode={mode} alpha={alpha} head={target.head}"
+            )
             print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
             print(
                 f"[intervention]   running_len={running_len}, target.positions={positions}"
@@ -349,9 +369,6 @@ class ContrastivePair(BaseSchema):
         print(f"{prefix} Position mapping: src_len={pm.src_len}, dst_len={pm.dst_len}")
         print(
             f"{prefix} Anchors ({len(pm.anchors)}): {list(zip(pm.anchors, pm.anchor_texts))}"
-        )
-        print(
-            f"{prefix} First interesting: {pm.first_interesting_marker} -> pos={pm.first_interesting_pos}"
         )
         if pm.anchors:
             for (src_pos, dst_pos), text in zip(pm.anchors[:3], pm.anchor_texts[:3]):

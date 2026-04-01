@@ -35,7 +35,7 @@ export const Legend: React.FC<LegendProps> = ({
 
   return (
     <div
-      className={`absolute bottom-4 right-4 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-white/60 ${isCollapsed ? 'p-2' : 'p-3'} min-w-[40px] ${isCollapsed ? '' : 'max-w-[200px]'} ${className}`}
+      className={`absolute ${isCollapsed ? 'bottom-16' : 'bottom-4'} right-4 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-white/60 ${isCollapsed ? 'p-2' : 'p-3'} min-w-[40px] ${isCollapsed ? '' : 'max-w-[200px]'} ${className}`}
     >
       <div className="flex items-center justify-between gap-2">
         <h4 className={`text-xs font-semibold text-[#1a1613] uppercase tracking-wide ${isCollapsed ? 'hidden' : ''}`}>

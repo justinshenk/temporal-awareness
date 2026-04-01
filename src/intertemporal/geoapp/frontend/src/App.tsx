@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot } from './components';
+import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot, FilterPanel, ScreePlot, AlignmentHeatmap } from './components';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
@@ -13,6 +13,8 @@ import {
   useBackendPrefetch,
   useLayerTrajectory,
   usePositionTrajectory,
+  useScreeData,
+  useAlignmentData,
   toFloat32Array,
   valuesToColors,
   categoricalColors,
@@ -33,9 +35,12 @@ const DEFAULT_COMPONENT = 'resid_post';
 const DEFAULT_METHOD = 'pca';
 const DEFAULT_COLOR_BY = 'time_horizon';
 
-type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos';
+type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | 'Scree' | 'Align';
 
 function App() {
+  // Get dataset name from URL path (e.g., /geometry -> "geometry")
+  const dataset = window.location.pathname.split('/')[1] || 'geometry';
+
   // Render counter for debugging
   const renderCount = useRef(0);
   renderCount.current++;
@@ -61,6 +66,12 @@ function App() {
   // Time scale transfer function controls
   const [timeScaleType, setTimeScaleType] = useState<TimeScaleType>('adaptive');
   const [blendMix, setBlendMix] = useState(0.5);
+
+  // Filter state - separate short-term and long-term
+  const [shortRewardFilter, setShortRewardFilter] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
+  const [shortTimeFilter, setShortTimeFilter] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
+  const [longRewardFilter, setLongRewardFilter] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
+  const [longTimeFilter, setLongTimeFilter] = useState<{ min: number | null; max: number | null }>({ min: null, max: null });
 
   // Selection state
   const [selectedSampleIdx, setSelectedSampleIdx] = useState<number | null>(null);
@@ -156,6 +167,12 @@ function App() {
   // Fetch has_horizon metadata for filtering
   const { data: hasHorizonMeta, error: hasHorizonError } = useMetadata('has_horizon');
 
+  // Fetch short/long term metadata for filtering
+  const { data: shortRewardMeta } = useMetadata('short_term_reward');
+  const { data: shortTimeMeta } = useMetadata('short_term_time');
+  const { data: longRewardMeta } = useMetadata('long_term_reward');
+  const { data: longTimeMeta } = useMetadata('long_term_time');
+
   // Fetch selected sample details
   const { data: selectedSample, isLoading: sampleLoading } = useSample(
     selectedSampleIdx
@@ -193,6 +210,12 @@ function App() {
     viewMode === '1DxPos'
   );
 
+  // Fetch Scree data for Scree view
+  const screeData = useScreeData(position, 10, viewMode === 'Scree');
+
+  // Fetch Alignment data for Align view
+  const alignmentData = useAlignmentData(position, 0, viewMode === 'Align');
+
   // Log when waiting for trajectory data
   useEffect(() => {
     if (viewMode === '1DxLayer' && layerTrajectory.isLoading) {
@@ -206,22 +229,70 @@ function App() {
     }
   }, [viewMode, positionTrajectory.isLoading, layer, component]);
 
+  // Check if any filters are active
+  const hasShortRewardFilter = shortRewardFilter.min !== null || shortRewardFilter.max !== null;
+  const hasShortTimeFilter = shortTimeFilter.min !== null || shortTimeFilter.max !== null;
+  const hasLongRewardFilter = longRewardFilter.min !== null || longRewardFilter.max !== null;
+  const hasLongTimeFilter = longTimeFilter.min !== null || longTimeFilter.max !== null;
+  const hasHorizonFilter = !showNoHorizon || !showWithHorizon;
+  const hasAnyFilter = hasShortRewardFilter || hasShortTimeFilter || hasLongRewardFilter || hasLongTimeFilter || hasHorizonFilter;
+
   // Compute filter mask for 2D/3D views (aligned with embedding.indices)
   const scatterFilterMask = useMemo(() => {
-    // No filtering if both toggles are on or data not loaded
-    if (!hasHorizonMeta?.values || !embedding?.indices || (showNoHorizon && showWithHorizon)) {
-      return null;
-    }
-    // If both toggles are off, filter everything
+    // No filtering if no filters active and data not loaded
+    if (!embedding?.indices) return null;
+    if (!hasAnyFilter) return null;
+
+    // If both horizon toggles are off, filter everything
     if (!showNoHorizon && !showWithHorizon) {
       return embedding.indices.map(() => false);
     }
-    // Filter based on horizon value
+
+    // Apply all filters
     return embedding.indices.map(idx => {
-      const hasHorizon = Boolean(hasHorizonMeta.values[idx]);
-      return hasHorizon ? showWithHorizon : showNoHorizon;
+      // Horizon filter
+      if (hasHorizonMeta?.values) {
+        const hasHorizon = Boolean(hasHorizonMeta.values[idx]);
+        if (hasHorizon && !showWithHorizon) return false;
+        if (!hasHorizon && !showNoHorizon) return false;
+      }
+
+      // Short-term reward filter
+      if (hasShortRewardFilter && shortRewardMeta?.values) {
+        const reward = shortRewardMeta.values[idx];
+        if (shortRewardFilter.min !== null && reward < shortRewardFilter.min) return false;
+        if (shortRewardFilter.max !== null && reward > shortRewardFilter.max) return false;
+      }
+
+      // Short-term time filter
+      if (hasShortTimeFilter && shortTimeMeta?.values) {
+        const time = shortTimeMeta.values[idx];
+        if (shortTimeFilter.min !== null && time < shortTimeFilter.min) return false;
+        if (shortTimeFilter.max !== null && time > shortTimeFilter.max) return false;
+      }
+
+      // Long-term reward filter
+      if (hasLongRewardFilter && longRewardMeta?.values) {
+        const reward = longRewardMeta.values[idx];
+        if (longRewardFilter.min !== null && reward < longRewardFilter.min) return false;
+        if (longRewardFilter.max !== null && reward > longRewardFilter.max) return false;
+      }
+
+      // Long-term time filter
+      if (hasLongTimeFilter && longTimeMeta?.values) {
+        const time = longTimeMeta.values[idx];
+        if (longTimeFilter.min !== null && time < longTimeFilter.min) return false;
+        if (longTimeFilter.max !== null && time > longTimeFilter.max) return false;
+      }
+
+      return true;
     });
-  }, [hasHorizonMeta?.values, embedding?.indices, showNoHorizon, showWithHorizon]);
+  }, [
+    hasHorizonMeta?.values, shortRewardMeta?.values, shortTimeMeta?.values, longRewardMeta?.values, longTimeMeta?.values,
+    embedding?.indices, showNoHorizon, showWithHorizon,
+    hasAnyFilter, hasShortRewardFilter, hasShortTimeFilter, hasLongRewardFilter, hasLongTimeFilter,
+    shortRewardFilter, shortTimeFilter, longRewardFilter, longTimeFilter
+  ]);
 
   // Get actual sample indices for trajectory views (needed for filter mask and colors)
   const trajectorySampleIndices = useMemo(() => {
@@ -295,7 +366,12 @@ function App() {
   }, [positions.length, scatterFilterMask]);
 
   // Fields that should always use gradient coloring (not categorical)
-  const GRADIENT_FIELDS = ['time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward', 'option_reward_delta', 'option_time_delta', 'option_confidence_delta'];
+  const GRADIENT_FIELDS = [
+    'time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward',
+    'option_reward_delta', 'option_time_delta', 'option_confidence_delta',
+    'reward_ratio', 'time_ratio',
+    'short_term_reward', 'short_term_time', 'long_term_reward', 'long_term_time'
+  ];
 
   // Compute effective color range (user-defined or data-derived)
   const effectiveColorRange = useMemo(() => {
@@ -477,6 +553,12 @@ function App() {
     'option_reward_delta': 'Option Reward Delta',
     'option_time_delta': 'Option Time Delta',
     'option_confidence_delta': 'Option Confidence Delta',
+    'reward_ratio': 'Reward Ratio (Long/Short)',
+    'time_ratio': 'Time Ratio (Long/Short)',
+    'short_term_reward': 'Short-Term Reward',
+    'short_term_time': 'Short-Term Time',
+    'long_term_reward': 'Long-Term Reward',
+    'long_term_time': 'Long-Term Time',
   };
 
   // Generate legend data
@@ -653,9 +735,10 @@ function App() {
   const allSamplesFiltered = !isLoading && embedding?.positions && embedding.positions.length > 0 && positions.length === 0;
 
   return (
-    <div className={`min-h-screen bg-gradient-main ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'dark bg-[#1a1613]' : 'bg-gradient-main'}`}>
       {/* Header */}
       <Header
+        datasetName={dataset}
         modelName={config?.modelName}
         totalSamples={config?.totalSamples || 0}
         totalLayers={config?.layers?.length || 0}
@@ -663,16 +746,19 @@ function App() {
         isDarkMode={isDarkMode}
         onDarkModeChange={setIsDarkMode}
         onExport={handleExport}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-80px)]">
         {/* Left Sidebar - Controls */}
-        <aside className="w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-white/40 bg-white/30 backdrop-blur-sm">
+        <aside className="w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm">
           <ControlPanel
             layer={layer}
             layers={layers}
             onLayerChange={setLayer}
+            hideLayerSection={viewMode === '1DxLayer'}
             component={component}
             components={components}
             onComponentChange={setComponent}
@@ -685,6 +771,7 @@ function App() {
             method={method}
             methods={methods}
             onMethodChange={setMethod}
+            hideMethodSection={viewMode === '1DxLayer' || viewMode === '1DxPos'}
             hideColorBySection={true}
             colorBy={colorBy}
             colorByOptions={colorByOptions}
@@ -700,46 +787,29 @@ function App() {
             onTimeScaleTypeChange={setTimeScaleType}
             blendMix={blendMix}
             onBlendMixChange={setBlendMix}
-            showTimeScaleControls={colorBy === 'time_horizon' }
+            showTimeScaleControls={colorBy === 'time_horizon'}
           />
         </aside>
 
         {/* Main Visualization Area */}
-        <main className="flex-1 p-4 flex flex-col min-w-0 min-h-0">
+        <main className="flex-1 p-4 flex flex-col min-w-0 min-h-0 dark:bg-[#1a1613]">
           {/* Error State */}
           {(embeddingError || metadataError || hasHorizonError || layerTrajectory.error || positionTrajectory.error) && (
-            <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700">
-              <strong>Error loading data:</strong>{' '}
+            <div className="mb-4 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300">
+              <strong>No data available:</strong>{' '}
               {(embeddingError as Error)?.message ||
                (metadataError as Error)?.message ||
                (hasHorizonError as Error)?.message ||
                layerTrajectory.error?.message ||
                positionTrajectory.error?.message ||
-               'Unknown error'}
+               'This position has no pre-computed embeddings'}
             </div>
           )}
 
           {/* Visualization Toolbar - above plot */}
-          <div className="flex items-center justify-between mb-2 px-2">
-            {/* View mode toggle */}
-            <div className="flex items-center gap-1 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 p-1">
-              {(['2D', '3D', '1DxLayer', '1DxPos'] as ViewMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                    viewMode === mode
-                      ? 'bg-gradient-to-r from-[#D97757] to-[#348296] text-white shadow-sm'
-                      : 'text-[#1a1613]/70 hover:bg-gray-100'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
+          <div className="flex items-center justify-end mb-2 px-2">
             {/* Horizon filter toggles */}
-            <div className="flex items-center gap-3 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-white/60 px-3 py-1.5">
+            <div className="flex items-center gap-3 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
               <Toggle
                 checked={showWithHorizon}
                 onChange={setShowWithHorizon}
@@ -756,13 +826,13 @@ function App() {
           </div>
 
           {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
-          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 min-h-[400px]">
+          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
             {allSamplesFiltered ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb]">
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb] dark:from-[#1a1613] dark:to-[#252220]">
                 <div className="text-center p-8">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-800/30 flex items-center justify-center">
                     <svg
-                      className="w-8 h-8 text-amber-600"
+                      className="w-8 h-8 text-amber-600 dark:text-amber-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -775,16 +845,16 @@ function App() {
                       />
                     </svg>
                   </div>
-                  <p className="text-[#1a1613]/80 font-medium mb-2">
+                  <p className="text-[#1a1613]/80 dark:text-white/80 font-medium mb-2">
                     No samples to display
                   </p>
-                  <p className="text-[#1a1613]/50 text-sm">
+                  <p className="text-[#1a1613]/50 dark:text-white/50 text-sm">
                     All samples have been filtered out. Try enabling "With-Horizon" or "No-Horizon" toggles.
                   </p>
                 </div>
               </div>
             ) : isLoading && !positions.length ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb]">
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb] dark:from-[#1a1613] dark:to-[#252220]">
                 <div className="text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D97757] to-[#348296] animate-pulse flex items-center justify-center">
                     <svg
@@ -807,13 +877,13 @@ function App() {
                       />
                     </svg>
                   </div>
-                  <p className="text-[#1a1613]/60 font-medium">
+                  <p className="text-[#1a1613]/60 dark:text-white/60 font-medium">
                     {streamingProgress > 0
                       ? `Streaming... ${streamingProgress}%`
                       : 'Loading embedding data...'}
                   </p>
                   {streamingProgress > 0 && (
-                    <div className="w-32 h-1.5 mt-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="w-32 h-1.5 mt-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-[#D97757] to-[#348296] transition-all duration-150"
                         style={{ width: `${streamingProgress}%` }}
@@ -831,7 +901,7 @@ function App() {
                 showAxes={true}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
-                backgroundColor="#faf8f5"
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
                 initialCameraPosition={[8, 6, 8]}
                 className="absolute inset-0"
                 selectedSampleIdx={selectedSampleIdx}
@@ -846,7 +916,7 @@ function App() {
                 showAxes={true}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
-                backgroundColor="#faf8f5"
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
                 className="absolute inset-0"
                 selectedSampleIdx={selectedSampleIdx}
                 xAxis={0}
@@ -863,7 +933,7 @@ function App() {
                 colors={unfilteredColors}
                 pointData={unfilteredPointData}
                 filterMask={filterMask}
-                backgroundColor="#faf8f5"
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
                 selectedSampleIdx={selectedSampleIdx}
@@ -872,7 +942,7 @@ function App() {
                 loadingProgress={0}
                 className="absolute inset-0"
               />
-            ) : (
+            ) : viewMode === '1DxPos' ? (
               <TrajectoryPlot
                 trajectoryData={positionTrajectory.trajectoryData}
                 xValues={positionTrajectory.xValues}
@@ -882,7 +952,7 @@ function App() {
                 colors={unfilteredColors}
                 pointData={unfilteredPointData}
                 filterMask={filterMask}
-                backgroundColor="#faf8f5"
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
                 selectedSampleIdx={selectedSampleIdx}
@@ -891,14 +961,29 @@ function App() {
                 loadingProgress={0}
                 className="absolute inset-0"
               />
-            )}
+            ) : viewMode === 'Scree' ? (
+              <ScreePlot
+                data={screeData.data || null}
+                isLoading={screeData.isLoading}
+                selectedLayer={layer}
+                selectedComponent={component}
+                className="w-full h-full"
+              />
+            ) : viewMode === 'Align' ? (
+              <AlignmentHeatmap
+                data={alignmentData.data || null}
+                isLoading={alignmentData.isLoading}
+                position={position}
+                className="w-full h-full"
+              />
+            ) : null}
 
             {/* Loading overlay when updating */}
             {isLoading && positions.length > 0 && (
-              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center pointer-events-none z-20">
-                <div className="px-4 py-2 bg-white/90 rounded-full shadow-lg border border-purple-100/50 flex items-center gap-2">
+              <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center pointer-events-none z-20">
+                <div className="px-4 py-2 bg-white/90 dark:bg-[#2a2623]/90 rounded-full shadow-lg border border-purple-100/50 dark:border-purple-900/50 flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full border-2 border-[#D97757] border-t-transparent animate-spin" />
-                  <span className="text-sm text-[#1a1613]/70">Updating...</span>
+                  <span className="text-sm text-[#1a1613]/70 dark:text-white/70">Updating...</span>
                 </div>
               </div>
             )}
@@ -918,10 +1003,10 @@ function App() {
         </main>
 
         {/* Right Sidebar - Position, Color By, and Info Panel */}
-        <aside className="w-80 flex-shrink-0 p-4 overflow-y-auto border-l border-white/40 bg-white/30 backdrop-blur-sm">
+        <aside className="w-80 flex-shrink-0 p-4 overflow-y-auto border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
           <div className="flex flex-col gap-4">
-            {/* Position Selector */}
-            {(config?.promptTemplate?.length ?? 0) > 0 && (
+            {/* Position Selector - hidden for 1DxPos view */}
+            {viewMode !== '1DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (
               <Card padding="sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Position</CardTitle>
@@ -932,6 +1017,9 @@ function App() {
                     promptTemplate={config?.promptTemplate || []}
                     positionLabels={config?.positionLabels || {}}
                     onPositionChange={setPosition}
+                    exampleSample={config?.exampleSample}
+                    relPosCounts={config?.relPosCounts}
+                    isDarkMode={isDarkMode}
                   />
                 </CardContent>
               </Card>
@@ -954,6 +1042,18 @@ function App() {
                 />
               </CardContent>
             </Card>
+
+            {/* Filter Panel */}
+            <FilterPanel
+              shortRewardFilter={shortRewardFilter}
+              shortTimeFilter={shortTimeFilter}
+              longRewardFilter={longRewardFilter}
+              longTimeFilter={longTimeFilter}
+              onShortRewardFilterChange={setShortRewardFilter}
+              onShortTimeFilterChange={setShortTimeFilter}
+              onLongRewardFilterChange={setLongRewardFilter}
+              onLongTimeFilterChange={setLongTimeFilter}
+            />
 
             {/* Selected Sample Info */}
             <InfoPanel

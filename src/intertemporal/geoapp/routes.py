@@ -25,6 +25,7 @@ from .models import (
     ColorValues,
     ConfigResponse,
     EmbeddingResponse,
+    ExampleSample,
     HeatmapCell,
     HeatmapResponse,
     MetricsResponse,
@@ -53,16 +54,17 @@ def _sanitize_float(value: float) -> float | None:
     return float(value)
 
 
-def create_router(data_loader: GeometryDataLoader) -> APIRouter:
+def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry") -> APIRouter:
     """Create API router with endpoints bound to the given data loader.
 
     Args:
         data_loader: GeometryDataLoader instance for accessing embedding data.
+        dataset_name: Name of this dataset, used as URL prefix.
 
     Returns:
         FastAPI APIRouter with all endpoints configured.
     """
-    router = APIRouter(prefix="/api", tags=["geometry"])
+    router = APIRouter(prefix=f"/api/{dataset_name}", tags=[dataset_name])
 
     # Warmup state (shared across requests)
     warmup_state = {
@@ -112,6 +114,16 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         layers = data_loader.get_precomputed_layers()
         positions = data_loader.get_precomputed_positions()
         available_methods = data_loader.get_available_methods()
+
+        # Get example sample with time horizon for UI illustration
+        example_data = data_loader.get_example_sample_with_horizon()
+        example_sample = None
+        if example_data:
+            example_sample = ExampleSample(
+                sample_idx=example_data["sample_idx"],
+                format_texts=example_data["format_texts"],
+            )
+
         _log("/config", f"Returning config", n_layers=len(layers), n_positions=len(positions), n_samples=data_loader.n_samples, methods=available_methods)
         return ConfigResponse(
             layers=layers,
@@ -120,12 +132,13 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             color_options=data_loader.get_color_options(),
             n_samples=data_loader.n_samples,
             model_name=data_loader.get_model_name(),
-            position_labels=data_loader.get_enriched_position_labels(),
+            position_labels=data_loader.get_position_labels(),
             prompt_template=data_loader.get_prompt_template_structure(),
-            semantic_to_positions=data_loader.get_semantic_to_positions_mapping(),
+            semantic_to_positions={pos: [pos] for pos in data_loader.get_positions()},
             markers=data_loader.get_markers(),
             rel_pos_counts=data_loader.get_rel_pos_counts(),
             available_methods=available_methods,
+            example_sample=example_sample,
         )
 
     @router.get("/embedding/{layer}/{component}/{position}", response_model=EmbeddingResponse)
@@ -141,7 +154,7 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         Args:
             layer: Transformer layer number.
             component: Activation component (resid_pre, attn_out, mlp_out, resid_post).
-            position: Token position identifier.
+            position: Token position identifier (supports format_pos:rel_pos syntax).
             method: Dimensionality reduction method (pca, umap, or tsne).
 
         Returns:
@@ -149,6 +162,9 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         """
         _log("/embedding", f"GET request", layer=layer, component=component, position=position, method=method)
         start_time = time.time()
+
+        # Parse position to extract base format_pos and optional rel_pos
+        base_position, rel_pos = data_loader._parse_position(position)
 
         # Validate layer
         if layer not in data_loader.get_layers():
@@ -158,46 +174,56 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
-        # Validate position - must have precomputed embeddings
+        # Validate base position - must have precomputed embeddings
         precomputed_positions = data_loader.get_precomputed_positions()
-        if position not in precomputed_positions:
-            if position in data_loader.get_positions():
+        if base_position not in precomputed_positions:
+            if base_position in data_loader.get_positions():
                 # Position exists but no precomputed embedding
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Position '{position}' exists but has no precomputed embeddings. "
+                    detail=f"Position '{base_position}' exists but has no precomputed embeddings. "
                     f"Available positions: {precomputed_positions}"
                 )
-            raise HTTPException(status_code=404, detail=f"Position '{position}' not found")
+            raise HTTPException(status_code=404, detail=f"Position '{base_position}' not found")
 
         # Load embedding based on method
+        # Use full position (with rel_pos) if specified - per-rel_pos embeddings are precomputed
+        load_position = position if rel_pos is not None else base_position
         try:
             if method == "pca":
-                embedding = data_loader.load_pca(layer, component, position, n_components=3)
+                embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
             elif method == "umap":
-                embedding = data_loader.load_umap(layer, component, position, n_components=3)
+                embedding = data_loader.load_umap(layer, component, load_position, n_components=3)
             elif method == "tsne":
-                embedding = data_loader.load_tsne(layer, component, position, n_components=3)
+                embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
         except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
+            # No fallback - if per-rel_pos embedding doesn't exist, return 404
+            raise HTTPException(status_code=404, detail=f"No embedding data for {position} (rel_pos={rel_pos}). Not enough samples with this token index.")
 
         # Optimized conversion: sanitize NaN/Infinity in bulk using numpy
         # Replace NaN/Inf with 0.0 in-place
         clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
+        n_embedding_rows = clean_embedding.shape[0]
 
-        # Use embedding size as n_samples - it's the authoritative source
+        # Get sample indices for the position we loaded (either per-rel_pos or combined)
+        # NOTE: We use embedding row count as authoritative since indices may mismatch
+        all_sample_indices = data_loader.get_valid_sample_indices(layer, component, load_position)
+
+        # Truncate/pad indices to match embedding rows
+        if len(all_sample_indices) > n_embedding_rows:
+            all_sample_indices = all_sample_indices[:n_embedding_rows]
+        elif len(all_sample_indices) < n_embedding_rows:
+            all_sample_indices = list(all_sample_indices) + list(range(len(all_sample_indices), n_embedding_rows))
+
+        # No additional filtering needed - per-rel_pos embeddings are pre-filtered
+        sample_indices = list(all_sample_indices)
+        if rel_pos is not None:
+            _log("/embedding", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
+
+        # Use embedding size as n_samples
         n_samples = clean_embedding.shape[0]
-
-        # Get sample indices but truncate to embedding size if needed
-        sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-        if len(sample_indices) != n_samples:
-            _log("/embedding", f"WARNING: sample_indices ({len(sample_indices)}) != embedding rows ({n_samples})")
-            if len(sample_indices) > n_samples:
-                sample_indices = sample_indices[:n_samples]
-            else:
-                sample_indices = list(sample_indices) + list(range(len(sample_indices), n_samples))
 
         # Convert to flat list of floats for maximum performance
         # Format: [x0, y0, z0, x1, y1, z1, ...] - frontend will reshape
@@ -235,19 +261,22 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         """
         _log("/embedding/stream", f"🚀 SSE request received", layer=layer, component=component, position=position, method=method, chunk_size=chunk_size)
 
+        # Parse position to extract base format_pos and optional rel_pos
+        base_position, rel_pos = data_loader._parse_position(position)
+
         # Validate inputs
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
         precomputed_positions = data_loader.get_precomputed_positions()
-        if position not in precomputed_positions:
-            if position in data_loader.get_positions():
+        if base_position not in precomputed_positions:
+            if base_position in data_loader.get_positions():
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Position '{position}' exists but has no precomputed embeddings"
+                    detail=f"Position '{base_position}' exists but has no precomputed embeddings"
                 )
-            raise HTTPException(status_code=404, detail=f"Position '{position}' not found")
+            raise HTTPException(status_code=404, detail=f"Position '{base_position}' not found")
 
         # Validate method is available (UMAP/t-SNE may not be precomputed)
         available_methods = data_loader.get_available_methods()
@@ -270,37 +299,47 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
             stream_start = time.time()
             _log("/embedding/stream", f"Loading embedding...", method=method)
 
-            # Load embedding (this is the slow part) - STRICT: raises ValueError if missing
-            if method == "pca":
-                embedding = data_loader.load_pca(layer, component, position, n_components=3)
-            elif method == "umap":
-                embedding = data_loader.load_umap(layer, component, position, n_components=3)
-            elif method == "tsne":
-                embedding = data_loader.load_tsne(layer, component, position, n_components=3)
-            else:
-                _log("/embedding/stream", f"ERROR: Invalid method {method}")
-                yield f"data: {json.dumps({'error': f'Invalid method: {method}'})}\n\n"
+            # Load embedding using full position (with rel_pos) if specified
+            load_position = position if rel_pos is not None else base_position
+            try:
+                if method == "pca":
+                    embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
+                elif method == "umap":
+                    embedding = data_loader.load_umap(layer, component, load_position, n_components=3)
+                elif method == "tsne":
+                    embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
+                else:
+                    _log("/embedding/stream", f"ERROR: Invalid method {method}")
+                    yield f"data: {json.dumps({'error': f'Invalid method: {method}'})}\n\n"
+                    return
+            except ValueError as e:
+                # No fallback - return error if per-rel_pos embedding doesn't exist
+                _log("/embedding/stream", f"Embedding not found", position=load_position, error=str(e))
+                yield f"data: {json.dumps({'error': f'No embedding data for {position} (rel_pos={rel_pos}). Not enough samples with this token index.'})}\n\n"
                 return
 
             load_elapsed = time.time() - stream_start
             _log("/embedding/stream", f"Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
 
             clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
+            n_embedding_rows = clean_embedding.shape[0]
 
-            # Use embedding size as total_points - the embedding is authoritative
+            # Get sample indices for the position we loaded
+            all_sample_indices = data_loader.get_valid_sample_indices(layer, component, load_position)
+
+            # Truncate/pad indices to match embedding rows
+            if len(all_sample_indices) > n_embedding_rows:
+                all_sample_indices = all_sample_indices[:n_embedding_rows]
+            elif len(all_sample_indices) < n_embedding_rows:
+                all_sample_indices = list(all_sample_indices) + list(range(len(all_sample_indices), n_embedding_rows))
+
+            # No additional filtering needed - per-rel_pos embeddings are pre-filtered
+            sample_indices = list(all_sample_indices)
+            if rel_pos is not None:
+                _log("/embedding/stream", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
+
+            # Use embedding size as total_points
             total_points = clean_embedding.shape[0]
-
-            # Get sample indices but truncate to embedding size
-            # This handles the case where get_valid_sample_indices returns more
-            # indices than the embedding has rows (due to mismatch in filtering)
-            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-            if len(sample_indices) > total_points:
-                _log("/embedding/stream", f"WARNING: sample_indices ({len(sample_indices)}) > embedding rows ({total_points}), truncating")
-                sample_indices = sample_indices[:total_points]
-            elif len(sample_indices) < total_points:
-                _log("/embedding/stream", f"WARNING: sample_indices ({len(sample_indices)}) < embedding rows ({total_points}), padding")
-                # Pad with sequential indices if needed
-                sample_indices = list(sample_indices) + list(range(len(sample_indices), total_points))
 
             _log("/embedding/stream", f"Sending metadata", total_points=total_points)
 
@@ -854,29 +893,37 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
-        # Use filtered positions or default to all positions
+        # Use filtered positions or default to all positions (in actual prompt order)
         if positions_filter:
             positions = [p.strip() for p in positions_filter.split(",") if p.strip()]
         else:
-            positions = data_loader.get_positions()[:10]
+            positions = data_loader.get_positions_in_prompt_order()
 
         # Try to use pre-cached trajectory data first (only if no filter applied)
         if not positions_filter:
             try:
                 cached_positions, pc1_values_list, sample_indices_list = data_loader.load_position_trajectory(layer, component)
-                # Filter to first 10 positions (default behavior)
+                # Build lookup from cached data
+                cached_data = {
+                    pos: (pc1_values_list[i], sample_indices_list[i] if i < len(sample_indices_list) else [])
+                    for i, pos in enumerate(cached_positions)
+                }
+                # Reorder by actual prompt order
+                prompt_order = data_loader.get_positions_in_prompt_order()
+                ordered_positions = [p for p in prompt_order if p in cached_data]
+
                 data = []
                 x_values = []
                 n_samples = 0
-                for i, pos in enumerate(cached_positions[:10]):
-                    pc1_arr = pc1_values_list[i]
+                for pos in ordered_positions:
+                    pc1_arr, indices = cached_data[pos]
                     pc1_values = pc1_arr.astype(float).tolist() if hasattr(pc1_arr, 'astype') else list(pc1_arr)
                     n_samples = max(n_samples, len(pc1_values))
                     x_values.append(pos)
                     data.append(TrajectoryPoint(
                         x_value=pos,
                         values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                        sample_indices=sample_indices_list[i] if i < len(sample_indices_list) else [],
+                        sample_indices=indices,
                     ))
                 elapsed = time.time() - start_time
                 _log("/trajectory/positions", f"Returning cached trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
@@ -959,5 +1006,31 @@ def create_router(data_loader: GeometryDataLoader) -> APIRouter:
         ]
 
         return TokensResponse(sample_idx=sample_idx, tokens=tokens)
+
+    @router.get("/scree/{position}")
+    async def get_scree_data(position: str, n_components: int = 10) -> dict:
+        """Get Scree plot data (cumulative variance explained) for a position.
+
+        Returns cumulative variance explained across all layers and components.
+        """
+        _log("/scree", f"GET request", position=position)
+        if position not in data_loader.get_positions():
+            raise HTTPException(status_code=400, detail=f"Invalid position: {position}")
+
+        scree_data = data_loader.get_scree_data(position, n_components)
+        return scree_data
+
+    @router.get("/alignment/{position}")
+    async def get_direction_alignment(position: str, pc_index: int = 0) -> dict:
+        """Get direction alignment (cosine similarity) matrix for a position.
+
+        Returns cosine similarity between PC directions across all targets.
+        """
+        _log("/alignment", f"GET request", position=position, pc_index=pc_index)
+        if position not in data_loader.get_positions():
+            raise HTTPException(status_code=400, detail=f"Invalid position: {position}")
+
+        alignment_data = data_loader.get_direction_alignment(position, pc_index)
+        return alignment_data
 
     return router

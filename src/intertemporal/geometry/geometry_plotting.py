@@ -34,6 +34,37 @@ from .geometry_data import ActivationData, VisualizationData, get_time_horizon_m
 # Type alias for either data type
 PlotData = Union[ActivationData, VisualizationData]
 
+# Known component names for key parsing
+KNOWN_COMPONENTS = {"resid_pre", "attn_out", "mlp_out", "resid_post"}
+
+
+def _parse_target_key(key: str) -> tuple[int, str, str] | None:
+    """Parse target key into (layer, component, position).
+
+    Key format: L{layer}_{component}_{position}
+    Examples: L0_resid_pre_time_horizon, L12_attn_out_response_choice
+
+    Returns None if parsing fails.
+    """
+    if not key.startswith("L"):
+        return None
+
+    # Find layer number
+    layer_match = re.match(r"L(\d+)_(.+)", key)
+    if not layer_match:
+        return None
+
+    layer = int(layer_match.group(1))
+    rest = layer_match.group(2)
+
+    # Find component by checking known components
+    for comp in KNOWN_COMPONENTS:
+        if rest.startswith(comp + "_"):
+            position = rest[len(comp) + 1:]  # +1 for underscore
+            return (layer, comp, position)
+
+    return None
+
 
 def _months_to_years(months: float) -> float:
     """Convert months to years."""
@@ -225,17 +256,10 @@ def plot_summary_dashboard(
     # Parse all targets to extract layer, component, position
     target_info = {}
     for key in linear_probe_results.keys():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
-
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
+        layer, component, position = parsed
 
         target_info[key] = {
             "layer": layer,
@@ -356,22 +380,21 @@ def plot_trajectory(
     output_dir: Path,
 ):
     """Plot PC1 trajectory across layers for each sample."""
+    # Skip if no PCA results have transformed data
+    first_pca = next(iter(pca_results.values()), None) if pca_results else None
+    if first_pca is None or first_pca.transformed.size == 0:
+        logger.warning("Skipping trajectory plot: no transformed data available")
+        return
+
     # Group targets by position, component
     target_info = {}
     for key, pca_result in pca_results.items():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
+        layer, component, position = parsed
 
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
-
-        key_id = f"{component}_P{position}"
+        key_id = f"{component}_{position}"
         if key_id not in target_info:
             target_info[key_id] = {}
         target_info[key_id][layer] = {
@@ -384,8 +407,13 @@ def plot_trajectory(
         logger.warning("No trajectory data available")
         return
 
-    # Get time horizons
-    horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
+    # Get time horizons - handle both ActivationData and VisualizationData
+    if hasattr(data, "time_horizons_months"):
+        # VisualizationData has pre-computed time horizons
+        horizons_months = np.array(data.time_horizons_months)
+    else:
+        # ActivationData needs to compute from samples
+        horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
     horizons_years = horizons_months / 12.0
     log_horizons = np.log10(horizons_years + 0.1)
 
@@ -454,21 +482,20 @@ def plot_component_decomposition(
     output_dir: Path,
 ):
     """Plot 2x2 component decomposition showing resid_pre, attn_out, mlp_out, resid_post."""
+    # Skip if no PCA results have transformed data
+    first_pca = next(iter(pca_results.values()), None) if pca_results else None
+    if first_pca is None or first_pca.transformed.size == 0:
+        logger.warning("Skipping component decomposition: no transformed data available")
+        return
+
     target_info = {}
     for key in pca_results.keys():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
+        layer, component, position = parsed
 
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
-
-        layer_pos_key = f"L{layer}_P{position}"
+        layer_pos_key = f"L{layer}_{position}"
         if layer_pos_key not in target_info:
             target_info[layer_pos_key] = {}
         target_info[layer_pos_key][component] = {
@@ -539,21 +566,20 @@ def plot_component_decomposition_3d(
         logger.warning("Plotly not available, skipping 3D component decomposition")
         return
 
+    # Skip if no PCA results have transformed data
+    first_pca = next(iter(pca_results.values()), None) if pca_results else None
+    if first_pca is None or first_pca.transformed.size == 0:
+        logger.warning("Skipping 3D component decomposition: no transformed data available")
+        return
+
     target_info = {}
     for key in pca_results.keys():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
+        layer, component, position = parsed
 
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
-
-        layer_pos_key = f"L{layer}_P{position}"
+        layer_pos_key = f"L{layer}_{position}"
         if layer_pos_key not in target_info:
             target_info[layer_pos_key] = {}
         target_info[layer_pos_key][component] = {
@@ -660,8 +686,8 @@ def plot_direction_alignment(
     """Plot direction alignment heatmaps showing cosine similarity between PC1 directions."""
     directions = {}
     for key, pca_result in pca_results.items():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
 
         best_pc_idx = pca_result.pc_correlations[0][0]
@@ -687,10 +713,12 @@ def plot_direction_alignment(
 
     labels = []
     for key in keys:
-        parts = key.split("_P")
-        base = parts[0].replace("_", "")
-        pos = parts[1][:4] if len(parts) > 1 else ""
-        labels.append(f"{base[:6]}_{pos}")
+        parsed = _parse_target_key(key)
+        if parsed:
+            layer, component, position = parsed
+            labels.append(f"L{layer}_{component[:4]}_{position[:4]}")
+        else:
+            labels.append(key[:12])
 
     if n <= 30:
         ax.set_xticks(range(n))
@@ -708,9 +736,9 @@ def plot_direction_alignment(
     # Per-position alignment plots
     position_groups = {}
     for key in keys:
-        parts = key.split("_P")
-        if len(parts) == 2:
-            pos = parts[1]
+        parsed = _parse_target_key(key)
+        if parsed:
+            _, _, pos = parsed
             if pos not in position_groups:
                 position_groups[pos] = []
             position_groups[pos].append(key)
@@ -728,7 +756,10 @@ def plot_direction_alignment(
         fig, ax = plt.subplots(figsize=(max(6, n_pos * 0.5), max(5, n_pos * 0.4)))
         im = ax.imshow(sim_pos, cmap="viridis", vmin=0, vmax=1, aspect="auto")
 
-        labels_pos = [k.split("_P")[0] for k in pos_keys]
+        labels_pos = []
+        for k in pos_keys:
+            p = _parse_target_key(k)
+            labels_pos.append(f"L{p[0]}_{p[1][:4]}" if p else k[:10])
         ax.set_xticks(range(n_pos))
         ax.set_xticklabels(labels_pos, fontsize=8, rotation=45)
         ax.set_yticks(range(n_pos))
@@ -762,17 +793,10 @@ def plot_decision_boundary(
 
     layer_accuracy = {}
     for key, result in linear_probe_results.items():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
-
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
+        layer, component, position = parsed
 
         predictions = result.predictions
         n_samples = len(predictions)
@@ -781,7 +805,7 @@ def plot_decision_boundary(
         predicted_choice = (predictions > median_pred).astype(np.int8)
         accuracy = float((predicted_choice == target_chose_long).mean())
 
-        layer_key = f"L{layer}_{component}_P{position}"
+        layer_key = f"L{layer}_{component}_{position}"
         layer_accuracy[layer_key] = {
             "layer": layer,
             "component": component,
@@ -884,8 +908,8 @@ def plot_scree(
     for idx, target_key in enumerate(key_targets[:8]):
         pca_result = pca_results[target_key]
         cumsum = np.cumsum(pca_result.explained_variance[:20])
-        parts = target_key.split("_P")
-        label = f"{parts[0][-8:]}_P{parts[1][:4]}" if len(parts) == 2 else target_key[:15]
+        parsed = _parse_target_key(target_key)
+        label = f"L{parsed[0]}_{parsed[1][:4]}_{parsed[2][:4]}" if parsed else target_key[:15]
         ax.plot(range(len(cumsum)), cumsum, marker=".", color=colors[idx % len(colors)],
                linewidth=1.5, alpha=0.8, label=label)
 
@@ -1403,18 +1427,10 @@ def plot_continuous_time_probe(
     position_results = {}
     for key, result in continuous_time_results.items():
         # Parse target key
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        position = parts[1]
-        base = parts[0]
-
-        import re
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
+        layer, component, position = parsed
 
         pos_comp_key = f"{position}_{component}"
         if pos_comp_key not in position_results:
@@ -1777,17 +1793,10 @@ def plot_no_horizon_projection(
     # Parse results to extract layer, component, position
     result_info = {}
     for key, result in no_horizon_results.items():
-        parts = key.split("_P")
-        if len(parts) != 2:
+        parsed = _parse_target_key(key)
+        if not parsed:
             continue
-        base = parts[0]
-        position = parts[1]
-
-        layer_match = re.match(r"L(\d+)_(.+)", base)
-        if not layer_match:
-            continue
-        layer = int(layer_match.group(1))
-        component = layer_match.group(2)
+        layer, component, position = parsed
 
         result_info[key] = {
             "layer": layer,

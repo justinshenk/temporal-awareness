@@ -45,6 +45,7 @@ interface ControlPanelProps {
   layer: number;
   layers: number[];
   onLayerChange: (layer: number) => void;
+  hideLayerSection?: boolean;
 
   // Component controls
   component: string;
@@ -68,6 +69,7 @@ interface ControlPanelProps {
   method: string;
   methods: string[];
   onMethodChange: (method: string) => void;
+  hideMethodSection?: boolean;
 
   // Color controls
   colorBy: string;
@@ -301,6 +303,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   layer,
   layers,
   onLayerChange,
+  hideLayerSection = false,
   component,
   components,
   onComponentChange,
@@ -313,6 +316,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   method,
   methods,
   onMethodChange,
+  hideMethodSection = false,
   colorBy,
   colorByOptions,
   onColorByChange,
@@ -388,20 +392,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
-      {/* Layer Control */}
-      <Card padding="sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Layer</CardTitle>
-        </CardHeader>
-        <CardContent className="py-2">
-          <Select
-            options={layerOptions}
-            value={layer.toString()}
-            onChange={(val) => onLayerChange(parseInt(val, 10))}
-            placeholder="Select layer..."
-          />
-        </CardContent>
-      </Card>
+      {/* Layer Control - hidden for 1DxLayer view */}
+      {!hideLayerSection && (
+        <Card padding="sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Layer</CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            <Select
+              options={layerOptions}
+              value={layer.toString()}
+              onChange={(val) => onLayerChange(parseInt(val, 10))}
+              placeholder="Select layer..."
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Component Control */}
       <Card padding="sm">
@@ -461,21 +467,23 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </Card>
       )}
 
-      {/* Method Control */}
-      <Card padding="sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Reduction Method</CardTitle>
-        </CardHeader>
-        <CardContent className="py-2">
-          {methodTabs.length > 0 && (
-            <Tabs
-              tabs={methodTabs}
-              activeTab={method}
-              onChange={onMethodChange}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* Method Control - hidden for 1D views (they only use PCA) */}
+      {!hideMethodSection && (
+        <Card padding="sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Reduction Method</CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            {methodTabs.length > 0 && (
+              <Tabs
+                tabs={methodTabs}
+                activeTab={method}
+                onChange={onMethodChange}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Color By Control */}
       {!hideColorBySection && (

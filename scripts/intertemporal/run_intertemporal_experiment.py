@@ -16,19 +16,13 @@ Usage:
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --cache my_experiment
 
     # Save to a custom folder name
-    uv run python scripts/intertemporal/run_intertemporal_experiment.py --rename my_experiment
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --output-dir-name my_experiment
 
     # Override coarse patching settings
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --coarse '{"components": ["mlp_out"]}'
 
     # Enable attribution patching with specific methods
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --attrib '{"enabled": true, "methods": ["eap_ig"]}'
-
-    # Regenerate visualizations for all cached experiments
-    uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_all": true}'
-
-    # Regenerate visualizations for one specific experiment
-    uv run python scripts/intertemporal/run_intertemporal_experiment.py --viz '{"regenerate_one": "label_grid"}'
 
     # Run ONLY diffmeans (disable all other steps except those specified)
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --diffmeans '{"enabled": true}'
@@ -41,55 +35,38 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
-from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.common.file_io import backup_dir, move_dir
+from src.common.logging import close_log_file, log, log_header, log_kv, set_log_file
 from src.common.profiler import P
-from src.common.logging import set_log_file, close_log_file, log, log_header, log_kv
 from src.intertemporal.common import get_experiment_dir
-from src.intertemporal.experiments.intertemporal_experiment import (
-    ExperimentConfig,
-    run_experiment,
-)
-from src.intertemporal.experiments.intertemporal_viz import (
-    generate_viz,
-    regenerate_all_visualizations,
-)
-
 from src.intertemporal.data.default_configs import (
     FULL_EXPERIMENT_CONFIG,
     MINIMAL_EXPERIMENT_CONFIG,
     MULTILABEL_EXPERIMENT_CONFIG,
 )
 from src.intertemporal.experiments.experiment_config import (
-    COARSE_PATCH,
-    ATT_PATCH,
-    VIZ,
-    DIFFMEANS,
-    GEO,
-    PAIR_REQ,
-    FINE_PATCH,
-    MLP_ANALYSIS,
-    ATTN_ANALYSIS,
+    ATTRIB_CFG,
+    ATTN_CFG,
+    COARSE_CFG,
+    DIFFMEANS_CFG,
+    FINE_CFG,
+    MLP_CFG,
+    PAIR_REQ_CFG,
+    VIZ_CFG,
 )
-from src.intertemporal.viz.coarse.component_comparison.comp_constants import COMPONENTS
-
-
-def detect_cached_components(exp_dir: Path) -> list[str]:
-    """Detect which components have cached coarse patching results."""
-    cached = []
-    pair_0 = exp_dir / "pair_0"
-    if not pair_0.exists():
-        return cached
-    for comp in COMPONENTS:
-        if (pair_0 / f"sweep_{comp}" / "coarse_results.json").exists():
-            cached.append(comp)
-    return cached
+from src.intertemporal.experiments.intertemporal_experiment import (
+    ExperimentConfig,
+    run_experiment,
+)
+# =============================================================================
+# Argument Parsing
+# =============================================================================
 
 
 def parse_args() -> argparse.Namespace:
@@ -97,23 +74,28 @@ def parse_args() -> argparse.Namespace:
         description="Run full intertemporal preference experiment",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--full", action="store_true", help="Runs with many samples")
+
+    # --- Dataset selection ---
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Run with full dataset (many samples)",
+    )
     parser.add_argument(
         "--multilabel",
         action="store_true",
         help="Use multilabel dataset (do_formatting_variation_grid=True)",
     )
+
+    # --- Output directory ---
     parser.add_argument(
-        "--model",
+        "--out",
+        "--output-dir-name",
+        dest="output_dir_name",
         type=str,
         default=None,
-        help="Model name to use (e.g., Qwen/Qwen3-4B-Instruct-2507)",
-    )
-    parser.add_argument(
-        "--n_pairs",
-        type=int,
-        default=None,
-        help="Number of contrastive pairs to use",
+        metavar="NAME",
+        help="Custom folder name for output (mutually exclusive with --cache)",
     )
     parser.add_argument(
         "--cache",
@@ -121,216 +103,234 @@ def parse_args() -> argparse.Namespace:
         const=True,
         default=False,
         metavar="FOLDER",
-        help="Try loading cached data. Optionally specify folder name to load from.",
+        help="Load cached data. Optionally specify folder name.",
     )
+
+    # --- Model configuration ---
     parser.add_argument(
-        "--rename",
+        "--model",
         type=str,
         default=None,
-        metavar="NAME",
-        help="Custom folder name for output (only works without --cache)",
-    )
-    parser.add_argument(
-        "--coarse",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help='Override coarse patching settings as JSON, e.g. \'{"components": ["mlp_out"]}\'',
-    )
-    parser.add_argument(
-        "--attrib",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help='Override attribution patching settings as JSON, e.g. \'{"enabled": true, "methods": ["eap_ig"]}\'',
+        help="Model name (e.g., Qwen/Qwen3-4B-Instruct-2507)",
     )
     parser.add_argument(
         "--backend",
         type=str,
         default=None,
         choices=["pyvene", "transformerlens", "huggingface", "nnsight"],
-        help="Override backend for model internals (default: auto-detect)",
+        help="Backend for model internals (default: auto-detect)",
     )
     parser.add_argument(
-        "--viz",
-        type=str,
+        "--n_pairs",
+        type=int,
         default=None,
-        metavar="JSON",
-        help='Visualization settings as JSON, e.g. \'{"enabled": true, "regenerate_all": true}\'',
+        help="Number of contrastive pairs to use",
     )
-    parser.add_argument(
-        "--diffmeans",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override diffmeans settings as JSON, e.g. '{\"enabled\": true}'",
-    )
-    parser.add_argument(
-        "--geo",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help='Override geo (PCA) settings as JSON, e.g. \'{"enabled": true, "positions": ["time_horizon", "response_choice"]}\'',
-    )
-    parser.add_argument(
-        "--pair_req",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override pair requirements as JSON, e.g. '{\"different_labels\": true}' for multilabel",
-    )
-    parser.add_argument(
-        "--fine",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override fine patching settings as JSON, e.g. '{\"enabled\": true}'",
-    )
-    parser.add_argument(
-        "--mlp",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override MLP analysis settings as JSON, e.g. '{\"enabled\": true, \"layers\": [35, 31]}'",
-    )
-    parser.add_argument(
-        "--attn",
-        type=str,
-        default=None,
-        metavar="JSON",
-        help="Override attention analysis settings as JSON, e.g. '{\"enabled\": true, \"layers\": [19, 21, 24]}'",
-    )
+
+    # --- Pipeline control ---
     parser.add_argument(
         "--disable",
         action="store_true",
-        help="Disable all steps except those explicitly enabled via flags",
+        help="Disable all steps, then selectively enable with other flags",
+    )
+    parser.add_argument(
+        "--only-viz-agg",
+        action="store_true",
+        help="Skip per-pair viz, only generate aggregated viz for all steps",
     )
 
+    # --- Phase overrides (JSON, ordered to match run_experiment) ---
+    _add_json_override(parser, "--attrib", "att_patch", "attribution patching")
+    _add_json_override(parser, "--coarse", "coarse_patch", "coarse patching")
+    _add_json_override(parser, "--diffmeans", "diffmeans", "difference-of-means")
+    _add_json_override(parser, "--mlp", "mlp", "MLP analysis")
+    _add_json_override(parser, "--attn", "attn", "attention analysis")
+    _add_json_override(parser, "--fine", "fine", "fine patching")
+    _add_json_override(parser, "--viz", "viz", "visualization")
+    _add_json_override(parser, "--pair_req", "pair_req", "pair requirements")
+
     return parser.parse_args()
+
+
+def _add_json_override(
+    parser: argparse.ArgumentParser,
+    flag: str,
+    config_key: str,
+    description: str,
+) -> None:
+    """Add a JSON override argument."""
+    parser.add_argument(
+        flag,
+        type=str,
+        default="{}",
+        metavar="JSON",
+        help=f"Override {description} settings as JSON",
+    )
+
+
+# =============================================================================
+# Config Building
+# =============================================================================
+
+
+def build_base_config(args: argparse.Namespace) -> dict:
+    """Build base config from dataset selection."""
+    if args.multilabel:
+        config = MULTILABEL_EXPERIMENT_CONFIG.copy()
+    elif args.full:
+        config = FULL_EXPERIMENT_CONFIG.copy()
+    else:
+        config = MINIMAL_EXPERIMENT_CONFIG.copy()
+
+    if args.model:
+        config["model"] = args.model
+    if args.n_pairs:
+        config["n_pairs"] = args.n_pairs
+
+    return config
+
+
+def apply_disable_flag(config: dict) -> None:
+    """Disable all pipeline steps (for selective re-enabling)."""
+    config["attrib_cfg"] = {**ATTRIB_CFG, "enabled": False, "no_viz": True}
+    config["coarse_cfg"] = {**COARSE_CFG, "enabled": False, "no_viz": True}
+    config["diffmeans_cfg"] = {**DIFFMEANS_CFG, "enabled": False, "no_viz": True}
+    config["mlp_cfg"] = {**MLP_CFG, "enabled": False, "no_viz": True}
+    config["attn_cfg"] = {**ATTN_CFG, "enabled": False, "no_viz": True}
+    config["fine_cfg"] = {**FINE_CFG, "enabled": False, "no_viz": True}
+
+
+def apply_only_viz_agg_flag(config: dict) -> None:
+    """Set only_viz_agg=True for all steps (skip per-pair viz, only aggregated)."""
+    config.setdefault("attrib_cfg", ATTRIB_CFG.copy())["only_viz_agg"] = True
+    config.setdefault("coarse_cfg", COARSE_CFG.copy())["only_viz_agg"] = True
+    config.setdefault("diffmeans_cfg", DIFFMEANS_CFG.copy())["only_viz_agg"] = True
+    config.setdefault("mlp_cfg", MLP_CFG.copy())["only_viz_agg"] = True
+    config.setdefault("attn_cfg", ATTN_CFG.copy())["only_viz_agg"] = True
+    config.setdefault("fine_cfg", FINE_CFG.copy())["only_viz_agg"] = True
+
+
+def apply_json_overrides(config: dict, args: argparse.Namespace) -> None:
+    """Apply all JSON override arguments to config."""
+    # Simple overrides (merge only, no auto-enable)
+    simple_overrides = [
+        (args.viz, "viz_cfg", VIZ_CFG),
+        (args.pair_req, "pair_req_cfg", PAIR_REQ_CFG),
+    ]
+    for arg_value, key, default in simple_overrides:
+        if arg_value:
+            config.setdefault(key, default.copy()).update(json.loads(arg_value))
+
+    # Auto-enable overrides (passing flag implies enabled=True, ordered to match run_experiment)
+    # Only enable if arg is explicitly passed (not the default "{}")
+    auto_enable_overrides = [
+        (args.attrib, "attrib_cfg", ATTRIB_CFG),
+        (args.coarse, "coarse_cfg", COARSE_CFG),
+        (args.diffmeans, "diffmeans_cfg", DIFFMEANS_CFG),
+        (args.mlp, "mlp_cfg", MLP_CFG),
+        (args.attn, "attn_cfg", ATTN_CFG),
+        (args.fine, "fine_cfg", FINE_CFG),
+    ]
+    for arg_value, key, default in auto_enable_overrides:
+        if arg_value and arg_value != "{}":
+            section = config.setdefault(key, default.copy())
+            section["enabled"] = True
+            section["no_viz"] = False
+            section.update(json.loads(arg_value))
+
+
+# =============================================================================
+# Output Directory Resolution
+# =============================================================================
+
+
+def resolve_output_dir(
+    args: argparse.Namespace,
+    exp_cfg: ExperimentConfig,
+) -> tuple[Path, bool]:
+    """
+    Resolve output directory and whether to load cached data.
+
+    Returns:
+        (output_dir, try_loading_data)
+    """
+    try_loading_data = bool(args.cache)
+
+    # --cache FOLDER: load from specific folder
+    if args.cache and isinstance(args.cache, str):
+        output_dir = get_experiment_dir() / args.cache
+        if output_dir.exists():
+            backup_dir(output_dir)
+        return output_dir, try_loading_data
+
+    # --output-dir-name NAME: use custom folder name
+    if args.output_dir_name:
+        output_dir = get_experiment_dir() / args.output_dir_name
+        if output_dir.exists():
+            move_dir(output_dir)
+        return output_dir, try_loading_data
+
+    # Default: use config ID as folder name
+    return get_experiment_dir() / exp_cfg.get_id(), try_loading_data
+
+
+# =============================================================================
+# Main
+# =============================================================================
 
 
 def main() -> int:
     args = parse_args()
 
-    # Handle --viz with regenerate options first (doesn't need other config)
-    if args.viz:
-        viz_config = json.loads(args.viz)
-        if viz_config.get("regenerate_all", False):
-            log_header("REGENERATING ALL VISUALIZATIONS", gap=1)
-            regenerate_all_visualizations(get_experiment_dir())
-            return 0
-        if "regenerate_one" in viz_config:
-            exp_name = viz_config["regenerate_one"]
-            exp_dir = get_experiment_dir() / exp_name
-            if not exp_dir.exists():
-                print(f"Error: Experiment directory not found: {exp_dir}")
-                return 1
-            log_header(f"REGENERATING VISUALIZATIONS: {exp_name}", gap=1)
-            generate_viz(exp_dir)
-            return 0
+    # Validate mutually exclusive options
+    if args.cache and args.output_dir_name:
+        print("Error: --cache and --output-dir-name are mutually exclusive")
+        return 1
 
-    if args.multilabel:
-        config_dict = MULTILABEL_EXPERIMENT_CONFIG.copy()
-    elif args.full:
-        config_dict = FULL_EXPERIMENT_CONFIG.copy()
-    else:
-        config_dict = MINIMAL_EXPERIMENT_CONFIG.copy()
-
-    if args.model:
-        config_dict["model"] = args.model
-    if args.n_pairs:
-        config_dict["n_pairs"] = args.n_pairs
-
-    # Handle --disable: disable all steps first, then override with explicit flags
-    # Use full defaults but with enabled=False so overrides can re-enable
-    if args.disable:
-        config_dict["coarse_patch"] = {**COARSE_PATCH, "enabled": False}
-        config_dict["att_patch"] = {**ATT_PATCH, "enabled": False}
-        config_dict["diffmeans"] = {**DIFFMEANS, "enabled": False}
-        config_dict["geo"] = {**GEO, "enabled": False}
-        config_dict["fine_patch"] = {**FINE_PATCH, "enabled": False}
-        config_dict["mlp_analysis"] = {**MLP_ANALYSIS, "enabled": False}
-        config_dict["attn_analysis"] = {**ATTN_ANALYSIS, "enabled": False}
-        config_dict["viz"] = {**VIZ, "enabled": False}
-
-    # Apply JSON overrides, merging with defaults if key missing
-    if args.coarse:
-        config_dict.setdefault("coarse_patch", COARSE_PATCH.copy()).update(
-            json.loads(args.coarse)
-        )
-    if args.attrib:
-        config_dict.setdefault("att_patch", ATT_PATCH.copy()).update(
-            json.loads(args.attrib)
-        )
-    if args.viz:
-        config_dict.setdefault("viz", VIZ.copy()).update(json.loads(args.viz))
-    if args.diffmeans:
-        config_dict.setdefault("diffmeans", DIFFMEANS.copy()).update(
-            json.loads(args.diffmeans)
-        )
-    if args.geo:
-        config_dict.setdefault("geo", GEO.copy()).update(json.loads(args.geo))
-    if args.pair_req:
-        config_dict.setdefault("pair_req", PAIR_REQ.copy()).update(
-            json.loads(args.pair_req)
-        )
-    if args.fine:
-        fine_config = config_dict.setdefault("fine_patch", FINE_PATCH.copy())
-        fine_config["enabled"] = True  # Auto-enable when --fine is passed
-        fine_config.update(json.loads(args.fine))
-    if args.mlp:
-        mlp_config = config_dict.setdefault("mlp_analysis", MLP_ANALYSIS.copy())
-        mlp_config["enabled"] = True  # Auto-enable when --mlp is passed
-        mlp_config.update(json.loads(args.mlp))
-    if args.attn:
-        attn_config = config_dict.setdefault("attn_analysis", ATTN_ANALYSIS.copy())
-        attn_config["enabled"] = True  # Auto-enable when --attn is passed
-        attn_config.update(json.loads(args.attn))
-
-    # Determine output directory
-    output_dir = None
-    try_loading_data = bool(args.cache)
-
+    # When using --cache with a folder name, try to load config from that folder
+    cached_cfg = None
     if args.cache and isinstance(args.cache, str):
-        # --cache FOLDER: load from specific folder
-        output_dir = get_experiment_dir() / args.cache
+        cache_dir = get_experiment_dir() / args.cache
+        cached_cfg = ExperimentConfig.load(cache_dir)
+        if cached_cfg:
+            print(f"[cache] Loaded config from {cache_dir}")
+            print(f"[cache] Model: {cached_cfg.model}")
+            print(f"[cache] Dataset: {cached_cfg.dataset_name}")
 
-        # Backup existing cache before modifying
-        if output_dir.exists():
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_dir = get_experiment_dir() / f"{args.cache}_backup_{timestamp}"
-            print(f"Backing up {output_dir} -> {backup_dir}")
-            shutil.copytree(output_dir, backup_dir)
-            print(f"Backup complete: {backup_dir}")
+    # Build experiment config
+    # When using cache: start with cached identity fields, then override with CLI args
+    # Step configs always use defaults, then CLI overrides
+    if cached_cfg:
+        config = {
+            "model": cached_cfg.model,
+            "dataset_config": cached_cfg.dataset_config,
+            "n_pairs": cached_cfg.n_pairs,
+            "max_samples": cached_cfg.max_samples,
+            "pair_req_cfg": cached_cfg.pair_req_cfg,
+        }
+        # CLI args override cached values
+        if args.model:
+            config["model"] = args.model
+        if args.n_pairs:
+            config["n_pairs"] = args.n_pairs
+    else:
+        config = build_base_config(args)
 
-        # Auto-detect cached components
-        cached = detect_cached_components(output_dir)
-        if cached:
-            if "coarse_patch" not in config_dict:
-                config_dict["coarse_patch"] = {}
-            config_dict["coarse_patch"]["components"] = cached
-            print(f"Auto-detected cached components: {cached}")
-    elif args.rename:
-        if args.cache:
-            print("Warning: --rename is ignored when --cache is used")
-        else:
-            # --rename NAME: use custom folder name
-            output_dir = get_experiment_dir() / args.rename
-            if output_dir.exists():
-                # Move existing folder to *_{timestamp}/ instead of crashing
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_dir = get_experiment_dir() / f"{args.rename}_{timestamp}"
-                print(f"Moving existing output to: {backup_dir}")
-                shutil.move(str(output_dir), str(backup_dir))
+    if args.disable:
+        apply_disable_flag(config)
 
-    # Create experiment config after all config modifications
-    exp_cfg = ExperimentConfig.from_dict(config_dict)
+    if args.only_viz_agg:
+        apply_only_viz_agg_flag(config)
 
-    # If no custom output_dir, use default based on config ID
-    if output_dir is None:
-        output_dir = get_experiment_dir() / exp_cfg.get_id()
+    apply_json_overrides(config, args)
 
-    # Set up logging to file
+    # Create experiment config object
+    exp_cfg = ExperimentConfig.from_dict(config)
+
+    # Resolve output directory
+    output_dir, try_loading_data = resolve_output_dir(args, exp_cfg)
+
+    # Set up logging
     output_dir.mkdir(parents=True, exist_ok=True)
     set_log_file(output_dir / "log.txt")
 
@@ -338,6 +338,7 @@ def main() -> int:
     log_kv("Output", str(output_dir))
     log()
 
+    # Run experiment
     try:
         run_experiment(
             exp_cfg,
@@ -349,6 +350,8 @@ def main() -> int:
         P.save(output_dir / "profile.json")
     finally:
         close_log_file()
+
+    return 0
 
 
 if __name__ == "__main__":

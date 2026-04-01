@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -87,6 +88,37 @@ def ensure_dir(path: Path) -> Path:
     """Ensure directory exists."""
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def backup_dir(src: Path, suffix: str = "backup") -> Path:
+    """Create timestamped backup copy of a directory.
+
+    Args:
+        src: Directory to backup
+        suffix: Suffix before timestamp (default: "backup")
+
+    Returns:
+        Path to backup directory
+    """
+    dest = src.parent / f"{src.name}_{suffix}_{get_timestamp()}"
+    print(f"Backing up {src} -> {dest}")
+    shutil.copytree(src, dest)
+    return dest
+
+
+def move_dir(src: Path) -> Path:
+    """Move directory to timestamped location.
+
+    Args:
+        src: Directory to move
+
+    Returns:
+        Path to new location
+    """
+    dest = src.parent / f"{src.name}_{get_timestamp()}"
+    print(f"Moving {src} -> {dest}")
+    shutil.move(str(src), str(dest))
+    return dest
 
 
 def _make_text_readable(obj):
