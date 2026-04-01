@@ -107,7 +107,7 @@ class ActivationData:
     """Container for extracted activations.
 
     New structure: per-sample folders with absolute position filenames.
-    Use sample_position_mapping.json to map abs_pos -> format_pos.
+    Use long_position_mapping.json / short_position_mapping.json to map abs_pos -> format_pos.
     """
 
     samples: list[PromptSample]

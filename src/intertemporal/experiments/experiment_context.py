@@ -241,8 +241,8 @@ class ExperimentContext(ExperimentMixin):
 
     def get_position_mapping_path(self, pair_idx: int, sample: str = "long") -> Path:
         if sample == "short":
-            return self.get_pair_dir(pair_idx) / "position_mapping_short.json"
-        return self.get_pair_dir(pair_idx) / "sample_position_mapping.json"
+            return self.get_pair_dir(pair_idx) / "short_position_mapping.json"
+        return self.get_pair_dir(pair_idx) / "long_position_mapping.json"
 
     def save_position_mapping_data(self, pair_idx: int) -> None:
         """Save position mapping JSON files for a pair (no visualization)."""

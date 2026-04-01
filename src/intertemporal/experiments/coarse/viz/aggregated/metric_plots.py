@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 from .data_extraction import ColumnData
@@ -156,6 +157,7 @@ def plot_column(
         ax.tick_params(axis="both", labelsize=TICK_LABEL_FONTSIZE)
         x_label = "Layer" if "layer" in str(output_path).lower() else "Position"
         ax.set_xlabel(x_label, fontsize=AXIS_LABEL_FONTSIZE)
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Figure title
     fig.suptitle(

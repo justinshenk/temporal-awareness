@@ -101,6 +101,50 @@ def visualize_mlp_analysis(
     log(f"[mlp_viz] Generated {n_plots} plots in {output_dir}")
 
 
+def visualize_all_mlp_slices(
+    agg: MLPAggregatedResults,
+    output_dir: Path,
+    pref_pairs: list | None = None,
+) -> None:
+    """Visualize MLP analysis for all analysis slices.
+
+    Args:
+        agg: Aggregated MLP analysis results
+        output_dir: Output directory
+        pref_pairs: List of ContrastivePreferences for slice filtering
+    """
+    from ..coarse.viz.aggregated.analysis_slices import ANALYSIS_SLICES
+    from ...viz.slice_config import CORE_SLICES, GENERATE_ALL_SLICES
+
+    output_dir = Path(output_dir)
+
+    n_samples = agg.n_pairs
+    if not GENERATE_ALL_SLICES or n_samples <= 2:
+        slices_to_generate = [s for s in ANALYSIS_SLICES if s.name in CORE_SLICES]
+    else:
+        slices_to_generate = ANALYSIS_SLICES
+
+    for analysis_slice in slices_to_generate:
+        slice_name = analysis_slice.name
+        slice_dir = output_dir / slice_name
+
+        # Filter data for this slice
+        if slice_name == "all" or pref_pairs is None:
+            filtered_agg = agg
+        else:
+            indices = [
+                i for i, pref in enumerate(pref_pairs)
+                if analysis_slice.req.passes(pref)
+            ]
+            if not indices:
+                continue
+            filtered_agg = agg.filter_by_indices(indices)
+
+        visualize_mlp_analysis(filtered_agg, slice_dir)
+
+    log(f"[mlp_viz] All MLP slices saved to {output_dir}")
+
+
 def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> None:
     """Plot mean layer contributions as grouped bar chart showing clean vs corrupted.
 

@@ -29,7 +29,7 @@ PAIR_REQ_CFG: dict = {}
 
 # Coarse patching: component options are "resid_pre", "resid_post", "attn_out", "mlp_out"
 COARSE_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###
@@ -44,12 +44,12 @@ COARSE_CFG: dict = {
 # - components: "resid_post", "attn_out", "mlp_out"
 # - quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
 ATTRIB_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
-    "ig_steps": 30,
+    "ig_steps": 20,
     "methods": ["standard", "eap_ig", "eap"],
     "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
     "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
@@ -57,7 +57,7 @@ ATTRIB_CFG: dict = {
 
 # Difference-of-means analysis
 DIFFMEANS_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###
@@ -67,7 +67,7 @@ DIFFMEANS_CFG: dict = {
 
 # MLP neuron analysis
 MLP_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###
@@ -78,7 +78,7 @@ MLP_CFG: dict = {
 
 # Attention pattern analysis
 ATTN_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###
@@ -90,7 +90,7 @@ ATTN_CFG: dict = {
 
 # Fine-grained patching
 FINE_CFG: dict = {
-    "enabled": False,
+    "enabled": True,
     "no_cache": False,
     ######################
     ### CONFIG VALUES  ###

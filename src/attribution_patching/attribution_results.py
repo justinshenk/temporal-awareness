@@ -596,6 +596,16 @@ class AttrPatchAggregatedResults(BaseSchema):
         agg = self.denoising_agg or self.noising_agg
         return agg.get_target(n=n, mode=mode) if agg else None
 
+    def filter_by_indices(self, indices: list[int]) -> "AttrPatchAggregatedResults":
+        """Create a filtered copy containing only the specified pair indices."""
+        filtered = AttrPatchAggregatedResults()
+        for idx in indices:
+            if idx < len(self.denoising):
+                filtered.denoising.append(self.denoising[idx])
+            if idx < len(self.noising):
+                filtered.noising.append(self.noising[idx])
+        return filtered
+
     def print_summary(self) -> None:
         print(f"Attribution Patching ({len(self.denoising)} denoising, {len(self.noising)} noising):")
         if self.denoising_agg:

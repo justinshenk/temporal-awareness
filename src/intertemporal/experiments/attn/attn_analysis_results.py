@@ -218,6 +218,17 @@ class AttnAggregatedResults(BaseSchema):
             return cls.from_json(path)
         return None
 
+    def filter_by_indices(self, indices: list[int]) -> "AttnAggregatedResults":
+        """Create a filtered copy containing only the specified pair indices."""
+        filtered = AttnAggregatedResults(
+            layers_analyzed=self.layers_analyzed,
+            source_positions=self.source_positions,
+        )
+        for idx in indices:
+            if idx < len(self.pair_results):
+                filtered.pair_results.append(self.pair_results[idx])
+        return filtered
+
     def print_summary(self) -> None:
         """Print summary of attention analysis."""
         print(f"[attn] Attention Analysis: {self.n_pairs} pairs, layers {self.layers_analyzed}")

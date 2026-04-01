@@ -37,7 +37,7 @@ FORMAT_POS_COLORS = {
     "situation_content": "#FFCC80",  # Light orange
     "situation_tail": "#FFB74D",     # Medium orange
     "situation": "#FFA726",          # Orange (context keyword)
-    "role": "#FF9800",               # Orange (context keyword)
+    "role": "#5C6BC0",               # Indigo-blue (context keyword)
     # === TASK (blue spectrum - similar family) ===
     "task_marker": "#1565C0",        # Strong blue
     "task_content": "#90CAF9",       # Light blue
@@ -62,6 +62,7 @@ FORMAT_POS_COLORS = {
     "objective_tail": "#AB47BC",      # Medium purple
     # === CONSTRAINT (red spectrum - time_horizon DISTINCT) ===
     "constraint_marker": "#C62828",  # Dark red
+    "constraint_prefix": "#EF5350",  # Red (before time_horizon)
     "constraint_content": "#EF9A9A", # Light red
     "constraint_tail": "#E57373",    # Medium red
     "time_horizon": "#FF5722",       # Deep orange - DISTINCT, stands out
@@ -656,7 +657,7 @@ def visualize_tokenization_from_position_mapping(
     Creates a token grid visualization colored by format_pos assignments.
 
     Args:
-        mapping_path: Path to sample_position_mapping.json
+        mapping_path: Path to position mapping JSON (long_position_mapping.json or short_position_mapping.json)
         output_path: Path to save the PNG (default: same dir as mapping, tokenization.png)
 
     Returns:

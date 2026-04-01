@@ -24,8 +24,8 @@ from .coarse.coarse_viz import (
     visualize_component_comparison,
 )
 from .diffmeans.diffmeans_viz import visualize_diffmeans, visualize_diffmeans_pair
-from .mlp.mlp_viz import visualize_mlp_analysis, visualize_mlp_pair
-from .attn.attn_viz import visualize_attn_analysis, visualize_attn_pair
+from .mlp.mlp_viz import visualize_mlp_analysis, visualize_mlp_pair, visualize_all_mlp_slices
+from .attn.attn_viz import visualize_attn_analysis, visualize_attn_pair, visualize_all_attn_slices
 from ..viz.att_patching_viz import visualize_att_patching
 
 if TYPE_CHECKING:
@@ -85,7 +85,8 @@ def step_load_cfg(
         return config, False
 
     # Disabled but viz enabled with cached data: enable viz-only mode
-    if ctx.viz_enabled and load_agg_fn(config):
+    # But skip if only_viz_agg is set (no per-pair viz needed)
+    if ctx.viz_enabled and not raw_cfg.get("only_viz_agg", False) and load_agg_fn(config):
         log(f"[{name}] Disabled but cached data found, generating visualizations")
         return config, True
 
@@ -580,7 +581,9 @@ class ExperimentMixin:
     def make_attrib_viz(self, _) -> Callable[[], None]:
         """Return visualization function for attribution results."""
         return lambda: visualize_all_att_aggregated_slices(
-            self.attrib_agg, self.agg_dir / "attrib"
+            self.attrib_agg,
+            self.agg_dir / "attrib",
+            self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
         )
 
     def make_coarse_viz(self, _) -> Callable[[], None]:
@@ -601,14 +604,18 @@ class ExperimentMixin:
 
     def make_mlp_viz(self, _) -> Callable[[], None]:
         """Return visualization function for MLP results."""
-        return lambda: visualize_mlp_analysis(
-            self.mlp_agg, self.agg_dir / "mlp"
+        return lambda: visualize_all_mlp_slices(
+            self.mlp_agg,
+            self.agg_dir / "mlp",
+            self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
         )
 
     def make_attn_viz(self, _) -> Callable[[], None]:
         """Return visualization function for attention results."""
-        return lambda: visualize_attn_analysis(
-            self.attn_agg, self.agg_dir / "attn"
+        return lambda: visualize_all_attn_slices(
+            self.attn_agg,
+            self.agg_dir / "attn",
+            self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
         )
 
     def make_fine_viz(self, _) -> Callable[[], None]:

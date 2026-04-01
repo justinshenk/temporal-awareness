@@ -79,6 +79,11 @@ def count_files(d: Path, pattern: str) -> int:
     return len(list(d.glob(pattern))) if d.exists() else 0
 
 
+import re
+_KEY_PATTERN = re.compile(r"L(\d+)_(.+)")
+_RELPOS_PATTERN = re.compile(r"(.+)_r(\d+)$")
+
+
 def parse_key(key: str) -> tuple[int, str, str, int | None] | None:
     """Parse target key into (layer, component, position, rel_pos).
 
@@ -86,8 +91,7 @@ def parse_key(key: str) -> tuple[int, str, str, int | None] | None:
     Component is one of: resid_pre, attn_out, mlp_out, resid_post
     rel_pos is None for combined keys, integer for per-token keys.
     """
-    import re
-    m = re.match(r"L(\d+)_(.+)", key)
+    m = _KEY_PATTERN.match(key)
     if not m:
         return None
     layer = int(m.group(1))
@@ -96,7 +100,7 @@ def parse_key(key: str) -> tuple[int, str, str, int | None] | None:
         if rest.startswith(comp + "_"):
             pos_part = rest[len(comp) + 1:]
             # Check for _r{N} suffix
-            rel_match = re.match(r"(.+)_r(\d+)$", pos_part)
+            rel_match = _RELPOS_PATTERN.match(pos_part)
             if rel_match:
                 pos = rel_match.group(1)
                 rel_pos = int(rel_match.group(2))

@@ -50,6 +50,12 @@ def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> st
     return f"P{pos}"
 
 
+def _symmetric_vrange(matrix: np.ndarray) -> tuple[float, float]:
+    """Compute symmetric vmin/vmax for diverging colormaps (centers 0 at white)."""
+    abs_max = np.abs(matrix).max()
+    return -abs_max, abs_max
+
+
 @profile
 def visualize_fine(
     results: FineResults | None,
@@ -415,7 +421,8 @@ def _plot_path_head_to_mlp(
             matrix[si, di] = p.effect
 
     fig, ax = plt.subplots(figsize=(max(6, len(dest_mlps) * 1.5), max(4, len(source_heads) * 0.6)))
-    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+    vmin, vmax = _symmetric_vrange(matrix)
+    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest", vmin=vmin, vmax=vmax)
     plt.colorbar(im, ax=ax, label="Path Effect")
 
     src_labels = [f"L{l}.H{h}" for l, h in source_heads]
@@ -473,7 +480,8 @@ def _plot_path_head_to_head(
             matrix[si, di] = p.effect
 
     fig, ax = plt.subplots(figsize=(max(6, len(dest_layers) * 1.5), max(4, len(source_heads) * 0.6)))
-    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+    vmin, vmax = _symmetric_vrange(matrix)
+    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest", vmin=vmin, vmax=vmax)
     plt.colorbar(im, ax=ax, label="Path Effect")
 
     src_labels = [f"L{l}.H{h}" for l, h in source_heads]
@@ -530,7 +538,8 @@ def _plot_multi_site_interaction(
         matrix[j, i] = ms.interaction
 
     fig, ax = plt.subplots(figsize=(max(8, n * 0.8), max(8, n * 0.8)))
-    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+    vmin, vmax = _symmetric_vrange(matrix)
+    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest", vmin=vmin, vmax=vmax)
     plt.colorbar(im, ax=ax, label="Interaction Effect")
 
     ax.set_xticks(range(n))
@@ -940,7 +949,8 @@ def _plot_cross_layer_paths(
             if si is not None and di is not None:
                 matrix[si, di] = r.effect
 
-        im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest")
+        vmin, vmax = _symmetric_vrange(matrix)
+        im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", interpolation="nearest", vmin=vmin, vmax=vmax)
         plt.colorbar(im, ax=ax, label="Path Effect")
 
         # Labels
