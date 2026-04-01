@@ -31,6 +31,7 @@ PAIR_REQ_CFG: dict = {}
 COARSE_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
@@ -46,6 +47,7 @@ COARSE_CFG: dict = {
 ATTRIB_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
@@ -59,66 +61,64 @@ ATTRIB_CFG: dict = {
 DIFFMEANS_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
     "n_components": 10,
 }
 
-# MLP neuron analysis
+# MLP neuron analysis (includes per-neuron logit contribution)
 MLP_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
     "layers": [19, 21, 24, 28, 31, 34, 35],
     "n_top_neurons": 50,
+    # Neuron attribution is computed as part of MLP analysis
+    # Each neuron's logit_contribution = activation_diff * W_out @ logit_direction
 }
 
 # Attention pattern analysis
 ATTN_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
     "layers": [18, 19, 21, 24, 28, 31, 34, 35],
     "store_patterns": True,
     "dynamic_threshold": 0.05,
+    # Head attribution
+    "head_attribution_enabled": True,
+    # Position patching for top heads
+    "position_patching_enabled": True,
+    "n_top_heads_for_position": 4,
 }
 
-# Fine-grained patching
+# Fine-grained patching (path patching, multi-site)
+# NOTE: Head attribution and position patching are in ATTN_CFG
+# NOTE: Neuron attribution is in MLP_CFG
+# NOTE: Layer-position patching is in ATTN_CFG (for attn_out) and MLP_CFG (for mlp_out)
 FINE_CFG: dict = {
     "enabled": True,
     "no_cache": False,
+    "no_viz": False,
     ######################
     ### CONFIG VALUES  ###
     ######################
-    # Head attribution
-    "head_patching_enabled": True,
-    "head_layers": [19, 21, 24, 28, 29, 30, 31, 34],
-    # Position patching for top heads
-    "position_patching_enabled": True,
-    "n_top_heads_for_position": 10,
     # Path patching
     "path_patching_enabled": True,
-    "source_layers": [19, 21, 24],
     "dest_mlp_layers": [28, 29, 30, 31, 34],
     "dest_head_layers": [28, 29, 30, 31, 34],
     "n_top_source_heads": 5,
     # Multi-site interaction
     "multi_site_enabled": True,
     "n_components_multi_site": 5,
-    # Neuron attribution
-    "neuron_patching_enabled": True,
-    "neuron_target_layer": 31,
-    "mlp_layers": [19, 24, 28, 31, 34],
-    "n_top_neurons": 50,
-    # Layer-position fine heatmap
-    "layer_position_enabled": True,
-    "layer_position_components": ["attn_out", "mlp_out"],
-    "layer_position_layers": None,  # None = layers 15-35
 }
 
 

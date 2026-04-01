@@ -179,6 +179,29 @@ class TrajectoryResponse(BaseModel):
     data: list[TrajectoryPoint] = Field(description="PC1 values at each x position")
 
 
+class Trajectory2DPoint(BaseModel):
+    """PC1 and PC2 values at a specific x-axis position (for 3D line plots)."""
+
+    x_value: str = Field(description="X-axis value (layer number or position name)")
+    pc1_values: list[float] = Field(description="PC1 values for all samples at this x position")
+    pc2_values: list[float] = Field(description="PC2 values for all samples at this x position")
+    sample_indices: list[int] = Field(description="Sample indices corresponding to each value")
+
+
+class Trajectory2DResponse(BaseModel):
+    """Response for 2D trajectory endpoints (shows PC1 vs PC2 evolution across layers/positions)."""
+
+    component: str = Field(description="Activation component used")
+    position: str | None = Field(default=None, description="Position (for layer trajectory)")
+    layer: int | None = Field(default=None, description="Layer (for position trajectory)")
+    method: str = Field(description="Embedding method (pca)")
+    x_axis: str = Field(description="What the x-axis represents: 'layer' or 'position'")
+    x_values: list[str] = Field(description="X-axis values in order")
+    n_samples: int = Field(description="Number of samples")
+    sample_indices: list[int] = Field(default_factory=list, description="Sample indices (for layer trajectory)")
+    data: list[Trajectory2DPoint] = Field(description="PC1 and PC2 values at each x position")
+
+
 class TokenInfo(BaseModel):
     """Information about a single token in a sample."""
 

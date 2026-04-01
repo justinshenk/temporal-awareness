@@ -727,11 +727,24 @@ class GeometryDataLoader:
 
         Path: analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
 
+        For per-rel_pos positions (e.g., "chat_suffix:0"):
+        - First tries: L{layer}_{component}_{base_pos}_r{rel_pos}.npy
+        - Falls back to: L{layer}_{component}_{base_pos}.npy (for positions with only 1 rel_pos)
+
         Returns None if not found - does NOT compute.
         """
         path = self._get_embedding_path(method, layer, component, position)
         if path.exists():
             return np.load(path)
+
+        # For per-rel_pos positions, try fallback to combined file
+        # This handles positions with rel_pos count = 1 (only has combined file)
+        if ":" in position:
+            base_pos = position.rsplit(":", 1)[0]
+            fallback_path = self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{base_pos}.npy"
+            if fallback_path.exists():
+                return np.load(fallback_path)
+
         return None
 
     def load_pca(
@@ -1544,17 +1557,44 @@ class GeometryDataLoader:
         self,
         component: str,
         position: str,
-    ) -> tuple[list[int], np.ndarray, list[int]]:
-        """Load pre-cached layer trajectory data (PC1 across all layers).
+        include_pc2: bool = False,
+    ) -> tuple[list[int], np.ndarray, list[int]] | tuple[list[int], np.ndarray, np.ndarray, list[int]]:
+        """Load pre-cached layer trajectory data (PC1/PC2 across all layers).
+
+        Args:
+            component: Model component (resid_pre, attn_out, etc.)
+            position: Semantic position name (may include :rel_pos suffix)
+            include_pc2: If True, also return PC2 values
 
         Returns:
-            Tuple of (layers, pc1_values, sample_indices).
-            pc1_values has shape (n_layers, n_samples).
+            If include_pc2=False: Tuple of (layers, pc1_values, sample_indices).
+            If include_pc2=True: Tuple of (layers, pc1_values, pc2_values, sample_indices).
+            pc1_values/pc2_values have shape (n_layers, n_samples).
 
         Raises:
             ValueError: If trajectory cache file does not exist (STRICT mode).
         """
-        cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{position}.npz"
+        # Handle per-rel_pos positions (e.g., "chat_suffix:0" -> "chat_suffix_r0")
+        if ":" in position:
+            parts = position.rsplit(":", 1)
+            base_pos = parts[0]
+            try:
+                rel_pos = int(parts[1])
+                file_position = f"{base_pos}_r{rel_pos}"
+            except ValueError:
+                file_position = position
+        else:
+            file_position = position
+            base_pos = position
+
+        cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{file_position}.npz"
+
+        # Fall back to combined file for positions with only 1 rel_pos
+        if not cache_file.exists() and ":" in position:
+            fallback_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{base_pos}.npz"
+            if fallback_file.exists():
+                cache_file = fallback_file
+
         if not cache_file.exists():
             raise ValueError(
                 f"Layer trajectory cache not found: {cache_file}\n"
@@ -1566,18 +1606,29 @@ class GeometryDataLoader:
         pc1_values = data["pc1_values"]  # shape: (n_layers, n_samples)
         sample_indices = data["sample_indices"].tolist()
         _log("trajectory", f"Loaded cached layer trajectory", comp=component, position=position)
+
+        if include_pc2:
+            pc2_values = data["pc2_values"] if "pc2_values" in data else np.zeros_like(pc1_values)
+            return layers, pc1_values, pc2_values, sample_indices
         return layers, pc1_values, sample_indices
 
     def load_position_trajectory(
         self,
         layer: int,
         component: str,
-    ) -> tuple[list[str], list[np.ndarray], list[list[int]]]:
-        """Load pre-cached position trajectory data (PC1 across all positions).
+        include_pc2: bool = False,
+    ) -> tuple[list[str], list[np.ndarray], list[list[int]]] | tuple[list[str], list[np.ndarray], list[np.ndarray], list[list[int]]]:
+        """Load pre-cached position trajectory data (PC1/PC2 across all positions).
+
+        Args:
+            layer: Layer number
+            component: Model component (resid_pre, attn_out, etc.)
+            include_pc2: If True, also return PC2 values
 
         Returns:
-            Tuple of (positions, pc1_values_list, sample_indices_per_position).
-            pc1_values_list is a list of PC1 arrays (one per position, may have different lengths).
+            If include_pc2=False: Tuple of (positions, pc1_values_list, sample_indices_per_position).
+            If include_pc2=True: Tuple of (positions, pc1_values_list, pc2_values_list, sample_indices_per_position).
+            pc1/pc2_values_list is a list of arrays (one per position, may have different lengths).
             sample_indices_per_position is a list of sample index lists (one per position).
 
         Raises:
@@ -1596,6 +1647,13 @@ class GeometryDataLoader:
         pc1_values_list = [arr for arr in data["pc1_values"]]
         sample_indices_list = [list(arr) for arr in data["sample_indices_list"]]
         _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component)
+
+        if include_pc2:
+            if "pc2_values" in data:
+                pc2_values_list = [arr for arr in data["pc2_values"]]
+            else:
+                pc2_values_list = [np.zeros_like(arr) for arr in pc1_values_list]
+            return positions, pc1_values_list, pc2_values_list, sample_indices_list
         return positions, pc1_values_list, sample_indices_list
 
     def load_pca_metrics(

@@ -29,6 +29,9 @@ Usage:
 
     # Run ONLY coarse patching
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --disable --coarse '{"enabled": true}'
+
+    # Use a custom dataset config from JSON file
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --dataset path/to/dataset_config.json
 """
 
 from __future__ import annotations
@@ -85,6 +88,13 @@ def parse_args() -> argparse.Namespace:
         "--multilabel",
         action="store_true",
         help="Use multilabel dataset (do_formatting_variation_grid=True)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to JSON file containing dataset config (PromptDatasetConfig)",
     )
 
     # --- Output directory ---
@@ -181,6 +191,15 @@ def build_base_config(args: argparse.Namespace) -> dict:
         config = FULL_EXPERIMENT_CONFIG.copy()
     else:
         config = MINIMAL_EXPERIMENT_CONFIG.copy()
+
+    # Override dataset_config from JSON file if provided
+    if args.dataset:
+        dataset_path = Path(args.dataset)
+        if not dataset_path.exists():
+            raise FileNotFoundError(f"Dataset config file not found: {dataset_path}")
+        with open(dataset_path) as f:
+            config["dataset_config"] = json.load(f)
+        print(f"[dataset] Loaded dataset config from {dataset_path}")
 
     if args.model:
         config["model"] = args.model

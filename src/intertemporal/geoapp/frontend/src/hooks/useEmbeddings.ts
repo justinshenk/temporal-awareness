@@ -1252,6 +1252,172 @@ export function usePositionTrajectory(
   };
 }
 
+// ==================== 2D TRAJECTORY HOOKS (PC1 + PC2) ====================
+
+interface Trajectory2DPoint {
+  x_value: string;
+  pc1_values: number[];
+  pc2_values: number[];
+  sample_indices: number[];
+}
+
+interface Trajectory2DResponse {
+  component: string;
+  position?: string;
+  layer?: number;
+  method: string;
+  x_axis: string;
+  x_values: string[];
+  n_samples: number;
+  sample_indices: number[];
+  data: Trajectory2DPoint[];
+}
+
+export interface Trajectory2DData {
+  xValues: string[];
+  pc1Data: Map<string, Float32Array>;  // x_value -> PC1 values
+  pc2Data: Map<string, Float32Array>;  // x_value -> PC2 values
+  sampleIndices: number[];
+  sampleIndicesMap: Map<string, number[]>;
+  nSamples: number;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+// Hook to fetch PC1+PC2 trajectory across layers (for 3D line plot)
+export function useLayerTrajectory2D(
+  component: string,
+  position: string,
+  enabled: boolean = true
+): Trajectory2DData {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['trajectory2d', 'layers', component, position],
+    queryFn: async (): Promise<Trajectory2DResponse> => {
+      log('useLayerTrajectory2D', 'Fetching 2D trajectory', { component, position });
+      const startTime = performance.now();
+      const response = await api.get<Trajectory2DResponse>(
+        `/trajectory2d/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}`
+      );
+      const elapsed = performance.now() - startTime;
+      log('useLayerTrajectory2D', '2D Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      return response;
+    },
+    enabled: enabled && !!component && !!position,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  const pc1Data = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.pc1_values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  const pc2Data = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.pc2_values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  const sampleIndicesMap = useMemo(() => {
+    const map = new Map<string, number[]>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, point.sample_indices);
+      });
+    }
+    return map;
+  }, [data]);
+
+  return {
+    xValues: data?.x_values || [],
+    pc1Data,
+    pc2Data,
+    sampleIndices: data?.sample_indices || [],
+    sampleIndicesMap,
+    nSamples: data?.n_samples || 0,
+    isLoading,
+    error: error as Error | null,
+  };
+}
+
+// Hook to fetch PC1+PC2 trajectory across positions (for 3D line plot)
+export function usePositionTrajectory2D(
+  layer: number,
+  component: string,
+  positions?: string[],
+  enabled: boolean = true
+): Trajectory2DData {
+  const positionsFilter = positions?.join(',') || '';
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['trajectory2d', 'positions', layer, component, positionsFilter],
+    queryFn: async (): Promise<Trajectory2DResponse> => {
+      log('usePositionTrajectory2D', 'Fetching 2D trajectory', { layer, component });
+      const startTime = performance.now();
+      const url = `/trajectory2d/positions/${layer}/${encodeURIComponent(component)}${
+        positionsFilter ? `?positions_filter=${encodeURIComponent(positionsFilter)}` : ''
+      }`;
+      const response = await api.get<Trajectory2DResponse>(url);
+      const elapsed = performance.now() - startTime;
+      log('usePositionTrajectory2D', '2D Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      return response;
+    },
+    enabled: enabled && layer >= 0 && !!component,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  const pc1Data = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.pc1_values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  const pc2Data = useMemo(() => {
+    const map = new Map<string, Float32Array>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, new Float32Array(point.pc2_values));
+      });
+    }
+    return map;
+  }, [data]);
+
+  const sampleIndicesMap = useMemo(() => {
+    const map = new Map<string, number[]>();
+    if (data?.data) {
+      data.data.forEach((point) => {
+        map.set(point.x_value, point.sample_indices);
+      });
+    }
+    return map;
+  }, [data]);
+
+  return {
+    xValues: data?.x_values || [],
+    pc1Data,
+    pc2Data,
+    sampleIndices: [],
+    sampleIndicesMap,
+    nSamples: data?.n_samples || 0,
+    isLoading,
+    error: error as Error | null,
+  };
+}
+
 // Types for Scree plot data
 interface ScreeSeries {
   label: string;

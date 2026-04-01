@@ -1,7 +1,7 @@
-"""Fine-grained activation patching analysis.
+"""Fine-grained path patching and layer-position analysis.
 
-Provides comprehensive head-level, position-level, path patching,
-and neuron-level analysis with corresponding visualizations.
+NOTE: Head attribution and position patching are now in step_attn.
+NOTE: Neuron attribution is now part of step_mlp.
 """
 
 from src.common.auto_export import auto_export

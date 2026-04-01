@@ -170,3 +170,5 @@ def load_json(path: Path) -> dict:
     s = re.sub(r",\s*([}\]])", r"\1", s)
     data = json.loads(s)
     return _restore_text_fields(data)
+
+

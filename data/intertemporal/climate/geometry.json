@@ -1,0 +1,48 @@
+{
+  "name": "climate_geometry",
+  "context": {
+    "reward_unit": "metric tons of CO2 prevented",
+    "role": "a government policy maker",
+    "situation": "Decide on environmental policies that reduce emissions with varying implementation timelines and carbon reduction targets.",
+    "task_in_question": "select the more effective climate policy",
+    "domain": "climate"
+  },
+  "options": {
+    "short_term": {
+      "reward_range": [100, 100000],
+      "time_range": [
+        {"value": 1, "unit": "months"},
+        {"value": 10, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    },
+    "long_term": {
+      "reward_range": [10000, 10000000],
+      "time_range": [
+        {"value": 5, "unit": "years"},
+        {"value": 200, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    }
+  },
+  "time_horizons": [
+    null,
+    {"value": 1, "unit": "months"},
+    {"value": 6, "unit": "months"},
+    {"value": 1, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 10, "unit": "years"},
+    {"value": 25, "unit": "years"},
+    {"value": 50, "unit": "years"},
+    {"value": 1, "unit": "centuries"},
+    {"value": 2, "unit": "centuries"},
+    {"value": 5, "unit": "centuries"}
+  ],
+  "add_formatting_noise": false,
+  "do_formatting_variation_grid": false,
+  "do_context_variations": false,
+  "round_time_units": true,
+  "round_reward_units": true
+}

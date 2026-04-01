@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
 
 from ....common.logging import log
+from ....viz.plot_helpers import finalize_plot
+from ..fine.fine_results import LayerPositionResult
 from . import MLPAggregatedResults, MLPPairResult, NeuronInfo
+
+if TYPE_CHECKING:
+    from ...common.sample_position_mapping import SamplePositionMapping
 
 
 # Plot styling
@@ -21,19 +27,87 @@ CORRUPTED_COLOR = "#9b59b6"  # Purple for corrupted activations
 BAR_ALPHA = 0.8
 GRID_ALPHA = 0.3
 
-# Target layer for detailed neuron analysis
-TARGET_LAYER = 31
+def _find_best_target_layer(agg: MLPAggregatedResults, format_pos: str) -> int | None:
+    """Find the best layer for detailed neuron analysis.
+
+    Returns the layer with the most neuron data across pairs.
+    Prefers later layers (more likely to show task-relevant patterns).
+    """
+    layers = agg.layers_analyzed
+    if not layers:
+        return None
+
+    # Score each layer by amount of neuron data
+    layer_scores: dict[int, int] = {}
+    for layer in layers:
+        score = 0
+        for pr in agg.pair_results:
+            lr = pr.get_layer_result(format_pos, layer)
+            if lr and lr.top_neurons:
+                score += len(lr.top_neurons)
+        layer_scores[layer] = score
+
+    # Find layers with data
+    layers_with_data = [l for l, s in layer_scores.items() if s > 0]
+    if not layers_with_data:
+        return None
+
+    # Prefer the highest (latest) layer with data
+    return max(layers_with_data)
+
+
+def _get_first_format_pos(agg: MLPAggregatedResults) -> str | None:
+    """Get the first available format_pos from results."""
+    positions = agg.get_all_positions()
+    if positions:
+        return sorted(positions)[0]
+    return None
+
+
+def _get_first_format_pos_pair(result: MLPPairResult) -> str | None:
+    """Get the first available format_pos from a single pair result."""
+    positions = result.get_all_format_positions()
+    if positions:
+        return sorted(positions)[0]
+    return None
+
+
+def _find_best_target_layer_pair(result: MLPPairResult, format_pos: str) -> int | None:
+    """Find the best layer for detailed neuron analysis in a single pair.
+
+    Returns the layer with the most neuron data, preferring later layers.
+    """
+    if format_pos not in result.position_results:
+        return None
+
+    layer_results = result.position_results[format_pos]
+    if not layer_results:
+        return None
+
+    # Score each layer by amount of neuron data
+    layer_scores: dict[int, int] = {}
+    for lr in layer_results:
+        if lr.top_neurons:
+            layer_scores[lr.layer] = len(lr.top_neurons)
+
+    if not layer_scores:
+        return None
+
+    # Prefer the highest (latest) layer with data
+    return max(layer_scores.keys())
 
 
 def visualize_mlp_analysis(
     agg: MLPAggregatedResults,
     output_dir: Path,
+    format_pos: str | None = None,
 ) -> None:
     """Generate all MLP analysis visualizations.
 
     Args:
         agg: Aggregated MLP analysis results
         output_dir: Directory to save plots
+        format_pos: Position to visualize (default: "response_choice" or first available)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -42,63 +116,78 @@ def visualize_mlp_analysis(
         log("[mlp_viz] No pair results to visualize")
         return
 
+    if format_pos is None:
+        format_pos = _get_first_format_pos(agg)
+
+    if format_pos is None:
+        log("[mlp_viz] No positions available to visualize")
+        return
+
     n_plots = 0
 
     # Layer contribution bar chart
-    _plot_layer_contributions(agg, output_dir / "mlp_layer_contributions.png")
+    _plot_layer_contributions(agg, output_dir / "mlp_layer_contributions.png", format_pos)
     n_plots += 1
 
     # Layer contribution heatmap across pairs
     if agg.n_pairs > 1:
-        _plot_contribution_heatmap(agg, output_dir / "mlp_contribution_heatmap.png")
+        _plot_contribution_heatmap(agg, output_dir / "mlp_contribution_heatmap.png", format_pos)
         n_plots += 1
 
     # Per-pair layer contributions
-    _plot_per_pair_contributions(agg, output_dir / "mlp_per_pair_contributions.png")
+    _plot_per_pair_contributions(agg, output_dir / "mlp_per_pair_contributions.png", format_pos)
     n_plots += 1
 
+    # Find best target layer dynamically
+    target_layer = _find_best_target_layer(agg, format_pos)
+
     # Check if we have neuron-level data for the target layer
-    has_neuron_data = _has_neuron_data(agg, TARGET_LAYER)
-    if has_neuron_data:
+    if target_layer is not None and _has_neuron_data(agg, target_layer, format_pos):
         # Differential logit contribution bar chart (top neurons by task relevance)
         _plot_differential_logit_contribution(
-            agg, output_dir / "mlp_differential_logit_contrib.png"
+            agg, output_dir / "mlp_differential_logit_contrib.png", format_pos,
+            layer=target_layer
         )
         n_plots += 1
 
         # Cumulative neuron contribution curve
         _plot_cumulative_neuron_contribution(
-            agg, output_dir / "mlp_cumulative_contribution.png"
+            agg, output_dir / "mlp_cumulative_contribution.png", format_pos,
+            layer=target_layer
         )
         n_plots += 1
 
         # Clean vs corrupted neuron activation scatter
         _plot_neuron_clean_vs_corrupted(
-            agg, output_dir / "mlp_clean_vs_corrupted.png"
+            agg, output_dir / "mlp_clean_vs_corrupted.png", format_pos,
+            layer=target_layer
         )
         n_plots += 1
 
         # 10. Neuron activation difference heatmap across layers
         _plot_neuron_activation_heatmap_across_layers(
-            agg, output_dir / "neuron_activation_heatmap_layers.png"
+            agg, output_dir / "neuron_activation_heatmap_layers.png", format_pos,
+            target_layer=target_layer
         )
         n_plots += 1
 
         # 11. Neuron consistency across pairs
         if agg.n_pairs > 1:
             _plot_neuron_consistency_across_pairs(
-                agg, output_dir / "neuron_consistency_across_pairs.png"
+                agg, output_dir / "neuron_consistency_across_pairs.png", format_pos,
+                layer=target_layer
             )
             n_plots += 1
 
         # 15. Cross-layer neuron patterns
         if len(agg.layers_analyzed) > 1:
             _plot_cross_layer_neuron_patterns(
-                agg, output_dir / "cross_layer_neuron_patterns.png"
+                agg, output_dir / "cross_layer_neuron_patterns.png", format_pos,
+                target_layer=target_layer
             )
             n_plots += 1
 
-    log(f"[mlp_viz] Generated {n_plots} plots in {output_dir}")
+    log(f"[mlp_viz] Generated {n_plots} plots in {output_dir} (position: {format_pos})")
 
 
 def visualize_all_mlp_slices(
@@ -145,7 +234,9 @@ def visualize_all_mlp_slices(
     log(f"[mlp_viz] All MLP slices saved to {output_dir}")
 
 
-def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> None:
+def _plot_layer_contributions(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str
+) -> None:
     """Plot mean layer contributions as grouped bar chart showing clean vs corrupted.
 
     Shows three bars per layer:
@@ -168,7 +259,7 @@ def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> N
         diff_contribs = []
 
         for pr in agg.pair_results:
-            lr = pr.get_layer_result(layer)
+            lr = pr.get_layer_result(format_pos, layer)
             if lr:
                 # Sum neuron-level contributions
                 # clean_contrib = sum(activation * w_out_alignment)
@@ -214,7 +305,7 @@ def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> N
 
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Logit Contribution', fontsize=12)
-    ax.set_title(f'MLP Layer Contributions: Clean vs Corrupted\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}, top neurons only)',
+    ax.set_title(f'MLP Layer Contributions: Clean vs Corrupted\n({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}, position: {format_pos})',
                  fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{l}' for l in layers])
@@ -227,25 +318,21 @@ def _plot_layer_contributions(agg: MLPAggregatedResults, output_path: Path) -> N
     plt.close()
 
 
-def _plot_differential_logit_contribution(agg: MLPAggregatedResults, output_path: Path,
-                                           layer: int = TARGET_LAYER, top_n: int = 30) -> None:
+def _plot_differential_logit_contribution(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    layer: int, top_n: int = 30
+) -> None:
     """Plot differential logit contribution bar chart for neurons.
 
-    Shows: (clean_activation - corrupted_activation) × W_out_alignment
+    Shows: (clean_activation - corrupted_activation) * W_out_alignment
     sorted by absolute value. This is the single most important metric
     for identifying which neurons actually drive the task.
-
-    Args:
-        agg: Aggregated MLP results
-        output_path: Where to save the plot
-        layer: Layer to analyze
-        top_n: Number of top neurons to show
     """
     # Collect neuron contributions across pairs
     neuron_contribs: dict[int, list[float]] = {}
 
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(layer)
+        lr = pr.get_layer_result(format_pos, layer)
         if not lr or not lr.top_neurons:
             continue
         for ni in lr.top_neurons:
@@ -288,10 +375,10 @@ def _plot_differential_logit_contribution(agg: MLPAggregatedResults, output_path
 
     ax.set_yticks(y)
     ax.set_yticklabels([f'N{idx}' for idx in indices])
-    ax.set_xlabel('Differential Logit Contribution\n(clean_act - corrupt_act) × W_out_alignment', fontsize=11)
+    ax.set_xlabel('Differential Logit Contribution\n(clean_act - corrupt_act) * W_out_alignment', fontsize=11)
     ax.set_ylabel(f'Neuron (L{layer})', fontsize=12)
     ax.set_title(f'Top {len(neuron_means)} Neurons by Differential Logit Contribution\n'
-                 f'L{layer} ({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""})', fontsize=14)
+                 f'L{layer} ({agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}, position: {format_pos})', fontsize=14)
     ax.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
     ax.grid(axis='x', alpha=GRID_ALPHA)
 
@@ -307,8 +394,10 @@ def _plot_differential_logit_contribution(agg: MLPAggregatedResults, output_path
     plt.close()
 
 
-def _plot_neuron_clean_vs_corrupted(agg: MLPAggregatedResults, output_path: Path,
-                                     layer: int = TARGET_LAYER, top_n: int = 20) -> None:
+def _plot_neuron_clean_vs_corrupted(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    layer: int, top_n: int = 20
+) -> None:
     """Plot clean vs corrupted activation for top neurons.
 
     Scatter plot showing which neurons are more active on clean vs corrupted.
@@ -316,7 +405,7 @@ def _plot_neuron_clean_vs_corrupted(agg: MLPAggregatedResults, output_path: Path
     # Collect neuron activations
     neuron_data: dict[int, tuple[list[float], list[float]]] = {}
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(layer)
+        lr = pr.get_layer_result(format_pos, layer)
         if not lr or not lr.top_neurons:
             continue
         for ni in lr.top_neurons:
@@ -363,7 +452,7 @@ def _plot_neuron_clean_vs_corrupted(agg: MLPAggregatedResults, output_path: Path
     ax.set_xlabel('Corrupted Activation', fontsize=12)
     ax.set_ylabel('Clean Activation', fontsize=12)
     ax.set_title(f'Neuron Activations: Clean vs Corrupted (L{layer})\n'
-                 f'Top {len(neuron_stats)} neurons by |difference|', fontsize=14)
+                 f'Top {len(neuron_stats)} neurons by |difference| (position: {format_pos})', fontsize=14)
     ax.legend(loc='upper left')
     ax.grid(alpha=GRID_ALPHA)
 
@@ -376,8 +465,10 @@ def _plot_neuron_clean_vs_corrupted(agg: MLPAggregatedResults, output_path: Path
     plt.close()
 
 
-def _plot_cumulative_neuron_contribution(agg: MLPAggregatedResults, output_path: Path,
-                                          layer: int = TARGET_LAYER) -> None:
+def _plot_cumulative_neuron_contribution(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    layer: int
+) -> None:
     """Plot cumulative neuron contribution curve.
 
     Shows fraction of total effect recovered by top-N neurons.
@@ -386,7 +477,7 @@ def _plot_cumulative_neuron_contribution(agg: MLPAggregatedResults, output_path:
     # Collect neuron contributions
     neuron_contribs: dict[int, list[float]] = {}
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(layer)
+        lr = pr.get_layer_result(format_pos, layer)
         if not lr or not lr.top_neurons:
             continue
         for ni in lr.top_neurons:
@@ -430,7 +521,7 @@ def _plot_cumulative_neuron_contribution(agg: MLPAggregatedResults, output_path:
     ax.set_xlabel('Top N Neurons', fontsize=12)
     ax.set_ylabel('Cumulative Contribution (%)', fontsize=12)
     ax.set_title(f'Cumulative Neuron Contribution (L{layer})\n'
-                 f'{agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""}', fontsize=14)
+                 f'{agg.n_pairs} pair{"s" if agg.n_pairs != 1 else ""} (position: {format_pos})', fontsize=14)
     ax.set_xlim(1, min(len(fractions), 100))
     ax.set_ylim(0, 105)
     ax.grid(alpha=GRID_ALPHA)
@@ -440,7 +531,9 @@ def _plot_cumulative_neuron_contribution(agg: MLPAggregatedResults, output_path:
     plt.close()
 
 
-def _plot_contribution_heatmap(agg: MLPAggregatedResults, output_path: Path) -> None:
+def _plot_contribution_heatmap(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str
+) -> None:
     """Plot heatmap of layer contributions across pairs."""
     layers = agg.layers_analyzed
     if not layers or agg.n_pairs < 2:
@@ -451,7 +544,7 @@ def _plot_contribution_heatmap(agg: MLPAggregatedResults, output_path: Path) -> 
     for pr in agg.pair_results:
         row = []
         for layer in layers:
-            lr = pr.get_layer_result(layer)
+            lr = pr.get_layer_result(format_pos, layer)
             row.append(lr.total_logit_contribution if lr else 0)
         matrix.append(row)
 
@@ -463,6 +556,7 @@ def _plot_contribution_heatmap(agg: MLPAggregatedResults, output_path: Path) -> 
     # Use diverging colormap centered at 0
     vmax = max(abs(matrix.min()), abs(matrix.max()))
     im = ax.imshow(matrix, cmap='RdBu_r', aspect='auto', vmin=-vmax, vmax=vmax)
+    ax.invert_yaxis()  # Pair 0 at bottom
 
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax)
@@ -475,7 +569,7 @@ def _plot_contribution_heatmap(agg: MLPAggregatedResults, output_path: Path) -> 
     ax.set_yticklabels([f'Pair {i}' for i in range(agg.n_pairs)])
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Pair', fontsize=12)
-    ax.set_title('MLP Layer Contributions Across Pairs', fontsize=14)
+    ax.set_title(f'MLP Layer Contributions Across Pairs (position: {format_pos})', fontsize=14)
 
     # Add text annotations
     for i in range(agg.n_pairs):
@@ -490,7 +584,9 @@ def _plot_contribution_heatmap(agg: MLPAggregatedResults, output_path: Path) -> 
     plt.close()
 
 
-def _plot_per_pair_contributions(agg: MLPAggregatedResults, output_path: Path) -> None:
+def _plot_per_pair_contributions(
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str
+) -> None:
     """Plot layer contributions for each pair as grouped bars."""
     layers = agg.layers_analyzed
     if not layers:
@@ -508,7 +604,7 @@ def _plot_per_pair_contributions(agg: MLPAggregatedResults, output_path: Path) -
     for i, pr in enumerate(agg.pair_results[:n_pairs]):
         contribs = []
         for layer in layers:
-            lr = pr.get_layer_result(layer)
+            lr = pr.get_layer_result(format_pos, layer)
             contribs.append(lr.total_logit_contribution if lr else 0)
 
         offset = (i - n_pairs / 2 + 0.5) * width
@@ -517,7 +613,7 @@ def _plot_per_pair_contributions(agg: MLPAggregatedResults, output_path: Path) -
 
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Logit Contribution', fontsize=12)
-    ax.set_title('MLP Layer Contributions by Pair', fontsize=14)
+    ax.set_title(f'MLP Layer Contributions by Pair (position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{l}' for l in layers])
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
@@ -529,17 +625,17 @@ def _plot_per_pair_contributions(agg: MLPAggregatedResults, output_path: Path) -
     plt.close()
 
 
-def _has_neuron_data(agg: MLPAggregatedResults, layer: int) -> bool:
+def _has_neuron_data(agg: MLPAggregatedResults, layer: int, format_pos: str) -> bool:
     """Check if aggregated results have per-neuron data for a layer."""
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(layer)
+        lr = pr.get_layer_result(format_pos, layer)
         if lr and lr.top_neurons:
             return True
     return False
 
 
 def _get_top_neurons_for_layer(
-    agg: MLPAggregatedResults, layer: int, n: int = 20
+    agg: MLPAggregatedResults, layer: int, format_pos: str, n: int = 20
 ) -> list[tuple[int, float, float, float]]:
     """Get top neurons by mean activation difference across pairs.
 
@@ -549,7 +645,7 @@ def _get_top_neurons_for_layer(
     neuron_data: dict[int, list[NeuronInfo]] = {}
 
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(layer)
+        lr = pr.get_layer_result(format_pos, layer)
         if not lr or not lr.top_neurons:
             continue
         for ni in lr.top_neurons:
@@ -571,11 +667,12 @@ def _get_top_neurons_for_layer(
 
 
 def _plot_neuron_activation_heatmap_across_layers(
-    agg: MLPAggregatedResults, output_path: Path
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    target_layer: int
 ) -> None:
     """Plot 10: Heatmap of top neuron activation differences across layers.
 
-    Rows: top 20 neurons by activation difference at TARGET_LAYER
+    Rows: top 20 neurons by activation difference at target_layer
     Columns: layers analyzed
     Color: activation difference at each layer
     """
@@ -584,7 +681,7 @@ def _plot_neuron_activation_heatmap_across_layers(
         return
 
     # Get top neurons at target layer
-    top_neurons = _get_top_neurons_for_layer(agg, TARGET_LAYER, n=20)
+    top_neurons = _get_top_neurons_for_layer(agg, target_layer, format_pos, n=20)
     if not top_neurons:
         return
 
@@ -594,7 +691,7 @@ def _plot_neuron_activation_heatmap_across_layers(
     matrix = np.zeros((len(neuron_indices), len(layers)))
 
     for j, layer in enumerate(layers):
-        layer_top = _get_top_neurons_for_layer(agg, layer, n=100)
+        layer_top = _get_top_neurons_for_layer(agg, layer, format_pos, n=100)
         layer_map = {n[0]: n[1] for n in layer_top}  # neuron_idx -> act_diff
 
         for i, neuron_idx in enumerate(neuron_indices):
@@ -605,6 +702,7 @@ def _plot_neuron_activation_heatmap_across_layers(
 
     vmax = max(abs(matrix.min()), abs(matrix.max())) if matrix.size > 0 else 1
     im = ax.imshow(matrix, cmap='RdBu_r', aspect='auto', vmin=-vmax, vmax=vmax)
+    ax.invert_yaxis()  # Neuron 0 at bottom
 
     cbar = plt.colorbar(im, ax=ax)
     cbar.set_label('Activation Difference (clean - corrupted)', fontsize=10)
@@ -614,8 +712,8 @@ def _plot_neuron_activation_heatmap_across_layers(
     ax.set_yticks(np.arange(len(neuron_indices)))
     ax.set_yticklabels([f'N{n}' for n in neuron_indices])
     ax.set_xlabel('Layer', fontsize=12)
-    ax.set_ylabel(f'Neuron (top 20 from L{TARGET_LAYER})', fontsize=12)
-    ax.set_title(f'Neuron Activation Differences Across Layers\n(Top 20 neurons from L{TARGET_LAYER})', fontsize=14)
+    ax.set_ylabel(f'Neuron (top 20 from L{target_layer})', fontsize=12)
+    ax.set_title(f'Neuron Activation Differences Across Layers\n(Top 20 neurons from L{target_layer}, position: {format_pos})', fontsize=14)
 
     # Add text annotations for non-zero values
     for i in range(len(neuron_indices)):
@@ -634,72 +732,101 @@ def _plot_neuron_activation_heatmap_across_layers(
 def visualize_mlp_pair(
     result: MLPPairResult,
     output_dir: Path,
+    format_pos: str | None = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Generate MLP analysis visualizations for a single pair.
 
     Args:
         result: MLP analysis results for one pair
         output_dir: Directory to save plots
+        format_pos: Position to visualize (default: "response_choice" or first available)
+        position_mapping: Optional mapping for semantic position labels in layer_position plots
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not result.layer_results:
+    if not result.position_results:
+        return
+
+    if format_pos is None:
+        format_pos = _get_first_format_pos_pair(result)
+
+    if format_pos is None or format_pos not in result.position_results:
+        return
+
+    layer_results = result.position_results[format_pos]
+    if not layer_results:
         return
 
     n_plots = 0
 
     # Layer contribution bar chart for this pair
-    _plot_pair_layer_contributions(result, output_dir / "mlp_layer_contributions.png")
+    _plot_pair_layer_contributions(result, format_pos, output_dir / "mlp_layer_contributions.png")
     n_plots += 1
 
+    # Find best target layer dynamically
+    target_layer = _find_best_target_layer_pair(result, format_pos)
+
     # Check for neuron-level data at target layer
-    target_lr = result.get_layer_result(TARGET_LAYER)
-    has_neuron_data = target_lr is not None and len(target_lr.top_neurons) > 0
+    if target_layer is not None:
+        target_lr = result.get_layer_result(format_pos, target_layer)
+        has_neuron_data = target_lr is not None and len(target_lr.top_neurons) > 0
 
-    if has_neuron_data:
-        # 9. Neuron activation difference ranked bar chart
-        _plot_neuron_activation_diff_ranked(
-            result, TARGET_LAYER, output_dir / f"neuron_activation_diff_L{TARGET_LAYER}.png"
-        )
-        n_plots += 1
+        if has_neuron_data:
+            # 9. Neuron activation difference ranked bar chart
+            _plot_neuron_activation_diff_ranked(
+                result, format_pos, target_layer, output_dir / f"neuron_activation_diff_L{target_layer}.png"
+            )
+            n_plots += 1
 
-        # 12. Neuron activation distribution (clean vs corrupted)
-        _plot_neuron_activation_distribution(
-            result, TARGET_LAYER, output_dir / f"neuron_activation_dist_L{TARGET_LAYER}.png"
-        )
-        n_plots += 1
+            # 12. Neuron activation distribution (clean vs corrupted)
+            _plot_neuron_activation_distribution(
+                result, format_pos, target_layer, output_dir / f"neuron_activation_dist_L{target_layer}.png"
+            )
+            n_plots += 1
 
-        # 13. Neuron output direction alignment
-        _plot_neuron_output_alignment(
-            result, TARGET_LAYER, output_dir / f"neuron_output_alignment_L{TARGET_LAYER}.png"
-        )
-        n_plots += 1
+            # 13. Neuron output direction alignment
+            _plot_neuron_output_alignment(
+                result, format_pos, target_layer, output_dir / f"neuron_output_alignment_L{target_layer}.png"
+            )
+            n_plots += 1
 
-        # 14. Neuron contribution decomposition
-        _plot_neuron_contribution_decomposition(
-            result, TARGET_LAYER, output_dir / f"neuron_contrib_decomp_L{TARGET_LAYER}.png"
-        )
-        n_plots += 1
+            # 14. Neuron contribution decomposition
+            _plot_neuron_contribution_decomposition(
+                result, format_pos, target_layer, output_dir / f"neuron_contrib_decomp_L{target_layer}.png"
+            )
+            n_plots += 1
 
-        # 16. Two-dimensional neuron activation scatter
-        _plot_neuron_activation_scatter_2d(
-            result, TARGET_LAYER, output_dir / f"neuron_activation_scatter_L{TARGET_LAYER}.png"
-        )
+            # 16. Two-dimensional neuron activation scatter
+            _plot_neuron_activation_scatter_2d(
+                result, format_pos, target_layer, output_dir / f"neuron_activation_scatter_L{target_layer}.png"
+            )
+            n_plots += 1
+
+    # Layer x position patching heatmap
+    if result.layer_position is not None:
+        _plot_layer_position_heatmaps(result.layer_position, output_dir, position_mapping)
         n_plots += 1
 
     if n_plots > 0:
-        log(f"[mlp_viz] Generated {n_plots} pair plots in {output_dir}")
+        log(f"[mlp_viz] Generated {n_plots} pair plots in {output_dir} (position: {format_pos})")
 
 
-def _plot_pair_layer_contributions(result: MLPPairResult, output_path: Path) -> None:
+def _plot_pair_layer_contributions(
+    result: MLPPairResult, format_pos: str, output_path: Path
+) -> None:
     """Plot layer contributions for a single pair."""
-    layers = [lr.layer for lr in result.layer_results]
+    if format_pos not in result.position_results:
+        return
+
+    layer_results = result.position_results[format_pos]
+    layers = [lr.layer for lr in layer_results]
     if not layers:
         return
 
     # Get contributions
-    contribs = [lr.total_logit_contribution for lr in result.layer_results]
+    contribs = [lr.total_logit_contribution for lr in layer_results]
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -722,7 +849,7 @@ def _plot_pair_layer_contributions(result: MLPPairResult, output_path: Path) -> 
 
     ax.set_xlabel('Layer', fontsize=12)
     ax.set_ylabel('Logit Contribution', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: MLP Layer Contributions\n(Position {result.position})', fontsize=14)
+    ax.set_title(f'Pair {result.pair_idx}: MLP Layer Contributions\n(Position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([f'L{l}' for l in layers])
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
@@ -741,14 +868,14 @@ def _plot_pair_layer_contributions(result: MLPPairResult, output_path: Path) -> 
 
 
 def _plot_neuron_activation_diff_ranked(
-    result: MLPPairResult, layer: int, output_path: Path, n_top: int = 50
+    result: MLPPairResult, format_pos: str, layer: int, output_path: Path, n_top: int = 50
 ) -> None:
     """Plot 9: Neuron activation difference ranked bar chart.
 
     X-axis: neuron index, sorted by |clean_activation - corrupted_activation|
     Y-axis: activation difference (signed)
     """
-    lr = result.get_layer_result(layer)
+    lr = result.get_layer_result(format_pos, layer)
     if not lr or not lr.top_neurons:
         return
 
@@ -769,7 +896,7 @@ def _plot_neuron_activation_diff_ranked(
 
     ax.set_xlabel('Neuron Index (sorted by |activation diff|)', fontsize=12)
     ax.set_ylabel('Activation Difference (clean - corrupted)', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Activation Differences\n(Top {len(neurons)} neurons)', fontsize=14)
+    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Activation Differences\n(Top {len(neurons)} neurons, position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([str(n) for n in neuron_ids], rotation=90, fontsize=7)
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
@@ -787,13 +914,13 @@ def _plot_neuron_activation_diff_ranked(
 
 
 def _plot_neuron_activation_distribution(
-    result: MLPPairResult, layer: int, output_path: Path, n_top: int = 10
+    result: MLPPairResult, format_pos: str, layer: int, output_path: Path, n_top: int = 10
 ) -> None:
     """Plot 12: Neuron activation distribution (clean vs corrupted).
 
     Each panel shows one neuron with clean vs corrupted activation values.
     """
-    lr = result.get_layer_result(layer)
+    lr = result.get_layer_result(format_pos, layer)
     if not lr or not lr.top_neurons:
         return
 
@@ -845,20 +972,20 @@ def _plot_neuron_activation_distribution(
         row, col = idx // n_cols, idx % n_cols
         axes[row, col].set_visible(False)
 
-    fig.suptitle(f'Pair {result.pair_idx}: L{layer} Top Neuron Activations\n(by patching effect)', fontsize=14)
+    fig.suptitle(f'Pair {result.pair_idx}: L{layer} Top Neuron Activations\n(by patching effect, position: {format_pos})', fontsize=14)
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
     plt.close()
 
 
 def _plot_neuron_output_alignment(
-    result: MLPPairResult, layer: int, output_path: Path, n_top: int = 30
+    result: MLPPairResult, format_pos: str, layer: int, output_path: Path, n_top: int = 30
 ) -> None:
     """Plot 13: Neuron output direction alignment.
 
     Bar chart: X = neuron, Y = cosine similarity (W_out[neuron] @ logit_direction)
     """
-    lr = result.get_layer_result(layer)
+    lr = result.get_layer_result(format_pos, layer)
     if not lr or not lr.top_neurons:
         return
 
@@ -880,7 +1007,7 @@ def _plot_neuron_output_alignment(
 
     ax.set_xlabel('Neuron Index', fontsize=12)
     ax.set_ylabel('W_out alignment with logit direction', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Output Direction Alignment\n(W_out[neuron] @ logit_direction)', fontsize=14)
+    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Output Direction Alignment\n(W_out[neuron] @ logit_direction, position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([str(n) for n in neuron_ids], rotation=90, fontsize=8)
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
@@ -898,7 +1025,7 @@ def _plot_neuron_output_alignment(
 
 
 def _plot_neuron_contribution_decomposition(
-    result: MLPPairResult, layer: int, output_path: Path, n_top: int = 30
+    result: MLPPairResult, format_pos: str, layer: int, output_path: Path, n_top: int = 30
 ) -> None:
     """Plot 14: Neuron contribution decomposition (clean vs corrupted).
 
@@ -906,7 +1033,7 @@ def _plot_neuron_contribution_decomposition(
     Stacked bar: contribution in clean run vs corrupted run
     Contribution = activation * W_out_logit_alignment
     """
-    lr = result.get_layer_result(layer)
+    lr = result.get_layer_result(format_pos, layer)
     if not lr or not lr.top_neurons:
         return
 
@@ -933,7 +1060,7 @@ def _plot_neuron_contribution_decomposition(
 
     ax.set_xlabel('Neuron Index', fontsize=12)
     ax.set_ylabel('Contribution (activation * W_out alignment)', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Contribution Decomposition\n(Position {result.position})', fontsize=14)
+    ax.set_title(f'Pair {result.pair_idx}: L{layer} Neuron Contribution Decomposition\n(Position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([str(n) for n in neuron_ids], rotation=90, fontsize=8)
     ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
@@ -946,7 +1073,7 @@ def _plot_neuron_contribution_decomposition(
 
 
 def _plot_neuron_activation_scatter_2d(
-    result: MLPPairResult, layer: int, output_path: Path
+    result: MLPPairResult, format_pos: str, layer: int, output_path: Path
 ) -> None:
     """Plot 16: Two-dimensional neuron activation scatter.
 
@@ -954,7 +1081,7 @@ def _plot_neuron_activation_scatter_2d(
     Y-axis: activation of second neuron
     Two points: clean and corrupted
     """
-    lr = result.get_layer_result(layer)
+    lr = result.get_layer_result(format_pos, layer)
     if not lr or len(lr.top_neurons) < 2:
         return
 
@@ -987,7 +1114,7 @@ def _plot_neuron_activation_scatter_2d(
 
     ax.set_xlabel(f'Neuron {n1.neuron_idx} activation', fontsize=12)
     ax.set_ylabel(f'Neuron {n2.neuron_idx} activation', fontsize=12)
-    ax.set_title(f'Pair {result.pair_idx}: L{layer} Top 2 Neuron Activation Space', fontsize=14)
+    ax.set_title(f'Pair {result.pair_idx}: L{layer} Top 2 Neuron Activation Space\n(Position: {format_pos})', fontsize=14)
     ax.legend(loc='best')
     ax.grid(alpha=GRID_ALPHA)
 
@@ -1000,7 +1127,8 @@ def _plot_neuron_activation_scatter_2d(
 
 
 def _plot_neuron_consistency_across_pairs(
-    agg: MLPAggregatedResults, output_path: Path, n_top: int = 30
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    layer: int, n_top: int = 30
 ) -> None:
     """Plot 11: Neuron consistency across pairs.
 
@@ -1019,12 +1147,11 @@ def _plot_neuron_consistency_across_pairs(
         return
 
     # Count how often each neuron appears in top neurons across pairs
-    # Use the target layer for this analysis
     neuron_counts: dict[int, int] = {}
     neuron_mean_diffs: dict[int, list[float]] = {}
 
     for pr in agg.pair_results:
-        lr = pr.get_layer_result(TARGET_LAYER)
+        lr = pr.get_layer_result(format_pos, layer)
         if not lr or not lr.top_neurons:
             continue
         for ni in lr.top_neurons:
@@ -1062,8 +1189,8 @@ def _plot_neuron_consistency_across_pairs(
     cbar.set_label('Mean Activation Diff (clean - corrupted)', fontsize=10)
 
     ax.set_xlabel('Neuron Index', fontsize=12)
-    ax.set_ylabel(f'Pairs where neuron is in top-{len(agg.pair_results[0].layer_results[0].top_neurons) if agg.pair_results and agg.pair_results[0].layer_results else "N"}', fontsize=12)
-    ax.set_title(f'Neuron Consistency Across {agg.n_pairs} Pairs (L{TARGET_LAYER})\nHigher = More Consistent Importance', fontsize=14)
+    ax.set_ylabel(f'Pairs where neuron is in top-{len(agg.pair_results[0].position_results.get(format_pos, [[]])[0].top_neurons) if agg.pair_results and agg.pair_results[0].position_results.get(format_pos) else "N"}', fontsize=12)
+    ax.set_title(f'Neuron Consistency Across {agg.n_pairs} Pairs (L{layer})\nHigher = More Consistent Importance (position: {format_pos})', fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels([str(n) for n in neuron_indices], rotation=90, fontsize=8)
     ax.set_ylim(0, agg.n_pairs + 0.5)
@@ -1077,7 +1204,8 @@ def _plot_neuron_consistency_across_pairs(
 
 
 def _plot_cross_layer_neuron_patterns(
-    agg: MLPAggregatedResults, output_path: Path, n_top: int = 10
+    agg: MLPAggregatedResults, output_path: Path, format_pos: str,
+    target_layer: int, n_top: int = 10
 ) -> None:
     """Plot 15: Cross-layer neuron patterns.
 
@@ -1097,7 +1225,7 @@ def _plot_cross_layer_neuron_patterns(
     for layer in layers:
         layer_neuron_data[layer] = {}
         for pr in agg.pair_results:
-            lr = pr.get_layer_result(layer)
+            lr = pr.get_layer_result(format_pos, layer)
             if not lr or not lr.top_neurons:
                 continue
             for ni in lr.top_neurons[:n_top]:
@@ -1119,8 +1247,8 @@ def _plot_cross_layer_neuron_patterns(
             vals_i = []
             vals_j = []
             for pr in agg.pair_results:
-                lr_i = pr.get_layer_result(layer_i)
-                lr_j = pr.get_layer_result(layer_j)
+                lr_i = pr.get_layer_result(format_pos, layer_i)
+                lr_j = pr.get_layer_result(format_pos, layer_j)
                 if lr_i and lr_j:
                     vals_i.append(lr_i.total_logit_contribution)
                     vals_j.append(lr_j.total_logit_contribution)
@@ -1158,7 +1286,7 @@ def _plot_cross_layer_neuron_patterns(
 
     # Panel 2: Top neuron activation pattern across layers
     # For the target layer, show how its top neurons' importance varies across layers
-    target_neurons = _get_top_neurons_for_layer(agg, TARGET_LAYER, n=n_top)
+    target_neurons = _get_top_neurons_for_layer(agg, target_layer, format_pos, n=n_top)
     if target_neurons:
         neuron_indices = [n[0] for n in target_neurons]
 
@@ -1166,7 +1294,7 @@ def _plot_cross_layer_neuron_patterns(
         pattern_matrix = np.zeros((len(neuron_indices), n_layers))
 
         for j, layer in enumerate(layers):
-            layer_top = _get_top_neurons_for_layer(agg, layer, n=100)
+            layer_top = _get_top_neurons_for_layer(agg, layer, format_pos, n=100)
             layer_map = {n[0]: n[1] for n in layer_top}  # neuron_idx -> mean_act_diff
 
             for i, neuron_idx in enumerate(neuron_indices):
@@ -1174,6 +1302,7 @@ def _plot_cross_layer_neuron_patterns(
 
         vmax = max(abs(pattern_matrix.min()), abs(pattern_matrix.max())) if pattern_matrix.size > 0 else 1
         im2 = ax2.imshow(pattern_matrix, cmap='RdBu_r', aspect='auto', vmin=-vmax, vmax=vmax)
+        ax2.invert_yaxis()  # Neuron 0 at bottom
         cbar2 = plt.colorbar(im2, ax=ax2)
         cbar2.set_label('Mean Activation Diff', fontsize=10)
 
@@ -1182,10 +1311,90 @@ def _plot_cross_layer_neuron_patterns(
         ax2.set_xticklabels([f'L{l}' for l in layers])
         ax2.set_yticklabels([f'N{n}' for n in neuron_indices])
         ax2.set_xlabel('Layer', fontsize=12)
-        ax2.set_ylabel(f'Neuron (top {n_top} from L{TARGET_LAYER})', fontsize=12)
-        ax2.set_title(f'Top Neuron Patterns Across Layers\n(Neurons selected from L{TARGET_LAYER})', fontsize=12)
+        ax2.set_ylabel(f'Neuron (top {n_top} from L{target_layer})', fontsize=12)
+        ax2.set_title(f'Top Neuron Patterns Across Layers\n(Neurons selected from L{target_layer})', fontsize=12)
 
-    fig.suptitle('Cross-Layer MLP Neuron Patterns', fontsize=14, y=1.02)
+    fig.suptitle(f'Cross-Layer MLP Neuron Patterns (position: {format_pos})', fontsize=14, y=1.02)
     plt.tight_layout()
     plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
     plt.close()
+
+
+def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
+    """Get semantic label for a position if available, else fall back to P{pos}."""
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
+
+
+def _plot_layer_position_heatmaps(
+    lp: LayerPositionResult,
+    output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
+) -> None:
+    """Plot layer-position fine patching heatmap for mlp_out.
+
+    Rows: layer, Columns: position
+    Color: patching effect
+    True 2D localization (not outer product approximation)
+    """
+    if lp.denoising_grid is None:
+        return
+
+    component = lp.component
+    layers = lp.layers
+    positions = lp.positions
+    n_layers = len(layers)
+    n_pos = len(positions)
+
+    # Denoising heatmap
+    fig, ax = plt.subplots(figsize=(max(10, n_pos * 0.15), max(6, n_layers * 0.3)))
+    im = ax.imshow(
+        lp.denoising_grid,
+        aspect="auto",
+        cmap="RdBu_r",
+        interpolation="nearest",
+    )
+    ax.invert_yaxis()  # Layer 0 at bottom
+    plt.colorbar(im, ax=ax, label="Denoising Recovery")
+
+    ax.set_yticks(range(n_layers))
+    ax.set_yticklabels([f"L{l}" for l in layers], fontsize=8)
+
+    pos_step = max(1, n_pos // 15)
+    ax.set_xticks(range(0, n_pos, pos_step))
+    ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
+
+    ax.set_xlabel("Position", fontsize=11)
+    ax.set_ylabel("Layer", fontsize=11)
+    ax.set_title(f"Layer x Position Fine Patching: {component} (Denoising)", fontsize=12, fontweight="bold")
+
+    plt.tight_layout()
+    finalize_plot(output_dir / f"layer_position_{component}_denoising.png")
+
+    # Noising heatmap
+    if lp.noising_grid is not None:
+        fig, ax = plt.subplots(figsize=(max(10, n_pos * 0.15), max(6, n_layers * 0.3)))
+        im = ax.imshow(
+            lp.noising_grid,
+            aspect="auto",
+            cmap="RdBu_r",
+            interpolation="nearest",
+        )
+        ax.invert_yaxis()  # Layer 0 at bottom
+        plt.colorbar(im, ax=ax, label="Noising Disruption")
+
+        ax.set_yticks(range(n_layers))
+        ax.set_yticklabels([f"L{l}" for l in layers], fontsize=8)
+
+        ax.set_xticks(range(0, n_pos, pos_step))
+        ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_pos, pos_step)], fontsize=8, rotation=45, ha="right")
+
+        ax.set_xlabel("Position", fontsize=11)
+        ax.set_ylabel("Layer", fontsize=11)
+        ax.set_title(f"Layer x Position Fine Patching: {component} (Noising)", fontsize=12, fontweight="bold")
+
+        plt.tight_layout()
+        finalize_plot(output_dir / f"layer_position_{component}_noising.png")

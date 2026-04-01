@@ -85,8 +85,9 @@ def step_load_cfg(
         return config, False
 
     # Disabled but viz enabled with cached data: enable viz-only mode
-    # But skip if only_viz_agg is set (no per-pair viz needed)
-    if ctx.viz_enabled and not raw_cfg.get("only_viz_agg", False) and load_agg_fn(config):
+    # Skip if no_viz is set or only_viz_agg is set (no per-pair viz needed)
+    no_viz = raw_cfg.get("no_viz", False)
+    if not no_viz and ctx.viz_enabled and not raw_cfg.get("only_viz_agg", False) and load_agg_fn(config):
         log(f"[{name}] Disabled but cached data found, generating visualizations")
         return config, True
 
@@ -188,7 +189,7 @@ class ExperimentMixin:
             return
         att_dir = self.get_attrib_agg_dir()
         att_dir.mkdir(parents=True, exist_ok=True)
-        log(f"[attr] Saving aggregated results to {att_dir}...")
+        log(f"[attrib] Saving aggregated results to {att_dir}...")
         if self.attrib_agg.denoising_agg:
             save_json(self.attrib_agg.denoising_agg.to_dict(), att_dir / "denoising.json")
         if self.attrib_agg.noising_agg:
@@ -196,7 +197,7 @@ class ExperimentMixin:
         save_json(self.attrib_agg.to_dict(), att_dir / "attrib_agg.json")
         self.attrib_agg.denoising.clear()
         self.attrib_agg.noising.clear()
-        log("[attr] Saved.")
+        log("[attrib] Saved.")
 
     def load_attrib_agg(self, _=None) -> bool:
         """Load aggregated attribution results."""
@@ -702,14 +703,14 @@ class ExperimentMixin:
         out_dir.mkdir(parents=True, exist_ok=True)
         visualize_diffmeans_pair(result, out_dir)
 
-    def viz_mlp_pair(self, pair_idx: int) -> None:
+    def viz_mlp_pair(self, pair_idx: int, mapping=None) -> None:
         """Generate visualizations for a single MLP pair."""
         if pair_idx not in self.mlp:
             return
         result = self.mlp[pair_idx]
         out_dir = self.get_mlp_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        visualize_mlp_pair(result, out_dir)
+        visualize_mlp_pair(result, out_dir, position_mapping=mapping)
 
     def viz_attn_pair(self, pair_idx: int, mapping=None) -> None:
         """Generate visualizations for a single attention pair."""
@@ -721,13 +722,17 @@ class ExperimentMixin:
         visualize_attn_pair(result, out_dir, mapping=mapping)
 
     def viz_fine_pair(self, pair_idx: int, mapping=None) -> None:
-        """Generate visualizations for a single fine-grained pair."""
+        """Generate visualizations for a single fine-grained pair.
+
+        NOTE: mapping parameter is kept for API compatibility but no longer used.
+        Layer-position visualizations are now in attn_viz and mlp_viz.
+        """
         if pair_idx not in self.fine:
             return
         result = self.fine[pair_idx]
         out_dir = self.get_fine_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        visualize_fine(result, out_dir, mapping)
+        visualize_fine(result, out_dir)
 
     # ─── Unload all ───
 

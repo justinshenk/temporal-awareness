@@ -9,6 +9,8 @@ import numpy as np
 
 from ....common.base_schema import BaseSchema
 from ....common.file_io import save_json
+from .attn_head_attribution import HeadAttributionResults, HeadPositionPatchingResult
+from ..fine.fine_results import LayerPositionResult
 
 
 @dataclass
@@ -90,6 +92,18 @@ class AttnPairResult(BaseSchema):
     # Corrupted attention patterns for side-by-side comparison (optional)
     # Same shape as attention_patterns: [n_heads, seq_len]
     corrupted_attention_patterns: dict[int, list[list[float]]] = field(default_factory=dict)
+
+    # Head attribution results (causal importance of each head)
+    head_attribution: "HeadAttributionResults | None" = None
+
+    # Head redundancy results (denoising vs noising gap per head)
+    head_redundancy: "HeadSweepResults | None" = None
+
+    # Position patching results for top heads
+    head_position_patching: list["HeadPositionPatchingResult"] = field(default_factory=list)
+
+    # Layer-position patching result for attn_out
+    layer_position: "LayerPositionResult | None" = None
 
     def get_layer_result(self, layer: int) -> AttnLayerResult | None:
         """Get results for a specific layer."""

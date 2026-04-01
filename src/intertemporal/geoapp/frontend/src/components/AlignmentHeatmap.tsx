@@ -14,6 +14,24 @@ interface AlignmentHeatmapProps {
   className?: string;
 }
 
+// Component colors (matching ScreePlot)
+const COMPONENT_COLORS: Record<string, string> = {
+  'resid_pre': '#E91E63',   // Pink
+  'attn_out': '#2196F3',    // Blue
+  'mlp_out': '#4CAF50',     // Green
+  'resid_post': '#FF9800',  // Orange
+};
+
+// Get component from label like "L0_resid_pre"
+function getComponentFromLabel(label: string): string {
+  const parts = label.split('_');
+  if (parts.length >= 2) {
+    // Handle cases like "L0_resid_pre" -> "resid_pre" or "L0_attn_out" -> "attn_out"
+    return parts.slice(1).join('_');
+  }
+  return '';
+}
+
 // Viridis-like color scale
 function getColor(value: number): string {
   // Map 0-1 to viridis-like colors
@@ -49,13 +67,14 @@ export const AlignmentHeatmap: React.FC<AlignmentHeatmapProps> = ({
   className = '',
 }) => {
   const { cellSize, width, height } = useMemo(() => {
-    if (!data?.matrix) return { cellSize: 10, width: 400, height: 400 };
+    if (!data?.matrix) return { cellSize: 14, width: 600, height: 600 };
     const n = data.matrix.length;
-    const cs = Math.min(Math.max(400 / n, 8), 20);
+    // Bigger cells: min 12px, max 24px, target ~700px total
+    const cs = Math.min(Math.max(700 / n, 12), 24);
     return {
       cellSize: cs,
-      width: n * cs + 120,
-      height: n * cs + 100,
+      width: n * cs + 150,  // More room for labels
+      height: n * cs + 140, // More room for rotated x-labels
     };
   }, [data]);
 
@@ -78,15 +97,14 @@ export const AlignmentHeatmap: React.FC<AlignmentHeatmapProps> = ({
   }
 
   const n = data.matrix.length;
-  const padding = { top: 30, right: 60, bottom: 60, left: 60 };
+  const padding = { top: 40, right: 70, bottom: 80, left: 80 };
 
   return (
-    <div className={`overflow-auto bg-[#faf8f5] dark:bg-[#1a1613] ${className}`}>
+    <div className={`flex items-center justify-center w-full h-full bg-[#faf8f5] dark:bg-[#1a1613] ${className}`}>
       <svg
-        width={width}
-        height={height}
         viewBox={`0 0 ${width} ${height}`}
-        className="bg-[#faf8f5] dark:bg-[#1a1613]"
+        className="w-full h-full max-w-full max-h-full bg-[#faf8f5] dark:bg-[#1a1613]"
+        style={{ minWidth: '600px', minHeight: '600px' }}
       >
         {/* Title */}
         <text
@@ -120,34 +138,44 @@ export const AlignmentHeatmap: React.FC<AlignmentHeatmapProps> = ({
 
         {/* Y-axis labels */}
         <g transform={`translate(${padding.left - 5}, ${padding.top})`}>
-          {data.labels.map((label, i) => (
-            <text
-              key={i}
-              x={0}
-              y={i * cellSize + cellSize / 2}
-              textAnchor="end"
-              dominantBaseline="middle"
-              className="text-[7px] fill-gray-600 dark:fill-gray-400"
-            >
-              {label}
-            </text>
-          ))}
+          {data.labels.map((label, i) => {
+            const comp = getComponentFromLabel(label);
+            const color = COMPONENT_COLORS[comp] || '#666';
+            return (
+              <text
+                key={i}
+                x={0}
+                y={i * cellSize + cellSize / 2}
+                textAnchor="end"
+                dominantBaseline="middle"
+                className="text-[9px] font-medium"
+                fill={color}
+              >
+                {label}
+              </text>
+            );
+          })}
         </g>
 
         {/* X-axis labels */}
         <g transform={`translate(${padding.left}, ${padding.top + n * cellSize + 5})`}>
-          {data.labels.map((label, i) => (
-            <text
-              key={i}
-              x={i * cellSize + cellSize / 2}
-              y={0}
-              textAnchor="start"
-              transform={`rotate(45, ${i * cellSize + cellSize / 2}, 0)`}
-              className="text-[7px] fill-gray-600 dark:fill-gray-400"
-            >
-              {label}
-            </text>
-          ))}
+          {data.labels.map((label, i) => {
+            const comp = getComponentFromLabel(label);
+            const color = COMPONENT_COLORS[comp] || '#666';
+            return (
+              <text
+                key={i}
+                x={i * cellSize + cellSize / 2}
+                y={0}
+                textAnchor="start"
+                transform={`rotate(45, ${i * cellSize + cellSize / 2}, 0)`}
+                className="text-[9px] font-medium"
+                fill={color}
+              >
+                {label}
+              </text>
+            );
+          })}
         </g>
 
         {/* Color bar */}

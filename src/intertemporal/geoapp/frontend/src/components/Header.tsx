@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui/Button';
 
-type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | 'Scree' | 'Align';
+type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | '2DxLayer' | '2DxPos' | 'Scree' | 'Align';
 
 interface HeaderProps {
   datasetName?: string;
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* View Mode Tabs - center/prominent position */}
           <div className="flex items-center gap-1 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] p-1">
-            {(['2D', '3D', '1DxLayer', '1DxPos', 'Scree', 'Align'] as ViewMode[]).map((mode) => (
+            {(['2D', '3D', '1DxLayer', '1DxPos', '2DxLayer', '2DxPos', 'Scree', 'Align'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => onViewModeChange?.(mode)}

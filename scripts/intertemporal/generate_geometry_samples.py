@@ -134,7 +134,7 @@ def get_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Dataset config file path (or config name from configs/prompt_datasets/). "
-        "If not provided, uses GEOMETRY_CFG from FULL_EXPERIMENT_CONFIG.",
+        "If not provided, uses default.",
     )
     parser.add_argument(
         "--cache",
@@ -313,8 +313,8 @@ def main() -> int:
         for comp in COMPONENTS:
             comp_parts = comp.split("_")
             comp_len = len(comp_parts)
-            if "_".join(parts[1:1+comp_len]) == comp:
-                position = "_".join(parts[1+comp_len:])
+            if "_".join(parts[1 : 1 + comp_len]) == comp:
+                position = "_".join(parts[1 + comp_len :])
                 positions_with_data.add(position)
                 break
 

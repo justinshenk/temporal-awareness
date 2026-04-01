@@ -35,6 +35,8 @@ from .models import (
     SampleResponse,
     TokenInfo,
     TokensResponse,
+    Trajectory2DPoint,
+    Trajectory2DResponse,
     TrajectoryPoint,
     TrajectoryResponse,
     WarmupResponse,
@@ -485,9 +487,14 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         }
         metadata = {k: v for k, v in sample_info.items() if k not in known_fields}
 
+        # Handle text that may be a list (multi-part prompts)
+        text = sample_info.get("text", "")
+        if isinstance(text, list):
+            text = "\n".join(text)
+
         return SampleResponse(
             idx=idx,
-            text=sample_info.get("text", ""),
+            text=text,
             time_horizon_months=time_horizon_months,
             time_scale=sample_info.get("time_scale"),
             choice_type=sample_info.get("choice_type"),
@@ -787,7 +794,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             ),
         )
 
-    @router.get("/trajectory/layers/{component}/{position}", response_model=TrajectoryResponse)
+    @router.get("/trajectory/layers/{component}/{position:path}", response_model=TrajectoryResponse)
     async def get_layer_trajectory(
         component: str,
         position: str,
@@ -796,16 +803,23 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         Returns PC1 values for each sample at each layer, enabling visualization
         of how representations evolve through the model.
+
+        Position can be:
+        - "response_choice" (combined/all tokens)
+        - "response_choice:0" (specific rel_pos token)
         """
         _log("/trajectory/layers", f"GET request", component=component, position=position)
         start_time = time.time()
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
-        if position not in data_loader.get_positions():
-            raise HTTPException(status_code=404, detail=f"Position {position} not found")
+        # Parse position to extract base_pos for validation
+        base_pos = position.split(":")[0] if ":" in position else position
 
-        # Try to use pre-cached trajectory data first, fall back to individual PCA
+        if base_pos not in data_loader.get_positions():
+            raise HTTPException(status_code=404, detail=f"Position {base_pos} not found")
+
+        # Try to use pre-cached trajectory data first (handles both combined and per-relpos with fallback)
         try:
             layers, pc1_matrix, shared_sample_indices = data_loader.load_layer_trajectory(component, position)
             data = []
@@ -861,7 +875,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 shared_sample_indices = sample_indices
 
         elapsed = time.time() - start_time
-        _log("/trajectory/layers", f"Returning trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("/trajectory/layers", f"Returning trajectory from PCA embeddings", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
 
         return TrajectoryResponse(
             component=component,
@@ -971,6 +985,209 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             x_values=x_values,
             n_samples=n_samples,
             sample_indices=[],  # Position trajectory has per-point indices since each position may differ
+            data=data,
+        )
+
+    # ==================== 2D TRAJECTORY ENDPOINTS (PC1 + PC2) ====================
+
+    @router.get("/trajectory2d/layers/{component}/{position:path}", response_model=Trajectory2DResponse)
+    async def get_layer_trajectory_2d(
+        component: str,
+        position: str,
+    ) -> Trajectory2DResponse:
+        """Get PC1+PC2 trajectory across all layers for a given component/position.
+
+        Returns both PC1 and PC2 values for each sample at each layer, enabling
+        3D visualization of how representations evolve through the model.
+        X-axis: layer, Y-axis: PC1, Z-axis: PC2
+        """
+        _log("/trajectory2d/layers", f"GET request", component=component, position=position)
+        start_time = time.time()
+
+        if component not in data_loader.get_components():
+            raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Parse position to extract base_pos and optional rel_pos
+        base_pos = position.split(":")[0] if ":" in position else position
+        if base_pos not in data_loader.get_positions():
+            raise HTTPException(status_code=404, detail=f"Position {base_pos} not found")
+
+        # Try to use pre-cached trajectory data (handles both combined and per-relpos with fallback)
+        try:
+            result = data_loader.load_layer_trajectory(component, position, include_pc2=True)
+            layers, pc1_matrix, pc2_matrix, shared_sample_indices = result
+            data = []
+            x_values = []
+            for i, layer in enumerate(layers):
+                pc1_values = pc1_matrix[i].astype(float).tolist()
+                pc2_values = pc2_matrix[i].astype(float).tolist()
+                x_values.append(str(layer))
+                data.append(Trajectory2DPoint(
+                    x_value=str(layer),
+                    pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                    pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                    sample_indices=shared_sample_indices,
+                ))
+            n_samples = len(shared_sample_indices)
+            elapsed = time.time() - start_time
+            _log("/trajectory2d/layers", f"Returning cached 2D trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+            return Trajectory2DResponse(
+                component=component,
+                position=position,
+                method="pca",
+                x_axis="layer",
+                x_values=x_values,
+                n_samples=n_samples,
+                sample_indices=shared_sample_indices,
+                data=data,
+            )
+        except ValueError:
+            pass  # Fall back to individual PCA embeddings
+
+        # Fall back to computing from individual PCA embeddings
+        layers = data_loader.get_layers()
+        data = []
+        x_values = []
+        n_samples = 0
+        shared_sample_indices: list[int] = []
+
+        for layer in layers:
+            try:
+                embedding = data_loader.load_pca(layer, component, position, n_components=3)
+            except ValueError as e:
+                _log("/trajectory2d/layers", f"ERROR loading PCA", layer=layer, component=component, position=position, error=str(e))
+                raise HTTPException(status_code=404, detail=f"PCA embedding missing: L{layer}_{component}_{position}. Error: {e}")
+            try:
+                sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
+            except Exception as e:
+                _log("/trajectory2d/layers", f"ERROR getting sample indices", layer=layer, component=component, position=position, error=str(e))
+                raise HTTPException(status_code=500, detail=f"Failed to get sample indices for L{layer}_{component}_{position}. Error: {e}")
+            pc1_values = embedding[:, 0].astype(float).tolist()
+            pc2_values = embedding[:, 1].astype(float).tolist() if embedding.shape[1] > 1 else [0.0] * len(pc1_values)
+            n_samples = len(pc1_values)
+            x_values.append(str(layer))
+            data.append(Trajectory2DPoint(
+                x_value=str(layer),
+                pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                sample_indices=sample_indices,
+            ))
+            if not shared_sample_indices:
+                shared_sample_indices = sample_indices
+
+        elapsed = time.time() - start_time
+        _log("/trajectory2d/layers", f"Returning 2D trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+
+        return Trajectory2DResponse(
+            component=component,
+            position=position,
+            method="pca",
+            x_axis="layer",
+            x_values=x_values,
+            n_samples=n_samples,
+            sample_indices=shared_sample_indices,
+            data=data,
+        )
+
+    @router.get("/trajectory2d/positions/{layer}/{component}", response_model=Trajectory2DResponse)
+    async def get_position_trajectory_2d(
+        layer: int,
+        component: str,
+        positions_filter: str = Query(default="", description="Comma-separated positions to include"),
+    ) -> Trajectory2DResponse:
+        """Get PC1+PC2 trajectory across semantic positions for a given layer/component.
+
+        Returns both PC1 and PC2 values for each sample at each position, enabling
+        3D visualization of how representations vary across positions.
+        X-axis: position, Y-axis: PC1, Z-axis: PC2
+        """
+        _log("/trajectory2d/positions", f"GET request", layer=layer, component=component)
+        start_time = time.time()
+
+        if layer not in data_loader.get_layers():
+            raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
+        if component not in data_loader.get_components():
+            raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Use named positions if no filter
+        if positions_filter:
+            positions = [p.strip() for p in positions_filter.split(",") if p.strip()]
+        else:
+            positions = data_loader.get_positions()
+
+        # Try cached trajectory (only if no filter)
+        if not positions_filter:
+            try:
+                result = data_loader.load_position_trajectory(layer, component, include_pc2=True)
+                cached_positions, pc1_values_list, pc2_values_list, sample_indices_list = result
+                data = []
+                x_values = []
+                n_samples = 0
+                for i, pos in enumerate(cached_positions):
+                    if pos not in positions:
+                        continue
+                    pc1_values = pc1_values_list[i].astype(float).tolist()
+                    pc2_values = pc2_values_list[i].astype(float).tolist()
+                    sample_indices = sample_indices_list[i]
+                    n_samples = max(n_samples, len(pc1_values))
+                    x_values.append(pos)
+                    data.append(Trajectory2DPoint(
+                        x_value=pos,
+                        pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                        pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                        sample_indices=sample_indices,
+                    ))
+                elapsed = time.time() - start_time
+                _log("/trajectory2d/positions", f"Returning cached 2D trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+                return Trajectory2DResponse(
+                    layer=layer,
+                    component=component,
+                    method="pca",
+                    x_axis="position",
+                    x_values=x_values,
+                    n_samples=n_samples,
+                    sample_indices=[],
+                    data=data,
+                )
+            except ValueError:
+                pass
+
+        # Fall back to individual PCA embeddings
+        data = []
+        x_values = []
+        n_samples = 0
+        skipped = []
+        for pos in positions:
+            try:
+                embedding = data_loader.load_pca(layer, component, pos, n_components=3)
+            except ValueError as e:
+                skipped.append(f"{pos}: {e}")
+                continue
+            sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
+            pc1_values = embedding[:, 0].astype(float).tolist()
+            pc2_values = embedding[:, 1].astype(float).tolist() if embedding.shape[1] > 1 else [0.0] * len(pc1_values)
+            n_samples = max(n_samples, len(pc1_values))
+            x_values.append(pos)
+            data.append(Trajectory2DPoint(
+                x_value=pos,
+                pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                sample_indices=sample_indices,
+            ))
+
+        elapsed = time.time() - start_time
+        if skipped:
+            _log("/trajectory2d/positions", f"SKIPPED {len(skipped)} positions", skipped=skipped)
+        _log("/trajectory2d/positions", f"Returning 2D trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+
+        return Trajectory2DResponse(
+            layer=layer,
+            component=component,
+            method="pca",
+            x_axis="position",
+            x_values=x_values,
+            n_samples=n_samples,
+            sample_indices=[],
             data=data,
         )
 

@@ -23,7 +23,9 @@ import numpy as np
 import torch
 
 from ....common.logging import log
+from ....viz.plot_helpers import finalize_plot
 from . import AttnAggregatedResults, AttnPairResult
+from ..fine.fine_results import LayerPositionResult
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner
@@ -35,11 +37,6 @@ DPI = 150
 LAYER_COLORS = ['#E91E63', '#9C27B0', '#2196F3', '#4CAF50', '#FF9800', '#795548']
 BAR_ALPHA = 0.8
 GRID_ALPHA = 0.3
-
-# Default position ranges for cropping (configurable via results data)
-DEFAULT_SRC_RANGE = (80, 95)  # P80-P95
-DEFAULT_DST_RANGE = (135, 150)  # P135-P150
-KEY_LAYERS = [19, 21, 24]
 
 # Colors for clean vs corrupted comparisons
 CLEAN_COLOR = '#2196F3'  # Blue
@@ -524,15 +521,14 @@ def _plot_dynamic_heads(agg: AttnAggregatedResults, output_path: Path) -> None:
 def _plot_attention_to_source_summary(agg: AttnAggregatedResults, output_path: Path) -> None:
     """Plot 3: Summary bar chart of attention from dest to source positions.
 
-    X-axis: head index (all heads at key layers)
+    X-axis: head index (all heads at analyzed layers)
     Y-axis: total attention weight from destination positions to source positions
     Two bars per head: clean vs corrupted (when available)
     """
-    layers = agg.layers_analyzed or KEY_LAYERS
-    layers = [l for l in layers if l in KEY_LAYERS or len(layers) <= 3]
-
-    if not layers:
-        layers = agg.layers_analyzed[:3] if agg.layers_analyzed else []
+    if not agg.layers_analyzed:
+        return
+    # Use all analyzed layers (limit to first 6 for readability if too many)
+    layers = agg.layers_analyzed[:6] if len(agg.layers_analyzed) > 6 else agg.layers_analyzed
     if not layers:
         return
 
@@ -823,6 +819,19 @@ def visualize_attn_pair(
         except Exception as e:
             log(f"[attn_viz] QK analysis skipped: {e}")
 
+    # Head attribution visualizations (heatmap, bar chart)
+    if result.head_attribution is not None:
+        n_plots += visualize_head_attribution(result, output_dir)
+
+    # Head redundancy visualization (denoising vs noising gap)
+    if result.head_redundancy is not None:
+        n_plots += visualize_head_redundancy(result.head_redundancy, output_dir)
+
+    # Layer-position patching visualization
+    if result.layer_position is not None:
+        _plot_layer_position_heatmaps(result.layer_position, output_dir, mapping)
+        n_plots += 1
+
     if n_plots > 0:
         log(f"[attn_viz] Generated {n_plots} pair plots in {output_dir}")
 
@@ -954,6 +963,7 @@ def _plot_pair_attention_heatmaps(
 
         # Show heatmap
         im = ax.imshow(source_attn, aspect='auto', cmap='viridis')
+        ax.invert_yaxis()  # Head 0 at bottom
         ax.set_ylabel('Head')
         ax.set_title(f'Layer {layer}')
 
@@ -1339,6 +1349,7 @@ def _plot_pair_attention_sidebyside(
         # Clean heatmap
         ax_clean = axes[i, 0]
         im_clean = ax_clean.imshow(clean_attn, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
+        ax_clean.invert_yaxis()  # Head 0 at bottom
         ax_clean.set_ylabel('Head')
         ax_clean.set_title(f'Layer {layer} - Clean')
 
@@ -1351,6 +1362,7 @@ def _plot_pair_attention_sidebyside(
         # Corrupted heatmap
         ax_corr = axes[i, 1]
         im_corr = ax_corr.imshow(corr_attn, aspect='auto', cmap='viridis', vmin=0, vmax=vmax)
+        ax_corr.invert_yaxis()  # Head 0 at bottom
         ax_corr.set_ylabel('Head')
         ax_corr.set_title(f'Layer {layer} - Corrupted')
 
@@ -1425,6 +1437,7 @@ def _plot_pair_attention_diff(
         norm = TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
 
         im = ax.imshow(diff, aspect='auto', cmap=DIFF_CMAP, norm=norm)
+        ax.invert_yaxis()  # Head 0 at bottom
         ax.set_ylabel('Head')
         ax.set_title(f'Layer {layer}')
 
@@ -2034,3 +2047,341 @@ def _compute_logit_direction_for_attn(
         pass
 
     return None
+
+
+# =============================================================================
+# Head Attribution Visualizations
+# =============================================================================
+
+
+def visualize_head_attribution(
+    result: AttnPairResult,
+    output_dir: Path,
+) -> int:
+    """Generate head attribution visualizations for a single pair.
+
+    Creates:
+    1. Head attribution heatmap (Layer x Head Index)
+    2. Top heads bar chart with cumulative effect
+    3. Denoising vs noising scatter (if both available)
+
+    Args:
+        result: Attention analysis results with head_attribution
+        output_dir: Directory to save plots
+
+    Returns:
+        Number of plots generated
+    """
+    if result.head_attribution is None:
+        return 0
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    n_plots = 0
+
+    # Plot 1: Head attribution heatmap
+    if result.head_attribution.attribution_matrix is not None:
+        _plot_head_attribution_heatmap(
+            result.head_attribution,
+            output_dir / "head_attribution_heatmap.png",
+            title="Head Attribution: Denoising Recovery",
+        )
+        n_plots += 1
+
+    # Plot 2: Top heads bar chart
+    if result.head_attribution.results:
+        _plot_head_attribution_bar(
+            result.head_attribution,
+            output_dir / "head_attribution_bar.png",
+        )
+        n_plots += 1
+
+    return n_plots
+
+
+def _plot_head_attribution_heatmap(
+    head_attr: "HeadAttributionResults",
+    output_path: Path,
+    title: str = "Head-Level Patching",
+) -> None:
+    """Plot head attribution as a heatmap (Layer x Head Index).
+
+    Args:
+        head_attr: HeadAttributionResults with attribution_matrix
+        output_path: Where to save the plot
+        title: Plot title
+    """
+    from .attn_head_attribution import HeadAttributionResults
+
+    if head_attr.attribution_matrix is None:
+        return
+
+    matrix = head_attr.attribution_matrix
+    layers = head_attr.layers_analyzed
+    n_heads = head_attr.n_heads
+
+    fig, ax = plt.subplots(figsize=(max(12, n_heads * 0.4), max(4, len(layers) * 0.5)))
+
+    # Symmetric color scale centered at 0
+    vmax = max(abs(matrix.min()), abs(matrix.max()), 0.01)
+    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
+
+    im = ax.imshow(matrix, aspect="auto", cmap="RdBu_r", norm=norm, interpolation="nearest")
+    ax.invert_yaxis()  # Layer 0 at bottom
+
+    plt.colorbar(im, ax=ax, label="Attribution Score", shrink=0.8)
+
+    # Labels
+    ax.set_xticks(range(n_heads))
+    ax.set_xticklabels(range(n_heads), fontsize=8)
+    ax.set_yticks(range(len(layers)))
+    ax.set_yticklabels([f"L{l}" for l in layers], fontsize=10)
+
+    ax.set_xlabel("Head Index", fontsize=12)
+    ax.set_ylabel("Layer", fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight="bold")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_head_attribution_bar(
+    head_attr: "HeadAttributionResults",
+    output_path: Path,
+    n_top: int = 20,
+) -> None:
+    """Plot top heads by attribution with cumulative effect.
+
+    Args:
+        head_attr: HeadAttributionResults
+        output_path: Where to save the plot
+        n_top: Number of top heads to show
+    """
+    from .attn_head_attribution import HeadAttributionResults
+
+    top_heads = head_attr.get_top_heads(n_top)
+    if not top_heads:
+        return
+
+    labels = [h.label for h in top_heads]
+    scores = [h.attribution_score for h in top_heads]
+    abs_scores = [h.abs_score for h in top_heads]
+
+    # Cumulative percentage
+    total_abs = sum(abs_scores)
+    cumulative = np.cumsum(abs_scores) / total_abs * 100 if total_abs > 0 else np.zeros(len(abs_scores))
+
+    fig, ax1 = plt.subplots(figsize=(14, 6))
+
+    # Bar chart
+    colors = ['#4CAF50' if s >= 0 else '#F44336' for s in scores]
+    bars = ax1.bar(range(len(labels)), scores, color=colors, alpha=0.8, edgecolor="black")
+
+    ax1.set_xticks(range(len(labels)))
+    ax1.set_xticklabels(labels, rotation=45, ha="right", fontsize=10)
+    ax1.set_xlabel("Head", fontsize=12)
+    ax1.set_ylabel("Attribution Score", fontsize=12)
+    ax1.axhline(0, color="gray", linestyle="--", alpha=0.5)
+
+    # Cumulative line on secondary axis
+    ax2 = ax1.twinx()
+    ax2.plot(range(len(labels)), cumulative, "o-", color="#2196F3", linewidth=2, markersize=4, label="Cumulative %")
+    ax2.set_ylabel("Cumulative % of Total Effect", fontsize=12, color="#2196F3")
+    ax2.set_ylim(0, 105)
+    ax2.tick_params(axis="y", labelcolor="#2196F3")
+    ax2.legend(loc="upper right")
+
+    ax1.set_title(f"Top {len(labels)} Attention Heads by Attribution", fontsize=14, fontweight="bold")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
+    plt.close()
+
+
+def visualize_head_redundancy(
+    redundancy: "HeadSweepResults",
+    output_dir: Path,
+) -> int:
+    """Generate head redundancy visualizations.
+
+    Creates:
+    1. Head redundancy gap bar chart (sorted by gap magnitude)
+
+    Args:
+        redundancy: HeadSweepResults from run_head_redundancy_analysis
+        output_dir: Directory to save plots
+
+    Returns:
+        Number of plots generated
+    """
+    from .attn_head_attribution import HeadSweepResults
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    n_plots = 0
+
+    if redundancy.results:
+        _plot_head_redundancy_gap(
+            redundancy,
+            output_dir / "head_redundancy_gap.png",
+        )
+        n_plots += 1
+
+    return n_plots
+
+
+def _plot_head_redundancy_gap(
+    redundancy: "HeadSweepResults",
+    output_path: Path,
+    n_top: int = 20,
+) -> None:
+    """Plot head redundancy gap sorted by magnitude.
+
+    Shows denoising - noising gap per head:
+    - Small gap = bottleneck (critical, unique info)
+    - Large gap = redundant (compensatable)
+
+    Args:
+        redundancy: HeadSweepResults
+        output_path: Where to save the plot
+        n_top: Number of heads to show
+    """
+    from .attn_head_attribution import HeadSweepResults
+
+    sorted_heads = redundancy.get_sorted_by_gap(descending=True)[:n_top]
+    if not sorted_heads:
+        return
+
+    labels = [h.label for h in sorted_heads]
+    gaps = [h.gap for h in sorted_heads]
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Color by gap sign: positive = unique info (blue), negative = redundant (red)
+    colors = ['#5B9BD5' if g >= 0 else '#C65B5B' for g in gaps]
+    bars = ax.bar(range(len(labels)), gaps, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
+
+    ax.axhline(0, color='black', linestyle='-', linewidth=1)
+
+    # Add annotation box
+    textstr = "Small gap = bottleneck (critical)\nLarge gap = redundant (compensatable)"
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    ax.text(0.02, 0.98, textstr, transform=ax.transAxes, fontsize=9,
+            verticalalignment='top', bbox=props)
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=10)
+    ax.set_xlabel("Head (sorted by gap magnitude)", fontsize=12)
+    ax.set_ylabel("Denoising - Noising Gap", fontsize=12)
+    ax.set_title("Head Redundancy Analysis: Denoising vs Noising Gap", fontsize=14, fontweight='bold')
+    ax.grid(axis='y', alpha=GRID_ALPHA)
+
+    # Add legend
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#5B9BD5', alpha=0.8, label='Positive: denoising > noising (unique info)'),
+        Patch(facecolor='#C65B5B', alpha=0.8, label='Negative: noising > denoising (redundant)'),
+    ]
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
+    plt.close()
+
+
+def _get_position_label_for_layer_pos(pos: int, mapping: "SamplePositionMapping | None") -> str:
+    """Get semantic label for a position if available, else fall back to P{pos}."""
+    if mapping:
+        pos_info = mapping.get_position(pos)
+        if pos_info and pos_info.format_pos:
+            return pos_info.format_pos
+    return f"P{pos}"
+
+
+def _plot_layer_position_heatmaps(
+    layer_position: LayerPositionResult,
+    output_dir: Path,
+    position_mapping: "SamplePositionMapping | None" = None,
+) -> None:
+    """Plot layer-position fine patching heatmap for attn_out.
+
+    Rows: layer, Columns: position
+    Color: patching effect
+    True 2D localization (not outer product approximation)
+
+    Args:
+        layer_position: LayerPositionResult from run_layer_position_patching_single
+        output_dir: Directory to save plots
+        position_mapping: Optional mapping for semantic position labels
+    """
+    if layer_position.denoising_grid is None:
+        return
+
+    component = layer_position.component
+    layers = layer_position.layers
+    positions = layer_position.positions
+    n_layers = len(layers)
+    n_pos = len(positions)
+
+    # Denoising heatmap
+    fig, ax = plt.subplots(figsize=(max(10, n_pos * 0.15), max(6, n_layers * 0.3)))
+    im = ax.imshow(
+        layer_position.denoising_grid,
+        aspect="auto",
+        cmap="RdBu_r",
+        interpolation="nearest",
+    )
+    ax.invert_yaxis()  # Layer 0 at bottom
+    plt.colorbar(im, ax=ax, label="Denoising Recovery")
+
+    ax.set_yticks(range(n_layers))
+    ax.set_yticklabels([f"L{l}" for l in layers], fontsize=8)
+
+    pos_step = max(1, n_pos // 15)
+    ax.set_xticks(range(0, n_pos, pos_step))
+    ax.set_xticklabels(
+        [_get_position_label_for_layer_pos(positions[i], position_mapping) for i in range(0, n_pos, pos_step)],
+        fontsize=8,
+        rotation=45,
+        ha="right",
+    )
+
+    ax.set_xlabel("Position", fontsize=11)
+    ax.set_ylabel("Layer", fontsize=11)
+    ax.set_title(f"Layer x Position Fine Patching: {component} (Denoising)", fontsize=12, fontweight="bold")
+
+    plt.tight_layout()
+    finalize_plot(output_dir / f"layer_position_{component}_denoising.png")
+
+    # Noising heatmap
+    if layer_position.noising_grid is not None:
+        fig, ax = plt.subplots(figsize=(max(10, n_pos * 0.15), max(6, n_layers * 0.3)))
+        im = ax.imshow(
+            layer_position.noising_grid,
+            aspect="auto",
+            cmap="RdBu_r",
+            interpolation="nearest",
+        )
+        ax.invert_yaxis()  # Layer 0 at bottom
+        plt.colorbar(im, ax=ax, label="Noising Disruption")
+
+        ax.set_yticks(range(n_layers))
+        ax.set_yticklabels([f"L{l}" for l in layers], fontsize=8)
+
+        ax.set_xticks(range(0, n_pos, pos_step))
+        ax.set_xticklabels(
+            [_get_position_label_for_layer_pos(positions[i], position_mapping) for i in range(0, n_pos, pos_step)],
+            fontsize=8,
+            rotation=45,
+            ha="right",
+        )
+
+        ax.set_xlabel("Position", fontsize=11)
+        ax.set_ylabel("Layer", fontsize=11)
+        ax.set_title(f"Layer x Position Fine Patching: {component} (Noising)", fontsize=12, fontweight="bold")
+
+        plt.tight_layout()
+        finalize_plot(output_dir / f"layer_position_{component}_noising.png")

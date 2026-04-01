@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ...common import profile
 from ...common.device_utils import clear_gpu_memory
-from ...common.logging import log, log_progress
+from ...common.logging import log
 from ...activation_patching.coarse import (
     run_coarse_act_patching,
     CoarseActPatchAggregatedResults,
@@ -23,12 +23,16 @@ from .diffmeans import (
     DiffMeansConfig,
 )
 from .mlp import run_mlp_analysis, MLPAggregatedResults, MLPAnalysisConfig
-from .attn import run_attn_analysis, AttnAggregatedResults, AttnAnalysisConfig
-from .fine import (
-    FineGrainedConfig,
-    run_fine_analysis,
-    compute_attention_patching_correlation,
+from .attn import (
+    run_attn_analysis,
+    AttnAggregatedResults,
+    AttnAnalysisConfig,
+    run_head_attribution,
+    run_head_position_patching,
+    run_head_patching_sweep,
+    HeadAttributionResults,
 )
+from .fine import FineGrainedConfig, run_fine_analysis, run_layer_position_patching_single
 from .analysis import (
     ProcessedResults,
     process_attribution_agreement,
@@ -71,15 +75,36 @@ def step_preference_data(
             save_data=True,
         )
 
+
+def step_analysis(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
+    """Generate and save analysis artifacts (contrastive prefs, position mappings, etc.)."""
+
+    analysis_dir = ctx.get_analysis_dir()
+
+    # Check if analysis already exists when caching
+    horizon_analysis_path = analysis_dir / "horizon_analysis.json"
+    pair_analysis_path = analysis_dir / "pair_analysis.json"
+    contrastive_prefs_exist = (
+        ctx.output_dir / "pairs" / "pair_0" / "contrastive_preference.json"
+    ).exists()
+
+    if (
+        try_loading_data
+        and horizon_analysis_path.exists()
+        and pair_analysis_path.exists()
+        and contrastive_prefs_exist
+    ):
+        log("[analysis] Using cached analysis artifacts")
+        print_analysis(analyze_preferences(ctx.pref_data))
+        return
+
     print_analysis(analyze_preferences(ctx.pref_data))
 
-    # Generate analysis (always regenerate to ensure consistency with current pairs)
+    # Generate analysis
     ctx.save_all_contrastive_prefs()
     ctx.save_all_position_mappings(skip_viz=ctx.only_viz_agg)
-    save_horizon_analysis(
-        build_horizon_analysis(ctx.pref_pairs), ctx.get_analysis_dir()
-    )
-    save_pair_analysis(build_pair_analysis(ctx.pref_pairs), ctx.get_analysis_dir())
+    save_horizon_analysis(build_horizon_analysis(ctx.pref_pairs), analysis_dir)
+    save_pair_analysis(build_pair_analysis(ctx.pref_pairs), analysis_dir)
 
 
 @profile("step_attrib")
@@ -115,7 +140,7 @@ def step_attrib(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
                 ctx.attrib_agg.add(ctx.attrib_patching[pair_idx])
             if viz_per_pair:
                 ctx.viz_attrib_pair(pair_idx)
-            log(f"[attr] Loaded cached pair {pair_idx + 1}")
+            log(f"[attrib] Loaded cached pair {pair_idx + 1}")
             # Clean up after viz to free memory
             if pair_idx in ctx.attrib_patching:
                 del ctx.attrib_patching[pair_idx]
@@ -125,24 +150,27 @@ def step_attrib(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
             continue
         if viz_only:
             continue
-        log_progress(pair_idx + 1, len(ctx.pairs), "[attr] Processing pair ")
+        log(f"[attrib] Processing pair {pair_idx + 1}/{len(ctx.pairs)}", gap=2)
         result = attribute_pair(ctx.runner, pair, settings=config)
         ctx.attrib_patching[pair_idx] = result
         ctx.attrib_agg.add(result)
+        log(f"[attrib] Pair {pair_idx + 1}: computed attribution")
         ctx.save_attrib_pair(pair_idx)
+        log(f"[attrib] Saved pair {pair_idx + 1}")
         if viz_per_pair:
             ctx.viz_attrib_pair(pair_idx)
+            log(f"[attrib] Generated viz for pair {pair_idx + 1}")
         cleanup_pair(ctx.attrib_patching, pair_idx, pair)
 
     if viz_only:
         if viz_agg:
             ctx.make_attrib_viz(config)()
-            log("[attr] Generated visualizations from cache")
+            log("[attrib] Generated visualizations from cache")
         ctx.unload_attrib_agg()
         return
 
     log(
-        f"[attr] Attribution: {len(cached)} cached, {len(ctx.attrib_agg.denoising) + len(ctx.attrib_agg.noising)} total"
+        f"[attrib] Attribution: {len(cached)} cached, {len(ctx.attrib_agg.denoising) + len(ctx.attrib_agg.noising)} total"
     )
     ctx.attrib_agg.print_summary()
     ctx.save_attrib_agg()
@@ -154,7 +182,7 @@ def step_attrib(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
 
     if viz_agg:
         ctx.make_attrib_viz(config)()
-        log("[attr] Generated attribution visualizations")
+        log("[attrib] Generated attribution visualizations")
     ctx.unload_attrib_agg()
 
 
@@ -211,7 +239,8 @@ def step_coarse(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
                 continue
             computed_any = True
             log(
-                f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}"
+                f"[coarse] Processing pair {pair_idx + 1}/{len(ctx.pairs)}, component={component}",
+                gap=2,
             )
             result = run_coarse_act_patching(
                 ctx.runner,
@@ -223,9 +252,12 @@ def step_coarse(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
             result.sample_id = pair_idx
             ctx.coarse_patching[(pair_idx, component)] = result
             ctx.coarse_agg_by_component[component].add(result)
+            log(f"[coarse] Pair {pair_idx + 1}: computed {component}")
             ctx.save_coarse_pair(pair_idx, component)
+            log(f"[coarse] Saved pair {pair_idx + 1}, component={component}")
             if viz_per_pair:
                 ctx.viz_coarse_pair(pair_idx, component)
+                log(f"[coarse] Generated viz for pair {pair_idx + 1}, component={component}")
             cleanup_pair(ctx.coarse_patching, (pair_idx, component), pair)
 
         if not viz_only:
@@ -247,7 +279,9 @@ def step_coarse(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
                 key = (pair_idx, component)
                 if key in ctx.coarse_patching:
                     del ctx.coarse_patching[key]
-        log(f"[coarse] Generated component_comparison for {len(all_cached_pairs)} pairs")
+        log(
+            f"[coarse] Generated component_comparison for {len(all_cached_pairs)} pairs"
+        )
 
     if viz_only:
         if viz_agg and ctx.coarse_agg_by_component:
@@ -293,7 +327,9 @@ def step_diffmeans(ctx: ExperimentContext, try_loading_data: bool = False) -> No
         ctx.diffmeans_agg = DiffMeansAggregatedResults()
 
     # In viz_only mode, always load cached pairs (no_cache only affects computation)
-    load_cache = viz_only or (try_loading_data and not diffmeans_cfg.get("no_cache", False))
+    load_cache = viz_only or (
+        try_loading_data and not diffmeans_cfg.get("no_cache", False)
+    )
     cached = set(ctx.detect_cached_diffmeans_pairs()) if load_cache else set()
 
     for pair_idx in sorted(cached):
@@ -312,7 +348,7 @@ def step_diffmeans(ctx: ExperimentContext, try_loading_data: bool = False) -> No
             continue
         if viz_only:
             continue
-        log_progress(pair_idx + 1, len(ctx.pairs), "[diffmeans] Processing pair ")
+        log(f"[diffmeans] Processing pair {pair_idx + 1}/{len(ctx.pairs)}", gap=2)
         clean_mapping, corrupted_mapping = ctx.position_mappings[pair_idx]
         result = run_diffmeans_analysis(
             ctx.runner,
@@ -322,11 +358,14 @@ def step_diffmeans(ctx: ExperimentContext, try_loading_data: bool = False) -> No
             pair_idx=pair_idx,
             positions=config.positions,
         )
+        log(f"[diffmeans] Pair {pair_idx + 1}: {len(result.position_results)} positions analyzed")
         ctx.diffmeans_patching[pair_idx] = result
         ctx.diffmeans_agg.add(result)
         ctx.save_diffmeans_pair(pair_idx)
+        log(f"[diffmeans] Saved pair {pair_idx + 1}")
         if viz_per_pair:
             ctx.viz_diffmeans_pair(pair_idx)
+            log(f"[diffmeans] Generated viz for pair {pair_idx + 1}")
         cleanup_pair(ctx.diffmeans_patching, pair_idx, pair)
 
     if viz_only:
@@ -379,7 +418,8 @@ def step_mlp(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
             if not viz_only:
                 ctx.mlp_agg.add(ctx.mlp[pair_idx])
             if viz_per_pair:
-                ctx.viz_mlp_pair(pair_idx)
+                mapping = ctx.get_position_mapping(pair_idx, sample="long")
+                ctx.viz_mlp_pair(pair_idx, mapping)
             log(f"[mlp] Loaded cached pair {pair_idx + 1}")
             # Clean up after viz to free memory
             if pair_idx in ctx.mlp:
@@ -390,19 +430,46 @@ def step_mlp(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
             continue
         if viz_only:
             continue
-        log_progress(pair_idx + 1, len(ctx.pairs), "[mlp] Processing pair ")
+        log(f"[mlp] Processing pair {pair_idx + 1}/{len(ctx.pairs)}", gap=2)
+        clean_mapping, corrupted_mapping = ctx.position_mappings[pair_idx]
         result = run_mlp_analysis(
             ctx.runner,
             pair,
+            clean_mapping=clean_mapping,
+            corrupted_mapping=corrupted_mapping,
             pair_idx=pair_idx,
             layers=config.layers,
+            positions=config.positions,
             n_top_neurons=config.n_top_neurons,
         )
+
+        # Layer x position patching for mlp_out
+        if config.layer_position_enabled and corrupted_mapping:
+            lp_positions = []
+            for pos_name in config.layer_position_positions:
+                lp_positions.extend(corrupted_mapping.named_positions.get(pos_name, []))
+            lp_positions = sorted(set(lp_positions))
+
+            if lp_positions:
+                log(f"[mlp][layer_pos] Running for {len(config.layers)} layers x {len(lp_positions)} positions...")
+                lp_result = run_layer_position_patching_single(
+                    ctx.runner, pair,
+                    component="mlp_out",
+                    layers=config.layers,
+                    positions=lp_positions,
+                )
+                if lp_result is not None:
+                    result.layer_position = lp_result
+                    log(f"[mlp][layer_pos] Complete")
+
         ctx.mlp[pair_idx] = result
         ctx.mlp_agg.add(result)
+        log(f"[mlp] Pair {pair_idx + 1}: analyzed {len(config.layers)} layers")
         ctx.save_mlp_pair(pair_idx)
+        log(f"[mlp] Saved pair {pair_idx + 1}")
         if viz_per_pair:
-            ctx.viz_mlp_pair(pair_idx)
+            ctx.viz_mlp_pair(pair_idx, corrupted_mapping)
+            log(f"[mlp] Generated viz for pair {pair_idx + 1}")
         cleanup_pair(ctx.mlp, pair_idx, pair)
 
     if viz_only:
@@ -466,18 +533,85 @@ def step_attn(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
         if viz_only:
             continue
         mapping = ctx.get_position_mapping(pair_idx)
-        log_progress(pair_idx + 1, len(ctx.pairs), "[attn] Processing pair ")
+        log(f"[attn] Processing pair {pair_idx + 1}/{len(ctx.pairs)}", gap=2)
         if mapping is None:
             log(f"[attn] Pair {pair_idx}: No position mapping found, skipping")
             continue
+
+        # 1. Attention pattern analysis
         result = run_attn_analysis(
             ctx.runner, pair, mapping, pair_idx=pair_idx, config=config
         )
         ctx.attn[pair_idx] = result
         ctx.attn_agg.add(result)
+        log(f"[attn] Pair {pair_idx + 1}: analyzed {len(config.layers)} layers")
+
+        # 2. Head attribution (if enabled)
+        if config.head_attribution_enabled:
+            log(f"[attn][head_attrib] Running for pair {pair_idx + 1}...")
+            head_attrib = run_head_attribution(
+                ctx.runner, pair,
+                layers=config.layers,
+            )
+            # Store in attn result for now
+            result.head_attribution = head_attrib
+            top_heads = head_attrib.get_top_heads(config.n_top_heads_for_position)
+            log(f"[attn][head_attrib] Top heads: {[h.label for h in top_heads[:5]]}")
+
+            # 3. Position patching for top heads (if enabled)
+            if config.position_patching_enabled and top_heads:
+                # Resolve semantic positions
+                positions = []
+                for pos_name in config.position_patching_positions:
+                    positions.extend(mapping.named_positions.get(pos_name, []))
+                positions = sorted(set(positions))
+
+                if positions:
+                    log(f"[attn][pos_patch] Running for {len(top_heads[:config.n_top_heads_for_position])} heads at {len(positions)} positions...")
+                    pos_results = run_head_position_patching(
+                        ctx.runner, pair, top_heads,
+                        positions=positions,
+                        position_names=config.position_patching_positions,
+                        n_heads=config.n_top_heads_for_position,
+                    )
+                    result.head_position_patching = pos_results
+                    log(f"[attn][pos_patch] Complete")
+
+            # 4. Head redundancy analysis (if enabled)
+            if config.head_redundancy_enabled:
+                log(f"[attn][redundancy] Running head patching sweep...")
+                sweep = run_head_patching_sweep(
+                    ctx.runner, pair,
+                    layers=config.layers,
+                    top_n=config.head_redundancy_top_n,
+                )
+                result.head_redundancy = sweep
+                log(f"[attn][redundancy] Complete: {len(sweep.results)} heads analyzed")
+
+            # 5. Layer-position patching for attn_out (if enabled)
+            if config.layer_position_enabled:
+                # Resolve semantic positions
+                lp_positions = []
+                for pos_name in config.layer_position_positions:
+                    lp_positions.extend(mapping.named_positions.get(pos_name, []))
+                lp_positions = sorted(set(lp_positions))
+
+                if lp_positions:
+                    log(f"[attn][layer_pos] Running for {len(config.layers)} layers x {len(lp_positions)} positions...")
+                    lp_result = run_layer_position_patching_single(
+                        ctx.runner, pair,
+                        component="attn_out",
+                        layers=config.layers,
+                        positions=lp_positions,
+                    )
+                    result.layer_position = lp_result
+                    log(f"[attn][layer_pos] Complete")
+
         ctx.save_attn_pair(pair_idx, store_patterns=config.store_patterns)
+        log(f"[attn] Saved pair {pair_idx + 1}")
         if viz_per_pair:
             ctx.viz_attn_pair(pair_idx, mapping)
+            log(f"[attn] Generated viz for pair {pair_idx + 1}")
         pair.pop_heavy()
         clear_gpu_memory(aggressive=True)
 
@@ -538,14 +672,35 @@ def step_fine(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
             continue
         if viz_only:
             continue
-        mapping = ctx.get_position_mapping(pair_idx)
-        log_progress(pair_idx + 1, len(ctx.pairs), "[fine] Processing pair ")
-        result = run_fine_analysis(ctx.runner, pair, config)
+        # Get position mappings for both trajectories
+        # long_term = corrupted (has time_horizon), short_term = clean
+        clean_mapping = ctx.get_position_mapping(pair_idx, sample="short")
+        corrupted_mapping = ctx.get_position_mapping(pair_idx, sample="long")
+
+        # Get top heads from step_attn head attribution (if available)
+        top_heads = None
+        attn_result = ctx.attn.get(pair_idx)
+        if attn_result is None:
+            # Try loading from cache
+            ctx.load_attn_pair(pair_idx)
+            attn_result = ctx.attn.get(pair_idx)
+        if attn_result and attn_result.head_attribution:
+            top_heads = attn_result.head_attribution.get_top_heads(config.n_top_source_heads * 2)
+            log(f"[fine] Using {len(top_heads)} top heads from step_attn")
+
+        log(f"[fine] Processing pair {pair_idx + 1}/{len(ctx.pairs)}", gap=2)
+        result = run_fine_analysis(
+            ctx.runner, pair, config,
+            top_heads=top_heads,
+        )
         result.sample_id = pair_idx
         ctx.fine[pair_idx] = result
+        log(f"[fine] Pair {pair_idx + 1}: computed fine-grained analysis")
         ctx.save_fine_pair(pair_idx)
+        log(f"[fine] Saved pair {pair_idx + 1}")
         if viz_per_pair:
-            ctx.viz_fine_pair(pair_idx, mapping)
+            ctx.viz_fine_pair(pair_idx, corrupted_mapping)
+            log(f"[fine] Generated viz for pair {pair_idx + 1}")
         pair.pop_heavy()
         clear_gpu_memory(aggressive=True)
 
@@ -556,19 +711,7 @@ def step_fine(ctx: ExperimentContext, try_loading_data: bool = False) -> None:
         ctx.unload_fine_agg()
         return
 
-    log(
-        f"[fine] Fine patching: {len(cached)} cached, {len(ctx.fine)} total"
-    )
-
-    for pair_idx in ctx.fine:
-        fine_result = ctx.fine[pair_idx]
-        attn_result = ctx.attn.get(pair_idx)
-        if fine_result.head_sweep and attn_result:
-            fine_result.attention_correlations = compute_attention_patching_correlation(
-                fine_result.head_sweep, attn_result, n_heads=10
-            )
-            ctx.save_fine_pair(pair_idx)
-            log(f"[fine] Computed attention-patching correlation for pair {pair_idx}")
+    log(f"[fine] Fine patching: {len(cached)} cached, {len(ctx.fine)} total")
 
     if viz_agg:
         ctx.make_fine_viz(config)()
@@ -590,7 +733,13 @@ def run_experiment(
     # Save config for future cache runs
     cfg.save(ctx.output_dir)
 
+    # Base
+
     step_preference_data(ctx, try_loading_data=True)
+
+    step_analysis(ctx, try_loading_data=try_loading_data)
+
+    # Modular Steps
 
     step_attrib(ctx, try_loading_data=try_loading_data)
 

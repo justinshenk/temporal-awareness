@@ -7,11 +7,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from ....common.logging import log
 from ....common.math import cosine_similarity
 from ....inference.inference_utils import get_all_activations
-from ...common.semantic_positions import ALL_TRAJECTORY_POSITIONS
-from .diffmeans_results import DiffMeansLayerResult, DiffMeansPairResult, PositionPair, ResolvedPositions
+from ...common.semantic_positions import RESPONSE_POSITIONS
+from .diffmeans_results import (
+    DiffMeansLayerResult,
+    DiffMeansPairResult,
+    PositionPair,
+    ResolvedPositions,
+)
 from .diffmeans_rotation import (
     compute_layer_direction_similarity,
     compute_rotation_decomposition,
@@ -47,25 +51,19 @@ def run_diffmeans_analysis(
         clean_mapping: SamplePositionMapping for clean trajectory
         corrupted_mapping: SamplePositionMapping for corrupted trajectory
         pair_idx: Pair index for tracking
-        positions: Semantic position names to analyze (default: ALL_TRAJECTORY_POSITIONS)
+        positions: Semantic position names to analyze (default: RESPONSE_POSITIONS)
 
     Returns:
         DiffMeansPairResult with per-layer analysis
     """
     if positions is None:
-        positions = list(ALL_TRAJECTORY_POSITIONS)
+        positions = list(RESPONSE_POSITIONS)
 
     n_layers = runner.n_layers
-    log(f"[diffmeans] Model has {n_layers} layers")
 
     # Get activations for clean and corrupted
     clean_acts = get_all_activations(runner, pair.clean_traj.token_ids)
     corrupted_acts = get_all_activations(runner, pair.corrupted_traj.token_ids)
-
-    # Debug: log which layers were captured
-    if clean_acts.get("resid_post"):
-        captured_layers = sorted(clean_acts["resid_post"].keys())
-        log(f"[diffmeans] Captured layers: {min(captured_layers)} to {max(captured_layers)} ({len(captured_layers)} total)")
 
     # Resolve semantic positions to absolute positions
     resolved_positions = _resolve_positions(
@@ -92,7 +90,9 @@ def run_diffmeans_analysis(
 
     for format_pos, pos_pairs in resolved_positions.items():
         # Collect diff vectors for each rel_pos
-        per_rel_pos_diffs: list[tuple[int, dict, dict, dict]] = []  # (rel_pos, resid, attn, mlp)
+        per_rel_pos_diffs: list[
+            tuple[int, dict, dict, dict]
+        ] = []  # (rel_pos, resid, attn, mlp)
 
         for rel_pos, pos_pair in enumerate(pos_pairs):
             clean_pos = pos_pair.clean_pos
@@ -109,25 +109,33 @@ def run_diffmeans_analysis(
             diff_mlp_out = {}
 
             for layer in range(n_layers):
-                if layer in clean_acts.get("resid_post", {}) and layer in corrupted_acts.get("resid_post", {}):
+                if layer in clean_acts.get(
+                    "resid_post", {}
+                ) and layer in corrupted_acts.get("resid_post", {}):
                     clean_vec = clean_acts["resid_post"][layer][clean_pos]
                     corrupted_vec = corrupted_acts["resid_post"][layer][corrupted_pos]
                     diff_resid_post[layer] = clean_vec - corrupted_vec
 
-                if layer in clean_acts.get("attn_out", {}) and layer in corrupted_acts.get("attn_out", {}):
+                if layer in clean_acts.get(
+                    "attn_out", {}
+                ) and layer in corrupted_acts.get("attn_out", {}):
                     diff_attn_out[layer] = (
                         clean_acts["attn_out"][layer][clean_pos]
                         - corrupted_acts["attn_out"][layer][corrupted_pos]
                     )
 
-                if layer in clean_acts.get("mlp_out", {}) and layer in corrupted_acts.get("mlp_out", {}):
+                if layer in clean_acts.get(
+                    "mlp_out", {}
+                ) and layer in corrupted_acts.get("mlp_out", {}):
                     diff_mlp_out[layer] = (
                         clean_acts["mlp_out"][layer][clean_pos]
                         - corrupted_acts["mlp_out"][layer][corrupted_pos]
                     )
 
             if diff_resid_post:
-                per_rel_pos_diffs.append((rel_pos, diff_resid_post, diff_attn_out, diff_mlp_out))
+                per_rel_pos_diffs.append(
+                    (rel_pos, diff_resid_post, diff_attn_out, diff_mlp_out)
+                )
 
         if not per_rel_pos_diffs:
             continue
@@ -168,9 +176,15 @@ def run_diffmeans_analysis(
             return v
 
         for layer in range(n_layers):
-            resid_vecs = [_to_tensor(d[1][layer]) for d in per_rel_pos_diffs if layer in d[1]]
-            attn_vecs = [_to_tensor(d[2][layer]) for d in per_rel_pos_diffs if layer in d[2]]
-            mlp_vecs = [_to_tensor(d[3][layer]) for d in per_rel_pos_diffs if layer in d[3]]
+            resid_vecs = [
+                _to_tensor(d[1][layer]) for d in per_rel_pos_diffs if layer in d[1]
+            ]
+            attn_vecs = [
+                _to_tensor(d[2][layer]) for d in per_rel_pos_diffs if layer in d[2]
+            ]
+            mlp_vecs = [
+                _to_tensor(d[3][layer]) for d in per_rel_pos_diffs if layer in d[3]
+            ]
 
             if resid_vecs:
                 combined_resid[layer] = torch.stack(resid_vecs).mean(dim=0)

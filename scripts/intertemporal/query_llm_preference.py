@@ -57,11 +57,13 @@ def get_args():
         "If not provided, uses built-in DEFAULT_QUERY_CONFIG.",
     )
     parser.add_argument(
+        "--dataset",
         "--datasets",
+        dest="datasets",
         type=str,
         nargs="*",
         default=None,
-        help="Dataset IDs to query. Required if not using a config file.",
+        help="Dataset identifier(s): ID, path, filename, or directory name.",
     )
     parser.add_argument(
         "--output",

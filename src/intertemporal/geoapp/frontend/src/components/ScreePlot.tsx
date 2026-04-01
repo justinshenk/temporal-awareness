@@ -22,6 +22,14 @@ const LAYER_COLORS = [
   '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722',
 ];
 
+// Colors for different components
+const COMPONENT_COLORS: Record<string, string> = {
+  'resid_pre': '#E91E63',   // Pink
+  'attn_out': '#2196F3',    // Blue
+  'mlp_out': '#4CAF50',     // Green
+  'resid_post': '#FF9800',  // Orange
+};
+
 export const ScreePlot: React.FC<ScreePlotProps> = ({
   data,
   isLoading = false,
@@ -71,9 +79,9 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
     );
   }
 
-  const width = 600;
-  const height = 400;
-  const padding = { top: 40, right: 120, bottom: 50, left: 60 };
+  const width = 800;
+  const height = 500;
+  const padding = { top: 50, right: 150, bottom: 60, left: 80 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
@@ -81,10 +89,10 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
   const yScale = (v: number) => padding.top + plotHeight - (v / yMax) * plotHeight;
 
   return (
-    <div className={`bg-[#faf8f5] dark:bg-[#1a1613] ${className}`}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+    <div className={`flex items-center justify-center w-full h-full bg-[#faf8f5] dark:bg-[#1a1613] ${className}`}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" style={{ minWidth: '600px', minHeight: '400px' }}>
         {/* Title */}
-        <text x={width / 2} y={20} textAnchor="middle" className="text-sm font-semibold fill-gray-700 dark:fill-gray-200">
+        <text x={width / 2} y={25} textAnchor="middle" className="text-base font-semibold fill-gray-700 dark:fill-gray-200">
           Scree Plot: Cumulative Variance Explained
         </text>
 
@@ -123,7 +131,7 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
           y2={height - padding.bottom}
           className="stroke-gray-600 dark:stroke-gray-400"
         />
-        <text x={width / 2} y={height - 10} textAnchor="middle" className="text-xs fill-gray-600 dark:fill-gray-400">
+        <text x={width / 2} y={height - 15} textAnchor="middle" className="text-sm fill-gray-600 dark:fill-gray-400">
           Number of Components
         </text>
         {Array.from({ length: maxComponents }, (_, i) => (
@@ -150,11 +158,11 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
           className="stroke-gray-600 dark:stroke-gray-400"
         />
         <text
-          x={15}
+          x={20}
           y={height / 2}
           textAnchor="middle"
-          transform={`rotate(-90, 15, ${height / 2})`}
-          className="text-xs fill-gray-600 dark:fill-gray-400"
+          transform={`rotate(-90, 20, ${height / 2})`}
+          className="text-sm fill-gray-600 dark:fill-gray-400"
         >
           Cumulative Variance Explained
         </text>
@@ -175,7 +183,8 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
 
         {/* Plot lines */}
         {filteredSeries.map((series) => {
-          const color = LAYER_COLORS[series.layer % LAYER_COLORS.length];
+          // Use component color if available, fallback to layer color
+          const color = COMPONENT_COLORS[series.component] || LAYER_COLORS[series.layer % LAYER_COLORS.length];
           const points = series.values.map((v, i) => `${xScale(i)},${yScale(v)}`).join(' ');
 
           return (
@@ -204,12 +213,12 @@ export const ScreePlot: React.FC<ScreePlotProps> = ({
         {/* Legend */}
         <g transform={`translate(${width - padding.right + 10}, ${padding.top})`}>
           {filteredSeries.slice(0, 8).map((series, idx) => {
-            const color = LAYER_COLORS[series.layer % LAYER_COLORS.length];
+            const color = COMPONENT_COLORS[series.component] || LAYER_COLORS[series.layer % LAYER_COLORS.length];
             return (
               <g key={series.label} transform={`translate(0, ${idx * 16})`}>
                 <line x1={0} x2={20} y1={0} y2={0} stroke={color} strokeWidth={2} />
                 <circle cx={10} cy={0} r={3} fill={color} />
-                <text x={25} y={4} className="text-[9px] fill-gray-600 dark:fill-gray-400">
+                <text x={25} y={4} className="text-[11px] font-medium" fill={color}>
                   {series.label}
                 </text>
               </g>

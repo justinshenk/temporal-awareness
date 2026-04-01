@@ -46,6 +46,7 @@ interface InfoPanelProps {
   selectedSample: SampleInfo | null;
   isLoading?: boolean;
   onClose?: () => void;
+  onRandomSelect?: () => void;
   className?: string;
   /** Section markers from config (e.g., {situation_marker: "SITUATION:"}) */
   markers?: Record<string, string>;
@@ -96,6 +97,22 @@ const CloseIcon = () => (
       strokeWidth={2}
       d="M6 18L18 6M6 6l12 12"
     />
+  </svg>
+);
+
+const DiceIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+    <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+    <circle cx="16" cy="8" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    <circle cx="8" cy="16" r="1.5" fill="currentColor" />
+    <circle cx="16" cy="16" r="1.5" fill="currentColor" />
   </svg>
 );
 
@@ -407,6 +424,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
   selectedSample,
   isLoading = false,
   onClose,
+  onRandomSelect,
   className = '',
   markers,
 }) => {
@@ -428,16 +446,29 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
           <CardTitle className="text-sm">
             {selectedSample ? `Sample #${selectedSample.idx}` : 'Selected Sample'}
           </CardTitle>
-          {onClose && selectedSample && (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<CloseIcon />}
-              onClick={onClose}
-              aria-label="Clear selection"
-              className="!p-1"
-            />
-          )}
+          <div className="flex items-center gap-1">
+            {onRandomSelect && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<DiceIcon />}
+                onClick={onRandomSelect}
+                aria-label="Choose random sample"
+                className="!p-1"
+                title="Choose random sample"
+              />
+            )}
+            {onClose && selectedSample && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<CloseIcon />}
+                onClick={onClose}
+                aria-label="Clear selection"
+                className="!p-1"
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent className="py-2">
           {isLoading ? (
@@ -557,9 +588,19 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
                   />
                 </svg>
               </div>
-              <p className="text-sm text-[#1a1613]/50">
+              <p className="text-sm text-[#1a1613]/50 mb-3">
                 Click on a point to see details
               </p>
+              {onRandomSelect && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<DiceIcon />}
+                  onClick={onRandomSelect}
+                >
+                  Choose Random
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

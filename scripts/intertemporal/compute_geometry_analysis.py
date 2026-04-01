@@ -428,7 +428,8 @@ def run_embeddings(data_dir: Path, keys: list[str], methods: list[str], force: b
     log.info(f"  {len(keys_to_compute)} targets need computation, {len(keys) - len(keys_to_compute)} cached")
 
     # Use parallel processing with limited workers to avoid memory issues
-    max_workers = min(4, os.cpu_count() or 1)
+    # Reduce to 2 workers for better memory stability
+    max_workers = min(2, os.cpu_count() or 1)
     log.info(f"  Using {max_workers} parallel workers")
 
     # Process in batches for progress logging
@@ -490,7 +491,10 @@ def run_embeddings(data_dir: Path, keys: list[str], methods: list[str], force: b
 
 
 def run_trajectories(data_dir: Path, force: bool) -> None:
-    """Compute trajectories from PCA embeddings. Memory-mapped reads."""
+    """Compute trajectories from PCA embeddings. Memory-mapped reads.
+
+    Saves PC1 and PC2 values for 1D and 2D trajectory visualizations.
+    """
     traj = data_dir / "analysis" / "trajectories"
     pca = data_dir / "analysis" / "embeddings" / "pca"
     traj.mkdir(parents=True, exist_ok=True)
@@ -501,20 +505,31 @@ def run_trajectories(data_dir: Path, force: bool) -> None:
             f = traj / f"layers_{c}_{p}.npz"
             if not force and f.exists():
                 continue
-            layers, values = [], []
+            layers, pc1_values, pc2_values = [], [], []
+            n_samples = 0
             for l in LAYERS:
                 src = pca / f"L{l}_{c}_{p}.npy"
                 if src.exists():
                     try:
-                        # Memory-mapped read - only loads first column
+                        # Memory-mapped read - load first 2 columns (PC1 and PC2)
                         arr = np.load(src, mmap_mode='r')
                         layers.append(l)
-                        values.append(np.array(arr[:, 0]))
+                        pc1_values.append(np.array(arr[:, 0]))
+                        pc2_values.append(np.array(arr[:, 1]) if arr.shape[1] > 1 else np.zeros(arr.shape[0]))
+                        n_samples = arr.shape[0]
                     except Exception:
                         pass
             if layers:
-                np.savez_compressed(f, layers=np.array(layers), pc1_values=np.array(values))
-            del layers, values
+                # sample_indices: range [0, n_samples) - same samples for all layers
+                sample_indices = np.arange(n_samples)
+                np.savez_compressed(
+                    f,
+                    layers=np.array(layers),
+                    pc1_values=np.array(pc1_values),
+                    pc2_values=np.array(pc2_values),
+                    sample_indices=sample_indices,
+                )
+            del layers, pc1_values, pc2_values
 
     # Position trajectories
     for l in LAYERS:
@@ -522,19 +537,28 @@ def run_trajectories(data_dir: Path, force: bool) -> None:
             f = traj / f"positions_L{l}_{c}.npz"
             if not force and f.exists():
                 continue
-            pos_list, values = [], []
+            pos_list, pc1_values, pc2_values, sample_indices_list = [], [], [], []
             for p in POSITIONS:
                 src = pca / f"L{l}_{c}_{p}.npy"
                 if src.exists():
                     try:
                         arr = np.load(src, mmap_mode='r')
                         pos_list.append(p)
-                        values.append(np.array(arr[:, 0]))
+                        pc1_values.append(np.array(arr[:, 0]))
+                        pc2_values.append(np.array(arr[:, 1]) if arr.shape[1] > 1 else np.zeros(arr.shape[0]))
+                        # Each position may have different n_samples
+                        sample_indices_list.append(np.arange(arr.shape[0]))
                     except Exception:
                         pass
             if pos_list:
-                np.savez_compressed(f, positions=np.array(pos_list), pc1_values=np.array(values, dtype=object))
-            del pos_list, values
+                np.savez_compressed(
+                    f,
+                    positions=np.array(pos_list),
+                    pc1_values=np.array(pc1_values, dtype=object),
+                    pc2_values=np.array(pc2_values, dtype=object),
+                    sample_indices_list=np.array(sample_indices_list, dtype=object),
+                )
+            del pos_list, pc1_values, pc2_values, sample_indices_list
 
     clear_gpu_memory(aggressive=True)
 

@@ -301,6 +301,7 @@ def plot_summary_dashboard(
                     data[row_idx, col_idx] = np.clip(info["r2"], 0.0, 1.0)
 
         im = ax.imshow(data, cmap="RdYlGn", vmin=0.0, vmax=1.0, aspect="auto")
+        ax.invert_yaxis()  # Position 0 at bottom
 
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
         cbar.set_label("R² Score", fontsize=10)
@@ -344,6 +345,7 @@ def plot_summary_dashboard(
                     data[row_idx, col_idx] = np.clip(info["r2"], 0.0, 1.0)
 
         im = ax.imshow(data, cmap="RdYlGn", vmin=0.0, vmax=1.0, aspect="auto")
+        ax.invert_yaxis()  # Position 0 at bottom
 
         for i in range(len(positions)):
             for j in range(len(layers)):
@@ -710,6 +712,7 @@ def plot_direction_alignment(
 
     fig, ax = plt.subplots(figsize=(max(10, n * 0.3), max(8, n * 0.25)))
     im = ax.imshow(similarity, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+    ax.invert_yaxis()  # Index 0 at bottom
 
     labels = []
     for key in keys:
@@ -755,6 +758,7 @@ def plot_direction_alignment(
 
         fig, ax = plt.subplots(figsize=(max(6, n_pos * 0.5), max(5, n_pos * 0.4)))
         im = ax.imshow(sim_pos, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+        ax.invert_yaxis()  # Index 0 at bottom
 
         labels_pos = []
         for k in pos_keys:
@@ -1279,6 +1283,7 @@ def plot_cross_position_similarity(
                     data[i, j] = cross_position_results[key].best_similarity
 
         im = ax.imshow(data, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+        ax.invert_yaxis()  # Component 0 at bottom
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
         cbar.set_label("Best |cos similarity|", fontsize=10)
 
@@ -1335,6 +1340,7 @@ def plot_cross_position_similarity(
                                         max(3, len(result.source_positions) * 0.8)))
 
         im = ax.imshow(result.similarity_matrix, cmap="viridis", vmin=0, vmax=1, aspect="auto")
+        ax.invert_yaxis()  # Position 0 at bottom
         plt.colorbar(im, ax=ax, shrink=0.8, label="|cos sim|")
 
         for i in range(len(result.source_positions)):
@@ -1840,6 +1846,7 @@ def plot_no_horizon_projection(
         vmin = min(0.5, np.nanmin(heatmap_data) if not np.all(np.isnan(heatmap_data)) else 0.5)
 
         im = ax.imshow(heatmap_data, cmap="RdBu_r", vmin=vmin, vmax=vmax, aspect="auto")
+        ax.invert_yaxis()  # Component 0 at bottom
 
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
         cbar.set_label("Bias Ratio (d_long / d_short)\n>1 = closer to short, <1 = closer to long", fontsize=9)

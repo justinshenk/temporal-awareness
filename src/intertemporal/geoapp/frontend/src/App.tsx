@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot, FilterPanel, ScreePlot, AlignmentHeatmap } from './components';
+import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot, TrajectoryPlot3D, FilterPanel, ScreePlot, AlignmentHeatmap } from './components';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
@@ -13,6 +13,8 @@ import {
   useBackendPrefetch,
   useLayerTrajectory,
   usePositionTrajectory,
+  useLayerTrajectory2D,
+  usePositionTrajectory2D,
   useScreeData,
   useAlignmentData,
   toFloat32Array,
@@ -35,7 +37,11 @@ const DEFAULT_COMPONENT = 'resid_post';
 const DEFAULT_METHOD = 'pca';
 const DEFAULT_COLOR_BY = 'time_horizon';
 
-type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | 'Scree' | 'Align';
+type ViewMode = '2D' | '3D' | '1DxLayer' | '1DxPos' | '2DxLayer' | '2DxPos' | 'Scree' | 'Align';
+
+// Helper to check if a view mode is a trajectory view
+const isTrajectoryViewMode = (mode: ViewMode) =>
+  mode === '1DxLayer' || mode === '1DxPos' || mode === '2DxLayer' || mode === '2DxPos';
 
 function App() {
   // Get dataset name from URL path (e.g., /geometry -> "geometry")
@@ -82,9 +88,9 @@ function App() {
     // In 1DxLayer view, layer changes don't affect the data (shows all layers)
     // In 1DxPos view, position changes don't affect the data (shows all positions)
     // So we only clear selection for parameters that matter
-    if (viewMode === '1DxLayer' || viewMode === '1DxPos') {
+    if (isTrajectoryViewMode(viewMode)) {
       // For trajectory views, only component/method changes matter
-      // (and position for 1DxLayer, layer for 1DxPos)
+      // (and position for layer trajectories, layer for position trajectories)
       return;
     }
     setSelectedSampleIdx(null);
@@ -112,7 +118,9 @@ function App() {
         }
       }
       // Set position to LAST available if not yet set or invalid
-      if (!position || !config.positions.includes(position)) {
+      // Check base position (without rel_pos suffix) against config.positions
+      const basePosition = position.includes(':') ? position.split(':')[0] : position;
+      if (!position || !config.positions.includes(basePosition)) {
         const lastPosition = config.positions[config.positions.length - 1];
         if (lastPosition) {
           log('App', 'Initializing position from config', { position: lastPosition });
@@ -210,11 +218,30 @@ function App() {
     viewMode === '1DxPos'
   );
 
+  // Fetch 2D trajectory data for 2DxLayer view (PC1+PC2 across all layers)
+  const layerTrajectory2D = useLayerTrajectory2D(
+    component,
+    position,
+    viewMode === '2DxLayer'
+  );
+
+  // Fetch 2D trajectory data for 2DxPos view (PC1+PC2 across positions)
+  const positionTrajectory2D = usePositionTrajectory2D(
+    layer,
+    component,
+    undefined,
+    viewMode === '2DxPos'
+  );
+
+  // For Scree and Align views, use base position (strip rel_pos suffix)
+  // These views don't have per-rel_pos data
+  const basePosition = position.includes(':') ? position.split(':')[0] : position;
+
   // Fetch Scree data for Scree view
-  const screeData = useScreeData(position, 10, viewMode === 'Scree');
+  const screeData = useScreeData(basePosition, 10, viewMode === 'Scree');
 
   // Fetch Alignment data for Align view
-  const alignmentData = useAlignmentData(position, 0, viewMode === 'Align');
+  const alignmentData = useAlignmentData(basePosition, 0, viewMode === 'Align');
 
   // Log when waiting for trajectory data
   useEffect(() => {
@@ -296,24 +323,30 @@ function App() {
 
   // Get actual sample indices for trajectory views (needed for filter mask and colors)
   const trajectorySampleIndices = useMemo(() => {
-    if (viewMode === '1DxLayer') {
+    if (viewMode === '1DxLayer' || viewMode === '2DxLayer') {
       // Layer trajectory - all layers share same indices
-      return layerTrajectory.sampleIndices;
-    } else if (viewMode === '1DxPos') {
+      // Use 2D data if available, fallback to 1D
+      return layerTrajectory2D.sampleIndices.length > 0
+        ? layerTrajectory2D.sampleIndices
+        : layerTrajectory.sampleIndices;
+    } else if (viewMode === '1DxPos' || viewMode === '2DxPos') {
       // Position trajectory - UNION of all position indices
       // Each position may have different samples, so we need the union
+      const sourceMap = positionTrajectory2D.sampleIndicesMap.size > 0
+        ? positionTrajectory2D.sampleIndicesMap
+        : positionTrajectory.sampleIndicesMap;
       const allIndices = new Set<number>();
-      positionTrajectory.sampleIndicesMap.forEach((indices) => {
+      sourceMap.forEach((indices) => {
         indices.forEach(idx => allIndices.add(idx));
       });
       return Array.from(allIndices).sort((a, b) => a - b);
     }
     return [];
-  }, [viewMode, layerTrajectory.sampleIndices, positionTrajectory.sampleIndicesMap]);
+  }, [viewMode, layerTrajectory.sampleIndices, layerTrajectory2D.sampleIndices, positionTrajectory.sampleIndicesMap, positionTrajectory2D.sampleIndicesMap]);
 
   // Compute filter mask for trajectory views (aligned with trajectorySampleIndices)
   const trajectoryFilterMask = useMemo(() => {
-    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    const isTrajectoryView = isTrajectoryViewMode(viewMode);
     if (!isTrajectoryView) return null;
 
     const sampleIndices = trajectorySampleIndices;
@@ -331,7 +364,7 @@ function App() {
   }, [hasHorizonMeta?.values, viewMode, trajectorySampleIndices, showNoHorizon, showWithHorizon]);
 
   // Use appropriate filter mask based on view mode
-  const filterMask = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryFilterMask : scatterFilterMask;
+  const filterMask = (isTrajectoryViewMode(viewMode)) ? trajectoryFilterMask : scatterFilterMask;
 
   // Compute positions Float32Array - NO filtering, positions stay fixed
   const positions = useMemo(() => {
@@ -503,7 +536,7 @@ function App() {
 
   // Colors for trajectory views - only computed when needed
   const trajectoryColors = useMemo(() => {
-    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    const isTrajectoryView = isTrajectoryViewMode(viewMode);
     if (!isTrajectoryView) return new Float32Array(0);
 
     const sampleIndices = trajectorySampleIndices;
@@ -518,15 +551,15 @@ function App() {
 
   // Point data for trajectory views - use actual sample indices
   const trajectoryPointData = useMemo<PointData[]>(() => {
-    const isTrajectoryView = viewMode === '1DxLayer' || viewMode === '1DxPos';
+    const isTrajectoryView = isTrajectoryViewMode(viewMode);
     if (!isTrajectoryView) return [];
 
     return trajectorySampleIndices.map(sampleIdx => ({ sampleIdx }));
   }, [viewMode, trajectorySampleIndices]);
 
   // Select colors/pointData based on view mode
-  const unfilteredColors = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryColors : scatterColors;
-  const unfilteredPointData = (viewMode === '1DxLayer' || viewMode === '1DxPos') ? trajectoryPointData : scatterPointData;
+  const unfilteredColors = (isTrajectoryViewMode(viewMode)) ? trajectoryColors : scatterColors;
+  const unfilteredPointData = (isTrajectoryViewMode(viewMode)) ? trajectoryPointData : scatterPointData;
 
   // Clear selection when the selected sample is filtered out
   useEffect(() => {
@@ -710,6 +743,35 @@ function App() {
     setSelectedSampleIdx(null);
   }, []);
 
+  // Random sample selection
+  const handleRandomSelect = useCallback(() => {
+    // Get visible sample indices based on view mode
+    let visibleIndices: number[];
+
+    if (isTrajectoryViewMode(viewMode)) {
+      // For trajectory views, use trajectorySampleIndices with trajectoryFilterMask
+      if (trajectoryFilterMask) {
+        visibleIndices = trajectorySampleIndices.filter((_, i) => trajectoryFilterMask[i]);
+      } else {
+        visibleIndices = trajectorySampleIndices;
+      }
+    } else {
+      // For scatter views (2D/3D), use embedding.indices with scatterFilterMask
+      if (!embedding?.indices) return;
+      if (scatterFilterMask) {
+        visibleIndices = embedding.indices.filter((_, i) => scatterFilterMask[i]);
+      } else {
+        visibleIndices = embedding.indices;
+      }
+    }
+
+    if (visibleIndices.length === 0) return;
+
+    // Pick a random sample from visible indices
+    const randomIndex = Math.floor(Math.random() * visibleIndices.length);
+    setSelectedSampleIdx(visibleIndices[randomIndex]);
+  }, [viewMode, trajectorySampleIndices, trajectoryFilterMask, embedding?.indices, scatterFilterMask]);
+
   // Derived state
   const isLoading = configLoading || embeddingLoading || metadataLoading;
   const layers = config?.layers || [];
@@ -758,10 +820,11 @@ function App() {
             layer={layer}
             layers={layers}
             onLayerChange={setLayer}
-            hideLayerSection={viewMode === '1DxLayer'}
+            hideLayerSection={viewMode === '1DxLayer' || viewMode === '2DxLayer' || viewMode === 'Align'}
             component={component}
             components={components}
             onComponentChange={setComponent}
+            hideComponentSection={viewMode === 'Scree' || viewMode === 'Align'}
             position={position}
             positions={positions_options}
             positionLabels={config?.positionLabels || {}}
@@ -771,7 +834,7 @@ function App() {
             method={method}
             methods={methods}
             onMethodChange={setMethod}
-            hideMethodSection={viewMode === '1DxLayer' || viewMode === '1DxPos'}
+            hideMethodSection={isTrajectoryViewMode(viewMode) || viewMode === 'Scree' || viewMode === 'Align'}
             hideColorBySection={true}
             colorBy={colorBy}
             colorByOptions={colorByOptions}
@@ -782,12 +845,12 @@ function App() {
             colorRangeDataMax={effectiveColorRange.dataMax}
             onColorRangeMinChange={setColorRangeMin}
             onColorRangeMaxChange={setColorRangeMax}
-            showColorRangeControls={GRADIENT_FIELDS.includes(colorBy)}
+            showColorRangeControls={GRADIENT_FIELDS.includes(colorBy) && viewMode !== 'Scree' && viewMode !== 'Align'}
             timeScaleType={timeScaleType}
             onTimeScaleTypeChange={setTimeScaleType}
             blendMix={blendMix}
             onBlendMixChange={setBlendMix}
-            showTimeScaleControls={colorBy === 'time_horizon'}
+            showTimeScaleControls={colorBy === 'time_horizon' && viewMode !== 'Scree' && viewMode !== 'Align'}
           />
         </aside>
 
@@ -806,24 +869,26 @@ function App() {
             </div>
           )}
 
-          {/* Visualization Toolbar - above plot */}
-          <div className="flex items-center justify-end mb-2 px-2">
-            {/* Horizon filter toggles */}
-            <div className="flex items-center gap-3 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
-              <Toggle
-                checked={showWithHorizon}
-                onChange={setShowWithHorizon}
-                label="With-Horizon"
-                size="sm"
-              />
-              <Toggle
-                checked={showNoHorizon}
-                onChange={setShowNoHorizon}
-                label="No-Horizon"
-                size="sm"
-              />
+          {/* Visualization Toolbar - above plot (hidden for Scree/Align) */}
+          {viewMode !== 'Scree' && viewMode !== 'Align' && (
+            <div className="flex items-center justify-end mb-2 px-2">
+              {/* Horizon filter toggles */}
+              <div className="flex items-center gap-3 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
+                <Toggle
+                  checked={showWithHorizon}
+                  onChange={setShowWithHorizon}
+                  label="With-Horizon"
+                  size="sm"
+                />
+                <Toggle
+                  checked={showNoHorizon}
+                  onChange={setShowNoHorizon}
+                  label="No-Horizon"
+                  size="sm"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
           <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
@@ -961,12 +1026,45 @@ function App() {
                 loadingProgress={0}
                 className="absolute inset-0"
               />
+            ) : viewMode === '2DxLayer' ? (
+              <TrajectoryPlot3D
+                pc1Data={layerTrajectory2D.pc1Data}
+                pc2Data={layerTrajectory2D.pc2Data}
+                xValues={layerTrajectory2D.xValues}
+                xAxisLabel="Layer"
+                title={`PC1 vs PC2 Across Layers (${position} @ ${component})`}
+                colors={unfilteredColors}
+                pointData={unfilteredPointData}
+                filterMask={filterMask}
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
+                onPointSelect={handlePointSelect}
+                selectedSampleIdx={selectedSampleIdx}
+                lineOpacity={0.5}
+                isLoading={layerTrajectory2D.isLoading}
+                className="absolute inset-0"
+              />
+            ) : viewMode === '2DxPos' ? (
+              <TrajectoryPlot3D
+                pc1Data={positionTrajectory2D.pc1Data}
+                pc2Data={positionTrajectory2D.pc2Data}
+                xValues={positionTrajectory2D.xValues}
+                xAxisLabel="Position"
+                title={`PC1 vs PC2 Across Positions (L${layer} @ ${component})`}
+                colors={unfilteredColors}
+                pointData={unfilteredPointData}
+                filterMask={filterMask}
+                backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
+                onPointSelect={handlePointSelect}
+                selectedSampleIdx={selectedSampleIdx}
+                lineOpacity={0.5}
+                isLoading={positionTrajectory2D.isLoading}
+                className="absolute inset-0"
+              />
             ) : viewMode === 'Scree' ? (
               <ScreePlot
                 data={screeData.data || null}
                 isLoading={screeData.isLoading}
                 selectedLayer={layer}
-                selectedComponent={component}
                 className="w-full h-full"
               />
             ) : viewMode === 'Align' ? (
@@ -988,8 +1086,8 @@ function App() {
               </div>
             )}
 
-            {/* Legend */}
-            {legendData && (
+            {/* Legend - hidden for Scree/Align views */}
+            {legendData && viewMode !== 'Scree' && viewMode !== 'Align' && (
               <Legend
                 title={colorByLabel}
                 items={legendData.items}
@@ -1005,8 +1103,8 @@ function App() {
         {/* Right Sidebar - Position, Color By, and Info Panel */}
         <aside className="w-80 flex-shrink-0 p-4 overflow-y-auto border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
           <div className="flex flex-col gap-4">
-            {/* Position Selector - hidden for 1DxPos view */}
-            {viewMode !== '1DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (
+            {/* Position Selector - hidden for position trajectory views */}
+            {viewMode !== '1DxPos' && viewMode !== '2DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (
               <Card padding="sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Position</CardTitle>
@@ -1025,25 +1123,28 @@ function App() {
               </Card>
             )}
 
-            {/* Color By Control */}
-            <Card padding="sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Color By</CardTitle>
-              </CardHeader>
-              <CardContent className="py-2">
-                <Select
-                  options={colorByOptions.map((c) => ({
-                    value: c,
-                    label: COLOR_LABELS[c] || c.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-                  }))}
-                  value={colorBy}
-                  onChange={setColorBy}
-                  placeholder="Select attribute..."
-                />
-              </CardContent>
-            </Card>
+            {/* Color By Control - hidden for Scree/Align views */}
+            {viewMode !== 'Scree' && viewMode !== 'Align' && (
+              <Card padding="sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Color By</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <Select
+                    options={colorByOptions.map((c) => ({
+                      value: c,
+                      label: COLOR_LABELS[c] || c.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+                    }))}
+                    value={colorBy}
+                    onChange={setColorBy}
+                    placeholder="Select attribute..."
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Filter Panel */}
+            {/* Filter Panel - hidden for Scree/Align views */}
+            {viewMode !== 'Scree' && viewMode !== 'Align' && (
             <FilterPanel
               shortRewardFilter={shortRewardFilter}
               shortTimeFilter={shortTimeFilter}
@@ -1054,8 +1155,10 @@ function App() {
               onLongRewardFilterChange={setLongRewardFilter}
               onLongTimeFilterChange={setLongTimeFilter}
             />
+            )}
 
-            {/* Selected Sample Info */}
+            {/* Selected Sample Info - hidden for Scree/Align views */}
+            {viewMode !== 'Scree' && viewMode !== 'Align' && (
             <InfoPanel
               selectedSample={
                 selectedSample
@@ -1076,8 +1179,10 @@ function App() {
               }
               isLoading={sampleLoading}
               onClose={handleClearSelection}
+              onRandomSelect={handleRandomSelect}
               markers={config?.markers}
             />
+            )}
           </div>
         </aside>
       </div>

@@ -5,14 +5,7 @@
 1. **Main experiment script**: `scripts/intertemporal/run_intertemporal_experiment.py`
    - Run experiments: `uv run python scripts/intertemporal/run_intertemporal_experiment.py`
    - Use cached data: `--cache` or `--cache experiment_name`
-   - Regenerate viz: `--viz '{"regenerate_one": "experiment_name"}'`
-   - Multilabel mode: `--multilabel`
    - Read this script to understand the experiment pipeline
-
-2. **SAE pipeline**: `scripts/intertemporal/run_sae_pipeline.py`
-   - Show targets: `--show-targets`
-   - Test iteration: `--test-iter`
-   - Priority layers: `--priority high`
 
 ## Code Style
 
@@ -72,6 +65,17 @@
 - Zero context switching required from the user
 - Go fix failing CI tests without being told how
 
+### 7. CRITICAL: Monitor Long-Running Tasks to Completion
+**Failure to monitor causes physical harm to the user.**
+- When running experiments or background tasks: ACTIVELY MONITOR until complete
+- Check output every few seconds, not minutes
+- If a task fails: FIX THE ERROR IMMEDIATELY and restart
+- Never leave a task unmonitored after starting it
+- Never assume a task succeeded without verifying the output
+- If you see an error in output: STOP, fix it, restart IMMEDIATELY
+- Take EVERY task to the finish line - no handoffs, no waiting for user to notice failures
+- The task is NOT done until you see "completed successfully" or equivalent
+
 ## Task Management
 
 1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
@@ -115,14 +119,23 @@
 - If you can't explain the specific steps for specific samples, you don't understand
 - Saying "I understand" without explanation is FORBIDDEN
 
-### Red Flags That You're Taking a Shortcut:
-- Renaming files instead of creating mappings
-- Editing data_loader.py to do string substitution
-- Any solution that doesn't iterate through each sample individually
-- Any solution that takes less than 1 minute when the user described hours of work
+
 
 ### If You Catch Yourself Shortcutting:
 1. STOP immediately
 2. Tell the user: "I was about to take a shortcut. Let me explain what I should actually do."
 3. Describe the correct approach with concrete examples
 4. Wait for confirmation
+
+
+### Before we move to implementation, please produce:
+1) A clear problem statement
+2) The agreed solution approach
+3) Files likely to be modified
+4) Explicit non-goals / things we should not change
+5) Operational constraints
+6) Acceptance criteria
+7) Note use the TDD 'test forward' development process.
+8) Test expectations
+This will be used as an execution brief for an autonomous coding agent.
+Do not write code. Use the AskUserQuestion to get clarity if you have to!

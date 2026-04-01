@@ -1,4 +1,9 @@
-"""Configuration for fine-grained patching analysis."""
+"""Configuration for fine-grained patching analysis.
+
+NOTE: Head attribution and position patching config are now in attn_analysis_config.py
+NOTE: Neuron attribution config is now in mlp_analysis_config.py
+NOTE: Layer-position patching is now in attn (for attn_out) and mlp (for mlp_out)
+"""
 
 from __future__ import annotations
 
@@ -7,27 +12,14 @@ from dataclasses import dataclass, field
 
 @dataclass
 class FineGrainedConfig:
-    """Configuration for fine-grained activation patching analysis.
-
-    This config controls comprehensive head-level, position-level,
-    path patching, and neuron-level analysis.
+    """Configuration for fine-grained path patching analysis.
 
     Attributes:
         n_layers: Number of model layers (set at runtime)
         n_heads: Number of attention heads per layer (set at runtime)
 
-        # Head patching settings
-        head_patching_enabled: Whether to run head-level patching
-        head_layers: Layers to analyze for head patching (None = all)
-
-        # Position patching settings
-        position_patching_enabled: Whether to run position-level patching for top heads
-        n_top_heads_for_position: Number of top heads to analyze by position
-        positions: Specific positions to patch (None = use source + dest)
-
         # Path patching settings
         path_patching_enabled: Whether to run path patching analysis
-        source_layers: Source layers for path patching (attention heads)
         dest_mlp_layers: Destination MLP layers for head-to-MLP path patching
         dest_head_layers: Destination head layers for head-to-head path patching
         n_top_source_heads: Number of top source heads to use
@@ -35,71 +27,22 @@ class FineGrainedConfig:
         # Multi-site patching settings
         multi_site_enabled: Whether to run multi-site interaction analysis
         n_components_multi_site: Number of top components for interaction analysis
-
-        # Neuron patching settings
-        neuron_patching_enabled: Whether to run neuron-level differential contribution
-        neuron_target_layer: Layer for neuron-level analysis (e.g., L31)
-        n_top_neurons: Number of top neurons to track
-
-        # Layer-position fine heatmap settings
-        layer_position_enabled: Whether to run layer x position fine patching
-        layer_position_components: Components for layer-position analysis
     """
 
     n_layers: int = 0
     n_heads: int = 0
 
-    # Head patching
-    head_patching_enabled: bool = True
-    head_layers: list[int] | None = None  # None = all layers
-
-    # Position patching for top heads
-    position_patching_enabled: bool = True
-    n_top_heads_for_position: int = 5
-    positions: list[int] | None = None  # Specific positions to patch (None = use source + dest)
-
     # Path patching
     path_patching_enabled: bool = True
-    source_layers: list[int] = field(default_factory=lambda: [19, 21, 24])
-    dest_mlp_layers: list[int] = field(default_factory=lambda: [28, 31, 34])
-    dest_head_layers: list[int] = field(default_factory=lambda: [28, 29, 30, 31])
+    dest_mlp_layers: list[int] = field(default_factory=lambda: [28, 29, 30, 31, 34])
+    dest_head_layers: list[int] = field(default_factory=lambda: [28, 29, 30, 31, 34])
     n_top_source_heads: int = 5
 
     # Multi-site interaction
     multi_site_enabled: bool = True
-    n_components_multi_site: int = 5  # Reduced from 10 for memory efficiency
-
-    # Neuron patching
-    neuron_patching_enabled: bool = True
-    mlp_layers: list[int] = field(default_factory=lambda: [31, 24, 28])  # MLP layers for multi-layer analysis
-    neuron_target_layer: int = 31  # Primary layer for neuron-level analysis
-    n_top_neurons: int = 50
-
-    # Layer-position fine heatmap
-    layer_position_enabled: bool = True
-    layer_position_components: list[str] = field(
-        default_factory=lambda: ["attn_out", "mlp_out"]
-    )
-    layer_position_layers: list[int] | None = None  # None = second half of layers (n_layers//2 to n_layers-1)
-    layer_position_positions: list[int] | None = None  # Specific positions (None = use source + dest)
-
-    # Key positions (used by multiple analyses when specific positions not set)
-    source_positions: list[int] = field(default_factory=lambda: [86, 87, 88])  # Horizon tokens (fallback)
-    destination_positions: list[int] = field(default_factory=lambda: [143, 144, 145])  # Choice tokens (fallback)
-
-    # Semantic position names (resolved via SamplePositionMapping)
-    source_format_positions: list[str] = field(
-        default_factory=lambda: ["time_horizon", "post_time_horizon"]
-    )
-    destination_format_positions: list[str] = field(
-        default_factory=lambda: ["response_choice", "response_choice_prefix"]
-    )
+    n_components_multi_site: int = 5
 
     @classmethod
     def from_dict(cls, d: dict) -> FineGrainedConfig:
         """Create config from dict, handling defaults."""
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
-
-
-# Default configuration
-DEFAULT_FINE_GRAINED_CONFIG = FineGrainedConfig()

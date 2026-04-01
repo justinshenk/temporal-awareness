@@ -3,7 +3,8 @@ import { PointData } from './PointCloud';
 import { Tooltip, TooltipData } from './Tooltip';
 
 // Padding constant - outside component to avoid recreation
-const PADDING = { left: 60, right: 30, top: 50, bottom: 60 } as const;
+// Bottom padding increased to fit diagonal x-axis labels
+const PADDING = { left: 60, right: 30, top: 50, bottom: 100 } as const;
 
 // Helper to determine if a color is dark
 function isDarkColor(hexColor: string): boolean {
@@ -271,28 +272,27 @@ export function TrajectoryPlot({
       ctx.fillText(value.toFixed(decimalsY), PADDING.left - 8, y);
     }
 
-    // Draw X axis labels
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    // Draw X axis labels (rotated 45 degrees for better fit)
     ctx.font = '9px monospace';
 
-    // Only show some labels if too many
-    const maxLabels = Math.floor(plotWidth / 50);
-    const step = Math.max(1, Math.ceil(xValues.length / maxLabels));
-
     xValues.forEach((xVal, idx) => {
-      if (idx % step !== 0 && idx !== xValues.length - 1) return;
       const { x } = toCanvas(idx, 0);
-      ctx.fillText(xVal, x, dimensions.height - PADDING.bottom + 8);
+      ctx.save();
+      ctx.translate(x, dimensions.height - PADDING.bottom + 8);
+      ctx.rotate(-Math.PI / 4); // -45 degrees
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(xVal, 0, 0);
+      ctx.restore();
     });
 
     // Draw axis titles
     ctx.font = '11px sans-serif';
     ctx.fillStyle = textColor;
 
-    // X axis title
+    // X axis title - moved down to account for rotated labels
     ctx.textAlign = 'center';
-    ctx.fillText(xAxisLabel, dimensions.width / 2, dimensions.height - 12);
+    ctx.fillText(xAxisLabel, dimensions.width / 2, dimensions.height - 8);
 
     // Y axis title (rotated)
     ctx.save();

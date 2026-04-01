@@ -51,6 +51,7 @@ interface ControlPanelProps {
   component: string;
   components: string[];
   onComponentChange: (component: string) => void;
+  hideComponentSection?: boolean;
 
   // Position controls
   position: string;
@@ -307,6 +308,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   component,
   components,
   onComponentChange,
+  hideComponentSection = false,
   position,
   positions,
   positionLabels = {},
@@ -410,35 +412,38 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       )}
 
       {/* Component Control */}
-      <Card padding="sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Component</CardTitle>
-        </CardHeader>
-        <CardContent className="py-2">
-          {componentTabs.length > 0 && (
-            <div className="space-y-1.5">
-              {componentTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => onComponentChange(tab.id)}
-                  aria-pressed={component === tab.id}
-                  className={`
-                    w-full px-3 py-2 text-left text-sm rounded-lg
-                    transition-all duration-200
-                    focus:outline-none focus:ring-2 focus:ring-[#D97757]/50
-                    ${component === tab.id
-                      ? 'bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20 text-[#1a1613] font-medium border border-[#D97757]/30'
-                      : 'bg-white/50 text-[#1a1613]/70 hover:bg-white/80 hover:text-[#1a1613] border border-transparent'
-                    }
-                  `}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Component Control - hidden for Scree/Align views */}
+      {!hideComponentSection && (
+        <Card padding="sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Component</CardTitle>
+          </CardHeader>
+          <CardContent className="py-2">
+            {componentTabs.length > 0 && (
+              <div className="space-y-1.5">
+                {componentTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => onComponentChange(tab.id)}
+                    aria-pressed={component === tab.id}
+                    className={`
+                      w-full px-3 py-2 text-left text-sm rounded-lg
+                      transition-all duration-200
+                      focus:outline-none focus:ring-2 focus:ring-[#D97757]/50
+                      ${component === tab.id
+                        ? 'bg-gradient-to-r from-[#D97757]/20 to-[#348296]/20 text-[#1a1613] font-medium border border-[#D97757]/30'
+                        : 'bg-white/50 text-[#1a1613]/70 hover:bg-white/80 hover:text-[#1a1613] border border-transparent'
+                      }
+                    `}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Position Control - hidden when using floating position selector */}
       {!hidePositionSection && (

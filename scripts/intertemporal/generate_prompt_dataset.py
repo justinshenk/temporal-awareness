@@ -3,7 +3,8 @@
 Generate intertemporal preference prompt dataset.
 
 Usage:
-    python scripts/intertemporal/generate_prompt_dataset.py --config housing --output [PATH_TO_FOLDER]
+    python scripts/intertemporal/generate_prompt_dataset.py --config housing --output_dir [DIR]
+    python scripts/intertemporal/generate_prompt_dataset.py --config nano.json -o mydata.json
 """
 
 from __future__ import annotations
@@ -25,18 +26,28 @@ from src.intertemporal.common.project_paths import (
 from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 
 
-def generate_and_save_dataset(cfg: PromptDatasetConfig, output_dirpath: Path) -> str:
+def generate_and_save_dataset(
+    cfg: PromptDatasetConfig,
+    output_dirpath: Path,
+    output_filename: str | None = None,
+) -> str:
     """
     Generate prompt dataset and save it.
 
     Args:
         cfg: Prompt dataset configuration
         output_dirpath: Directory to save the dataset
+        output_filename: Optional custom filename (default: uses config name + hash)
 
     Returns:
         Dataset ID
     """
-    output_filepath = Path(output_dirpath) / cfg.get_filename()
+    if output_filename:
+        # Ensure .json extension
+        filename = output_filename if output_filename.endswith(".json") else f"{output_filename}.json"
+    else:
+        filename = cfg.get_filename()
+    output_filepath = Path(output_dirpath) / filename
 
     generator = PromptDatasetGenerator(cfg)
     dataset = generator.generate()
@@ -156,11 +167,22 @@ def get_args():
         "If not provided, uses FULL_EXPERIMENT_CONFIG.",
     )
     parser.add_argument(
-        "--output",
+        "--output-dir",
+        dest="output_dir",
         type=Path,
-        dest="output_prompt_dataset_dir",
         default=get_prompt_dataset_dir(),
-        help=f"Output dir (defaults: {get_prompt_dataset_dir()}",
+        help=f"Output directory (default: {get_prompt_dataset_dir()})",
+    )
+    parser.add_argument(
+        "--output",
+        "--out",
+        "--rename",
+        "--output_file",
+        "-o",
+        dest="output_file",
+        type=str,
+        default=None,
+        help="Custom output filename (default: {config_name}_{hash}.json)",
     )
     return parser.parse_args()
 
@@ -190,14 +212,14 @@ def parse_args(args):
             runs.append(config)
             print(f"Loaded config: {config.name}")
 
-    return runs, args.output_prompt_dataset_dir
+    return runs, args.output_dir, args.output_file
 
 
 def main() -> int:
     args = get_args()
-    runs, output_dirpath = parse_args(args)
+    runs, output_dirpath, output_filename = parse_args(args)
     for cfg in runs:
-        generate_and_save_dataset(cfg, output_dirpath)
+        generate_and_save_dataset(cfg, output_dirpath, output_filename)
     return 0
 
 

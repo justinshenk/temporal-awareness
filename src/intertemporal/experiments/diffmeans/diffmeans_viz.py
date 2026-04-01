@@ -213,9 +213,11 @@ def _add_critical_layer_shading(
 def _add_reference_lines(
     ax: plt.Axes,
     layers: list[int],
-    reference_layers: list[int],
+    reference_layers: list[int] | None = None,
 ) -> None:
     """Add reference lines at key layers."""
+    if reference_layers is None:
+        reference_layers = [19, 24]  # Default from DiffMeansConfig
     for layer in reference_layers:
         if layer in layers or (layers and min(layers) <= layer <= max(layers)):
             ax.axvline(
