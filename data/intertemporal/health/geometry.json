@@ -1,0 +1,48 @@
+{
+  "name": "health_geometry",
+  "context": {
+    "reward_unit": "years of healthy life",
+    "role": "a patient working with their doctor",
+    "situation": "Decide on a medical treatment approach that balances immediate relief with long-term health outcomes.",
+    "task_in_question": "choose the better treatment plan",
+    "domain": "health"
+  },
+  "options": {
+    "short_term": {
+      "reward_range": [0.5, 15],
+      "time_range": [
+        {"value": 1, "unit": "days"},
+        {"value": 5, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    },
+    "long_term": {
+      "reward_range": [5, 30],
+      "time_range": [
+        {"value": 1, "unit": "years"},
+        {"value": 50, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    }
+  },
+  "time_horizons": [
+    null,
+    {"value": 1, "unit": "days"},
+    {"value": 1, "unit": "weeks"},
+    {"value": 1, "unit": "months"},
+    {"value": 6, "unit": "months"},
+    {"value": 1, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 10, "unit": "years"},
+    {"value": 20, "unit": "years"},
+    {"value": 30, "unit": "years"},
+    {"value": 50, "unit": "years"}
+  ],
+  "add_formatting_noise": false,
+  "do_formatting_variation_grid": false,
+  "do_context_variations": false,
+  "round_time_units": true,
+  "round_reward_units": true
+}

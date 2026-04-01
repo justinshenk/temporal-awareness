@@ -255,14 +255,21 @@ def _generate_matrix_plots(
                     attr_result.scores, norm_mode, topk_percentile
                 )
 
+                # For diverging colormaps, center 0 at white
+                plot_vmin, plot_vmax = vmin, vmax
+                if plot_vmin is None or plot_vmax is None:
+                    abs_max = np.abs(normalized_scores).max()
+                    plot_vmin, plot_vmax = -abs_max, abs_max
+
                 im = ax.imshow(
                     normalized_scores,
                     aspect="auto",
                     cmap=cmap,
                     interpolation="nearest",
-                    vmin=vmin,
-                    vmax=vmax,
+                    vmin=plot_vmin,
+                    vmax=plot_vmax,
                 )
+                ax.invert_yaxis()  # Layer 0 at bottom
                 cbar = plt.colorbar(im, ax=ax, shrink=0.8)
 
                 # Colorbar label
@@ -301,9 +308,16 @@ def _generate_matrix_plots(
 def visualize_all_att_aggregated_slices(
     agg: AttrPatchAggregatedResults,
     output_dir: Path,
+    pref_pairs: list | None = None,
 ) -> None:
-    """Visualize aggregated attribution results for all analysis slices."""
-    from .coarse.aggregated.analysis_slices import ANALYSIS_SLICES
+    """Visualize aggregated attribution results for all analysis slices.
+
+    Args:
+        agg: Aggregated attribution results
+        output_dir: Output directory
+        pref_pairs: List of ContrastivePreferences for slice filtering
+    """
+    from ..experiments.coarse.viz.aggregated.analysis_slices import ANALYSIS_SLICES, get_analysis_slice
 
     output_dir = Path(output_dir)
 
@@ -316,6 +330,20 @@ def visualize_all_att_aggregated_slices(
     for analysis_slice in slices_to_generate:
         slice_name = analysis_slice.name
         slice_dir = output_dir / slice_name
-        visualize_att_aggregated(agg, slice_dir, slice_name)
+
+        # Filter data for this slice
+        if slice_name == "all" or pref_pairs is None:
+            filtered_agg = agg
+        else:
+            # Get pair indices matching this slice
+            indices = [
+                i for i, pref in enumerate(pref_pairs)
+                if analysis_slice.req.passes(pref)
+            ]
+            if not indices:
+                continue  # Skip empty slices
+            filtered_agg = agg.filter_by_indices(indices)
+
+        visualize_att_aggregated(filtered_agg, slice_dir, slice_name)
 
     print(f"[viz] All attribution aggregated slices saved to {output_dir}")

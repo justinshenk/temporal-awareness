@@ -105,7 +105,6 @@ def scale(
 
 def interpolate(
     layer: int,
-    source_values: Union[np.ndarray, list],
     target_values: Union[np.ndarray, list],
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
@@ -117,12 +116,10 @@ def interpolate(
     - alpha=0: keep current activation unchanged
     - alpha=1: fully replace with target_values
 
-    NOTE: source_values is required for API compatibility but IGNORED at runtime.
     The actual current activation is used as the interpolation source.
 
     Args:
         layer: Layer to intervene on
-        source_values: IGNORED - kept for API compatibility only
         target_values: Target activations to interpolate towards
         alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
@@ -131,11 +128,12 @@ def interpolate(
     Returns:
         Intervention that interpolates current activation towards target
     """
+    target_arr = np.array(target_values, dtype=np.float32)
     return Intervention(
         layer=layer,
         mode="interpolate",
-        values=np.array(source_values, dtype=np.float32),
-        target_values=np.array(target_values, dtype=np.float32),
+        values=np.zeros(1, dtype=np.float32),  # Placeholder, not used in interpolate mode
+        target_values=target_arr,
         alpha=alpha,
         target=_target(positions),
         component=component,
@@ -171,7 +169,6 @@ def patch_embeddings(
 
 
 def interpolate_embeddings(
-    source_values: Union[np.ndarray, torch.Tensor],
     target_values: Union[np.ndarray, torch.Tensor],
     alpha: float = 0.5,
     positions: Optional[Union[int, list[int]]] = None,
@@ -182,13 +179,10 @@ def interpolate_embeddings(
     - alpha=0: keep current embeddings unchanged
     - alpha=1: fully replace with target_values
 
-    NOTE: source_values is required for API compatibility but IGNORED at runtime.
     The actual current embedding is used as the interpolation source.
-
     Use this for embedding-level EAP-IG.
 
     Args:
-        source_values: IGNORED - kept for API compatibility only
         target_values: Target embeddings to interpolate towards
         alpha: Interpolation factor [0=keep current, 1=use target]
         positions: Optional positions to target
@@ -196,14 +190,12 @@ def interpolate_embeddings(
     Returns:
         Intervention that interpolates current embeddings towards target
     """
-    if isinstance(source_values, torch.Tensor):
-        source_values = source_values.detach().cpu().numpy()
     if isinstance(target_values, torch.Tensor):
         target_values = target_values.detach().cpu().numpy()
     return Intervention(
         layer=0,  # Ignored for embedding interventions
         mode="interpolate",
-        values=np.array(source_values, dtype=np.float32),
+        values=np.zeros(1, dtype=np.float32),  # Placeholder, not used in interpolate mode
         target_values=np.array(target_values, dtype=np.float32),
         alpha=alpha,
         target=_target(positions),
@@ -262,3 +254,100 @@ def random_direction(d_model: int, seed: Optional[int] = None) -> np.ndarray:
         np.random.seed(seed)
     vec = np.random.randn(d_model).astype(np.float32)
     return vec / np.linalg.norm(vec)
+
+
+def zero_ablation_intervention(
+    layer: int,
+    d_model: int,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+) -> Intervention:
+    """Create zero ablation intervention (set activations to 0).
+
+    Used for testing circuit necessity: if ablating a component significantly
+    affects behavior, that component is necessary for the circuit.
+
+    Args:
+        layer: Layer to intervene on
+        d_model: Model hidden dimension
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+
+    Returns:
+        Intervention that sets activations to zero
+    """
+    return Intervention(
+        layer=layer,
+        mode="set",
+        values=np.zeros(d_model, dtype=np.float32),
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )
+
+
+def mean_ablation_intervention(
+    layer: int,
+    mean_activations: np.ndarray,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+) -> Intervention:
+    """Create mean ablation intervention (set to pre-computed mean).
+
+    Used for testing circuit necessity while preserving approximate activation
+    magnitude. This is often preferred over zero ablation as it's less disruptive
+    to downstream computations.
+
+    Args:
+        layer: Layer to intervene on
+        mean_activations: Pre-computed mean activations [d_model]
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+
+    Returns:
+        Intervention that sets activations to mean values
+    """
+    return Intervention(
+        layer=layer,
+        mode="set",
+        values=np.array(mean_activations, dtype=np.float32),
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )
+
+
+def gaussian_noise_intervention(
+    layer: int,
+    d_model: int,
+    sigma: float = 1.0,
+    positions: Optional[Union[int, list[int]]] = None,
+    component: str = "resid_post",
+    seed: Optional[int] = None,
+) -> Intervention:
+    """Create Gaussian noise injection intervention (add N(0, sigma) noise).
+
+    Used for robustness testing: if adding noise to a component doesn't
+    significantly affect behavior, that component may have redundant pathways.
+
+    Args:
+        layer: Layer to intervene on
+        d_model: Model hidden dimension
+        sigma: Standard deviation of noise
+        positions: Optional positions to target (None = all)
+        component: Component to intervene on
+        seed: Optional random seed for reproducibility
+
+    Returns:
+        Intervention that adds Gaussian noise to activations
+    """
+    rng = np.random.default_rng(seed)
+    noise = rng.normal(0, sigma, size=d_model).astype(np.float32)
+    return Intervention(
+        layer=layer,
+        mode="add",
+        values=noise,
+        target=_target(positions),
+        component=component,
+        strength=1.0,
+    )

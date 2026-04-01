@@ -13,21 +13,22 @@ from __future__ import annotations
 ###########################
 
 BASE_CONTEXT = {
-    "reward_unit": "housing units",
-    "role": "the city administration",
-    "situation": "Plan for housing development in the city.",
-    "domain": "housing",
+    "reward_unit": "dollars",
+    "role": "the head of the household",
+    "situation": "Plan for the future of the household based on the stated objectives and constraints.",
+    "task_in_question": "choose the best investment",
+    "domain": "finance",
 }
 
-SHORT_REWARDS = [1000, 2500]
-LONG_REWARDS = [30000, 100000]
+SHORT_REWARDS = [10, 1000]
+LONG_REWARDS = [100000, 100000000]
 
 LONG_TIMES = [
     {"value": 10, "unit": "years"},
-    {"value": 30, "unit": "years"},
+    {"value": 3, "unit": "decades"},
 ]
 SHORT_TIMES = [
-    {"value": 0.5, "unit": "years"},
+    {"value": 1, "unit": "months"},
     {"value": 1, "unit": "years"},
 ]
 
@@ -77,22 +78,22 @@ OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 OPTIONS_GEO = {
     "short_term": {
-        "reward_range": [1000, 2500],
+        "reward_range": [1000, 100000],
         "time_range": [
             {"value": 1, "unit": "days"},
-            {"value": 5, "unit": "years"},
+            {"value": 20, "unit": "years"},
         ],
-        "reward_steps": [5, "linear"],
-        "time_steps": [5, "linear"],
+        "reward_steps": [2, "logarithmic"],
+        "time_steps": [5, "logarithmic"],
     },
     "long_term": {
-        "reward_range": [30000, 100000],
+        "reward_range": [1000, 100000],
         "time_range": [
-            {"value": 10, "unit": "years"},
-            {"value": 70, "unit": "years"},
+            {"value": 1, "unit": "years"},
+            {"value": 100, "unit": "years"},
         ],
-        "reward_steps": [5, "linear"],
-        "time_steps": [5, "linear"],
+        "reward_steps": [2, "logarithmic"],
+        "time_steps": [5, "logarithmic"],
     },
 }
 
@@ -104,8 +105,9 @@ OPTIONS_GEO = {
 HOR_NONE = [None]
 
 HOR_BINARY = [
-    {"value": 1, "unit": "months"},  # Short horizon
-    {"value": 50, "unit": "years"},  # Long horizon
+    None,
+    {"value": 6, "unit": "months"},  # Short horizon
+    {"value": 3, "unit": "decades"},  # Long horizon
 ]
 
 HOR_FEW = [
@@ -135,8 +137,7 @@ HOR_GEO = [
     {"value": 1, "unit": "week"},
     {"value": 1, "unit": "months"},
     {"value": 2, "unit": "months"},
-    {"value": 4, "unit": "months"},
-    {"value": 8, "unit": "months"},
+    {"value": 6, "unit": "months"},
     {"value": 1, "unit": "years"},
     {"value": 3, "unit": "years"},
     {"value": 5, "unit": "years"},
@@ -146,9 +147,6 @@ HOR_GEO = [
     {"value": 1, "unit": "centuries"},
     {"value": 2, "unit": "centuries"},
     {"value": 5, "unit": "centuries"},
-    {"value": 1, "unit": "millenia"},
-    {"value": 5, "unit": "millenia"},
-    {"value": 10, "unit": "millenia"},
 ]
 
 ###########################
@@ -161,9 +159,11 @@ NANO_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": HOR_BINARY,
+    "round_time_units": True,
+    "round_reward_units": True,
 }
 
-MULTINANO_CFG = {
+MULTIFORMAT_NANO_CFG = {
     "name": "multinano",
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
@@ -179,20 +179,6 @@ HORIZON_SWEEP_CFG = {
     "time_horizons": HOR_COARSE_SWEEP,
 }
 
-
-REWARD_SWEEP_CFG = {
-    "name": "reward_sweep",
-    "context": BASE_CONTEXT,
-    "options": OPTIONS_SINGLE,
-    "time_horizons": HOR_BINARY,
-}
-
-MINI_CFG = {
-    "name": "mini",
-    "context": BASE_CONTEXT,
-    "options": OPTIONS_SINGLE,
-    "time_horizons": HOR_BINARY,
-}
 
 SMALL_CFG = {
     "name": "small",
@@ -219,22 +205,24 @@ MULTILABEL_CFG = {
     "do_formatting_variation_grid": True,
 }
 
-GEO_VIZ_CFG = {
-    "name": "geo_viz",
+GEOMETRY_CFG = {
+    "name": "geometry",
     "context": BASE_CONTEXT,
     "options": OPTIONS_GEO,
     "time_horizons": HOR_GEO,
     "add_formatting_noise": False,
     "do_formatting_variation_grid": False,
-    "do_context_variations": True,
+    "do_context_variations": False,
+    "round_time_units": True,
+    "round_reward_units": True,
 }
 
 ###########################
 ###### DEFAULTS SET #######
 ###########################
 
-MINIMAL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
+MINIMAL_EXPERIMENT_DATASET_CONFIG = NANO_CFG
 
-FULL_EXPERIMENT_DATASET_CONFIG = SMALL_CFG
+FULL_EXPERIMENT_DATASET_CONFIG = GEOMETRY_CFG
 
 MULTILABEL_EXPERIMENT_DATASET_CONFIG = MULTILABEL_CFG

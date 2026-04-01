@@ -1,0 +1,37 @@
+{
+  "name": "investment_multilabel",
+  "context": {
+    "reward_unit": "dollars",
+    "role": "the head of the household",
+    "situation": "Plan for the future of the household based on the stated objectives and constraints.",
+    "task_in_question": "choose the best investment",
+    "domain": "finance"
+  },
+  "options": {
+    "short_term": {
+      "reward_range": [10, 1000],
+      "time_range": [
+        {"value": 1, "unit": "months"},
+        {"value": 1, "unit": "years"}
+      ],
+      "reward_steps": [0, "linear"],
+      "time_steps": [0, "linear"]
+    },
+    "long_term": {
+      "reward_range": [100000, 100000000],
+      "time_range": [
+        {"value": 10, "unit": "years"},
+        {"value": 3, "unit": "decades"}
+      ],
+      "reward_steps": [0, "logarithmic"],
+      "time_steps": [0, "logarithmic"]
+    }
+  },
+  "time_horizons": [
+    null,
+    {"value": 6, "unit": "months"},
+    {"value": 3, "unit": "decades"}
+  ],
+  "add_formatting_noise": false,
+  "do_formatting_variation_grid": true
+}

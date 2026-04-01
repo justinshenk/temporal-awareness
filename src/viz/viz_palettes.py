@@ -112,24 +112,30 @@ LONG_COLOR = PALETTES[3][1]
 RECOVERY_COLOR = PALETTES[2][4]
 LOGIT_DIFF_COLOR = PALETTES[2][5]
 
-# Token type colors (for position sweeps) - palette 0
+# Token type colors (for position sweeps)
+# Prompt: blue-gray, Response: green, Choice div: purple, Contrast div: red
+_PROMPT_COLOR = "#5C7A99"  # Blue-gray (not yellow)
+_RESPONSE_COLOR = "#5E8C46"  # Green
+_CHOICE_DIV_COLOR = "#6B4580"  # Purple
+_CONTRAST_DIV_COLOR = "#D95252"  # Red
+
 TOKEN_COLORS = {
-    # Prompt tokens
-    "prompt": PALETTES[0][2],
-    "prompt_light": _lighten(PALETTES[0][2]),
-    "prompt_edge": PALETTES[0][2],  # Dark orange - distinct from response
-    # Response tokens
-    "response": PALETTES[0][4],
-    "response_light": _lighten(PALETTES[0][4]),
-    "response_edge": PALETTES[0][4],  # Green - keep for response
-    # Choice divergent tokens
-    "choice_div": PALETTES[0][3],
-    "choice_div_light": _lighten(PALETTES[0][3]),
-    "choice_div_edge": PALETTES[0][3],
-    # Contrastive divergent tokens
-    "contrast_div": PALETTES[0][0],
-    "contrast_div_light": _lighten(PALETTES[0][0]),
-    "contrast_div_edge": PALETTES[0][0],
+    # Prompt tokens (blue-gray)
+    "prompt": _PROMPT_COLOR,
+    "prompt_light": _lighten(_PROMPT_COLOR),
+    "prompt_edge": _PROMPT_COLOR,
+    # Response tokens (green)
+    "response": _RESPONSE_COLOR,
+    "response_light": _lighten(_RESPONSE_COLOR),
+    "response_edge": _RESPONSE_COLOR,
+    # Choice divergent tokens (purple)
+    "choice_div": _CHOICE_DIV_COLOR,
+    "choice_div_light": _lighten(_CHOICE_DIV_COLOR),
+    "choice_div_edge": _CHOICE_DIV_COLOR,
+    # Contrastive divergent tokens (red)
+    "contrast_div": _CONTRAST_DIV_COLOR,
+    "contrast_div_light": _lighten(_CONTRAST_DIV_COLOR),
+    "contrast_div_edge": _CONTRAST_DIV_COLOR,
 }
 
 # Line plot colors (for sweep plots with multiple lines)

@@ -7,8 +7,12 @@ import json
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...binary_choice import BinaryChoiceRunner
-from ...common.token_positions import build_position_mapping
+from ...common.token_positions import (
+    build_position_mapping_from_sample_mappings,
+    decode_token_ids,
+)
 from .preference_types import PreferenceSample
+from .sample_position_mapping import SamplePositionMapping
 
 
 @dataclass
@@ -26,15 +30,17 @@ class ContrastivePreferences(BaseSchema):
     def get_contrastive_pair(
         self,
         runner: BinaryChoiceRunner,
-        anchor_texts: list[str] | None = None,
-        first_interesting_marker: str | None = None,
+        short_term_mapping: SamplePositionMapping,
+        long_term_mapping: SamplePositionMapping,
     ) -> ContrastivePair | None:
         """Build a ContrastivePair from the two preference samples.
 
         Args:
             runner: BinaryChoiceRunner for tokenizer access
-            anchor_texts: Text markers for position alignment (defaults to choice labels)
-            first_interesting_marker: Marker for first interesting position
+            short_term_mapping: SamplePositionMapping for short_term sample
+            long_term_mapping: SamplePositionMapping for long_term sample
+
+        Alignment is done based on format_pos groups from the SamplePositionMappings.
 
         Returns None if either sample fails verification.
         """
@@ -45,10 +51,15 @@ class ContrastivePreferences(BaseSchema):
         long_traj = self.long_term.chosen_traj
         assert short_traj is not None and long_traj is not None
 
-        position_mapping = build_position_mapping(
-            runner._tokenizer, short_traj, long_traj, anchor_texts
+        # Use format_pos-based alignment
+        src_tokens = decode_token_ids(runner._tokenizer, short_traj.token_ids)
+        dst_tokens = decode_token_ids(runner._tokenizer, long_traj.token_ids)
+        position_mapping = build_position_mapping_from_sample_mappings(
+            short_term_mapping,
+            long_term_mapping,
+            src_tokens=src_tokens,
+            dst_tokens=dst_tokens,
         )
-        position_mapping.first_interesting_marker = first_interesting_marker
 
         return ContrastivePair(
             clean_traj=short_traj,
@@ -212,6 +223,20 @@ class ContrastivePreferences(BaseSchema):
         """Exactly one sample has a time horizon."""
         return self.only_short_horizon or self.only_long_horizon
 
+    @property
+    def same_constraint(self) -> bool:
+        """Both samples have the same constraint status (both have horizon OR both don't).
+
+        This is useful for ensuring alignment in contrastive analysis - we want to
+        compare samples where the constraint presence is consistent.
+        """
+        return self.both_horizon or self.neither_horizon
+
+    @property
+    def different_constraint(self) -> bool:
+        """Samples have different constraint status (one has horizon, one doesn't)."""
+        return self.only_one_horizon
+
     # =========================================================================
     # Rational Choice Properties
     # =========================================================================
@@ -303,6 +328,85 @@ class ContrastivePreferences(BaseSchema):
         """Minimum choice probability across both samples."""
         return min(self.short_term.choice_prob, self.long_term.choice_prob)
 
+    # =========================================================================
+    # Trajectory Length Properties
+    # =========================================================================
+
+    @property
+    def short_term_length(self) -> int | None:
+        """Number of tokens in short_term trajectory."""
+        traj = self.short_term.chosen_traj
+        if traj is not None and hasattr(traj, "token_ids"):
+            return len(traj.token_ids)
+        return None
+
+    @property
+    def long_term_length(self) -> int | None:
+        """Number of tokens in long_term trajectory."""
+        traj = self.long_term.chosen_traj
+        if traj is not None and hasattr(traj, "token_ids"):
+            return len(traj.token_ids)
+        return None
+
+    @property
+    def same_length(self) -> bool:
+        """Check if both trajectories have the same number of tokens."""
+        short_len = self.short_term_length
+        long_len = self.long_term_length
+        if short_len is None or long_len is None:
+            return False
+        return short_len == long_len
+
+    @property
+    def different_length(self) -> bool:
+        """Check if trajectories have different number of tokens."""
+        short_len = self.short_term_length
+        long_len = self.long_term_length
+        if short_len is None or long_len is None:
+            return False
+        return short_len != long_len
+
+    # =========================================================================
+    # Largest Reward Choice Properties
+    # =========================================================================
+
+    @property
+    def both_largest_reward(self) -> bool:
+        """Both samples chose the option with the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is True
+            and self.long_term.matches_largest_reward is True
+        )
+
+    @property
+    def neither_largest_reward(self) -> bool:
+        """Neither sample chose the option with the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is False
+            and self.long_term.matches_largest_reward is False
+        )
+
+    @property
+    def only_short_largest_reward(self) -> bool:
+        """Only short_term sample chose the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is True
+            and self.long_term.matches_largest_reward is False
+        )
+
+    @property
+    def only_long_largest_reward(self) -> bool:
+        """Only long_term sample chose the largest reward."""
+        return (
+            self.short_term.matches_largest_reward is False
+            and self.long_term.matches_largest_reward is True
+        )
+
+    @property
+    def only_one_largest_reward(self) -> bool:
+        """Exactly one sample chose the largest reward."""
+        return self.only_short_largest_reward or self.only_long_largest_reward
+
     @property
     def mean_choice_prob(self) -> float:
         """Mean choice probability across both samples."""
@@ -355,7 +459,7 @@ class ContrastivePreferences(BaseSchema):
                 self.long_term.choice_prob,
             ],
             "min_choice_prob": self.min_choice_prob,
-            # Rational/associated
+            # Rational/associated/largest_reward
             "matches_rational": [
                 self.short_term.matches_rational,
                 self.long_term.matches_rational,
@@ -364,6 +468,16 @@ class ContrastivePreferences(BaseSchema):
                 self.short_term.matches_associated,
                 self.long_term.matches_associated,
             ],
+            "matches_largest_reward": [
+                self.short_term.matches_largest_reward,
+                self.long_term.matches_largest_reward,
+            ],
+            # Trajectory lengths
+            "trajectory_lengths": [
+                self.short_term_length,
+                self.long_term_length,
+            ],
+            "same_length": self.same_length,
             # IDs
             "formatting_ids": [
                 self.short_term.formatting_id,

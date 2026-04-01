@@ -2,82 +2,124 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from ...common import BaseSchema
 from ..preference import PreferenceDataset
 from ..prompt import PromptDatasetConfig
 
-# Default coarse patching settings (empty dict or empty lists = skip)
-# component options: "resid_pre", "resid_post", "attn_out", "mlp_out"
-COARSE_PATCH: dict = {
+# =============================================================================
+# Default General Configs
+# =============================================================================
+
+# Visualization
+VIZ_CFG: dict = {
     "enabled": True,
+}
+
+# Pair requirements (empty = no filtering)
+PAIR_REQ_CFG: dict = {}
+
+
+# =============================================================================
+# Default Step Configs
+# =============================================================================
+
+# Coarse patching: component options are "resid_pre", "resid_post", "attn_out", "mlp_out"
+COARSE_CFG: dict = {
+    "enabled": True,
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
     "layer_steps": [1],
-    "pos_steps": [5],
+    "pos_steps": [15],
     "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
-    # "components": ["resid_post"],
 }
 
-# Default attribution patching settings (empty dict = skip)
-# methods: "standard", "eap", "eap_ig"
-# components: "resid_post", "attn_out", "mlp_out"
-# quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
-# Note: grad_at is determined by mode (noising=clean, denoising=corrupted)
-ATT_PATCH: dict = {
+# Attribution patching
+# - methods: "standard", "eap", "eap_ig"
+# - components: "resid_post", "attn_out", "mlp_out"
+# - quadrature: ["midpoint"], ["gauss-legendre"], ["gauss-chebyshev"], or combinations
+ATTRIB_CFG: dict = {
     "enabled": True,
-    "ig_steps": 30,
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
+    "ig_steps": 20,
     "methods": ["standard", "eap_ig", "eap"],
-    "components": ["mlp_out", "attn_out", "resid_post"],
+    "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
     "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
-    # "methods": ["standard"],
-    # "components": ["mlp_out"],
-    # "quadrature": ["midpoint"],
 }
 
-
-# Default visualization settings
-VIZ: dict = {
+# Difference-of-means analysis
+DIFFMEANS_CFG: dict = {
     "enabled": True,
-    "regenerate_all": False,
-    "only_agg": False,  # If True, skip per-pair visualizations
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
+    "n_components": 10,
 }
 
-# Default geometric analysis settings (PCA of residual stream)
-GEO: dict = {
+# MLP neuron analysis (includes per-neuron logit contribution)
+MLP_CFG: dict = {
     "enabled": True,
-    "layers": [0, 6, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 33, 34],
-    "positions": [
-        28,
-        30,
-        32,
-        35,
-        44,
-        48,
-        52,
-        86,
-        87,
-        88,
-        103,
-        121,
-        122,
-        139,
-        140,
-        143,
-        144,
-        145,
-    ],
-    "n_components": 5,
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
+    "layers": [19, 21, 24, 28, 31, 34, 35],
+    "n_top_neurons": 50,
+    # Neuron attribution is computed as part of MLP analysis
+    # Each neuron's logit_contribution = activation_diff * W_out @ logit_direction
 }
 
-# Default difference-in-means settings
-DIFFMEANS: dict = {
+# Attention pattern analysis
+ATTN_CFG: dict = {
     "enabled": True,
-    "n_components": 10,  # Number of SVD components to track
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
+    "layers": [18, 19, 21, 24, 28, 31, 34, 35],
+    "store_patterns": True,
+    "dynamic_threshold": 0.05,
+    # Head attribution
+    "head_attribution_enabled": True,
+    # Position patching for top heads
+    "position_patching_enabled": True,
+    "n_top_heads_for_position": 4,
 }
 
-# Default pair requirement settings (empty = no requirements, allows all valid pairs)
-# Set "different_labels": True for multilabel experiments
-PAIR_REQ: dict = {}
+# Fine-grained patching (path patching, multi-site)
+# NOTE: Head attribution and position patching are in ATTN_CFG
+# NOTE: Neuron attribution is in MLP_CFG
+# NOTE: Layer-position patching is in ATTN_CFG (for attn_out) and MLP_CFG (for mlp_out)
+FINE_CFG: dict = {
+    "enabled": True,
+    "no_cache": False,
+    "no_viz": False,
+    ######################
+    ### CONFIG VALUES  ###
+    ######################
+    # Path patching
+    "path_patching_enabled": True,
+    "dest_mlp_layers": [28, 29, 30, 31, 34],
+    "dest_head_layers": [28, 29, 30, 31, 34],
+    "n_top_source_heads": 5,
+    # Multi-site interaction
+    "multi_site_enabled": True,
+    "n_components_multi_site": 5,
+}
 
 
 @dataclass
@@ -87,31 +129,80 @@ class ExperimentConfig(BaseSchema):
     # Core settings
     model: str
     dataset_config: dict
+
+    # Filtering configs
     max_samples: int | None = None
     n_pairs: int | None = None
+    pair_req_cfg: dict = field(default_factory=lambda: PAIR_REQ_CFG.copy())
 
-    # Coarse patching settings
-    coarse_patch: dict = field(default_factory=lambda: COARSE_PATCH.copy())
+    # Viz config
+    viz_cfg: dict = field(default_factory=lambda: VIZ_CFG.copy())
 
-    # Attribution patching settings
-    att_patch: dict = field(default_factory=lambda: ATT_PATCH.copy())
-
-    # Visualization settings
-    viz: dict = field(default_factory=lambda: VIZ.copy())
-
-    # Difference-in-means settings
-    diffmeans: dict = field(default_factory=lambda: DIFFMEANS.copy())
-
-    # Geometric analysis settings (PCA)
-    geo: dict = field(default_factory=lambda: GEO.copy())
-
-    # Pair requirements (filtering criteria for contrastive pairs)
-    pair_req: dict = field(default_factory=lambda: PAIR_REQ.copy())
+    # Step configs
+    coarse_cfg: dict = field(default_factory=lambda: COARSE_CFG.copy())
+    attrib_cfg: dict = field(default_factory=lambda: ATTRIB_CFG.copy())
+    diffmeans_cfg: dict = field(default_factory=lambda: DIFFMEANS_CFG.copy())
+    mlp_cfg: dict = field(default_factory=lambda: MLP_CFG.copy())
+    attn_cfg: dict = field(default_factory=lambda: ATTN_CFG.copy())
+    fine_cfg: dict = field(default_factory=lambda: FINE_CFG.copy())
 
     @property
-    def name(self) -> str:
+    def dataset_name(self) -> str:
         return self.dataset_config.get("name", "default")
 
-    def get_prefix(self) -> str:
+    @property
+    def step_cfgs(self) -> list[dict]:
+        """All step configuration dicts."""
+        return [
+            self.coarse_cfg,
+            self.attrib_cfg,
+            self.diffmeans_cfg,
+            self.mlp_cfg,
+            self.attn_cfg,
+            self.fine_cfg,
+        ]
+
+    def get_preference_data_prefix(self) -> str:
         cfg = PromptDatasetConfig.from_dict(self.dataset_config)
         return PreferenceDataset.make_prefix(cfg.get_id(), self.model)
+
+    def save(self, output_dir: Path) -> Path:
+        """Save config to experiment_config.json in output_dir.
+
+        Also saves to original_experiment_config.json if it doesn't exist yet.
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save current config
+        path = output_dir / "experiment_config.json"
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+        # Save original config only on first run
+        original_path = output_dir / "original_experiment_config.json"
+        if not original_path.exists():
+            with open(original_path, "w") as f:
+                json.dump(self.to_dict(), f, indent=2)
+
+        return path
+
+    @classmethod
+    def load(cls, output_dir: Path) -> "ExperimentConfig | None":
+        """Load config from original_experiment_config.json (preferred) or experiment_config.json."""
+        output_dir = Path(output_dir)
+
+        # Prefer original config (immutable first-run config)
+        original_path = output_dir / "original_experiment_config.json"
+        if original_path.exists():
+            with open(original_path) as f:
+                data = json.load(f)
+            return cls.from_dict(data)
+
+        # Fall back to current config
+        path = output_dir / "experiment_config.json"
+        if not path.exists():
+            return None
+        with open(path) as f:
+            data = json.load(f)
+        return cls.from_dict(data)

@@ -195,18 +195,6 @@ class PreferenceQuerier:
                 activation_names, cache
             )
 
-        # Compute matches_rational and matches_associated
-        choice_idx = choice.choice_idx
-        expected_rational = sample.expected_rational_choice
-        associated = sample.associated_choice
-
-        matches_rational = (
-            (choice_idx == expected_rational) if expected_rational is not None else None
-        )
-        matches_associated = (
-            (choice_idx == associated) if associated is not None else None
-        )
-
         # Clear heavy data from choice tree before storing
         choice.pop_heavy()
         clear_gpu_memory()
@@ -233,8 +221,6 @@ class PreferenceQuerier:
             decoding_mismatch=decoding_mismatch,
             formatting_id=sample.formatting_id,
             context_id=sample.context_id,
-            matches_rational=matches_rational,
-            matches_associated=matches_associated,
             short_term_first=sample.short_term_first,
         )
 

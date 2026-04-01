@@ -121,8 +121,11 @@ class BaseSchema:
     """Base class for schema dataclasses with deterministic ID generation."""
 
     # Each schema gets unique id based on values
+    def _extra_id(self) -> str:
+        return ""
+
     def get_id(self) -> str:
-        return deterministic_id_from_dataclass(self)
+        return deterministic_id_from_dataclass(self) + self._extra_id()
 
     def to_dict(
         self,

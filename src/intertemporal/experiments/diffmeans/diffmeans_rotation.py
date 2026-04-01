@@ -4,25 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-
-def cosine_similarity(v1: np.ndarray, v2: np.ndarray) -> float:
-    """Compute cosine similarity between two vectors."""
-    norm1 = np.linalg.norm(v1)
-    norm2 = np.linalg.norm(v2)
-    if norm1 < 1e-10 or norm2 < 1e-10:
-        return 0.0
-    denom = norm1 * norm2
-    if denom < 1e-10:
-        return 0.0
-    return float(np.dot(v1, v2) / denom)
-
-
-def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
-    """Compute angle in degrees between two vectors."""
-    cos_sim = cosine_similarity(v1, v2)
-    # Clamp to avoid numerical issues with arccos
-    cos_sim = np.clip(cos_sim, -1.0, 1.0)
-    return float(np.degrees(np.arccos(cos_sim)))
+from ....common.math import angle_between, cosine_similarity
 
 
 def compute_rotation_decomposition(

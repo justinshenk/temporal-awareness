@@ -10,7 +10,7 @@ from .choice import LabeledSimpleBinaryChoice
 from .hook_utils import hook_name
 from .patching_types import PatchingMode
 from .time_value import TimeValue
-from .token_positions import PositionMapping
+from .token_positions import PairPositionMapping
 from .token_trajectory import TokenTrajectory
 
 DEBUG_INTERVENTIONS = False
@@ -35,7 +35,7 @@ class ContrastivePair(BaseSchema):
 
     clean_traj: TokenTrajectory
     corrupted_traj: TokenTrajectory
-    position_mapping: PositionMapping = field(default_factory=PositionMapping)
+    position_mapping: PairPositionMapping = field(default_factory=PairPositionMapping)
     full_texts: tuple[str, str] = ("", "")
     prompt_texts: tuple[str, str] = ("", "")
     clean_labels: tuple[str, str] | None = None
@@ -131,6 +131,22 @@ class ContrastivePair(BaseSchema):
         return self.corrupted_traj
 
     # =========================================================================
+    # Memory Management
+    # =========================================================================
+
+    def pop_heavy(self) -> None:
+        """Clear heavy data from trajectories to free memory.
+
+        Called after patching operations to prevent memory accumulation
+        when processing many pairs. The trajectories may have `internals`
+        dicts containing large activation tensors.
+        """
+        if hasattr(self.clean_traj, "pop_heavy"):
+            self.clean_traj.pop_heavy()
+        if hasattr(self.corrupted_traj, "pop_heavy"):
+            self.corrupted_traj.pop_heavy()
+
+    # =========================================================================
     # Interventions
     # =========================================================================
 
@@ -223,8 +239,16 @@ class ContrastivePair(BaseSchema):
         corrupted_internals: dict,
         alpha: float,
     ) -> Intervention | None:
-        """Create intervention for a single layer."""
-        hook = hook_name(layer, component)
+        """Create intervention for a single layer.
+
+        Handles both 3D activations [batch, seq, hidden] and 4D activations
+        [batch, seq, n_heads, d_head] for attn_z head-level interventions.
+        """
+        # For attn_z, use the special hook name format
+        if component == "attn_z":
+            hook = f"blocks.{layer}.attn.hook_z"
+        else:
+            hook = hook_name(layer, component)
 
         # Get source activations (only source needs internals)
         if mode == "denoising":
@@ -237,9 +261,16 @@ class ContrastivePair(BaseSchema):
         if patch_acts is None:
             return None
 
-        # Squeeze batch dimension if present: [1, seq, hidden] -> [seq, hidden]
-        if patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
-            patch_acts = patch_acts.squeeze(0)
+        # Determine if this is a head-level intervention (4D tensor)
+        is_head_level = component == "attn_z" and target.head is not None
+
+        # Handle dimension squeezing based on tensor rank
+        # 4D: [batch, seq, n_heads, d_head] -> [seq, n_heads, d_head]
+        # 3D: [batch, seq, hidden] -> [seq, hidden]
+        if patch_acts.ndim == 4 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, n_heads, d_head]
+        elif patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, hidden]
 
         positions = target.positions
 
@@ -263,11 +294,21 @@ class ContrastivePair(BaseSchema):
                     self.position_mapping.get(p, p) for p in range(running_len)
                 ]
 
-        # Clamp positions to valid range
+        # Clamp positions to valid range (use first dimension for seq length)
         patch_positions = [
-            max(0, min(int(p), len(patch_acts) - 1)) for p in patch_positions
+            max(0, min(int(p), patch_acts.shape[0] - 1)) for p in patch_positions
         ]
-        patch_vals = patch_acts[patch_positions]
+
+        # Extract patch values based on tensor structure
+        if is_head_level:
+            # For head-level: extract [n_positions, d_head] for specific head
+            head_idx = target.head
+            patch_vals = patch_acts[
+                patch_positions, head_idx, :
+            ]  # [n_positions, d_head]
+        else:
+            # For standard 3D: extract [n_positions, hidden]
+            patch_vals = patch_acts[patch_positions]
 
         # Properly convert tensor to numpy array
         if hasattr(patch_vals, "detach"):
@@ -284,7 +325,9 @@ class ContrastivePair(BaseSchema):
         )
 
         if DEBUG_INTERVENTIONS and layer == 0:
-            print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
+            print(
+                f"[intervention] L{layer} mode={mode} alpha={alpha} head={target.head}"
+            )
             print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
             print(
                 f"[intervention]   running_len={running_len}, target.positions={positions}"
@@ -303,6 +346,7 @@ class ContrastivePair(BaseSchema):
                 values=patch_vals,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
         else:
             return Intervention(
@@ -313,6 +357,7 @@ class ContrastivePair(BaseSchema):
                 alpha=alpha,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
 
     def print_summary(self) -> None:
@@ -324,9 +369,6 @@ class ContrastivePair(BaseSchema):
         print(f"{prefix} Position mapping: src_len={pm.src_len}, dst_len={pm.dst_len}")
         print(
             f"{prefix} Anchors ({len(pm.anchors)}): {list(zip(pm.anchors, pm.anchor_texts))}"
-        )
-        print(
-            f"{prefix} First interesting: {pm.first_interesting_marker} -> pos={pm.first_interesting_pos}"
         )
         if pm.anchors:
             for (src_pos, dst_pos), text in zip(pm.anchors[:3], pm.anchor_texts[:3]):

@@ -1,0 +1,47 @@
+{
+  "name": "research_geometry",
+  "context": {
+    "reward_unit": "expected citations from scientific publications",
+    "role": "a research director managing lab resources",
+    "situation": "Allocate research funding between high-risk moonshot projects and incremental-progress research.",
+    "task_in_question": "decide which research direction to prioritize",
+    "domain": "research"
+  },
+  "options": {
+    "short_term": {
+      "reward_range": [10, 1000],
+      "time_range": [
+        {"value": 3, "unit": "months"},
+        {"value": 3, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    },
+    "long_term": {
+      "reward_range": [500, 50000],
+      "time_range": [
+        {"value": 2, "unit": "years"},
+        {"value": 20, "unit": "years"}
+      ],
+      "reward_steps": [2, "logarithmic"],
+      "time_steps": [5, "logarithmic"]
+    }
+  },
+  "time_horizons": [
+    null,
+    {"value": 3, "unit": "months"},
+    {"value": 6, "unit": "months"},
+    {"value": 1, "unit": "years"},
+    {"value": 2, "unit": "years"},
+    {"value": 3, "unit": "years"},
+    {"value": 5, "unit": "years"},
+    {"value": 10, "unit": "years"},
+    {"value": 15, "unit": "years"},
+    {"value": 20, "unit": "years"}
+  ],
+  "add_formatting_noise": false,
+  "do_formatting_variation_grid": false,
+  "do_context_variations": false,
+  "round_time_units": true,
+  "round_reward_units": true
+}

@@ -7,25 +7,33 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from ....common.logging import log
-from .diffmeans_results import DiffMeansLayerResult, DiffMeansPairResult
+from ....common.math import cosine_similarity
+from ....inference.inference_utils import get_all_activations
+from ...common.semantic_positions import RESPONSE_POSITIONS
+from .diffmeans_results import (
+    DiffMeansLayerResult,
+    DiffMeansPairResult,
+    PositionPair,
+    ResolvedPositions,
+)
 from .diffmeans_rotation import (
     compute_layer_direction_similarity,
     compute_rotation_decomposition,
-    cosine_similarity,
 )
 
 if TYPE_CHECKING:
     from ....binary_choice import BinaryChoiceRunner
     from ....common.contrastive_pair import ContrastivePair
+    from ...common.sample_position_mapping import SamplePositionMapping
 
 
 def run_diffmeans_analysis(
     runner: "BinaryChoiceRunner",
     pair: "ContrastivePair",
+    clean_mapping: "SamplePositionMapping",
+    corrupted_mapping: "SamplePositionMapping",
     pair_idx: int = 0,
-    position: int | None = None,
-    additional_positions: list[int] | None = None,
+    positions: list[str] | None = None,
 ) -> DiffMeansPairResult:
     """Run difference-in-means analysis for a single pair.
 
@@ -40,102 +48,229 @@ def run_diffmeans_analysis(
     Args:
         runner: Model runner (with W_U for logit direction)
         pair: Contrastive pair
+        clean_mapping: SamplePositionMapping for clean trajectory
+        corrupted_mapping: SamplePositionMapping for corrupted trajectory
         pair_idx: Pair index for tracking
-        position: Primary position to analyze (None = use last token)
-        additional_positions: Additional positions to analyze
+        positions: Semantic position names to analyze (default: RESPONSE_POSITIONS)
 
     Returns:
         DiffMeansPairResult with per-layer analysis
     """
+    if positions is None:
+        positions = list(RESPONSE_POSITIONS)
+
     n_layers = runner.n_layers
 
     # Get activations for clean and corrupted
-    clean_acts = _get_all_activations(runner, pair.clean_traj.token_ids)
-    corrupted_acts = _get_all_activations(runner, pair.corrupted_traj.token_ids)
+    clean_acts = get_all_activations(runner, pair.clean_traj.token_ids)
+    corrupted_acts = get_all_activations(runner, pair.corrupted_traj.token_ids)
 
-    # Determine primary position to analyze
-    if position is None:
-        # Use last token position (decision point)
-        primary_pos = min(len(pair.clean_traj.token_ids), len(pair.corrupted_traj.token_ids)) - 1
-    else:
-        primary_pos = position
+    # Resolve semantic positions to absolute positions
+    resolved_positions = _resolve_positions(
+        positions, clean_mapping, corrupted_mapping, pair
+    )
+
+    if not resolved_positions:
+        raise ValueError(
+            f"No positions resolved for pair {pair_idx}. "
+            f"Requested: {positions}. "
+            f"clean_mapping has: {list(clean_mapping.named_positions.keys())}. "
+            f"corrupted_mapping has: {list(corrupted_mapping.named_positions.keys())}."
+        )
 
     # Get logit direction (W_U[clean_choice] - W_U[corrupted_choice])
     logit_direction = _compute_logit_direction(runner, pair)
 
-    # Compute difference vectors at primary position
-    diff_resid_post = {}
-    diff_attn_out = {}
-    diff_mlp_out = {}
+    clean_len = len(pair.clean_traj.token_ids)
+    corrupted_len = len(pair.corrupted_traj.token_ids)
 
-    for layer in range(n_layers):
-        if layer in clean_acts.get("resid_post", {}) and layer in corrupted_acts.get("resid_post", {}):
-            clean_vec = clean_acts["resid_post"][layer][primary_pos]
-            corrupted_vec = corrupted_acts["resid_post"][layer][primary_pos]
-            diff_resid_post[layer] = clean_vec - corrupted_vec
+    # Build full layer results for each format_pos
+    # Generate both per-rel_pos results (e.g., "time_horizon:0") and combined (e.g., "time_horizon")
+    position_results: dict[str, list[DiffMeansLayerResult]] = {}
 
-        if layer in clean_acts.get("attn_out", {}) and layer in corrupted_acts.get("attn_out", {}):
-            diff_attn_out[layer] = (
-                clean_acts["attn_out"][layer][primary_pos]
-                - corrupted_acts["attn_out"][layer][primary_pos]
-            )
+    for format_pos, pos_pairs in resolved_positions.items():
+        # Collect diff vectors for each rel_pos
+        per_rel_pos_diffs: list[
+            tuple[int, dict, dict, dict]
+        ] = []  # (rel_pos, resid, attn, mlp)
 
-        if layer in clean_acts.get("mlp_out", {}) and layer in corrupted_acts.get("mlp_out", {}):
-            diff_mlp_out[layer] = (
-                clean_acts["mlp_out"][layer][primary_pos]
-                - corrupted_acts["mlp_out"][layer][primary_pos]
-            )
+        for rel_pos, pos_pair in enumerate(pos_pairs):
+            clean_pos = pos_pair.clean_pos
+            corrupted_pos = pos_pair.corrupted_pos
 
-    if not diff_resid_post:
-        return DiffMeansPairResult(pair_idx=pair_idx, layer_results=[], positions_analyzed=0)
+            if clean_pos < 0 or clean_pos >= clean_len:
+                continue
+            if corrupted_pos < 0 or corrupted_pos >= corrupted_len:
+                continue
 
-    # Get initial direction for cumulative drift computation
-    initial_layer = min(diff_resid_post.keys())
-    initial_direction = diff_resid_post[initial_layer]
+            # Compute difference vectors at this position
+            diff_resid_post = {}
+            diff_attn_out = {}
+            diff_mlp_out = {}
 
-    # Compute cosine similarities between consecutive layers
-    layer_similarities = compute_layer_direction_similarity(diff_resid_post)
+            for layer in range(n_layers):
+                if layer in clean_acts.get(
+                    "resid_post", {}
+                ) and layer in corrupted_acts.get("resid_post", {}):
+                    clean_vec = clean_acts["resid_post"][layer][clean_pos]
+                    corrupted_vec = corrupted_acts["resid_post"][layer][corrupted_pos]
+                    diff_resid_post[layer] = clean_vec - corrupted_vec
 
-    # Build layer results for primary position
-    layer_results = _build_layer_results(
-        n_layers=n_layers,
-        diff_resid_post=diff_resid_post,
-        diff_attn_out=diff_attn_out,
-        diff_mlp_out=diff_mlp_out,
-        clean_acts=clean_acts,
-        corrupted_acts=corrupted_acts,
-        primary_pos=primary_pos,
-        layer_similarities=layer_similarities,
-        logit_direction=logit_direction,
-        initial_direction=initial_direction,
-    )
+                if layer in clean_acts.get(
+                    "attn_out", {}
+                ) and layer in corrupted_acts.get("attn_out", {}):
+                    diff_attn_out[layer] = (
+                        clean_acts["attn_out"][layer][clean_pos]
+                        - corrupted_acts["attn_out"][layer][corrupted_pos]
+                    )
 
-    # Compute position-specific results for additional positions
-    position_results = {}
-    all_positions = set()
-    if additional_positions:
-        all_positions.update(additional_positions)
-    # Always include the primary position
-    all_positions.add(primary_pos)
+                if layer in clean_acts.get(
+                    "mlp_out", {}
+                ) and layer in corrupted_acts.get("mlp_out", {}):
+                    diff_mlp_out[layer] = (
+                        clean_acts["mlp_out"][layer][clean_pos]
+                        - corrupted_acts["mlp_out"][layer][corrupted_pos]
+                    )
 
-    seq_len = min(len(pair.clean_traj.token_ids), len(pair.corrupted_traj.token_ids))
-    for pos in all_positions:
-        if pos < 0 or pos >= seq_len:
+            if diff_resid_post:
+                per_rel_pos_diffs.append(
+                    (rel_pos, diff_resid_post, diff_attn_out, diff_mlp_out)
+                )
+
+        if not per_rel_pos_diffs:
             continue
-        position_results[pos] = _build_position_layer_results(
-            n_layers=n_layers,
-            clean_acts=clean_acts,
-            corrupted_acts=corrupted_acts,
-            pos=pos,
-        )
+
+        # Generate per-rel_pos results (e.g., "time_horizon:0", "time_horizon:1")
+        for rel_pos, diff_resid_post, diff_attn_out, diff_mlp_out in per_rel_pos_diffs:
+            initial_layer = min(diff_resid_post.keys())
+            initial_direction = diff_resid_post[initial_layer]
+            layer_similarities = compute_layer_direction_similarity(diff_resid_post)
+
+            # Use first position pair for clean/corrupted pos (for component extraction)
+            clean_pos = pos_pairs[rel_pos].clean_pos
+            corrupted_pos = pos_pairs[rel_pos].corrupted_pos
+
+            layer_results = _build_layer_results(
+                n_layers=n_layers,
+                diff_resid_post=diff_resid_post,
+                diff_attn_out=diff_attn_out,
+                diff_mlp_out=diff_mlp_out,
+                clean_acts=clean_acts,
+                corrupted_acts=corrupted_acts,
+                clean_pos=clean_pos,
+                corrupted_pos=corrupted_pos,
+                layer_similarities=layer_similarities,
+                logit_direction=logit_direction,
+                initial_direction=initial_direction,
+            )
+            position_results[f"{format_pos}:{rel_pos}"] = layer_results
+
+        # Generate combined result by averaging diff vectors across all rel_pos
+        combined_resid = {}
+        combined_attn = {}
+        combined_mlp = {}
+
+        def _to_tensor(v):
+            if isinstance(v, np.ndarray):
+                return torch.from_numpy(v)
+            return v
+
+        for layer in range(n_layers):
+            resid_vecs = [
+                _to_tensor(d[1][layer]) for d in per_rel_pos_diffs if layer in d[1]
+            ]
+            attn_vecs = [
+                _to_tensor(d[2][layer]) for d in per_rel_pos_diffs if layer in d[2]
+            ]
+            mlp_vecs = [
+                _to_tensor(d[3][layer]) for d in per_rel_pos_diffs if layer in d[3]
+            ]
+
+            if resid_vecs:
+                combined_resid[layer] = torch.stack(resid_vecs).mean(dim=0)
+            if attn_vecs:
+                combined_attn[layer] = torch.stack(attn_vecs).mean(dim=0)
+            if mlp_vecs:
+                combined_mlp[layer] = torch.stack(mlp_vecs).mean(dim=0)
+
+        if combined_resid:
+            initial_layer = min(combined_resid.keys())
+            initial_direction = combined_resid[initial_layer]
+            layer_similarities = compute_layer_direction_similarity(combined_resid)
+
+            # Use first position for clean/corrupted (doesn't matter much for combined)
+            clean_pos = pos_pairs[0].clean_pos
+            corrupted_pos = pos_pairs[0].corrupted_pos
+
+            layer_results = _build_layer_results(
+                n_layers=n_layers,
+                diff_resid_post=combined_resid,
+                diff_attn_out=combined_attn,
+                diff_mlp_out=combined_mlp,
+                clean_acts=clean_acts,
+                corrupted_acts=corrupted_acts,
+                clean_pos=clean_pos,
+                corrupted_pos=corrupted_pos,
+                layer_similarities=layer_similarities,
+                logit_direction=logit_direction,
+                initial_direction=initial_direction,
+            )
+            position_results[format_pos] = layer_results
 
     return DiffMeansPairResult(
         pair_idx=pair_idx,
-        layer_results=layer_results,
-        positions_analyzed=len(position_results),
         position_results=position_results,
-        primary_position=primary_pos,
     )
+
+
+def _resolve_positions(
+    positions: list[str],
+    clean_mapping: "SamplePositionMapping",
+    corrupted_mapping: "SamplePositionMapping",
+    pair: "ContrastivePair",
+) -> ResolvedPositions:
+    """Resolve semantic position names to (clean_pos, corrupted_pos) pairs.
+
+    Args:
+        positions: Semantic position names (e.g., "time_horizon", "response_choice")
+        clean_mapping: SamplePositionMapping for clean trajectory
+        corrupted_mapping: SamplePositionMapping for corrupted trajectory
+        pair: ContrastivePair with position_mapping
+
+    Returns:
+        ResolvedPositions mapping format_pos name -> list of PositionPair
+
+    Raises:
+        ValueError: If clean_mapping or corrupted_mapping is None
+    """
+    if clean_mapping is None:
+        raise ValueError("clean_mapping is required")
+    if corrupted_mapping is None:
+        raise ValueError("corrupted_mapping is required")
+
+    result: dict[str, list[PositionPair]] = {}
+
+    for format_pos in positions:
+        clean_positions = clean_mapping.named_positions.get(format_pos, [])
+        corrupted_positions = corrupted_mapping.named_positions.get(format_pos, [])
+
+        if not clean_positions or not corrupted_positions:
+            continue
+
+        # Pair up positions: use min length, or map using PairPositionMapping
+        pairs = []
+        for i, clean_pos in enumerate(clean_positions):
+            if i < len(corrupted_positions):
+                corrupted_pos = corrupted_positions[i]
+            else:
+                # Use PairPositionMapping to find corresponding corrupted position
+                corrupted_pos = pair.position_mapping.src_to_dst(clean_pos, clean_pos)
+            pairs.append(PositionPair(clean_pos=clean_pos, corrupted_pos=corrupted_pos))
+
+        if pairs:
+            result[format_pos] = pairs
+
+    return ResolvedPositions(positions=result)
 
 
 def _compute_logit_direction(
@@ -197,7 +332,8 @@ def _build_layer_results(
     diff_mlp_out: dict[int, np.ndarray],
     clean_acts: dict[str, dict[int, np.ndarray]],
     corrupted_acts: dict[str, dict[int, np.ndarray]],
-    primary_pos: int,
+    clean_pos: int,
+    corrupted_pos: int,
     layer_similarities: dict[int, tuple[float | None, float | None]],
     logit_direction: np.ndarray | None,
     initial_direction: np.ndarray,
@@ -240,16 +376,16 @@ def _build_layer_results(
             and layer in clean_acts.get("mlp_out", {})
         ):
             diff_resid_pre = (
-                clean_acts["resid_pre"][layer][primary_pos]
-                - corrupted_acts["resid_pre"][layer][primary_pos]
+                clean_acts["resid_pre"][layer][clean_pos]
+                - corrupted_acts["resid_pre"][layer][corrupted_pos]
             )
             diff_attn = (
-                clean_acts["attn_out"][layer][primary_pos]
-                - corrupted_acts["attn_out"][layer][primary_pos]
+                clean_acts["attn_out"][layer][clean_pos]
+                - corrupted_acts["attn_out"][layer][corrupted_pos]
             )
             diff_mlp = (
-                clean_acts["mlp_out"][layer][primary_pos]
-                - corrupted_acts["mlp_out"][layer][primary_pos]
+                clean_acts["mlp_out"][layer][clean_pos]
+                - corrupted_acts["mlp_out"][layer][corrupted_pos]
             )
 
             attn_angle, mlp_angle, total_angle = compute_rotation_decomposition(
@@ -273,77 +409,3 @@ def _build_layer_results(
         )
 
     return layer_results
-
-
-def _build_position_layer_results(
-    n_layers: int,
-    clean_acts: dict[str, dict[int, np.ndarray]],
-    corrupted_acts: dict[str, dict[int, np.ndarray]],
-    pos: int,
-) -> list[DiffMeansLayerResult]:
-    """Build simplified layer results for a specific position (just diff norms)."""
-    layer_results = []
-
-    for layer in range(n_layers):
-        if layer not in clean_acts.get("resid_post", {}):
-            continue
-        if layer not in corrupted_acts.get("resid_post", {}):
-            continue
-
-        clean_vec = clean_acts["resid_post"][layer][pos]
-        corrupted_vec = corrupted_acts["resid_post"][layer][pos]
-        diff_vec = clean_vec - corrupted_vec
-
-        layer_results.append(
-            DiffMeansLayerResult(
-                layer=layer,
-                diff_norm=float(np.linalg.norm(diff_vec)),
-            )
-        )
-
-    return layer_results
-
-
-def _get_all_activations(
-    runner: "BinaryChoiceRunner",
-    tokens: list[int],
-) -> dict[str, dict[int, np.ndarray]]:
-    """Get activations at all layers for all components.
-
-    Returns:
-        Dict mapping component -> layer -> activations [seq_len, d_model]
-    """
-    components = ["resid_post", "resid_pre", "attn_out", "mlp_out"]
-    result = {comp: {} for comp in components}
-
-    # Run model with cache
-    input_ids = torch.tensor([tokens], device=runner.device)
-
-    with torch.no_grad():
-        # Use backend's run_with_cache method
-        _, cache = runner._backend.run_with_cache(input_ids, names_filter=None)
-
-    # Parse cache results into our format
-    # Cache keys are like "blocks.{layer}.hook_{component}"
-    for key, value in cache.items():
-        if not key.startswith("blocks."):
-            continue
-
-        parts = key.split(".")
-        if len(parts) < 3:
-            continue
-
-        try:
-            layer = int(parts[1])
-        except ValueError:
-            continue
-
-        # Extract component from hook name (e.g., "hook_resid_post" -> "resid_post")
-        hook_part = parts[2]
-        if hook_part.startswith("hook_"):
-            comp = hook_part[5:]  # Remove "hook_" prefix
-            if comp in components:
-                # value is [batch, seq_len, d_model], take first batch element
-                result[comp][layer] = value[0].cpu().numpy()
-
-    return result

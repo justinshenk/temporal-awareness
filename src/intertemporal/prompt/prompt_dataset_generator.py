@@ -30,6 +30,9 @@ from ..common.preference_types import (
     TimeValue,
 )
 
+# Time horizon padding: 20 chars with 25% left / 75% right padding
+TIME_HORIZON_MIN_LENGTH = 20
+
 
 class PromptDatasetGenerator:
     """
@@ -120,8 +123,17 @@ class PromptDatasetGenerator:
                 # Use years for 12+ months
                 years = months / 12
                 result.append(TimeValue(value=round(years, 1), unit="years"))
-            else:
+            elif months >= 1:
+                # Use months for 1+ months
                 result.append(TimeValue(value=round(months, 1), unit="months"))
+            elif months >= 1 / 4:  # ~1 week
+                # Use weeks for 1+ weeks
+                weeks = months * 4.33  # ~4.33 weeks per month
+                result.append(TimeValue(value=round(weeks, 1), unit="weeks"))
+            else:
+                # Use days for small values
+                days = months * 30.44  # avg days per month
+                result.append(TimeValue(value=max(1, round(days)), unit="days"))
 
         return result
 
@@ -145,6 +157,10 @@ class PromptDatasetGenerator:
             opt.reward_steps[1],
         )
 
+        # Apply reward rounding if enabled
+        if self.dataset_config.round_reward_units:
+            rewards = [self._round_reward(r) for r in rewards]
+
         # Generate time steps
         times = self.generate_time_steps(
             opt.time_range[0],
@@ -153,6 +169,10 @@ class PromptDatasetGenerator:
             opt.time_steps[1],
         )
 
+        # Apply time rounding if enabled
+        if self.dataset_config.round_time_units:
+            times = [self._round_time(t) for t in times]
+
         # Create grid
         grid = []
         for reward in rewards:
@@ -160,6 +180,14 @@ class PromptDatasetGenerator:
                 grid.append((reward, time))
 
         return grid
+
+    def _round_reward(self, value: float) -> float:
+        """Round reward to a nice integer value."""
+        return round(value)
+
+    def _round_time(self, time: TimeValue) -> TimeValue:
+        """Round time to a nice whole number."""
+        return TimeValue(value=round(time.value), unit=time.unit)
 
     def format_question(
         self,
@@ -199,13 +227,21 @@ class PromptDatasetGenerator:
         # Assemble question template (conditionally includes time-horizon spec)
         prompt = pf.question_template(time_horizon)
 
-        # Use provided time strings or default to str(time)
-        left_time = left_time_str if left_time_str else str(left_option.time)
-        right_time = right_time_str if right_time_str else str(right_option.time)
+        # Use provided time strings or format explicitly
+        # Options: no padding (min_length=0)
+        # Horizon: padded to 12 chars (25% left, 75% right)
+        left_time = (
+            left_time_str if left_time_str else left_option.time.to_string(min_length=0)
+        )
+        right_time = (
+            right_time_str
+            if right_time_str
+            else right_option.time.to_string(min_length=0)
+        )
         horizon_str = (
             horizon_time_str
             if horizon_time_str
-            else (str(time_horizon) if time_horizon else "")
+            else (time_horizon.to_string(min_length=TIME_HORIZON_MIN_LENGTH) if time_horizon else "")
         )
 
         # Build var_keywords values dict
@@ -334,7 +370,19 @@ class PromptDatasetGenerator:
 
         Returns:
             PromptSample instance
+
+        Raises:
+            ValueError: If short_term time >= long_term time
         """
+        # Validate: short_term time must be less than long_term time
+        short_time_months = short_term_data[1].to_months()
+        long_time_months = long_term_data[1].to_months()
+        if short_time_months >= long_time_months:
+            raise ValueError(
+                f"short_term time ({short_term_data[1]}) must be less than "
+                f"long_term time ({long_term_data[1]})"
+            )
+
         ctx = context if context is not None else self.dataset_config.context
 
         variation = self._process_formatting_variation(variation)
@@ -373,10 +421,10 @@ class PromptDatasetGenerator:
         _, left_time_str = apply_time_variation(left_option.time, variation)
         _, right_time_str = apply_time_variation(right_option.time, variation)
 
-        # Apply time variation to horizon if present
+        # Apply time variation to horizon if present (with padding)
         horizon_time_str = None
         if time_horizon is not None:
-            _, horizon_time_str = apply_time_variation(time_horizon, variation)
+            _, horizon_time_str = apply_time_variation(time_horizon, variation, min_length=TIME_HORIZON_MIN_LENGTH)
 
         question_text = self.format_question(
             left_option,
@@ -469,15 +517,25 @@ class PromptDatasetGenerator:
         - Formatting variations (if enabled)
         - Context variations (if enabled)
 
+        Filters out invalid samples where short_term time >= long_term time.
+
         Returns:
             List of PromptSample objects
         """
 
         samples = []
+        sample_idx = 0
         grid = self.generate_grid()
-        for i, params in enumerate(grid):
-            sample = self.create_sample(i, *params)
+        for params in grid:
+            short_term_data, long_term_data, *rest = params
+            # Filter: short_term time must be less than long_term time
+            if short_term_data[1].to_months() >= long_term_data[1].to_months():
+                continue
+            sample = self.create_sample(
+                sample_idx, short_term_data, long_term_data, *rest
+            )
             samples.append(sample)
+            sample_idx += 1
 
         return samples
 

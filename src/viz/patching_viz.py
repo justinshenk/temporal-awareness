@@ -60,6 +60,7 @@ def plot_layer_position_heatmap(
     vmax = max(abs(matrix.min()), abs(matrix.max()), 0.1)
     norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
     im = ax.imshow(matrix, cmap="RdBu_r", norm=norm, aspect="auto")
+    ax.invert_yaxis()  # Lower layers at bottom
 
     # Token labels on x-axis with position numbers
     if tokens:
@@ -107,6 +108,7 @@ def _plot_sweep_results(
     vmax = max(abs(min(recoveries)), abs(max(recoveries)), 0.1)
     norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
     im1 = ax1.imshow(matrix, cmap="RdBu_r", norm=norm, aspect="auto")
+    ax1.invert_yaxis()  # Lower layers at bottom
 
     ax1.set_yticks(range(len(layers)))
     ax1.set_yticklabels([f"L{l}" for l in layers], fontsize=9)

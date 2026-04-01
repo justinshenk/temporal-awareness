@@ -23,16 +23,16 @@ from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 from src.intertemporal.preference import (
     PreferenceDataset,
     analyze_preferences,
+    analyze_samples,
     print_analysis,
 )
 from src.intertemporal.prompt import PromptDatasetConfig
-from src.intertemporal.common.contrastive_utils import (
-    get_contrastive_preferences,
-    PrefPairRequirement,
-    PrefPairSubsampleStrategy,
-)
+from src.intertemporal.common.contrastive_utils import get_contrastive_preferences
+from src.intertemporal.common.pref_pair_requirement import PrefPairRequirement
+from src.intertemporal.common.pref_pair_subsample import PrefPairSubsampleStrategy
 from src.intertemporal.common.contrastive_preferences import ContrastivePreferences
 from src.intertemporal.common.contrastive_analysis import print_contrastive_pairs
+from src.common.profiler import profile, P
 
 
 def get_default_pref_dataset_path() -> Path:
@@ -61,13 +61,18 @@ def get_args():
         "--req",
         type=str,
         default=None,
-        help='JSON to override PrefPairRequirement defaults. E.g.: \'{"both_horizon": true}\'',
+        help="JSON to override PrefPairRequirement defaults. E.g.: '{\"both_horizon\": true}'",
     )
     parser.add_argument(
         "--subsample",
         type=str,
         default=None,
         help='JSON to override PrefPairSubsampleStrategy defaults. E.g.: \'{"smart_reduce": "diverse"}\'',
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run full analysis with all configurations (default: just run default config)",
     )
     return parser.parse_args()
 
@@ -103,14 +108,16 @@ class PairMetrics:
     long_h_7yr: float  # % long-chooser has 7yr horizon
     long_h_15yr: float  # % long-chooser has 15yr horizon
     long_h_none: float  # % long-chooser has no horizon
-    # Rationality/Association
+    # Rationality/Association/Largest Reward
     both_rational: float  # % both rational (when computable)
     both_associated: float  # % both associated (when computable)
+    both_largest_reward: float  # % both chose largest reward (when computable)
     # Content
     same_rewards: float  # % same reward values
     same_times: float  # % same delivery times
     same_order: float  # % same option order (both short-first or both long-first)
     same_option: float  # % both same rewards AND same delivery times
+    same_length: float  # % same trajectory length
     # Confidence
     mean_conf: float  # mean min_choice_prob
 
@@ -136,23 +143,35 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
             long_h_none=0,
             both_rational=0,
             both_associated=0,
+            both_largest_reward=0,
             same_rewards=0,
             same_times=0,
             same_order=0,
             same_option=0,
+            same_length=0,
             mean_conf=0,
         )
 
     # Horizon presence categories
     both_have_h = sum(1 for p in pairs if p.both_horizon) / n
-    only_short_h = sum(
-        1 for p in pairs
-        if p.short_term.time_horizon is not None and p.long_term.time_horizon is None
-    ) / n
-    only_long_h = sum(
-        1 for p in pairs
-        if p.short_term.time_horizon is None and p.long_term.time_horizon is not None
-    ) / n
+    only_short_h = (
+        sum(
+            1
+            for p in pairs
+            if p.short_term.time_horizon is not None
+            and p.long_term.time_horizon is None
+        )
+        / n
+    )
+    only_long_h = (
+        sum(
+            1
+            for p in pairs
+            if p.short_term.time_horizon is None
+            and p.long_term.time_horizon is not None
+        )
+        / n
+    )
     neither_has_h = sum(1 for p in pairs if p.neither_horizon) / n
 
     # Same/different horizon (only when both have)
@@ -178,7 +197,7 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
     long_h_15yr = sum(1 for p in pairs if h_approx(p.long_term.time_horizon, 15.0)) / n
     long_h_none = sum(1 for p in pairs if p.long_term.time_horizon is None) / n
 
-    # Rationality (when computable)
+    # Rationality (when computable - requires both have horizon)
     if n_both > 0:
         both_rational = sum(1 for p in both_h_pairs if p.both_rational) / n_both
         both_associated = sum(1 for p in both_h_pairs if p.both_associated) / n_both
@@ -186,11 +205,23 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
         both_rational = 0
         both_associated = 0
 
+    # Largest reward (when computable)
+    lr_computable = [
+        p for p in pairs
+        if p.short_term.matches_largest_reward is not None
+        and p.long_term.matches_largest_reward is not None
+    ]
+    if lr_computable:
+        both_largest_reward = sum(1 for p in lr_computable if p.both_largest_reward) / len(lr_computable)
+    else:
+        both_largest_reward = 0
+
     # Content variation
     same_rewards = sum(1 for p in pairs if p.same_rewards) / n
     same_times = sum(1 for p in pairs if p.same_times) / n
     same_order = sum(1 for p in pairs if p.same_order) / n
     same_option = sum(1 for p in pairs if p.same_rewards and p.same_times) / n
+    same_length = sum(1 for p in pairs if p.same_length) / n
 
     # Confidence
     mean_conf = sum(p.min_choice_prob for p in pairs) / n
@@ -212,10 +243,12 @@ def extract_metrics(name: str, pairs: list[ContrastivePreferences]) -> PairMetri
         long_h_none=long_h_none * 100,
         both_rational=both_rational * 100,
         both_associated=both_associated * 100,
+        both_largest_reward=both_largest_reward * 100,
         same_rewards=same_rewards * 100,
         same_times=same_times * 100,
         same_order=same_order * 100,
         same_option=same_option * 100,
+        same_length=same_length * 100,
         mean_conf=mean_conf * 100,
     )
 
@@ -226,7 +259,9 @@ def print_simple_table(metrics_list: list[PairMetrics], title: str) -> None:
     print("=" * 115)
 
     # Simple key metrics table
-    print(f"{'Config':<28} {'Pairs':>5}  {'BothH':>5}  {'DiffH':>5}  {'S:no':>5}  {'L:no':>5}  {'Same$':>5}  {'SameT':>5}  {'SameOpt':>7}  {'SameOrd':>7}")
+    print(
+        f"{'Config':<28} {'Pairs':>5}  {'BothH':>5}  {'DiffH':>5}  {'S:no':>5}  {'L:no':>5}  {'Same$':>5}  {'SameT':>5}  {'SameOpt':>7}  {'SameOrd':>7}"
+    )
     print("-" * 115)
     for m in metrics_list:
         print(
@@ -239,32 +274,38 @@ def print_simple_table(metrics_list: list[PairMetrics], title: str) -> None:
 def print_detailed_metrics(m: PairMetrics) -> None:
     """Print detailed metrics for a single config."""
     print(f"\n  {m.name} ({m.n_pairs} pairs)")
-    print(f"  " + "-" * 50)
-    print(f"  Horizon presence:")
+    print("  " + "-" * 50)
+    print("  Horizon presence:")
     print(f"    Both have horizon:    {m.both_have_h:5.1f}%")
     print(f"    Only short has H:     {m.only_short_h:5.1f}%")
     print(f"    Only long has H:      {m.only_long_h:5.1f}%")
     print(f"    Neither has H:        {m.neither_has_h:5.1f}%")
-    print(f"  Horizon comparison (when both have):")
+    print("  Horizon comparison (when both have):")
     print(f"    Same horizon:         {m.same_h:5.1f}%")
     print(f"    Different horizon:    {m.diff_h:5.1f}%  <- want HIGH")
-    print(f"  Short-chooser horizons:")
-    print(f"    1yr: {m.short_h_1yr:4.0f}%   7yr: {m.short_h_7yr:4.0f}%   none: {m.short_h_none:4.0f}%")
-    print(f"  Long-chooser horizons:")
-    print(f"    7yr: {m.long_h_7yr:4.0f}%   15yr: {m.long_h_15yr:4.0f}%   none: {m.long_h_none:4.0f}%")
-    print(f"  Content matching:")
+    print("  Short-chooser horizons:")
+    print(
+        f"    1yr: {m.short_h_1yr:4.0f}%   7yr: {m.short_h_7yr:4.0f}%   none: {m.short_h_none:4.0f}%"
+    )
+    print("  Long-chooser horizons:")
+    print(
+        f"    7yr: {m.long_h_7yr:4.0f}%   15yr: {m.long_h_15yr:4.0f}%   none: {m.long_h_none:4.0f}%"
+    )
+    print("  Content matching:")
     print(f"    Same rewards:         {m.same_rewards:5.1f}%")
     print(f"    Same times:           {m.same_times:5.1f}%")
     print(f"    Same option ($ + T):  {m.same_option:5.1f}%")
     print(f"    Same order:           {m.same_order:5.1f}%")
-    print(f"  Quality:")
+    print(f"    Same length:          {m.same_length:5.1f}%")
+    print("  Quality:")
     print(f"    Both rational:        {m.both_rational:5.1f}%")
     print(f"    Both associated:      {m.both_associated:5.1f}%")
+    print(f"    Both largest reward:  {m.both_largest_reward:5.1f}%")
     print(f"    Mean confidence:      {m.mean_conf:5.1f}%")
 
 
 def print_horizon_distribution(
-    configs: list[tuple[str, list[ContrastivePreferences]]]
+    configs: list[tuple[str, list[ContrastivePreferences]]],
 ) -> None:
     """Print horizon pair distribution for each config."""
     print(f"\n{'=' * 100}")
@@ -296,7 +337,9 @@ def print_horizon_distribution(
     header = f"{'Config':<30}"
     for sh, lh in horizon_pairs:
         header += f" │ {sh}→{lh}:>8"
-    print(f"{'Config':<30} │ {'1yr→7yr':>8} │ {'1yr→15yr':>8} │ {'1yr→none':>8} │ {'7yr→7yr':>8} │ {'7yr→15yr':>8} │ {'7yr→none':>8}")
+    print(
+        f"{'Config':<30} │ {'1yr→7yr':>8} │ {'1yr→15yr':>8} │ {'1yr→none':>8} │ {'7yr→7yr':>8} │ {'7yr→15yr':>8} │ {'7yr→none':>8}"
+    )
     print("─" * 100)
 
     for name, pairs in configs:
@@ -324,32 +367,99 @@ def print_insights(metrics_list: list[PairMetrics]) -> None:
     # Find baseline and key configs
     baseline = next((m for m in metrics_list if "BASELINE" in m.name), None)
     diverse = next((m for m in metrics_list if m.name == "smart-reduce diverse"), None)
-    diverse_diff = next((m for m in metrics_list if m.name == "diverse + prefer-diff"), None)
+    diverse_diff = next(
+        (m for m in metrics_list if m.name == "diverse + prefer-diff"), None
+    )
     max_h5 = next((m for m in metrics_list if m.name == "max-per-horizon 5"), None)
 
     if baseline and diverse:
-        print(f"\n1. REDUCTION IMPACT (baseline → diverse):")
-        print(f"   Pairs: {baseline.n_pairs} → {diverse.n_pairs} ({100*(1-diverse.n_pairs/baseline.n_pairs):.0f}% reduction)")
-        print(f"   Metrics stay similar: BothH {baseline.both_have_h:.0f}%→{diverse.both_have_h:.0f}%, DiffH {baseline.diff_h:.0f}%→{diverse.diff_h:.0f}%")
+        print("\n1. REDUCTION IMPACT (baseline → diverse):")
+        print(
+            f"   Pairs: {baseline.n_pairs} → {diverse.n_pairs} ({100 * (1 - diverse.n_pairs / baseline.n_pairs):.0f}% reduction)"
+        )
+        print(
+            f"   Metrics stay similar: BothH {baseline.both_have_h:.0f}%→{diverse.both_have_h:.0f}%, DiffH {baseline.diff_h:.0f}%→{diverse.diff_h:.0f}%"
+        )
 
     if diverse and diverse_diff:
-        print(f"\n2. --prefer-different-horizon EFFECT (diverse → diverse+prefer-diff):")
-        print(f"   BothH:  {diverse.both_have_h:.0f}% → {diverse_diff.both_have_h:.0f}% (+{diverse_diff.both_have_h-diverse.both_have_h:.0f}%)")
-        print(f"   DiffH:  {diverse.diff_h:.0f}% → {diverse_diff.diff_h:.0f}% (+{diverse_diff.diff_h-diverse.diff_h:.0f}%)")
-        print(f"   L:noH:  {diverse.long_h_none:.0f}% → {diverse_diff.long_h_none:.0f}% ({diverse_diff.long_h_none-diverse.long_h_none:+.0f}%)")
-        print(f"   Same$:  {diverse.same_rewards:.0f}% → {diverse_diff.same_rewards:.0f}% (+{diverse_diff.same_rewards-diverse.same_rewards:.0f}%)")
+        print("\n2. --prefer-different-horizon EFFECT (diverse → diverse+prefer-diff):")
+        print(
+            f"   BothH:  {diverse.both_have_h:.0f}% → {diverse_diff.both_have_h:.0f}% (+{diverse_diff.both_have_h - diverse.both_have_h:.0f}%)"
+        )
+        print(
+            f"   DiffH:  {diverse.diff_h:.0f}% → {diverse_diff.diff_h:.0f}% (+{diverse_diff.diff_h - diverse.diff_h:.0f}%)"
+        )
+        print(
+            f"   L:noH:  {diverse.long_h_none:.0f}% → {diverse_diff.long_h_none:.0f}% ({diverse_diff.long_h_none - diverse.long_h_none:+.0f}%)"
+        )
+        print(
+            f"   Same$:  {diverse.same_rewards:.0f}% → {diverse_diff.same_rewards:.0f}% (+{diverse_diff.same_rewards - diverse.same_rewards:.0f}%)"
+        )
 
     if baseline:
-        print(f"\n3. DATASET COMPOSITION:")
-        print(f"   Short-choosers: 64% have 1yr, 36% have 7yr, 0% have no horizon")
-        print(f"   Long-choosers:  18% have 7yr, 41% have 15yr, 41% have no horizon")
-        print(f"   This is why 'OnlyS' column = pairs with short having H but long having none")
+        print("\n3. DATASET COMPOSITION:")
+        print("   Short-choosers: 64% have 1yr, 36% have 7yr, 0% have no horizon")
+        print("   Long-choosers:  18% have 7yr, 41% have 15yr, 41% have no horizon")
+        print(
+            "   This is why 'OnlyS' column = pairs with short having H but long having none"
+        )
 
     if max_h5:
-        print(f"\n4. --max-per-horizon GUARANTEES BALANCE:")
-        print(f"   Exactly N pairs per horizon combo (6 combos → 6×N pairs)")
-        print(f"   S:1y/S:7y split is 50/50 (vs baseline 64/36)")
-        print(f"   L:7y/L:15/L:no split is 33/33/33 (vs baseline 18/41/41)")
+        print("\n4. --max-per-horizon GUARANTEES BALANCE:")
+        print("   Exactly N pairs per horizon combo (6 combos → 6×N pairs)")
+        print("   S:1y/S:7y split is 50/50 (vs baseline 64/36)")
+        print("   L:7y/L:15/L:no split is 33/33/33 (vs baseline 18/41/41)")
+
+
+def print_section(
+    section_name: str,
+    samples: list,
+    pairs: list[ContrastivePreferences] | None,
+    model_name: str,
+) -> None:
+    """Print a complete section with PREFERENCE ANALYSIS and CONTRASTIVE PAIRS.
+
+    Args:
+        section_name: Header for the section (e.g., "ALL SAMPLES", "FILTERED PAIRS")
+        samples: List of PreferenceSample for preference analysis
+        pairs: List of ContrastivePreferences for pair analysis (None to skip)
+        model_name: Model name for the analysis header
+    """
+    n_samples = len(samples)
+    n_pairs = len(pairs) if pairs else 0
+
+    # Section header
+    print(f"\n{'#' * 80}")
+    if pairs:
+        print(f"  {section_name} ({n_pairs} pairs, {n_samples} samples)")
+    else:
+        print(f"  {section_name} ({n_samples} samples)")
+    print(f"{'#' * 80}")
+
+    # 1. PREFERENCE ANALYSIS
+    sample_analysis = analyze_samples(samples, model_name=model_name)
+    print_analysis(sample_analysis)
+
+    # 2. CONTRASTIVE PAIRS ANALYSIS
+    if pairs:
+        print_contrastive_pairs(pairs)
+        metrics = extract_metrics(section_name, pairs)
+        print_detailed_metrics(metrics)
+    else:
+        # Show placeholder for consistency
+        n_short = sum(1 for s in samples if s.choice_term == "short_term")
+        n_long = sum(1 for s in samples if s.choice_term == "long_term")
+        n_possible = n_short * n_long
+        print(f"""
+{'#' * 80}
+  CONTRASTIVE PAIRS: {n_possible:,} possible (not generated)
+{'#' * 80}
+
+  Short-choosers: {n_short}
+  Long-choosers:  {n_long}
+
+  (Pair analysis skipped for unfiltered - {n_possible:,} pairs too slow)
+""")
 
 
 def print_default_requirements(req: PrefPairRequirement | None = None) -> None:
@@ -364,24 +474,50 @@ def print_default_requirements(req: PrefPairRequirement | None = None) -> None:
     print("=" * 80)
     print("\nThese are the pair filtering requirements. Set any to True to filter.")
     print("\n  CONTENT MATCHING:")
-    print(f"    same_labels         = {str(req.same_labels):<5}   different_labels      = {req.different_labels}")
-    print(f"    same_context        = {str(req.same_context):<5}   different_context     = {req.different_context}")
-    print(f"    same_order          = {str(req.same_order):<5}   different_order       = {req.different_order}")
-    print(f"    same_formatting     = {str(req.same_formatting):<5}   different_formatting  = {req.different_formatting}")
-    print(f"    same_rewards        = {str(req.same_rewards):<5}   different_rewards     = {req.different_rewards}")
-    print(f"    same_times          = {str(req.same_times):<5}   different_times       = {req.different_times}")
+    print(
+        f"    same_labels         = {str(req.same_labels):<5}   different_labels      = {req.different_labels}"
+    )
+    print(
+        f"    same_context        = {str(req.same_context):<5}   different_context     = {req.different_context}"
+    )
+    print(
+        f"    same_order          = {str(req.same_order):<5}   different_order       = {req.different_order}"
+    )
+    print(
+        f"    same_formatting     = {str(req.same_formatting):<5}   different_formatting  = {req.different_formatting}"
+    )
+    print(
+        f"    same_rewards        = {str(req.same_rewards):<5}   different_rewards     = {req.different_rewards}"
+    )
+    print(
+        f"    same_times          = {str(req.same_times):<5}   different_times       = {req.different_times}"
+    )
     print("\n  HORIZON REQUIREMENTS:")
-    print(f"    same_horizon        = {str(req.same_horizon):<5}   different_horizon     = {req.different_horizon}")
-    print(f"    both_horizon        = {str(req.both_horizon):<5}   neither_horizon       = {req.neither_horizon}")
-    print(f"    only_short_horizon  = {str(req.only_short_horizon):<5}   only_long_horizon     = {req.only_long_horizon}")
+    print(
+        f"    same_horizon        = {str(req.same_horizon):<5}   different_horizon     = {req.different_horizon}"
+    )
+    print(
+        f"    both_horizon        = {str(req.both_horizon):<5}   neither_horizon       = {req.neither_horizon}"
+    )
+    print(
+        f"    only_short_horizon  = {str(req.only_short_horizon):<5}   only_long_horizon     = {req.only_long_horizon}"
+    )
     print(f"    only_one_horizon    = {req.only_one_horizon}")
     print("\n  RATIONALITY REQUIREMENTS:")
-    print(f"    both_rational       = {str(req.both_rational):<5}   neither_rational      = {req.neither_rational}")
-    print(f"    only_short_rational = {str(req.only_short_rational):<5}   only_long_rational    = {req.only_long_rational}")
+    print(
+        f"    both_rational       = {str(req.both_rational):<5}   neither_rational      = {req.neither_rational}"
+    )
+    print(
+        f"    only_short_rational = {str(req.only_short_rational):<5}   only_long_rational    = {req.only_long_rational}"
+    )
     print(f"    only_one_rational   = {req.only_one_rational}")
     print("\n  ASSOCIATION REQUIREMENTS:")
-    print(f"    both_associated     = {str(req.both_associated):<5}   neither_associated    = {req.neither_associated}")
-    print(f"    only_short_associated = {str(req.only_short_associated):<5} only_long_associated  = {req.only_long_associated}")
+    print(
+        f"    both_associated     = {str(req.both_associated):<5}   neither_associated    = {req.neither_associated}"
+    )
+    print(
+        f"    only_short_associated = {str(req.only_short_associated):<5} only_long_associated  = {req.only_long_associated}"
+    )
     print(f"    only_one_associated = {req.only_one_associated}")
     print()
 
@@ -401,7 +537,9 @@ def run_all_configs(
     n_short = sum(1 for p in pref_dataset.preferences if p.choice_term == "short_term")
     n_long = sum(1 for p in pref_dataset.preferences if p.choice_term == "long_term")
     max_pairs = n_short * n_long
-    print(f"\nBaseline: {n_short} short-choosers × {n_long} long-choosers = {max_pairs} max pairs")
+    print(
+        f"\nBaseline: {n_short} short-choosers × {n_long} long-choosers = {max_pairs} max pairs"
+    )
 
     # Define configurations to test
     configs = [
@@ -412,9 +550,18 @@ def run_all_configs(
         ("smart-reduce diverse", {"smart_reduce": "diverse"}),
         ("smart-reduce balanced", {"smart_reduce": "balanced"}),
         # smart-reduce + prefer-different-horizon
-        ("minimal + prefer-diff", {"smart_reduce": "minimal", "prefer_different_horizon": True}),
-        ("diverse + prefer-diff", {"smart_reduce": "diverse", "prefer_different_horizon": True}),
-        ("balanced + prefer-diff", {"smart_reduce": "balanced", "prefer_different_horizon": True}),
+        (
+            "minimal + prefer-diff",
+            {"smart_reduce": "minimal", "prefer_different_horizon": True},
+        ),
+        (
+            "diverse + prefer-diff",
+            {"smart_reduce": "diverse", "prefer_different_horizon": True},
+        ),
+        (
+            "balanced + prefer-diff",
+            {"smart_reduce": "balanced", "prefer_different_horizon": True},
+        ),
         # max-per-horizon
         ("max-per-horizon 1", {"max_per_horizon_pair": 1}),
         ("max-per-horizon 3", {"max_per_horizon_pair": 3}),
@@ -425,7 +572,10 @@ def run_all_configs(
         ("target-pairs 50", {"target_pairs": 50}),
         ("target-pairs 100", {"target_pairs": 100}),
         # round-robin selection
-        ("diverse + round-robin", {"smart_reduce": "diverse", "selection_strategy": "round_robin"}),
+        (
+            "diverse + round-robin",
+            {"smart_reduce": "diverse", "selection_strategy": "round_robin"},
+        ),
     ]
 
     print("\nRunning configurations and printing detailed analysis for each...")
@@ -442,18 +592,24 @@ def run_all_configs(
         print(f"  CONFIG: {name}")
         print(f"  Params: {kwargs if kwargs else '(none)'}")
         print(f"{'#' * 80}")
-        print(f"\nReduction: {max_pairs} -> {len(pairs)} pairs ({100*(1-len(pairs)/max_pairs):.1f}% reduced)")
+        print(
+            f"\nReduction: {max_pairs} -> {len(pairs)} pairs ({100 * (1 - len(pairs) / max_pairs):.1f}% reduced)"
+        )
         print_contrastive_pairs(pairs)
 
     # Final section break before summary
     print_section_break()
     print(f"{'#' * 80}")
-    print(f"  SUMMARY COMPARISON TABLES")
+    print("  SUMMARY COMPARISON TABLES")
     print(f"{'#' * 80}")
 
     # Group metrics by category
     baseline = [m for m in all_metrics if "BASELINE" in m.name][0]
-    smart_reduce = [m for m in all_metrics if "smart-reduce" in m.name and "prefer-diff" not in m.name]
+    smart_reduce = [
+        m
+        for m in all_metrics
+        if "smart-reduce" in m.name and "prefer-diff" not in m.name
+    ]
     prefer_diff = [m for m in all_metrics if "prefer-diff" in m.name]
     max_horizon = [m for m in all_metrics if "max-per-horizon" in m.name]
     target = [m for m in all_metrics if "target-pairs" in m.name]
@@ -464,7 +620,9 @@ def run_all_configs(
     print("COLUMN LEGEND:")
     print("  Pairs   = number of contrastive pairs")
     print("  BothH   = % pairs where both samples have a horizon")
-    print("  DiffH   = % with different horizons (when both have) <- WANT HIGH for contrast")
+    print(
+        "  DiffH   = % with different horizons (when both have) <- WANT HIGH for contrast"
+    )
     print("  S:no    = % where short-chooser has no horizon")
     print("  L:no    = % where long-chooser has no horizon")
     print("  Same$   = % with same reward values")
@@ -475,23 +633,21 @@ def run_all_configs(
 
     # Print quick summary tables
     print_simple_table(
-        [baseline] + smart_reduce,
-        "TABLE 1: SMART-REDUCE (simple reduction)"
+        [baseline] + smart_reduce, "TABLE 1: SMART-REDUCE (simple reduction)"
     )
 
     print_simple_table(
         [baseline] + prefer_diff,
-        "TABLE 2: PREFER-DIFFERENT-HORIZON (prioritizes different horizons)"
+        "TABLE 2: PREFER-DIFFERENT-HORIZON (prioritizes different horizons)",
     )
 
     print_simple_table(
         [baseline] + max_horizon,
-        "TABLE 3: MAX-PER-HORIZON (equal coverage of horizon combos)"
+        "TABLE 3: MAX-PER-HORIZON (equal coverage of horizon combos)",
     )
 
     print_simple_table(
-        [baseline] + target + round_robin,
-        "TABLE 4: TARGET-PAIRS & ROUND-ROBIN"
+        [baseline] + target + round_robin, "TABLE 4: TARGET-PAIRS & ROUND-ROBIN"
     )
 
     # Print detailed metrics for key configs
@@ -501,8 +657,8 @@ def run_all_configs(
 
     print_detailed_metrics(baseline)
     print_detailed_metrics(smart_reduce[1])  # diverse
-    print_detailed_metrics(prefer_diff[1])   # diverse + prefer-diff
-    print_detailed_metrics(max_horizon[2])   # max-per-horizon 5
+    print_detailed_metrics(prefer_diff[1])  # diverse + prefer-diff
+    print_detailed_metrics(max_horizon[2])  # max-per-horizon 5
 
     # Print horizon distribution
     print_horizon_distribution(all_configs[:7])  # First 7 configs
@@ -511,7 +667,9 @@ def run_all_configs(
     print_insights(all_metrics)
 
 
-def print_subsample_strategy(subsample: PrefPairSubsampleStrategy | None = None) -> None:
+def print_subsample_strategy(
+    subsample: PrefPairSubsampleStrategy | None = None,
+) -> None:
     """Print the PrefPairSubsampleStrategy settings."""
     if subsample is None:
         return
@@ -589,6 +747,45 @@ def run_confidence_sweep(
     print_simple_table(metrics_list, "Confidence sweep with smart-reduce diverse")
 
 
+@profile
+def run_unfiltered_section(pref_dataset: PreferenceDataset) -> None:
+    """Run Section 1: All pairs (unfiltered)."""
+    unfiltered_pairs = get_contrastive_preferences(
+        pref_dataset,
+        strat=PrefPairSubsampleStrategy.NoSubsample(),
+    )
+    print_section(
+        section_name="SECTION 1: ALL PAIRS (UNFILTERED)",
+        samples=pref_dataset.preferences,
+        pairs=unfiltered_pairs,
+        model_name=pref_dataset.model_name,
+    )
+
+
+@profile
+def run_filtered_section(
+    pref_dataset: PreferenceDataset,
+    req: PrefPairRequirement | None,
+) -> None:
+    """Run Section 2: Filtered pairs."""
+    print("\n" * 20)
+    print_default_requirements(req)
+
+    pairs = get_contrastive_preferences(
+        pref_dataset,
+        req=req,
+        strat=PrefPairSubsampleStrategy.Default(),
+    )
+    samples = [s for p in pairs for s in (p.short_term, p.long_term)]
+
+    print_section(
+        section_name="SECTION 2: FILTERED PAIRS",
+        samples=samples,
+        pairs=pairs,
+        model_name=pref_dataset.model_name,
+    )
+
+
 def main() -> int:
     args = get_args()
 
@@ -626,23 +823,22 @@ def main() -> int:
 
     pref_dataset = PreferenceDataset.from_json(str(args.input))
 
+    # print(pref_dataset)
+
     print(f"\nDataset: {pref_dataset.prompt_dataset_id} | Model: {pref_dataset.model}")
     print(f"Samples: {len(pref_dataset.preferences)}")
 
-    # Print preference analysis
-    analysis = analyze_preferences(pref_dataset)
-    print_analysis(analysis)
+    run_unfiltered_section(pref_dataset)
 
-    print_section_break()
-    print(f"{'#' * 80}")
-    print(f"  CONTRASTIVE PAIRS ANALYSIS - ALL CONFIGURATIONS")
-    print(f"{'#' * 80}")
+    # Default: just run get_contrastive_preferences with defaults and print
+    # --all: run full analysis with all configurations
+    # --subsample: run single config with provided subsample
+    if args.all:
+        print_section_break()
+        print(f"{'#' * 80}")
+        print("  CONTRASTIVE PAIRS ANALYSIS - ALL CONFIGURATIONS")
+        print(f"{'#' * 80}")
 
-    # Run all configurations (or just the provided subsample if specified)
-    if subsample:
-        # User provided specific subsample - run just that config
-        run_single_config(pref_dataset, req=req, subsample=subsample)
-    else:
         # Run all configurations for comparison
         run_all_configs(pref_dataset, req=req)
 
@@ -650,7 +846,13 @@ def main() -> int:
 
         # Run confidence sweep
         run_confidence_sweep(pref_dataset, req=req)
+    elif subsample:
+        # User provided specific subsample - run just that config
+        run_single_config(pref_dataset, req=req, subsample=subsample)
+    else:
+        run_filtered_section(pref_dataset, req)
 
+    P.report()
     return 0
 
 

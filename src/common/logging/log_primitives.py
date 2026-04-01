@@ -54,7 +54,8 @@ def set_log_file(path: Path | str | None) -> None:
     if path is not None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        _log_file = open(path, "w", encoding="utf-8")
+        # Use append mode to make log additive across runs
+        _log_file = open(path, "a", encoding="utf-8")
 
         # Tee stdout and stderr to the log file
         _original_stdout = sys.stdout

@@ -14,6 +14,7 @@ from .fine_results import FinePatchingResults
 from .head_patching import run_head_patching
 from .mlp_analysis import run_mlp_neuron_analysis
 from .attention_analysis import analyze_attention_patterns
+from .circuit_hypothesis import CircuitHypothesis, test_circuit_hypothesis
 
 if TYPE_CHECKING:
     from ...binary_choice import BinaryChoiceRunner
@@ -27,6 +28,7 @@ def run_fine_patching(
     skip_head_patching: bool = False,
     skip_mlp_analysis: bool = False,
     skip_attention_analysis: bool = False,
+    circuit_hypotheses: list[CircuitHypothesis] | None = None,
 ) -> FinePatchingResults:
     """Run all fine-grained analyses on a contrastive pair.
 
@@ -34,6 +36,7 @@ def run_fine_patching(
     1. Head-level patching at key attention layers (L24, L21, L19, L29, L30)
     2. MLP neuron analysis at key MLP layers (L31, L24, L28)
     3. Attention pattern analysis for top heads found in step 1
+    4. Circuit hypothesis testing (if hypotheses provided)
 
     Args:
         runner: Model runner
@@ -42,6 +45,7 @@ def run_fine_patching(
         skip_head_patching: Skip head-level analysis
         skip_mlp_analysis: Skip MLP neuron analysis
         skip_attention_analysis: Skip attention pattern analysis
+        circuit_hypotheses: Optional list of circuit hypotheses to test
 
     Returns:
         FinePatchingResults with all analysis results
@@ -99,6 +103,12 @@ def run_fine_patching(
             runner, pair, top_heads, config
         )
         results.attention_patterns = attention_patterns
+
+    # 4. Circuit hypothesis testing (if provided)
+    if circuit_hypotheses:
+        for hypothesis in circuit_hypotheses:
+            test_result = test_circuit_hypothesis(runner, pair, hypothesis)
+            results.circuit_tests.append(test_result)
 
     clear_gpu_memory()
     return results

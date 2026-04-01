@@ -60,6 +60,45 @@ def canonicalize_unit(unit: str) -> str:
     raise ValueError(f"Unknown time unit: {unit}")
 
 
+def format_time_value(
+    value: float, unit: str, min_length: int = 0, with_dot: bool = False
+) -> str:
+    """Format a time value with appropriate unit singularization.
+
+    Args:
+        value: The numeric time value
+        unit: The time unit (e.g., "years", "months")
+        min_length: Minimum length of result, padded with spaces (25% left, 75% right)
+
+    Returns:
+        Formatted string like "5 years" or "1 month"
+    """
+    val_str = str(int(value)) if value == int(value) else f"{value:.1f}"
+    if value == 1:
+        if unit.endswith("ies"):
+            unit = unit[:-3] + "y"
+        elif unit.endswith("ia"):
+            unit = unit[:-1] + "um"
+        elif unit.endswith("s") and not unit.endswith("ss"):
+            unit = unit[:-1]
+    result = f"{val_str} {unit}"
+    if with_dot:
+        result += "."
+
+    if min_length > 0 and len(result) < min_length:
+        # Position text at 25% from left edge of total width
+        # (not 25% of padding, but 25% of total min_length)
+        pad_left = min_length // 4  # Text starts at 25% mark
+        pad_right = min_length - len(result) - pad_left
+        if pad_right < 0:
+            # Content too long, just use remaining space on right
+            pad_right = 0
+            pad_left = min_length - len(result)
+        result = " " * pad_left + result + " " * pad_right
+
+    return result
+
+
 @dataclass
 class TimeValue(BaseSchema):
     """A time value with unit."""
@@ -102,21 +141,19 @@ class TimeValue(BaseSchema):
             value=self.to_unit(target_unit), unit=canonicalize_unit(target_unit)
         )
 
-    def __str__(self) -> str:
-        val_str = (
-            str(int(self.value))
-            if self.value == int(self.value)
-            else f"{self.value:.1f}"
+    def to_string(self, min_length: int = 0, with_dot: bool = True) -> str:
+        """Format as string with optional padding.
+
+        Args:
+            min_length: Minimum length, padded 25% left / 75% right
+            with_dot: Include trailing period (default True for time_horizon)
+        """
+        return format_time_value(
+            self.value, self.unit, min_length=min_length, with_dot=with_dot
         )
-        unit = self.unit
-        if self.value == 1:
-            if unit.endswith("ies"):
-                unit = unit[:-3] + "y"
-            elif unit.endswith("ia"):
-                unit = unit[:-1] + "um"
-            elif unit.endswith("s") and not unit.endswith("ss"):
-                unit = unit[:-1]
-        return f"{val_str} {unit}"
+
+    def __str__(self) -> str:
+        return self.to_string(min_length=0, with_dot=False)
 
     def __lt__(self, other: TimeValue) -> bool:
         return self.to_years() < other.to_years()

@@ -19,22 +19,31 @@ class SweepStepResults(BaseSchema):
     by_start: dict[int, ActPatchTargetResult] = field(default_factory=dict)
 
     def __getitem__(self, key: int) -> ActPatchTargetResult:
-        return self.by_start[key]
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        if key in self.by_start:
+            return self.by_start[key]
+        return self.by_start[str(key)]
 
     def __setitem__(self, key: int, value: ActPatchTargetResult) -> None:
         self.by_start[key] = value
 
     def get(self, key: int) -> ActPatchTargetResult | None:
-        return self.by_start.get(key)
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        result = self.by_start.get(key)
+        if result is None:
+            result = self.by_start.get(str(key))
+        return result
 
     def keys(self):
-        return self.by_start.keys()
+        # Convert string keys to int for consistent behavior
+        return [int(k) for k in self.by_start.keys()]
 
     def values(self):
         return self.by_start.values()
 
     def items(self):
-        return self.by_start.items()
+        # Convert string keys to int for consistent behavior
+        return [(int(k), v) for k, v in self.by_start.items()]
 
     def __len__(self) -> int:
         return len(self.by_start)
@@ -66,13 +75,19 @@ class CoarseActPatchResults(BaseSchema):
 
     @property
     def layer_step_sizes(self) -> list[int]:
-        """Available layer step sizes."""
-        return sorted(self.layer_results.keys())
+        """Available layer step sizes.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        return sorted(int(k) for k in self.layer_results.keys())
 
     @property
     def position_step_sizes(self) -> list[int]:
-        """Available position step sizes."""
-        return sorted(self.position_results.keys())
+        """Available position step sizes.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        return sorted(int(k) for k in self.position_results.keys())
 
     @property
     def component(self) -> str:
@@ -82,12 +97,26 @@ class CoarseActPatchResults(BaseSchema):
         return "resid_post"
 
     def get_layer_results_for_step(self, step_size: int) -> SweepStepResults:
-        """Get layer results for a specific step size."""
-        return self.layer_results.get(step_size, SweepStepResults())
+        """Get layer results for a specific step size.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        # Try int key first, then string key (JSON deserializes int keys as strings)
+        result = self.layer_results.get(step_size)
+        if result is None:
+            result = self.layer_results.get(str(step_size))
+        return result if result is not None else SweepStepResults()
 
     def get_position_results_for_step(self, step_size: int) -> SweepStepResults:
-        """Get position results for a specific step size."""
-        return self.position_results.get(step_size, SweepStepResults())
+        """Get position results for a specific step size.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        # Try int key first, then string key (JSON deserializes int keys as strings)
+        result = self.position_results.get(step_size)
+        if result is None:
+            result = self.position_results.get(str(step_size))
+        return result if result is not None else SweepStepResults()
 
     def get_result_for_layer(
         self, layer: int, step_size: int | None = None

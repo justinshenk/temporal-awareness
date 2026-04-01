@@ -421,3 +421,107 @@ class TransformerLensBackend(Backend):
                 next_logits = logits[0, -1, :]
 
         return all_token_ids, all_logprobs
+
+    def get_W_Q(self, layer: int | None = None) -> torch.Tensor:
+        """Get query weight matrix W_Q.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is None:
+            return self.runner._model.W_Q
+        return self.runner._model.W_Q[layer]
+
+    def get_W_K(self, layer: int | None = None) -> torch.Tensor:
+        """Get key weight matrix W_K.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is None:
+            return self.runner._model.W_K
+        return self.runner._model.W_K[layer]
+
+    def get_W_V(self, layer: int | None = None) -> torch.Tensor:
+        """Get value weight matrix W_V.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+        """
+        if layer is None:
+            return self.runner._model.W_V
+        return self.runner._model.W_V[layer]
+
+    def get_W_O(self, layer: int | None = None) -> torch.Tensor:
+        """Get output weight matrix W_O.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_head, d_model]
+            If layer specified: [n_heads, d_head, d_model]
+        """
+        if layer is None:
+            return self.runner._model.W_O
+        return self.runner._model.W_O[layer]
+
+    def get_W_OV(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined OV matrix for a specific head.
+
+        W_OV = W_V @ W_O projects input through value and output matrices.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_OV matrix of shape [d_model, d_model]
+        """
+        W_V = self.runner._model.W_V[layer, head]  # [d_model, d_head]
+        W_O = self.runner._model.W_O[layer, head]  # [d_head, d_model]
+        return W_V @ W_O  # [d_model, d_model]
+
+    def get_W_QK(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined QK matrix for a specific head.
+
+        W_QK = W_Q @ W_K^T determines attention pattern computation.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_QK matrix of shape [d_model, d_model]
+        """
+        W_Q = self.runner._model.W_Q[layer, head]  # [d_model, d_head]
+        W_K = self.runner._model.W_K[layer, head]  # [d_model, d_head]
+        return W_Q @ W_K.T  # [d_model, d_model]
+
+    def get_MLP_W_in(self, layer: int) -> torch.Tensor:
+        """Get MLP input projection weights.
+
+        Returns:
+            W_in of shape [d_model, d_mlp]
+        """
+        return self.runner._model.blocks[layer].mlp.W_in
+
+    def get_MLP_W_out(self, layer: int) -> torch.Tensor:
+        """Get MLP output projection weights.
+
+        Returns:
+            W_out of shape [d_mlp, d_model]
+        """
+        return self.runner._model.blocks[layer].mlp.W_out

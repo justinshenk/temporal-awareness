@@ -253,13 +253,14 @@ def format_time_spelled(tv: TimeValue) -> Optional[str]:
     return f"{spelled} {unit}"
 
 
-def format_time_value(tv: TimeValue, spell_out: bool = False) -> str:
+def format_time_value(tv: TimeValue, spell_out: bool = False, min_length: int = 0) -> str:
     """
     Format a TimeValue, optionally spelling out numbers.
 
     Args:
         tv: TimeValue to format
         spell_out: Whether to attempt spelling out numbers
+        min_length: Minimum length with padding (0 = no padding)
 
     Returns:
         Formatted string
@@ -269,19 +270,8 @@ def format_time_value(tv: TimeValue, spell_out: bool = False) -> str:
         if spelled:
             return spelled
 
-    # Default numerical format
-    value = tv.value
-    unit = tv.unit
-
-    # Round to reasonable precision
-    if value == int(value):
-        value_str = str(int(value))
-    elif value < 10:
-        value_str = f"{value:.2f}".rstrip("0").rstrip(".")
-    else:
-        value_str = f"{value:.1f}".rstrip("0").rstrip(".")
-
-    return f"{value_str} {unit}"
+    # Use TimeValue.to_string with optional padding
+    return tv.to_string(min_length=min_length)
 
 
 # =============================================================================
@@ -347,6 +337,7 @@ class FormattingVariation:
 def apply_time_variation(
     tv: TimeValue,
     variation: FormattingVariation,
+    min_length: int = 0,
 ) -> tuple[TimeValue, str]:
     """
     Apply time variation to a TimeValue.
@@ -354,6 +345,7 @@ def apply_time_variation(
     Args:
         tv: Original TimeValue
         variation: Formatting variation config
+        min_length: Minimum length with padding (0 = no padding)
 
     Returns:
         Tuple of (possibly converted TimeValue, formatted string)
@@ -364,7 +356,7 @@ def apply_time_variation(
     if variation.time_unit_variation:
         result_tv = convert_to_random_unit(tv)
 
-    # Format with or without spelling
-    formatted = format_time_value(result_tv, spell_out=variation.spell_numbers)
+    # Format with or without spelling, with optional padding
+    formatted = format_time_value(result_tv, spell_out=variation.spell_numbers, min_length=min_length)
 
     return result_tv, formatted

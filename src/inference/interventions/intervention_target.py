@@ -24,12 +24,14 @@ class InterventionTarget(BaseSchema):
     Attributes:
         positions: Token positions to intervene on (None = all positions)
         layers: Layers to intervene on (None = all available layers)
-        component: Component to intervene on (resid_post, attn_out, mlp_out)
+        component: Component to intervene on (resid_post, attn_out, mlp_out, attn_z)
+        head: Attention head to intervene on (only used with attn_z component)
     """
 
     positions: tuple[int, ...] | None = None
     layers: tuple[int, ...] | None = None
     component: str = "resid_post"
+    head: int | None = None  # For head-level interventions with attn_z
 
     # ── Factory Methods ─────────────────────────────────────────────────────
 
@@ -70,8 +72,16 @@ class InterventionTarget(BaseSchema):
         positions: int | list[int] | tuple[int, ...] | None = None,
         layers: int | list[int] | tuple[int, ...] | None = None,
         component: str = "resid_post",
+        head: int | None = None,
     ) -> InterventionTarget:
-        """Intervene on specific positions and layers."""
+        """Intervene on specific positions and layers.
+
+        Args:
+            positions: Token positions to intervene on (None = all)
+            layers: Layers to intervene on (None = all)
+            component: Component to intervene on. Use "attn_z" for head-level.
+            head: Attention head index (only valid with component="attn_z")
+        """
         if positions is not None:
             if isinstance(positions, int):
                 positions = (positions,)
@@ -84,7 +94,40 @@ class InterventionTarget(BaseSchema):
             elif isinstance(layers, list):
                 layers = tuple(layers)
 
-        return cls(positions=positions, layers=layers, component=component)
+        return cls(positions=positions, layers=layers, component=component, head=head)
+
+    @classmethod
+    def at_head(
+        cls,
+        layer: int,
+        head: int,
+        positions: int | list[int] | tuple[int, ...] | None = None,
+    ) -> InterventionTarget:
+        """Intervene on a specific attention head.
+
+        Uses attn_z component which hooks before the output projection,
+        giving access to individual head outputs with shape [batch, seq, n_heads, d_head].
+
+        Args:
+            layer: Layer index
+            head: Attention head index
+            positions: Token positions (None = all)
+
+        Returns:
+            InterventionTarget configured for head-level intervention
+        """
+        if positions is not None:
+            if isinstance(positions, int):
+                positions = (positions,)
+            elif isinstance(positions, list):
+                positions = tuple(positions)
+
+        return cls(
+            positions=positions,
+            layers=(layer,),
+            component="attn_z",
+            head=head,
+        )
 
     # ── Properties ──────────────────────────────────────────────────────────
 
@@ -134,6 +177,7 @@ class InterventionTarget(BaseSchema):
             positions=self.positions,
             layers=layers,
             component=self.component,
+            head=self.head,
         )
 
     def with_positions(
@@ -148,6 +192,16 @@ class InterventionTarget(BaseSchema):
             positions=positions,
             layers=self.layers,
             component=self.component,
+            head=self.head,
+        )
+
+    def with_head(self, head: int) -> InterventionTarget:
+        """Return new target with specified head (switches to attn_z component)."""
+        return InterventionTarget(
+            positions=self.positions,
+            layers=self.layers,
+            component="attn_z",
+            head=head,
         )
 
     # ── String Representation ───────────────────────────────────────────────
@@ -171,22 +225,30 @@ class InterventionTarget(BaseSchema):
             parts.append("L=all")
 
         parts.append(self.component)
+
+        if self.head is not None:
+            parts.append(f"H{self.head}")
+
         return f"Target({', '.join(parts)})"
 
     def __hash__(self) -> int:
-        return hash((self.positions, self.layers, self.component))
+        return hash((self.positions, self.layers, self.component, self.head))
 
     # ── Merge and Decompose ─────────────────────────────────────────────────
 
     @classmethod
     def merge(cls, targets: list[InterventionTarget]) -> InterventionTarget:
-        """Merge multiple targets into one (union of positions and layers)."""
+        """Merge multiple targets into one (union of positions and layers).
+
+        Note: head-level targets cannot be merged (returns first target's head).
+        """
         if not targets:
             return cls.all()
 
         positions = set()
         layers = set()
         component = targets[0].component
+        head = targets[0].head  # Cannot merge different heads
 
         for t in targets:
             if t.positions is None:
@@ -204,6 +266,7 @@ class InterventionTarget(BaseSchema):
             positions=tuple(sorted(positions)) if positions else None,
             layers=tuple(sorted(layers)) if layers else None,
             component=component,
+            head=head,
         )
 
     def decompose(self) -> list[InterventionTarget]:
@@ -215,6 +278,7 @@ class InterventionTarget(BaseSchema):
                 positions=self.positions,
                 layers=(layer,),
                 component=self.component,
+                head=self.head,
             )
             for layer in self.layers
         ]

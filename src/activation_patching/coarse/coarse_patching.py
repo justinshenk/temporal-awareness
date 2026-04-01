@@ -19,6 +19,7 @@ def run_coarse_act_patching(
     component: str | None = None,
     layer_step_sizes: list[int] | None = None,
     pos_step_sizes: list[int] | None = None,
+    start_pos: int = 50,
 ) -> CoarseActPatchResults:
     """Run sanity check, layer sweep, and position sweep on single pair.
 
@@ -77,9 +78,6 @@ def run_coarse_act_patching(
         denoising_positions=[corrupted_div_pos - 1],
         noising_positions=[clean_div_pos - 1],
     )
-
-    # Compute position range for position sweep
-    start_pos = pair.position_mapping.first_interesting_pos
 
     position_results = run_position_sweep(
         runner,
