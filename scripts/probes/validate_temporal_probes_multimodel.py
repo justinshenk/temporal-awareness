@@ -25,15 +25,20 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from dotenv import load_dotenv
 
 import numpy as np
 import pandas as pd
 import torch
 from transformers import __version__ as transformers_version
 
+torch.cuda.empty_cache()
+torch.cuda.reset_peak_memory_stats()
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")
 
 from scripts.probes.train_temporal_probes_caa_multimodel import (
     SUPPORTED_MODELS,
@@ -45,8 +50,9 @@ from scripts.probes.train_temporal_probes_caa_multimodel import (
     resolve_model_name,
 )
 
+print(f"Using ROOT directory: {ROOT}")
 
-DATA_DIR = ROOT / "data" / "raw" / "temporal_scope"
+DATA_DIR = ROOT / "data" / "raw" / "temporal_scope_AB_randomized"
 PROBES_DIR = ROOT / "research" / "probes"
 EXPLICIT_RESULTS_DIR = ROOT / "research" / "results"
 VALIDATION_RESULTS_DIR = ROOT / "results" / "probe_validation"

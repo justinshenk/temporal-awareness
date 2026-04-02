@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from dotenv import load_dotenv
 from huggingface_hub.errors import GatedRepoError
 from huggingface_hub import snapshot_download
 from sklearn.linear_model import LogisticRegression
@@ -33,6 +34,13 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+
+ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(ROOT / ".env")
+
+torch.cuda.empty_cache()
+torch.cuda.reset_peak_memory_stats()
+torch.cuda.set_device(0)
 
 SUPPORTED_MODELS = {
     "gpt2": "gpt2",
@@ -145,6 +153,7 @@ def load_model_and_tokenizer(
     model_kwargs = {
         "device_map": "auto",
         "torch_dtype": "auto",
+        "offload_folder":"offload",
         "trust_remote_code": trust_remote_code,
         "local_files_only": local_files_only,
     }
@@ -514,7 +523,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--dataset",
-        default="data/raw/temporal_scope/temporal_scope_caa.json",
+        default="data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
         help="Path to the CAA dataset",
     )
     parser.add_argument(

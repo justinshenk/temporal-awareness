@@ -2,7 +2,7 @@
   "metadata": {
     "experiment": "probe_semantic_validation",
     "description": "Validate that probes detect semantic temporal features, not keywords",
-    "timestamp": "2026-03-27T12:05:15.397108+00:00",
+    "timestamp": "2026-04-02T21:14:41.177635+00:00",
     "random_seed": 42,
     "model": {
       "name": "Qwen/Qwen3-4B",
@@ -10,29 +10,29 @@
       "source": "huggingface"
     },
     "package_versions": {
-      "torch": "2.7.1+cu118",
+      "torch": "2.9.1+cu128",
       "transformers": "5.3.0",
       "numpy": "1.26.4",
-      "pandas": "3.0.1"
+      "pandas": "2.3.3"
     },
     "compute": {
       "device": "cuda",
       "cuda_available": true,
-      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_name": "NVIDIA GeForce RTX 4080",
       "gpu_count": 1
     },
-    "git_commit": "c97e33d9b284cddd6686a8e7d4b36af506161344",
+    "git_commit": "553e005fbfe4b3a62bce36e8091d2f8fc56f066e",
     "git_branch": "oversight-in-real-time",
     "git_dirty": true
   },
   "datasets": {
     "explicit_dataset": {
-      "path": "data/raw/temporal_scope/temporal_scope_caa.json",
-      "sha256": "fb244dd73df0389edf9123257d4671c55270469703021b3e229d3d60c0f0f5df"
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+      "sha256": "1e782fe6304cbd7b3460a87bac1d4c78e72519a8aa4ad93e0b309d0d50798280"
     },
     "implicit_dataset": {
-      "path": "data/raw/temporal_scope/temporal_scope_implicit.json",
-      "sha256": "393079e5c767298fc2fbb68a3d306a8167e9bcef8b59dc813d9267ca4688e444"
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+      "sha256": "9eeaec55cd10e2f72102c6758d0f6682f543aa2ce83591391695aff01ed44e53"
     }
   },
   "config": {
@@ -46,7 +46,7 @@
     "batch_size": 2,
     "max_length": 256,
     "attn_implementation": "eager",
-    "local_files_only": true,
+    "local_files_only": false,
     "probe_source_dir": "research/probes",
     "explicit_results_csv": "research/results/Qwen__Qwen3-4B_temporal_probe_results_caa.csv"
   },
@@ -61,55 +61,55 @@
       "layer": 1,
       "cv_mean": 0.675,
       "cv_std": 0.1274754878398196,
-      "test_acc": 0.7
+      "test_acc": 0.75
     },
     {
       "layer": 2,
-      "cv_mean": 0.725,
-      "cv_std": 0.175,
+      "cv_mean": 0.675,
+      "cv_std": 0.1551209205748857,
       "test_acc": 0.65
     },
     {
       "layer": 3,
-      "cv_mean": 0.7125,
-      "cv_std": 0.161051234084064,
+      "cv_mean": 0.7,
+      "cv_std": 0.1648863244784114,
       "test_acc": 0.8
     },
     {
       "layer": 4,
-      "cv_mean": 0.7125,
-      "cv_std": 0.16583123951777,
+      "cv_mean": 0.7,
+      "cv_std": 0.1600781059358212,
       "test_acc": 0.85
     },
     {
       "layer": 5,
-      "cv_mean": 0.7375,
-      "cv_std": 0.1274754878398196,
+      "cv_mean": 0.725,
+      "cv_std": 0.1286953767623375,
       "test_acc": 0.85
     },
     {
       "layer": 6,
-      "cv_mean": 0.75,
-      "cv_std": 0.0883883476483184,
-      "test_acc": 0.85
+      "cv_mean": 0.725,
+      "cv_std": 0.1286953767623375,
+      "test_acc": 0.8
     },
     {
       "layer": 7,
       "cv_mean": 0.775,
-      "cv_std": 0.0847791247890658,
+      "cv_std": 0.1224744871391589,
       "test_acc": 0.85
     },
     {
       "layer": 8,
-      "cv_mean": 0.8375,
-      "cv_std": 0.05,
-      "test_acc": 0.95
+      "cv_mean": 0.825,
+      "cv_std": 0.0467707173346742,
+      "test_acc": 0.8
     },
     {
       "layer": 9,
       "cv_mean": 0.8125,
-      "cv_std": 0.0684653196881457,
-      "test_acc": 0.95
+      "cv_std": 0.0790569415042094,
+      "test_acc": 0.9
     },
     {
       "layer": 10,
@@ -119,159 +119,159 @@
     },
     {
       "layer": 11,
-      "cv_mean": 0.825,
-      "cv_std": 0.0829156197588849,
-      "test_acc": 0.95
+      "cv_mean": 0.8125,
+      "cv_std": 0.0684653196881457,
+      "test_acc": 0.9
     },
     {
       "layer": 12,
-      "cv_mean": 0.8875,
-      "cv_std": 0.0612372435695794,
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
       "test_acc": 0.9
     },
     {
       "layer": 13,
-      "cv_mean": 0.85,
-      "cv_std": 0.0637377439199098,
-      "test_acc": 0.95
+      "cv_mean": 0.8125,
+      "cv_std": 0.0968245836551854,
+      "test_acc": 0.9
     },
     {
       "layer": 14,
-      "cv_mean": 0.85,
-      "cv_std": 0.0637377439199098,
-      "test_acc": 0.95
+      "cv_mean": 0.825,
+      "cv_std": 0.1075290658380328,
+      "test_acc": 0.9
     },
     {
       "layer": 15,
-      "cv_mean": 0.8625,
-      "cv_std": 0.0612372435695794,
+      "cv_mean": 0.8125,
+      "cv_std": 0.0790569415042094,
       "test_acc": 0.95
     },
     {
       "layer": 16,
-      "cv_mean": 0.8875,
-      "cv_std": 0.0467707173346742,
+      "cv_mean": 0.875,
+      "cv_std": 0.0395284707521047,
       "test_acc": 0.95
     },
     {
       "layer": 17,
-      "cv_mean": 0.9,
-      "cv_std": 0.0637377439199098,
+      "cv_mean": 0.85,
+      "cv_std": 0.075,
       "test_acc": 0.95
     },
     {
       "layer": 18,
-      "cv_mean": 0.9,
-      "cv_std": 0.0306186217847897,
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
       "test_acc": 0.95
     },
     {
       "layer": 19,
-      "cv_mean": 0.95,
-      "cv_std": 0.0467707173346742,
-      "test_acc": 1.0
+      "cv_mean": 0.875,
+      "cv_std": 0.0684653196881457,
+      "test_acc": 0.9
     },
     {
       "layer": 20,
-      "cv_mean": 0.95,
-      "cv_std": 0.0467707173346742,
-      "test_acc": 1.0
+      "cv_mean": 0.85,
+      "cv_std": 0.075,
+      "test_acc": 0.95
     },
     {
       "layer": 21,
-      "cv_mean": 0.9375,
-      "cv_std": 0.0559016994374947,
-      "test_acc": 1.0
+      "cv_mean": 0.8625,
+      "cv_std": 0.0918558653543691,
+      "test_acc": 0.9
     },
     {
       "layer": 22,
-      "cv_mean": 0.95,
-      "cv_std": 0.0467707173346742,
-      "test_acc": 1.0
+      "cv_mean": 0.8375,
+      "cv_std": 0.1015504800579495,
+      "test_acc": 0.9
     },
     {
       "layer": 23,
-      "cv_mean": 0.95,
-      "cv_std": 0.0467707173346742,
-      "test_acc": 1.0
+      "cv_mean": 0.85,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.9
     },
     {
       "layer": 24,
-      "cv_mean": 0.925,
-      "cv_std": 0.0728868986855662,
-      "test_acc": 1.0
+      "cv_mean": 0.825,
+      "cv_std": 0.114564392373896,
+      "test_acc": 0.85
     },
     {
       "layer": 25,
-      "cv_mean": 0.925,
-      "cv_std": 0.0728868986855662,
-      "test_acc": 1.0
+      "cv_mean": 0.8125,
+      "cv_std": 0.1045825033167594,
+      "test_acc": 0.85
     },
     {
       "layer": 26,
-      "cv_mean": 0.9125,
-      "cv_std": 0.0935414346693485,
-      "test_acc": 1.0
+      "cv_mean": 0.8375,
+      "cv_std": 0.1286953767623375,
+      "test_acc": 0.85
     },
     {
       "layer": 27,
-      "cv_mean": 0.9125,
-      "cv_std": 0.0935414346693485,
-      "test_acc": 1.0
+      "cv_mean": 0.825,
+      "cv_std": 0.114564392373896,
+      "test_acc": 0.9
     },
     {
       "layer": 28,
-      "cv_mean": 0.925,
-      "cv_std": 0.0918558653543691,
-      "test_acc": 1.0
+      "cv_mean": 0.8,
+      "cv_std": 0.1,
+      "test_acc": 0.9
     },
     {
       "layer": 29,
-      "cv_mean": 0.925,
-      "cv_std": 0.0918558653543691,
-      "test_acc": 1.0
+      "cv_mean": 0.8,
+      "cv_std": 0.1075290658380328,
+      "test_acc": 0.95
     },
     {
       "layer": 30,
-      "cv_mean": 0.925,
-      "cv_std": 0.0918558653543691,
-      "test_acc": 1.0
+      "cv_mean": 0.775,
+      "cv_std": 0.0935414346693485,
+      "test_acc": 0.95
     },
     {
       "layer": 31,
-      "cv_mean": 0.9375,
-      "cv_std": 0.0684653196881457,
-      "test_acc": 1.0
+      "cv_mean": 0.7625,
+      "cv_std": 0.1334634781503914,
+      "test_acc": 0.9
     },
     {
       "layer": 32,
-      "cv_mean": 1.0,
-      "cv_std": 0.0,
-      "test_acc": 1.0
+      "cv_mean": 0.7625,
+      "cv_std": 0.1334634781503914,
+      "test_acc": 0.85
     },
     {
       "layer": 33,
-      "cv_mean": 1.0,
-      "cv_std": 0.0,
-      "test_acc": 1.0
+      "cv_mean": 0.7875,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.85
     },
     {
       "layer": 34,
-      "cv_mean": 1.0,
-      "cv_std": 0.0,
-      "test_acc": 1.0
+      "cv_mean": 0.7375,
+      "cv_std": 0.1274754878398196,
+      "test_acc": 0.85
     },
     {
       "layer": 35,
-      "cv_mean": 0.975,
-      "cv_std": 0.0306186217847897,
-      "test_acc": 1.0
+      "cv_mean": 0.725,
+      "cv_std": 0.0935414346693485,
+      "test_acc": 0.9
     }
   ],
   "implicit_results": [
     {
       "layer": 0,
-      "implicit_acc": 0.71
+      "implicit_acc": 0.7
     },
     {
       "layer": 1,
@@ -279,39 +279,39 @@
     },
     {
       "layer": 2,
-      "implicit_acc": 0.76
+      "implicit_acc": 0.72
     },
     {
       "layer": 3,
-      "implicit_acc": 0.76
+      "implicit_acc": 0.72
     },
     {
       "layer": 4,
-      "implicit_acc": 0.73
+      "implicit_acc": 0.72
     },
     {
       "layer": 5,
-      "implicit_acc": 0.76
+      "implicit_acc": 0.73
     },
     {
       "layer": 6,
-      "implicit_acc": 0.8
+      "implicit_acc": 0.78
     },
     {
       "layer": 7,
-      "implicit_acc": 0.81
+      "implicit_acc": 0.78
     },
     {
       "layer": 8,
-      "implicit_acc": 0.85
-    },
-    {
-      "layer": 9,
       "implicit_acc": 0.86
     },
     {
-      "layer": 10,
+      "layer": 9,
       "implicit_acc": 0.84
+    },
+    {
+      "layer": 10,
+      "implicit_acc": 0.82
     },
     {
       "layer": 11,
@@ -319,15 +319,15 @@
     },
     {
       "layer": 12,
-      "implicit_acc": 0.85
+      "implicit_acc": 0.84
     },
     {
       "layer": 13,
-      "implicit_acc": 0.83
+      "implicit_acc": 0.8
     },
     {
       "layer": 14,
-      "implicit_acc": 0.86
+      "implicit_acc": 0.85
     },
     {
       "layer": 15,
@@ -335,88 +335,88 @@
     },
     {
       "layer": 16,
-      "implicit_acc": 0.85
-    },
-    {
-      "layer": 17,
-      "implicit_acc": 0.85
-    },
-    {
-      "layer": 18,
-      "implicit_acc": 0.83
-    },
-    {
-      "layer": 19,
-      "implicit_acc": 0.85
-    },
-    {
-      "layer": 20,
-      "implicit_acc": 0.85
-    },
-    {
-      "layer": 21,
       "implicit_acc": 0.82
     },
     {
+      "layer": 17,
+      "implicit_acc": 0.82
+    },
+    {
+      "layer": 18,
+      "implicit_acc": 0.8
+    },
+    {
+      "layer": 19,
+      "implicit_acc": 0.83
+    },
+    {
+      "layer": 20,
+      "implicit_acc": 0.8
+    },
+    {
+      "layer": 21,
+      "implicit_acc": 0.8
+    },
+    {
       "layer": 22,
-      "implicit_acc": 0.88
+      "implicit_acc": 0.8
     },
     {
       "layer": 23,
-      "implicit_acc": 0.93
+      "implicit_acc": 0.83
     },
     {
       "layer": 24,
-      "implicit_acc": 0.94
+      "implicit_acc": 0.8
     },
     {
       "layer": 25,
-      "implicit_acc": 0.93
+      "implicit_acc": 0.81
     },
     {
       "layer": 26,
-      "implicit_acc": 0.96
+      "implicit_acc": 0.84
     },
     {
       "layer": 27,
-      "implicit_acc": 0.96
+      "implicit_acc": 0.82
     },
     {
       "layer": 28,
-      "implicit_acc": 0.93
+      "implicit_acc": 0.79
     },
     {
       "layer": 29,
-      "implicit_acc": 0.92
+      "implicit_acc": 0.8
     },
     {
       "layer": 30,
-      "implicit_acc": 0.92
+      "implicit_acc": 0.84
     },
     {
       "layer": 31,
-      "implicit_acc": 0.94
+      "implicit_acc": 0.84
     },
     {
       "layer": 32,
-      "implicit_acc": 0.98
+      "implicit_acc": 0.85
     },
     {
       "layer": 33,
-      "implicit_acc": 0.98
+      "implicit_acc": 0.83
     },
     {
       "layer": 34,
-      "implicit_acc": 0.99
+      "implicit_acc": 0.79
     },
     {
       "layer": 35,
-      "implicit_acc": 0.99
+      "implicit_acc": 0.76
     }
   ],
   "summary": {
-    "best_semantic_layer": 34,
-    "best_implicit_accuracy": 0.99,
+    "best_semantic_layer": 8,
+    "best_implicit_accuracy": 0.86,
     "validation_passed": true,
     "semantic_layers": [
       0,
@@ -458,8 +458,8 @@
     ],
     "weak_layers": [],
     "lexical_layers": [],
-    "mean_explicit_accuracy": 0.9333333333333331,
-    "mean_implicit_accuracy": 0.865,
-    "mean_generalization_gap": 0.06833333333333333
+    "mean_explicit_accuracy": 0.8722222222222222,
+    "mean_implicit_accuracy": 0.8013888888888888,
+    "mean_generalization_gap": 0.07083333333333335
   }
 }
