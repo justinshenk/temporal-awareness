@@ -1,0 +1,3250 @@
+{
+  "gpt2": {
+    "model": "gpt2",
+    "n_layers": 12,
+    "d_model": 768,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.0,
+        "exact_match": 0.0,
+        "any_valid": 0.0
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.0,
+      "str": 0.0,
+      "bool": 0.0,
+      "list": 0.0,
+      "float": 0.0
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.6666666666666667,
+        "ci_lo": 0.5267908538535337,
+        "ci_hi": 0.7809545454545455,
+        "bow": 0.44666666666666666,
+        "name_only": 0.6666666666666667,
+        "gap_bow": 0.22000000000000008,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_3": {
+        "probe": 0.6733333333333332,
+        "ci_lo": 0.4907289879931389,
+        "ci_hi": 0.7343434343434342,
+        "bow": 0.6266666666666667,
+        "name_only": 0.6533333333333333,
+        "gap_bow": 0.04666666666666652,
+        "gap_name": 0.019999999999999907,
+        "p_value_vs_name": 0.6599999999999999,
+        "probe_wins": 34,
+        "best_pos": 5
+      },
+      "layer_6": {
+        "probe": 0.7133333333333333,
+        "ci_lo": 0.4944148936170213,
+        "ci_hi": 0.7388888888888888,
+        "bow": 0.5533333333333333,
+        "name_only": 0.6733333333333332,
+        "gap_bow": 0.15999999999999992,
+        "gap_name": 0.040000000000000036,
+        "p_value_vs_name": 0.69,
+        "probe_wins": 31,
+        "best_pos": 4
+      },
+      "layer_9": {
+        "probe": 0.7266666666666666,
+        "ci_lo": 0.5411271186440678,
+        "ci_hi": 0.785305944055944,
+        "bow": 0.6333333333333333,
+        "name_only": 0.6799999999999999,
+        "gap_bow": 0.09333333333333327,
+        "gap_name": 0.046666666666666634,
+        "p_value_vs_name": 0.38,
+        "probe_wins": 62,
+        "best_pos": 10
+      },
+      "layer_10": {
+        "probe": 0.7066666666666667,
+        "ci_lo": 0.5324510831586303,
+        "ci_hi": 0.7777777777777778,
+        "bow": 0.6333333333333333,
+        "name_only": 0.6666666666666667,
+        "gap_bow": 0.07333333333333336,
+        "gap_name": 0.039999999999999925,
+        "p_value_vs_name": 0.47,
+        "probe_wins": 53,
+        "best_pos": 10
+      },
+      "layer_11": {
+        "probe": 0.7266666666666667,
+        "ci_lo": 0.5673376623376623,
+        "ci_hi": 0.8040384615384615,
+        "bow": 0.6666666666666666,
+        "name_only": 0.6466666666666667,
+        "gap_bow": 0.06000000000000005,
+        "gap_name": 0.07999999999999996,
+        "p_value_vs_name": 0.42000000000000004,
+        "probe_wins": 58,
+        "best_pos": 6
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.3333333333333333
+    },
+    "nonsense_L3": {
+      "probe": 0.3533333333333334
+    },
+    "nonsense_L6": {
+      "probe": 0.36
+    },
+    "nonsense_L9": {
+      "probe": 0.33999999999999997
+    },
+    "nonsense_L10": {
+      "probe": 0.36
+    },
+    "nonsense_L11": {
+      "probe": 0.36
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.013215604238212109,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.02173723466694355,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          " return",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 9,
+        "kl": 0.09874367713928223,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 9,
+        "kl": 0.12018115818500519,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 11,
+        "kl": 0.06419213116168976,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          " =",
+          " \""
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 11,
+        "kl": 0.059982940554618835,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.07795743644237518,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          " =",
+          " \""
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.059709057211875916,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 9,
+        "kl": 0.8371171355247498,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"",
+          " ."
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 9,
+        "kl": 0.7284033298492432,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"",
+          " ."
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 11,
+        "kl": 0.7748901844024658,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"",
+          " ="
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 11,
+        "kl": 0.608782172203064,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \""
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.6153129935264587,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"",
+          " ("
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.5221271514892578,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"",
+          " ="
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 9,
+        "kl": 1.5196441411972046,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"",
+          "\u00a0",
+          " ."
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 9,
+        "kl": 1.3936048746109009,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"",
+          " .",
+          "\u00a0"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 11,
+        "kl": 2.8656539916992188,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          "email",
+          " goodbye",
+          " \"@",
+          "mail",
+          " \""
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 11,
+        "kl": 2.246976375579834,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          "\n",
+          "email",
+          " goodbye",
+          " ",
+          " \""
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.3284711837768555,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          "\n",
+          " ",
+          "(",
+          "The",
+          "\""
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.293715476989746,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          "\n",
+          " ",
+          "(",
+          "The",
+          "\""
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 9,
+        "kl": 2.3913321495056152,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"",
+          "mail",
+          "email"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 9,
+        "kl": 2.2705464363098145,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"",
+          "mail",
+          " ."
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 11,
+        "kl": 9.22154426574707,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " \u00a0"
+        ],
+        "steered_top5": [
+          " goodbye",
+          "mail",
+          " Goodbye",
+          " farewell",
+          "email"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 11,
+        "kl": 8.548185348510742,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " return"
+        ],
+        "steered_top5": [
+          " goodbye",
+          " Goodbye",
+          " farewell",
+          "mail",
+          "email"
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.022222222222222223,
+        "exact_match": 0.011111111111111112,
+        "any_valid": 0.022222222222222223
+      }
+    },
+    "causal_patching": [
+      {
+        "pair": "process_int_vs_str",
+        "layer": 0,
+        "necessity_kl": 0.020097002387046814,
+        "sufficiency_kl": 1.3439640998840332,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          " -",
+          " str",
+          " ",
+          " \""
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "pair": "process_int_vs_str",
+        "layer": 4,
+        "necessity_kl": 0.012381595559418201,
+        "sufficiency_kl": 3.2691152095794678,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " '",
+          " \"",
+          "(",
+          "[",
+          "\n"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "pair": "process_int_vs_str",
+        "layer": 8,
+        "necessity_kl": 0.005148918367922306,
+        "sufficiency_kl": 2.551669120788574,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          " '",
+          " \"\"",
+          "\"",
+          "\n"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "pair": "process_int_vs_str",
+        "layer": 10,
+        "necessity_kl": 0.0019608777947723866,
+        "sufficiency_kl": 1.1376829147338867,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          ".",
+          " .",
+          " ",
+          "\n"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "pair": "process_int_vs_str",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.8259655237197876,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " ",
+          " \"",
+          "\n",
+          " .",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \u00a0"
+        ]
+      },
+      {
+        "pair": "transform_str_vs_list",
+        "layer": 0,
+        "necessity_kl": 0.02644447423517704,
+        "sufficiency_kl": 1.660943865776062,
+        "target_a": "str",
+        "target_b": "list",
+        "steered_top5": [
+          "\n",
+          " ",
+          " List",
+          "\n\n",
+          " list"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "transform_str_vs_list",
+        "layer": 4,
+        "necessity_kl": 0.01083308644592762,
+        "sufficiency_kl": 1.388861894607544,
+        "target_a": "str",
+        "target_b": "list",
+        "steered_top5": [
+          " ",
+          "\n",
+          " list",
+          " (",
+          " do"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "transform_str_vs_list",
+        "layer": 8,
+        "necessity_kl": 0.006585065275430679,
+        "sufficiency_kl": 0.9054428339004517,
+        "target_a": "str",
+        "target_b": "list",
+        "steered_top5": [
+          "\n",
+          " ",
+          " |",
+          " =",
+          "-"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "transform_str_vs_list",
+        "layer": 10,
+        "necessity_kl": 0.0023605679161846638,
+        "sufficiency_kl": 0.5225898027420044,
+        "target_a": "str",
+        "target_b": "list",
+        "steered_top5": [
+          " ",
+          "\n",
+          " def",
+          "\u00a0",
+          " ("
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "transform_str_vs_list",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.39110320806503296,
+        "target_a": "str",
+        "target_b": "list",
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          " <",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "compute_int_vs_float",
+        "layer": 0,
+        "necessity_kl": 0.008456946350634098,
+        "sufficiency_kl": 2.3724842071533203,
+        "target_a": "int",
+        "target_b": "float",
+        "steered_top5": [
+          " float",
+          "\n",
+          " Float",
+          " ",
+          " floats"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "compute_int_vs_float",
+        "layer": 4,
+        "necessity_kl": 0.005784828215837479,
+        "sufficiency_kl": 1.033726453781128,
+        "target_a": "int",
+        "target_b": "float",
+        "steered_top5": [
+          " float",
+          " ",
+          "\n",
+          "\u00a0",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "compute_int_vs_float",
+        "layer": 8,
+        "necessity_kl": 0.003963124938309193,
+        "sufficiency_kl": 0.5752034783363342,
+        "target_a": "int",
+        "target_b": "float",
+        "steered_top5": [
+          " ",
+          "\n",
+          " float",
+          "\u00a0",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "compute_int_vs_float",
+        "layer": 10,
+        "necessity_kl": 0.0015591834671795368,
+        "sufficiency_kl": 0.36291801929473877,
+        "target_a": "int",
+        "target_b": "float",
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " float"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "compute_int_vs_float",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.23881426453590393,
+        "target_a": "int",
+        "target_b": "float",
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " __"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "validate_bool_vs_str",
+        "layer": 0,
+        "necessity_kl": 0.0248196292668581,
+        "sufficiency_kl": 1.7876653671264648,
+        "target_a": "bool",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          " str",
+          " (",
+          " [",
+          " s"
+        ],
+        "orig_top5": [
+          " ",
+          " =",
+          "\u00a0",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "pair": "validate_bool_vs_str",
+        "layer": 4,
+        "necessity_kl": 0.011440549045801163,
+        "sufficiency_kl": 3.1924660205841064,
+        "target_a": "bool",
+        "target_b": "str",
+        "steered_top5": [
+          " (",
+          "\n",
+          " |",
+          " [",
+          " ,"
+        ],
+        "orig_top5": [
+          " ",
+          " =",
+          "\u00a0",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "pair": "validate_bool_vs_str",
+        "layer": 8,
+        "necessity_kl": 0.0042741200886666775,
+        "sufficiency_kl": 1.7313822507858276,
+        "target_a": "bool",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          " (",
+          " +",
+          "\n",
+          " ["
+        ],
+        "orig_top5": [
+          " ",
+          " =",
+          "\u00a0",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "pair": "validate_bool_vs_str",
+        "layer": 10,
+        "necessity_kl": 0.002175466390326619,
+        "sufficiency_kl": 1.6193231344223022,
+        "target_a": "bool",
+        "target_b": "str",
+        "steered_top5": [
+          ".",
+          " .",
+          " ",
+          " \"",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          " =",
+          "\u00a0",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "pair": "validate_bool_vs_str",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 2.0094704627990723,
+        "target_a": "bool",
+        "target_b": "str",
+        "steered_top5": [
+          "conv",
+          " ",
+          "ic",
+          "t",
+          "ict"
+        ],
+        "orig_top5": [
+          " ",
+          " =",
+          "\u00a0",
+          "\n",
+          " return"
+        ]
+      },
+      {
+        "pair": "convert_int_vs_str",
+        "layer": 0,
+        "necessity_kl": 0.021251853555440903,
+        "sufficiency_kl": 1.3486942052841187,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          " -",
+          " str",
+          " )",
+          " "
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "convert_int_vs_str",
+        "layer": 4,
+        "necessity_kl": 0.013275654055178165,
+        "sufficiency_kl": 3.105532169342041,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " '",
+          " \"",
+          "[",
+          " \"\"",
+          "("
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "convert_int_vs_str",
+        "layer": 8,
+        "necessity_kl": 0.004942264407873154,
+        "sufficiency_kl": 2.692838191986084,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          " '",
+          " \"\"",
+          "\"",
+          "\n"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "convert_int_vs_str",
+        "layer": 10,
+        "necessity_kl": 0.001863834448158741,
+        "sufficiency_kl": 1.1997716426849365,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          ".",
+          " .",
+          " ",
+          "\n"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "convert_int_vs_str",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.8474150896072388,
+        "target_a": "int",
+        "target_b": "str",
+        "steered_top5": [
+          " \"",
+          " ",
+          "\n",
+          " .",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "extract_list_vs_str",
+        "layer": 0,
+        "necessity_kl": 0.025264041498303413,
+        "sufficiency_kl": 1.4041459560394287,
+        "target_a": "list",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          " =",
+          " )",
+          " _",
+          " str"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "extract_list_vs_str",
+        "layer": 4,
+        "necessity_kl": 0.012429902330040932,
+        "sufficiency_kl": 1.5760329961776733,
+        "target_a": "list",
+        "target_b": "str",
+        "steered_top5": [
+          " =",
+          " '",
+          "\n",
+          "\u00a0",
+          "s"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "extract_list_vs_str",
+        "layer": 8,
+        "necessity_kl": 0.004079504869878292,
+        "sufficiency_kl": 0.8409050107002258,
+        "target_a": "list",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          "\u00a0",
+          " ",
+          " \"",
+          " '"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "extract_list_vs_str",
+        "layer": 10,
+        "necessity_kl": 0.0014789151027798653,
+        "sufficiency_kl": 0.6535764336585999,
+        "target_a": "list",
+        "target_b": "str",
+        "steered_top5": [
+          "\n",
+          " \"",
+          " ",
+          " =",
+          " str"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "extract_list_vs_str",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.5792229175567627,
+        "target_a": "list",
+        "target_b": "str",
+        "steered_top5": [
+          " return",
+          " ",
+          "\n",
+          " \"",
+          " ="
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " return"
+        ]
+      },
+      {
+        "pair": "calculate_float_vs_int",
+        "layer": 0,
+        "necessity_kl": 0.007238054648041725,
+        "sufficiency_kl": 0.4871079921722412,
+        "target_a": "float",
+        "target_b": "int",
+        "steered_top5": [
+          " ",
+          "\n",
+          " int",
+          " [",
+          "\u00a0"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "calculate_float_vs_int",
+        "layer": 4,
+        "necessity_kl": 0.003937257453799248,
+        "sufficiency_kl": 0.9094120860099792,
+        "target_a": "float",
+        "target_b": "int",
+        "steered_top5": [
+          " [",
+          "\n",
+          " *",
+          " |",
+          " ..."
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "calculate_float_vs_int",
+        "layer": 8,
+        "necessity_kl": 0.0028112309519201517,
+        "sufficiency_kl": 0.5686467885971069,
+        "target_a": "float",
+        "target_b": "int",
+        "steered_top5": [
+          "\n",
+          " ",
+          "\u00a0",
+          " =",
+          " ."
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "calculate_float_vs_int",
+        "layer": 10,
+        "necessity_kl": 0.001100774621590972,
+        "sufficiency_kl": 0.4729103147983551,
+        "target_a": "float",
+        "target_b": "int",
+        "steered_top5": [
+          "\n",
+          " ",
+          " =",
+          "\u00a0",
+          " ["
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      },
+      {
+        "pair": "calculate_float_vs_int",
+        "layer": 11,
+        "necessity_kl": 0.0,
+        "sufficiency_kl": 0.2582955062389374,
+        "target_a": "float",
+        "target_b": "int",
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ],
+        "orig_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " return"
+        ]
+      }
+    ],
+    "commitment_curves": {
+      "0": {
+        "n_valid": 108,
+        "n_total": 150,
+        "mean_tokens_before": 9.796296296296296
+      },
+      "3": {
+        "n_valid": 123,
+        "n_total": 150,
+        "mean_tokens_before": 9.723577235772357
+      },
+      "6": {
+        "n_valid": 125,
+        "n_total": 150,
+        "mean_tokens_before": 9.688
+      },
+      "9": {
+        "n_valid": 130,
+        "n_total": 150,
+        "mean_tokens_before": 9.746153846153845
+      },
+      "10": {
+        "n_valid": 131,
+        "n_total": 150,
+        "mean_tokens_before": 9.702290076335878
+      },
+      "11": {
+        "n_valid": 125,
+        "n_total": 150,
+        "mean_tokens_before": 9.872
+      }
+    }
+  },
+  "gpt2-medium": {
+    "model": "gpt2-medium",
+    "n_layers": 24,
+    "d_model": 1024,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.0,
+        "exact_match": 0.0,
+        "any_valid": 0.0
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.0,
+      "str": 0.0,
+      "bool": 0.0,
+      "list": 0.0,
+      "float": 0.0
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.6399999999999999,
+        "ci_lo": 0.555333138515488,
+        "ci_hi": 0.7942722371967655,
+        "bow": 0.44666666666666666,
+        "name_only": 0.6399999999999999,
+        "gap_bow": 0.19333333333333325,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_6": {
+        "probe": 0.7,
+        "ci_lo": 0.4791126179245283,
+        "ci_hi": 0.7478409090909091,
+        "bow": 0.6666666666666666,
+        "name_only": 0.6599999999999999,
+        "gap_bow": 0.033333333333333326,
+        "gap_name": 0.040000000000000036,
+        "p_value_vs_name": 0.77,
+        "probe_wins": 23,
+        "best_pos": 6
+      },
+      "layer_12": {
+        "probe": 0.72,
+        "ci_lo": 0.5363425925925926,
+        "ci_hi": 0.7962962962962963,
+        "bow": 0.6266666666666667,
+        "name_only": 0.6666666666666666,
+        "gap_bow": 0.09333333333333327,
+        "gap_name": 0.053333333333333344,
+        "p_value_vs_name": 0.43999999999999995,
+        "probe_wins": 56,
+        "best_pos": 5
+      },
+      "layer_18": {
+        "probe": 0.7133333333333333,
+        "ci_lo": 0.5817167577413479,
+        "ci_hi": 0.8036842105263158,
+        "bow": 0.6333333333333334,
+        "name_only": 0.7,
+        "gap_bow": 0.07999999999999985,
+        "gap_name": 0.013333333333333308,
+        "p_value_vs_name": 0.49,
+        "probe_wins": 51,
+        "best_pos": 9
+      },
+      "layer_22": {
+        "probe": 0.7133333333333333,
+        "ci_lo": 0.5904088050314465,
+        "ci_hi": 0.7982407407407407,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7,
+        "gap_bow": 0.08666666666666656,
+        "gap_name": 0.013333333333333308,
+        "p_value_vs_name": 0.38,
+        "probe_wins": 62,
+        "best_pos": 5
+      },
+      "layer_23": {
+        "probe": 0.7533333333333333,
+        "ci_lo": 0.5855237475601821,
+        "ci_hi": 0.8,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7,
+        "gap_bow": 0.1266666666666666,
+        "gap_name": 0.053333333333333344,
+        "p_value_vs_name": 0.43000000000000005,
+        "probe_wins": 57,
+        "best_pos": 5
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.3333333333333333
+    },
+    "nonsense_L6": {
+      "probe": 0.3
+    },
+    "nonsense_L12": {
+      "probe": 0.33333333333333337
+    },
+    "nonsense_L18": {
+      "probe": 0.36666666666666664
+    },
+    "nonsense_L22": {
+      "probe": 0.3733333333333333
+    },
+    "nonsense_L23": {
+      "probe": 0.34
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.008517654612660408,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.010371259413659573,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 18,
+        "kl": 0.05858268216252327,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " __"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 18,
+        "kl": 0.06932617723941803,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " __"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 23,
+        "kl": 0.07926732301712036,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 23,
+        "kl": 0.083858422935009,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.15143230557441711,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.1055547371506691,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 18,
+        "kl": 0.3499000370502472,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " __",
+          "\u00a0",
+          " ="
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 18,
+        "kl": 0.41607666015625,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " __",
+          " ="
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 23,
+        "kl": 0.5856620669364929,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \"\"\"",
+          " ="
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 23,
+        "kl": 0.6025927066802979,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " \"\"\""
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.610122561454773,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          "\u30fc",
+          "________"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.6314806938171387,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          "\n",
+          "____",
+          "\ufffd"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 18,
+        "kl": 0.6894112229347229,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " __",
+          "\u00a0",
+          "\ufffd"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 18,
+        "kl": 0.7956674098968506,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " __",
+          "\u00a0",
+          "\ufffd"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 23,
+        "kl": 2.1395621299743652,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          "\ufffd",
+          " ",
+          "****************",
+          " Email",
+          " PsyNet"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 23,
+        "kl": 1.7418954372406006,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\ufffd",
+          "****************",
+          " Email",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.976743698120117,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          "\ufffd",
+          "\u30c9",
+          " ",
+          "\ufffd",
+          "\u306e"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.9013609886169434,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          "\u30c9",
+          "\ufffd",
+          " ",
+          "\u30a4",
+          "\ufffd"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 18,
+        "kl": 1.3815152645111084,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          " ",
+          "\ufffd",
+          "\u00a0",
+          "\ufffd",
+          " __"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 18,
+        "kl": 1.5261306762695312,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          " ",
+          "\ufffd",
+          "\u00a0",
+          "\ufffd",
+          " __"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 23,
+        "kl": 11.521478652954102,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " *"
+        ],
+        "steered_top5": [
+          "\ufffd",
+          " PsyNet",
+          " greet",
+          " goodbye",
+          " greets"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 23,
+        "kl": 10.806658744812012,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " =",
+          "\n",
+          "\u00a0",
+          " x"
+        ],
+        "steered_top5": [
+          "\ufffd",
+          " greet",
+          " PsyNet",
+          " goodbye",
+          " greets"
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.022222222222222223,
+        "exact_match": 0.0,
+        "any_valid": 0.022222222222222223
+      }
+    }
+  },
+  "gpt2-xl": {
+    "model": "gpt2-xl",
+    "n_layers": 48,
+    "d_model": 1600,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.0,
+        "exact_match": 0.0,
+        "any_valid": 0.0
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.0,
+      "str": 0.0,
+      "bool": 0.0,
+      "list": 0.0,
+      "float": 0.0
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.7066666666666667,
+        "ci_lo": 0.5603502235469449,
+        "ci_hi": 0.7693673695893452,
+        "bow": 0.44666666666666666,
+        "name_only": 0.7066666666666667,
+        "gap_bow": 0.26,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_12": {
+        "probe": 0.6799999999999999,
+        "ci_lo": 0.5312824675324676,
+        "ci_hi": 0.7892207792207792,
+        "bow": 0.5533333333333333,
+        "name_only": 0.6533333333333332,
+        "gap_bow": 0.1266666666666666,
+        "gap_name": 0.026666666666666727,
+        "p_value_vs_name": 0.63,
+        "probe_wins": 37,
+        "best_pos": 4
+      },
+      "layer_24": {
+        "probe": 0.7466666666666666,
+        "ci_lo": 0.6,
+        "ci_hi": 0.8193354148082069,
+        "bow": 0.6266666666666667,
+        "name_only": 0.6599999999999999,
+        "gap_bow": 0.11999999999999988,
+        "gap_name": 0.08666666666666667,
+        "p_value_vs_name": 0.21999999999999997,
+        "probe_wins": 78,
+        "best_pos": 5
+      },
+      "layer_36": {
+        "probe": 0.78,
+        "ci_lo": 0.6127119841718485,
+        "ci_hi": 0.8514775413711584,
+        "bow": 0.6266666666666667,
+        "name_only": 0.6733333333333333,
+        "gap_bow": 0.15333333333333332,
+        "gap_name": 0.10666666666666669,
+        "p_value_vs_name": 0.29000000000000004,
+        "probe_wins": 71,
+        "best_pos": 5
+      },
+      "layer_46": {
+        "probe": 0.76,
+        "ci_lo": 0.610750315258512,
+        "ci_hi": 0.8349242424242423,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7000000000000001,
+        "gap_bow": 0.1333333333333333,
+        "gap_name": 0.05999999999999994,
+        "p_value_vs_name": 0.22999999999999998,
+        "probe_wins": 77,
+        "best_pos": 5
+      },
+      "layer_47": {
+        "probe": 0.76,
+        "ci_lo": 0.6179045092838197,
+        "ci_hi": 0.8333333333333334,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7,
+        "gap_bow": 0.1333333333333333,
+        "gap_name": 0.06000000000000005,
+        "p_value_vs_name": 0.22999999999999998,
+        "probe_wins": 77,
+        "best_pos": 5
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.35333333333333333
+    },
+    "nonsense_L12": {
+      "probe": 0.33333333333333337
+    },
+    "nonsense_L24": {
+      "probe": 0.3466666666666666
+    },
+    "nonsense_L36": {
+      "probe": 0.3266666666666667
+    },
+    "nonsense_L46": {
+      "probe": 0.35333333333333333
+    },
+    "nonsense_L47": {
+      "probe": 0.32666666666666666
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.0014031974133104086,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": 0.001946752890944481,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 36,
+        "kl": 0.06757266819477081,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " if",
+          " #"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 36,
+        "kl": 0.06611508876085281,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " =",
+          "\u00a0",
+          " if"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 47,
+        "kl": 0.08245942741632462,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " if"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 47,
+        "kl": 0.09300042688846588,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " =",
+          " if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.0084442850202322,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\u00a0",
+          " a",
+          " =",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": 0.016670625656843185,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          " =",
+          " a",
+          "\u00a0",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 36,
+        "kl": 0.32500889897346497,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " #",
+          " \"\"\""
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 36,
+        "kl": 0.3647264838218689,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \u00a0",
+          " \"\"\""
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 47,
+        "kl": 0.5344721078872681,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"\"\"",
+          "\u00a0",
+          " Hello"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 47,
+        "kl": 0.4835197627544403,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " \"\"\"",
+          "\u00a0",
+          " \u00a0"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.028433406725525856,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " a",
+          "\u00a0",
+          " if"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": 0.02718820795416832,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          " a",
+          "\n",
+          " =",
+          " if"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 36,
+        "kl": 0.5475479364395142,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \u00a0",
+          " Hello"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 36,
+        "kl": 0.5890554189682007,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          "\u00a0",
+          " \u00a0",
+          " Hello"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 47,
+        "kl": 2.025270700454712,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          " greeting",
+          " Hello",
+          " greet",
+          " message"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 47,
+        "kl": 1.6580127477645874,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          " greeting",
+          " greet",
+          " Hello",
+          " message"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.6793289184570312,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          "hello",
+          "\n",
+          " hello",
+          " ",
+          "Hello"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": 2.696659803390503,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          "\n",
+          "hello",
+          " ",
+          "\"",
+          " hello"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 36,
+        "kl": 0.8960473537445068,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " Hello",
+          "\u00a0",
+          " ."
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 36,
+        "kl": 0.9261787533760071,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " ",
+          "\n",
+          " Hello",
+          "\u00a0",
+          " ."
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 47,
+        "kl": 6.788862228393555,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " ",
+          "\u00a0",
+          " =",
+          "\n",
+          " a"
+        ],
+        "steered_top5": [
+          " greeting",
+          " greet",
+          " farewell",
+          " Goodbye",
+          " goodbye"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 47,
+        "kl": 6.600735187530518,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " ",
+          " a",
+          " =",
+          "\n",
+          "\u00a0"
+        ],
+        "steered_top5": [
+          " greeting",
+          " greet",
+          " farewell",
+          " Goodbye",
+          " goodbye"
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.022222222222222223,
+        "exact_match": 0.0,
+        "any_valid": 0.022222222222222223
+      }
+    }
+  },
+  "pythia-2.8b": {
+    "model": "pythia-2.8b",
+    "n_layers": 32,
+    "d_model": 2560,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.32666666666666666,
+        "exact_match": 0.32666666666666666,
+        "any_valid": 0.32666666666666666
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.6333333333333333,
+      "str": 0.13333333333333333,
+      "bool": 0.4666666666666667,
+      "list": 0.2,
+      "float": 0.2
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.6599999999999999,
+        "ci_lo": 0.5163793103448275,
+        "ci_hi": 0.7715686274509803,
+        "bow": 0.44666666666666666,
+        "name_only": 0.6599999999999999,
+        "gap_bow": 0.21333333333333326,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_8": {
+        "probe": 0.7733333333333333,
+        "ci_lo": 0.6519965277777777,
+        "ci_hi": 0.8716077441077441,
+        "bow": 0.6799999999999999,
+        "name_only": 0.66,
+        "gap_bow": 0.09333333333333338,
+        "gap_name": 0.11333333333333329,
+        "p_value_vs_name": 0.06000000000000005,
+        "probe_wins": 94,
+        "best_pos": 5
+      },
+      "layer_16": {
+        "probe": 0.8,
+        "ci_lo": 0.635875822368421,
+        "ci_hi": 0.9082912457912458,
+        "bow": 0.6799999999999999,
+        "name_only": 0.6933333333333334,
+        "gap_bow": 0.1200000000000001,
+        "gap_name": 0.10666666666666669,
+        "p_value_vs_name": 0.14,
+        "probe_wins": 86,
+        "best_pos": 5
+      },
+      "layer_24": {
+        "probe": 0.8,
+        "ci_lo": 0.6902507836990596,
+        "ci_hi": 0.8923307543520309,
+        "bow": 0.5799999999999998,
+        "name_only": 0.6799999999999999,
+        "gap_bow": 0.2200000000000002,
+        "gap_name": 0.1200000000000001,
+        "p_value_vs_name": 0.07999999999999996,
+        "probe_wins": 92,
+        "best_pos": 4
+      },
+      "layer_30": {
+        "probe": 0.8266666666666668,
+        "ci_lo": 0.6841899804814574,
+        "ci_hi": 0.892911877394636,
+        "bow": 0.5799999999999998,
+        "name_only": 0.6799999999999999,
+        "gap_bow": 0.24666666666666692,
+        "gap_name": 0.14666666666666683,
+        "p_value_vs_name": 0.07999999999999996,
+        "probe_wins": 92,
+        "best_pos": 4
+      },
+      "layer_31": {
+        "probe": 0.8200000000000001,
+        "ci_lo": 0.6847855917667238,
+        "ci_hi": 0.8975,
+        "bow": 0.5799999999999998,
+        "name_only": 0.7066666666666666,
+        "gap_bow": 0.2400000000000002,
+        "gap_name": 0.11333333333333351,
+        "p_value_vs_name": 0.06000000000000005,
+        "probe_wins": 94,
+        "best_pos": 4
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.31333333333333335
+    },
+    "nonsense_L8": {
+      "probe": 0.3066666666666667
+    },
+    "nonsense_L16": {
+      "probe": 0.34
+    },
+    "nonsense_L24": {
+      "probe": 0.36
+    },
+    "nonsense_L30": {
+      "probe": 0.32666666666666666
+    },
+    "nonsense_L31": {
+      "probe": 0.31333333333333335
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "a",
+          "c",
+          "print"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "'''",
+          "a"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "print",
+          "if",
+          "c"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "'''",
+          "print"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "print",
+          "c",
+          "if"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "'''",
+          "\""
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "print",
+          "return",
+          "\"\"\"",
+          "if",
+          "a"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "print",
+          "a"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "return",
+          "print",
+          "\"\"\"",
+          "'''",
+          "if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "\"\"\"",
+          "return",
+          "print",
+          "'''",
+          "if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "return",
+          "\"\"\"",
+          "print",
+          "\"",
+          "pass"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "\"\"\"",
+          "return",
+          "\"",
+          "print",
+          "if"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "def",
+          "\"\"\"",
+          "\n",
+          "'''",
+          "#"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "def",
+          "\"\"\"",
+          "\n",
+          "'''",
+          "name"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "print",
+          "return",
+          "\"\"\"",
+          "'''",
+          "#"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "\"\"\"",
+          "print",
+          "return",
+          "'''",
+          "#"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "print",
+          "\"\"\"",
+          "\"",
+          "return",
+          "pass"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "\"\"\"",
+          "\"",
+          "print",
+          "return",
+          "text"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "\"",
+          "_",
+          "\n",
+          "__",
+          "="
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "\"",
+          "\n",
+          "_",
+          "__",
+          "="
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "print",
+          "text",
+          "#",
+          "\"\"\"",
+          "name"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "print",
+          "text",
+          "#",
+          "\"\"\"",
+          "s"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "return",
+          "c",
+          "\"\"\"",
+          "a",
+          "if"
+        ],
+        "steered_top5": [
+          "text",
+          "name",
+          "print",
+          "pass",
+          "\""
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "return",
+          "\"\"\"",
+          "if",
+          "c",
+          "a"
+        ],
+        "steered_top5": [
+          "text",
+          "name",
+          "message",
+          "\"",
+          "\"\"\""
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.08888888888888889,
+        "exact_match": 0.011111111111111112,
+        "any_valid": 0.08888888888888889
+      }
+    }
+  }
+}
