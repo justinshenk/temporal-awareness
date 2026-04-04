@@ -1,0 +1,1224 @@
+{
+  "santacoder": {
+    "model": "bigcode/santacoder",
+    "n_layers": 24,
+    "d_model": 2048,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.41333333333333333,
+        "exact_match": 0.41333333333333333,
+        "any_valid": 0.41333333333333333
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.8666666666666667,
+      "str": 0.13333333333333333,
+      "bool": 0.6666666666666666,
+      "list": 0.23333333333333334,
+      "float": 0.16666666666666666
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.6933333333333334,
+        "ci_lo": 0.5388771186440678,
+        "ci_hi": 0.783386752136752,
+        "bow": 0.44666666666666666,
+        "name_only": 0.6933333333333334,
+        "gap_bow": 0.2466666666666667,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_6": {
+        "probe": 0.8466666666666667,
+        "ci_lo": 0.6656702619414484,
+        "ci_hi": 0.9227323628219484,
+        "bow": 0.6866666666666666,
+        "name_only": 0.7266666666666666,
+        "gap_bow": 0.16000000000000003,
+        "gap_name": 0.1200000000000001,
+        "p_value_vs_name": 0.24,
+        "probe_wins": 76,
+        "best_pos": 6
+      },
+      "layer_12": {
+        "probe": 0.9,
+        "ci_lo": 0.7616110304789551,
+        "ci_hi": 0.9591989987484355,
+        "bow": 0.6733333333333332,
+        "name_only": 0.72,
+        "gap_bow": 0.2266666666666668,
+        "gap_name": 0.18000000000000005,
+        "p_value_vs_name": 0.040000000000000036,
+        "probe_wins": 96,
+        "best_pos": 5
+      },
+      "layer_18": {
+        "probe": 0.8600000000000001,
+        "ci_lo": 0.6863347457627119,
+        "ci_hi": 0.9082912457912458,
+        "bow": 0.6733333333333332,
+        "name_only": 0.7466666666666667,
+        "gap_bow": 0.18666666666666687,
+        "gap_name": 0.1133333333333334,
+        "p_value_vs_name": 0.18999999999999995,
+        "probe_wins": 81,
+        "best_pos": 5
+      },
+      "layer_22": {
+        "probe": 0.8466666666666667,
+        "ci_lo": 0.7091014588859417,
+        "ci_hi": 0.9216153846153846,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7466666666666667,
+        "gap_bow": 0.21999999999999997,
+        "gap_name": 0.09999999999999998,
+        "p_value_vs_name": 0.14,
+        "probe_wins": 86,
+        "best_pos": 4
+      },
+      "layer_23": {
+        "probe": 0.8466666666666667,
+        "ci_lo": 0.7252417794970987,
+        "ci_hi": 0.9140185185185185,
+        "bow": 0.6266666666666667,
+        "name_only": 0.7466666666666667,
+        "gap_bow": 0.21999999999999997,
+        "gap_name": 0.09999999999999998,
+        "p_value_vs_name": 0.14,
+        "probe_wins": 86,
+        "best_pos": 4
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.35333333333333333
+    },
+    "nonsense_L6": {
+      "probe": 0.32666666666666666
+    },
+    "nonsense_L12": {
+      "probe": 0.32
+    },
+    "nonsense_L18": {
+      "probe": 0.33333333333333337
+    },
+    "nonsense_L22": {
+      "probe": 0.3466666666666667
+    },
+    "nonsense_L23": {
+      "probe": 0.3333333333333333
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " print",
+          " #",
+          " '''"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          " print"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " print",
+          " #",
+          " '''"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " \"\"\"",
+          " return",
+          " #",
+          " '''",
+          " print"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " #",
+          " return",
+          " \"\"\"",
+          " if",
+          " '''"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " return",
+          " print",
+          " \"\"\"",
+          " #",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " return",
+          " #",
+          "\t",
+          " \"\"\"",
+          "\n"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " print",
+          " \"\"\"",
+          " return",
+          " '''",
+          " #"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " \"\"\"",
+          " print",
+          " '''",
+          " return",
+          " #"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " #",
+          "\n",
+          " return",
+          "1",
+          " \"\"\""
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          "\n",
+          " #",
+          " return",
+          " print",
+          "1"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          "print",
+          " print",
+          "<fim-suffix>",
+          "\n",
+          " \"\"\""
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          "\n",
+          "print",
+          "()",
+          " \"\"\"",
+          " print"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          " print",
+          "print",
+          " \"\"\"",
+          " name",
+          "ame"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          " print",
+          " \"\"\"",
+          "print",
+          " '''",
+          " name"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          "name",
+          "\n",
+          "nam",
+          "nome",
+          "n"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          "name",
+          "\n",
+          "nam",
+          "nome",
+          "n"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          "print",
+          "_",
+          "()",
+          "Print",
+          "("
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 18,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          "print",
+          "_",
+          "()",
+          "(",
+          "Print"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " print",
+          " '''"
+        ],
+        "steered_top5": [
+          "name",
+          "print",
+          "world",
+          "text",
+          "names"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 23,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          " return",
+          " \"\"\"",
+          " #",
+          " '''",
+          "\n"
+        ],
+        "steered_top5": [
+          "name",
+          "print",
+          "text",
+          "world",
+          "names"
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.08888888888888889,
+        "exact_match": 0.011111111111111112,
+        "any_valid": 0.08888888888888889
+      }
+    }
+  },
+  "codellama-7b": {
+    "model": "codellama/CodeLlama-7b-Python-hf",
+    "n_layers": 32,
+    "d_model": 4096,
+    "n_examples": 150,
+    "chance": 0.2,
+    "targets": [
+      "bool",
+      "float",
+      "int",
+      "list",
+      "str"
+    ],
+    "behavioral": {
+      "code_return": {
+        "n": 150,
+        "task_accuracy": 0.4266666666666667,
+        "exact_match": 0.4266666666666667,
+        "any_valid": 0.4266666666666667
+      }
+    },
+    "behavioral_per_type": {
+      "int": 0.8,
+      "str": 0.16666666666666666,
+      "bool": 0.8333333333333334,
+      "list": 0.23333333333333334,
+      "float": 0.1
+    },
+    "probing": {
+      "layer_0": {
+        "probe": 0.6533333333333333,
+        "ci_lo": 0.5416435120866908,
+        "ci_hi": 0.7755944931163953,
+        "bow": 0.44666666666666666,
+        "name_only": 0.6533333333333333,
+        "gap_bow": 0.20666666666666667,
+        "gap_name": 0.0,
+        "p_value_vs_name": 1.0,
+        "probe_wins": 0,
+        "best_pos": 2
+      },
+      "layer_8": {
+        "probe": 0.8,
+        "ci_lo": 0.6607142857142857,
+        "ci_hi": 0.8754994450610432,
+        "bow": 0.44666666666666666,
+        "name_only": 0.7133333333333333,
+        "gap_bow": 0.3533333333333334,
+        "gap_name": 0.08666666666666678,
+        "p_value_vs_name": 0.08999999999999997,
+        "probe_wins": 91,
+        "best_pos": 3
+      },
+      "layer_16": {
+        "probe": 0.7933333333333333,
+        "ci_lo": 0.6779661016949152,
+        "ci_hi": 0.8692085953878407,
+        "bow": 0.5533333333333333,
+        "name_only": 0.7066666666666666,
+        "gap_bow": 0.24,
+        "gap_name": 0.08666666666666678,
+        "p_value_vs_name": 0.13,
+        "probe_wins": 87,
+        "best_pos": 4
+      },
+      "layer_24": {
+        "probe": 0.8066666666666669,
+        "ci_lo": 0.6635416666666667,
+        "ci_hi": 0.8846666666666666,
+        "bow": 0.5533333333333333,
+        "name_only": 0.7,
+        "gap_bow": 0.2533333333333335,
+        "gap_name": 0.10666666666666691,
+        "p_value_vs_name": 0.13,
+        "probe_wins": 87,
+        "best_pos": 4
+      },
+      "layer_30": {
+        "probe": 0.7666666666666666,
+        "ci_lo": 0.6427246562200192,
+        "ci_hi": 0.8519901960784312,
+        "bow": 0.44666666666666666,
+        "name_only": 0.74,
+        "gap_bow": 0.31999999999999995,
+        "gap_name": 0.026666666666666616,
+        "p_value_vs_name": 0.22999999999999998,
+        "probe_wins": 77,
+        "best_pos": 3
+      },
+      "layer_31": {
+        "probe": 0.7733333333333332,
+        "ci_lo": 0.6195,
+        "ci_hi": 0.832194357366771,
+        "bow": 0.5533333333333333,
+        "name_only": 0.72,
+        "gap_bow": 0.21999999999999986,
+        "gap_name": 0.05333333333333323,
+        "p_value_vs_name": 0.37,
+        "probe_wins": 63,
+        "best_pos": 4
+      }
+    },
+    "nonsense_L0": {
+      "probe": 0.31999999999999995
+    },
+    "nonsense_L8": {
+      "probe": 0.3466666666666667
+    },
+    "nonsense_L16": {
+      "probe": 0.31999999999999995
+    },
+    "nonsense_L24": {
+      "probe": 0.33333333333333337
+    },
+    "nonsense_L30": {
+      "probe": 0.36
+    },
+    "nonsense_L31": {
+      "probe": 0.38
+    },
+    "steering": [
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "print",
+          "\t",
+          "\"\"\""
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "\t",
+          "\"\"\"",
+          "c"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "print",
+          "\"\"\"",
+          "\t"
+        ]
+      },
+      {
+        "alpha": 1.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "if"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "def",
+          "):",
+          "\t",
+          "add"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "def",
+          "1",
+          "\t",
+          "0"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "\t",
+          "return",
+          "1",
+          "print"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "\t",
+          "1",
+          "return",
+          "nd"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "print",
+          "\n",
+          "\"\"\"",
+          "return",
+          "'''"
+        ]
+      },
+      {
+        "alpha": 3.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "print",
+          "\"\"\"",
+          "return",
+          "if"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "0",
+          "1",
+          "\n",
+          "2",
+          ","
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "0",
+          "1",
+          "\n",
+          "2",
+          ","
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          "2",
+          "1",
+          "3",
+          "irc"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          "1",
+          "irc",
+          "2",
+          "3"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "print",
+          "\"\"\"",
+          "gre",
+          "\n",
+          "return"
+        ]
+      },
+      {
+        "alpha": 5.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "print",
+          "\"\"\"",
+          "\n",
+          "gre",
+          "return"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "\n",
+          ",",
+          ".",
+          "',",
+          ":"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 0,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "\n",
+          ",",
+          ".",
+          "',",
+          ":"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "eness",
+          "bow",
+          "upper",
+          "asz",
+          "Fi"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 24,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "eness",
+          "asz",
+          "sey",
+          "upper",
+          "bow"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def add(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "print",
+          "c"
+        ],
+        "steered_top5": [
+          "gre",
+          "wel",
+          "Gre",
+          "speech",
+          "print"
+        ]
+      },
+      {
+        "alpha": 10.0,
+        "layer": 31,
+        "kl": NaN,
+        "sig": "def subtract(a, b):",
+        "orig_top5": [
+          "\n",
+          "return",
+          "\"\"\"",
+          "c",
+          "result"
+        ],
+        "steered_top5": [
+          "gre",
+          "wel",
+          "Gre",
+          "welcome",
+          "speech"
+        ]
+      }
+    ],
+    "rhyme_behavioral": {
+      "rhyme": {
+        "n": 90,
+        "task_accuracy": 0.13333333333333333,
+        "exact_match": 0.011111111111111112,
+        "any_valid": 0.13333333333333333
+      }
+    }
+  }
+}
