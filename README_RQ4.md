@@ -106,17 +106,6 @@ results/lookahead/
     └── stats/          # FDR + Spearman JSON
 ```
 
-## Experiment Scripts
-
-| Script | Purpose | GPU |
-|--------|---------|-----|
-| `run_rq4_final.py` | Main 500ex, 11 models | ~10h |
-| `run_rq4_gentime.py` | Generation-time curves, 4 models | ~4h |
-| `run_rq4_critfixes.py` | Mean-pool + def-position fixes | ~2h |
-| `run_rq4_acrostic.py` | Acrostic behavioral, 6 models | ~2h |
-| `run_rq4_subset_v2.py` | Fair subset analysis, 3 models | ~20m |
-| `run_rq4_analysis.py` | Stats + figures (no GPU) | ~1m |
-
 ## Reproduction
 
 ```bash
@@ -129,9 +118,6 @@ python3 scripts/lookahead/experiments/run_rq4_analysis.py  # No GPU
 python3 -m pytest tests/lookahead/ -v
 ```
 
-## Compute
-
-GPU: RTX 5070 Ti 16GB (Vast.ai, $0.115/hr). Total: ~$3 / ~26 hours.
 
 ## Paper
 
