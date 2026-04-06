@@ -144,8 +144,19 @@ class ActivationExtractor:
         t0 = time.time()
 
         kwargs = {"device_map": self._device}
-        if self.config.dtype:
-            kwargs["torch_dtype"] = self.config.resolve_dtype()
+
+        # Determine model loading dtype: prefer model_dtype, fall back to dtype
+        load_dtype_str = self.config.model_dtype or self.config.dtype
+        if load_dtype_str:
+            load_dtype = self.config.resolve_dtype(load_dtype_str)
+            # Newer transformers uses 'dtype'; fall back to 'torch_dtype'
+            try:
+                from transformers import __version__ as _tf_version
+                _major, _minor = (int(x) for x in _tf_version.split(".")[:2])
+                _dtype_key = "dtype" if (_major, _minor) >= (4, 50) else "torch_dtype"
+            except Exception:
+                _dtype_key = "torch_dtype"
+            kwargs[_dtype_key] = load_dtype
 
         self._model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
         if self._tokenizer is None:

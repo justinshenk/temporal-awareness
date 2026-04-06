@@ -118,6 +118,10 @@ class ExtractionConfig:
     # Metadata
     collect_metadata: bool = True
 
+    # Model loading
+    model_dtype: Optional[str] = None  # dtype for model weights (e.g., "float16")
+                                        # separate from `dtype` which controls activation storage
+
     # Backend
     use_transformer_lens: Optional[bool] = None
     device: Optional[str] = None
@@ -164,16 +168,21 @@ class ExtractionConfig:
                 resolved.append(ModuleSpec(module_type=mtype, layer=actual_layer))
         return resolved
 
-    def resolve_dtype(self) -> Optional["torch.dtype"]:
-        """Convert string dtype to torch dtype."""
+    def resolve_dtype(self, override: Optional[str] = None) -> Optional["torch.dtype"]:
+        """Convert string dtype to torch dtype.
+
+        Args:
+            override: If provided, resolve this string instead of self.dtype.
+        """
         import torch
         dtype_map = {
             "float32": torch.float32,
             "float16": torch.float16,
             "bfloat16": torch.bfloat16,
         }
-        if self.dtype is None:
+        dtype_str = override or self.dtype
+        if dtype_str is None:
             return None
-        if self.dtype not in dtype_map:
-            raise ValueError(f"Unknown dtype '{self.dtype}'. Use: {list(dtype_map.keys())}")
-        return dtype_map[self.dtype]
+        if dtype_str not in dtype_map:
+            raise ValueError(f"Unknown dtype '{dtype_str}'. Use: {list(dtype_map.keys())}")
+        return dtype_map[dtype_str]

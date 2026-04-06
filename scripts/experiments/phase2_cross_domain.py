@@ -702,7 +702,8 @@ def run_phase2_experiment(
         positions="last",             # last token position (for MCQ answer)
         stream_to="cpu",              # stream activations to CPU to save GPU RAM
         batch_size=2,                 # conservative for 8B models
-        dtype="float32",              # full precision for probes
+        model_dtype="float16",        # load model weights in fp16 to fit in VRAM
+        dtype="float32",              # upcast activations to fp32 for probe training
         max_seq_len=2048,
         use_transformer_lens=False,   # use raw HuggingFace hooks (Phase 2 goal)
     )

@@ -6,12 +6,15 @@
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
+#SBATCH -C GPU_MEM:32GB
 #SBATCH --output=logs/phase2_%j_%x.out
 #SBATCH --error=logs/phase2_%j_%x.err
 
 # Phase 2/3: Cross-Domain & Cross-Stake Activation Analysis
 # -----------------------------------------------------------
 # Runs the new activation_api pipeline (replaces TransformerLens).
+# Model is loaded in float16 (~16GB for 8B params), activations
+# are streamed to CPU in float32 for probe training.
 #
 # Usage:
 #   # Single model (default: Llama-3.1-8B-Instruct)
@@ -23,22 +26,24 @@
 #   # Quick validation run
 #   sbatch scripts/experiments/submit_phase2.sh Llama-3.1-8B-Instruct quick
 #
-#   # All 4 models (sequential, needs ~12h on L40S)
+#   # All 4 models (sequential, needs ~12h on V100/L40S)
 #   sbatch --time=24:00:00 --mem=96GB scripts/experiments/submit_phase2.sh ALL
 #
-# GPU requirements:
-#   - 7B/8B models (Llama, Qwen3-8B, DeepSeek): V100 32GB or L40S 48GB
-#   - Qwen3-30B-A3B (MoE, ~3B active): V100 32GB works but L40S preferred
-#   - Activation streaming to CPU keeps GPU RAM bounded
+#   # Qwen3-30B-A3B needs L40S 48GB (MoE, ~30B params but sparse)
+#   sbatch -C GPU_MEM:48GB scripts/experiments/submit_phase2.sh Qwen3-30B-A3B
 #
-# Uncomment one of the following for GPU memory constraints:
-##SBATCH -C GPU_MEM:48GB    # L40S — recommended for all models
-##SBATCH -C GPU_MEM:32GB    # V100 — fine for 7B/8B
+# GPU requirements (model weights in float16):
+#   - Llama-3.1-8B-Instruct: ~16GB → V100 32GB ✓
+#   - Qwen3-8B:              ~16GB → V100 32GB ✓
+#   - DeepSeek-R1-Distill-Qwen-7B: ~14GB → V100 32GB ✓
+#   - Qwen3-30B-A3B (MoE):  ~24GB → L40S 48GB recommended
+#   - Activation streaming to CPU keeps GPU RAM bounded
 
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
-source ~/sae-env/bin/activate
+
+source $GROUP_HOME/molofsky/ml_env/bin/activate
 
 export HF_HOME=$SCRATCH/.cache/huggingface
 export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
