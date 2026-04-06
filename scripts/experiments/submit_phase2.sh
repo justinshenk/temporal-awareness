@@ -43,7 +43,13 @@
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 
-source $GROUP_HOME/molofsky/ml_env/bin/activate
+if [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
+    source /home/groups/barbarae/molofsky/ml-env/bin/activate
+elif [ -f ~/sae-env/bin/activate ]; then
+    source ~/sae-env/bin/activate
+else
+    echo "WARNING: Could not find virtualenv, using system python"
+fi
 
 export HF_HOME=$SCRATCH/.cache/huggingface
 export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")

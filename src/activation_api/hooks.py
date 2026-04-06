@@ -340,4 +340,9 @@ class HookManager:
         return self
 
     def __exit__(self, *args):
-        self.clear()
+        # Only deactivate and remove hooks — preserve the buffer so the
+        # caller can read captured activations after the `with` block.
+        self.deactivate()
+        for h in self._hooks:
+            h.remove()
+        self._hooks.clear()
