@@ -134,19 +134,25 @@ class ActivationResult:
                 result[key] = tensor
         return result
 
-    def numpy(self, *key) -> np.ndarray:
+    def numpy(self, *key, squeeze: bool = True) -> np.ndarray:
         """Get activations as numpy array.
 
         Args:
             *key: Same key formats as __getitem__.
+            squeeze: If True, squeeze singleton position dimensions.
+                Shape (N, 1, D) becomes (N, D). Default True.
 
         Returns:
-            Numpy array of activations.
+            Numpy array of activations, typically shape (n_samples, d_model).
         """
         tensor = self[key if len(key) > 1 else key[0]]
         if isinstance(tensor, torch.Tensor):
-            return tensor.float().numpy()
-        return np.asarray(tensor)
+            arr = tensor.float().numpy()
+        else:
+            arr = np.asarray(tensor)
+        if squeeze and arr.ndim == 3 and arr.shape[1] == 1:
+            arr = arr.squeeze(1)
+        return arr
 
     def save(self, output_dir: str, format: str = "safetensors") -> Path:
         """Save activations to disk.
