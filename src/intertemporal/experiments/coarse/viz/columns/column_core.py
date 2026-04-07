@@ -21,6 +21,8 @@ def plot(
     mode: Literal["denoising", "noising"],
     tick_positions: Sequence[int],
     xlabel: str = "Layer",
+    show_legend: bool = True,
+    legend_fontsize: int = 9,
 ) -> plt.Axes:
     """Plot core metrics column.
 
@@ -34,13 +36,15 @@ def plot(
         mode: "denoising" or "noising" determines metric labels
         tick_positions: X-axis tick positions
         xlabel: X-axis label
+        show_legend: Whether to show the legend
+        legend_fontsize: Font size for legend
 
     Returns:
         Secondary (right) y-axis for synchronization
     """
     # Extract metric arrays - use mode-aware effect metrics (target - source semantics)
     effect_values = [m.effect for m in metrics]
-    effect_label = "recovery" if mode == "denoising" else "disruption"
+    effect_label = "recovery" if mode == "denoising" else "effect"
     rr_values = [m.effect_reciprocal_rank for m in metrics]
     rr_label = "recip_rank(target)"
     logit_diffs = [m.effect_logit_diff for m in metrics]
@@ -68,7 +72,7 @@ def plot(
         ),
     )
 
-    ylabel_left = "Recovery / RR" if mode == "denoising" else "Disruption / RR"
+    ylabel_left = "Recovery / RR" if mode == "denoising" else "Effect / RR"
     setup_column(ax, "Core", xlabel, ylabel_left, tick_positions, ylim=(-0.1, 1.5))
 
     # Secondary axis: logit differences
@@ -97,6 +101,6 @@ def plot(
     ax_right.tick_params(axis="y", labelcolor=METRIC_COLORS["logit_diff"], labelsize=13)
     ax_right.axhline(y=0, color="gray", linestyle="-", alpha=0.5, linewidth=1)
 
-    add_dual_axis_legend(ax, ax_right)
+    add_dual_axis_legend(ax, ax_right, fontsize=legend_fontsize, show=show_legend)
 
     return ax_right

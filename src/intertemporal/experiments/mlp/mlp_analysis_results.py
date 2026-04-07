@@ -47,6 +47,23 @@ class MLPNeuronLayerResult(BaseSchema):
         """Get indices of top-n neurons by contribution magnitude."""
         return [n.neuron_idx for n in self.top_neurons[:n]]
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "MLPNeuronLayerResult":
+        """Custom deserialization to handle nested NeuronInfo."""
+        result = cls(
+            layer=d.get("layer", 0),
+            n_neurons=d.get("n_neurons", 0),
+            total_logit_contribution=d.get("total_logit_contribution", 0.0),
+            top_k_contribution_frac=d.get("top_k_contribution_frac", 0.0),
+            sparsity_ratio=d.get("sparsity_ratio", 0.0),
+            n_positive_contributors=d.get("n_positive_contributors", 0),
+            n_negative_contributors=d.get("n_negative_contributors", 0),
+        )
+        result.top_neurons = [
+            NeuronInfo.from_dict(ni) for ni in d.get("top_neurons", [])
+        ]
+        return result
+
 
 @dataclass
 class MLPPairResult(BaseSchema):
@@ -129,6 +146,26 @@ class MLPPairResult(BaseSchema):
     def get_all_format_positions(self) -> list[str]:
         """Get all format_pos names analyzed."""
         return list(self.position_results.keys())
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MLPPairResult":
+        """Custom deserialization to handle nested dataclasses."""
+        result = cls(
+            pair_idx=d.get("pair_idx", 0),
+            neuron_activations=d.get("neuron_activations", {}),
+        )
+
+        # Deserialize position_results
+        for pos_name, layer_results in d.get("position_results", {}).items():
+            result.position_results[pos_name] = [
+                MLPNeuronLayerResult.from_dict(lr) for lr in layer_results
+            ]
+
+        # Deserialize layer_position
+        if "layer_position" in d and d["layer_position"] is not None:
+            result.layer_position = LayerPositionResult.from_dict(d["layer_position"])
+
+        return result
 
 
 @dataclass

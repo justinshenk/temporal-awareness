@@ -102,35 +102,38 @@ def visualize_coarse_patching(
             n_labels, label_pairs=result.label_pairs
         )
 
+    # Get pair_idx from result
+    pair_idx = result.sample_id
+
     # Layer sweep visualizations (both perspectives)
     for step_size in result.layer_step_sizes:
         layer_data = result.get_layer_results_for_step(step_size)
         if layer_data:
             # Main plots (default aggregation)
-            plot_layer_sweep(layer_data, output_dir, step_size, "short", component)
-            plot_layer_sweep(layer_data, output_dir, step_size, "long", component)
+            plot_layer_sweep(layer_data, output_dir, step_size, "short", component, pair_idx=pair_idx)
+            plot_layer_sweep(layer_data, output_dir, step_size, "long", component, pair_idx=pair_idx)
 
             # Multilabel: by_fork only for per-pair (by_method is in agg_coarse only)
             if is_multilabel:
                 for extraction in by_fork_modes:
                     fork_dir = output_dir / "by_fork" / f"fork_{extraction.fork_idx}"
-                    plot_layer_sweep(layer_data, fork_dir, step_size, "short", component, extraction)
-                    plot_layer_sweep(layer_data, fork_dir, step_size, "long", component, extraction)
+                    plot_layer_sweep(layer_data, fork_dir, step_size, "short", component, extraction, pair_idx=pair_idx)
+                    plot_layer_sweep(layer_data, fork_dir, step_size, "long", component, extraction, pair_idx=pair_idx)
 
     # Position sweep visualizations (both perspectives)
     for step_size in result.position_step_sizes:
         pos_data = result.get_position_results_for_step(step_size)
         if pos_data:
             # Main plots (default aggregation)
-            plot_position_sweep(pos_data, output_dir, step_size, "short", coloring, component)
-            plot_position_sweep(pos_data, output_dir, step_size, "long", coloring, component)
+            plot_position_sweep(pos_data, output_dir, step_size, "short", coloring, component, pair_idx=pair_idx)
+            plot_position_sweep(pos_data, output_dir, step_size, "long", coloring, component, pair_idx=pair_idx)
 
             # Multilabel: by_fork only for per-pair (by_method is in agg_coarse only)
             if is_multilabel:
                 for extraction in by_fork_modes:
                     fork_dir = output_dir / "by_fork" / f"fork_{extraction.fork_idx}"
-                    plot_position_sweep(pos_data, fork_dir, step_size, "short", coloring, component, extraction)
-                    plot_position_sweep(pos_data, fork_dir, step_size, "long", coloring, component, extraction)
+                    plot_position_sweep(pos_data, fork_dir, step_size, "short", coloring, component, extraction, pair_idx=pair_idx)
+                    plot_position_sweep(pos_data, fork_dir, step_size, "long", coloring, component, extraction, pair_idx=pair_idx)
 
     # Fork comparison for multilabel
     if is_multilabel:
@@ -139,22 +142,26 @@ def visualize_coarse_patching(
             if layer_data:
                 plot_fork_comparison(
                     layer_data, output_dir, step_size, "short",
-                    label_pairs=result.label_pairs, sweep_type="layer", component=component
+                    label_pairs=result.label_pairs, sweep_type="layer", component=component,
+                    pair_idx=pair_idx
                 )
                 plot_fork_comparison(
                     layer_data, output_dir, step_size, "long",
-                    label_pairs=result.label_pairs, sweep_type="layer", component=component
+                    label_pairs=result.label_pairs, sweep_type="layer", component=component,
+                    pair_idx=pair_idx
                 )
         for step_size in result.position_step_sizes:
             pos_data = result.get_position_results_for_step(step_size)
             if pos_data:
                 plot_fork_comparison(
                     pos_data, output_dir, step_size, "short",
-                    label_pairs=result.label_pairs, sweep_type="position", component=component
+                    label_pairs=result.label_pairs, sweep_type="position", component=component,
+                    pair_idx=pair_idx
                 )
                 plot_fork_comparison(
                     pos_data, output_dir, step_size, "long",
-                    label_pairs=result.label_pairs, sweep_type="position", component=component
+                    label_pairs=result.label_pairs, sweep_type="position", component=component,
+                    pair_idx=pair_idx
                 )
 
     # Denoising vs Noising comparison and redundancy plots (for all step sizes)
@@ -163,12 +170,12 @@ def visualize_coarse_patching(
         layer_data = result.get_layer_results_for_step(step_size)
         pos_data = result.get_position_results_for_step(step_size)
         if layer_data or pos_data:
-            plot_comparison(layer_data, pos_data, output_dir, coloring, step_size, component)
-            plot_redundancy(layer_data, pos_data, output_dir, step_size, coloring, component)
+            plot_comparison(layer_data, pos_data, output_dir, coloring, step_size, component, pair_idx=pair_idx)
+            plot_redundancy(layer_data, pos_data, output_dir, step_size, coloring, component, pair_idx=pair_idx)
 
     # Sanity check visualization
     if result.sanity_result:
-        plot_sanity_check(result, output_dir, pair, component)
+        plot_sanity_check(result, output_dir, pair, component, pair_idx=pair_idx)
 
     print(f"[viz] Coarse patching plots saved to {output_dir}")
 

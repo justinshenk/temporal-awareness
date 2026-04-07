@@ -4,76 +4,72 @@ from __future__ import annotations
 
 
 ###########################
-######### SHARED ##########
-###########################
-
-
-###########################
 ######### OPTIONS #########
 ###########################
 
-BASE_CONTEXT = {
-    "reward_unit": "dollars",
-    "role": "the head of the household",
-    "situation": "Plan for the future of the household based on the stated objectives and constraints.",
-    "task_in_question": "choose the best investment",
-    "domain": "finance",
+
+OPTIONS_SINGLE = {
+    "short_term": {
+        "reward_range": [20000, 20000],
+        "time_range": [
+            {"value": 6, "unit": "months"},
+            {"value": 6, "unit": "months"},
+        ],
+        "reward_steps": [0, "linear"],
+        "time_steps": [0, "linear"],
+    },
+    "long_term": {
+        "reward_range": [500000, 500000],
+        "time_range": [
+            {"value": 10, "unit": "years"},
+            {"value": 10, "unit": "years"},
+        ],
+        "reward_steps": [0, "linear"],
+        "time_steps": [0, "linear"],
+    },
 }
 
-SHORT_REWARDS = [10, 1000]
-LONG_REWARDS = [100000, 100000000]
-
-LONG_TIMES = [
-    {"value": 10, "unit": "years"},
-    {"value": 3, "unit": "decades"},
-]
-SHORT_TIMES = [
-    {"value": 1, "unit": "months"},
-    {"value": 1, "unit": "years"},
-]
-
-SHORT_SINGLE = {
-    "reward_range": SHORT_REWARDS,
-    "time_range": SHORT_TIMES,
-    "reward_steps": [0, "linear"],
-    "time_steps": [0, "linear"],
-}
-SHORT_FEW = {
-    "reward_range": SHORT_REWARDS,
-    "time_range": SHORT_TIMES,
-    "reward_steps": [1, "linear"],
-    "time_steps": [1, "linear"],
+OPTIONS_FEW = {
+    "short_term": {
+        "reward_range": [10, 1000],
+        "time_range": [
+            {"value": 1, "unit": "months"},
+            {"value": 1, "unit": "years"},
+        ],
+        "reward_steps": [1, "linear"],
+        "time_steps": [1, "linear"],
+    },
+    "long_term": {
+        "reward_range": [100000, 100000000],
+        "time_range": [
+            {"value": 10, "unit": "years"},
+            {"value": 3, "unit": "decades"},
+        ],
+        "reward_steps": [1, "linear"],
+        "time_steps": [1, "linear"],
+    },
 }
 
-SHORT_MANY = {
-    "reward_range": SHORT_REWARDS,
-    "time_range": SHORT_TIMES,
-    "reward_steps": [3, "linear"],
-    "time_steps": [3, "linear"],
+OPTIONS_MANY = {
+    "short_term": {
+        "reward_range": [10, 1000],
+        "time_range": [
+            {"value": 1, "unit": "months"},
+            {"value": 1, "unit": "years"},
+        ],
+        "reward_steps": [3, "linear"],
+        "time_steps": [3, "linear"],
+    },
+    "long_term": {
+        "reward_range": [100000, 100000000],
+        "time_range": [
+            {"value": 10, "unit": "years"},
+            {"value": 3, "unit": "decades"},
+        ],
+        "reward_steps": [3, "logarithmic"],
+        "time_steps": [3, "logarithmic"],
+    },
 }
-
-LONG_SINGLE = {
-    "reward_range": LONG_REWARDS,
-    "time_range": LONG_TIMES,
-    "reward_steps": [0, "logarithmic"],
-    "time_steps": [0, "logarithmic"],
-}
-LONG_FEW = {
-    "reward_range": LONG_REWARDS,
-    "time_range": LONG_TIMES,
-    "reward_steps": [1, "linear"],
-    "time_steps": [1, "linear"],
-}
-LONG_MANY = {
-    "reward_range": LONG_REWARDS,
-    "time_range": LONG_TIMES,
-    "reward_steps": [3, "logarithmic"],
-    "time_steps": [3, "logarithmic"],
-}
-
-OPTIONS_SINGLE = {"short_term": SHORT_SINGLE, "long_term": LONG_SINGLE}
-OPTIONS_FEW = {"short_term": SHORT_FEW, "long_term": LONG_FEW}
-OPTIONS_MANY = {"short_term": SHORT_MANY, "long_term": LONG_MANY}
 
 
 OPTIONS_GEO = {
@@ -106,8 +102,8 @@ HOR_NONE = [None]
 
 HOR_BINARY = [
     None,
-    {"value": 6, "unit": "months"},  # Short horizon
-    {"value": 3, "unit": "decades"},  # Long horizon
+    {"value": 8, "unit": "months"},
+    {"value": 15, "unit": "years"},
 ]
 
 HOR_FEW = [
@@ -149,6 +145,20 @@ HOR_GEO = [
     {"value": 5, "unit": "centuries"},
 ]
 
+
+###########################
+######## CONTEXTS #########
+###########################
+
+
+BASE_CONTEXT = {
+    "reward_unit": "dollars",
+    "role": "the head of the household",
+    "situation": "Plan for the future of the household based on the stated objectives and constraints.",
+    "task_in_question": "choose the best investment",
+    "domain": "finance",
+}
+
 ###########################
 ######## DATASETS #########
 ###########################
@@ -159,8 +169,6 @@ NANO_CFG = {
     "context": BASE_CONTEXT,
     "options": OPTIONS_SINGLE,
     "time_horizons": HOR_BINARY,
-    "round_time_units": True,
-    "round_reward_units": True,
 }
 
 MULTIFORMAT_NANO_CFG = {
@@ -206,7 +214,7 @@ MULTILABEL_CFG = {
 }
 
 GEOMETRY_CFG = {
-    "name": "geometry",
+    "name": "large_geometry",
     "context": BASE_CONTEXT,
     "options": OPTIONS_GEO,
     "time_horizons": HOR_GEO,

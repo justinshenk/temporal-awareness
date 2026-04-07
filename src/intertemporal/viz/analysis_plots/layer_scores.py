@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ....common import profile
+from ....viz.plot_helpers import save_figure
 
 if TYPE_CHECKING:
     from ....attribution_patching import AttributionSummary, AttrPatchAggregatedResults
@@ -117,9 +118,7 @@ def plot_layer_attribution_line(
     ax.grid(True, which="minor", alpha=0.25, linewidth=0.3)
     ax.set_axisbelow(True)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile
@@ -175,9 +174,7 @@ def plot_multi_model_layer_attribution(
         axes[row, col].set_visible(False)
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile

@@ -42,31 +42,70 @@ logger = logging.getLogger(__name__)
 # Choice Info
 # =============================================================================
 
+# Note: time_scale is computed at runtime in data_loader.py from time_horizon_months
+# using the expanded 9-category system (Seconds through Centuries)
+
 
 @dataclass(slots=True)
 class ChoiceInfo:
-    """Choice information for a single sample."""
+    """Choice information for a single sample.
 
+    Fields:
+        chose_short_term: Whether the model chose the short-term option
+        chose_long_term: Whether the model chose the long-term option
+        chosen_time_months: Delivery time of the CHOSEN option (months)
+        chosen_reward: Reward value of the chosen option
+        choice_prob: Model's confidence in the choice (0-1)
+        alt_time_months: Delivery time of the ALTERNATIVE option (months)
+        alt_reward: Reward value of the alternative option
+        alt_prob: Model's probability for the alternative option
+        time_horizon_days: Time horizon constraint in days (None for no-horizon)
+        time_horizon_months: Time horizon constraint in months (None for no-horizon)
+        time_horizon_years: Time horizon constraint in years (None for no-horizon)
+    """
+
+    chose_short_term: bool
     chose_long_term: bool
     chosen_time_months: float
     chosen_reward: float
     choice_prob: float
+    alt_time_months: float
+    alt_reward: float
+    alt_prob: float
+    time_horizon_days: float | None
+    time_horizon_months: float | None
+    time_horizon_years: float | None
 
     def to_dict(self) -> dict:
         return {
+            "chose_short_term": self.chose_short_term,
             "chose_long_term": self.chose_long_term,
             "chosen_time_months": self.chosen_time_months,
             "chosen_reward": self.chosen_reward,
             "choice_prob": self.choice_prob,
+            "alt_time_months": self.alt_time_months,
+            "alt_reward": self.alt_reward,
+            "alt_prob": self.alt_prob,
+            "time_horizon_days": self.time_horizon_days,
+            "time_horizon_months": self.time_horizon_months,
+            "time_horizon_years": self.time_horizon_years,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "ChoiceInfo":
+        # All fields are REQUIRED - crash if missing
         return cls(
+            chose_short_term=data["chose_short_term"],
             chose_long_term=data["chose_long_term"],
             chosen_time_months=data["chosen_time_months"],
             chosen_reward=data["chosen_reward"],
             choice_prob=data["choice_prob"],
+            alt_time_months=data["alt_time_months"],
+            alt_reward=data["alt_reward"],
+            alt_prob=data["alt_prob"],
+            time_horizon_days=data["time_horizon_days"],
+            time_horizon_months=data["time_horizon_months"],
+            time_horizon_years=data["time_horizon_years"],
         )
 
 
@@ -174,8 +213,12 @@ class ActivationData:
             try:
                 act = self.load_activation(sample_idx, layer, component, abs_pos)
                 activations.append(act)
-            except FileNotFoundError:
-                continue
+            except FileNotFoundError as e:
+                raise RuntimeError(
+                    f"Activation file missing for sample {sample_idx}, "
+                    f"layer {layer}, component {component}, abs_pos {abs_pos}, "
+                    f"format_pos {format_pos}: {e}"
+                ) from e
 
         if not activations:
             raise ValueError(f"No activations found for {format_pos} (rel_pos={target_rel_pos})")
@@ -255,8 +298,8 @@ class ActivationData:
 
         # Parse target key using KNOWN valid components
         # Format: L{layer}_{component}_{format_pos}
-        # Components are: resid_pre, resid_post, mlp_out, attn_out
-        VALID_COMPONENTS = ["resid_pre", "resid_post", "mlp_out", "attn_out"]
+        # Components are: resid_pre, resid_mid, resid_post, mlp_out, attn_out
+        VALID_COMPONENTS = ["resid_pre", "resid_mid", "resid_post", "mlp_out", "attn_out"]
 
         parts = target_key.split("_")
         layer = int(parts[0][1:])  # L35 -> 35
@@ -304,8 +347,10 @@ class ActivationData:
                 activations = self.load_target(key)
                 yield key, activations
                 self.unload_target(key)
-            except (ValueError, FileNotFoundError):
-                continue
+            except (ValueError, FileNotFoundError) as e:
+                raise RuntimeError(
+                    f"Failed to load target '{key}': {e}"
+                ) from e
         clear_gpu_memory(aggressive=True)
 
     def save(self, path: Path):
@@ -334,19 +379,20 @@ class ActivationData:
         """
         # Load metadata first to get n_samples
         metadata_path = path / "metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path) as f:
-                metadata = json.load(f)
-            n_samples = metadata.get("n_samples", 0)
-            compressed = metadata.get("compressed", False)
-        else:
-            # Fall back to counting sample directories
-            samples_dir = path / "samples"
-            if samples_dir.exists():
-                n_samples = len(list(samples_dir.glob("sample_*")))
-            else:
-                n_samples = 0
-            compressed = False
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"metadata.json not found: {metadata_path}\n"
+                "Re-run data extraction to regenerate metadata."
+            )
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        # REQUIRED fields in metadata.json
+        if "n_samples" not in metadata:
+            raise KeyError(f"n_samples missing from {metadata_path}")
+        if "compressed" not in metadata:
+            raise KeyError(f"compressed missing from {metadata_path}")
+        n_samples = metadata["n_samples"]
+        compressed = metadata["compressed"]
 
         # Load from per-sample files
         samples_dir = path / "samples"
@@ -398,11 +444,36 @@ class ActivationData:
 # =============================================================================
 
 
-def get_time_horizon_months(sample: PromptSample) -> float:
-    """Get time horizon in months from a PromptSample."""
+def get_time_horizon_months(sample: PromptSample) -> float | None:
+    """Get time horizon in months from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
     if sample.prompt.time_horizon is None:
-        return 60.0
+        return None
     return sample.prompt.time_horizon.to_months()
+
+
+def get_time_horizon_days(sample: PromptSample) -> float | None:
+    """Get time horizon in days from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
+    months = get_time_horizon_months(sample)
+    if months is None:
+        return None
+    return months * 30.0
+
+
+def get_time_horizon_years(sample: PromptSample) -> float | None:
+    """Get time horizon in years from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
+    months = get_time_horizon_months(sample)
+    if months is None:
+        return None
+    return months / 12.0
 
 
 def _format_prompt_sample(sample: PromptSample) -> str:
@@ -532,11 +603,36 @@ def extract_activations(
 
     logger.info(f"Extracting activations (per-sample, compressed={compressed})...")
 
+    # Build set of already-processed sample indices for resume
+    processed_sample_indices: set[int] = set()
+    for existing_dir in samples_dir.glob("sample_*"):
+        choice_file = existing_dir / "choice.json"
+        prompt_file = existing_dir / "prompt_sample.json"
+        if choice_file.exists() and prompt_file.exists():
+            try:
+                with open(choice_file) as f:
+                    choice_data = json.load(f)
+                with open(prompt_file) as f:
+                    prompt_data = json.load(f)
+                # Check if it has the new format (chose_short_term field)
+                if "chose_short_term" in choice_data:
+                    processed_sample_indices.add(prompt_data["sample_idx"])
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    if processed_sample_indices:
+        valid_idx = len(processed_sample_indices)
+        logger.info(f"  RESUMING: Found {valid_idx} existing samples with new format, skipping them")
+
     for i, sample in enumerate(samples):
         if i % 50 == 0:
             logger.info(
                 f"  Sample {i}/{len(samples)} | valid: {valid_idx} | skipped: {skipped}"
             )
+
+        # Skip samples we've already processed
+        if sample.sample_idx in processed_sample_indices:
+            continue
 
         prompt_format = find_prompt_format_config(sample.formatting_id)
         choice_prefix = prompt_format.get_response_prefix_before_choice()
@@ -546,12 +642,23 @@ def extract_activations(
         )
 
         if pref.chosen_traj is None:
+            logger.warning(
+                f"  !!! SKIPPED SAMPLE {i}/{len(samples)} !!! "
+                f"Reason: chosen_traj is None (model failed to make a valid choice). "
+                f"Sample formatting_id={sample.formatting_id}"
+            )
             skipped += 1
             continue
 
         # Build position mapping (this gives us abs_pos -> format_pos)
         # NOTE: This MUST NOT fail - position mapping validation will crash if there are issues
         pos_mapping = SamplePositionMapping.build(sample, runner, pref=pref)
+
+        # CRITICAL: Override sample_idx to match the output directory index (valid_idx)
+        # The original sample.sample_idx is from the source dataset, but we need
+        # the position_mapping.json to use the filtered/valid index that matches
+        # the directory name (sample_{valid_idx}).
+        pos_mapping.sample_idx = valid_idx
 
         # Create sample folder
         sample_dir = samples_dir / f"sample_{valid_idx}"
@@ -565,19 +672,33 @@ def extract_activations(
                 continue
 
             # Save ALL tokens at this position (not just the first one)
+            # Organize by layer subfolder: sample_0/L0/attn_out_121.npy
+            layer_dir = sample_dir / f"L{target.layer}"
+            layer_dir.mkdir(parents=True, exist_ok=True)
+
             for abs_pos in abs_positions:
                 try:
                     act = pref.internals.activations[target.hook_name][abs_pos, :]
                     act_np = act.numpy().astype(ACTIVATION_DTYPE)
 
-                    filename = f"L{target.layer}_{target.component}_{abs_pos}"
-                    _save_array(sample_dir / filename, act_np, compressed=compressed)
+                    filename = f"{target.component}_{abs_pos}"
+                    _save_array(layer_dir / filename, act_np, compressed=compressed)
                     sample_has_data = True
 
-                except (ValueError, KeyError, IndexError):
-                    continue
+                except (ValueError, KeyError, IndexError) as e:
+                    raise RuntimeError(
+                        f"Failed to extract activation for sample {i}, "
+                        f"target {target.hook_name}, abs_pos {abs_pos}, "
+                        f"position {target.position}: {e}"
+                    ) from e
 
         if not sample_has_data:
+            logger.warning(
+                f"  !!! SKIPPED SAMPLE {i}/{len(samples)} !!! "
+                f"Reason: No activation data extracted (no valid positions found). "
+                f"Requested positions: {[t.position for t in targets]}, "
+                f"Available named_positions: {list(pos_mapping.named_positions.keys())}"
+            )
             sample_dir.rmdir()
             skipped += 1
             pref.internals = None
@@ -595,18 +716,40 @@ def extract_activations(
         # Record and save choice info
         pair = sample.prompt.preference_pair
         chose_long = pref.chose_long_term
+        chose_short = not chose_long
+
+        # Chosen option
         if chose_long:
             chosen_time = pair.long_term.time.to_months()
             chosen_reward = pair.long_term.reward.value
+            alt_time = pair.short_term.time.to_months()
+            alt_reward = pair.short_term.reward.value
         else:
             chosen_time = pair.short_term.time.to_months()
             chosen_reward = pair.short_term.reward.value
+            alt_time = pair.long_term.time.to_months()
+            alt_reward = pair.long_term.reward.value
+
+        # Get time horizon from prompt in multiple units (None for no-horizon)
+        time_horizon_days = get_time_horizon_days(sample)
+        time_horizon_months = get_time_horizon_months(sample)
+        time_horizon_years = get_time_horizon_years(sample)
+
+        # Alternative probability
+        alt_prob = pref.alternative_prob
 
         choice_info = ChoiceInfo(
+            chose_short_term=chose_short,
             chose_long_term=chose_long,
             chosen_time_months=chosen_time,
             chosen_reward=chosen_reward,
             choice_prob=pref.choice_prob,
+            alt_time_months=alt_time,
+            alt_reward=alt_reward,
+            alt_prob=alt_prob,
+            time_horizon_days=time_horizon_days,
+            time_horizon_months=time_horizon_months,
+            time_horizon_years=time_horizon_years,
         )
         choices.append(choice_info)
 
@@ -657,18 +800,18 @@ def extract_activations(
 
 
 def load_cached_data(config: GeometryConfig) -> ActivationData | None:
-    """Load cached data if available."""
+    """Load cached data if available.
+
+    Returns None only if no cache exists. Raises on corrupted cache.
+    """
     cache_path = config.output_dir / "data"
 
     # Check for metadata.json or samples/ directory
     if not (cache_path / "metadata.json").exists() and not (cache_path / "samples").exists():
         return None
 
-    try:
-        return ActivationData.load(cache_path)
-    except Exception as e:
-        logger.warning(f"Failed to load cache: {e}")
-        return None
+    # Cache exists - loading MUST succeed or crash with helpful error
+    return ActivationData.load(cache_path)
 
 
 @dataclass
@@ -691,36 +834,47 @@ def load_visualization_data(config: GeometryConfig) -> VisualizationData | None:
     """
     cache_path = config.output_dir / "data"
 
-    if not (cache_path / "metadata.json").exists() and not (cache_path / "samples").exists():
-        return None
-
-    # Load metadata
+    # STRICT: metadata.json REQUIRED
     metadata_path = cache_path / "metadata.json"
-    if metadata_path.exists():
-        with open(metadata_path) as f:
-            metadata = json.load(f)
-        n_samples = metadata.get("n_samples", 0)
-    else:
-        samples_dir = cache_path / "samples"
-        n_samples = len(list(samples_dir.glob("sample_*"))) if samples_dir.exists() else 0
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"metadata.json not found: {metadata_path}\n"
+            "Re-run data extraction to regenerate metadata."
+        )
+    with open(metadata_path) as f:
+        metadata = json.load(f)
+    if "n_samples" not in metadata:
+        raise KeyError(f"n_samples missing from {metadata_path}")
+    n_samples = metadata["n_samples"]
 
     # Only load choice.json files (small, has all color data)
     samples_dir = cache_path / "samples"
+    if not samples_dir.exists():
+        raise FileNotFoundError(f"samples directory not found: {samples_dir}")
+
     choices = []
     time_horizons_months = []
 
     for sample_idx in range(n_samples):
         sample_dir = samples_dir / f"sample_{sample_idx}"
         if not sample_dir.exists():
-            continue
+            raise FileNotFoundError(
+                f"Sample directory missing: {sample_dir}\n"
+                "Data extraction incomplete. Re-run extraction."
+            )
 
         choice_path = sample_dir / "choice.json"
-        if choice_path.exists():
-            with open(choice_path) as f:
-                choice_data = json.load(f)
-            choices.append(ChoiceInfo.from_dict(choice_data))
-            # Get time_horizon_months from pre-computed color data (default 60 months = 5 years)
-            time_horizons_months.append(choice_data.get("time_horizon_months", 60.0))
+        if not choice_path.exists():
+            raise FileNotFoundError(
+                f"choice.json missing for sample {sample_idx}: {choice_path}\n"
+                "Re-run data extraction to regenerate choice.json files."
+            )
+        with open(choice_path) as f:
+            choice_data = json.load(f)
+        # STRICT: from_dict will crash if required fields are missing
+        choices.append(ChoiceInfo.from_dict(choice_data))
+        # time_horizon_months is REQUIRED, from_dict already validated it
+        time_horizons_months.append(choice_data["time_horizon_months"])
 
     logger.info(f"Loaded visualization data for {n_samples} samples (lightweight mode)")
     return VisualizationData(

@@ -9,11 +9,17 @@ Usage:
     # Full pipeline with many samples
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --full
 
-    # Use cached data
+    # Use cached data (loads from working_config.json if it exists)
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --cache
 
     # Use cached data from a specific folder
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --cache my_experiment
+
+    # Update working_config.json with CLI overrides
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --cache my_experiment --update-config --coarse '{"enabled": false}'
+
+    # Generate camera-ready figures (PNG + SVG)
+    uv run python scripts/intertemporal/run_intertemporal_experiment.py --camera-ready
 
     # Save to a custom folder name
     uv run python scripts/intertemporal/run_intertemporal_experiment.py --output-dir-name my_experiment
@@ -65,7 +71,7 @@ from src.intertemporal.experiments.experiment_config import (
 )
 from src.intertemporal.experiments.intertemporal_experiment import (
     ExperimentConfig,
-    run_experiment,
+    run_experiment_per_pair,
 )
 # =============================================================================
 # Argument Parsing
@@ -148,6 +154,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip per-pair viz, only generate aggregated viz for all steps",
     )
+    parser.add_argument(
+        "--update-config",
+        action="store_true",
+        help="Update working_config.json with CLI overrides (only with --cache)",
+    )
+    parser.add_argument(
+        "--camera-ready",
+        action="store_true",
+        help="Save SVG files alongside PNGs for publication-quality figures",
+    )
 
     # --- Phase overrides (JSON, ordered to match run_experiment) ---
     _add_json_override(parser, "--attrib", "att_patch", "attribution patching")
@@ -168,11 +184,18 @@ def _add_json_override(
     config_key: str,
     description: str,
 ) -> None:
-    """Add a JSON override argument."""
+    """Add a JSON override argument.
+
+    - Flag not used: default=None (no override)
+    - Flag used without argument: const='{}' (enable with defaults)
+    - Flag used with argument: uses provided JSON
+    """
     parser.add_argument(
         flag,
         type=str,
-        default="{}",
+        nargs='?',
+        const='{}',
+        default=None,
         metavar="JSON",
         help=f"Override {description} settings as JSON",
     )
@@ -229,19 +252,28 @@ def apply_only_viz_agg_flag(config: dict) -> None:
     config.setdefault("fine_cfg", FINE_CFG.copy())["only_viz_agg"] = True
 
 
+def apply_camera_ready_flag(config: dict) -> None:
+    """Enable SVG output alongside PNGs for publication-quality figures."""
+    config.setdefault("viz_cfg", VIZ_CFG.copy())["save_svg"] = True
+
+
 def apply_json_overrides(config: dict, args: argparse.Namespace) -> None:
-    """Apply all JSON override arguments to config."""
+    """Apply all JSON override arguments to config.
+
+    Args are None when not provided, '{}' when flag used without argument,
+    or a JSON string when flag used with argument.
+    """
     # Simple overrides (merge only, no auto-enable)
     simple_overrides = [
         (args.viz, "viz_cfg", VIZ_CFG),
         (args.pair_req, "pair_req_cfg", PAIR_REQ_CFG),
     ]
     for arg_value, key, default in simple_overrides:
-        if arg_value:
+        if arg_value is not None:
             config.setdefault(key, default.copy()).update(json.loads(arg_value))
 
     # Auto-enable overrides (passing flag implies enabled=True, ordered to match run_experiment)
-    # Only enable if arg is explicitly passed (not the default "{}")
+    # Enable if arg is provided (not None)
     auto_enable_overrides = [
         (args.attrib, "attrib_cfg", ATTRIB_CFG),
         (args.coarse, "coarse_cfg", COARSE_CFG),
@@ -251,7 +283,7 @@ def apply_json_overrides(config: dict, args: argparse.Namespace) -> None:
         (args.fine, "fine_cfg", FINE_CFG),
     ]
     for arg_value, key, default in auto_enable_overrides:
-        if arg_value and arg_value != "{}":
+        if arg_value is not None:
             section = config.setdefault(key, default.copy())
             section["enabled"] = True
             section["no_viz"] = False
@@ -306,45 +338,70 @@ def main() -> int:
         print("Error: --cache and --output-dir-name are mutually exclusive")
         return 1
 
-    # When using --cache with a folder name, try to load config from that folder
+    if args.update_config and not args.cache:
+        print("Error: --update-config requires --cache")
+        return 1
+
+    # When using --cache with a folder name, try to load working_config.json first
+    working_cfg = None
     cached_cfg = None
     if args.cache and isinstance(args.cache, str):
         cache_dir = get_experiment_dir() / args.cache
-        cached_cfg = ExperimentConfig.load(cache_dir)
-        if cached_cfg:
-            print(f"[cache] Loaded config from {cache_dir}")
-            print(f"[cache] Model: {cached_cfg.model}")
-            print(f"[cache] Dataset: {cached_cfg.dataset_name}")
 
-    # Build experiment config
-    # When using cache: start with cached identity fields, then override with CLI args
-    # Step configs always use defaults, then CLI overrides
-    if cached_cfg:
-        config = {
-            "model": cached_cfg.model,
-            "dataset_config": cached_cfg.dataset_config,
-            "n_pairs": cached_cfg.n_pairs,
-            "max_samples": cached_cfg.max_samples,
-            "pair_req_cfg": cached_cfg.pair_req_cfg,
-        }
-        # CLI args override cached values
-        if args.model:
-            config["model"] = args.model
-        if args.n_pairs:
-            config["n_pairs"] = args.n_pairs
+        # Try loading working_config.json (for reusing step configs)
+        if not args.update_config:
+            working_cfg = ExperimentConfig.load_working(cache_dir)
+            if working_cfg:
+                print(f"[cache] Loaded working config from {cache_dir}/working_config.json")
+                print(f"[cache] Model: {working_cfg.model}")
+                print(f"[cache] Dataset: {working_cfg.dataset_name}")
+
+        # Fall back to original config for identity fields
+        if not working_cfg:
+            cached_cfg = ExperimentConfig.load(cache_dir)
+            if cached_cfg:
+                print(f"[cache] Loaded original config from {cache_dir}")
+                print(f"[cache] Model: {cached_cfg.model}")
+                print(f"[cache] Dataset: {cached_cfg.dataset_name}")
+
+    # If working_config.json was loaded (and not --update-config), use it directly
+    if working_cfg:
+        # Apply camera-ready flag even when using cached config
+        if args.camera_ready:
+            working_cfg.viz_cfg["save_svg"] = True
+        exp_cfg = working_cfg
     else:
-        config = build_base_config(args)
+        # Build experiment config from CLI args
+        # When using cache: start with cached identity fields only (model, dataset, counts)
+        # All step configs (coarse, attrib, etc.) and other configs (viz, pair_req) use defaults
+        if cached_cfg:
+            config = {
+                "model": cached_cfg.model,
+                "dataset_config": cached_cfg.dataset_config,
+                "n_pairs": cached_cfg.n_pairs,
+                "max_samples": cached_cfg.max_samples,
+            }
+            # CLI args override cached values
+            if args.model:
+                config["model"] = args.model
+            if args.n_pairs:
+                config["n_pairs"] = args.n_pairs
+        else:
+            config = build_base_config(args)
 
-    if args.disable:
-        apply_disable_flag(config)
+        if args.disable:
+            apply_disable_flag(config)
 
-    if args.only_viz_agg:
-        apply_only_viz_agg_flag(config)
+        if args.only_viz_agg:
+            apply_only_viz_agg_flag(config)
 
-    apply_json_overrides(config, args)
+        if args.camera_ready:
+            apply_camera_ready_flag(config)
 
-    # Create experiment config object
-    exp_cfg = ExperimentConfig.from_dict(config)
+        apply_json_overrides(config, args)
+
+        # Create experiment config object
+        exp_cfg = ExperimentConfig.from_dict(config)
 
     # Resolve output directory
     output_dir, try_loading_data = resolve_output_dir(args, exp_cfg)
@@ -353,13 +410,17 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     set_log_file(output_dir / "log.txt")
 
+    # Save config (creates original_config.json + working_config.json on first run,
+    # updates working_config.json if --update-config is used)
+    exp_cfg.save(output_dir, update_working=args.update_config)
+
     log_header(f"EXPERIMENT: {exp_cfg.get_id()}", gap=1)
     log_kv("Output", str(output_dir))
     log()
 
     # Run experiment
     try:
-        run_experiment(
+        run_experiment_per_pair(
             exp_cfg,
             try_loading_data=try_loading_data,
             output_dir=output_dir,

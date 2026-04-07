@@ -116,7 +116,16 @@ class PromptDatasetGenerator:
             min_months, max_months, num_intervals, step_type
         )
 
-        # Convert back, using appropriate unit based on magnitude
+        # If both limits have the same unit, preserve that unit
+        if min_time.unit == max_time.unit:
+            target_unit = min_time.unit
+            result = []
+            for val_in_months in month_values:
+                converted = TimeValue(value=val_in_months, unit="months").to_unit(target_unit)
+                result.append(TimeValue(value=round(converted, 1), unit=target_unit))
+            return result
+
+        # Otherwise, auto-select appropriate unit based on magnitude
         result = []
         for months in month_values:
             if months >= 12:

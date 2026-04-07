@@ -43,7 +43,51 @@ function AxesHelper({ size = 5 }: { size?: number }) {
   return <axesHelper args={[size]} />;
 }
 
-// Grid helper component
+// 3D Grid with three transparent planes (XZ floor, XY back, YZ side)
+function Grid3D({
+  size = 10,
+  divisions = 10,
+  opacity = 0.15,
+  center = [0, 0, 0] as [number, number, number],
+}: {
+  size?: number;
+  divisions?: number;
+  opacity?: number;
+  center?: [number, number, number];
+}) {
+  const gridColor = '#999999'; // Neutral gray for publication
+  const halfSize = size / 2;
+
+  return (
+    <group position={center}>
+      {/* XZ plane (floor) */}
+      <gridHelper
+        args={[size, divisions, gridColor, gridColor]}
+        position={[0, -halfSize, 0]}
+        material-opacity={opacity}
+        material-transparent={true}
+      />
+      {/* XY plane (back wall) */}
+      <gridHelper
+        args={[size, divisions, gridColor, gridColor]}
+        position={[0, 0, -halfSize]}
+        rotation={[Math.PI / 2, 0, 0]}
+        material-opacity={opacity}
+        material-transparent={true}
+      />
+      {/* YZ plane (side wall) */}
+      <gridHelper
+        args={[size, divisions, gridColor, gridColor]}
+        position={[-halfSize, 0, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+        material-opacity={opacity}
+        material-transparent={true}
+      />
+    </group>
+  );
+}
+
+// Simple floor grid helper (legacy)
 function GridHelper({
   size = 10,
   divisions = 10,
@@ -182,11 +226,11 @@ const SceneContent = memo(function SceneContent({
       {/* Scene helpers */}
       {showAxes && <AxesHelper size={gridSize / 2} />}
       {showGrid && (
-        <GridHelper
+        <Grid3D
           size={gridSize}
-          divisions={Math.floor(gridSize)}
-          colorCenterLine="#D97757"
-          colorGrid="rgba(200, 180, 220, 0.3)"
+          divisions={Math.min(10, Math.floor(gridSize / 2))}
+          opacity={0.08}
+          center={center}
         />
       )}
 
@@ -409,10 +453,11 @@ function ScatterPlot3DInner({
     >
       <Canvas
         gl={{
-          antialias: false, // Disable for performance
+          antialias: true, // Enable for export quality
           alpha: false, // Opaque context for proper point rendering
           powerPreference: 'high-performance',
           stencil: false,
+          preserveDrawingBuffer: true, // Required for export
           depth: true,
         }}
         dpr={1} // Fixed DPR for consistent performance

@@ -57,8 +57,14 @@ def hook_filter_for_hooks(hooks: list[str]) -> Callable[[str], bool]:
 
 
 def attribution_filter(name: str) -> bool:
-    """Filter for hooks used in attribution (resid_post, attn_out, mlp_out)."""
-    return "hook_resid_post" in name or "hook_attn_out" in name or "hook_mlp_out" in name
+    """Filter for hooks used in attribution (resid_pre, resid_mid, resid_post, attn_out, mlp_out)."""
+    return (
+        "hook_resid_pre" in name
+        or "hook_resid_mid" in name
+        or "hook_resid_post" in name
+        or "hook_attn_out" in name
+        or "hook_mlp_out" in name
+    )
 
 
 def parse_hook_name(name: str) -> tuple[int, str] | None:

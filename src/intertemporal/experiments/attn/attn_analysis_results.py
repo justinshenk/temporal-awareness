@@ -9,7 +9,7 @@ import numpy as np
 
 from ....common.base_schema import BaseSchema
 from ....common.file_io import save_json
-from .attn_head_attribution import HeadAttributionResults, HeadPositionPatchingResult
+from .attn_head_attribution import HeadAttributionResults, HeadPositionPatchingResult, HeadSweepResults
 from ..fine.fine_results import LayerPositionResult
 
 
@@ -71,6 +71,21 @@ class AttnLayerResult(BaseSchema):
         """Get heads whose attention patterns change between conditions."""
         return [h for h in self.head_results if h.is_dynamic]
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttnLayerResult":
+        """Custom deserialization to handle nested HeadAttnInfo."""
+        result = cls(
+            layer=d.get("layer", 0),
+            n_heads=d.get("n_heads", 0),
+            total_attn_to_source=d.get("total_attn_to_source", 0.0),
+            mean_attn_to_source=d.get("mean_attn_to_source", 0.0),
+            n_source_attending_heads=d.get("n_source_attending_heads", 0),
+        )
+        result.head_results = [
+            HeadAttnInfo.from_dict(hr) for hr in d.get("head_results", [])
+        ]
+        return result
+
 
 @dataclass
 class AttnPairResult(BaseSchema):
@@ -131,6 +146,45 @@ class AttnPairResult(BaseSchema):
         """Remove heavy data (attention patterns) to save memory."""
         self.attention_patterns = {}
         self.corrupted_attention_patterns = {}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttnPairResult":
+        """Custom deserialization to handle nested dataclasses."""
+        result = cls(
+            pair_idx=d.get("pair_idx", 0),
+            dest_position=d.get("dest_position", 0),
+            source_positions=d.get("source_positions", []),
+            source_positions_clean=d.get("source_positions_clean", []),
+            source_position_names=d.get("source_position_names", []),
+            dest_position_names=d.get("dest_position_names", []),
+            attention_patterns=d.get("attention_patterns", {}),
+            corrupted_attention_patterns=d.get("corrupted_attention_patterns", {}),
+        )
+
+        # Deserialize layer_results
+        result.layer_results = [
+            AttnLayerResult.from_dict(lr) for lr in d.get("layer_results", [])
+        ]
+
+        # Deserialize head_attribution
+        if "head_attribution" in d and d["head_attribution"] is not None:
+            result.head_attribution = HeadAttributionResults.from_dict(d["head_attribution"])
+
+        # Deserialize head_redundancy
+        if "head_redundancy" in d and d["head_redundancy"] is not None:
+            result.head_redundancy = HeadSweepResults.from_dict(d["head_redundancy"])
+
+        # Deserialize head_position_patching
+        result.head_position_patching = [
+            HeadPositionPatchingResult.from_dict(hpp)
+            for hpp in d.get("head_position_patching", [])
+        ]
+
+        # Deserialize layer_position
+        if "layer_position" in d and d["layer_position"] is not None:
+            result.layer_position = LayerPositionResult.from_dict(d["layer_position"])
+
+        return result
 
 
 @dataclass

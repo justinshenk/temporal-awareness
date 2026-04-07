@@ -105,7 +105,10 @@ class GeometryDataLoader:
             )
 
         mappings = []
-        sample_dirs = sorted(samples_dir.glob("sample_*"))
+        sample_dirs = sorted(
+            samples_dir.glob("sample_*"),
+            key=lambda x: int(x.name.split("_")[1])  # Numeric sort, not lexicographic
+        )
         if not sample_dirs:
             raise ValueError(
                 f"No sample directories found in: {samples_dir}\n"
@@ -135,14 +138,31 @@ class GeometryDataLoader:
                 )
             with open(choice_path) as f:
                 choice = json.load(f)
-            if "chosen_time_months" in choice:
-                sample["time_horizon_months"] = choice["chosen_time_months"]
-            if "chose_long_term" in choice:
-                sample["chosen_time"] = choice["chose_long_term"]
-            if "chosen_reward" in choice:
-                sample["chosen_reward"] = choice["chosen_reward"]
-            if "choice_prob" in choice:
-                sample["choice_prob"] = choice["choice_prob"]
+
+            # REQUIRED fields - crash if missing
+            # Note: time_scale is computed at runtime from time_horizon_months
+            required_fields = ["time_horizon_months", "chose_long_term", "chosen_time_months", "chosen_reward", "choice_prob"]
+            missing = [f for f in required_fields if f not in choice]
+            if missing:
+                raise KeyError(
+                    f"Required fields missing from {choice_path}: {missing}\n"
+                    "Re-run data extraction to regenerate choice.json files."
+                )
+
+            # Load all required fields
+            # Note: time_scale is computed at runtime from time_horizon_months
+            sample["time_horizon_months"] = choice["time_horizon_months"]
+            sample["chosen_time_months"] = choice["chosen_time_months"]
+            # Note: chosen_time in metadata returns chosen_time_months (numeric)
+            sample["chosen_reward"] = choice["chosen_reward"]
+            sample["choice_prob"] = choice["choice_prob"]
+            # Compute derived choice fields
+            sample["chose_long_term"] = choice["chose_long_term"]
+            sample["chose_short_term"] = not choice["chose_long_term"]
+            # Load alt (unchosen) option fields if present
+            sample["alt_time_months"] = choice.get("alt_time_months")
+            sample["alt_reward"] = choice.get("alt_reward")
+            sample["alt_prob"] = choice.get("alt_prob", 1.0 - choice["choice_prob"])
 
             # Load preference_sample.json for response data (optional)
             preference_path = sample_dir / "preference_sample.json"
@@ -174,8 +194,8 @@ class GeometryDataLoader:
                 if field_name in choice:
                     sample[field_name] = choice[field_name]
 
-            # Compute derived color fields (only for fields not already in choice.json)
-            self._compute_derived_fields(sample_idx, choice)
+            # NOTE: Derived fields (matches_*, log_time_horizon, etc.) are computed
+            # on-demand in _compute_metadata_values() using STRICT required fields
 
             # Load position mapping - REQUIRED
             mapping_file = sample_dir / "position_mapping.json"
@@ -203,111 +223,39 @@ class GeometryDataLoader:
         elapsed = time.time() - start_time
         _log("load_data", f"Data loaded", n_samples=len(self._samples), n_layers=len(self._layers), n_positions=len(self._semantic_positions), elapsed_ms=f"{elapsed*1000:.1f}")
 
-    def _compute_derived_fields(self, sample_idx: int, choice: dict) -> None:
-        """Compute derived color fields for a sample based on choice and prompt.
-
-        Computes (only if not already present in sample from choice.json):
-        - matches_largest_reward: Did they choose the option with higher reward?
-        - matches_rational: For same reward, shorter time is rational
-        - matches_associated: Does choice align with time horizon framing?
-        - log_time_horizon: Log10 of time horizon in months
-        - option_time_delta: Time difference between options
-        - option_reward_delta: Reward difference between options
-        - option_confidence_delta: |choice_prob - 0.5| * 2
-        """
-        sample = self._samples[sample_idx]
-
-        # Skip computation for fields that already exist (loaded from choice.json)
-        needs_computation = not all(
-            field in sample for field in [
-                "matches_largest_reward", "matches_rational", "matches_associated"
-            ]
-        )
-        if not needs_computation:
-            return
-
-        prompt = sample.get("prompt", {})
-        pp = prompt.get("preference_pair", {})
-
-        short_term = pp.get("short_term", {})
-        long_term = pp.get("long_term", {})
-
-        short_reward = short_term.get("reward", {}).get("value", 0)
-        long_reward = long_term.get("reward", {}).get("value", 0)
-
-        chose_long = choice.get("chose_long_term", False)
-
-        # matches_largest_reward: Did they choose the larger reward?
-        if long_reward > short_reward:
-            sample["matches_largest_reward"] = chose_long
-        elif short_reward > long_reward:
-            sample["matches_largest_reward"] = not chose_long
-        else:
-            # Equal rewards - neither matches "largest", mark as True (rational either way)
-            sample["matches_largest_reward"] = True
-
-        # matches_rational: For same reward, shorter time is rational
-        # For different rewards, choosing larger reward is rational
-        if short_reward == long_reward:
-            # Same reward - shorter time is rational
-            sample["matches_rational"] = not chose_long
-        else:
-            # Different rewards - larger reward is rational
-            sample["matches_rational"] = sample["matches_largest_reward"]
-
-        # matches_associated: Does choice align with time horizon framing?
-        # If time horizon is "short" (e.g., days/weeks), expect short-term choice
-        # If time horizon is "long" (e.g., years/decades), expect long-term choice
-        time_horizon = prompt.get("time_horizon")
-        if time_horizon is None:
-            # No horizon framing - mark as N/A (True for now)
-            sample["matches_associated"] = True
-        else:
-            th_value = time_horizon.get("value", 0)
-            th_unit = time_horizon.get("unit", "months")
-
-            # Convert to months for comparison
-            unit_to_months = {
-                "seconds": 1 / 2592000,
-                "minutes": 1 / 43200,
-                "hours": 1 / 720,
-                "days": 1 / 30,
-                "weeks": 1 / 4.3,
-                "months": 1,
-                "years": 12,
-                "decades": 120,
-                "centuries": 1200,
-                "millennia": 12000,
-            }
-            th_months = th_value * unit_to_months.get(th_unit, 1)
-
-            # Threshold: < 1 month is "short", >= 1 month is "long"
-            horizon_suggests_long = th_months >= 1
-            sample["matches_associated"] = chose_long == horizon_suggests_long
-
     def _discover_targets(self):
         """Discover available layers and semantic positions."""
         layers = set()
         semantic_positions = set()
 
         # Get semantic positions from position mapping
-        if self._position_mapping and "mappings" in self._position_mapping:
+        # _position_mapping is set in _load_data() and always contains "mappings"
+        if self._position_mapping:
             for sample_mapping in self._position_mapping["mappings"]:
-                for pos_info in sample_mapping.get("positions", []):
-                    format_pos = pos_info.get("format_pos")
-                    if format_pos:
-                        semantic_positions.add(format_pos)
+                for pos_info in sample_mapping["positions"]:
+                    semantic_positions.add(pos_info["format_pos"])
 
         # Get layers from target files
         samples_dir = self.data_dir / "data" / "samples"
         if samples_dir.exists():
             # Check first sample directory for layer info
-            sample_dirs = sorted(samples_dir.glob("sample_*"))
+            sample_dirs = sorted(
+                samples_dir.glob("sample_*"),
+                key=lambda x: int(x.name.split("_")[1])  # Numeric sort, not lexicographic
+            )
             if sample_dirs:
-                for npy_file in sample_dirs[0].glob("L*_*.npy"):
-                    match = re.match(r"L(\d+)_", npy_file.stem)
-                    if match:
-                        layers.add(int(match.group(1)))
+                # Layer subfolders format: sample_0/L0/, sample_0/L1/, etc.
+                for layer_dir in sample_dirs[0].glob("L*"):
+                    if layer_dir.is_dir():
+                        match = re.match(r"L(\d+)$", layer_dir.name)
+                        if match:
+                            layers.add(int(match.group(1)))
+                if not layers:
+                    raise ValueError(
+                        f"No layer subfolders found in {sample_dirs[0]}.\n"
+                        "Expected format: sample_0/L0/, sample_0/L1/, etc.\n"
+                        "Data may be corrupted or in wrong format. Re-run compute_geometry_analysis.py."
+                    )
 
         self._layers = sorted(layers)
         self._semantic_positions = semantic_positions
@@ -337,18 +285,23 @@ class GeometryDataLoader:
             semantic_pos: Semantic position name (e.g., "time_horizon").
             rel_pos: If specified, only return the position at this relative offset.
                      If None, return all positions for the semantic position.
+
+        Raises:
+            ValueError: If position_mapping not loaded.
+            KeyError: If required keys are missing from position_mapping.
         """
-        if not self._position_mapping or "mappings" not in self._position_mapping:
-            return []
+        if not self._position_mapping:
+            raise ValueError("position_mapping not loaded")
 
         for sample_mapping in self._position_mapping["mappings"]:
-            if sample_mapping.get("sample_idx") == sample_idx:
+            if sample_mapping["sample_idx"] == sample_idx:
                 positions = []
-                for pos_info in sample_mapping.get("positions", []):
-                    if pos_info.get("format_pos") == semantic_pos:
-                        if rel_pos is None or pos_info.get("rel_pos") == rel_pos:
+                for pos_info in sample_mapping["positions"]:
+                    if pos_info["format_pos"] == semantic_pos:
+                        if rel_pos is None or pos_info["rel_pos"] == rel_pos:
                             positions.append(pos_info["abs_pos"])
                 return positions
+        # Sample not found in mappings - this is valid (sample may have no positions for this semantic)
         return []
 
     def get_rel_pos_counts(self) -> dict[str, int]:
@@ -359,6 +312,9 @@ class GeometryDataLoader:
 
         First checks for precomputed relpos_counts.json from compute_geometry_analysis.py.
         Falls back to computing from position mappings if not found.
+
+        Raises:
+            ValueError: If position_mapping not loaded (when fallback is needed).
         """
         # Check for precomputed file first
         relpos_file = self.data_dir / "analysis" / "relpos_counts.json"
@@ -367,17 +323,16 @@ class GeometryDataLoader:
                 return json.load(f)
 
         # Fallback: compute from position mappings
-        counts: dict[str, int] = {}
-        if not self._position_mapping or "mappings" not in self._position_mapping:
-            return counts
+        if not self._position_mapping:
+            raise ValueError("position_mapping not loaded and no precomputed relpos_counts.json found")
 
+        counts: dict[str, int] = {}
         for sample_mapping in self._position_mapping["mappings"]:
-            for pos_info in sample_mapping.get("positions", []):
-                format_pos = pos_info.get("format_pos")
-                rel_pos = pos_info.get("rel_pos", 0)
-                if format_pos:
-                    current_max = counts.get(format_pos, 0)
-                    counts[format_pos] = max(current_max, rel_pos + 1)
+            for pos_info in sample_mapping["positions"]:
+                format_pos = pos_info["format_pos"]
+                rel_pos = pos_info["rel_pos"]
+                current_max = counts.get(format_pos, 0)
+                counts[format_pos] = max(current_max, rel_pos + 1)
 
         return counts
 
@@ -390,16 +345,25 @@ class GeometryDataLoader:
         return len(self._samples)
 
     def get_sample_text(self, idx: int) -> str:
-        """Get the full prompt text for a sample."""
-        if 0 <= idx < len(self._samples):
-            return self._samples[idx].get("text", "")
-        return ""
+        """Get the full prompt text for a sample.
+
+        Raises:
+            IndexError: If idx is out of range.
+            KeyError: If sample does not have 'text' field.
+        """
+        if not (0 <= idx < len(self._samples)):
+            raise IndexError(f"Sample index {idx} out of range [0, {len(self._samples)})")
+        return self._samples[idx]["text"]
 
     def get_sample_info(self, idx: int) -> dict:
-        """Get full sample info including prompt details."""
-        if 0 <= idx < len(self._samples):
-            return self._samples[idx]
-        return {}
+        """Get full sample info including prompt details.
+
+        Raises:
+            IndexError: If idx is out of range.
+        """
+        if not (0 <= idx < len(self._samples)):
+            raise IndexError(f"Sample index {idx} out of range [0, {len(self._samples)})")
+        return self._samples[idx]
 
     def get_layers(self) -> list[int]:
         """Get available layers."""
@@ -407,7 +371,7 @@ class GeometryDataLoader:
 
     def get_components(self) -> list[str]:
         """Get available components."""
-        return ["resid_pre", "attn_out", "mlp_out", "resid_post"]
+        return ["resid_pre", "attn_out", "resid_mid", "mlp_out", "resid_post"]
 
     def get_positions(self) -> list[str]:
         """Get available semantic positions in canonical order."""
@@ -459,25 +423,28 @@ class GeometryDataLoader:
         if cache_key in self._activations_cache:
             return self._activations_cache[cache_key]
 
-        mappings = self._position_mapping.get("mappings", [])
+        if not self._position_mapping:
+            raise ValueError("position_mapping not loaded")
+
+        mappings = self._position_mapping["mappings"]
         if not mappings:
             return self.get_precomputed_positions()
 
         # Collect first abs_pos for each semantic position across samples
         position_abs_pos: dict[str, list[int]] = {}
         for mapping in mappings[:100]:  # Sample first 100 for efficiency
-            seen_in_sample = {}
-            for p in mapping.get("positions", []):
-                fmt = p.get("format_pos", "")
-                if fmt and fmt not in seen_in_sample:
-                    seen_in_sample[fmt] = p.get("abs_pos", 9999)
+            seen_in_sample: dict[str, int] = {}
+            for p in mapping["positions"]:
+                fmt = p["format_pos"]
+                if fmt not in seen_in_sample:
+                    seen_in_sample[fmt] = p["abs_pos"]
             for pos, abs_pos in seen_in_sample.items():
                 if pos not in position_abs_pos:
                     position_abs_pos[pos] = []
                 position_abs_pos[pos].append(abs_pos)
 
         # Calculate median abs_pos for each position
-        position_median = {}
+        position_median: dict[str, int] = {}
         for pos, abs_positions in position_abs_pos.items():
             position_median[pos] = sorted(abs_positions)[len(abs_positions) // 2]
 
@@ -485,7 +452,7 @@ class GeometryDataLoader:
         precomputed = self.get_precomputed_positions()
         result = sorted(
             [p for p in precomputed if p in position_median],
-            key=lambda p: position_median.get(p, 9999)
+            key=lambda p: position_median[p]
         )
         # Add any positions not found in mapping at the end
         for p in precomputed:
@@ -556,6 +523,9 @@ class GeometryDataLoader:
 
         Returns the sample indices in the same order as the activations/embeddings.
         Supports position format "format_pos:rel_pos" for specific relative position.
+
+        Raises:
+            ValueError: If samples directory does not exist.
         """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}_indices"
         if cache_key in self._activations_cache:
@@ -563,7 +533,10 @@ class GeometryDataLoader:
 
         samples_dir = self.data_dir / "data" / "samples"
         if not samples_dir.exists():
-            return []
+            raise ValueError(
+                f"Samples directory not found: {samples_dir}\n"
+                "Run compute_geometry_analysis.py to generate data first."
+            )
 
         # Parse position to get format_pos and optional rel_pos
         format_pos, rel_pos = self._parse_position(position)
@@ -581,9 +554,10 @@ class GeometryDataLoader:
                 continue
 
             # Check if at least one activation file exists
+            # Format: sample_dir/L{layer}/{component}_{abs_pos}.npy
             has_data = False
             for abs_pos in abs_positions:
-                npy_path = sample_dir / f"L{layer}_{component}_{abs_pos}.npy"
+                npy_path = sample_dir / f"L{layer}" / f"{component}_{abs_pos}.npy"
                 if npy_path.exists():
                     has_data = True
                     break
@@ -645,7 +619,8 @@ class GeometryDataLoader:
 
             paths_for_sample = []
             for abs_pos in abs_positions:
-                npy_path = sample_dir / f"L{layer}_{component}_{abs_pos}.npy"
+                # Format: sample_dir/L{layer}/{component}_{abs_pos}.npy
+                npy_path = sample_dir / f"L{layer}" / f"{component}_{abs_pos}.npy"
                 if npy_path.exists():
                     paths_for_sample.append(npy_path)
                     load_tasks.append((sample_idx, npy_path))
@@ -728,26 +703,13 @@ class GeometryDataLoader:
         Path: analysis/embeddings/{method}/L{layer}_{component}_{position}.npy
 
         For per-rel_pos positions (e.g., "chat_suffix:0"):
-        - First tries: L{layer}_{component}_{base_pos}_r{rel_pos}.npy
-        - Falls back to: L{layer}_{component}_{base_pos}.npy (for positions with only 1 rel_pos)
+        Path: analysis/embeddings/{method}/L{layer}_{component}_{base_pos}_r{rel_pos}.npy
 
-        Returns None if not found - does NOT compute.
+        Returns None if not found - does NOT compute. NO FALLBACKS.
         """
         path = self._get_embedding_path(method, layer, component, position)
         if path.exists():
             return np.load(path)
-
-        # For per-rel_pos positions, try fallback to combined file
-        # ONLY for positions with rel_pos count = 1 (combined file IS the per-rel_pos data)
-        if ":" in position:
-            base_pos = position.rsplit(":", 1)[0]
-            rel_pos_counts = self.get_rel_pos_counts()
-            # Only fall back if this position has exactly 1 rel_pos
-            if rel_pos_counts.get(base_pos, 0) == 1:
-                fallback_path = self.data_dir / "analysis" / "embeddings" / method / f"L{layer}_{component}_{base_pos}.npy"
-                if fallback_path.exists():
-                    return np.load(fallback_path)
-
         return None
 
     def load_pca(
@@ -900,7 +862,7 @@ class GeometryDataLoader:
         return value
 
     def _convert_to_months(self, value: float, unit: str) -> float:
-        """Convert a time value to months."""
+        """Convert a time value to months. Crashes on unknown units."""
         unit_lower = unit.lower()
         conversions = {
             "months": 1.0, "month": 1.0,
@@ -914,7 +876,59 @@ class GeometryDataLoader:
             "centuries": 1200.0, "century": 1200.0,
             "millennia": 12000.0, "millennium": 12000.0,
         }
-        return value * conversions.get(unit_lower, 1.0)
+        if unit_lower not in conversions:
+            raise ValueError(f"Unknown time unit: '{unit}'. Valid units: {list(conversions.keys())}")
+        return value * conversions[unit_lower]
+
+    def _get_time_scale(self, months: float) -> int:
+        """Classify time horizon into discrete scale categories.
+
+        Uses extended scale to cover full range from seconds to centuries.
+
+        Returns:
+            0 = Seconds (< 1 minute)
+            1 = Minutes (< 1 hour)
+            2 = Hours (< 1 day)
+            3 = Days (< 1 week)
+            4 = Weeks (< 1 month)
+            5 = Months (< 1 year)
+            6 = Years (< 10 years)
+            7 = Decades (< 100 years)
+            8 = Centuries (100+ years)
+            -1 = No horizon (sentinel value)
+        """
+        if months < 0:  # Sentinel for no horizon
+            return -1
+
+        # Convert thresholds to months
+        # 1 month = 30.44 days = 730.5 hours = 43830 minutes
+        MINUTE_IN_MONTHS = 1 / 43830  # ~2.3e-5
+        HOUR_IN_MONTHS = 1 / 730.5    # ~0.00137
+        DAY_IN_MONTHS = 1 / 30.44     # ~0.0329
+        WEEK_IN_MONTHS = 7 / 30.44    # ~0.23
+
+        if months < MINUTE_IN_MONTHS:  # < 1 minute
+            return 0  # Seconds
+        elif months < HOUR_IN_MONTHS:  # < 1 hour
+            return 1  # Minutes
+        elif months < DAY_IN_MONTHS:  # < 1 day
+            return 2  # Hours
+        elif months < WEEK_IN_MONTHS:  # < 1 week
+            return 3  # Days
+        elif months < 1:  # < 1 month
+            return 4  # Weeks
+        elif months < 12:  # < 1 year
+            return 5  # Months
+        elif months < 120:  # < 10 years
+            return 6  # Years
+        elif months < 1200:  # < 100 years
+            return 7  # Decades
+        else:  # 100+ years
+            return 8  # Centuries
+
+    def get_time_scale_labels(self) -> list[str]:
+        """Get human-readable labels for time scale categories."""
+        return ["Seconds", "Minutes", "Hours", "Days", "Weeks", "Months", "Years", "Decades", "Centuries"]
 
     def get_sample_metadata(self, color_by: str) -> np.ndarray:
         """Get sample metadata for coloring.
@@ -936,196 +950,213 @@ class GeometryDataLoader:
     def _compute_metadata_values(self, color_by: str) -> np.ndarray:
         """Compute metadata values for coloring.
 
-        Uses pre-computed values from sample fields (loaded from choice.json)
-        when available, otherwise computes on demand.
+        Uses pre-loaded values from choice.json.
         """
+        # Time horizon fields
+        # Use -1 as sentinel for None values (no-horizon samples)
         if color_by == "time_horizon":
-            vals = []
-            for s in self._samples:
-                th_value = self._extract_nested(s, "prompt.time_horizon.value")
-                th_unit = self._extract_nested(s, "prompt.time_horizon.unit", "months")
-                if th_value is not None:
-                    th = self._convert_to_months(th_value, th_unit)
-                else:
-                    th = -1
-                vals.append(th)
-            return np.array(vals)
-        elif color_by == "log_time_horizon":
-            # Check if pre-computed in samples (from choice.json)
-            if self._samples and "log_time_horizon" in self._samples[0]:
-                return np.array([s.get("log_time_horizon", -1) for s in self._samples])
-            # Fallback to computation
-            vals = []
-            for s in self._samples:
-                th_value = self._extract_nested(s, "prompt.time_horizon.value")
-                th_unit = self._extract_nested(s, "prompt.time_horizon.unit", "months")
-                if th_value is not None:
-                    th = self._convert_to_months(th_value, th_unit)
-                    vals.append(np.log10(th + 1))
-                else:
-                    vals.append(-1)
-            return np.array(vals)
-        elif color_by == "chosen_time":
-            return np.array([s.get("chosen_time", False) for s in self._samples])
-        elif color_by == "chosen_reward":
-            return np.array([s.get("chosen_reward", 0) for s in self._samples])
-        elif color_by == "matches_largest_reward":
-            return np.array([s.get("matches_largest_reward", False) for s in self._samples])
-        elif color_by == "matches_rational":
-            return np.array([s.get("matches_rational", False) for s in self._samples])
-        elif color_by == "matches_associated":
-            return np.array([s.get("matches_associated", False) for s in self._samples])
-        elif color_by == "has_horizon":
             return np.array([
-                self._extract_nested(s, "prompt.time_horizon.value") is not None
+                s["time_horizon_months"] if s["time_horizon_months"] is not None else -1.0
                 for s in self._samples
             ])
+        elif color_by == "log_time_horizon":
+            return np.array([
+                np.log10(s["time_horizon_months"] + 1) if s["time_horizon_months"] is not None else np.nan
+                for s in self._samples
+            ])
+        elif color_by == "time_horizon_days":
+            # Compute from months (30.44 days per month on average)
+            return np.array([
+                s["time_horizon_months"] * 30.44 if s["time_horizon_months"] is not None else np.nan
+                for s in self._samples
+            ])
+        elif color_by == "time_horizon_years":
+            # Compute from months
+            return np.array([
+                s["time_horizon_months"] / 12.0 if s["time_horizon_months"] is not None else np.nan
+                for s in self._samples
+            ])
+        elif color_by == "time_scale":
+            # Compute time_scale from time_horizon_months and return labels
+            labels = self.get_time_scale_labels()  # ["Weeks", "Months", "Years", "Decades"]
+            values = []
+            for s in self._samples:
+                months = s["time_horizon_months"]
+                if months is None:
+                    values.append("No Horizon")
+                else:
+                    scale_idx = self._get_time_scale(months)
+                    values.append(labels[scale_idx] if 0 <= scale_idx < len(labels) else "Unknown")
+            return np.array(values)
+        elif color_by == "has_horizon":
+            return np.array([s["time_horizon_months"] is not None for s in self._samples])
+        # Choice fields
+        elif color_by == "term_chosen":
+            # Return categorical labels for term chosen
+            return np.array(["Long" if s["chose_long_term"] else "Short" for s in self._samples])
+        elif color_by == "chosen_time":
+            return np.array([
+                s["chosen_time_months"] if s["chosen_time_months"] is not None else -1.0
+                for s in self._samples
+            ])
+        elif color_by == "chosen_time_scale":
+            # Compute time_scale from chosen_time_months and return labels
+            labels = self.get_time_scale_labels()  # ["Weeks", "Months", "Years", "Decades"]
+            values = []
+            for s in self._samples:
+                months = s["chosen_time_months"]
+                if months is None:
+                    values.append("Unknown")
+                else:
+                    scale_idx = self._get_time_scale(months)
+                    values.append(labels[scale_idx] if 0 <= scale_idx < len(labels) else "Unknown")
+            return np.array(values)
+        elif color_by == "chosen_reward":
+            return np.array([s["chosen_reward"] for s in self._samples])
+        elif color_by == "choice_confidence":
+            return np.array([s["choice_prob"] for s in self._samples])
+        # Alternative fields
+        elif color_by == "alt_time":
+            return np.array([
+                s["alt_time_months"] if s["alt_time_months"] is not None else -1.0
+                for s in self._samples
+            ])
+        elif color_by == "alt_reward":
+            return np.array([s["alt_reward"] for s in self._samples])
+        elif color_by == "alt_prob":
+            return np.array([s["alt_prob"] for s in self._samples])
+        elif color_by == "matches_largest_reward":
+            # Computed: True if model chose the option with higher reward
+            vals = []
+            for s in self._samples:
+                chose_long = s["chose_long_term"]
+                pp = s["prompt"]["preference_pair"]
+                short_reward = pp["short_term"]["reward"]["value"]
+                long_reward = pp["long_term"]["reward"]["value"]
+                long_has_more = long_reward > short_reward
+                vals.append(chose_long == long_has_more)
+            return np.array(vals)
+        elif color_by == "matches_rational":
+            # Computed: True if model chose rationally given time horizon
+            # Rational = choose long-term if time_horizon >= long_term_time
+            # For no-horizon samples, returns NaN
+            vals = []
+            for s in self._samples:
+                chose_long = s["chose_long_term"]
+                th_months = s["time_horizon_months"]
+                if th_months is None:
+                    vals.append(np.nan)
+                    continue
+                pp = s["prompt"]["preference_pair"]
+                long_time = pp["long_term"]["time"]
+                long_months = self._convert_to_months(long_time["value"], long_time["unit"])
+                rational_long = th_months >= long_months
+                vals.append(chose_long == rational_long)
+            return np.array(vals)
+        elif color_by == "matches_associated":
+            # Computed: True if model chose option with time closest to horizon
+            # For no-horizon samples, returns NaN
+            vals = []
+            for s in self._samples:
+                chose_long = s["chose_long_term"]
+                th_months = s["time_horizon_months"]
+                if th_months is None:
+                    vals.append(np.nan)
+                    continue
+                pp = s["prompt"]["preference_pair"]
+                short_time = pp["short_term"]["time"]
+                long_time = pp["long_term"]["time"]
+                short_months = self._convert_to_months(short_time["value"], short_time["unit"])
+                long_months = self._convert_to_months(long_time["value"], long_time["unit"])
+                long_closer = abs(th_months - long_months) < abs(th_months - short_months)
+                vals.append(chose_long == long_closer)
+            return np.array(vals)
+        # Computed deltas
+        elif color_by == "option_confidence_delta":
+            # Compute: |choice_prob - 0.5| * 2: 0 = uncertain, 1 = very confident
+            return np.array([abs(s["choice_prob"] - 0.5) * 2 for s in self._samples])
+        elif color_by == "option_time_delta":
+            # Difference in time between long_term and short_term options (months)
+            # STRICT: prompt.preference_pair REQUIRED
+            vals = []
+            for s in self._samples:
+                pp = s["prompt"]["preference_pair"]
+                short_time = pp["short_term"]["time"]
+                long_time = pp["long_term"]["time"]
+                short_months = self._convert_to_months(short_time["value"], short_time["unit"])
+                long_months = self._convert_to_months(long_time["value"], long_time["unit"])
+                vals.append(long_months - short_months)
+            return np.array(vals)
+        elif color_by == "option_reward_delta":
+            # Difference in reward between long_term and short_term options
+            # STRICT: prompt.preference_pair REQUIRED
+            vals = []
+            for s in self._samples:
+                pp = s["prompt"]["preference_pair"]
+                short_reward = pp["short_term"]["reward"]["value"]
+                long_reward = pp["long_term"]["reward"]["value"]
+                vals.append(long_reward - short_reward)
+            return np.array(vals)
+        elif color_by == "reward_ratio":
+            # Ratio of long_term_reward / short_term_reward
+            # STRICT: prompt.preference_pair REQUIRED
+            vals = []
+            for s in self._samples:
+                pp = s["prompt"]["preference_pair"]
+                short_reward = pp["short_term"]["reward"]["value"]
+                long_reward = pp["long_term"]["reward"]["value"]
+                if short_reward <= 0:
+                    raise ValueError(f"short_term reward must be positive, got {short_reward}")
+                vals.append(long_reward / short_reward)
+            return np.array(vals)
+        elif color_by == "time_ratio":
+            # Ratio of long_term_time / short_term_time
+            # STRICT: prompt.preference_pair REQUIRED
+            vals = []
+            for s in self._samples:
+                pp = s["prompt"]["preference_pair"]
+                short_time = pp["short_term"]["time"]
+                long_time = pp["long_term"]["time"]
+                short_months = self._convert_to_months(short_time["value"], short_time["unit"])
+                long_months = self._convert_to_months(long_time["value"], long_time["unit"])
+                if short_months <= 0:
+                    raise ValueError(f"short_term time must be positive, got {short_months}")
+                vals.append(long_months / short_months)
+            return np.array(vals)
+        elif color_by == "short_term_reward":
+            # STRICT: prompt.preference_pair REQUIRED
+            return np.array([
+                s["prompt"]["preference_pair"]["short_term"]["reward"]["value"]
+                for s in self._samples
+            ])
+        elif color_by == "short_term_time":
+            # STRICT: prompt.preference_pair REQUIRED
+            vals = []
+            for s in self._samples:
+                short_time = s["prompt"]["preference_pair"]["short_term"]["time"]
+                vals.append(self._convert_to_months(short_time["value"], short_time["unit"]))
+            return np.array(vals)
+        elif color_by == "long_term_reward":
+            # STRICT: prompt.preference_pair REQUIRED
+            return np.array([
+                s["prompt"]["preference_pair"]["long_term"]["reward"]["value"]
+                for s in self._samples
+            ])
+        elif color_by == "long_term_time":
+            vals = []
+            for s in self._samples:
+                long_time = s["prompt"]["preference_pair"]["long_term"]["time"]
+                vals.append(self._convert_to_months(long_time["value"], long_time["unit"]))
+            return np.array(vals)
+        # Prompt metadata (at root level of prompt_sample.json)
         elif color_by == "short_term_first":
             return np.array([s.get("short_term_first", False) for s in self._samples])
         elif color_by == "context_id":
             return np.array([s.get("context_id", 0) for s in self._samples])
         elif color_by == "sample_idx":
             return np.arange(len(self._samples))
-        elif color_by == "choice_confidence":
-            # Choice probability (how confident the model was in its choice)
-            return np.array([s.get("choice_prob", 0.5) for s in self._samples])
-        elif color_by == "option_confidence_delta":
-            # Check if pre-computed in samples (from choice.json)
-            if self._samples and "option_confidence_delta" in self._samples[0]:
-                # Use 'or 0' to handle None values (key exists but value is None)
-                return np.array([s.get("option_confidence_delta") or 0 for s in self._samples])
-            # Fallback: |choice_prob - 0.5| * 2: 0 = uncertain, 1 = very confident
-            vals = []
-            for s in self._samples:
-                prob = s.get("choice_prob", 0.5)
-                vals.append(abs(prob - 0.5) * 2)
-            return np.array(vals)
-        elif color_by == "option_time_delta":
-            # Check if pre-computed in samples (from choice.json)
-            if self._samples and "option_time_delta" in self._samples[0]:
-                # Use 'or 0' to handle None values (key exists but value is None)
-                return np.array([s.get("option_time_delta") or 0 for s in self._samples])
-            # Fallback: difference in time between long_term and short_term options (in months)
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    short_time = pp.get("short_term", {}).get("time", {})
-                    long_time = pp.get("long_term", {}).get("time", {})
-                    short_months = self._convert_to_months(
-                        short_time.get("value", 0),
-                        short_time.get("unit", "months")
-                    )
-                    long_months = self._convert_to_months(
-                        long_time.get("value", 0),
-                        long_time.get("unit", "months")
-                    )
-                    vals.append(long_months - short_months)
-                else:
-                    vals.append(0)
-            return np.array(vals)
-        elif color_by == "option_reward_delta":
-            # Check if pre-computed in samples (from choice.json)
-            if self._samples and "option_reward_delta" in self._samples[0]:
-                # Use 'or 0' to handle None values (key exists but value is None)
-                return np.array([s.get("option_reward_delta") or 0 for s in self._samples])
-            # Fallback: difference in reward between long_term and short_term options
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    short_reward = pp.get("short_term", {}).get("reward", {}).get("value", 0)
-                    long_reward = pp.get("long_term", {}).get("reward", {}).get("value", 0)
-                    vals.append(long_reward - short_reward)
-                else:
-                    vals.append(0)
-            return np.array(vals)
-        elif color_by == "reward_ratio":
-            # Ratio of long_term_reward / short_term_reward
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    short_reward = pp.get("short_term", {}).get("reward", {}).get("value", 1)
-                    long_reward = pp.get("long_term", {}).get("reward", {}).get("value", 1)
-                    # Avoid division by zero
-                    if short_reward > 0:
-                        vals.append(long_reward / short_reward)
-                    else:
-                        vals.append(1.0)
-                else:
-                    vals.append(1.0)
-            return np.array(vals)
-        elif color_by == "time_ratio":
-            # Ratio of long_term_time / short_term_time (in same units)
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    short_time = pp.get("short_term", {}).get("time", {})
-                    long_time = pp.get("long_term", {}).get("time", {})
-                    short_months = self._convert_to_months(
-                        short_time.get("value", 1),
-                        short_time.get("unit", "months")
-                    )
-                    long_months = self._convert_to_months(
-                        long_time.get("value", 1),
-                        long_time.get("unit", "months")
-                    )
-                    # Avoid division by zero
-                    if short_months > 0:
-                        vals.append(long_months / short_months)
-                    else:
-                        vals.append(1.0)
-                else:
-                    vals.append(1.0)
-            return np.array(vals)
-        elif color_by == "short_term_reward":
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    vals.append(pp.get("short_term", {}).get("reward", {}).get("value", 0))
-                else:
-                    vals.append(0)
-            return np.array(vals)
-        elif color_by == "short_term_time":
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    short_time = pp.get("short_term", {}).get("time", {})
-                    vals.append(self._convert_to_months(
-                        short_time.get("value", 0),
-                        short_time.get("unit", "months")
-                    ))
-                else:
-                    vals.append(0)
-            return np.array(vals)
-        elif color_by == "long_term_reward":
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    vals.append(pp.get("long_term", {}).get("reward", {}).get("value", 0))
-                else:
-                    vals.append(0)
-            return np.array(vals)
-        elif color_by == "long_term_time":
-            vals = []
-            for s in self._samples:
-                pp = self._extract_nested(s, "prompt.preference_pair", {})
-                if pp:
-                    long_time = pp.get("long_term", {}).get("time", {})
-                    vals.append(self._convert_to_months(
-                        long_time.get("value", 0),
-                        long_time.get("unit", "months")
-                    ))
-                else:
-                    vals.append(0)
-            return np.array(vals)
         else:
-            return np.arange(len(self._samples))
+            raise ValueError(f"Unknown color_by option: {color_by}")
 
     def get_no_horizon_mask(self) -> np.ndarray:
         """Get boolean mask for samples without time horizon."""
@@ -1135,29 +1166,47 @@ class GeometryDataLoader:
         ])
 
     def get_color_options(self) -> list[str]:
-        """Get available color-by options."""
+        """Get available color-by options in priority order for UI display."""
         return [
-            "time_horizon",
-            "log_time_horizon",
-            "chosen_time",
-            "chosen_reward",
-            "choice_confidence",
-            "option_confidence_delta",
-            "option_time_delta",
-            "option_reward_delta",
-            "reward_ratio",
-            "time_ratio",
-            "short_term_reward",
-            "short_term_time",
-            "long_term_reward",
-            "long_term_time",
-            "matches_largest_reward",
-            "matches_rational",
-            "matches_associated",
-            "has_horizon",
-            "short_term_first",
-            "context_id",
-            "sample_idx",
+            # Primary time horizon metrics
+            "time_horizon",  # Time Horizon (months)
+            "time_scale",  # Horizon Time Scale: Weeks, Months, Years, Decades
+            # Model's choice
+            "term_chosen",  # Term Chosen: "Long" or "Short"
+            "chosen_time",  # Chosen Time (months)
+            "chosen_time_scale",  # Chosen Time Scale: computed category
+            "chosen_reward",  # Chosen Reward
+            # Behavioral match metrics
+            "matches_rational",  # Chose Rational (chose long when horizon >= long_time)
+            "matches_associated",  # Matches Associated (chose option closer to horizon)
+            "matches_largest_reward",  # Chose Largest Reward
+            # Confidence
+            "choice_confidence",  # Choice Confidence (probability)
+            "option_confidence_delta",  # Confidence Delta (0 = uncertain, 1 = confident)
+            # Time horizon variants
+            "log_time_horizon",  # Log Time Horizon
+            "time_horizon_days",  # Time Horizon (days)
+            "time_horizon_years",  # Time Horizon (years)
+            "has_horizon",  # Has Horizon (boolean)
+            # Option deltas
+            "option_time_delta",  # Option Time Delta (long - short months)
+            "option_reward_delta",  # Option Reward Delta (long - short)
+            # Ratios
+            "reward_ratio",  # Reward Ratio (long / short)
+            "time_ratio",  # Time Ratio (long / short)
+            # Individual option values
+            "short_term_reward",  # Short Term Reward
+            "short_term_time",  # Short Term Time (months)
+            "long_term_reward",  # Long Term Reward
+            "long_term_time",  # Long Term Time (months)
+            # Alternative (unchosen) option
+            "alt_time",  # Alt Time (months)
+            "alt_reward",  # Alt Reward
+            "alt_prob",  # Alt Probability
+            # Prompt metadata
+            "short_term_first",  # Short Term Listed First
+            "context_id",  # Context ID
+            "sample_idx",  # Sample Index
         ]
 
     def get_position_labels(self) -> dict[str, str]:
@@ -1361,21 +1410,29 @@ class GeometryDataLoader:
 
         return cached
 
-    def get_position_mapping_for_sample(self, sample_idx: int) -> dict | None:
-        """Get the full position mapping for a sample."""
-        if not self._position_mapping or "mappings" not in self._position_mapping:
-            return None
+    def get_position_mapping_for_sample(self, sample_idx: int) -> dict:
+        """Get the full position mapping for a sample.
+
+        Raises:
+            ValueError: If position_mapping not loaded.
+            KeyError: If sample_idx not found in mappings.
+        """
+        if not self._position_mapping:
+            raise ValueError("position_mapping not loaded")
         for mapping in self._position_mapping["mappings"]:
-            if mapping.get("sample_idx") == sample_idx:
+            if mapping["sample_idx"] == sample_idx:
                 return mapping
-        return None
+        raise KeyError(f"Sample index {sample_idx} not found in position mappings")
 
     def get_tokens_for_sample(self, sample_idx: int) -> list[dict]:
-        """Get token info for a sample including format_pos labels."""
+        """Get token info for a sample including format_pos labels.
+
+        Raises:
+            ValueError: If position_mapping not loaded.
+            KeyError: If sample_idx not found or 'positions' key missing.
+        """
         mapping = self.get_position_mapping_for_sample(sample_idx)
-        if mapping:
-            return mapping.get("positions", [])
-        return []
+        return mapping["positions"]
 
     def get_example_sample_with_horizon(self) -> dict | None:
         """Get a sample that has time_horizon for use as an illustration.
@@ -1396,18 +1453,14 @@ class GeometryDataLoader:
             example_idx = 0
 
         mapping = self.get_position_mapping_for_sample(example_idx)
-        if not mapping:
-            return None
-
         # Group tokens by format_pos and concatenate decoded tokens
         format_texts: dict[str, str] = {}
-        for pos_info in mapping.get("positions", []):
-            format_pos = pos_info.get("format_pos", "")
-            decoded = pos_info.get("decoded_token", "")
-            if format_pos:
-                if format_pos not in format_texts:
-                    format_texts[format_pos] = ""
-                format_texts[format_pos] += decoded
+        for pos_info in mapping["positions"]:
+            format_pos = pos_info["format_pos"]
+            decoded = pos_info["decoded_token"]
+            if format_pos not in format_texts:
+                format_texts[format_pos] = ""
+            format_texts[format_pos] += decoded
 
         return {
             "sample_idx": example_idx,
@@ -1437,10 +1490,12 @@ class GeometryDataLoader:
         so this just validates they're accessible. Returns the number of samples
         with valid token mappings.
         """
+        if not self._position_mapping:
+            return 0
+        # Iterate over actual mappings, not assumed 0 to n-1 indices
         loaded = 0
-        for sample_idx in range(len(self._samples)):
-            tokens = self.get_tokens_for_sample(sample_idx)
-            if tokens:
+        for mapping in self._position_mapping["mappings"]:
+            if mapping.get("positions"):
                 loaded += 1
         return loaded
 
@@ -1561,6 +1616,7 @@ class GeometryDataLoader:
         component: str,
         position: str,
         include_pc2: bool = False,
+        mode: str = "aligned",
     ) -> tuple[list[int], np.ndarray, list[int]] | tuple[list[int], np.ndarray, np.ndarray, list[int]]:
         """Load pre-cached layer trajectory data (PC1/PC2 across all layers).
 
@@ -1568,6 +1624,7 @@ class GeometryDataLoader:
             component: Model component (resid_pre, attn_out, etc.)
             position: Semantic position name (may include :rel_pos suffix)
             include_pc2: If True, also return PC2 values
+            mode: "aligned" (per-target PCA + sign alignment) or "shared" (single PCA subspace)
 
         Returns:
             If include_pc2=False: Tuple of (layers, pc1_values, sample_indices).
@@ -1590,17 +1647,9 @@ class GeometryDataLoader:
             file_position = position
             base_pos = position
 
-        cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{file_position}.npz"
-
-        # Fall back to combined file ONLY for positions with rel_pos_count = 1
-        # (meaning the combined file IS the per-rel_pos data)
-        if not cache_file.exists() and ":" in position:
-            rel_pos_counts = self.get_rel_pos_counts()
-            # Only fall back if this position has exactly 1 rel_pos
-            if rel_pos_counts.get(base_pos, 0) == 1:
-                fallback_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{base_pos}.npz"
-                if fallback_file.exists():
-                    cache_file = fallback_file
+        # Add _shared suffix for shared mode
+        suffix = "_shared" if mode == "shared" else ""
+        cache_file = self.data_dir / "analysis" / "trajectories" / f"layers_{component}_{file_position}{suffix}.npz"
 
         if not cache_file.exists():
             raise ValueError(
@@ -1612,10 +1661,15 @@ class GeometryDataLoader:
         layers = data["layers"].tolist()
         pc1_values = data["pc1_values"]  # shape: (n_layers, n_samples)
         sample_indices = data["sample_indices"].tolist()
-        _log("trajectory", f"Loaded cached layer trajectory", comp=component, position=position)
+        _log("trajectory", f"Loaded cached layer trajectory", comp=component, position=position, mode=mode)
 
         if include_pc2:
-            pc2_values = data["pc2_values"] if "pc2_values" in data else np.zeros_like(pc1_values)
+            if "pc2_values" not in data:
+                raise ValueError(
+                    f"pc2_values not found in trajectory cache: {cache_file}\n"
+                    "Trajectory was computed without PC2. Re-run compute_geometry_analysis.py."
+                )
+            pc2_values = data["pc2_values"]
             return layers, pc1_values, pc2_values, sample_indices
         return layers, pc1_values, sample_indices
 
@@ -1624,6 +1678,7 @@ class GeometryDataLoader:
         layer: int,
         component: str,
         include_pc2: bool = False,
+        mode: str = "aligned",
     ) -> tuple[list[str], list[np.ndarray], list[list[int]]] | tuple[list[str], list[np.ndarray], list[np.ndarray], list[list[int]]]:
         """Load pre-cached position trajectory data (PC1/PC2 across all positions).
 
@@ -1631,6 +1686,7 @@ class GeometryDataLoader:
             layer: Layer number
             component: Model component (resid_pre, attn_out, etc.)
             include_pc2: If True, also return PC2 values
+            mode: "aligned" (per-target PCA + sign alignment) or "shared" (single PCA subspace)
 
         Returns:
             If include_pc2=False: Tuple of (positions, pc1_values_list, sample_indices_per_position).
@@ -1641,7 +1697,9 @@ class GeometryDataLoader:
         Raises:
             ValueError: If trajectory cache file does not exist (STRICT mode).
         """
-        cache_file = self.data_dir / "analysis" / "trajectories" / f"positions_L{layer}_{component}.npz"
+        # Add _shared suffix for shared mode
+        suffix = "_shared" if mode == "shared" else ""
+        cache_file = self.data_dir / "analysis" / "trajectories" / f"positions_L{layer}_{component}{suffix}.npz"
         if not cache_file.exists():
             raise ValueError(
                 f"Position trajectory cache not found: {cache_file}\n"
@@ -1653,15 +1711,28 @@ class GeometryDataLoader:
         # pc1_values is stored as object array - each element is a 1D array
         pc1_values_list = [arr for arr in data["pc1_values"]]
         sample_indices_list = [list(arr) for arr in data["sample_indices_list"]]
-        _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component)
+        _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component, mode=mode)
 
         if include_pc2:
-            if "pc2_values" in data:
-                pc2_values_list = [arr for arr in data["pc2_values"]]
-            else:
-                pc2_values_list = [np.zeros_like(arr) for arr in pc1_values_list]
+            if "pc2_values" not in data:
+                raise ValueError(
+                    f"pc2_values not found in trajectory cache: {cache_file}\n"
+                    "Trajectory was computed without PC2. Re-run compute_geometry_analysis.py."
+                )
+            pc2_values_list = [arr for arr in data["pc2_values"]]
             return positions, pc1_values_list, pc2_values_list, sample_indices_list
         return positions, pc1_values_list, sample_indices_list
+
+    def _resolve_position_for_pca_analysis(self, position: str) -> str:
+        """Resolve position for PCA analysis lookup (scree, alignment).
+
+        Converts "response_choice:0" to "response_choice_r0" for file lookup.
+        Per-rel_pos PCA metrics are computed during embedding generation.
+        """
+        if ":" in position:
+            base, rel_pos = position.rsplit(":", 1)
+            return f"{base}_r{rel_pos}"
+        return position
 
     def load_pca_metrics(
         self,
@@ -1671,12 +1742,15 @@ class GeometryDataLoader:
     ) -> dict | None:
         """Load PCA metrics including variance explained.
 
+        Uses COMBINED position data (not per-rel_pos) because variance explained
+        is a property of the full position's data distribution.
+
         Returns:
             Dict with 'explained_variance' (list of floats) and other metrics,
             or None if not found.
         """
-        # Check analysis/pca first
-        metrics_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{position}" / "metrics.json"
+        resolved_position = self._resolve_position_for_pca_analysis(position)
+        metrics_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{resolved_position}" / "metrics.json"
         if not metrics_file.exists():
             return None
 
@@ -1691,10 +1765,14 @@ class GeometryDataLoader:
     ) -> np.ndarray | None:
         """Load PCA components (directions) for direction alignment analysis.
 
+        Uses COMBINED position data (not per-rel_pos) because PC directions
+        are computed on the full position's data distribution.
+
         Returns:
             Array of shape (n_components, n_features) or None if not found.
         """
-        components_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{position}" / "components.npy"
+        resolved_position = self._resolve_position_for_pca_analysis(position)
+        components_file = self.data_dir / "analysis" / "pca" / f"L{layer}_{component}_{resolved_position}" / "components.npy"
         if not components_file.exists():
             return None
 
@@ -1752,8 +1830,8 @@ class GeometryDataLoader:
         labels = []
         directions = []
 
-        # Collect all PC directions
-        for layer in self._layers:
+        # Collect all PC directions - reverse layer order so L0 is at bottom, L35 at top
+        for layer in reversed(self._layers):
             for comp in components:
                 pca_components = self.load_pca_components(layer, comp, position)
                 if pca_components is not None and pca_components.shape[0] > pc_index:
@@ -1772,8 +1850,15 @@ class GeometryDataLoader:
         # Compute cosine similarity matrix
         similarity = normalized @ normalized.T
 
+        # Flip matrix horizontally so L0 is at left (origin at bottom-left)
+        # Row labels stay as-is (L35 at top, L0 at bottom)
+        # Column labels need to be reversed (L0 at left, L35 at right)
+        similarity_flipped = np.fliplr(similarity)
+        col_labels = list(reversed(labels))
+
         return {
-            "labels": labels,
-            "matrix": similarity.tolist(),
+            "labels": labels,  # For Y-axis (rows): L35 at top, L0 at bottom
+            "col_labels": col_labels,  # For X-axis (cols): L0 at left, L35 at right
+            "matrix": similarity_flipped.tolist(),
             "n_targets": len(labels),
         }

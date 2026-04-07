@@ -11,14 +11,25 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.transforms import blended_transform_factory
 
+from .....viz.plot_helpers import save_figure
 from .....viz.viz_palettes import TOKEN_COLORS
 from .....viz.token_coloring import PairTokenColoring
 from .coarse_colors import VLINE_COLORS
 
 
-def setup_grid(ax: plt.Axes) -> None:
-    """Set up granular grid with both major and minor gridlines."""
+def setup_grid(ax: plt.Axes, integer_x_minor: bool = True) -> None:
+    """Set up granular grid with both major and minor gridlines.
+
+    Args:
+        ax: Matplotlib axes
+        integer_x_minor: If True, minor x-axis ticks are placed at integer positions only
+    """
+    from matplotlib.ticker import MultipleLocator
+
     ax.minorticks_on()
+    # Force x-axis minor ticks to integer positions only (e.g., tick at 23 between 22 and 24)
+    if integer_x_minor:
+        ax.xaxis.set_minor_locator(MultipleLocator(1))
     ax.grid(True, which="major", alpha=0.5, linewidth=0.6, color="#AAAAAA")
     ax.grid(True, which="minor", alpha=0.3, linewidth=0.3, color="#CCCCCC")
     ax.set_axisbelow(True)
@@ -106,10 +117,7 @@ def save_with_colored_ticks(
     for label, color in zip(ax.get_xticklabels(), colors):
         label.set_color(color)
 
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 
@@ -133,10 +141,7 @@ def save_with_colored_ticks_multi(
         for label, color in zip(ax.get_xticklabels(), colors):
             label.set_color(color)
 
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 
@@ -278,8 +283,5 @@ def add_xaxis_boundary_markers(
 
 def finalize_plot(fig: plt.Figure, output_path: Path) -> None:
     """Save figure with standard formatting."""
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
     print(f"Saved: {output_path}")

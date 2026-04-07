@@ -49,7 +49,7 @@ def patch_for_choice(
     Returns:
         IntervenedChoice with baseline_clean, baseline_corrupted, and intervened.
     """
-    component = target.component or "resid_post"
+    component = target.component
     names_filter = hook_filter_for_component(component)
 
     # Use simpler choose() when labels are the same (faster path)
@@ -315,7 +315,7 @@ def ablate_for_choice(
     Returns:
         IntervenedChoice with baseline and ablated results.
     """
-    component = target.component or "resid_post"
+    component = target.component
     names_filter = hook_filter_for_component(component)
     d_model = runner.d_model
 
@@ -329,11 +329,17 @@ def ablate_for_choice(
     if same_labels:
         labels = pair.clean_labels
         clean_choice = runner.choose(pair.clean_prompt, pair.choice_prefix, labels)
-        corrupted_choice = runner.choose(pair.corrupted_prompt, pair.choice_prefix, labels)
+        corrupted_choice = runner.choose(
+            pair.corrupted_prompt, pair.choice_prefix, labels
+        )
     else:
         all_labels = [pair.clean_labels, pair.corrupted_labels]
-        clean_grouped = runner.multilabel_choose(pair.clean_prompt, pair.choice_prefix, all_labels)
-        corrupted_grouped = runner.multilabel_choose(pair.corrupted_prompt, pair.choice_prefix, all_labels)
+        clean_grouped = runner.multilabel_choose(
+            pair.clean_prompt, pair.choice_prefix, all_labels
+        )
+        corrupted_grouped = runner.multilabel_choose(
+            pair.corrupted_prompt, pair.choice_prefix, all_labels
+        )
         clean_choice = clean_grouped
         corrupted_choice = corrupted_grouped
         labels = all_labels
@@ -346,9 +352,13 @@ def ablate_for_choice(
         elif mode == "mean_ablation":
             if mean_activations is None:
                 raise ValueError("mean_activations required for mean_ablation mode")
-            inv = mean_ablation_intervention(layer, mean_activations, positions, component)
+            inv = mean_ablation_intervention(
+                layer, mean_activations, positions, component
+            )
         elif mode == "gaussian_noise":
-            inv = gaussian_noise_intervention(layer, d_model, noise_sigma, positions, component)
+            inv = gaussian_noise_intervention(
+                layer, d_model, noise_sigma, positions, component
+            )
         else:
             raise ValueError(f"Unknown ablation mode: {mode}")
         interventions.append(inv)
@@ -382,7 +392,7 @@ def ablate_for_choice(
         )
 
     if clear_memory:
-        if hasattr(ablated_choice, 'pop_heavy'):
+        if hasattr(ablated_choice, "pop_heavy"):
             ablated_choice.pop_heavy()
         clear_gpu_memory()
 

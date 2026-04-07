@@ -18,7 +18,7 @@ from .coarse_results import (
 )
 
 
-COMPONENTS = ["resid_pre", "resid_post", "attn_out", "mlp_out"]
+COMPONENTS = ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
 
 
 def compute_cumulative_recovery(

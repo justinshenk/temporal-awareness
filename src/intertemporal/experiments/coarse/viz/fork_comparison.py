@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .....activation_patching.coarse import SweepStepResults
+from .....viz.plot_helpers import add_pair_label, save_figure
 from .sweep_plots import ExtractionMode
 
 
@@ -70,6 +71,7 @@ def plot_fork_comparison(
     label_pairs: tuple[tuple[str, str], ...] | None = None,
     sweep_type: Literal["layer", "position"] = "layer",
     component: str = "resid_post",
+    pair_idx: int | None = None,
 ) -> None:
     """Create fork comparison plot showing metrics across all forks.
 
@@ -84,6 +86,7 @@ def plot_fork_comparison(
         label_pairs: Optional tuple of (label_a, label_b) pairs for legend
         sweep_type: "layer" or "position"
         component: Component being patched
+        pair_idx: Optional pair index for labeling
     """
     # Get n_forks from first result
     first_result = next(iter(sweep_data.values()))
@@ -152,12 +155,13 @@ def plot_fork_comparison(
         y=0.98,
     )
 
+    add_pair_label(fig, pair_idx)
+
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
     # Save to by_fork directory
     by_fork_dir = output_dir / "by_fork"
     by_fork_dir.mkdir(parents=True, exist_ok=True)
     save_path = by_fork_dir / f"fork_comparison_{clean_traj}_{sweep_type}_{step_size}.png"
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")

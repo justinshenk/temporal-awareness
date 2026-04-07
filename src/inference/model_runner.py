@@ -329,9 +329,7 @@ class ModelRunner:
 
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
-    def _pad_token_ids_batch(
-        self, token_ids_batch: list[list[int]]
-    ) -> torch.Tensor:
+    def _pad_token_ids_batch(self, token_ids_batch: list[list[int]]) -> torch.Tensor:
         """Pad a batch of token ID sequences to the same length.
 
         Args:
@@ -581,8 +579,10 @@ class ModelRunner:
         interventions = self._normalize_interventions(intervention)
 
         with self._inference_context():
-            logits_batch, internals_cache = self._backend.run_with_intervention_and_cache(
-                input_ids_batch, interventions, names_filter
+            logits_batch, internals_cache = (
+                self._backend.run_with_intervention_and_cache(
+                    input_ids_batch, interventions, names_filter
+                )
             )  # [batch, seq_len, vocab_size]
 
         # Build trajectories with per-batch internals attached
@@ -878,10 +878,6 @@ class ModelRunner:
         MODEL_MAPPINGS = {
             # Qwen3 instruct variants -> base models
             "Qwen/Qwen3-4B-Instruct-2507": "Qwen/Qwen3-4B",
-            "Qwen/Qwen3-8B-Instruct-2507": "Qwen/Qwen3-8B",
-            "Qwen/Qwen3-14B-Instruct-2507": "Qwen/Qwen3-14B",
-            "Qwen/Qwen3-1.7B-Instruct-2507": "Qwen/Qwen3-1.7B",
-            "Qwen/Qwen3-0.6B-Instruct-2507": "Qwen/Qwen3-0.6B",
         }
 
         if model_name in MODEL_MAPPINGS:
@@ -890,6 +886,7 @@ class ModelRunner:
         # Check if model is directly supported by TransformerLens
         try:
             from transformer_lens.loading_from_pretrained import get_official_model_name
+
             get_official_model_name(model_name)
             return model_name  # Directly supported
         except ValueError:
@@ -1046,3 +1043,13 @@ class ModelRunner:
         if self.is_reasoning_model:
             return "<think>\n</think>\n\n"
         return ""
+
+    def unload(self) -> None:
+        """Unload model from memory and clear GPU/MPS memory.
+
+        Call this before spawning subprocesses to free memory in the main process.
+        """
+        if self._model is not None:
+            del self._model
+            self._model = None
+        clear_gpu_memory(aggressive=True)

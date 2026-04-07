@@ -183,7 +183,7 @@ class TransformerLensBackend(Backend):
         n_layers = self.get_n_layers()
         hooks_to_capture = []
         for i in range(n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -297,7 +297,7 @@ class TransformerLensBackend(Backend):
         n_layers = self.get_n_layers()
         cache_hooks = []
         for i in range(n_layers):
-            for component in ["resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
 

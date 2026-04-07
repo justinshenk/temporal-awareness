@@ -12,6 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from .....activation_patching.coarse import SweepStepResults
+from .....viz.plot_helpers import add_pair_label, save_figure
 from .....viz.token_coloring import PairTokenColoring
 from .coarse_helpers import get_tick_color, setup_grid
 
@@ -23,6 +24,7 @@ def plot_redundancy(
     step_size: int = 1,
     coloring: PairTokenColoring | None = None,
     component: str = "resid_post",
+    pair_idx: int | None = None,
 ) -> None:
     """Plot redundancy maps (Disruption - Recovery) for layer and position sweeps.
 
@@ -37,6 +39,7 @@ def plot_redundancy(
         step_size: Step size used in the sweep
         coloring: Token coloring for position tick colors
         component: Component being patched (for plot title)
+        pair_idx: Optional pair index for labeling
     """
     has_layer = bool(layer_data)
     has_position = bool(position_data)
@@ -62,11 +65,11 @@ def plot_redundancy(
         fontweight="bold",
     )
 
+    add_pair_label(fig, pair_idx)
+
     plt.tight_layout(rect=[0, 0, 1, 0.93])
     save_path = output_dir / f"redundancy_{step_size}.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 
@@ -119,6 +122,10 @@ def _plot_layer_redundancy(
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
     ax.set_ylabel("Disruption - Recovery", fontsize=12, fontweight="bold")
     ax.set_title("Layer Sweep Redundancy", fontsize=14, fontweight="bold")
+    # Ensure x-axis only shows integer layer values
+    if valid_layers:
+        ax.set_xticks(valid_layers)
+        ax.set_xticklabels([str(l) for l in valid_layers])
     setup_grid(ax)
 
     # Add region labels

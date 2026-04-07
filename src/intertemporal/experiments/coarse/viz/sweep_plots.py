@@ -16,8 +16,9 @@ from .....activation_patching import IntervenedChoiceMetrics
 from .....activation_patching.act_patch_metrics import DEFAULT_AGGREGATION, PLOT_AGGREGATION_METHODS
 from .....activation_patching.coarse import SweepStepResults
 from .....common.choice.grouped_binary_choice import ForkAggregation
+from .....viz.plot_helpers import add_pair_label, save_figure
 from .....viz.token_coloring import PairTokenColoring
-from .columns import column_core, column_fork, column_logits, column_probs, column_trajectory, column_vocab
+from .columns import column_core, column_logits, column_probs, column_trajectory, column_vocab
 from .coarse_helpers import (
     add_boundary_legend,
     add_token_type_legend,
@@ -135,41 +136,57 @@ def _plot_sweep_row(
     tick_positions: Sequence[int],
     xlabel: str,
     coloring: PairTokenColoring | None = None,
+    show_legend: bool = True,
+    legend_fontsize: int = 9,
 ) -> list[plt.Axes | None]:
-    """Plot a single row of sweep metrics (6 columns).
+    """Plot a single row of sweep metrics (5 columns).
 
     Args:
-        axes_row: 6 axes for this row
+        axes_row: 5 axes for this row
         x_values: X-axis values (layers or positions)
         metrics: Metrics for each x value
         mode: "denoising" or "noising"
         tick_positions: X-axis tick positions
         xlabel: X-axis label (e.g., "Layer" or "Position")
         coloring: Optional token coloring for position tick colors
+        show_legend: Whether to show legends for this row
+        legend_fontsize: Font size for legends
 
     Returns:
-        List of 6 secondary axes (one per column) for y-axis synchronization
+        List of 5 secondary axes (one per column) for y-axis synchronization
     """
     # All columns return their secondary axis for synchronization
     secondary_axes: list[plt.Axes | None] = []
 
     # Column 0: Core metrics
-    secondary_axes.append(column_core.plot(axes_row[0], x_values, metrics, mode, tick_positions, xlabel))
+    secondary_axes.append(column_core.plot(
+        axes_row[0], x_values, metrics, mode, tick_positions, xlabel,
+        show_legend=show_legend, legend_fontsize=legend_fontsize
+    ))
 
     # Column 1: Probs/Logprobs
-    secondary_axes.append(column_probs.plot(axes_row[1], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_probs.plot(
+        axes_row[1], x_values, metrics, tick_positions, xlabel,
+        show_legend=show_legend, legend_fontsize=legend_fontsize
+    ))
 
     # Column 2: Logits
-    secondary_axes.append(column_logits.plot(axes_row[2], x_values, metrics, tick_positions, xlabel))
+    secondary_axes.append(column_logits.plot(
+        axes_row[2], x_values, metrics, tick_positions, xlabel,
+        show_legend=show_legend, legend_fontsize=legend_fontsize
+    ))
 
-    # Column 3: Fork metrics
-    secondary_axes.append(column_fork.plot(axes_row[3], x_values, metrics, tick_positions, xlabel))
+    # Column 3: Vocab metrics
+    secondary_axes.append(column_vocab.plot(
+        axes_row[3], x_values, metrics, tick_positions, xlabel,
+        show_legend=show_legend, legend_fontsize=legend_fontsize
+    ))
 
-    # Column 4: Vocab metrics
-    secondary_axes.append(column_vocab.plot(axes_row[4], x_values, metrics, tick_positions, xlabel))
-
-    # Column 5: Trajectory metrics
-    secondary_axes.append(column_trajectory.plot(axes_row[5], x_values, metrics, tick_positions, xlabel))
+    # Column 4: Trajectory metrics
+    secondary_axes.append(column_trajectory.plot(
+        axes_row[4], x_values, metrics, tick_positions, xlabel,
+        show_legend=show_legend, legend_fontsize=legend_fontsize
+    ))
 
     # Color x-axis ticks if coloring is provided (for position sweeps)
     # Use tick_positions (already subsampled) not x_values to avoid overwriting
@@ -196,7 +213,7 @@ def _synchronize_y_axes(
 
     Args:
         axes: 2D array of primary axes (rows x cols)
-        secondary_axes_by_row: List of [6 secondary axes] for each row
+        secondary_axes_by_row: List of [5 secondary axes] for each row
     """
     n_cols = len(axes[0])
 
@@ -220,28 +237,6 @@ def _synchronize_y_axes(
         for ax in col_sec_axes:
             ax.set_ylim(shared_ylim)
 
-    # Additionally sync Fork (col 3) and Vocab (col 4) PRIMARY axes together
-    fork_vocab_ymins = [axes[r][c].get_ylim()[0] for r in range(2) for c in [3, 4]]
-    fork_vocab_ymaxs = [axes[r][c].get_ylim()[1] for r in range(2) for c in [3, 4]]
-    fork_vocab_ylim = (min(fork_vocab_ymins), max(fork_vocab_ymaxs))
-    for row in range(2):
-        axes[row][3].set_ylim(fork_vocab_ylim)
-        axes[row][4].set_ylim(fork_vocab_ylim)
-
-    # Additionally sync Fork (col 3) and Vocab (col 4) SECONDARY axes together
-    fork_vocab_sec = []
-    for row in range(2):
-        if secondary_axes_by_row[row][3] is not None:
-            fork_vocab_sec.append(secondary_axes_by_row[row][3])
-        if secondary_axes_by_row[row][4] is not None:
-            fork_vocab_sec.append(secondary_axes_by_row[row][4])
-    if fork_vocab_sec:
-        sec_ymins = [ax.get_ylim()[0] for ax in fork_vocab_sec]
-        sec_ymaxs = [ax.get_ylim()[1] for ax in fork_vocab_sec]
-        sec_ylim = (min(sec_ymins), max(sec_ymaxs))
-        for ax in fork_vocab_sec:
-            ax.set_ylim(sec_ylim)
-
 
 # ============================================================================
 #  Main Plot Functions
@@ -255,6 +250,7 @@ def plot_layer_sweep(
     clean_traj: Literal["short", "long"],
     component: str = "resid_post",
     extraction: ExtractionMode | None = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Plot layer sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -265,14 +261,15 @@ def plot_layer_sweep(
         clean_traj: Which trajectory is "clean" ("short" or "long")
         component: Component being patched (for plot title)
         extraction: Optional extraction mode for multilabel results
+        pair_idx: Optional pair index to display on plot
     """
     extraction = extraction or ExtractionMode.default()
     layers = sorted(layer_data.keys())
     if not layers:
         return
 
-    # Create figure
-    fig, axes = plt.subplots(2, 6, figsize=(52, 18), facecolor="white")
+    # Create figure (5 columns: Core, Probs, Logits, Vocab, Trajectory)
+    fig, axes = plt.subplots(2, 5, figsize=(44, 18), facecolor="white")
     for ax_row in axes:
         for ax in ax_row:
             ax.set_facecolor("white")
@@ -289,15 +286,20 @@ def plot_layer_sweep(
 
     tick_positions = layers[:: get_tick_spacing(len(layers))]
 
-    # Adjust spacing: more horizontal padding, room for legends between rows
-    fig.subplots_adjust(left=0.045, right=0.96, top=0.91, bottom=0.08, wspace=0.40, hspace=0.48)
+    # Adjust spacing: reduced hspace, more bottom space for vertical legends
+    fig.subplots_adjust(left=0.045, right=0.96, top=0.91, bottom=0.26, wspace=0.40, hspace=0.28)
 
     # Plot each row and collect secondary axes for synchronization
+    # Row 0 (denoising): no legend
+    # Row 1 (noising): show legend with larger font
     secondary_axes_by_row: list[list[plt.Axes | None]] = []
     for row_idx, mode in enumerate(["denoising", "noising"]):
         metrics = _extract_metrics_for_mode(layer_data, layers, mode, clean_traj, extraction)
+        show_legend = (row_idx == 1)  # Only show legend on second row
+        legend_fontsize = 26 if show_legend else 9
         row_secondary = _plot_sweep_row(
-            axes[row_idx], layers, metrics, mode, tick_positions, "Layer"
+            axes[row_idx], layers, metrics, mode, tick_positions, "Layer",
+            show_legend=show_legend, legend_fontsize=legend_fontsize
         )
         secondary_axes_by_row.append(row_secondary)
 
@@ -305,9 +307,9 @@ def plot_layer_sweep(
         row_label = "Denoising" if mode == "denoising" else "Noising"
         fig.text(
             0.012,
-            0.72 - row_idx * 0.44,
+            0.62 - row_idx * 0.36,
             row_label,
-            fontsize=15,
+            fontsize=28,
             fontweight="bold",
             rotation=90,
             va="center",
@@ -316,11 +318,11 @@ def plot_layer_sweep(
 
     _synchronize_y_axes(axes, secondary_axes_by_row)
 
+    add_pair_label(fig, pair_idx)
+
     # Save with extraction suffix
     save_path = output_dir / f"coarse_layer_sweep_{clean_traj}_{step_size}{extraction.suffix}.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 
@@ -332,6 +334,7 @@ def plot_position_sweep(
     coloring: PairTokenColoring | None = None,
     component: str = "resid_post",
     extraction: ExtractionMode | None = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Plot position sweep with 2x6 subplots (denoising/noising x 6 metric columns).
 
@@ -343,14 +346,15 @@ def plot_position_sweep(
         coloring: Optional token coloring for position tick colors
         component: Component being patched (for plot title)
         extraction: Optional extraction mode for multilabel results
+        pair_idx: Optional pair index to display on plot
     """
     extraction = extraction or ExtractionMode.default()
     positions = sorted(pos_data.keys())
     if not positions:
         return
 
-    # Create figure (extra height for bottom legends)
-    fig, axes = plt.subplots(2, 6, figsize=(52, 20), facecolor="white")
+    # Create figure (5 columns, extra height for bottom legends)
+    fig, axes = plt.subplots(2, 5, figsize=(44, 20), facecolor="white")
     for ax_row in axes:
         for ax in ax_row:
             ax.set_facecolor("white")
@@ -390,15 +394,20 @@ def plot_position_sweep(
         x_min = min(x_min, min(all_boundaries))
         x_max = max(x_max, max(all_boundaries))
 
-    # Adjust spacing: extra bottom margin for Token Type and Boundary legends
-    fig.subplots_adjust(left=0.045, right=0.96, top=0.91, bottom=0.14, wspace=0.40, hspace=0.48)
+    # Adjust spacing: reduced hspace, extra bottom margin for vertical legends + Token Type/Boundary
+    fig.subplots_adjust(left=0.045, right=0.96, top=0.91, bottom=0.28, wspace=0.40, hspace=0.28)
 
     # Plot each row and collect secondary axes for synchronization
+    # Row 0 (denoising): no legend
+    # Row 1 (noising): show legend with larger font
     secondary_axes_by_row: list[list[plt.Axes | None]] = []
     for row_idx, mode in enumerate(["denoising", "noising"]):
         metrics = _extract_metrics_for_mode(pos_data, positions, mode, clean_traj, extraction)
+        show_legend = (row_idx == 1)  # Only show legend on second row
+        legend_fontsize = 26 if show_legend else 9
         row_secondary = _plot_sweep_row(
-            axes[row_idx], positions, metrics, mode, tick_positions, "Position", coloring
+            axes[row_idx], positions, metrics, mode, tick_positions, "Position", coloring,
+            show_legend=show_legend, legend_fontsize=legend_fontsize
         )
         secondary_axes_by_row.append(row_secondary)
 
@@ -409,9 +418,9 @@ def plot_position_sweep(
         row_label = "Denoising" if mode == "denoising" else "Noising"
         fig.text(
             0.012,
-            0.72 - row_idx * 0.44,
+            0.62 - row_idx * 0.36,
             row_label,
-            fontsize=15,
+            fontsize=28,
             fontweight="bold",
             rotation=90,
             va="center",
@@ -423,11 +432,11 @@ def plot_position_sweep(
     add_token_type_legend(fig)
     add_boundary_legend(fig)
 
+    add_pair_label(fig, pair_idx)
+
     # Save with extraction suffix
     save_path = output_dir / f"coarse_position_sweep_{clean_traj}_{step_size}{extraction.suffix}.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 

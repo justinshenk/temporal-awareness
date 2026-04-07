@@ -254,37 +254,27 @@ def _linear_probe_single(
         ("ridge", Ridge(alpha=10.0)),
     ])
 
-    try:
-        cv_folds = min(5, n_samples // 2)
-        # Use KFold with shuffle to ensure balanced folds
-        kfold = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        scores = cross_val_score(pipe, X, log_horizons, cv=kfold, scoring="r2")
-        r2_mean = float(scores.mean())
-        r2_std = float(scores.std())
+    cv_folds = min(5, n_samples // 2)
+    # Use KFold with shuffle to ensure balanced folds
+    kfold = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    scores = cross_val_score(pipe, X, log_horizons, cv=kfold, scoring="r2")
+    r2_mean = float(scores.mean())
+    r2_std = float(scores.std())
 
-        # Log warning for extremely negative R² (indicates numerical issues)
-        if r2_mean < -1.0:
-            logger.warning(
-                f"  {target_key}: R²={r2_mean:.2f} (extremely negative, "
-                f"indicating poor linear fit or numerical issues)"
-            )
-    except Exception as e:
-        logger.warning(f"  {target_key}: CV failed with {e}")
-        r2_mean = 0.0
-        r2_std = 0.0
+    # Log warning for extremely negative R² (indicates numerical issues)
+    if r2_mean < -1.0:
+        logger.warning(
+            f"  {target_key}: R²={r2_mean:.2f} (extremely negative, "
+            f"indicating poor linear fit or numerical issues)"
+        )
 
-    try:
-        pipe.fit(X, log_horizons)
-        predictions = pipe.predict(X).astype(ACTIVATION_DTYPE)
-        correlation = float(np.corrcoef(predictions, log_horizons)[0, 1])
-        if np.isnan(correlation):
-            correlation = 0.0
-        # Get coefficients from the ridge step (in scaled space)
-        coefficients = pipe.named_steps["ridge"].coef_.astype(ACTIVATION_DTYPE)
-    except Exception:
-        predictions = np.zeros(n_samples, dtype=ACTIVATION_DTYPE)
-        correlation = 0.0
-        coefficients = np.zeros(X.shape[1], dtype=ACTIVATION_DTYPE)
+    pipe.fit(X, log_horizons)
+    predictions = pipe.predict(X).astype(ACTIVATION_DTYPE)
+    correlation = float(np.corrcoef(predictions, log_horizons)[0, 1])
+    if np.isnan(correlation):
+        raise RuntimeError(f"Failed to compute correlation for {target_key}: got NaN")
+    # Get coefficients from the ridge step (in scaled space)
+    coefficients = pipe.named_steps["ridge"].coef_.astype(ACTIVATION_DTYPE)
 
     return LinearProbeResult(
         target_key=target_key,
@@ -321,12 +311,11 @@ def _pca_single(
     # Correlate each PC with log horizon
     pc_correlations = []
     for i in range(n_components):
-        try:
-            corr, pval = spearmanr(X_pca[:, i], log_horizons)
-            if np.isnan(corr):
-                corr, pval = 0.0, 1.0
-        except Exception:
-            corr, pval = 0.0, 1.0
+        corr, pval = spearmanr(X_pca[:, i], log_horizons)
+        if np.isnan(corr):
+            raise RuntimeError(
+                f"Failed to compute Spearman correlation for {target_key} PC{i}: got NaN"
+            )
         pc_correlations.append((i, float(corr), float(pval)))
 
     # Sort by absolute correlation
@@ -417,13 +406,10 @@ def run_streaming_analysis(
 
         # Check if already analyzed (skip if cached)
         if linear_path.exists() and pca_path.exists() and embedding_path.exists():
-            try:
-                linear_results[target_key] = LinearProbeResult.load(linear_path)
-                pca_results[target_key] = PCAResult.load(pca_path)
-                embedding_results[target_key] = EmbeddingResult.load(embedding_path)
-                continue
-            except Exception as e:
-                logger.warning(f"  Cache load failed for {target_key}: {e}")
+            linear_results[target_key] = LinearProbeResult.load(linear_path)
+            pca_results[target_key] = PCAResult.load(pca_path)
+            embedding_results[target_key] = EmbeddingResult.load(embedding_path)
+            continue
 
         # Load activations - CRASH if data missing (no fallbacks!)
         try:
@@ -601,11 +587,8 @@ def compute_cross_position_similarity(
 
         # Check cache
         if result_path.exists():
-            try:
-                results[lc_key] = CrossPositionSimilarityResult.load(result_path)
-                continue
-            except Exception:
-                pass
+            results[lc_key] = CrossPositionSimilarityResult.load(result_path)
+            continue
 
         source_keys = sorted(source_targets.keys())
         dest_keys = sorted(dest_targets.keys())
@@ -785,18 +768,11 @@ def compute_continuous_time_probe(
 
         # Check cache
         if result_path.exists():
-            try:
-                results[target_key] = ContinuousTimeProbeResult.load(result_path)
-                continue
-            except Exception:
-                pass
-
-        # Load activations
-        try:
-            X = data.load_target(target_key)
-        except Exception as e:
-            logger.warning(f"Failed to load {target_key}: {e}")
+            results[target_key] = ContinuousTimeProbeResult.load(result_path)
             continue
+
+        # Load activations - CRASH if data missing (no fallbacks!)
+        X = data.load_target(target_key)
 
         n_samples = X.shape[0]
         target_horizons = time_horizons[:n_samples] if n_samples < len(time_horizons) else time_horizons
@@ -815,29 +791,20 @@ def compute_continuous_time_probe(
         ])
 
         # Cross-validation
-        try:
-            cv_folds = min(5, n_samples // 2)
-            scores = cross_val_score(pipe, X, log_horizons, cv=cv_folds, scoring="r2")
-            r2_mean = float(scores.mean())
-            r2_std = float(scores.std())
-        except Exception:
-            r2_mean = 0.0
-            r2_std = 0.0
+        cv_folds = min(5, n_samples // 2)
+        scores = cross_val_score(pipe, X, log_horizons, cv=cv_folds, scoring="r2")
+        r2_mean = float(scores.mean())
+        r2_std = float(scores.std())
 
         # Full fit
-        try:
-            pipe.fit(X, log_horizons)
-            predictions_log = pipe.predict(X).astype(ACTIVATION_DTYPE)
-            # Convert back to months for storage
-            predictions = (10 ** predictions_log - 1).astype(ACTIVATION_DTYPE)
-            correlation = float(np.corrcoef(predictions_log, log_horizons)[0, 1])
-            if np.isnan(correlation):
-                correlation = 0.0
-            coefficients = pipe.named_steps["ridge"].coef_.astype(ACTIVATION_DTYPE)
-        except Exception:
-            predictions = np.zeros(n_samples, dtype=ACTIVATION_DTYPE)
-            correlation = 0.0
-            coefficients = np.zeros(X.shape[1], dtype=ACTIVATION_DTYPE)
+        pipe.fit(X, log_horizons)
+        predictions_log = pipe.predict(X).astype(ACTIVATION_DTYPE)
+        # Convert back to months for storage
+        predictions = (10 ** predictions_log - 1).astype(ACTIVATION_DTYPE)
+        correlation = float(np.corrcoef(predictions_log, log_horizons)[0, 1])
+        if np.isnan(correlation):
+            raise RuntimeError(f"Failed to compute correlation for {target_key}: got NaN")
+        coefficients = pipe.named_steps["ridge"].coef_.astype(ACTIVATION_DTYPE)
 
         result = ContinuousTimeProbeResult(
             target_key=target_key,
@@ -1098,18 +1065,11 @@ def run_no_horizon_analysis(
 
         # Check cache
         if result_path.exists():
-            try:
-                results[target_key] = NoHorizonProjectionResult.load(result_path)
-                continue
-            except Exception as e:
-                logger.warning(f"  Cache load failed for {target_key}: {e}")
-
-        # Load activations
-        try:
-            X = data.load_target(target_key)
-        except Exception as e:
-            logger.warning(f"  Failed to load {target_key}: {e}")
+            results[target_key] = NoHorizonProjectionResult.load(result_path)
             continue
+
+        # Load activations - CRASH if data missing (no fallbacks!)
+        X = data.load_target(target_key)
 
         # Analyze
         result = analyze_no_horizon_projection(target_key, X, data, config)

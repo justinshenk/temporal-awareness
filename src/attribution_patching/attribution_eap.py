@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
-from ..common.device_utils import clear_gpu_memory
-from ..common.hook_utils import attribution_filter, hook_name
-from ..common.profiler import P, profile
+from ..common.hook_utils import hook_name
+from ..common.profiler import P
 from ..common.token_positions import build_position_arrays
 from ..common.patching_types import GradTarget, PatchingMode
 
-from .trajectory_helpers import get_caches_for_attribution, get_seq_len
+from .trajectory_helpers import get_seq_len
 from .standard_attribution import _get_grad_at_for_mode
 from .attribution_vectorized import compute_attribution_vectorized
 
@@ -49,13 +49,12 @@ def _compute_component_gradients(
             f"EAP: Position {metric.divergent_position} out of bounds for seq_len={seq_len} "
             f"(grad_at={grad_at}). Using last position."
         )
-        from dataclasses import replace
         adjusted_metric = replace(metric, divergent_position=-1)
 
     metric_val = adjusted_metric.compute_raw(grad_logits.unsqueeze(0))
 
     # Collect activations for all components
-    components = ["resid_post", "attn_out", "mlp_out"]
+    components = ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
     all_acts = []
     all_info = []  # (component, layer) tuples
 
@@ -68,14 +67,16 @@ def _compute_component_gradients(
                 all_info.append((component, layer))
 
     if not all_acts:
-        return {"resid_post": {}, "attn_out": {}, "mlp_out": {}}
+        return {"resid_pre": {}, "resid_mid": {}, "resid_post": {}, "attn_out": {}, "mlp_out": {}}
 
     grad_list = torch.autograd.grad(
         metric_val, all_acts, retain_graph=True, allow_unused=True
     )
 
     # Organize results by component
-    result: dict[str, dict[int, torch.Tensor]] = {"resid_post": {}, "attn_out": {}, "mlp_out": {}}
+    result: dict[str, dict[int, torch.Tensor]] = {
+        "resid_pre": {}, "resid_mid": {}, "resid_post": {}, "attn_out": {}, "mlp_out": {}
+    }
     for (component, layer), grad in zip(all_info, grad_list):
         if grad is not None:
             result[component][layer] = grad.detach()
@@ -83,43 +84,36 @@ def _compute_component_gradients(
     return result
 
 
-@profile
-def compute_eap(
+def compute_eap_from_caches(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
     mode: PatchingMode,
+    grad_logits: torch.Tensor,
+    clean_cache: dict,
+    corr_cache: dict,
+    grad_cache: dict,
 ) -> dict[str, np.ndarray]:
-    """Edge Attribution Patching: attribute to edges between components.
-
-    Computes attribution for:
-    - attn_out -> resid (attention contribution to residual)
-    - mlp_out -> resid (MLP contribution to residual)
-
-    Gradient computation point is determined by mode:
-    - noising: grad@clean (gradients at clean/source state)
-    - denoising: grad@corrupted (gradients at corrupted/source state)
+    """Edge Attribution Patching using pre-computed caches.
 
     Args:
         runner: Model runner
-        pair: Contrastive pair with trajectories
+        pair: Contrastive pair
         metric: Attribution metric
         mode: "denoising" or "noising"
+        grad_logits: Logits from the gradient trajectory
+        clean_cache: Cached activations from clean trajectory
+        corr_cache: Cached activations from corrupted trajectory
+        grad_cache: Cache with requires_grad=True
 
     Returns:
-        Dict with 'attn' and 'mlp' attribution arrays [n_layers, seq_len]
+        Dict with 'resid', 'attn', 'mlp' attribution arrays [n_layers, seq_len]
     """
     n_layers = runner.n_layers
     grad_at = _get_grad_at_for_mode(mode)
     pos_mapping = pair.position_mapping.inv() if mode == "denoising" else dict(pair.position_mapping.mapping)
 
-    with P("eap_caches"):
-        grad_logits, clean_cache, corr_cache, grad_cache = get_caches_for_attribution(
-            runner, pair, mode, attribution_filter, grad_at
-        )
-
     logger.debug(f"EAP: mode={mode}, grad_at={grad_at}")
-    logger.debug(f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}")
 
     with P("eap_grads"):
         component_grads = _compute_component_gradients(metric, grad_logits, grad_cache, n_layers, grad_at)
@@ -131,12 +125,36 @@ def compute_eap(
 
         clean_pos, corr_pos, valid = build_position_arrays(pos_mapping, clean_len, corr_len)
 
+        resid_pre_scores = np.zeros((n_layers, clean_len))
+        resid_mid_scores = np.zeros((n_layers, clean_len))
         resid_scores = np.zeros((n_layers, clean_len))
         attn_scores = np.zeros((n_layers, clean_len))
         mlp_scores = np.zeros((n_layers, clean_len))
 
         for layer in range(n_layers):
-            # Residual stream
+            # Residual pre (input to layer)
+            resid_pre_grad = component_grads["resid_pre"].get(layer)
+            if resid_pre_grad is not None:
+                resid_pre_name = hook_name(layer, "resid_pre")
+                clean_resid_pre = clean_cache.get(resid_pre_name)
+                corr_resid_pre = corr_cache.get(resid_pre_name)
+                if clean_resid_pre is not None and corr_resid_pre is not None:
+                    resid_pre_scores[layer] = compute_attribution_vectorized(
+                        clean_resid_pre, corr_resid_pre, resid_pre_grad, clean_pos, corr_pos, valid
+                    )
+
+            # Residual mid (after attention, before MLP)
+            resid_mid_grad = component_grads["resid_mid"].get(layer)
+            if resid_mid_grad is not None:
+                resid_mid_name = hook_name(layer, "resid_mid")
+                clean_resid_mid = clean_cache.get(resid_mid_name)
+                corr_resid_mid = corr_cache.get(resid_mid_name)
+                if clean_resid_mid is not None and corr_resid_mid is not None:
+                    resid_mid_scores[layer] = compute_attribution_vectorized(
+                        clean_resid_mid, corr_resid_mid, resid_mid_grad, clean_pos, corr_pos, valid
+                    )
+
+            # Residual post (output of layer)
             resid_grad = component_grads["resid_post"].get(layer)
             if resid_grad is not None:
                 resid_name = hook_name(layer, "resid_post")
@@ -169,8 +187,10 @@ def compute_eap(
                         clean_mlp, corr_mlp, mlp_grad, clean_pos, corr_pos, valid
                     )
 
-    # Clean up GPU memory
-    del clean_cache, corr_cache, grad_cache, component_grads
-    clear_gpu_memory()
-
-    return {"resid": resid_scores, "attn": attn_scores, "mlp": mlp_scores}
+    return {
+        "resid_pre": resid_pre_scores,
+        "resid_mid": resid_mid_scores,
+        "resid": resid_scores,
+        "attn": attn_scores,
+        "mlp": mlp_scores,
+    }

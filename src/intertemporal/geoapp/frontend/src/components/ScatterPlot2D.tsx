@@ -1,6 +1,11 @@
-import { useRef, useState, useCallback, useMemo, useEffect, memo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect, memo, forwardRef, useImperativeHandle } from 'react';
 import { PointData } from './PointCloud';
 import { Tooltip, TooltipData } from './Tooltip';
+
+export interface ScatterPlot2DExportHandle {
+  exportPNG: (scale?: number) => Promise<Blob | null>;
+  exportSVG: () => string;
+}
 
 export interface ScatterPlot2DProps {
   positions: Float32Array;
@@ -21,7 +26,7 @@ export interface ScatterPlot2DProps {
   visibility?: Float32Array;
 }
 
-function ScatterPlot2DInner({
+const ScatterPlot2DInner = forwardRef<ScatterPlot2DExportHandle, ScatterPlot2DProps>(function ScatterPlot2DInner({
   positions,
   colors,
   pointData = [],
@@ -37,7 +42,7 @@ function ScatterPlot2DInner({
   xAxis = 0,
   yAxis = 1,
   visibility,
-}: ScatterPlot2DProps) {
+}, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -51,6 +56,45 @@ function ScatterPlot2DInner({
 
   // Get device pixel ratio for sharp rendering
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+
+  // Expose export methods via ref
+  useImperativeHandle(ref, () => ({
+    exportPNG: async (scale = 2) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+
+      // Create a high-res offscreen canvas
+      const exportCanvas = document.createElement('canvas');
+      const exportWidth = dimensions.width * scale;
+      const exportHeight = dimensions.height * scale;
+      exportCanvas.width = exportWidth;
+      exportCanvas.height = exportHeight;
+
+      const ctx = exportCanvas.getContext('2d');
+      if (!ctx) return null;
+
+      // Draw the current canvas scaled up
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas, 0, 0, exportWidth, exportHeight);
+
+      return new Promise((resolve) => {
+        exportCanvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
+      });
+    },
+    exportSVG: () => {
+      // For canvas-based rendering, create SVG with embedded PNG
+      const canvas = canvasRef.current;
+      if (!canvas) return '';
+
+      const dataUrl = canvas.toDataURL('image/png');
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${dimensions.width}" height="${dimensions.height}" viewBox="0 0 ${dimensions.width} ${dimensions.height}">
+  <image xlink:href="${dataUrl}" width="${dimensions.width}" height="${dimensions.height}"/>
+</svg>`;
+    },
+  }), [dimensions]);
 
   // Convert selectedSampleIdx to array index
   const selectedIndex = useMemo(() => {
@@ -123,8 +167,8 @@ function ScatterPlot2DInner({
     return () => observer.disconnect();
   }, []);
 
-  // Padding for axes labels
-  const padding = { left: 60, right: 30, top: 30, bottom: 50 };
+  // Padding for axes labels (bottom includes space for controls below axis)
+  const padding = { left: 60, right: 30, top: 30, bottom: 70 };
 
   // Transform data coordinates to canvas coordinates
   const toCanvas = useCallback((dataX: number, dataY: number) => {
@@ -330,10 +374,10 @@ function ScatterPlot2DInner({
     ctx.fillStyle = '#1a1613';
     ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, sans-serif';
 
-    // X axis label
+    // X axis label (positioned below tick labels, above controls)
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`PC${xAxis + 1}`, padding.left + plotWidth / 2, dimensions.height - 20);
+    ctx.fillText(`PC${xAxis + 1}`, padding.left + plotWidth / 2, dimensions.height - padding.bottom + 30);
 
     // Y axis label
     ctx.save();
@@ -612,7 +656,7 @@ function ScatterPlot2DInner({
       <div
         style={{
           position: 'absolute',
-          bottom: '12px',
+          bottom: '8px',
           right: '12px',
           display: 'flex',
           gap: '8px',
@@ -650,7 +694,7 @@ function ScatterPlot2DInner({
       <div
         style={{
           position: 'absolute',
-          bottom: '12px',
+          bottom: '8px',
           left: '12px',
           padding: '4px 8px',
           fontSize: '9px',
@@ -672,7 +716,7 @@ function ScatterPlot2DInner({
       />
     </div>
   );
-}
+});
 
 // Memoize to prevent unnecessary re-renders when parent state changes
 export const ScatterPlot2D = memo(ScatterPlot2DInner);

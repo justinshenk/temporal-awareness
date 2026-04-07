@@ -115,9 +115,25 @@ class LayerPositionResult(BaseSchema):
             positions=d.get("positions", []),
         )
         if "denoising_grid" in d and d["denoising_grid"] is not None:
-            result.denoising_grid = np.array(d["denoising_grid"])
+            grid = d["denoising_grid"]
+            # Handle string representation (legacy format)
+            if isinstance(grid, str):
+                grid = np.fromstring(grid.replace("[", "").replace("]", "").replace("\n", " "), sep=" ")
+                n_layers = len(d.get("layers", []))
+                n_pos = len(d.get("positions", []))
+                if n_layers > 0 and n_pos > 0:
+                    grid = grid.reshape(n_layers, n_pos)
+            result.denoising_grid = np.array(grid, dtype=float)
         if "noising_grid" in d and d["noising_grid"] is not None:
-            result.noising_grid = np.array(d["noising_grid"])
+            grid = d["noising_grid"]
+            # Handle string representation (legacy format)
+            if isinstance(grid, str):
+                grid = np.fromstring(grid.replace("[", "").replace("]", "").replace("\n", " "), sep=" ")
+                n_layers = len(d.get("layers", []))
+                n_pos = len(d.get("positions", []))
+                if n_layers > 0 and n_pos > 0:
+                    grid = grid.reshape(n_layers, n_pos)
+            result.noising_grid = np.array(grid, dtype=float)
         return result
 
 
@@ -187,4 +203,48 @@ class FineResults(BaseSchema):
             path_to_head=[PathPatchingResult.from_dict(r) for r in d.get("path_to_head", [])],
             cross_layer_paths=[PathPatchingResult.from_dict(r) for r in d.get("cross_layer_paths", [])],
             multi_site=[MultiSiteResult.from_dict(r) for r in d.get("multi_site", [])],
+        )
+
+
+@dataclass
+class FineAggregatedResults(BaseSchema):
+    """Aggregated fine-grained analysis results across all pairs."""
+
+    pair_results: list[FineResults] = field(default_factory=list)
+
+    @property
+    def n_pairs(self) -> int:
+        return len(self.pair_results)
+
+    def add(self, result: FineResults) -> None:
+        """Add a pair result."""
+        self.pair_results.append(result)
+
+    def print_summary(self) -> None:
+        """Print summary of aggregated results."""
+        print(f"[fine] Aggregated: {self.n_pairs} pairs")
+        total_path_to_mlp = sum(len(r.path_to_mlp) for r in self.pair_results)
+        total_path_to_head = sum(len(r.path_to_head) for r in self.pair_results)
+        total_cross_layer = sum(len(r.cross_layer_paths) for r in self.pair_results)
+        total_multi_site = sum(len(r.multi_site) for r in self.pair_results)
+        if total_path_to_mlp:
+            print(f"  Total path to MLP: {total_path_to_mlp}")
+        if total_path_to_head:
+            print(f"  Total path to head: {total_path_to_head}")
+        if total_cross_layer:
+            print(f"  Total cross-layer paths: {total_cross_layer}")
+        if total_multi_site:
+            print(f"  Total multi-site: {total_multi_site}")
+
+    def to_dict(self, **kwargs) -> dict:
+        """Custom serialization."""
+        return {
+            "pair_results": [r.to_dict() for r in self.pair_results],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "FineAggregatedResults":
+        """Custom deserialization."""
+        return cls(
+            pair_results=[FineResults.from_dict(r) for r in d.get("pair_results", [])],
         )

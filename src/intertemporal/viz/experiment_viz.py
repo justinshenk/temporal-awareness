@@ -90,6 +90,7 @@ def visualize_pair_results(
                 att_dir,
                 position_labels,
                 section_markers,
+                pair_idx=pair_idx,
             )
         if att_result.result.noising:
             visualize_att_patching(
@@ -97,6 +98,7 @@ def visualize_pair_results(
                 att_dir,
                 position_labels,
                 section_markers,
+                pair_idx=pair_idx,
             )
 
     # Step 3: Coarse patching per component

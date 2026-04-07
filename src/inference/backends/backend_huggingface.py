@@ -118,14 +118,31 @@ class HuggingFaceBackend(Backend):
 
         Args:
             layer_idx: Layer index (ignored for embed component)
-            component: Component name (resid_post, attn_out, mlp_out, embed)
+            component: Component name (resid_post, resid_pre, resid_mid, attn_out, mlp_out, embed)
         """
         if component == "embed":
             return self._get_embed_tokens()
 
         layer = self._layers[layer_idx]
-        if component in ("resid_post", "resid_pre", "resid_mid"):
+        if component in ("resid_post", "resid_pre"):
+            # resid_pre: input to the layer (use pre-hook)
+            # resid_post: output of the layer (use post-hook)
             return layer
+        elif component == "resid_mid":
+            # resid_mid: residual stream after attention, before MLP
+            # This is the INPUT to post_attention_layernorm
+            # Llama/Mistral: post_attention_layernorm
+            # GPT-2: ln_2
+            if hasattr(layer, "post_attention_layernorm"):
+                return layer.post_attention_layernorm
+            elif hasattr(layer, "ln_2"):
+                return layer.ln_2
+            else:
+                raise ValueError(
+                    f"Cannot find post-attention layernorm in layer: {type(layer)}. "
+                    "resid_mid requires a model with post_attention_layernorm (Llama/Mistral) "
+                    "or ln_2 (GPT-2)."
+                )
         elif component == "attn_out":
             if hasattr(layer, "attn"):
                 return layer.attn
@@ -598,7 +615,7 @@ class HuggingFaceBackend(Backend):
         hooks_to_capture = []
         for i in range(self._n_layers):
             # Standard component hooks
-            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -654,7 +671,9 @@ class HuggingFaceBackend(Backend):
 
                     return hook_fn
 
-                use_input = component == "resid_pre"
+                # resid_pre: input to layer, resid_mid: input to post_attention_layernorm
+                # Both need to capture the INPUT to their respective modules
+                use_input = component in ("resid_pre", "resid_mid")
                 hooks.append(module.register_forward_hook(make_hook(name, use_input)))
 
         # Check if we need attention patterns or hook_z
@@ -706,7 +725,7 @@ class HuggingFaceBackend(Backend):
         hooks_to_capture = []
         for i in range(self._n_layers):
             # Standard component hooks
-            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -753,7 +772,9 @@ class HuggingFaceBackend(Backend):
 
                     return hook_fn
 
-                use_input = component == "resid_pre"
+                # resid_pre: input to layer, resid_mid: input to post_attention_layernorm
+                # Both need to capture the INPUT to their respective modules
+                use_input = component in ("resid_pre", "resid_mid")
                 hooks.append(module.register_forward_hook(make_hook(name, use_input)))
 
         # Check if we need attention patterns
@@ -882,71 +903,79 @@ class HuggingFaceBackend(Backend):
                 intervention.layer, intervention.component
             )
 
+            def _apply_intervention(hidden, values, target, mode, target_values, alpha):
+                """Apply intervention to hidden state tensor."""
+                if target.is_all_positions:
+                    if mode == "add":
+                        hidden = hidden + values
+                    elif mode == "set":
+                        if values.ndim == 2:
+                            seq_len = min(hidden.shape[1], values.shape[0])
+                            new_hidden = hidden.clone()
+                            new_hidden[:, :seq_len, :] = (
+                                values[:seq_len]
+                                .unsqueeze(0)
+                                .expand(hidden.shape[0], -1, -1)
+                            )
+                            hidden = new_hidden
+                        else:
+                            hidden = values.expand_as(hidden)
+                    elif mode == "mul":
+                        hidden = hidden * values
+                    elif mode == "interpolate":
+                        if target_values is not None and target_values.ndim == 2:
+                            seq_len = min(hidden.shape[1], target_values.shape[0])
+                            new_hidden = hidden.clone()
+                            tv = (
+                                target_values[:seq_len]
+                                .unsqueeze(0)
+                                .expand(hidden.shape[0], -1, -1)
+                            )
+                            new_hidden[:, :seq_len, :] = (
+                                hidden[:, :seq_len, :]
+                                + alpha * (tv - hidden[:, :seq_len, :])
+                            )
+                            hidden = new_hidden
+                        elif target_values is not None:
+                            hidden = hidden + alpha * (target_values - hidden)
+                else:
+                    for i, pos in enumerate(target.positions):
+                        if pos < hidden.shape[1]:
+                            pos_values = (
+                                values[i]
+                                if values.ndim > 1 and i < len(values)
+                                else values
+                            )
+                            if mode == "add":
+                                hidden[:, pos, :] = hidden[:, pos, :] + pos_values
+                            elif mode == "set":
+                                hidden[:, pos, :] = pos_values
+                            elif mode == "mul":
+                                hidden[:, pos, :] = hidden[:, pos, :] * pos_values
+                            elif mode == "interpolate":
+                                if target_values is not None:
+                                    tv = (
+                                        target_values[i]
+                                        if target_values.ndim > 1
+                                        and i < len(target_values)
+                                        else target_values
+                                    )
+                                    hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
+                                        tv - hidden[:, pos, :]
+                                    )
+                return hidden
+
             def make_hook(values, target, mode, target_values, alpha):
+                """Create forward hook for post-layer intervention (resid_post, etc)."""
                 def intervention_hook(mod, input, output):
                     if isinstance(output, tuple):
                         hidden = output[0]
                     else:
                         hidden = output
 
-                    if target.is_all_positions:
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            if values.ndim == 2:
-                                seq_len = min(hidden.shape[1], values.shape[0])
-                                new_hidden = hidden.clone()
-                                new_hidden[:, :seq_len, :] = (
-                                    values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                hidden = new_hidden
-                            else:
-                                hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                        elif mode == "interpolate":
-                            if target_values is not None and target_values.ndim == 2:
-                                seq_len = min(hidden.shape[1], target_values.shape[0])
-                                new_hidden = hidden.clone()
-                                tv = (
-                                    target_values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                new_hidden[:, :seq_len, :] = (
-                                    hidden[:, :seq_len, :]
-                                    + alpha * (tv - hidden[:, :seq_len, :])
-                                )
-                                hidden = new_hidden
-                            elif target_values is not None:
-                                hidden = hidden + alpha * (target_values - hidden)
-                    else:
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                pos_values = (
-                                    values[i]
-                                    if values.ndim > 1 and i < len(values)
-                                    else values
-                                )
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-                                elif mode == "interpolate":
-                                    if target_values is not None:
-                                        tv = (
-                                            target_values[i]
-                                            if target_values.ndim > 1
-                                            and i < len(target_values)
-                                            else target_values
-                                        )
-                                        hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
-                                            tv - hidden[:, pos, :]
-                                        )
+                    hidden = _apply_intervention(
+                        hidden, values, target, mode, target_values, alpha
+                    )
 
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
@@ -954,9 +983,35 @@ class HuggingFaceBackend(Backend):
 
                 return intervention_hook
 
-            hook = module.register_forward_hook(
-                make_hook(values, target, mode, target_values, alpha)
-            )
+            def make_pre_hook(values, target, mode, target_values, alpha):
+                """Create forward pre-hook for pre-layer intervention (resid_pre)."""
+                def intervention_pre_hook(mod, input):
+                    if isinstance(input, tuple):
+                        hidden = input[0]
+                    else:
+                        hidden = input
+
+                    hidden = _apply_intervention(
+                        hidden, values, target, mode, target_values, alpha
+                    )
+
+                    if isinstance(input, tuple):
+                        return (hidden,) + input[1:]
+                    return (hidden,)
+
+                return intervention_pre_hook
+
+            # Use pre-hook for resid_pre/resid_mid (modify input), post-hook for others (modify output)
+            # resid_pre: input to the layer
+            # resid_mid: input to post_attention_layernorm (= residual stream after attention)
+            if intervention.component in ("resid_pre", "resid_mid"):
+                hook = module.register_forward_pre_hook(
+                    make_pre_hook(values, target, mode, target_values, alpha)
+                )
+            else:
+                hook = module.register_forward_hook(
+                    make_hook(values, target, mode, target_values, alpha)
+                )
             hooks.append(hook)
 
         with torch.no_grad():
@@ -980,7 +1035,7 @@ class HuggingFaceBackend(Backend):
         # Set up cache hooks
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))
@@ -998,7 +1053,9 @@ class HuggingFaceBackend(Backend):
 
                 return hook_fn
 
-            use_input = component == "resid_pre"
+            # resid_pre: input to layer, resid_mid: input to post_attention_layernorm
+            # Both need to capture the INPUT to their respective modules
+            use_input = component in ("resid_pre", "resid_mid")
             hooks.append(module.register_forward_hook(make_cache_hook(name, use_input)))
 
         # Set up intervention hooks
@@ -1034,102 +1091,124 @@ class HuggingFaceBackend(Backend):
                 intervention.layer, intervention.component
             )
 
+            def _apply_intervention_cache(hidden, values, target, mode, alpha, target_values):
+                """Apply intervention to hidden state tensor."""
+                if target.is_all_positions:
+                    if mode == "add":
+                        hidden = hidden + values
+                    elif mode == "set":
+                        if values.ndim == 2:
+                            seq_len = min(hidden.shape[1], values.shape[0])
+                            new_hidden = hidden.clone()
+                            new_hidden[:, :seq_len, :] = (
+                                values[:seq_len]
+                                .unsqueeze(0)
+                                .expand(hidden.shape[0], -1, -1)
+                            )
+                            hidden = new_hidden
+                        else:
+                            hidden = values.expand_as(hidden)
+                    elif mode == "mul":
+                        hidden = hidden * values
+                    elif mode == "interpolate":
+                        if target_values is not None:
+                            if target_values.ndim == 2:
+                                seq_len = min(
+                                    hidden.shape[1], target_values.shape[0]
+                                )
+                                new_hidden = hidden.clone()
+                                tgt = (
+                                    target_values[:seq_len]
+                                    .unsqueeze(0)
+                                    .expand(hidden.shape[0], -1, -1)
+                                )
+                                new_hidden[:, :seq_len, :] = hidden[
+                                    :, :seq_len, :
+                                ] + alpha * (tgt - hidden[:, :seq_len, :])
+                                hidden = new_hidden
+                            else:
+                                tgt = target_values.expand_as(hidden)
+                                hidden = hidden + alpha * (tgt - hidden)
+                        else:
+                            if values.ndim == 2:
+                                seq_len = min(hidden.shape[1], values.shape[0])
+                                new_hidden = hidden.clone()
+                                tgt = (
+                                    values[:seq_len]
+                                    .unsqueeze(0)
+                                    .expand(hidden.shape[0], -1, -1)
+                                )
+                                new_hidden[:, :seq_len, :] = hidden[
+                                    :, :seq_len, :
+                                ] + alpha * (tgt - hidden[:, :seq_len, :])
+                                hidden = new_hidden
+                            else:
+                                tgt = values.expand_as(hidden)
+                                hidden = hidden + alpha * (tgt - hidden)
+                else:
+                    for i, pos in enumerate(target.positions):
+                        if pos < hidden.shape[1]:
+                            pos_values = (
+                                values[i]
+                                if values.ndim > 1 and i < len(values)
+                                else values
+                            )
+                            if mode == "add":
+                                hidden[:, pos, :] = hidden[:, pos, :] + pos_values
+                            elif mode == "set":
+                                hidden[:, pos, :] = pos_values
+                            elif mode == "mul":
+                                hidden[:, pos, :] = hidden[:, pos, :] * pos_values
+                            elif mode == "interpolate":
+                                if target_values is not None:
+                                    tgt_val = (
+                                        target_values[i]
+                                        if target_values.ndim > 1
+                                        and i < len(target_values)
+                                        else target_values
+                                    )
+                                else:
+                                    tgt_val = pos_values
+                                hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
+                                    tgt_val - hidden[:, pos, :]
+                                )
+                return hidden
+
             def make_intervention_hook(values, target, mode, alpha, target_values):
+                """Create forward hook for post-layer intervention."""
                 def intervention_hook(mod, input, output):
                     if isinstance(output, tuple):
                         hidden = output[0]
                     else:
                         hidden = output
-
-                    if target.is_all_positions:
-                        if mode == "add":
-                            hidden = hidden + values
-                        elif mode == "set":
-                            if values.ndim == 2:
-                                seq_len = min(hidden.shape[1], values.shape[0])
-                                new_hidden = hidden.clone()
-                                new_hidden[:, :seq_len, :] = (
-                                    values[:seq_len]
-                                    .unsqueeze(0)
-                                    .expand(hidden.shape[0], -1, -1)
-                                )
-                                hidden = new_hidden
-                            else:
-                                hidden = values.expand_as(hidden)
-                        elif mode == "mul":
-                            hidden = hidden * values
-                        elif mode == "interpolate":
-                            if target_values is not None:
-                                if target_values.ndim == 2:
-                                    seq_len = min(
-                                        hidden.shape[1], target_values.shape[0]
-                                    )
-                                    new_hidden = hidden.clone()
-                                    tgt = (
-                                        target_values[:seq_len]
-                                        .unsqueeze(0)
-                                        .expand(hidden.shape[0], -1, -1)
-                                    )
-                                    new_hidden[:, :seq_len, :] = hidden[
-                                        :, :seq_len, :
-                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
-                                    hidden = new_hidden
-                                else:
-                                    tgt = target_values.expand_as(hidden)
-                                    hidden = hidden + alpha * (tgt - hidden)
-                            else:
-                                if values.ndim == 2:
-                                    seq_len = min(hidden.shape[1], values.shape[0])
-                                    new_hidden = hidden.clone()
-                                    tgt = (
-                                        values[:seq_len]
-                                        .unsqueeze(0)
-                                        .expand(hidden.shape[0], -1, -1)
-                                    )
-                                    new_hidden[:, :seq_len, :] = hidden[
-                                        :, :seq_len, :
-                                    ] + alpha * (tgt - hidden[:, :seq_len, :])
-                                    hidden = new_hidden
-                                else:
-                                    tgt = values.expand_as(hidden)
-                                    hidden = hidden + alpha * (tgt - hidden)
-                    else:
-                        for i, pos in enumerate(target.positions):
-                            if pos < hidden.shape[1]:
-                                pos_values = (
-                                    values[i]
-                                    if values.ndim > 1 and i < len(values)
-                                    else values
-                                )
-                                if mode == "add":
-                                    hidden[:, pos, :] = hidden[:, pos, :] + pos_values
-                                elif mode == "set":
-                                    hidden[:, pos, :] = pos_values
-                                elif mode == "mul":
-                                    hidden[:, pos, :] = hidden[:, pos, :] * pos_values
-                                elif mode == "interpolate":
-                                    if target_values is not None:
-                                        tgt_val = (
-                                            target_values[i]
-                                            if target_values.ndim > 1
-                                            and i < len(target_values)
-                                            else target_values
-                                        )
-                                    else:
-                                        tgt_val = pos_values
-                                    hidden[:, pos, :] = hidden[:, pos, :] + alpha * (
-                                        tgt_val - hidden[:, pos, :]
-                                    )
-
+                    hidden = _apply_intervention_cache(hidden, values, target, mode, alpha, target_values)
                     if isinstance(output, tuple):
                         return (hidden,) + output[1:]
                     return hidden
-
                 return intervention_hook
 
-            hook = module.register_forward_hook(
-                make_intervention_hook(values, target, mode, alpha, target_values)
-            )
+            def make_intervention_pre_hook(values, target, mode, alpha, target_values):
+                """Create forward pre-hook for pre-layer intervention (resid_pre, resid_mid)."""
+                def intervention_pre_hook(mod, input):
+                    if isinstance(input, tuple):
+                        hidden = input[0]
+                    else:
+                        hidden = input
+                    hidden = _apply_intervention_cache(hidden, values, target, mode, alpha, target_values)
+                    if isinstance(input, tuple):
+                        return (hidden,) + input[1:]
+                    return (hidden,)
+                return intervention_pre_hook
+
+            # Use pre-hook for resid_pre/resid_mid (modify input), post-hook for others (modify output)
+            if intervention.component in ("resid_pre", "resid_mid"):
+                hook = module.register_forward_pre_hook(
+                    make_intervention_pre_hook(values, target, mode, alpha, target_values)
+                )
+            else:
+                hook = module.register_forward_hook(
+                    make_intervention_hook(values, target, mode, alpha, target_values)
+                )
             hooks.append(hook)
 
         try:

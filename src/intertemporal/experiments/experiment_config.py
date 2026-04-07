@@ -27,7 +27,7 @@ PAIR_REQ_CFG: dict = {}
 # Default Step Configs
 # =============================================================================
 
-# Coarse patching: component options are "resid_pre", "resid_post", "attn_out", "mlp_out"
+# Coarse patching: component options are "resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"
 COARSE_CFG: dict = {
     "enabled": True,
     "no_cache": False,
@@ -36,8 +36,9 @@ COARSE_CFG: dict = {
     ### CONFIG VALUES  ###
     ######################
     "layer_steps": [1],
-    "pos_steps": [15],
-    "components": ["resid_post", "attn_out", "mlp_out", "resid_pre"],
+    "pos_steps": [1],
+    "components": ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"],
+    # "components": ["resid_post"],
 }
 
 # Attribution patching
@@ -53,8 +54,11 @@ ATTRIB_CFG: dict = {
     ######################
     "ig_steps": 20,
     "methods": ["standard", "eap_ig", "eap"],
-    "components": ["mlp_out", "attn_out", "resid_post", "resid_pre"],
+    "components": ["resid_pre", "resid_mid", "mlp_out", "attn_out", "resid_post"],
     "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    # "methods": ["standard"],
+    # "components": ["resid_post"],
+    # "quadrature": ["midpoint"],
 }
 
 # Difference-of-means analysis
@@ -76,7 +80,7 @@ MLP_CFG: dict = {
     ######################
     ### CONFIG VALUES  ###
     ######################
-    "layers": [19, 21, 24, 28, 31, 34, 35],
+    "layers": [18, 19, 21, 23, 24, 28, 31, 34, 35],
     "n_top_neurons": 50,
     # Neuron attribution is computed as part of MLP analysis
     # Each neuron's logit_contribution = activation_diff * W_out @ logit_direction
@@ -90,20 +94,17 @@ ATTN_CFG: dict = {
     ######################
     ### CONFIG VALUES  ###
     ######################
-    "layers": [18, 19, 21, 24, 28, 31, 34, 35],
+    "layers": [18, 19, 21, 23, 24, 28, 31, 34, 35],
     "store_patterns": True,
     "dynamic_threshold": 0.05,
     # Head attribution
     "head_attribution_enabled": True,
     # Position patching for top heads
     "position_patching_enabled": True,
-    "n_top_heads_for_position": 4,
+    "n_top_heads_for_position": 10,
 }
 
 # Fine-grained patching (path patching, multi-site)
-# NOTE: Head attribution and position patching are in ATTN_CFG
-# NOTE: Neuron attribution is in MLP_CFG
-# NOTE: Layer-position patching is in ATTN_CFG (for attn_out) and MLP_CFG (for mlp_out)
 FINE_CFG: dict = {
     "enabled": True,
     "no_cache": False,
@@ -113,12 +114,12 @@ FINE_CFG: dict = {
     ######################
     # Path patching
     "path_patching_enabled": True,
-    "dest_mlp_layers": [28, 29, 30, 31, 34],
-    "dest_head_layers": [28, 29, 30, 31, 34],
-    "n_top_source_heads": 5,
+    "dest_mlp_layers": [18, 19, 21, 23, 24, 28, 31, 34, 35],
+    "dest_head_layers": [18, 19, 21, 23, 24, 28, 31, 34, 35],
+    "n_top_source_heads": 10,
     # Multi-site interaction
     "multi_site_enabled": True,
-    "n_components_multi_site": 5,
+    "n_components_multi_site": 10,
 }
 
 
@@ -166,40 +167,77 @@ class ExperimentConfig(BaseSchema):
         cfg = PromptDatasetConfig.from_dict(self.dataset_config)
         return PreferenceDataset.make_prefix(cfg.get_id(), self.model)
 
-    def save(self, output_dir: Path) -> Path:
-        """Save config to experiment_config.json in output_dir.
+    def save(self, output_dir: Path, update_working: bool = False) -> Path:
+        """Save config to output_dir.
 
-        Also saves to original_experiment_config.json if it doesn't exist yet.
+        Files:
+        - original_config.json: Immutable first-run config (never updated)
+        - working_config.json: Mutable config loaded on subsequent runs
+        - experiment_config.json: Current run config (always updated, for compatibility)
+
+        Args:
+            output_dir: Directory to save config files
+            update_working: If True, update working_config.json with current config
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save current config
+        config_dict = self.to_dict()
+
+        # Save current config (for compatibility)
         path = output_dir / "experiment_config.json"
         with open(path, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
+            json.dump(config_dict, f, indent=2)
 
         # Save original config only on first run
-        original_path = output_dir / "original_experiment_config.json"
+        original_path = output_dir / "original_config.json"
+        working_path = output_dir / "working_config.json"
+
         if not original_path.exists():
+            # First run: create both original and working configs
             with open(original_path, "w") as f:
-                json.dump(self.to_dict(), f, indent=2)
+                json.dump(config_dict, f, indent=2)
+            with open(working_path, "w") as f:
+                json.dump(config_dict, f, indent=2)
+        elif update_working:
+            # Update working config when --update-config is used
+            with open(working_path, "w") as f:
+                json.dump(config_dict, f, indent=2)
 
         return path
 
     @classmethod
+    def load_working(cls, output_dir: Path) -> "ExperimentConfig | None":
+        """Load config from working_config.json."""
+        output_dir = Path(output_dir)
+        working_path = output_dir / "working_config.json"
+
+        if working_path.exists():
+            with open(working_path) as f:
+                data = json.load(f)
+            return cls.from_dict(data)
+        return None
+
+    @classmethod
     def load(cls, output_dir: Path) -> "ExperimentConfig | None":
-        """Load config from original_experiment_config.json (preferred) or experiment_config.json."""
+        """Load config from original_config.json (preferred) or legacy files."""
         output_dir = Path(output_dir)
 
-        # Prefer original config (immutable first-run config)
-        original_path = output_dir / "original_experiment_config.json"
+        # Prefer new original_config.json
+        original_path = output_dir / "original_config.json"
         if original_path.exists():
             with open(original_path) as f:
                 data = json.load(f)
             return cls.from_dict(data)
 
-        # Fall back to current config
+        # Fall back to legacy original_experiment_config.json
+        legacy_original = output_dir / "original_experiment_config.json"
+        if legacy_original.exists():
+            with open(legacy_original) as f:
+                data = json.load(f)
+            return cls.from_dict(data)
+
+        # Fall back to experiment_config.json
         path = output_dir / "experiment_config.json"
         if not path.exists():
             return None

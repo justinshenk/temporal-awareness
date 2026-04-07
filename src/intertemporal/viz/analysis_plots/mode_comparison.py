@@ -17,9 +17,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ....common import profile
+from ....viz.plot_helpers import save_figure
 
 if TYPE_CHECKING:
     from ....attribution_patching import AttributionSummary, AttrPatchAggregatedResults
+
+
+# Styling constants to match activation patching plots
+POINT_SIZE = 180
+EDGE_COLOR = "black"
+EDGE_WIDTH = 1.5
+ALPHA = 0.85
+LABEL_FONTSIZE = 9
+TITLE_FONTSIZE = 16
+AXIS_FONTSIZE = 14
 
 
 ComponentType = Literal["attn", "mlp", "resid"]
@@ -132,9 +143,42 @@ def plot_mode_bar_chart(
     axes[-1].set_xticklabels([str(l) for l in layers])
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
+
+
+def _setup_scatter_axes(ax: plt.Axes, title: str) -> None:
+    """Configure axes for scatter plot with polished style."""
+    ax.set_facecolor("white")
+
+    ax.set_xlabel("Recovery (Denoising)", fontsize=AXIS_FONTSIZE, fontweight="bold")
+    ax.set_ylabel("Disruption (Noising)", fontsize=AXIS_FONTSIZE, fontweight="bold")
+    ax.set_title(title, fontsize=TITLE_FONTSIZE, fontweight="bold")
+
+    ax.tick_params(axis="both", labelsize=12)
+    ax.minorticks_on()
+    ax.grid(True, which="major", alpha=0.5, linewidth=0.8)
+    ax.grid(True, which="minor", alpha=0.25, linewidth=0.4)
+    ax.set_axisbelow(True)
+
+
+def _add_scatter_point_label(ax: plt.Axes, x: float, y: float, label: str) -> None:
+    """Add annotation label to a scatter point with polished style."""
+    ax.annotate(
+        label,
+        (x, y),
+        fontsize=LABEL_FONTSIZE,
+        fontweight="bold",
+        ha="center",
+        va="bottom",
+        xytext=(0, 8),
+        textcoords="offset points",
+        bbox=dict(
+            boxstyle="round,pad=0.2",
+            facecolor="white",
+            edgecolor="gray",
+            alpha=0.8,
+        ),
+    )
 
 
 @profile
@@ -158,9 +202,11 @@ def plot_mode_scatter(
     if denoising_summary is None or noising_summary is None:
         return
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 8), facecolor="white")
 
-    colors = {"attn": "#4CAF50", "mlp": "#FF9800"}
+    # Viridis-based colors for components
+    colors = {"attn": "#2ca02c", "mlp": "#ff7f0e"}
+    component_labels = {"attn": "Attention", "mlp": "MLP"}
     components: list[ComponentType] = ["attn", "mlp"]
 
     for comp in components:
@@ -175,19 +221,23 @@ def plot_mode_scatter(
         denoise_vals = [denoise_layer_scores[l] for l in common_layers]
         noise_vals = [noise_layer_scores[l] for l in common_layers]
 
-        ax.scatter(denoise_vals, noise_vals, c=colors[comp], label=comp, s=80, alpha=0.8)
+        ax.scatter(
+            denoise_vals,
+            noise_vals,
+            c=colors[comp],
+            label=component_labels[comp],
+            s=POINT_SIZE,
+            edgecolors=EDGE_COLOR,
+            linewidth=EDGE_WIDTH,
+            alpha=ALPHA,
+            zorder=3,
+        )
 
+        # Add labels to all points
         for layer, d, n in zip(common_layers, denoise_vals, noise_vals):
-            ax.annotate(
-                str(layer),
-                (d, n),
-                textcoords="offset points",
-                xytext=(5, 5),
-                fontsize=8,
-                alpha=0.7,
-            )
+            _add_scatter_point_label(ax, d, n, f"L{layer}")
 
-    # Add diagonal line
+    # Add diagonal reference line
     all_vals = []
     for comp in components:
         all_vals.extend(_get_component_scores_by_layer(denoising_summary, comp).values())
@@ -200,26 +250,20 @@ def plot_mode_scatter(
             [min_val - margin, max_val + margin],
             [min_val - margin, max_val + margin],
             "k--",
-            alpha=0.3,
-            label="x = y",
+            alpha=0.7,
+            linewidth=2.5,
+            zorder=1,
         )
 
-    ax.axhline(y=0, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
-    ax.axvline(x=0, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
+    # Reference lines at 0
+    ax.axhline(y=0, color="#888888", linestyle=":", alpha=0.8, linewidth=2, zorder=1)
+    ax.axvline(x=0, color="#888888", linestyle=":", alpha=0.8, linewidth=2, zorder=1)
 
-    ax.set_xlabel("Denoising Attribution Score")
-    ax.set_ylabel("Noising Attribution Score")
-    ax.set_title(f"{title}\n(each point = layer, annotated with layer index)")
-    ax.legend(title="Component")
-    ax.minorticks_on()
-    ax.grid(True, which="major", alpha=0.5, linewidth=0.6)
-    ax.grid(True, which="minor", alpha=0.25, linewidth=0.3)
-    ax.set_axisbelow(True)
+    _setup_scatter_axes(ax, title)
+    ax.legend(title="Component", fontsize=11, title_fontsize=12)
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile
@@ -241,47 +285,72 @@ def plot_component_scatter_grid(
     components: list[ComponentType] = ["attn", "mlp", "resid"]
     component_labels = ["Attention", "MLP", "Residual"]
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    fig.suptitle(f"{title_prefix}Denoising vs Noising by Component", fontsize=14)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6), facecolor="white")
+    fig.suptitle(
+        f"{title_prefix}Denoising vs Noising by Component",
+        fontsize=TITLE_FONTSIZE,
+        fontweight="bold",
+    )
 
     for ax, comp, label in zip(axes, components, component_labels):
+        ax.set_facecolor("white")
+
         denoise_scores = _get_component_scores_by_layer(agg.denoising_agg, comp)
         noise_scores = _get_component_scores_by_layer(agg.noising_agg, comp)
 
         common_layers = sorted(set(denoise_scores.keys()) & set(noise_scores.keys()))
         if not common_layers:
             ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-            ax.set_title(label)
+            ax.set_title(label, fontsize=14, fontweight="bold")
             continue
 
         denoise_vals = [denoise_scores[l] for l in common_layers]
         noise_vals = [noise_scores[l] for l in common_layers]
 
-        ax.scatter(denoise_vals, noise_vals, c="#1976D2", s=60, alpha=0.7)
+        # Viridis colormap for layers
+        colors = plt.cm.viridis(np.linspace(0, 1, len(common_layers)))
 
-        for layer, d, n in zip(common_layers, denoise_vals, noise_vals):
-            ax.annotate(str(layer), (d, n), fontsize=7, alpha=0.6)
+        for i, (layer, d, n) in enumerate(zip(common_layers, denoise_vals, noise_vals)):
+            ax.scatter(
+                d, n,
+                c=[colors[i]],
+                s=POINT_SIZE,
+                edgecolors=EDGE_COLOR,
+                linewidth=EDGE_WIDTH,
+                alpha=ALPHA,
+                zorder=3,
+            )
+            _add_scatter_point_label(ax, d, n, f"L{layer}")
 
-        # Diagonal
+        # Diagonal reference line
         all_vals = denoise_vals + noise_vals
         if all_vals:
-            lims = [min(all_vals), max(all_vals)]
-            ax.plot(lims, lims, "k--", alpha=0.3)
+            min_val, max_val = min(all_vals), max(all_vals)
+            margin = (max_val - min_val) * 0.1
+            ax.plot(
+                [min_val - margin, max_val + margin],
+                [min_val - margin, max_val + margin],
+                "k--",
+                alpha=0.7,
+                linewidth=2.5,
+                zorder=1,
+            )
 
-        ax.axhline(y=0, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
-        ax.axvline(x=0, color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
-        ax.set_xlabel("Denoising Score")
-        ax.set_ylabel("Noising Score")
-        ax.set_title(label)
+        # Reference lines at 0
+        ax.axhline(y=0, color="#888888", linestyle=":", alpha=0.8, linewidth=2, zorder=1)
+        ax.axvline(x=0, color="#888888", linestyle=":", alpha=0.8, linewidth=2, zorder=1)
+
+        ax.set_xlabel("Recovery (Denoising)", fontsize=12, fontweight="bold")
+        ax.set_ylabel("Disruption (Noising)", fontsize=12, fontweight="bold")
+        ax.set_title(label, fontsize=14, fontweight="bold")
+        ax.tick_params(axis="both", labelsize=11)
         ax.minorticks_on()
-        ax.grid(True, which="major", alpha=0.5, linewidth=0.6)
-        ax.grid(True, which="minor", alpha=0.25, linewidth=0.3)
+        ax.grid(True, which="major", alpha=0.5, linewidth=0.8)
+        ax.grid(True, which="minor", alpha=0.25, linewidth=0.4)
         ax.set_axisbelow(True)
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile

@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from ....common.logging import log
-from ....viz.plot_helpers import finalize_plot
+from ....viz.plot_helpers import add_pair_label, finalize_plot, save_figure
 from . import AttnAggregatedResults, AttnPairResult
 from ..fine.fine_results import LayerPositionResult
 
@@ -393,8 +393,7 @@ Available data:
     ax.set_title('Attention Analysis - Layer Summary', fontsize=14)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_source_attention_by_layer(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -436,8 +435,7 @@ def _plot_source_attention_by_layer(agg: AttnAggregatedResults, output_path: Pat
     ax.grid(axis='y', alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_top_attending_heads(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -472,8 +470,7 @@ def _plot_top_attending_heads(agg: AttnAggregatedResults, output_path: Path) -> 
 
     fig.suptitle('Top Source-Attending Heads by Layer', fontsize=14, y=1.02)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_dynamic_heads(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -514,8 +511,7 @@ def _plot_dynamic_heads(agg: AttnAggregatedResults, output_path: Path) -> None:
     ax.grid(axis='y', alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_attention_to_source_summary(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -587,8 +583,7 @@ def _plot_attention_to_source_summary(agg: AttnAggregatedResults, output_path: P
     ax.legend(handles=patches, loc='upper right')
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_head_importance_vs_shift(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -656,8 +651,7 @@ def _plot_head_importance_vs_shift(agg: AttnAggregatedResults, output_path: Path
     ax.grid(alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_cross_layer_consistency(agg: AttnAggregatedResults, output_path: Path) -> None:
@@ -727,8 +721,7 @@ def _plot_cross_layer_consistency(agg: AttnAggregatedResults, output_path: Path)
     ax.grid(axis='y', alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -741,6 +734,7 @@ def visualize_attn_pair(
     output_dir: Path,
     runner: "BinaryChoiceRunner | None" = None,
     mapping: "SamplePositionMapping | None" = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Generate attention analysis visualizations for a single pair.
 
@@ -871,8 +865,8 @@ backend with a supported model.
     ax.set_title(f'Attention Analysis - Pair {result.pair_idx}', fontsize=14)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_pair_head_attention(result: AttnPairResult, output_path: Path) -> None:
@@ -910,8 +904,8 @@ def _plot_pair_head_attention(result: AttnPairResult, output_path: Path) -> None
 
     fig.suptitle(f'Pair {result.pair_idx}: Head Attention to Source Positions', fontsize=14, y=1.02)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_pair_attention_heatmaps(
@@ -981,8 +975,8 @@ def _plot_pair_attention_heatmaps(
     fig.suptitle(f'Pair {result.pair_idx}: Attention to {source_names}',
                  fontsize=14)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_pair_attention_flow(
@@ -1090,8 +1084,8 @@ def _plot_pair_attention_flow(
               fontsize=9, framealpha=0.9)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _annotate_key_tokens(
@@ -1291,8 +1285,8 @@ def _plot_pair_top_attended(
     fig.suptitle(f'Pair {result.pair_idx}: Top Attended Positions per Head',
                  fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_pair_attention_sidebyside(
@@ -1375,8 +1369,8 @@ def _plot_pair_attention_sidebyside(
     fig.suptitle(f'Pair {result.pair_idx}: Clean vs Corrupted Attention to {source_names}',
                  fontsize=12)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_pair_attention_diff(
@@ -1456,8 +1450,8 @@ def _plot_pair_attention_diff(
     fig.suptitle(f'Pair {result.pair_idx}: Attention Difference to {source_names}\n(Red = more in clean, Blue = more in corrupted)',
                  fontsize=12)
     plt.tight_layout(rect=[0, 0, 1, 0.94])
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    add_pair_label(fig, result.pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -1552,8 +1546,7 @@ def _plot_source_attention_bars(result: AttnPairResult, output_path: Path) -> No
     ax.grid(axis='y', alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_cosine_consistency(result: AttnPairResult, output_path: Path) -> None:
@@ -1611,8 +1604,7 @@ def _plot_cosine_consistency(result: AttnPairResult, output_path: Path) -> None:
     ax.grid(axis='y', alpha=GRID_ALPHA)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -1723,8 +1715,7 @@ def visualize_qk_analysis(
                  fontsize=12, y=1.02)
     plt.tight_layout()
     output_path = output_dir / 'attn_qk_analysis.png'
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
     print(f"Saved: {output_path}")
     return 1
@@ -1839,8 +1830,7 @@ def visualize_attn_ov_projection(
 
     plt.tight_layout()
     output_path = output_dir / "attn_ov_projection.png"
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
     log(f"[attn_viz] Saved OV projection: {output_path}")
     return 1
@@ -1994,8 +1984,7 @@ def visualize_intermediate_attention(
     )
     plt.tight_layout()
     output_path = output_dir / 'attn_intermediate.png'
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
     log(f"[attn_viz] Saved intermediate attention: {output_path}")
     return 1
@@ -2086,6 +2075,7 @@ def visualize_head_attribution(
             result.head_attribution,
             output_dir / "head_attribution_heatmap.png",
             title="Head Attribution: Denoising Recovery",
+            pair_idx=result.pair_idx,
         )
         n_plots += 1
 
@@ -2094,6 +2084,7 @@ def visualize_head_attribution(
         _plot_head_attribution_bar(
             result.head_attribution,
             output_dir / "head_attribution_bar.png",
+            pair_idx=result.pair_idx,
         )
         n_plots += 1
 
@@ -2104,6 +2095,7 @@ def _plot_head_attribution_heatmap(
     head_attr: "HeadAttributionResults",
     output_path: Path,
     title: str = "Head-Level Patching",
+    pair_idx: int | None = None,
 ) -> None:
     """Plot head attribution as a heatmap (Layer x Head Index).
 
@@ -2143,14 +2135,15 @@ def _plot_head_attribution_heatmap(
     ax.set_title(title, fontsize=14, fontweight="bold")
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    add_pair_label(fig, pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_head_attribution_bar(
     head_attr: "HeadAttributionResults",
     output_path: Path,
     n_top: int = 20,
+    pair_idx: int | None = None,
 ) -> None:
     """Plot top heads by attribution with cumulative effect.
 
@@ -2196,8 +2189,8 @@ def _plot_head_attribution_bar(
     ax1.set_title(f"Top {len(labels)} Attention Heads by Attribution", fontsize=14, fontweight="bold")
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    add_pair_label(fig, pair_idx)
+    save_figure(None, output_path, dpi=DPI)
 
 
 def visualize_head_redundancy(
@@ -2288,8 +2281,7 @@ def _plot_head_redundancy_gap(
     ax.legend(handles=legend_elements, loc='upper right', fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches='tight')
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _get_position_label_for_layer_pos(pos: int, mapping: "SamplePositionMapping | None") -> str:

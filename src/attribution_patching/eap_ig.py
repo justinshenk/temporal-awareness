@@ -6,6 +6,7 @@ Uses embedding-level interpolation for mathematically correct Integrated Gradien
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,11 +15,10 @@ import torch
 from ..common.contrastive_pair import ContrastivePair
 from ..common.device_utils import clear_gpu_memory
 from ..common.hook_utils import attribution_filter, hook_name
-from ..common.profiler import P, profile
+from ..common.profiler import P
 from ..common.patching_types import PatchingMode
 from ..inference.interventions import interpolate_embeddings
 
-from .trajectory_helpers import get_cache
 from .embedding_alignment import PaddingStrategy, align_embeddings
 from .attribution_quadrature import QuadratureMethod, get_quadrature
 
@@ -65,43 +65,36 @@ def _compute_edge_attribution(
     return torch.sum((c - r) * g).detach().cpu().item()
 
 
-@profile
-def compute_eap_ig(
+def compute_eap_ig_from_caches(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
     mode: PatchingMode,
+    clean_cache: dict,
+    corr_cache: dict,
     n_steps: int = 10,
     padding_strategy: PaddingStrategy = PaddingStrategy.ZERO,
     quadrature: QuadratureMethod = QuadratureMethod.MIDPOINT,
 ) -> dict[str, np.ndarray]:
-    """Edge Attribution Patching with Integrated Gradients.
-
-    True Integrated Gradients: interpolates embeddings, not activations.
-    Uses anchor-based alignment to handle different-length sequences.
-
-    Formula: IG = (clean - corrupted) * integral(gradient at interpolated points)
-
-    Note: EAP-IG integrates gradients along the full interpolation path,
-    so no separate grad_at parameter is needed.
+    """EAP-IG using pre-computed base caches.
 
     Args:
         runner: Model runner
-        pair: Contrastive pair with trajectories
+        pair: Contrastive pair
         metric: Attribution metric
         mode: "denoising" or "noising"
-        n_steps: Integration steps (higher = more accurate but slower)
-        padding_strategy: How to pad segments between anchors
-        quadrature: Quadrature method for numerical integration
+        clean_cache: Cached activations from clean trajectory (for difference computation)
+        corr_cache: Cached activations from corrupted trajectory (for difference computation)
+        n_steps: Integration steps
+        padding_strategy: How to pad segments
+        quadrature: Quadrature method
 
     Returns:
-        Dict with 'attn' and 'mlp' attribution arrays [n_layers, aligned_len]
+        Dict with 'resid', 'attn', 'mlp' attribution arrays [n_layers, aligned_len]
     """
     n_layers = runner.n_layers
 
     logger.debug(f"EAP-IG: mode={mode}, n_steps={n_steps}, quadrature={quadrature}")
-    logger.debug(f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}")
-    logger.debug(f"  metric divergent_position={metric.divergent_position}")
 
     # Determine clean/corrupted based on mode
     clean_traj = pair.corrupted_traj if mode == "denoising" else pair.clean_traj
@@ -114,14 +107,8 @@ def compute_eap_ig(
             clean_embeds, corrupted_embeds, pair.position_mapping,
             padding_strategy=padding_strategy,
         )
-
-    with P("eap_ig_base_activations"):
-        _, clean_cache = get_cache(runner, pair, "clean", mode, attribution_filter, with_grad=False)
-        with torch.no_grad():
-            corrupted_base = runner.compute_trajectory_with_cache(
-                corrupted_traj.token_ids, attribution_filter
-            )
-        corrupted_cache = corrupted_base.internals
+        # Free original embeddings after alignment (aligned holds its own copies)
+        del clean_embeds, corrupted_embeds
 
     # Initialize accumulators
     aligned_len = aligned.aligned_len
@@ -134,20 +121,28 @@ def compute_eap_ig(
             f"EAP-IG: Position {metric.divergent_position} out of bounds for aligned_len={aligned_len}. "
             "Using last position."
         )
-        from dataclasses import replace
         adjusted_metric = replace(metric, divergent_position=-1)
+
+    resid_pre_scores = np.zeros((n_layers, aligned_len))
+    resid_mid_scores = np.zeros((n_layers, aligned_len))
     resid_scores = np.zeros((n_layers, aligned_len))
     attn_scores = np.zeros((n_layers, aligned_len))
     mlp_scores = np.zeros((n_layers, aligned_len))
 
     clean_np = aligned.clean_embeds[0].detach().cpu().numpy()
-    corrupted_np = aligned.corrupted_embeds[0].detach().cpu().numpy()
+
+    # Free GPU tensors immediately after converting to numpy (position maps still needed)
+    aligned.clean_embeds = None
+    aligned.corrupted_embeds = None
+    clear_gpu_memory()
 
     # Get quadrature nodes and weights
     quad = get_quadrature(n_steps, quadrature, a=0.0, b=1.0)
 
     with P("eap_ig_integration"):
+        print(f"[eap-ig] Starting integration: {n_steps} steps, {n_layers} layers, {aligned_len} positions", flush=True)
         for step_idx in range(n_steps):
+            print(f"[eap-ig]   Step {step_idx+1}/{n_steps}...", flush=True)
             alpha = quad.nodes[step_idx]
             weight = quad.weights[step_idx]
 
@@ -162,7 +157,7 @@ def compute_eap_ig(
             metric_val = adjusted_metric.compute_raw(interp_traj.full_logits.unsqueeze(0))
 
             # Collect activations for all components
-            components = ["resid_post", "attn_out", "mlp_out"]
+            components = ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
             all_acts = []
             all_info = []  # (component, layer) tuples
 
@@ -177,16 +172,16 @@ def compute_eap_ig(
                 continue
 
             grad_list = torch.autograd.grad(
-                metric_val, all_acts, retain_graph=True, allow_unused=True
+                metric_val, all_acts, retain_graph=False, allow_unused=True
             )
 
             # Organize gradients by component
             component_grads: dict[str, dict[int, torch.Tensor]] = {
-                "resid_post": {}, "attn_out": {}, "mlp_out": {}
+                "resid_pre": {}, "resid_mid": {}, "resid_post": {}, "attn_out": {}, "mlp_out": {}
             }
             for (component, layer), grad in zip(all_info, grad_list):
                 if grad is not None:
-                    component_grads[component][layer] = grad
+                    component_grads[component][layer] = grad.detach()
 
             # Accumulate attribution scores with quadrature weights
             for layer in range(n_layers):
@@ -196,45 +191,60 @@ def compute_eap_ig(
                     if clean_orig is None or corr_orig is None:
                         continue
 
-                    # Residual stream attribution
+                    # Residual pre (input to layer) attribution
+                    resid_pre_grad = component_grads["resid_pre"].get(layer)
+                    if resid_pre_grad is not None:
+                        resid_pre_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
+                            clean_cache, corr_cache, resid_pre_grad, layer, "resid_pre",
+                            aligned_idx, clean_orig, corr_orig,
+                        )
+
+                    # Residual mid (after attention, before MLP) attribution
+                    resid_mid_grad = component_grads["resid_mid"].get(layer)
+                    if resid_mid_grad is not None:
+                        resid_mid_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
+                            clean_cache, corr_cache, resid_mid_grad, layer, "resid_mid",
+                            aligned_idx, clean_orig, corr_orig,
+                        )
+
+                    # Residual post (output of layer) attribution
                     resid_grad = component_grads["resid_post"].get(layer)
                     if resid_grad is not None:
                         resid_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
-                            clean_cache, corrupted_cache, resid_grad, layer, "resid_post",
+                            clean_cache, corr_cache, resid_grad, layer, "resid_post",
                             aligned_idx, clean_orig, corr_orig,
                         )
 
-                    # Attention attribution using attn_out gradient
+                    # Attention attribution
                     attn_grad = component_grads["attn_out"].get(layer)
                     if attn_grad is not None:
                         attn_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
-                            clean_cache, corrupted_cache, attn_grad, layer, "attn_out",
+                            clean_cache, corr_cache, attn_grad, layer, "attn_out",
                             aligned_idx, clean_orig, corr_orig,
                         )
 
-                    # MLP attribution using mlp_out gradient
+                    # MLP attribution
                     mlp_grad = component_grads["mlp_out"].get(layer)
                     if mlp_grad is not None:
                         mlp_scores[layer, aligned_idx] += weight * _compute_edge_attribution(
-                            clean_cache, corrupted_cache, mlp_grad, layer, "mlp_out",
+                            clean_cache, corr_cache, mlp_grad, layer, "mlp_out",
                             aligned_idx, clean_orig, corr_orig,
                         )
 
-            # Clean up intermediate trajectory each step
-            del interp_traj, component_grads
-
-            # Aggressive GPU memory cleanup every step (was every 3 - caused 17GB peak)
+            # Clean up ALL intermediate objects each step to prevent memory accumulation
+            del embed_intervention, interp_traj, component_grads, metric_val, all_acts, all_info, grad_list
             clear_gpu_memory(aggressive=True)
 
     # Save values before cleanup
     clean_pos_map = aligned.clean_pos_map
     corrupted_pos_map = aligned.corrupted_pos_map
 
-    # Clean up GPU memory
-    del clean_cache, corrupted_cache, aligned
+    del aligned
     clear_gpu_memory()
 
     return {
+        "resid_pre": resid_pre_scores,
+        "resid_mid": resid_mid_scores,
         "resid": resid_scores,
         "attn": attn_scores,
         "mlp": mlp_scores,

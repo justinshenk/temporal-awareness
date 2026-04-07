@@ -91,11 +91,15 @@ def _validate_dataset(data_dir: Path, dataset_name: str) -> tuple[int, list[str]
             "Run: uv run python scripts/intertemporal/compute_geometry_analysis.py"
         )
 
-    # Check available methods
+    # Check available methods - only PCA is required, UMAP/t-SNE are optional
     available_methods = data_loader.get_available_methods()
-    missing_methods = [m for m in ["pca", "umap", "tsne"] if m not in available_methods]
+    if "pca" not in available_methods:
+        raise RuntimeError(
+            f"PCA embeddings required but not found for {dataset_name}!\n"
+            f"Run: uv run python scripts/intertemporal/compute_geometry_analysis.py"
+        )
 
-    return pca_count, missing_methods
+    return pca_count, available_methods
 
 
 def create_app(
@@ -226,15 +230,11 @@ def create_app(
             print(f"  [{dataset_name}] Validating...")
 
             # Phase 0: Validate data directory structure
-            pca_count, missing_methods = _validate_dataset(data_dir, dataset_name)
-
-            if missing_methods:
-                print(f"  [{dataset_name}] FATAL: Missing methods: {missing_methods}")
-                raise RuntimeError(f"Dataset {dataset_name} missing required methods: {missing_methods}")
+            pca_count, available_methods = _validate_dataset(data_dir, dataset_name)
 
             print(f"    Data structure: OK")
             print(f"    PCA embeddings: {pca_count} files")
-            print(f"    Methods: pca, umap, tsne (all required - OK)")
+            print(f"    Available methods: {available_methods}")
 
             data_loader = data_loaders[dataset_name]
 

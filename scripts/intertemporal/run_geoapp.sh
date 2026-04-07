@@ -168,15 +168,16 @@ for i in {1..30}; do
 done
 echo ""
 
-# Open browser
-echo -e "${GREEN}Opening browser...${NC}"
-# Open the first dataset by default
-FIRST_DATASET="${DATASETS[0]}"
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    open "http://localhost:3000/${FIRST_DATASET}"
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    xdg-open "http://localhost:3000/${FIRST_DATASET}" 2>/dev/null || echo "Please open http://localhost:3000/${FIRST_DATASET} in your browser"
-fi
+# Open browser for ALL datasets
+echo -e "${GREEN}Opening browser for all ${#DATASETS[@]} datasets...${NC}"
+for dataset in "${DATASETS[@]}"; do
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        open "http://localhost:3000/${dataset}"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        xdg-open "http://localhost:3000/${dataset}" 2>/dev/null || echo "Please open http://localhost:3000/${dataset} in your browser"
+    fi
+    sleep 0.5  # Small delay between opening windows
+done
 
 echo
 echo -e "${BLUE}========================================${NC}"

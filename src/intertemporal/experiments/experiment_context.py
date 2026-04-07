@@ -11,16 +11,19 @@ from ...common.file_io import save_json
 from ...common.logging import log, log_progress
 from ...common.token_tree import TokenTree
 from ...common.contrastive_pair import ContrastivePair
-from ...inference import get_recommended_backend_interventions, InterventionTarget
+from ...inference import get_recommended_backend_interventions
 from ...inference.backends import ModelBackend
 from ...binary_choice import BinaryChoiceRunner
-from ...activation_patching.coarse import CoarseActPatchResults, CoarseActPatchAggregatedResults
+from ...activation_patching.coarse import (
+    CoarseActPatchResults,
+    CoarseActPatchAggregatedResults,
+)
 from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResults
 from .experiment_utils import ExperimentMixin
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from .mlp import MLPPairResult, MLPAggregatedResults
 from .attn import AttnPairResult, AttnAggregatedResults
-from .fine import FineResults
+from .fine import FineResults, FineAggregatedResults
 from .analysis import ProcessedResults
 from ..common import get_experiment_dir
 from ..common.contrastive_utils import get_contrastive_preferences, PrefPairRequirement
@@ -28,7 +31,11 @@ from ..common.contrastive_preferences import ContrastivePreferences
 from ..preference import PreferenceDataset
 from ..prompt import PromptDataset
 from ..common.sample_position_mapping import SamplePositionMapping
-from ..viz.tokenization_viz import visualize_pair_alignment, visualize_position_mapping_pair, visualize_tokenization
+from ..viz.tokenization_viz import (
+    visualize_pair_alignment,
+    visualize_position_mapping_pair,
+    visualize_tokenization,
+)
 from .experiment_config import ExperimentConfig
 
 
@@ -52,14 +59,20 @@ class ExperimentContext(ExperimentMixin):
     _runner: BinaryChoiceRunner | None = field(default=None, init=False)
     _pref_pairs: list[ContrastivePreferences] | None = field(default=None, init=False)
     _pair_to_pref_idx: dict[int, int] = field(default_factory=dict, init=False)
-    _position_mappings: dict[int, tuple[SamplePositionMapping, SamplePositionMapping]] = field(default_factory=dict, init=False)
+    _position_mappings: dict[
+        int, tuple[SamplePositionMapping, SamplePositionMapping]
+    ] = field(default_factory=dict, init=False)
     _use_cached_pairs: bool = field(default=False, init=False)
 
     # Results storage (ordered to match run_experiment steps)
     attrib_patching: dict[int, AttrPatchPairResult] = field(default_factory=dict)
     attrib_agg: AttrPatchAggregatedResults | None = None
-    coarse_patching: dict[tuple[int, str], CoarseActPatchResults] = field(default_factory=dict)
-    coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] = field(default_factory=dict)
+    coarse_patching: dict[tuple[int, str], CoarseActPatchResults] = field(
+        default_factory=dict
+    )
+    coarse_agg_by_component: dict[str, CoarseActPatchAggregatedResults] = field(
+        default_factory=dict
+    )
     diffmeans_patching: dict[int, DiffMeansPairResult] = field(default_factory=dict)
     diffmeans_agg: DiffMeansAggregatedResults | None = None
     mlp: dict[int, MLPPairResult] = field(default_factory=dict)
@@ -67,11 +80,17 @@ class ExperimentContext(ExperimentMixin):
     attn: dict[int, AttnPairResult] = field(default_factory=dict)
     attn_agg: AttnAggregatedResults | None = None
     fine: dict[int, FineResults] = field(default_factory=dict)
+    fine_agg: FineAggregatedResults | None = None
     processed_results: ProcessedResults | None = None
 
     @property
     def viz_enabled(self) -> bool:
         return self.cfg.viz_cfg.get("enabled", True)
+
+    @property
+    def save_svg(self) -> bool:
+        """Whether to save SVG files alongside PNGs (camera-ready mode)."""
+        return self.cfg.viz_cfg.get("save_svg", False)
 
     @property
     def only_viz_agg(self) -> bool:
@@ -82,9 +101,20 @@ class ExperimentContext(ExperimentMixin):
     def runner(self) -> BinaryChoiceRunner:
         """Cached runner for this experiment."""
         if self._runner is None:
-            backend = ModelBackend(self.backend) if self.backend else get_recommended_backend_interventions()
-            self._runner = BinaryChoiceRunner(self.pref_data.model, device=get_device(), backend=backend)
+            backend = (
+                ModelBackend(self.backend)
+                if self.backend
+                else get_recommended_backend_interventions()
+            )
+            self._runner = BinaryChoiceRunner(
+                self.pref_data.model, device=get_device(), backend=backend
+            )
         return self._runner
+
+    @runner.setter
+    def runner(self, value: BinaryChoiceRunner | None) -> None:
+        """Set or clear the runner."""
+        self._runner = value
 
     @property
     def pairs(self) -> list[ContrastivePair]:
@@ -117,13 +147,21 @@ class ExperimentContext(ExperimentMixin):
 
     def _build_pairs(self) -> None:
         """Build contrastive pairs from preference data."""
-        pair_req = PrefPairRequirement.from_dict(self.cfg.pair_req_cfg) if self.cfg.pair_req_cfg else None
+        pair_req = (
+            PrefPairRequirement.from_dict(self.cfg.pair_req_cfg)
+            if self.cfg.pair_req_cfg
+            else None
+        )
         all_prefs = get_contrastive_preferences(self.pref_data, req=pair_req)
 
         # When using cached pairs, use the cached count instead of config
         if self._use_cached_pairs:
             cached_count = self.get_cached_pair_count()
-            n_select = cached_count if cached_count > 0 else (self.cfg.n_pairs or len(all_prefs))
+            n_select = (
+                cached_count
+                if cached_count > 0
+                else (self.cfg.n_pairs or len(all_prefs))
+            )
             log(f"[ctx] Using cached pair count: {n_select}")
         else:
             n_select = self.cfg.n_pairs or len(all_prefs)
@@ -139,12 +177,22 @@ class ExperimentContext(ExperimentMixin):
             long_prompt_sample = self.get_prompt_sample(pref.long_term.sample_idx)
 
             if not short_prompt_sample or not long_prompt_sample:
-                raise ValueError(f"prompt_dataset required but missing PromptSample for sample_idx {pref.short_term.sample_idx} or {pref.long_term.sample_idx}")
+                raise ValueError(
+                    f"prompt_dataset required but missing PromptSample for sample_idx {pref.short_term.sample_idx} or {pref.long_term.sample_idx}"
+                )
 
-            short_term_mapping = SamplePositionMapping.build(short_prompt_sample, self.runner, pref=pref.short_term)
-            long_term_mapping = SamplePositionMapping.build(long_prompt_sample, self.runner, pref=pref.long_term)
+            short_term_mapping = SamplePositionMapping.build(
+                short_prompt_sample, self.runner, pref=pref.short_term
+            )
+            long_term_mapping = SamplePositionMapping.build(
+                long_prompt_sample, self.runner, pref=pref.long_term
+            )
 
-            pair = pref.get_contrastive_pair(self.runner, short_term_mapping=short_term_mapping, long_term_mapping=long_term_mapping)
+            pair = pref.get_contrastive_pair(
+                self.runner,
+                short_term_mapping=short_term_mapping,
+                long_term_mapping=long_term_mapping,
+            )
             if pair:
                 idx = len(self._pairs)
                 self._pairs.append(pair)
@@ -164,7 +212,9 @@ class ExperimentContext(ExperimentMixin):
         return None
 
     @property
-    def position_mappings(self) -> dict[int, tuple[SamplePositionMapping, SamplePositionMapping]]:
+    def position_mappings(
+        self,
+    ) -> dict[int, tuple[SamplePositionMapping, SamplePositionMapping]]:
         """Position mappings per pair: {pair_idx: (short_mapping, long_mapping)}."""
         if not self._position_mappings and self._pairs is None:
             _ = self.pairs
@@ -182,7 +232,11 @@ class ExperimentContext(ExperimentMixin):
         if self._pref_pairs is None:
             _ = self.pairs
         pref_idx = self._pair_to_pref_idx.get(pair_idx)
-        return self._pref_pairs[pref_idx] if pref_idx is not None and self._pref_pairs else None
+        return (
+            self._pref_pairs[pref_idx]
+            if pref_idx is not None and self._pref_pairs
+            else None
+        )
 
     @property
     def viz_dir(self) -> Path:
@@ -197,16 +251,6 @@ class ExperimentContext(ExperimentMixin):
     def get_pair_dir(self, pair_idx: int) -> Path:
         return self.pairs_dir / f"pair_{pair_idx}"
 
-    def get_union_target(self, component: str = "resid_post") -> InterventionTarget:
-        """Get union target from attribution or coarse patching aggregates."""
-        if self.attrib_agg:
-            target = self.attrib_agg.get_target()
-            if target:
-                return target
-        if component in self.coarse_agg_by_component:
-            return self.coarse_agg_by_component[component].get_union_target(component=component)
-        return InterventionTarget.all(component=component)
-
     def get_runner(self) -> BinaryChoiceRunner:
         return self.runner
 
@@ -214,11 +258,17 @@ class ExperimentContext(ExperimentMixin):
     def best_contrastive_pair(self):
         return self.pairs[0] if self.pairs else None
 
-    def save_token_trees(self, pair_idx: int, pair: ContrastivePair, output_dir: Path) -> None:
+    def save_token_trees(
+        self, pair_idx: int, pair: ContrastivePair, output_dir: Path
+    ) -> None:
         """Save analyzed TokenTree for a contrastive pair."""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        tree = TokenTree.from_trajectories([pair.clean_traj, pair.corrupted_traj], groups_per_traj=[[0], [1]], fork_arms=[(0, 1)])
+        tree = TokenTree.from_trajectories(
+            [pair.clean_traj, pair.corrupted_traj],
+            groups_per_traj=[[0], [1]],
+            fork_arms=[(0, 1)],
+        )
         tree.pop_heavy()
         with open(output_dir / "token_tree.json", "w") as f:
             json.dump(tree.to_dict(), f, indent=2)
@@ -239,6 +289,13 @@ class ExperimentContext(ExperimentMixin):
             self.save_contrastive_pref(pair_idx)
         log(f"[ctx] Saved contrastive preferences for {len(self.pairs)} pairs")
 
+    def is_analysis_cached(self, pair_idx: int) -> bool:
+        """Check if analysis artifacts exist for a pair."""
+        return (
+            self.get_contrastive_pref_path(pair_idx).exists()
+            and self.get_position_mapping_path(pair_idx, "long").exists()
+        )
+
     def get_position_mapping_path(self, pair_idx: int, sample: str = "long") -> Path:
         if sample == "short":
             return self.get_pair_dir(pair_idx) / "short_position_mapping.json"
@@ -255,19 +312,33 @@ class ExperimentContext(ExperimentMixin):
 
         short_prompt_sample = self.get_prompt_sample(pref.short_term.sample_idx)
         if not short_prompt_sample:
-            raise ValueError(f"Missing PromptSample for sample_idx {pref.short_term.sample_idx}")
-        mapping_short = SamplePositionMapping.build(short_prompt_sample, self.runner, pref=pref.short_term)
-        save_json(mapping_short.to_dict(), self.get_position_mapping_path(pair_idx, "short"))
+            raise ValueError(
+                f"Missing PromptSample for sample_idx {pref.short_term.sample_idx}"
+            )
+        mapping_short = SamplePositionMapping.build(
+            short_prompt_sample, self.runner, pref=pref.short_term
+        )
+        save_json(
+            mapping_short.to_dict(), self.get_position_mapping_path(pair_idx, "short")
+        )
 
         long_prompt_sample = self.get_prompt_sample(pref.long_term.sample_idx)
         if not long_prompt_sample:
-            raise ValueError(f"Missing PromptSample for sample_idx {pref.long_term.sample_idx}")
-        mapping_long = SamplePositionMapping.build(long_prompt_sample, self.runner, pref=pref.long_term)
-        save_json(mapping_long.to_dict(), self.get_position_mapping_path(pair_idx, "long"))
+            raise ValueError(
+                f"Missing PromptSample for sample_idx {pref.long_term.sample_idx}"
+            )
+        mapping_long = SamplePositionMapping.build(
+            long_prompt_sample, self.runner, pref=pref.long_term
+        )
+        save_json(
+            mapping_long.to_dict(), self.get_position_mapping_path(pair_idx, "long")
+        )
 
         if self.pairs and pair_idx < len(self.pairs):
             pair_pos_mapping = self.pairs[pair_idx].position_mapping
-            save_json(pair_pos_mapping.to_dict(), pair_dir / "pair_position_mapping.json")
+            save_json(
+                pair_pos_mapping.to_dict(), pair_dir / "pair_position_mapping.json"
+            )
 
     def save_position_mapping_viz(self, pair_idx: int) -> None:
         """Generate per-pair position mapping visualizations."""
@@ -283,13 +354,28 @@ class ExperimentContext(ExperimentMixin):
 
         if self.pairs and pair_idx < len(self.pairs):
             pair_pos_mapping = self.pairs[pair_idx].position_mapping
-            visualize_pair_alignment(pair_pos_mapping, pair_dir / "pair_position_mapping.png")
+            visualize_pair_alignment(
+                pair_pos_mapping,
+                pair_dir / "pair_position_mapping.png",
+                pair_idx=pair_idx,
+            )
 
         if mapping_short and mapping_long:
-            visualize_position_mapping_pair(mapping_short, mapping_long, pair_dir / "position_mapping.png")
+            visualize_position_mapping_pair(
+                mapping_short,
+                mapping_long,
+                pair_dir / "position_mapping.png",
+                pair_idx=pair_idx,
+            )
 
         if self.pairs and pair_idx < len(self.pairs) and self.runner is not None:
-            visualize_tokenization([self.pairs[pair_idx]], self.runner, pair_dir, max_pairs=1)
+            visualize_tokenization(
+                [self.pairs[pair_idx]],
+                self.runner,
+                pair_dir,
+                max_pairs=1,
+                pair_idx=pair_idx,
+            )
 
     def save_all_position_mapping_data(self) -> None:
         """Save position mapping JSON for all pairs."""
@@ -309,13 +395,17 @@ class ExperimentContext(ExperimentMixin):
         if not skip_viz:
             self.save_all_position_mapping_viz()
 
-    def load_position_mapping(self, pair_idx: int, sample: str = "long") -> SamplePositionMapping | None:
+    def load_position_mapping(
+        self, pair_idx: int, sample: str = "long"
+    ) -> SamplePositionMapping | None:
         path = self.get_position_mapping_path(pair_idx, sample)
         if path.exists():
             return SamplePositionMapping.from_dict(json.loads(path.read_text()))
         return None
 
-    def get_position_mapping(self, pair_idx: int, sample: str = "long") -> SamplePositionMapping | None:
+    def get_position_mapping(
+        self, pair_idx: int, sample: str = "long"
+    ) -> SamplePositionMapping | None:
         mapping = self.load_position_mapping(pair_idx, sample)
         if mapping is not None:
             return mapping
@@ -324,7 +414,9 @@ class ExperimentContext(ExperimentMixin):
             pref = pref_pair.long_term if sample == "long" else pref_pair.short_term
             prompt_sample = self.get_prompt_sample(pref.sample_idx)
             if prompt_sample:
-                return SamplePositionMapping.build(prompt_sample, self._runner, pref=pref)
+                return SamplePositionMapping.build(
+                    prompt_sample, self._runner, pref=pref
+                )
         return None
 
     def get_representative_position_mapping(self) -> SamplePositionMapping | None:
@@ -332,5 +424,7 @@ class ExperimentContext(ExperimentMixin):
             pref = self._pref_pairs[0].long_term
             prompt_sample = self.get_prompt_sample(pref.sample_idx)
             if prompt_sample:
-                return SamplePositionMapping.build(prompt_sample, self._runner, pref=pref)
+                return SamplePositionMapping.build(
+                    prompt_sample, self._runner, pref=pref
+                )
         return self.load_position_mapping(0)

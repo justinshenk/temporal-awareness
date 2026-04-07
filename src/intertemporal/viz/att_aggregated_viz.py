@@ -14,6 +14,7 @@ from scipy import stats
 from ...attribution_patching import AttrPatchAggregatedResults, AttributionSummary
 from ...attribution_patching.attribution_key import AttributionKey
 from ...common import profile
+from ...viz.plot_helpers import save_figure
 from ...viz.patching_heatmaps import (
     PatchingHeatmapConfig,
     plot_patching_heatmap,
@@ -298,8 +299,7 @@ def _generate_matrix_plots(
             )
             plt.tight_layout()
 
-            plt.savefig(matrix_dir / f"{component}_{mode}.png", dpi=150, bbox_inches="tight")
-            plt.close()
+            save_figure(None, matrix_dir / f"{component}_{mode}.png", dpi=150)
 
     print(f"[viz] Attribution matrix plots saved to {matrix_dir}")
 

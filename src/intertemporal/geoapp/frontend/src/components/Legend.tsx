@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 export interface LegendItem {
   label: string;
@@ -21,6 +21,10 @@ export interface LegendProps {
   tiers?: TierLabel[];
   tierColors?: string[];
   className?: string;
+  /** Controlled collapsed state */
+  collapsed?: boolean;
+  /** Callback when collapsed state changes */
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export const Legend: React.FC<LegendProps> = ({
@@ -30,12 +34,71 @@ export const Legend: React.FC<LegendProps> = ({
   tiers,
   tierColors = ['#30123b', '#4777ef', '#1bd0d5', '#62fc6b', '#d2e935', '#fe9b2d', '#d23105'],
   className = '',
+  collapsed,
+  onCollapsedChange,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const isCollapsed = collapsed !== undefined ? collapsed : internalCollapsed;
+  const setIsCollapsed = (value: boolean) => {
+    if (onCollapsedChange) {
+      onCollapsedChange(value);
+    } else {
+      setInternalCollapsed(value);
+    }
+  };
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const legendRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: position.x,
+      startPosY: position.y,
+    };
+  }, [position]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !dragRef.current) return;
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      setPosition({
+        x: dragRef.current.startPosX + dx,
+        y: dragRef.current.startPosY + dy,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      dragRef.current = null;
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   return (
     <div
-      className={`absolute ${isCollapsed ? 'bottom-16' : 'bottom-4'} right-4 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-white/60 ${isCollapsed ? 'p-2' : 'p-3'} min-w-[40px] ${isCollapsed ? '' : 'max-w-[200px]'} ${className}`}
+      ref={legendRef}
+      onMouseDown={handleMouseDown}
+      style={{
+        transform: `translate(${position.x}px, ${position.y}px)`,
+        cursor: isDragging ? 'grabbing' : 'grab',
+      }}
+      className={`absolute ${isCollapsed ? 'bottom-16' : 'bottom-4'} right-4 bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-white/60 ${isCollapsed ? 'p-2' : 'p-3'} min-w-[40px] ${isCollapsed ? '' : 'max-w-[200px]'} select-none ${className}`}
     >
       <div className="flex items-center justify-between gap-2">
         <h4 className={`text-xs font-semibold text-[#1a1613] uppercase tracking-wide ${isCollapsed ? 'hidden' : ''}`}>

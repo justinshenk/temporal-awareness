@@ -61,14 +61,20 @@ def canonicalize_unit(unit: str) -> str:
 
 
 def format_time_value(
-    value: float, unit: str, min_length: int = 0, with_dot: bool = False
+    value: float,
+    unit: str,
+    min_length: int = 0,
+    with_dot: bool = False,
+    pos_ratio: float = 0.15,
 ) -> str:
     """Format a time value with appropriate unit singularization.
 
     Args:
         value: The numeric time value
         unit: The time unit (e.g., "years", "months")
-        min_length: Minimum length of result, padded with spaces (25% left, 75% right)
+        min_length: Minimum length of result, padded with spaces
+        with_dot: Whether to append a period
+        pos_ratio: Position of text as ratio of total width (0.0=left, 1.0=right)
 
     Returns:
         Formatted string like "5 years" or "1 month"
@@ -86,9 +92,8 @@ def format_time_value(
         result += "."
 
     if min_length > 0 and len(result) < min_length:
-        # Position text at 25% from left edge of total width
-        # (not 25% of padding, but 25% of total min_length)
-        pad_left = min_length // 4  # Text starts at 25% mark
+        # Position text at pos_ratio from left edge of total width
+        pad_left = int(min_length * pos_ratio)
         pad_right = min_length - len(result) - pad_left
         if pad_right < 0:
             # Content too long, just use remaining space on right

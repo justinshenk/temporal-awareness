@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate static plots from geometry analysis. STRICT MODE - crashes if data missing.
+"""Generate static plots from PCA/embedding analysis. Linear probes visualized separately.
 
 Usage:
     # Visualize ALL datasets in out/geo/
@@ -10,9 +10,12 @@ Usage:
 
     # Quick mode (skip per-target plots)
     uv run python scripts/intertemporal/visualize_geometry_analysis.py --quick
+
+Note: For linear probe visualizations, use compute_linear_probes.py --viz
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -23,24 +26,22 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.common.device_utils import clear_gpu_memory
-from src.intertemporal.common.semantic_positions import PROMPT_POSITIONS, RESPONSE_POSITIONS
 from src.intertemporal.data.default_configs import DEFAULT_MODEL
 from src.intertemporal.geometry import GeometryConfig, TargetSpec
 from src.intertemporal.geometry.geometry_analysis import (
-    ContinuousTimeProbeResult,
     CrossPositionSimilarityResult,
-    LinearProbeResult,
     PCAResult,
 )
 from src.intertemporal.geometry.geometry_data import load_visualization_data
 from src.intertemporal.geometry.geometry_plotting import generate_all_plots
+from src.intertemporal.geometry.geometry_utils import (
+    COMPONENTS,
+    LAYERS,
+    POSITIONS,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger(__name__)
-
-LAYERS = [0, 1, 3, 12, 18, 19, 21, 24, 28, 31, 34, 35]
-COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
-POSITIONS = PROMPT_POSITIONS + RESPONSE_POSITIONS
 
 
 def build_targets() -> list[TargetSpec]:
@@ -51,104 +52,57 @@ def build_targets() -> list[TargetSpec]:
     ]
 
 
-def load_results(results_dir: Path) -> tuple[dict, dict]:
-    """Load linear probe and PCA results. STRICT - raises on failure."""
-    import json
-    linear_probe = {}
+def load_pca_results(results_dir: Path) -> dict:
+    """Load PCA results. STRICT - raises on failure."""
     pca = {}
-
-    lp_dir = results_dir / "linear_probe"
     pca_dir = results_dir / "pca"
 
-    if not lp_dir.exists():
-        raise RuntimeError(f"Linear probe results missing: {lp_dir}")
     if not pca_dir.exists():
         raise RuntimeError(f"PCA results missing: {pca_dir}")
 
-    # Load linear probe (simplified - no predictions needed for plotting)
-    for d in lp_dir.iterdir():
-        if d.is_dir():
-            metrics_file = d / "metrics.json"
-            if metrics_file.exists():
-                with open(metrics_file) as f:
-                    m = json.load(f)
-                # Create result with minimal data for plotting
-                predictions = np.array([])  # Empty - not needed for most plots
-                if (d / "predictions.npy").exists():
-                    predictions = np.load(d / "predictions.npy")
-                coefficients = np.array([])  # Empty - not needed for most plots
-                if (d / "coefficients.npy").exists():
-                    coefficients = np.load(d / "coefficients.npy")
-                result = LinearProbeResult(
-                    target_key=m.get("target_key", d.name),
-                    r2_mean=m.get("r2_mean", 0.0),
-                    r2_std=m.get("r2_std", 0.0),
-                    correlation=m.get("correlation", 0.0) if m.get("correlation") is not None else 0.0,
-                    predictions=predictions,
-                    coefficients=coefficients,
-                )
-                linear_probe[result.target_key] = result
-
-    # Load PCA (simplified)
     for d in pca_dir.iterdir():
         if d.is_dir():
             metrics_file = d / "metrics.json"
             if metrics_file.exists():
                 with open(metrics_file) as f:
                     m = json.load(f)
-                components = np.array([[]])  # Minimal
+                components = np.array([[]])
                 if (d / "components.npy").exists():
                     components = np.load(d / "components.npy")
-                # pc_correlations format: [[pc_idx, corr], ...]
                 pc_corrs = m.get("pc_correlations", [[0, 0.0]])
                 result = PCAResult(
                     target_key=m.get("target_key", d.name),
                     explained_variance=np.array(m.get("explained_variance", [1.0])),
                     pc_correlations=pc_corrs,
                     components=components,
-                    transformed=np.array([]),  # Not loaded - too large
+                    transformed=np.array([]),
                 )
                 pca[result.target_key] = result
 
-    if not linear_probe:
-        raise RuntimeError("No linear probe results loaded")
     if not pca:
         raise RuntimeError("No PCA results loaded")
 
-    log.info(f"Loaded {len(linear_probe)} linear probes, {len(pca)} PCA results")
-    return linear_probe, pca
+    log.info(f"Loaded {len(pca)} PCA results")
+    return pca
 
 
-def load_optional(results_dir: Path) -> tuple[dict | None, dict | None]:
-    """Load optional results (cross-position, continuous-time)."""
-    cross_pos = None
-    cont_time = None
-
+def load_cross_position(results_dir: Path) -> dict | None:
+    """Load cross-position similarity results."""
     cross_dir = results_dir / "cross_position_similarity"
-    if cross_dir.exists():
-        cross_pos = {}
-        for d in cross_dir.iterdir():
-            if d.is_dir():
-                try:
-                    r = CrossPositionSimilarityResult.load(d)
-                    cross_pos[f"L{r.layer}_{r.component}"] = r
-                except Exception:
-                    pass
+    if not cross_dir.exists():
+        return None
+
+    cross_pos = {}
+    for d in cross_dir.iterdir():
+        if d.is_dir():
+            try:
+                r = CrossPositionSimilarityResult.load(d)
+                cross_pos[f"L{r.layer}_{r.component}"] = r
+            except Exception:
+                pass
+    if cross_pos:
         log.info(f"Loaded {len(cross_pos)} cross-position results")
-
-    cont_dir = results_dir / "continuous_time_probe"
-    if cont_dir.exists():
-        cont_time = {}
-        for d in cont_dir.iterdir():
-            if d.is_dir():
-                try:
-                    r = ContinuousTimeProbeResult.load(d)
-                    cont_time[r.target_key] = r
-                except Exception:
-                    pass
-        log.info(f"Loaded {len(cont_time)} continuous-time results")
-
-    return cross_pos, cont_time
+    return cross_pos if cross_pos else None
 
 
 def cleanup_empty_dirs(viz_dir: Path) -> int:
@@ -195,7 +149,7 @@ def process_dataset(data_dir: Path, quick: bool) -> int:
         return 1
 
     log.info("=" * 50)
-    log.info(f"VISUALIZE: {data_dir.name}")
+    log.info(f"VISUALIZE PCA: {data_dir.name}")
     log.info("=" * 50)
 
     # Load data
@@ -215,21 +169,21 @@ def process_dataset(data_dir: Path, quick: bool) -> int:
     log.info(f"Loaded {data.n_samples} samples")
     clear_gpu_memory(aggressive=True)
 
-    # Load results
-    linear_probe, pca = load_results(results_dir)
-    cross_pos, cont_time = load_optional(results_dir)
+    # Load PCA results only (linear probes handled by compute_linear_probes.py --viz)
+    pca = load_pca_results(results_dir)
+    cross_pos = load_cross_position(results_dir)
     clear_gpu_memory(aggressive=True)
 
-    # Generate plots
-    log.info("\nGenerating plots...")
+    # Generate PCA plots
+    log.info("\nGenerating PCA plots...")
     generate_all_plots(
         data=data,
-        linear_probe_results=linear_probe,
+        linear_probe_results={},  # Not used - handled by compute_linear_probes.py
         pca_results=pca,
-        embedding_results={},  # Not used for static plots
+        embedding_results={},
         config=config,
         cross_position_results=cross_pos,
-        continuous_time_results=cont_time,
+        continuous_time_results=None,
         skip_per_target_plots=quick,
     )
 

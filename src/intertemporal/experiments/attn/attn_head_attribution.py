@@ -88,6 +88,44 @@ class HeadAttributionResults(BaseSchema):
 
         self.attribution_matrix = matrix
 
+    def to_dict(self, **kwargs) -> dict:
+        """Custom serialization to handle numpy arrays."""
+        d = {
+            "n_layers": self.n_layers,
+            "n_heads": self.n_heads,
+            "layers_analyzed": self.layers_analyzed,
+            "results": [r.to_dict() for r in self.results],
+        }
+        if self.attribution_matrix is not None:
+            d["attribution_matrix"] = self.attribution_matrix.tolist()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "HeadAttributionResults":
+        """Custom deserialization to handle numpy arrays."""
+        result = cls(
+            n_layers=d.get("n_layers", 0),
+            n_heads=d.get("n_heads", 0),
+            layers_analyzed=d.get("layers_analyzed", []),
+        )
+        result.results = [
+            HeadAttributionResult.from_dict(r) for r in d.get("results", [])
+        ]
+        if "attribution_matrix" in d and d["attribution_matrix"] is not None:
+            matrix = d["attribution_matrix"]
+            # Handle string representation (legacy format)
+            if isinstance(matrix, str):
+                matrix = np.fromstring(
+                    matrix.replace("[", "").replace("]", "").replace("\n", " "),
+                    sep=" "
+                )
+                n_layers = len(d.get("layers_analyzed", []))
+                n_heads = d.get("n_heads", 0)
+                if n_layers > 0 and n_heads > 0:
+                    matrix = matrix.reshape(n_layers, n_heads)
+            result.attribution_matrix = np.array(matrix, dtype=float)
+        return result
+
 
 @dataclass
 class HeadPositionPatchingResult(BaseSchema):
@@ -326,6 +364,19 @@ class HeadSweepResults(BaseSchema):
     def get_redundant_heads(self, threshold: float = -0.5) -> list[HeadSweepResult]:
         """Get heads that are redundant (large negative gap)."""
         return [h for h in self.results if h.gap < threshold]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "HeadSweepResults":
+        """Custom deserialization to handle nested HeadSweepResult."""
+        result = cls(
+            n_layers=d.get("n_layers", 0),
+            n_heads=d.get("n_heads", 0),
+            layers_analyzed=d.get("layers_analyzed", []),
+        )
+        result.results = [
+            HeadSweepResult.from_dict(r) for r in d.get("results", [])
+        ]
+        return result
 
 
 @profile

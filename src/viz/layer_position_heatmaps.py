@@ -79,6 +79,7 @@ def plot_layer_position_heatmap(
     # Y-axis: layers
     ax.set_yticks(range(n_layers))
     ax.set_yticklabels([f"L{l}" for l in layers], fontsize=9)
+    ax.set_ylim(-0.5, n_layers - 0.5)
 
     # X-axis: positions
     _setup_position_axis(ax, position_labels, config.max_labels)
@@ -263,6 +264,9 @@ def _setup_position_axis(
     ax.set_xticks(tick_positions)
     x_fontsize = max(6, min(10, 400 // len(tick_labels)))
     ax.set_xticklabels(tick_labels, rotation=45, ha="right", fontsize=x_fontsize)
+
+    # Set x-axis limits to exactly match data extent (no blank space)
+    ax.set_xlim(-0.5, n_positions - 0.5)
 
     # Apply tick colors if provided
     if tick_colors:

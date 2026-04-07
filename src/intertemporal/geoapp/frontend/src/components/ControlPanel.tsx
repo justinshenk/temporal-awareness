@@ -286,6 +286,7 @@ const TimeRangeControls: React.FC<TimeRangeControlsProps> = ({
 const componentLabels: Record<string, string> = {
   resid_pre: 'Residual Pre',
   attn_out: 'Attention Out',
+  resid_mid: 'Residual Mid',
   mlp_out: 'MLP Out',
   resid_post: 'Residual Post',
 };

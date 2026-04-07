@@ -20,6 +20,8 @@ def plot(
     metrics: list[IntervenedChoiceMetrics],
     tick_positions: Sequence[int],
     xlabel: str = "Layer",
+    show_legend: bool = True,
+    legend_fontsize: int = 9,
 ) -> plt.Axes:
     """Plot vocab metrics column.
 
@@ -32,6 +34,8 @@ def plot(
         metrics: List of IntervenedChoiceMetrics for each x value
         tick_positions: X-axis tick positions
         xlabel: X-axis label
+        show_legend: Whether to show the legend
+        legend_fontsize: Font size for legend
 
     Returns:
         Secondary (right) y-axis for synchronization
@@ -94,6 +98,6 @@ def plot(
         axis="y", labelcolor=METRIC_COLORS["vocab_diversity"], labelsize=13
     )
 
-    add_dual_axis_legend(ax, ax_right)
+    add_dual_axis_legend(ax, ax_right, fontsize=legend_fontsize, show=show_legend)
 
     return ax_right

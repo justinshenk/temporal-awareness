@@ -158,6 +158,9 @@ class PreferenceSample(BaseSchema):
     context_id: int | None = None
     short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
+    # Cached logits at divergent position (extracted before pop_heavy clears vocab_logits)
+    stored_divergent_logits: tuple[float, float] | None = None
+
     # =========================================================================
     # Expected Choice Properties (what "should" be chosen given the parameters)
     # =========================================================================
@@ -402,6 +405,19 @@ class PreferenceSample(BaseSchema):
             return None
         if hasattr(self.choice, "divergent_position"):
             return self.choice.divergent_position
+        return None
+
+    @property
+    def divergent_logits(self) -> tuple[float, float] | None:
+        """Get (logit_a, logit_b) at the divergent position."""
+        # Use stored value if available (persists after pop_heavy)
+        if self.stored_divergent_logits is not None:
+            return self.stored_divergent_logits
+        # Fallback to choice's value (only works before pop_heavy)
+        if self.choice is None:
+            return None
+        if hasattr(self.choice, "divergent_logits"):
+            return self.choice.divergent_logits
         return None
 
     def load_internals_from_disk(self) -> None:

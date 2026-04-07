@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 
 interface AlignmentData {
   labels: string[];
+  col_labels?: string[];  // Optional: separate labels for X-axis (L0 at left)
   matrix: number[][];
   n_targets: number;
   error?: string;
@@ -18,6 +19,7 @@ interface AlignmentHeatmapProps {
 const COMPONENT_COLORS: Record<string, string> = {
   'resid_pre': '#E91E63',   // Pink
   'attn_out': '#2196F3',    // Blue
+  'resid_mid': '#9C27B0',   // Purple
   'mlp_out': '#4CAF50',     // Green
   'resid_post': '#FF9800',  // Orange
 };
@@ -119,20 +121,23 @@ export const AlignmentHeatmap: React.FC<AlignmentHeatmapProps> = ({
         {/* Heatmap cells */}
         <g transform={`translate(${padding.left}, ${padding.top})`}>
           {data.matrix.map((row, i) =>
-            row.map((value, j) => (
-              <rect
-                key={`${i}-${j}`}
-                x={j * cellSize}
-                y={i * cellSize}
-                width={cellSize}
-                height={cellSize}
-                fill={getColor(Math.abs(value))}
-                className="stroke-white/50 dark:stroke-black/30"
-                strokeWidth={0.5}
-              >
-                <title>{`${data.labels[i]} vs ${data.labels[j]}: ${value.toFixed(3)}`}</title>
-              </rect>
-            ))
+            row.map((value, j) => {
+              const xLabels = data.col_labels || data.labels;
+              return (
+                <rect
+                  key={`${i}-${j}`}
+                  x={j * cellSize}
+                  y={i * cellSize}
+                  width={cellSize}
+                  height={cellSize}
+                  fill={getColor(Math.abs(value))}
+                  className="stroke-white/50 dark:stroke-black/30"
+                  strokeWidth={0.5}
+                >
+                  <title>{`${data.labels[i]} vs ${xLabels[j]}: ${value.toFixed(3)}`}</title>
+                </rect>
+              );
+            })
           )}
         </g>
 
@@ -157,9 +162,9 @@ export const AlignmentHeatmap: React.FC<AlignmentHeatmapProps> = ({
           })}
         </g>
 
-        {/* X-axis labels */}
+        {/* X-axis labels - use col_labels if available (L0 at left) */}
         <g transform={`translate(${padding.left}, ${padding.top + n * cellSize + 5})`}>
-          {data.labels.map((label, i) => {
+          {(data.col_labels || data.labels).map((label, i) => {
             const comp = getComponentFromLabel(label);
             const color = COMPONENT_COLORS[comp] || '#666';
             return (

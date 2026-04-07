@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ......viz.plot_helpers import save_figure
+
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
@@ -17,9 +19,19 @@ except ImportError:
     adjust_text = None  # type: ignore
 
 
-def setup_grid(ax: Axes) -> None:
-    """Configure grid styling for an axes with minor ticks for full resolution."""
+def setup_grid(ax: Axes, integer_x_minor: bool = True) -> None:
+    """Configure grid styling for an axes with minor ticks for full resolution.
+
+    Args:
+        ax: Matplotlib axes
+        integer_x_minor: If True, minor x-axis ticks are placed at integer positions only
+    """
+    from matplotlib.ticker import MultipleLocator
+
     ax.minorticks_on()
+    # Force x-axis minor ticks to integer positions only (e.g., tick at 23 between 22 and 24)
+    if integer_x_minor:
+        ax.xaxis.set_minor_locator(MultipleLocator(1))
     ax.grid(True, which="major", alpha=0.5, linewidth=0.6)
     ax.grid(True, which="minor", alpha=0.25, linewidth=0.3)
     ax.set_axisbelow(True)
@@ -28,8 +40,7 @@ def setup_grid(ax: Axes) -> None:
 def save_plot(fig: plt.Figure, path: Path, name: str) -> None:
     """Save figure and print confirmation."""
     output_path = path / name
-    fig.savefig(output_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
     print(f"Saved: {output_path}")
 
 
