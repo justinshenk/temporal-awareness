@@ -249,30 +249,11 @@ def _plot_component_importance(
     recoveries = [c["recovery"] for c in top_components]
     disruptions = [c["disruption"] for c in top_components]
     colors = [COMPONENT_COLORS[c["comp"]] for c in top_components]
-    layers_used = [c["layer"] for c in top_components]
-
-    # Find layers that appear multiple times
-    layer_counts = {}
-    for layer in layers_used:
-        layer_counts[layer] = layer_counts.get(layer, 0) + 1
-    multi_layers = {layer for layer, count in layer_counts.items() if count > 1}
-
-    # Assign unique colors to multi-layer groups for visual linking
-    multi_layer_colors = {}
-    link_colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#9B59B6", "#3498DB"]  # Gold, coral, teal, purple, blue
-    for i, layer in enumerate(sorted(multi_layers)):
-        multi_layer_colors[layer] = link_colors[i % len(link_colors)]
 
     fig, ax = create_figure(figsize=(12, max(6, top_n * 0.5)))
 
     y_pos = np.arange(len(labels))
     bar_height = 0.35
-
-    # Background highlighting for same-layer components
-    for i, layer in enumerate(layers_used):
-        if layer in multi_layers:
-            ax.axhspan(y_pos[i] - 0.45, y_pos[i] + 0.45, alpha=0.15,
-                       color=multi_layer_colors[layer], zorder=0)
 
     # Bars
     ax.barh(y_pos - bar_height / 2, recoveries, bar_height, color=colors, alpha=0.8,
@@ -280,41 +261,13 @@ def _plot_component_importance(
     ax.barh(y_pos + bar_height / 2, disruptions, bar_height, color=colors, alpha=0.4,
             edgecolor="black", label="Noising Disruption", hatch="//")
 
-    # Mark same-layer components with colored bracket and label
-    for i, layer in enumerate(layers_used):
-        if layer in multi_layers:
-            bracket_color = multi_layer_colors[layer]
-            # Draw bracket on left side
-            ax.plot([-0.02, -0.02], [y_pos[i] - 0.3, y_pos[i] + 0.3],
-                    color=bracket_color, linewidth=4, transform=ax.get_yaxis_transform(),
-                    clip_on=False, solid_capstyle="butt")
-            # Small text label
-            ax.text(-0.04, y_pos[i], f"L{layer}", fontsize=7, fontweight="bold",
-                    color=bracket_color, ha="right", va="center",
-                    transform=ax.get_yaxis_transform())
-
     ax.set_yticks(y_pos)
     ax.set_yticklabels(labels)
     ax.invert_yaxis()
     ax.set_xlabel("Effect Score", fontsize=12, fontweight="bold")
-    ax.set_title(f"Top {top_n} Components by Importance\n(Colored brackets link same-layer attn+mlp pairs)",
-                 fontsize=14, fontweight="bold")
+    ax.set_title(f"Top {top_n} Components by Importance", fontsize=14, fontweight="bold")
     ax.legend(loc="lower right", fontsize=9)
     setup_grid(ax)
-
-    # Cumulative percentage on secondary axis
-    ax2 = ax.twiny()
-    total_recovery = sum(c["recovery"] for c in all_components)
-    if total_recovery > 0:
-        cumsum = np.cumsum(recoveries)
-        cum_pct = (cumsum / total_recovery) * 100
-        ax2.plot(cum_pct, y_pos, "ko-", markersize=4, linewidth=1.5, alpha=0.7)
-        ax2.set_xlabel("Cumulative % of Total Recovery", fontsize=10)
-        ax2.set_xlim(0, 100)
-
-        idx_80 = np.searchsorted(cum_pct, 80)
-        if idx_80 < len(y_pos):
-            ax2.axvline(x=80, color="red", linestyle="--", alpha=0.5)
 
     plt.tight_layout()
     save_plot(fig, output_dir, "component_importance_ranked.png")
@@ -352,30 +305,19 @@ def _plot_cumulative_recovery(
     ax.annotate("Full Recovery (1.0)", xy=(layers[0], 1.0), xytext=(layers[0] + 2, 1.05),
                 fontsize=10, fontweight="bold", color="black", alpha=0.7)
 
-    # Detect and annotate dips in cumulative attention
-    # Two types of dips:
-    # 1. Explicitly negative attention (attn_val < 0) - counterproductive
-    # 2. Relative dips - where attention contribution drops significantly vs recent average
+    # Detect and annotate only the most significant dips (counterproductive attention)
+    # Only annotate the top 3 most negative layers to avoid clutter
     if len(attn_recovery) > 3:
-        # Calculate rolling average for comparison
-        window = 3
-        for i in range(window, len(attn_recovery)):
-            layer = layers[i]
-            attn_val = attn_recovery[i]
-            recent_avg = np.mean(attn_recovery[max(0, i-window):i])
-
-            # Type 1: Explicitly negative
-            if attn_val < -0.02:
-                ax.annotate(f"L{layer} attn\ncounterproductive",
-                            xy=(layer, attn_cumsum[i]), xytext=(layer + 1, attn_cumsum[i] - 0.15),
-                            fontsize=8, fontweight="bold", color="red", alpha=0.8,
-                            arrowprops=dict(arrowstyle="->", color="red", alpha=0.5))
-            # Type 2: Relative dip (current << recent average)
-            elif recent_avg > 0.05 and attn_val < recent_avg * 0.3:
-                ax.annotate(f"L{layer} attn\ndip",
-                            xy=(layer, attn_cumsum[i]), xytext=(layer + 1, attn_cumsum[i] + 0.1),
-                            fontsize=7, color="orange", alpha=0.8,
-                            arrowprops=dict(arrowstyle="->", color="orange", alpha=0.4))
+        negative_layers = [(i, layers[i], attn_recovery[i])
+                           for i in range(len(attn_recovery)) if attn_recovery[i] < -0.02]
+        # Sort by most negative
+        negative_layers.sort(key=lambda x: x[2])
+        # Only annotate top 3
+        for idx, layer, attn_val in negative_layers[:3]:
+            ax.annotate(f"L{layer} attn\ncounterproductive",
+                        xy=(layer, attn_cumsum[idx]), xytext=(layer + 2, attn_cumsum[idx] - 0.1),
+                        fontsize=9, fontweight="bold", color="red", alpha=0.9,
+                        arrowprops=dict(arrowstyle="->", color="red", alpha=0.6))
 
     # Mark key layers (top contributors)
     total_per_layer = [a + m for a, m in zip(attn_recovery, mlp_recovery)]
@@ -390,6 +332,9 @@ def _plot_cumulative_recovery(
     ax.set_ylabel("Cumulative Recovery", fontsize=12, fontweight="bold")
     ax.set_title("Cumulative Recovery Build-up Through Network", fontsize=14, fontweight="bold")
     ax.legend(loc="upper left")
+    # Ensure x-axis only shows integer layer values
+    ax.set_xticks(layers)
+    ax.set_xticklabels([str(l) for l in layers])
     setup_grid(ax)
 
     plt.tight_layout()
@@ -402,6 +347,7 @@ def _plot_marginal_contribution(
 ) -> None:
     """Plot marginal contribution with secondary y-axis for absolute values."""
     resid_pre = layer_data.get("resid_pre")
+    resid_mid = layer_data.get("resid_mid")
     resid_post = layer_data.get("resid_post")
 
     if not resid_pre or not resid_post:
@@ -413,6 +359,8 @@ def _plot_marginal_contribution(
 
     denoise_marginal = []
     noise_marginal = []
+    resid_pre_denoise = []
+    resid_mid_denoise = []
     resid_post_denoise = []
     valid_layers = []
 
@@ -426,7 +374,13 @@ def _plot_marginal_contribution(
             valid_layers.append(layer)
             denoise_marginal.append(post_rec - pre_rec)
             noise_marginal.append(post_dis - pre_dis)
+            resid_pre_denoise.append(pre_rec)
             resid_post_denoise.append(post_rec)
+            # Get resid_mid if available
+            if resid_mid and layer in resid_mid and resid_mid[layer].recovery is not None:
+                resid_mid_denoise.append(resid_mid[layer].recovery)
+            else:
+                resid_mid_denoise.append(None)
 
     if not valid_layers:
         return
@@ -450,18 +404,28 @@ def _plot_marginal_contribution(
     ax.set_ylabel("Marginal: resid_post[L] - resid_pre[L]", fontsize=12, fontweight="bold")
     ax.set_title("Marginal Contribution per Layer", fontsize=14, fontweight="bold")
 
-    # Secondary y-axis
+    # Secondary y-axis with absolute values for resid_pre, resid_mid, and resid_post
     ax2 = ax.twinx()
-    ax2.plot(valid_layers, resid_post_denoise, "^--", color="#9467bd", linewidth=1.5,
-             markersize=4, label="Absolute resid_post (denoising)", alpha=0.6)
-    ax2.set_ylabel("Absolute resid_post Recovery", fontsize=10, color="#9467bd")
-    ax2.tick_params(axis="y", labelcolor="#9467bd")
+    ax2.plot(valid_layers, resid_pre_denoise, "v--", color=COMPONENT_COLORS["resid_pre"], linewidth=2,
+             markersize=6, label="Absolute resid_pre", alpha=0.7)
+    # Plot resid_mid if we have any valid values
+    if any(v is not None for v in resid_mid_denoise):
+        mid_layers = [l for l, v in zip(valid_layers, resid_mid_denoise) if v is not None]
+        mid_values = [v for v in resid_mid_denoise if v is not None]
+        ax2.plot(mid_layers, mid_values, "d-", color=COMPONENT_COLORS["resid_mid"], linewidth=2.5,
+                 markersize=8, label="Absolute resid_mid", alpha=0.9, zorder=5)
+    ax2.plot(valid_layers, resid_post_denoise, "^--", color=COMPONENT_COLORS["resid_post"], linewidth=2,
+             markersize=6, label="Absolute resid_post", alpha=0.7)
+    ax2.set_ylabel("Absolute Recovery", fontsize=10)
 
     # Combined legend
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(lines1 + lines2, labels1 + labels2, loc="best", fontsize=9)
 
+    # Ensure x-axis only shows integer layer values
+    ax.set_xticks(valid_layers)
+    ax.set_xticklabels([str(l) for l in valid_layers])
     setup_grid(ax)
     plt.tight_layout()
     save_plot(fig, output_dir, "marginal_contribution.png")
@@ -556,9 +520,9 @@ def _plot_position_interaction(
     for ax_idx, mode in enumerate(["denoising", "noising"]):
         ax = axes[ax_idx]
 
-        # Hub shading
-        for start, end in hub_regions:
-            ax.axvspan(start, end, alpha=0.15, color="yellow", zorder=0)
+        # Hub shading removed per user request
+        # for start, end in hub_regions:
+        #     ax.axvspan(start, end, alpha=0.15, color="yellow", zorder=0)
 
         mode_data = data_by_mode[mode]
         for comp in COMPONENTS:

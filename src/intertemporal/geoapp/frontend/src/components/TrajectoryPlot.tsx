@@ -179,7 +179,6 @@ export function TrajectoryPlot({
     canvas.style.height = `${dimensions.height}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const plotWidth = dimensions.width - PADDING.left - PADDING.right;
     const plotHeight = dimensions.height - PADDING.top - PADDING.bottom;
 
     // Determine colors based on background brightness

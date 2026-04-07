@@ -41,9 +41,15 @@ class PyveneBackend(HuggingFaceBackend):
         """Convert component name to pyvene component path."""
         base = self._layers_attr
 
-        if component in ("resid_post", "resid_mid"):
+        if component == "resid_post":
+            # resid_post: output of the layer (after MLP)
             return f"{base}[{layer_idx}].output"
+        elif component == "resid_mid":
+            # resid_mid: residual stream after attention, before MLP
+            # This is the INPUT to the MLP module
+            return f"{base}[{layer_idx}].mlp.input"
         elif component == "resid_pre":
+            # resid_pre: input to the layer (before attention)
             return f"{base}[{layer_idx}].input"
         elif component == "mlp_out":
             return f"{base}[{layer_idx}].mlp.output"
@@ -280,7 +286,7 @@ class PyveneBackend(HuggingFaceBackend):
         # Set up cache hooks
         hooks_to_capture = []
         for i in range(self._n_layers):
-            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
+            for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.append((i, component, name))

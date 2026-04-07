@@ -24,11 +24,11 @@ from src.common import TimeValue, TIME_UNIT_TO_YEARS, TIME_UNITS
 # Different label pair styles
 SIMPLE_LABEL_STYLES: list[tuple[str, str]] = [
     ("a)", "b)"),
-    ("[i]", "[ii]"),
+    ("x.", "y."),
 ]
 # Additional styles for full variation grid - varied but natural formats
 MORE_LABEL_STYLES: list[tuple[str, str]] = [
-    ("x.", "y."),
+    ("[i]", "[ii]"),
     ("<1>", "<2>"),
     ("(AA)", "(BB)"),
     ("{Option A}", "{Option B}"),
@@ -253,7 +253,9 @@ def format_time_spelled(tv: TimeValue) -> Optional[str]:
     return f"{spelled} {unit}"
 
 
-def format_time_value(tv: TimeValue, spell_out: bool = False, min_length: int = 0) -> str:
+def format_time_value(
+    tv: TimeValue, spell_out: bool = False, min_length: int = 0
+) -> str:
     """
     Format a TimeValue, optionally spelling out numbers.
 
@@ -357,6 +359,8 @@ def apply_time_variation(
         result_tv = convert_to_random_unit(tv)
 
     # Format with or without spelling, with optional padding
-    formatted = format_time_value(result_tv, spell_out=variation.spell_numbers, min_length=min_length)
+    formatted = format_time_value(
+        result_tv, spell_out=variation.spell_numbers, min_length=min_length
+    )
 
     return result_tv, formatted

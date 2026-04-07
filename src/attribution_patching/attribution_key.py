@@ -9,7 +9,7 @@ from .attribution_quadrature import QuadratureMethod
 
 
 Method = Literal["standard", "eap", "eap_ig"]
-Component = Literal["resid_post", "attn_out", "mlp_out"]
+Component = Literal["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
 
 
 class AttributionKey(NamedTuple):
@@ -52,8 +52,9 @@ class AttributionKey(NamedTuple):
 
 
 # Components available per method (all methods support all components)
-STANDARD_COMPONENTS: list[Component] = ["resid_post", "attn_out", "mlp_out"]
-EAP_COMPONENTS: list[Component] = ["resid_post", "attn_out", "mlp_out"]
+# Order follows data flow: resid_pre -> attn -> resid_mid -> mlp -> resid_post
+STANDARD_COMPONENTS: list[Component] = ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
+EAP_COMPONENTS: list[Component] = ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]
 
 
 @dataclass

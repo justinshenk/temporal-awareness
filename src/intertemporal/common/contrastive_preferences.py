@@ -88,6 +88,10 @@ class ContrastivePreferences(BaseSchema):
                 self.short_term.time_horizon,
                 self.long_term.time_horizon,
             ),
+            choice_divergent_logits=(
+                self.short_term.divergent_logits,
+                self.long_term.divergent_logits,
+            ) if self.short_term.divergent_logits and self.long_term.divergent_logits else None,
         )
 
     # =========================================================================

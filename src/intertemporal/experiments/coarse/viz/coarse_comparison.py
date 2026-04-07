@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .....activation_patching.coarse import SweepStepResults
+from .....viz.plot_helpers import add_pair_label, save_figure
 from .....viz.token_coloring import PairTokenColoring
 from .coarse_helpers import get_tick_color, setup_grid
 
@@ -23,6 +24,7 @@ def plot_comparison(
     coloring: PairTokenColoring | None = None,
     step_size: int = 8,
     component: str = "resid_post",
+    pair_idx: int | None = None,
 ) -> None:
     """Plot denoising vs noising comparison scatter plots.
 
@@ -35,6 +37,7 @@ def plot_comparison(
         coloring: Token coloring for position colors
         step_size: Step size used in the sweep
         component: Component being patched (for plot title)
+        pair_idx: Optional pair index for labeling
     """
     has_layer = bool(layer_data)
     has_position = bool(position_data)
@@ -63,12 +66,12 @@ def plot_comparison(
         fontweight="bold",
     )
 
+    add_pair_label(fig, pair_idx)
+
     # Save
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     save_path = output_dir / f"denoising_vs_noising_{step_size}.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, save_path, dpi=150)
     print(f"Saved: {save_path}")
 
 
@@ -91,11 +94,8 @@ def _plot_layer_comparison(
     # Viridis colormap for layers
     colors = plt.cm.viridis(np.linspace(0, 1, len(layers)))
 
-    # Build label indices: extreme points + evenly spaced
-    label_indices = _get_extreme_indices(recoveries, disruptions, n_top=5)
-    label_indices.add(0)  # First layer
-    label_indices.add(len(layers) - 1)  # Last layer
-    label_indices |= _get_evenly_spaced_indices(len(layers), n_labels=8)
+    # Label ALL points for layer sweep (typically ~20 layers, plenty of space)
+    label_indices = set(range(len(layers)))
 
     # Plot points (skip if either value is None)
     for i, (rec, dis, layer) in enumerate(zip(recoveries, disruptions, layers)):
@@ -135,11 +135,12 @@ def _plot_position_comparison(
     disruptions = [position_data[p].disruption for p in positions]
     point_colors = [get_tick_color(p, coloring) for p in positions]
 
-    # Build label indices: extreme points + evenly spaced
-    label_indices = _get_extreme_indices(recoveries, disruptions, n_top=5)
+    # Label more points: extreme points + outliers + evenly spaced
+    # For position sweeps with many points, label distinctive ones
+    label_indices = _get_extreme_indices(recoveries, disruptions, n_top=10)
     label_indices.add(0)  # First position
     label_indices.add(len(positions) - 1)  # Last position
-    label_indices |= _get_evenly_spaced_indices(len(positions), n_labels=10)
+    label_indices |= _get_evenly_spaced_indices(len(positions), n_labels=20)
 
     # Plot points (skip if either value is None)
     for i, (rec, dis, pos) in enumerate(zip(recoveries, disruptions, positions)):
@@ -225,7 +226,7 @@ def _setup_comparison_axes(ax: plt.Axes, title: str) -> None:
         ha="center", va="center", zorder=0,
     )
 
-    ax.plot([0, 1], [0, 1], "k--", alpha=0.7, linewidth=2.5, label="Equal effect (y=x)")
+    ax.plot([0, 1], [0, 1], "k--", alpha=0.7, linewidth=2.5)
     ax.set_xlabel("Recovery (Denoising)", fontsize=14, fontweight="bold")
     ax.set_ylabel("Disruption (Noising)", fontsize=14, fontweight="bold")
     ax.set_title(title, fontsize=16, fontweight="bold")
@@ -235,11 +236,3 @@ def _setup_comparison_axes(ax: plt.Axes, title: str) -> None:
     ax.axhline(y=0.5, color="#888888", linestyle=":", alpha=0.8, linewidth=2)
     ax.axvline(x=0.5, color="#888888", linestyle=":", alpha=0.8, linewidth=2)
     ax.tick_params(axis="both", labelsize=12)
-    ax.legend(
-        loc="lower right",
-        fontsize=11,
-        frameon=True,
-        fancybox=True,
-        title="Reference Lines",
-        title_fontsize=10,
-    )

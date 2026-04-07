@@ -26,6 +26,7 @@ const LAYER_COLORS = [
 const COMPONENT_COLORS: Record<string, string> = {
   'resid_pre': '#E91E63',   // Pink
   'attn_out': '#2196F3',    // Blue
+  'resid_mid': '#9C27B0',   // Purple
   'mlp_out': '#4CAF50',     // Green
   'resid_post': '#FF9800',  // Orange
 };

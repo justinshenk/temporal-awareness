@@ -14,6 +14,7 @@ import numpy as np
 from .....activation_patching import IntervenedChoiceMetrics
 from .....activation_patching.coarse import CoarseActPatchResults
 from .....common.contrastive_pair import ContrastivePair
+from .....viz.plot_helpers import add_pair_label
 from .....viz.viz_palettes import BAR_COLORS
 from .coarse_helpers import finalize_plot, setup_grid
 
@@ -23,6 +24,7 @@ def plot_sanity_check(
     output_dir: Path,
     pair: ContrastivePair | None = None,
     component: str = "resid_post",
+    pair_idx: int | None = None,
 ) -> None:
     """Plot sanity check results.
 
@@ -37,6 +39,7 @@ def plot_sanity_check(
         output_dir: Directory to save output
         pair: ContrastivePair for per-position logprob plot
         component: Component being patched (for plot title)
+        pair_idx: Optional pair index for labeling
     """
     sanity = result.sanity_result
     if sanity is None:
@@ -71,6 +74,8 @@ def plot_sanity_check(
 
     # Panel 4: Reciprocal rank bars
     _plot_reciprocal_rank_bars(axes[1, 1], d_metrics, n_metrics)
+
+    add_pair_label(fig, pair_idx)
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     finalize_plot(fig, output_dir / "sanity_check.png")

@@ -55,6 +55,7 @@ def sample_data_dir(tmp_path: Path) -> Path:
 
         # Create choice.json
         choice = {
+            "time_horizon_months": (1 + sample_idx) if has_horizon else None,
             "chose_long_term": sample_idx % 2 == 0,
             "chosen_time_months": 1 + sample_idx,
             "chosen_reward": 15 + sample_idx,
@@ -80,18 +81,21 @@ def sample_data_dir(tmp_path: Path) -> Path:
         with open(sample_dir / "position_mapping.json", "w") as f:
             json.dump(position_mapping, f)
 
-        # Create activation files
+        # Create activation files in layer subdirectories
+        # Format: sample_dir/L{layer}/{component}_{abs_pos}.npy
         for layer in range(n_layers):
-            for component in ["resid_pre", "resid_post", "attn_out", "mlp_out"]:
+            layer_dir = sample_dir / f"L{layer}"
+            layer_dir.mkdir()
+            for component in ["resid_pre", "attn_out", "resid_mid", "mlp_out", "resid_post"]:
                 # response_choice at position 2
                 act = np.random.randn(d_model).astype(np.float32)
-                np.save(sample_dir / f"L{layer}_{component}_2.npy", act)
+                np.save(layer_dir / f"{component}_2.npy", act)
 
                 # time_horizon at positions 0, 1 (only for samples with horizon)
                 if has_horizon:
                     for pos in [0, 1]:
                         act = np.random.randn(d_model).astype(np.float32)
-                        np.save(sample_dir / f"L{layer}_{component}_{pos}.npy", act)
+                        np.save(layer_dir / f"{component}_{pos}.npy", act)
 
     return tmp_path
 

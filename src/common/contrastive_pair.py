@@ -45,6 +45,10 @@ class ContrastivePair(BaseSchema):
     prompt_token_counts: tuple[int, int] | None = None
     choice_divergent_positions: tuple[int, int] | None = None
     time_horizons: tuple[TimeValue, TimeValue] | None = None
+    # (clean_logits, corrupted_logits) where each is (logit_a, logit_b)
+    choice_divergent_logits: tuple[tuple[float, float], tuple[float, float]] | None = (
+        None
+    )
 
     # =========================================================================
     # Text and Label Properties
@@ -195,7 +199,10 @@ class ContrastivePair(BaseSchema):
             )
 
         interventions = []
-        for layer in layers:
+        # print(f"[intervention] Creating interventions for {len(layers)} layers, {len(target.positions) if target.positions else 'all'} positions", flush=True)
+        for i, layer in enumerate(layers):
+            if i % 10 == 0:
+                print(f"[intervention]   Layer {i}/{len(layers)}...", flush=True)
             intervention = self._make_layer_intervention(
                 layer,
                 component,
@@ -207,6 +214,7 @@ class ContrastivePair(BaseSchema):
             )
             if intervention:
                 interventions.append(intervention)
+        # print(f"[intervention] Created {len(interventions)} interventions", flush=True)
 
         return interventions
 

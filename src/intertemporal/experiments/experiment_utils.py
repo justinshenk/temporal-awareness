@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Any
+from typing import TYPE_CHECKING, Callable
 
 from ...common.file_io import save_json
 from ...common.logging import log
-from ...common.device_utils import clear_gpu_memory
 from ...activation_patching.coarse import (
     CoarseActPatchResults,
     CoarseActPatchAggregatedResults,
@@ -16,7 +15,7 @@ from ...attribution_patching import AttrPatchPairResult, AttrPatchAggregatedResu
 from .diffmeans import DiffMeansPairResult, DiffMeansAggregatedResults
 from .mlp import MLPPairResult, MLPAggregatedResults
 from .attn import AttnPairResult, AttnAggregatedResults
-from .fine import FineResults, visualize_fine
+from .fine import FineResults, FineAggregatedResults, visualize_fine
 from ..viz import visualize_all_att_aggregated_slices
 from .coarse.coarse_viz import (
     visualize_all_aggregated,
@@ -32,74 +31,6 @@ if TYPE_CHECKING:
     from .experiment_context import ExperimentContext
     from .analysis import ProcessedResults
     from .diffmeans import DiffMeansConfig
-
-
-def get_viz_flags(raw_cfg: dict, ctx_viz_enabled: bool) -> tuple[bool, bool]:
-    """Get visualization control flags from raw config.
-
-    Args:
-        raw_cfg: Raw config dict with optional no_viz/only_viz_agg keys
-        ctx_viz_enabled: Whether visualization is enabled at context level
-
-    Returns:
-        (viz_per_pair, viz_agg): Whether to generate per-pair and aggregated viz
-    """
-    # no_viz: skip ALL visualization for this step
-    if raw_cfg.get("no_viz", False):
-        return False, False
-
-    # only_viz_agg: skip per-pair viz, do aggregated only
-    if raw_cfg.get("only_viz_agg", False):
-        return False, ctx_viz_enabled
-
-    # Default: both enabled if ctx allows
-    return ctx_viz_enabled, ctx_viz_enabled
-
-
-def step_load_cfg(
-    ctx: "ExperimentContext",
-    name: str,
-    raw_cfg: dict,
-    config_class: type,
-    make_viz: Callable[[Any], Callable[[], None]],
-    load_agg_fn: Callable[[Any], bool],
-    unload_agg_fn: Callable[[], None],
-) -> tuple[Any | None, bool]:
-    """Parse config and handle disabled-with-cache-viz pattern.
-
-    Args:
-        ctx: Experiment context
-        name: Step name for logging
-        raw_cfg: Raw config dict
-        config_class: Config class with from_dict method
-        make_viz: Factory that returns visualization callable
-        load_agg_fn: Function to load aggregated results (takes config)
-        unload_agg_fn: Function to unload results
-
-    Returns:
-        (config, viz_only): config to use, and whether to skip computation (viz only).
-        If config is None, step should return early.
-    """
-    config = config_class.from_dict(raw_cfg)
-    if raw_cfg.get("enabled", True):
-        return config, False
-
-    # Disabled but viz enabled with cached data: enable viz-only mode
-    # Skip if no_viz is set or only_viz_agg is set (no per-pair viz needed)
-    no_viz = raw_cfg.get("no_viz", False)
-    if not no_viz and ctx.viz_enabled and not raw_cfg.get("only_viz_agg", False) and load_agg_fn(config):
-        log(f"[{name}] Disabled but cached data found, generating visualizations")
-        return config, True
-
-    log(f"[{name}] Disabled, skipping")
-    return None, False
-
-
-def cleanup_pair(storage: dict, pair_idx: int | tuple, pair) -> None:
-    """Remove per-pair data after saving to prevent memory accumulation."""
-    storage.pop(pair_idx, None)
-    pair.pop_heavy()
-    clear_gpu_memory(aggressive=True)
 
 
 class ExperimentMixin:
@@ -128,9 +59,40 @@ class ExperimentMixin:
     attn: dict
     attn_agg: AttnAggregatedResults | None
     fine: dict
+    fine_agg: FineAggregatedResults | None
 
     def get_pair_dir(self, pair_idx: int) -> Path:
         raise NotImplementedError
+
+    # ─── Unified cache checking ───
+
+    def is_pair_cached(self, step: str, pair_idx: int, component: str | None = None) -> bool:
+        """Check if a pair is cached for a given step.
+
+        Args:
+            step: Step name (attrib, coarse, diffmeans, mlp, attn, fine)
+            pair_idx: Pair index
+            component: Component name (required for coarse step)
+
+        Returns:
+            True if cached results exist for this pair/step
+        """
+        if step == "attrib":
+            return self.get_attrib_pair_path(pair_idx).exists()
+        elif step == "coarse":
+            if component is None:
+                raise ValueError("coarse step requires component")
+            return self.get_coarse_pair_path(pair_idx, component).exists()
+        elif step == "diffmeans":
+            return self.get_diffmeans_pair_path(pair_idx).exists()
+        elif step == "mlp":
+            return self.get_mlp_pair_path(pair_idx).exists()
+        elif step == "attn":
+            return self.get_attn_pair_path(pair_idx).exists()
+        elif step == "fine":
+            return self.get_fine_pair_path(pair_idx).exists()
+        else:
+            raise ValueError(f"Unknown step: {step}")
 
     # ─── Processed results ───
 
@@ -195,8 +157,7 @@ class ExperimentMixin:
         if self.attrib_agg.noising_agg:
             save_json(self.attrib_agg.noising_agg.to_dict(), att_dir / "noising.json")
         save_json(self.attrib_agg.to_dict(), att_dir / "attrib_agg.json")
-        self.attrib_agg.denoising.clear()
-        self.attrib_agg.noising.clear()
+        # Note: Don't clear here - viz needs the data. Memory freed by unload_attrib_agg()
         log("[attrib] Saved.")
 
     def load_attrib_agg(self, _=None) -> bool:
@@ -261,7 +222,8 @@ class ExperimentMixin:
             log(f"[coarse] Saving aggregated results to {path}...")
             agg.pop_heavy()
             save_json(agg.to_dict(), path)
-            agg.by_sample.clear()
+            # Note: Don't clear by_sample here - it causes empty aggregated results
+            # Memory is managed by pop_heavy() and unload_coarse_agg() instead
         log("[coarse] Saved.")
 
     def load_coarse_agg(self, config=None) -> bool:
@@ -354,8 +316,7 @@ class ExperimentMixin:
         path = agg_dir / "diffmeans_agg.json"
         log(f"[diffmeans] Saving aggregated results to {path}...")
         save_json(self.diffmeans_agg.to_dict(), path)
-        self.diffmeans_agg.pair_results.clear()
-        self.diffmeans_agg.svd_results.clear()
+        # Note: Don't clear here - viz needs the data. Memory freed by unload_diffmeans_agg()
         log("[diffmeans] Saved.")
 
     def load_diffmeans_agg(self, _=None) -> bool:
@@ -424,7 +385,7 @@ class ExperimentMixin:
         path = agg_dir / "mlp_agg.json"
         log(f"[mlp] Saving aggregated results to {path}...")
         save_json(self.mlp_agg.to_dict(), path)
-        self.mlp_agg.pair_results.clear()
+        # Note: Don't clear here - viz needs the data. Memory freed by unload_mlp_agg()
         log("[mlp] Saved.")
 
     def load_mlp_agg(self, _=None) -> bool:
@@ -495,7 +456,7 @@ class ExperimentMixin:
         path = agg_dir / "attn_agg.json"
         log(f"[attn] Saving aggregated results to {path}...")
         save_json(self.attn_agg.to_dict(), path)
-        self.attn_agg.pair_results.clear()
+        # Note: Don't clear here - viz needs the data. Memory freed by unload_attn_agg()
         log("[attn] Saved.")
 
     def load_attn_agg(self, _=None) -> bool:
@@ -526,6 +487,10 @@ class ExperimentMixin:
 
     # ─── Fine ───
 
+    def get_fine_agg_dir(self) -> Path:
+        """Get directory for aggregated fine-grained results."""
+        return self.agg_dir / "fine"
+
     def get_fine_pair_dir(self, pair_idx: int) -> Path:
         """Get directory for per-pair fine-grained patching results."""
         return self.get_pair_dir(pair_idx) / "fine"
@@ -551,6 +516,26 @@ class ExperimentMixin:
             return True
         return False
 
+    def save_fine_agg(self) -> None:
+        """Save aggregated fine-grained results."""
+        if not self.fine_agg:
+            return
+        agg_dir = self.get_fine_agg_dir()
+        agg_dir.mkdir(parents=True, exist_ok=True)
+        path = agg_dir / "fine_agg.json"
+        log(f"[fine] Saving aggregated results to {path}...")
+        save_json(self.fine_agg.to_dict(), path)
+        # Note: Don't clear here - viz needs the data. Memory freed by unload_fine_agg()
+        log("[fine] Saved.")
+
+    def load_fine_agg(self, _=None) -> bool:
+        """Load aggregated fine-grained results."""
+        path = self.get_fine_agg_dir() / "fine_agg.json"
+        if path.exists():
+            self.fine_agg = FineAggregatedResults.from_json(path)
+            return True
+        return False
+
     def detect_cached_fine_pairs(self) -> list[int]:
         """Detect all pair indices that have cached fine-grained results."""
         cached = []
@@ -566,6 +551,7 @@ class ExperimentMixin:
 
     def unload_fine_agg(self) -> None:
         """Clear fine-grained patching results from memory."""
+        self.fine_agg = None
         self.fine.clear()
 
     def load_fine_for_viz(self, _) -> bool:
@@ -642,7 +628,8 @@ class ExperimentMixin:
         pair_result = self.attrib_patching[pair_idx]
         out_dir = self.get_attrib_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        mapping = self.get_position_mapping(pair_idx)
+        # Use "short" sample mapping (the longer sequence with all semantic positions)
+        mapping = self.get_position_mapping(pair_idx, sample="short")
         position_labels = (
             [p.format_pos or f"P{p.index}" for p in mapping.positions]
             if mapping
@@ -654,12 +641,14 @@ class ExperimentMixin:
                 pair_result.result.denoising,
                 out_dir,
                 position_labels=position_labels,
+                pair_idx=pair_idx,
             )
         if pair_result.result.noising:
             visualize_att_patching(
                 pair_result.result.noising,
                 out_dir,
                 position_labels=position_labels,
+                pair_idx=pair_idx,
             )
 
     def viz_coarse_pair(self, pair_idx: int, component: str) -> None:
@@ -691,7 +680,9 @@ class ExperimentMixin:
         out_dir = self.get_pair_dir(pair_idx) / "coarse" / "component_comparison"
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        mapping = self.get_position_mapping(pair_idx)
+        # Use "short" sample mapping (the longer sequence with time horizon constraint)
+        # since coarse patching positions can come from either sample
+        mapping = self.get_position_mapping(pair_idx, sample="short")
         visualize_component_comparison(results_by_component, out_dir, 1, mapping)
 
     def viz_diffmeans_pair(self, pair_idx: int) -> None:
@@ -719,7 +710,7 @@ class ExperimentMixin:
         result = self.attn[pair_idx]
         out_dir = self.get_attn_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        visualize_attn_pair(result, out_dir, mapping=mapping)
+        visualize_attn_pair(result, out_dir, mapping=mapping, pair_idx=pair_idx)
 
     def viz_fine_pair(self, pair_idx: int, mapping=None) -> None:
         """Generate visualizations for a single fine-grained pair.

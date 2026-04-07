@@ -12,6 +12,33 @@ import json
 
 from .data_loader import GeometryDataLoader
 
+
+def align_pc_signs_continuity(pc_values: list[np.ndarray]) -> list[np.ndarray]:
+    """Align PC signs using continuity (unbiased method).
+
+    Works backwards from last layer (most structured) to ensure smooth trajectories.
+    Flips signs where correlation with next layer is negative.
+
+    Args:
+        pc_values: List of PC projections, one per layer. Shape (n_samples,) each.
+
+    Returns:
+        Sign-aligned PC values (same structure, signs may be flipped).
+    """
+    if len(pc_values) <= 1:
+        return pc_values
+
+    aligned = [arr.copy() for arr in pc_values]
+
+    # Work backwards from last layer (most structured)
+    for i in range(len(aligned) - 2, -1, -1):
+        # Correlation with next layer
+        corr = np.corrcoef(aligned[i], aligned[i + 1])[0, 1]
+        if np.isfinite(corr) and corr < 0:
+            aligned[i] *= -1
+
+    return aligned
+
 # Request counter for logging
 _request_counter = 0
 
@@ -54,6 +81,80 @@ def _sanitize_float(value: float) -> float | None:
     if math.isnan(value) or math.isinf(value):
         return None
     return float(value)
+
+
+def _validate_pc_values(values: list[float], context: str) -> list[float]:
+    """Validate PC values and raise error if NaN/Infinity found.
+
+    Args:
+        values: List of PC values to validate.
+        context: Description of where these values came from (for error message).
+
+    Returns:
+        The same list of values as floats if all are valid.
+
+    Raises:
+        ValueError: If any value is NaN or Infinity.
+    """
+    for i, v in enumerate(values):
+        if v is None or math.isnan(v) or math.isinf(v):
+            raise ValueError(
+                f"Invalid PC value at index {i} in {context}: {v}. "
+                "This indicates a computation failure in PCA/embedding generation."
+            )
+    return [float(v) for v in values]
+
+
+def _validate_rel_pos(position: str, data_loader: GeometryDataLoader) -> None:
+    """Validate rel_pos index if present in position string.
+
+    Args:
+        position: Position string, optionally with :rel_pos suffix (e.g., "response_choice:2")
+        data_loader: GeometryDataLoader instance to get rel_pos counts
+
+    Raises:
+        HTTPException: If rel_pos is out of bounds for the position
+    """
+    if ":" not in position:
+        return  # No rel_pos suffix, nothing to validate
+
+    parts = position.split(":")
+    base_pos = parts[0]
+    try:
+        rel_pos = int(parts[1])
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid rel_pos format in position: {position}")
+
+    rel_pos_counts = data_loader.get_rel_pos_counts()
+    max_rel_pos = rel_pos_counts.get(base_pos, 0)
+    if rel_pos >= max_rel_pos:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid rel_pos {rel_pos} for position {base_pos}. Valid range: 0-{max_rel_pos - 1}."
+        )
+
+
+def _validate_embedding(embedding: np.ndarray, context: str) -> np.ndarray:
+    """Validate embedding array and raise error if NaN/Infinity found.
+
+    Args:
+        embedding: Numpy array of embedding coordinates.
+        context: Description of where this embedding came from (for error message).
+
+    Returns:
+        The same embedding array if all values are valid.
+
+    Raises:
+        ValueError: If any value is NaN or Infinity.
+    """
+    if np.any(np.isnan(embedding)) or np.any(np.isinf(embedding)):
+        nan_count = np.sum(np.isnan(embedding))
+        inf_count = np.sum(np.isinf(embedding))
+        raise ValueError(
+            f"Invalid embedding values in {context}: {nan_count} NaN, {inf_count} Infinity. "
+            "This indicates a computation failure in PCA/UMAP/t-SNE generation."
+        )
+    return embedding
 
 
 def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry") -> APIRouter:
@@ -176,6 +277,14 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
 
+        # Validate method is available (UMAP/t-SNE may not be precomputed)
+        available_methods = data_loader.get_available_methods()
+        if method not in available_methods:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Method '{method}' not available. Available methods: {available_methods}"
+            )
+
         # Validate base position - must have precomputed embeddings
         precomputed_positions = data_loader.get_precomputed_positions()
         if base_position not in precomputed_positions:
@@ -188,9 +297,13 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 )
             raise HTTPException(status_code=404, detail=f"Position '{base_position}' not found")
 
+        # Validate rel_pos if specified
+        _validate_rel_pos(position, data_loader)
+
         # Load embedding based on method
         # Use full position (with rel_pos) if specified - per-rel_pos embeddings are precomputed
         load_position = position if rel_pos is not None else base_position
+        used_fallback = False
         try:
             if method == "pca":
                 embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
@@ -201,13 +314,26 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
         except ValueError as e:
-            # No fallback - if per-rel_pos embedding doesn't exist, return 404
-            raise HTTPException(status_code=404, detail=f"No embedding data for {position} (rel_pos={rel_pos}). Not enough samples with this token index.")
+            # If per-rel_pos embedding doesn't exist, fall back to combined embedding
+            if rel_pos is not None:
+                _log("/embedding", f"Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
+                load_position = base_position
+                used_fallback = True
+                try:
+                    if method == "pca":
+                        embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
+                    elif method == "umap":
+                        embedding = data_loader.load_umap(layer, component, load_position, n_components=3)
+                    elif method == "tsne":
+                        embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
+                except ValueError:
+                    raise HTTPException(status_code=404, detail=f"No embedding data for {base_position}.")
+            else:
+                raise HTTPException(status_code=404, detail=f"No embedding data for {position}.")
 
-        # Optimized conversion: sanitize NaN/Infinity in bulk using numpy
-        # Replace NaN/Inf with 0.0 in-place
-        clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
-        n_embedding_rows = clean_embedding.shape[0]
+        # Validate embedding - crash if NaN/Infinity found (indicates computation failure)
+        _validate_embedding(embedding, f"L{layer}_{component}_{position}_{method}")
+        n_embedding_rows = embedding.shape[0]
 
         # Get sample indices for the position we loaded (either per-rel_pos or combined)
         # NOTE: We use embedding row count as authoritative since indices may mismatch
@@ -225,11 +351,11 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             _log("/embedding", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
 
         # Use embedding size as n_samples
-        n_samples = clean_embedding.shape[0]
+        n_samples = embedding.shape[0]
 
         # Convert to flat list of floats for maximum performance
         # Format: [x0, y0, z0, x1, y1, z1, ...] - frontend will reshape
-        coordinates_flat = clean_embedding.flatten().tolist()
+        coordinates_flat = embedding.flatten().tolist()
 
         # Set cache headers for browser caching (30 minutes)
         if response:
@@ -280,6 +406,9 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 )
             raise HTTPException(status_code=404, detail=f"Position '{base_position}' not found")
 
+        # Validate rel_pos if specified
+        _validate_rel_pos(position, data_loader)
+
         # Validate method is available (UMAP/t-SNE may not be precomputed)
         available_methods = data_loader.get_available_methods()
         if method not in available_methods:
@@ -303,6 +432,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
             # Load embedding using full position (with rel_pos) if specified
             load_position = position if rel_pos is not None else base_position
+            used_fallback = False
             try:
                 if method == "pca":
                     embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
@@ -315,16 +445,33 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                     yield f"data: {json.dumps({'error': f'Invalid method: {method}'})}\n\n"
                     return
             except ValueError as e:
-                # No fallback - return error if per-rel_pos embedding doesn't exist
-                _log("/embedding/stream", f"Embedding not found", position=load_position, error=str(e))
-                yield f"data: {json.dumps({'error': f'No embedding data for {position} (rel_pos={rel_pos}). Not enough samples with this token index.'})}\n\n"
-                return
+                # If per-rel_pos embedding doesn't exist, fall back to combined embedding
+                if rel_pos is not None:
+                    _log("/embedding/stream", f"Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
+                    load_position = base_position
+                    used_fallback = True
+                    try:
+                        if method == "pca":
+                            embedding = data_loader.load_pca(layer, component, load_position, n_components=3)
+                        elif method == "umap":
+                            embedding = data_loader.load_umap(layer, component, load_position, n_components=3)
+                        elif method == "tsne":
+                            embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
+                    except ValueError:
+                        _log("/embedding/stream", f"Embedding not found", position=base_position)
+                        yield f"data: {json.dumps({'error': f'No embedding data for {base_position}.'})}\n\n"
+                        return
+                else:
+                    _log("/embedding/stream", f"Embedding not found", position=load_position, error=str(e))
+                    yield f"data: {json.dumps({'error': f'No embedding data for {position}.'})}\n\n"
+                    return
 
             load_elapsed = time.time() - stream_start
             _log("/embedding/stream", f"Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
 
-            clean_embedding = np.nan_to_num(embedding, nan=0.0, posinf=0.0, neginf=0.0)
-            n_embedding_rows = clean_embedding.shape[0]
+            # Validate embedding - crash if NaN/Infinity found (indicates computation failure)
+            _validate_embedding(embedding, f"L{layer}_{component}_{position}_{method}")
+            n_embedding_rows = embedding.shape[0]
 
             # Get sample indices for the position we loaded
             all_sample_indices = data_loader.get_valid_sample_indices(layer, component, load_position)
@@ -341,7 +488,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 _log("/embedding/stream", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
 
             # Use embedding size as total_points
-            total_points = clean_embedding.shape[0]
+            total_points = embedding.shape[0]
 
             _log("/embedding/stream", f"Sending metadata", total_points=total_points)
 
@@ -362,7 +509,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             n_chunks = (total_points + chunk_size - 1) // chunk_size
             for chunk_num, i in enumerate(range(0, total_points, chunk_size)):
                 end_idx = min(i + chunk_size, total_points)
-                chunk_coords = clean_embedding[i:end_idx].flatten().tolist()
+                chunk_coords = embedding[i:end_idx].flatten().tolist()
                 chunk_indices = sample_indices[i:end_idx]
 
                 chunk_data = {
@@ -492,12 +639,30 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         if isinstance(text, list):
             text = "\n".join(text)
 
+        # Compute time_scale at runtime from time_horizon_months (don't use pre-computed)
+        TIME_SCALE_LABELS = ["Seconds", "Minutes", "Hours", "Days", "Weeks", "Months", "Years", "Decades", "Centuries"]
+        if time_horizon_months is None:
+            time_scale = "No Horizon"
+        else:
+            scale_idx = data_loader._get_time_scale(time_horizon_months)
+            time_scale = TIME_SCALE_LABELS[scale_idx] if 0 <= scale_idx < len(TIME_SCALE_LABELS) else None
+
+        # Convert choice_type from int index to string label if needed
+        CHOICE_TYPE_LABELS = ["rational", "impulsive", "neutral"]
+        choice_type_raw = sample_info.get("choice_type")
+        if isinstance(choice_type_raw, int) and 0 <= choice_type_raw < len(CHOICE_TYPE_LABELS):
+            choice_type = CHOICE_TYPE_LABELS[choice_type_raw]
+        elif isinstance(choice_type_raw, str):
+            choice_type = choice_type_raw
+        else:
+            choice_type = None
+
         return SampleResponse(
             idx=idx,
             text=text,
             time_horizon_months=time_horizon_months,
-            time_scale=sample_info.get("time_scale"),
-            choice_type=sample_info.get("choice_type"),
+            time_scale=time_scale,
+            choice_type=choice_type,
             short_term_first=sample_info.get("short_term_first"),
             response_label=sample_info.get("response_label"),
             response_term=sample_info.get("response_term"),
@@ -646,8 +811,8 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
     async def start_warmup(
         background_tasks: BackgroundTasks,
         methods: str = Query(
-            default="pca,umap",
-            description="Comma-separated methods to precompute (pca,umap,tsne)",
+            default="pca",
+            description="Comma-separated methods to precompute (pca,umap,tsne) - only available methods will be used",
         ),
         components: str = Query(
             default="resid_pre",
@@ -685,10 +850,24 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 ),
             )
 
-        # Parse parameters
-        method_list = [m.strip() for m in methods.split(",") if m.strip() in ("pca", "umap", "tsne")]
+        # Parse parameters - filter by available methods
+        available_methods = data_loader.get_available_methods()
+        method_list = [m.strip() for m in methods.split(",") if m.strip() in available_methods]
         if not method_list:
-            method_list = ["pca"]
+            method_list = ["pca"] if "pca" in available_methods else []
+        if not method_list:
+            return WarmupResponse(
+                message="No available methods to warm up",
+                status=WarmupStatus(
+                    is_running=False,
+                    progress=0,
+                    total=0,
+                    current_task="No methods available",
+                    cached_pca=len(data_loader._pca_cache),
+                    cached_umap=len(data_loader._umap_cache),
+                    cached_tsne=len(data_loader._tsne_cache),
+                ),
+            )
 
         component_list = [c.strip() for c in components.split(",") if c.strip() in data_loader.get_components()]
         if not component_list:
@@ -798,6 +977,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
     async def get_layer_trajectory(
         component: str,
         position: str,
+        mode: str = Query(default="aligned", description="PCA mode: 'aligned' (per-target PCA + sign align) or 'shared' (single PCA subspace)"),
     ) -> TrajectoryResponse:
         """Get PC1 trajectory across all layers for a given component/position.
 
@@ -807,11 +987,19 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Position can be:
         - "response_choice" (combined/all tokens)
         - "response_choice:0" (specific rel_pos token)
+
+        Mode can be:
+        - "aligned": Per-target PCA with sign alignment (original method)
+        - "shared": Single PCA subspace across all layers (new method)
         """
-        _log("/trajectory/layers", f"GET request", component=component, position=position)
+        _log("/trajectory/layers", f"GET request", component=component, position=position, mode=mode)
         start_time = time.time()
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Validate mode
+        if mode not in ("aligned", "shared"):
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be 'aligned' or 'shared'.")
 
         # Parse position to extract base_pos for validation
         base_pos = position.split(":")[0] if ":" in position else position
@@ -819,9 +1007,12 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         if base_pos not in data_loader.get_positions():
             raise HTTPException(status_code=404, detail=f"Position {base_pos} not found")
 
+        # Validate rel_pos if specified
+        _validate_rel_pos(position, data_loader)
+
         # Try to use pre-cached trajectory data first (handles both combined and per-relpos with fallback)
         try:
-            layers, pc1_matrix, shared_sample_indices = data_loader.load_layer_trajectory(component, position)
+            layers, pc1_matrix, shared_sample_indices = data_loader.load_layer_trajectory(component, position, mode=mode)
             data = []
             x_values = []
             for i, layer in enumerate(layers):
@@ -829,7 +1020,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 x_values.append(str(layer))
                 data.append(TrajectoryPoint(
                     x_value=str(layer),
-                    values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                    values=_validate_pc_values(pc1_values, f"layer_trajectory L{layer}_{component}_{position}"),
                     sample_indices=shared_sample_indices,
                 ))
             n_samples = len(shared_sample_indices)
@@ -845,67 +1036,36 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 sample_indices=shared_sample_indices,
                 data=data,
             )
-        except ValueError:
-            # Trajectory cache not available, fall back to individual PCA embeddings
-            pass
-
-        # Fall back to computing from individual PCA embeddings
-        layers = data_loader.get_layers()
-        data = []
-        x_values = []
-        n_samples = 0
-        shared_sample_indices: list[int] = []
-
-        for layer in layers:
-            # STRICT: load_pca raises ValueError if embedding is missing
-            embedding = data_loader.load_pca(layer, component, position, n_components=3)
-            # Get sample indices for this layer/component/position
-            sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-            # Extract PC1 (first column) and normalize
-            pc1_values = embedding[:, 0].astype(float).tolist()
-            n_samples = len(pc1_values)
-            x_values.append(str(layer))
-            data.append(TrajectoryPoint(
-                x_value=str(layer),
-                values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                sample_indices=sample_indices,
-            ))
-            # For layer trajectory, all layers share the same sample indices (same position)
-            if not shared_sample_indices:
-                shared_sample_indices = sample_indices
-
-        elapsed = time.time() - start_time
-        _log("/trajectory/layers", f"Returning trajectory from PCA embeddings", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
-
-        return TrajectoryResponse(
-            component=component,
-            position=position,
-            method="pca",
-            x_axis="layer",
-            x_values=x_values,
-            n_samples=n_samples,
-            sample_indices=shared_sample_indices,
-            data=data,
-        )
+        except ValueError as e:
+            # NO FALLBACK - trajectory cache MUST exist
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trajectory cache not found for {component}/{position}. Run compute_geometry_analysis.py first. Error: {e}"
+            )
 
     @router.get("/trajectory/positions/{layer}/{component}", response_model=TrajectoryResponse)
     async def get_position_trajectory(
         layer: int,
         component: str,
         positions_filter: str = Query(default="", description="Comma-separated positions to include (empty = all named)"),
+        mode: str = Query(default="aligned", description="PCA mode: 'aligned' or 'shared'"),
     ) -> TrajectoryResponse:
         """Get PC1 trajectory across semantic positions for a given layer/component.
 
         Returns PC1 values for each sample at each position, enabling visualization
         of how representations vary across different parts of the prompt.
         """
-        _log("/trajectory/positions", f"GET request", layer=layer, component=component, positions_filter=positions_filter or "default")
+        _log("/trajectory/positions", f"GET request", layer=layer, component=component, positions_filter=positions_filter or "default", mode=mode)
         start_time = time.time()
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
 
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Validate mode
+        if mode not in ("aligned", "shared"):
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be 'aligned' or 'shared'.")
 
         # Use filtered positions or default to all positions (in actual prompt order)
         if positions_filter:
@@ -916,7 +1076,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         # Try to use pre-cached trajectory data first (only if no filter applied)
         if not positions_filter:
             try:
-                cached_positions, pc1_values_list, sample_indices_list = data_loader.load_position_trajectory(layer, component)
+                cached_positions, pc1_values_list, sample_indices_list = data_loader.load_position_trajectory(layer, component, mode=mode)
                 # Build lookup from cached data
                 cached_data = {
                     pos: (pc1_values_list[i], sample_indices_list[i] if i < len(sample_indices_list) else [])
@@ -936,7 +1096,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                     x_values.append(pos)
                     data.append(TrajectoryPoint(
                         x_value=pos,
-                        values=[_sanitize_float(v) or 0.0 for v in pc1_values],
+                        values=_validate_pc_values(pc1_values, f"position_trajectory {pos}_{component}"),
                         sample_indices=indices,
                     ))
                 elapsed = time.time() - start_time
@@ -951,42 +1111,12 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                     sample_indices=[],  # Position trajectory has per-point indices since each position may differ
                     data=data,
                 )
-            except ValueError:
-                # Trajectory cache not available, fall back to individual PCA embeddings
-                pass
-
-        # Fall back to computing from individual PCA embeddings
-        data = []
-        x_values = []
-        n_samples = 0
-
-        for pos in positions:
-            # STRICT: load_pca raises ValueError if embedding is missing
-            embedding = data_loader.load_pca(layer, component, pos, n_components=3)
-            # Get sample indices for this layer/component/position
-            sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
-            pc1_values = embedding[:, 0].astype(float).tolist()
-            n_samples = len(pc1_values)
-            x_values.append(pos)
-            data.append(TrajectoryPoint(
-                x_value=pos,
-                values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                sample_indices=sample_indices,
-            ))
-
-        elapsed = time.time() - start_time
-        _log("/trajectory/positions", f"Returning trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
-
-        return TrajectoryResponse(
-            layer=layer,
-            component=component,
-            method="pca",
-            x_axis="position",
-            x_values=x_values,
-            n_samples=n_samples,
-            sample_indices=[],  # Position trajectory has per-point indices since each position may differ
-            data=data,
-        )
+            except ValueError as e:
+                # NO FALLBACK - trajectory cache MUST exist
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Position trajectory cache not found for L{layer}/{component}. Run compute_geometry_analysis.py first. Error: {e}"
+                )
 
     # ==================== 2D TRAJECTORY ENDPOINTS (PC1 + PC2) ====================
 
@@ -994,6 +1124,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
     async def get_layer_trajectory_2d(
         component: str,
         position: str,
+        mode: str = Query(default="aligned", description="PCA mode: 'aligned' or 'shared'"),
     ) -> Trajectory2DResponse:
         """Get PC1+PC2 trajectory across all layers for a given component/position.
 
@@ -1001,20 +1132,27 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         3D visualization of how representations evolve through the model.
         X-axis: layer, Y-axis: PC1, Z-axis: PC2
         """
-        _log("/trajectory2d/layers", f"GET request", component=component, position=position)
+        _log("/trajectory2d/layers", f"GET request", component=component, position=position, mode=mode)
         start_time = time.time()
 
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Validate mode
+        if mode not in ("aligned", "shared"):
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be 'aligned' or 'shared'.")
 
         # Parse position to extract base_pos and optional rel_pos
         base_pos = position.split(":")[0] if ":" in position else position
         if base_pos not in data_loader.get_positions():
             raise HTTPException(status_code=404, detail=f"Position {base_pos} not found")
 
+        # Validate rel_pos if specified
+        _validate_rel_pos(position, data_loader)
+
         # Try to use pre-cached trajectory data (handles both combined and per-relpos with fallback)
         try:
-            result = data_loader.load_layer_trajectory(component, position, include_pc2=True)
+            result = data_loader.load_layer_trajectory(component, position, include_pc2=True, mode=mode)
             layers, pc1_matrix, pc2_matrix, shared_sample_indices = result
             data = []
             x_values = []
@@ -1024,8 +1162,8 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 x_values.append(str(layer))
                 data.append(Trajectory2DPoint(
                     x_value=str(layer),
-                    pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                    pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                    pc1_values=_validate_pc_values(pc1_values, f"trajectory2d_layers L{layer}_{component}_{position} PC1"),
+                    pc2_values=_validate_pc_values(pc2_values, f"trajectory2d_layers L{layer}_{component}_{position} PC2"),
                     sample_indices=shared_sample_indices,
                 ))
             n_samples = len(shared_sample_indices)
@@ -1041,59 +1179,19 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 sample_indices=shared_sample_indices,
                 data=data,
             )
-        except ValueError:
-            pass  # Fall back to individual PCA embeddings
-
-        # Fall back to computing from individual PCA embeddings
-        layers = data_loader.get_layers()
-        data = []
-        x_values = []
-        n_samples = 0
-        shared_sample_indices: list[int] = []
-
-        for layer in layers:
-            try:
-                embedding = data_loader.load_pca(layer, component, position, n_components=3)
-            except ValueError as e:
-                _log("/trajectory2d/layers", f"ERROR loading PCA", layer=layer, component=component, position=position, error=str(e))
-                raise HTTPException(status_code=404, detail=f"PCA embedding missing: L{layer}_{component}_{position}. Error: {e}")
-            try:
-                sample_indices = data_loader.get_valid_sample_indices(layer, component, position)
-            except Exception as e:
-                _log("/trajectory2d/layers", f"ERROR getting sample indices", layer=layer, component=component, position=position, error=str(e))
-                raise HTTPException(status_code=500, detail=f"Failed to get sample indices for L{layer}_{component}_{position}. Error: {e}")
-            pc1_values = embedding[:, 0].astype(float).tolist()
-            pc2_values = embedding[:, 1].astype(float).tolist() if embedding.shape[1] > 1 else [0.0] * len(pc1_values)
-            n_samples = len(pc1_values)
-            x_values.append(str(layer))
-            data.append(Trajectory2DPoint(
-                x_value=str(layer),
-                pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
-                sample_indices=sample_indices,
-            ))
-            if not shared_sample_indices:
-                shared_sample_indices = sample_indices
-
-        elapsed = time.time() - start_time
-        _log("/trajectory2d/layers", f"Returning 2D trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
-
-        return Trajectory2DResponse(
-            component=component,
-            position=position,
-            method="pca",
-            x_axis="layer",
-            x_values=x_values,
-            n_samples=n_samples,
-            sample_indices=shared_sample_indices,
-            data=data,
-        )
+        except ValueError as e:
+            # NO FALLBACK - trajectory cache MUST exist
+            raise HTTPException(
+                status_code=404,
+                detail=f"2D layer trajectory cache not found for {component}/{position}. Run compute_geometry_analysis.py first. Error: {e}"
+            )
 
     @router.get("/trajectory2d/positions/{layer}/{component}", response_model=Trajectory2DResponse)
     async def get_position_trajectory_2d(
         layer: int,
         component: str,
         positions_filter: str = Query(default="", description="Comma-separated positions to include"),
+        mode: str = Query(default="aligned", description="PCA mode: 'aligned' or 'shared'"),
     ) -> Trajectory2DResponse:
         """Get PC1+PC2 trajectory across semantic positions for a given layer/component.
 
@@ -1101,13 +1199,17 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         3D visualization of how representations vary across positions.
         X-axis: position, Y-axis: PC1, Z-axis: PC2
         """
-        _log("/trajectory2d/positions", f"GET request", layer=layer, component=component)
+        _log("/trajectory2d/positions", f"GET request", layer=layer, component=component, mode=mode)
         start_time = time.time()
 
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
+
+        # Validate mode
+        if mode not in ("aligned", "shared"):
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be 'aligned' or 'shared'.")
 
         # Use named positions if no filter
         if positions_filter:
@@ -1118,7 +1220,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         # Try cached trajectory (only if no filter)
         if not positions_filter:
             try:
-                result = data_loader.load_position_trajectory(layer, component, include_pc2=True)
+                result = data_loader.load_position_trajectory(layer, component, include_pc2=True, mode=mode)
                 cached_positions, pc1_values_list, pc2_values_list, sample_indices_list = result
                 data = []
                 x_values = []
@@ -1133,8 +1235,8 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                     x_values.append(pos)
                     data.append(Trajectory2DPoint(
                         x_value=pos,
-                        pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                        pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                        pc1_values=_validate_pc_values(pc1_values, f"trajectory2d_positions L{layer}_{component}_{pos} PC1"),
+                        pc2_values=_validate_pc_values(pc2_values, f"trajectory2d_positions L{layer}_{component}_{pos} PC2"),
                         sample_indices=sample_indices,
                     ))
                 elapsed = time.time() - start_time
@@ -1149,36 +1251,37 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                     sample_indices=[],
                     data=data,
                 )
-            except ValueError:
-                pass
+            except ValueError as e:
+                # NO FALLBACK - trajectory cache MUST exist
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"2D position trajectory cache not found for L{layer}/{component}. Run compute_geometry_analysis.py first. Error: {e}"
+                )
 
-        # Fall back to individual PCA embeddings
+        # If positions_filter was provided, still need to load data
+        # This is NOT a fallback - it's loading cached data with filtering
+        result = data_loader.load_position_trajectory(layer, component, include_pc2=True, mode=mode)
+        cached_positions, pc1_values_list, pc2_values_list, sample_indices_list = result
         data = []
         x_values = []
         n_samples = 0
-        skipped = []
-        for pos in positions:
-            try:
-                embedding = data_loader.load_pca(layer, component, pos, n_components=3)
-            except ValueError as e:
-                skipped.append(f"{pos}: {e}")
+        for i, pos in enumerate(cached_positions):
+            if pos not in positions:
                 continue
-            sample_indices = data_loader.get_valid_sample_indices(layer, component, pos)
-            pc1_values = embedding[:, 0].astype(float).tolist()
-            pc2_values = embedding[:, 1].astype(float).tolist() if embedding.shape[1] > 1 else [0.0] * len(pc1_values)
+            pc1_values = pc1_values_list[i].astype(float).tolist()
+            pc2_values = pc2_values_list[i].astype(float).tolist()
+            sample_indices = sample_indices_list[i]
             n_samples = max(n_samples, len(pc1_values))
             x_values.append(pos)
             data.append(Trajectory2DPoint(
                 x_value=pos,
-                pc1_values=[_sanitize_float(v) or 0.0 for v in pc1_values],
-                pc2_values=[_sanitize_float(v) or 0.0 for v in pc2_values],
+                pc1_values=_validate_pc_values(pc1_values, f"trajectory2d_positions L{layer}_{component}_{pos} PC1"),
+                pc2_values=_validate_pc_values(pc2_values, f"trajectory2d_positions L{layer}_{component}_{pos} PC2"),
                 sample_indices=sample_indices,
             ))
 
         elapsed = time.time() - start_time
-        if skipped:
-            _log("/trajectory2d/positions", f"SKIPPED {len(skipped)} positions", skipped=skipped)
-        _log("/trajectory2d/positions", f"Returning 2D trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("/trajectory2d/positions", f"Returning 2D trajectory (filtered)", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
 
         return Trajectory2DResponse(
             layer=layer,
@@ -1224,27 +1327,37 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         return TokensResponse(sample_idx=sample_idx, tokens=tokens)
 
-    @router.get("/scree/{position}")
+    @router.get("/scree/{position:path}")
     async def get_scree_data(position: str, n_components: int = 10) -> dict:
         """Get Scree plot data (cumulative variance explained) for a position.
+
+        Position can include rel_pos suffix (e.g., "response_choice:0") - will use
+        combined position metrics since per-rel_pos metrics are not computed.
 
         Returns cumulative variance explained across all layers and components.
         """
         _log("/scree", f"GET request", position=position)
-        if position not in data_loader.get_positions():
+        # Validate base position (strip rel_pos suffix for validation)
+        base_position = position.rsplit(":", 1)[0] if ":" in position else position
+        if base_position not in data_loader.get_positions():
             raise HTTPException(status_code=400, detail=f"Invalid position: {position}")
 
         scree_data = data_loader.get_scree_data(position, n_components)
         return scree_data
 
-    @router.get("/alignment/{position}")
+    @router.get("/alignment/{position:path}")
     async def get_direction_alignment(position: str, pc_index: int = 0) -> dict:
         """Get direction alignment (cosine similarity) matrix for a position.
+
+        Position can include rel_pos suffix (e.g., "response_choice:0") - will use
+        combined position components since per-rel_pos components are not computed.
 
         Returns cosine similarity between PC directions across all targets.
         """
         _log("/alignment", f"GET request", position=position, pc_index=pc_index)
-        if position not in data_loader.get_positions():
+        # Validate base position (strip rel_pos suffix for validation)
+        base_position = position.rsplit(":", 1)[0] if ":" in position else position
+        if base_position not in data_loader.get_positions():
             raise HTTPException(status_code=400, detail=f"Invalid position: {position}")
 
         alignment_data = data_loader.get_direction_alignment(position, pc_index)

@@ -74,6 +74,11 @@ def _plot_resid_delta_comparison(
         title = "Denoising" if mode == "denoising" else "Noising"
         ax.set_title(f"Sanity Check: resid_pre[L+1] vs resid_post[L] - {title}", fontsize=12, fontweight="bold")
         ax.legend(loc="best")
+        # Ensure x-axis only shows integer layer values
+        all_plot_layers = sorted(set(pre_next_layers + post_plot_layers))
+        if all_plot_layers:
+            ax.set_xticks(all_plot_layers)
+            ax.set_xticklabels([str(l) for l in all_plot_layers])
         setup_grid(ax)
 
     plt.tight_layout()
@@ -142,6 +147,10 @@ def _plot_resid_delta_difference(
         title = "Denoising" if mode == "denoising" else "Noising"
         ax.set_title(f"Sanity Check Difference - {title}", fontsize=12, fontweight="bold")
         ax.legend(loc="best")
+        # Ensure x-axis only shows integer layer values
+        if layers:
+            ax.set_xticks(layers)
+            ax.set_xticklabels([str(l) for l in layers])
         setup_grid(ax)
 
     plt.tight_layout()

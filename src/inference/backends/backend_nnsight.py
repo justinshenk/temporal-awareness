@@ -168,8 +168,25 @@ class NNsightBackend(Backend):
 
     def _get_component_module(self, layer, component: str):
         """Get the module for a specific component within a layer."""
-        if component in ("resid_post", "resid_pre", "resid_mid"):
+        if component in ("resid_post", "resid_pre"):
+            # resid_pre: input to the layer
+            # resid_post: output of the layer
             return layer
+        elif component == "resid_mid":
+            # resid_mid: residual stream after attention, before MLP
+            # This is the INPUT to post_attention_layernorm
+            # Llama/Mistral: post_attention_layernorm
+            # GPT-2: ln_2
+            if hasattr(layer, "post_attention_layernorm"):
+                return layer.post_attention_layernorm
+            elif hasattr(layer, "ln_2"):
+                return layer.ln_2
+            else:
+                raise ValueError(
+                    f"Cannot find post-attention layernorm in layer: {type(layer)}. "
+                    "resid_mid requires a model with post_attention_layernorm (Llama/Mistral) "
+                    "or ln_2 (GPT-2)."
+                )
         elif component == "attn_out":
             if self._layers_path == "transformer.h":
                 return layer.attn  # GPT-2
@@ -197,7 +214,7 @@ class NNsightBackend(Backend):
 
         for i in range(len(self._layers)):
             # Standard component hooks
-            for component in ["attn_out", "mlp_out", "resid_post"]:
+            for component in ["resid_pre", "resid_mid", "attn_out", "mlp_out", "resid_post"]:
                 name = f"blocks.{i}.hook_{component}"
                 if names_filter is None or names_filter(name):
                     hooks_to_capture.add((i, component, name))
@@ -242,14 +259,18 @@ class NNsightBackend(Backend):
                         cache[f"blocks.{layer_idx}.hook_attn_out"] = out
 
                 # Capture other components
-                for component in ["mlp_out", "resid_post"]:
+                for component in ["resid_pre", "resid_mid", "mlp_out", "resid_post"]:
                     name = f"blocks.{layer_idx}.hook_{component}"
                     if (layer_idx, component, name) not in hooks_to_capture:
                         continue
 
                     module = self._get_component_module(layer, component)
 
-                    if component == "mlp_out":
+                    # resid_pre: input to layer, resid_mid: input to post_attention_layernorm
+                    # Both need to capture the INPUT to their respective modules
+                    if component in ("resid_pre", "resid_mid"):
+                        out = module.input[0].save()
+                    elif component == "mlp_out":
                         out = module.output.save()
                     else:
                         out = module.output[0].save()
@@ -407,7 +428,7 @@ class NNsightBackend(Backend):
             for layer_idx in range(len(self._layers)):
                 layer = self._get_layer(layer_idx)
 
-                for component in ["resid_post", "attn_out", "mlp_out"]:
+                for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:
                     key = (layer_idx, component)
                     intervention = intervention_lookup.get(key)
 
@@ -420,7 +441,11 @@ class NNsightBackend(Backend):
 
                     module = self._get_component_module(layer, component)
 
-                    if component == "mlp_out":
+                    # resid_pre: input to layer, resid_mid: input to post_attention_layernorm
+                    # Both need to access the INPUT to their respective modules
+                    if component in ("resid_pre", "resid_mid"):
+                        out = module.input[0]
+                    elif component == "mlp_out":
                         out = module.output
                     else:
                         out = module.output[0]

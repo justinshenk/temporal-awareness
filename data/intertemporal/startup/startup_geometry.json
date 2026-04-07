@@ -1,29 +1,29 @@
 {
-  "name": "cityhousing_geometry",
+  "name": "startup_geometry",
   "context": {
-    "reward_unit": "housing units",
-    "role": "the city administration",
-    "situation": "Plan for housing development in the city.",
-    "domain": "housing"
+    "reward_unit": "thousands of dollars in revenue",
+    "role": "a startup founder",
+    "situation": "Choose business strategies with different revenue timelines and growth potential.",
+    "domain": "startup"
   },
   "options": {
     "short_term": {
-      "reward_range": [1000, 100000],
+      "reward_range": [10, 500],
       "time_range": [
         {"value": 1, "unit": "days"},
-        {"value": 20, "unit": "years"}
+        {"value": 5, "unit": "years"}
       ],
-      "reward_steps": [2, "logarithmic"],
-      "time_steps": [5, "logarithmic"]
+      "reward_steps": [5, "linear"],
+      "time_steps": [5, "linear"]
     },
     "long_term": {
       "reward_range": [1000, 100000],
       "time_range": [
-        {"value": 1, "unit": "years"},
-        {"value": 100, "unit": "years"}
+        {"value": 10, "unit": "years"},
+        {"value": 70, "unit": "years"}
       ],
-      "reward_steps": [2, "logarithmic"],
-      "time_steps": [5, "logarithmic"]
+      "reward_steps": [5, "linear"],
+      "time_steps": [5, "linear"]
     }
   },
   "time_horizons": [
@@ -34,7 +34,8 @@
     {"value": 1, "unit": "week"},
     {"value": 1, "unit": "months"},
     {"value": 2, "unit": "months"},
-    {"value": 6, "unit": "months"},
+    {"value": 4, "unit": "months"},
+    {"value": 8, "unit": "months"},
     {"value": 1, "unit": "years"},
     {"value": 3, "unit": "years"},
     {"value": 5, "unit": "years"},
@@ -43,11 +44,12 @@
     {"value": 5, "unit": "decades"},
     {"value": 1, "unit": "centuries"},
     {"value": 2, "unit": "centuries"},
-    {"value": 5, "unit": "centuries"}
+    {"value": 5, "unit": "centuries"},
+    {"value": 1, "unit": "millenia"},
+    {"value": 5, "unit": "millenia"},
+    {"value": 10, "unit": "millenia"}
   ],
   "add_formatting_noise": false,
   "do_formatting_variation_grid": false,
-  "do_context_variations": false,
-  "round_time_units": true,
-  "round_reward_units": true
+  "do_context_variations": false
 }

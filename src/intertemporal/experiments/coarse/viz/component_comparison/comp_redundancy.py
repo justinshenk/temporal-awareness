@@ -62,8 +62,12 @@ def _plot_noise_vs_denoise(
     else:
         max_idx, min_idx = 1, 0
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 12), facecolor="white")
-    axes = axes.flatten()
+    # Create grid that fits all components (2 columns, enough rows)
+    n_components = len(COMPONENTS)
+    n_cols = 2
+    n_rows = (n_components + n_cols - 1) // n_cols  # Ceiling division
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 6 * n_rows), facecolor="white")
+    axes = axes.flatten() if n_rows > 1 else [axes] if n_cols == 1 else axes.flatten()
 
     for ax_idx, comp in enumerate(COMPONENTS):
         ax = axes[ax_idx]
@@ -127,6 +131,10 @@ def _plot_noise_vs_denoise(
         ax.set_ylim(-0.05, 1.05)
         setup_grid(ax)
 
+    # Hide unused axes
+    for ax_idx in range(n_components, len(axes)):
+        axes[ax_idx].axis("off")
+
     # Shared colorbar
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
     sm = cm.ScalarMappable(cmap="viridis", norm=plt.Normalize(vmin=min_idx, vmax=max_idx))
@@ -178,14 +186,6 @@ def _plot_redundancy_gap(
         gaps_by_comp[comp] = gaps
         ax.bar(x + i * bar_width, gaps, bar_width, label=comp, color=COMPONENT_COLORS[comp], alpha=0.8)
 
-        # Trend line
-        if len(gaps) > 3:
-            window = min(5, len(gaps) // 2)
-            smoothed = np.convolve(gaps, np.ones(window) / window, mode="valid")
-            smoothed_x = np.arange(window // 2, len(gaps) - window // 2)
-            ax.plot(smoothed_x + i * bar_width, smoothed, color=COMPONENT_COLORS[comp],
-                    linewidth=2, linestyle="--", alpha=0.7)
-
     ax.axhline(y=0, color="black", linestyle="-", linewidth=1)
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
     ax.set_ylabel("Redundancy Gap (Disruption - Recovery)", fontsize=12, fontweight="bold")
@@ -204,11 +204,11 @@ def _plot_redundancy_gap(
     ax.legend(loc="best")
     setup_grid(ax)
 
-    # Background labels
-    ax.text(0.08, 0.75, "Necessity", transform=ax.transAxes, fontsize=36, fontweight="bold",
-            color="gray", alpha=0.12, ha="left", va="center", zorder=0)
-    ax.text(0.08, 0.25, "Sufficiency", transform=ax.transAxes, fontsize=36, fontweight="bold",
-            color="gray", alpha=0.12, ha="left", va="center", zorder=0)
+    # Background labels - positioned at right edge for better visibility
+    ax.text(0.95, 0.85, "Necessity\n(+)", transform=ax.transAxes, fontsize=28, fontweight="bold",
+            color="gray", alpha=0.25, ha="right", va="center", zorder=0)
+    ax.text(0.95, 0.15, "Sufficiency\n(-)", transform=ax.transAxes, fontsize=28, fontweight="bold",
+            color="gray", alpha=0.25, ha="right", va="center", zorder=0)
 
     plt.tight_layout()
     save_plot(fig, output_dir, "redundancy_gap.png")

@@ -5,7 +5,7 @@ throughout the analysis pipeline.
 """
 
 # default layers
-DEFAULT_LAYERS = [8, 19, 21, 24, 28, 31, 34, 35]
+DEFAULT_LAYERS = [8, 18, 19, 20, 21, 22, 23, 24, 28, 31, 34, 35]
 
 
 ##################################

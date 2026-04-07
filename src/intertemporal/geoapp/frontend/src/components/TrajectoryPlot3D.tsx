@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRef, useState, useCallback, useMemo } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { PointData } from './PointCloud';
@@ -106,10 +106,8 @@ function TrajectoryLines({
   selectedSampleIdx,
   lineOpacity,
   bounds,
-  onHover,
-  onClick,
 }: TrajectoryLinesProps) {
-  const { camera, raycaster, pointer } = useThree();
+  const { camera: _camera, raycaster: _raycaster, pointer: _pointer } = useThree();
   const groupRef = useRef<THREE.Group>(null);
 
   // Get number of samples from first data point
@@ -168,7 +166,7 @@ function TrajectoryLines({
   return (
     <group ref={groupRef}>
       {/* Regular lines */}
-      {regularLines.map((line, i) => (
+      {regularLines.map((line) => (
         <Line
           key={`line-${line.sampleIdx}`}
           points={line.points}
@@ -215,7 +213,7 @@ interface AxisLabelsProps {
   xAxisLabel: string;
 }
 
-function AxisLabels({ xValues, bounds, xAxisLabel }: AxisLabelsProps) {
+function AxisLabels({ xValues, bounds: _bounds, xAxisLabel }: AxisLabelsProps) {
   // Detect if this is position axis (longer text labels) vs layer axis (short numbers)
   const isPositionAxis = xAxisLabel === 'Position';
 
@@ -320,7 +318,7 @@ export function TrajectoryPlot3D({
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [_hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Calculate bounds for normalization
   const bounds = useMemo(() => calculateBounds(pc1Data, pc2Data, xValues), [pc1Data, pc2Data, xValues]);
@@ -430,6 +428,7 @@ export function TrajectoryPlot3D({
       <Canvas
         camera={{ position: [2, 1.5, 2], fov: 50 }}
         style={{ background: backgroundColor }}
+        gl={{ preserveDrawingBuffer: true, antialias: true }}
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />

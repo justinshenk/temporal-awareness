@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
+from ......viz.plot_helpers import save_figure
 from .data_extraction import ColumnData
 from .agg_style import (
     AXIS_LABEL_FONTSIZE,
@@ -169,7 +170,4 @@ def plot_column(
     plt.tight_layout()
 
     # Save
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=DPI, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=DPI)

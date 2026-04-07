@@ -48,6 +48,10 @@ class SweepStepResults(BaseSchema):
     def __len__(self) -> int:
         return len(self.by_start)
 
+    def __contains__(self, key: int) -> bool:
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        return key in self.by_start or str(key) in self.by_start
+
     def __bool__(self) -> bool:
         return bool(self.by_start)
 

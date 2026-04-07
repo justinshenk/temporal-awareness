@@ -13,7 +13,7 @@ from ...common import profile
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...common.file_io import load_json, save_json
-from ...viz.plot_helpers import finalize_plot as _finalize_plot
+from ...viz.plot_helpers import add_pair_label, finalize_plot as _finalize_plot
 from ...viz.viz_palettes import TOKEN_COLORS
 from ...viz.token_coloring import (
     TokenColorInfo,
@@ -377,6 +377,7 @@ def visualize_tokenization(
     runner: Any,
     output_dir: Path,
     max_pairs: int = 3,
+    pair_idx: int | None = None,
 ) -> None:
     """Visualize tokenization alignment for contrastive pairs.
 
@@ -390,6 +391,7 @@ def visualize_tokenization(
         runner: Model runner with tokenizer
         output_dir: Directory to save plots
         max_pairs: Maximum number of pairs to visualize
+        pair_idx: Optional pair index for labeling (if visualizing single pair)
     """
     if not pairs:
         print("[viz] No pairs to visualize tokenization")
@@ -408,19 +410,22 @@ def visualize_tokenization(
 
         # Use simple index if multiple pairs, otherwise no suffix
         suffix = f"_{i}" if max_pairs > 1 else ""
+        # Use provided pair_idx or fall back to loop index
+        actual_pair_idx = pair_idx if pair_idx is not None else i
         _plot_tokenization_from_data(
-            viz_data, coloring, output_dir / f"tokenization{suffix}.png"
+            viz_data, coloring, output_dir / f"tokenization{suffix}.png", pair_idx=actual_pair_idx
         )
 
     print(f"[viz] Tokenization plots saved to {output_dir}")
 
 
 @profile
-def visualize_tokenization_from_cache(output_dir: Path) -> bool:
+def visualize_tokenization_from_cache(output_dir: Path, pair_idx: int | None = None) -> bool:
     """Visualize tokenization from cached data.
 
     Args:
         output_dir: Directory containing the cache file
+        pair_idx: Optional pair index for labeling
 
     Returns:
         True if visualization was successful, False if cache not found
@@ -431,7 +436,7 @@ def visualize_tokenization_from_cache(output_dir: Path) -> bool:
 
     coloring = viz_data.get_coloring()
     _plot_tokenization_from_data(
-        viz_data, coloring, Path(output_dir) / "tokenization.png"
+        viz_data, coloring, Path(output_dir) / "tokenization.png", pair_idx=pair_idx
     )
     return True
 
@@ -440,6 +445,7 @@ def _plot_tokenization_from_data(
     viz_data: TokenizationVizData,
     coloring: PairTokenColoring,
     save_path: Path,
+    pair_idx: int | None = None,
 ) -> None:
     """Plot detailed tokenization from cached visualization data.
 
@@ -447,17 +453,18 @@ def _plot_tokenization_from_data(
         viz_data: TokenizationVizData with all needed info
         coloring: PairTokenColoring with color info
         save_path: Path to save the plot
+        pair_idx: Optional pair index for labeling
     """
     clean_ids = viz_data.clean_token_ids
     corrupted_ids = viz_data.corrupted_token_ids
 
-    # Create figure with detailed layout - size based on sequence length
+    # Create figure with side-by-side layout
     max_len = max(len(clean_ids), len(corrupted_ids))
-    fig_height = max(14, min(32, 3 + (max_len // 15) * 0.8))
-    fig = plt.figure(figsize=(20, fig_height))
+    fig_height = max(12, min(28, 3 + (max_len // 15) * 0.6))
+    fig = plt.figure(figsize=(32, fig_height))
 
     # Info panel at top
-    ax_info = fig.add_axes([0.05, 0.92, 0.9, 0.06])
+    ax_info = fig.add_axes([0.05, 0.94, 0.9, 0.04])
     ax_info.axis("off")
 
     clean_label = viz_data.clean_label
@@ -478,24 +485,49 @@ def _plot_tokenization_from_data(
         fontweight="bold",
     )
 
-    # Clean trajectory
-    ax_clean = fig.add_axes([0.02, 0.48, 0.88, 0.42])
+    add_pair_label(fig, pair_idx)
+
+    # Clean trajectory (left side)
+    ax_clean = fig.add_axes([0.02, 0.12, 0.46, 0.80])
     _plot_token_grid(
         ax_clean,
         clean_ids,
         viz_data.clean_tokens,
         coloring.clean_colors,
         f"Clean trajectory (chose {clean_label}, rejected {corrupted_label})",
+        show_legend=False,
     )
 
-    # Corrupted trajectory
-    ax_corrupted = fig.add_axes([0.02, 0.02, 0.88, 0.42])
+    # Corrupted trajectory (right side)
+    ax_corrupted = fig.add_axes([0.50, 0.12, 0.46, 0.80])
     _plot_token_grid(
         ax_corrupted,
         corrupted_ids,
         viz_data.corrupted_tokens,
         coloring.corrupted_colors,
         f"Corrupted trajectory (chose {corrupted_label}, rejected {clean_label})",
+        show_legend=False,
+    )
+
+    # Shared legend at bottom center - large and prominent
+    legend_elements = [
+        mpatches.Patch(facecolor=TOKEN_COLORS["prompt_light"], edgecolor=TOKEN_COLORS["prompt_edge"], label="Prompt"),
+        mpatches.Patch(facecolor=TOKEN_COLORS["response_light"], edgecolor=TOKEN_COLORS["response_edge"], label="Response"),
+        mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["choice_div_edge"], label="Choice Div"),
+        mpatches.Patch(facecolor=TOKEN_COLORS["contrast_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], label="Contrastive Div"),
+        mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], linewidth=2, label="Both"),
+    ]
+    fig.legend(
+        handles=legend_elements,
+        loc="lower center",
+        fontsize=18,
+        ncol=5,
+        bbox_to_anchor=(0.5, 0.02),
+        framealpha=0.95,
+        handlelength=3,
+        handleheight=2,
+        handletextpad=1,
+        columnspacing=3,
     )
 
     _finalize_plot(save_path)
@@ -508,6 +540,7 @@ def _plot_token_grid(
     colors: dict[int, TokenColorInfo],
     title: str,
     max_response_tokens: int = 100,
+    show_legend: bool = True,
 ) -> None:
     """Plot token grid with IDs, text, and boundaries.
 
@@ -518,6 +551,7 @@ def _plot_token_grid(
         colors: Dict mapping position to TokenColorInfo
         title: Title for the plot
         max_response_tokens: Max response tokens to show
+        show_legend: Whether to show the legend on this plot
     """
     # Find prompt length from colors
     prompt_token_count = sum(1 for c in colors.values() if c.is_prompt)
@@ -573,20 +607,22 @@ def _plot_token_grid(
         # Token text (escape special chars)
         token_text = tokens[i].replace("\n", "\\n").replace("\t", "\\t")
 
-        # Adaptive font size based on text length
-        if len(token_text) > 12:
-            token_text = token_text[:10] + ".."
-            fontsize = 5
-        elif len(token_text) > 8:
-            fontsize = 5.5
+        # Adaptive font size based on text length - larger sizes to fill boxes
+        if len(token_text) > 10:
+            token_text = token_text[:8] + ".."
+            fontsize = 8
+        elif len(token_text) > 7:
+            fontsize = 9
         elif len(token_text) > 5:
-            fontsize = 6
+            fontsize = 10
+        elif len(token_text) > 3:
+            fontsize = 11
         else:
-            fontsize = 7
+            fontsize = 12
 
         ax.text(
             col,
-            row - 0.08,
+            row - 0.05,
             token_text,
             ha="center",
             va="center",
@@ -598,54 +634,51 @@ def _plot_token_grid(
         # Token ID
         ax.text(
             col,
-            row + 0.22,
+            row + 0.25,
             f"id:{token_ids[i]}",
             ha="center",
             va="center",
-            fontsize=5,
+            fontsize=7,
             color="gray",
         )
 
-        # Position number - color based on type
+        # Position number in top-left corner - color based on type
         if is_choice_div and is_contrastive_div:
             pos_color = "#D32F2F"  # Red (both)
-            pos_weight = "bold"
         elif is_choice_div:
             pos_color = "#7B1FA2"  # Purple
-            pos_weight = "bold"
         elif is_contrastive_div:
             pos_color = "#D32F2F"  # Red
-            pos_weight = "bold"
         else:
-            pos_color = "darkgray"
-            pos_weight = "normal"
+            pos_color = "#555555"  # Darker gray for better visibility
 
         ax.text(
-            col - 0.35,
+            col - 0.40,
             row - 0.32,
             str(i),
             ha="left",
             va="center",
-            fontsize=5,
+            fontsize=5.5,
             color=pos_color,
-            fontweight=pos_weight,
+            fontweight="bold",
         )
 
-    # Legend - place outside plot area
-    legend_elements = [
-        mpatches.Patch(facecolor=TOKEN_COLORS["prompt_light"], edgecolor=TOKEN_COLORS["prompt_edge"], label="Prompt"),
-        mpatches.Patch(facecolor=TOKEN_COLORS["response_light"], edgecolor=TOKEN_COLORS["response_edge"], label="Response"),
-        mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["choice_div_edge"], label="Choice Div"),
-        mpatches.Patch(facecolor=TOKEN_COLORS["contrast_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], label="Contrastive Div"),
-        mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], linewidth=2, label="Both"),
-    ]
-    ax.legend(
-        handles=legend_elements,
-        loc="upper left",
-        fontsize=7,
-        bbox_to_anchor=(1.01, 1),
-        borderaxespad=0,
-    )
+    # Legend - place outside plot area (optional)
+    if show_legend:
+        legend_elements = [
+            mpatches.Patch(facecolor=TOKEN_COLORS["prompt_light"], edgecolor=TOKEN_COLORS["prompt_edge"], label="Prompt"),
+            mpatches.Patch(facecolor=TOKEN_COLORS["response_light"], edgecolor=TOKEN_COLORS["response_edge"], label="Response"),
+            mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["choice_div_edge"], label="Choice Div"),
+            mpatches.Patch(facecolor=TOKEN_COLORS["contrast_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], label="Contrastive Div"),
+            mpatches.Patch(facecolor=TOKEN_COLORS["choice_div_light"], edgecolor=TOKEN_COLORS["contrast_div_edge"], linewidth=2, label="Both"),
+        ]
+        ax.legend(
+            handles=legend_elements,
+            loc="upper left",
+            fontsize=7,
+            bbox_to_anchor=(1.01, 1),
+            borderaxespad=0,
+        )
 
 
 def visualize_tokenization_from_position_mapping(
@@ -763,16 +796,18 @@ def _plot_position_mapping_grid(
         # Token text (escape special chars)
         token_text = pos_info.decoded_token.replace("\n", "\\n").replace("\t", "\\t")
 
-        # Adaptive font size
-        if len(token_text) > 12:
-            token_text = token_text[:10] + ".."
+        # Adaptive font size - smaller sizes for better fit in boxes
+        if len(token_text) > 10:
+            token_text = token_text[:8] + ".."
+            fontsize = 4.5
+        elif len(token_text) > 7:
             fontsize = 5
-        elif len(token_text) > 8:
-            fontsize = 5.5
         elif len(token_text) > 5:
+            fontsize = 5.5
+        elif len(token_text) > 3:
             fontsize = 6
         else:
-            fontsize = 7
+            fontsize = 6.5
 
         ax.text(
             col, row - 0.12, token_text,
@@ -800,13 +835,12 @@ def _plot_position_mapping_grid(
                 fontsize=4, color="gray",
             )
 
-        # Position number in corner
-        pos_color = "#D32F2F" if format_pos == "time_horizon" else "darkgray"
-        pos_weight = "bold" if format_pos == "time_horizon" else "normal"
+        # Position number in top-left corner
+        pos_color = "#D32F2F" if format_pos == "time_horizon" else "#555555"
         ax.text(
-            col - 0.35, row - 0.32, str(i),
+            col - 0.40, row - 0.32, str(i),
             ha="left", va="center",
-            fontsize=5, color=pos_color, fontweight=pos_weight,
+            fontsize=5.5, color=pos_color, fontweight="bold",
         )
 
     # Legend - show unique format_pos values present in this sample
@@ -865,58 +899,62 @@ def _plot_position_mapping_grid(
 def visualize_pair_alignment(
     pair_mapping: "PairPositionMapping",
     save_path: Path,
+    pair_idx: int | None = None,
 ) -> None:
     """Visualize position alignment between two samples.
 
     Creates exactly 4 rows split into 2 sections:
 
-    Section 1 (SRC → DST):
-    - Row 1: All src tokens in one horizontal line
-    - Row 2: The dst token each src maps to (aligned below)
+    Section 1 (CLEAN → CORRUPTED):
+    - Row 1: All clean tokens in one horizontal line
+    - Row 2: The corrupted token each clean position maps to (aligned below)
+    - Vertical arrows show mapping direction
 
-    Section 2 (DST → SRC):
-    - Row 3: All dst tokens in one horizontal line
-    - Row 4: The src token that maps to each dst (aligned below)
+    Section 2 (CORRUPTED → CLEAN):
+    - Row 3: All corrupted tokens in one horizontal line
+    - Row 4: The clean token that maps to each corrupted position (aligned below)
+    - Vertical arrows show mapping direction
 
     Colors indicate:
     - Green: Anchor (exact semantic match)
     - Blue: Interpolated but tokens match
     - Orange: Interpolated, tokens differ
-    - Gray: No mapping (extra dst positions)
+    - Gray: No mapping (extra positions)
 
     Args:
-        pair_mapping: PairPositionMapping with src_tokens, dst_tokens, mapping, anchors
+        pair_mapping: PairPositionMapping with src_tokens (clean), dst_tokens (corrupted), mapping, anchors
         save_path: Path to save the PNG
     """
     from ...common.token_positions import PairPositionMapping
 
-    src_tokens = pair_mapping.src_tokens
-    dst_tokens = pair_mapping.dst_tokens
-    mapping = pair_mapping.mapping
+    # Use clean/corrupted terminology (src=clean, dst=corrupted)
+    clean_tokens = pair_mapping.src_tokens
+    corrupted_tokens = pair_mapping.dst_tokens
+    mapping = pair_mapping.mapping  # clean -> corrupted
     anchor_set = set(tuple(a) for a in pair_mapping.anchors)
-    inv_mapping = pair_mapping.inv_mapping_complete
+    inv_mapping = pair_mapping.inv_mapping_complete  # corrupted -> clean
 
-    src_len = pair_mapping.src_len
-    dst_len = pair_mapping.dst_len
-    max_len = max(src_len, dst_len)
+    clean_len = pair_mapping.src_len
+    corrupted_len = pair_mapping.dst_len
+    max_len = max(clean_len, corrupted_len)
 
     # Figure: wide enough for all tokens, 4 rows total
     cell_width = 0.6
     fig_width = max(max_len * cell_width + 2, 20)
-    fig_height = 9  # Increased height for better spacing
+    fig_height = 10  # Increased height for arrows
     fig = plt.figure(figsize=(fig_width, fig_height))
 
     # Title at very top with enough space
     fig.suptitle(
-        f"Position Alignment: src_len={src_len}, dst_len={dst_len}",
+        f"Position Alignment: clean_len={clean_len}, corrupted_len={corrupted_len}",
         fontsize=14, fontweight="bold", y=0.96
     )
 
-    def get_color(src_pos, dst_pos, src_tok, dst_tok, is_anchor):
+    def get_color(clean_pos, corrupted_pos, clean_tok, corrupted_tok, is_anchor):
         """Get color based on alignment type."""
         if is_anchor:
             return "#4CAF50"  # Green - anchor
-        elif src_tok == dst_tok:
+        elif clean_tok == corrupted_tok:
             return "#2196F3"  # Blue - same token
         else:
             return "#FF9800"  # Orange - interpolated, different
@@ -930,76 +968,100 @@ def visualize_pair_alignment(
         )
         ax.add_patch(rect)
 
-        # Token text
+        # Token text - adaptive font size for better fit
         tok_display = token.replace("\n", "\\n").replace("\t", "\\t")
         if len(tok_display) > 6:
             tok_display = tok_display[:5] + ".."
+            fontsize = 4.5
+        elif len(tok_display) > 4:
+            fontsize = 5
+        else:
+            fontsize = 5.5
         ax.text(col, row + 0.05, tok_display, ha="center", va="center",
-                fontsize=5, fontfamily="monospace", fontweight="bold")
+                fontsize=fontsize, fontfamily="monospace", fontweight="bold")
 
-        # Position number (smaller, below token)
-        ax.text(col, row - 0.25, str(pos_num), ha="center", va="center",
-                fontsize=4, color="#333333")
+        # Position number in top-left corner
+        ax.text(col - 0.40, row - 0.32, str(pos_num), ha="left", va="center",
+                fontsize=5, color="#555555", fontweight="bold")
 
-    # === Section 1: SRC → DST (top half) - leave room for title ===
+    def draw_arrow(ax, col, y_start, y_end, color="#666666"):
+        """Draw a vertical arrow between rows."""
+        ax.annotate("", xy=(col, y_end), xytext=(col, y_start),
+                    arrowprops=dict(arrowstyle="->", color=color, lw=1.5, alpha=0.7))
+
+    # === Section 1: Denoising direction (top half) ===
     ax1 = fig.add_axes([0.01, 0.52, 0.98, 0.38])
-    ax1.set_title("SRC → DST: Row 1 = src tokens, Row 2 = mapped dst tokens", fontsize=10, pad=8)
-    ax1.set_xlim(-0.5, src_len - 0.5)
-    ax1.set_ylim(-0.5, 1.5)
+    ax1.set_title("Denoising: clean → corrupted (patch clean activations into corrupted run)", fontsize=10, pad=8)
+    ax1.set_xlim(-0.5, clean_len - 0.5)
+    ax1.set_ylim(-0.5, 1.8)
     ax1.invert_yaxis()
     ax1.axis("off")
 
-    for src_pos in range(src_len):
-        dst_pos = mapping.get(src_pos, src_pos)
-        src_tok = src_tokens[src_pos] if src_pos < len(src_tokens) else "?"
-        dst_tok = dst_tokens[dst_pos] if dst_pos < len(dst_tokens) else "?"
-        is_anchor = (src_pos, dst_pos) in anchor_set
-        color = get_color(src_pos, dst_pos, src_tok, dst_tok, is_anchor)
+    # Add row labels on the left
+    ax1.text(-0.8, 0, "Clean", fontsize=9, fontweight="bold", ha="right", va="center", color="#1565C0")
+    ax1.text(-0.8, 0.5, "↓", fontsize=12, ha="right", va="center", color="#666666")
+    ax1.text(-0.8, 1, "Corrupted", fontsize=9, fontweight="bold", ha="right", va="center", color="#C62828")
 
-        # Row 0: src token
-        draw_token_box(ax1, src_pos, 0, src_tok, src_pos, color)
-        # Row 1: mapped dst token
-        draw_token_box(ax1, src_pos, 1, dst_tok, dst_pos, color)
+    for clean_pos in range(clean_len):
+        corrupted_pos = mapping.get(clean_pos, clean_pos)
+        clean_tok = clean_tokens[clean_pos] if clean_pos < len(clean_tokens) else "?"
+        corrupted_tok = corrupted_tokens[corrupted_pos] if corrupted_pos < len(corrupted_tokens) else "?"
+        is_anchor = (clean_pos, corrupted_pos) in anchor_set
+        color = get_color(clean_pos, corrupted_pos, clean_tok, corrupted_tok, is_anchor)
 
-    # === Section 2: DST → SRC (bottom half) ===
+        # Row 0: clean token
+        draw_token_box(ax1, clean_pos, 0, clean_tok, clean_pos, color)
+        # Draw arrow pointing down
+        draw_arrow(ax1, clean_pos, 0.42, 0.58)
+        # Row 1: mapped corrupted token
+        draw_token_box(ax1, clean_pos, 1, corrupted_tok, corrupted_pos, color)
+
+    # === Section 2: Noising direction (bottom half) ===
     ax2 = fig.add_axes([0.01, 0.06, 0.98, 0.42])
-    ax2.set_title("DST → SRC: Row 1 = dst tokens, Row 2 = source that maps here", fontsize=10, pad=5)
-    ax2.set_xlim(-0.5, dst_len - 0.5)
-    ax2.set_ylim(-0.5, 1.5)
+    ax2.set_title("Noising: corrupted → clean (patch corrupted activations into clean run)", fontsize=10, pad=5)
+    ax2.set_xlim(-0.5, corrupted_len - 0.5)
+    ax2.set_ylim(-0.5, 1.8)
     ax2.invert_yaxis()
     ax2.axis("off")
 
-    # Find which src positions have multiple dst mapping to them (shared)
+    # Add row labels on the left
+    ax2.text(-0.8, 0, "Corrupted", fontsize=9, fontweight="bold", ha="right", va="center", color="#C62828")
+    ax2.text(-0.8, 0.5, "↓", fontsize=12, ha="right", va="center", color="#666666")
+    ax2.text(-0.8, 1, "Clean", fontsize=9, fontweight="bold", ha="right", va="center", color="#1565C0")
+
+    # Find which clean positions have multiple corrupted mapping to them (shared)
     from collections import Counter
-    src_usage = Counter(inv_mapping.values())
-    shared_src = {src for src, count in src_usage.items() if count > 1}
+    clean_usage = Counter(inv_mapping.values())
+    shared_clean = {clean for clean, count in clean_usage.items() if count > 1}
 
-    for dst_pos in range(dst_len):
-        dst_tok = dst_tokens[dst_pos] if dst_pos < len(dst_tokens) else "?"
-        src_pos = inv_mapping.get(dst_pos)
+    for corrupted_pos in range(corrupted_len):
+        corrupted_tok = corrupted_tokens[corrupted_pos] if corrupted_pos < len(corrupted_tokens) else "?"
+        clean_pos = inv_mapping.get(corrupted_pos)
 
-        if src_pos is not None:
-            src_tok = src_tokens[src_pos] if src_pos < len(src_tokens) else "?"
-            is_anchor = (src_pos, dst_pos) in anchor_set
-            is_shared = src_pos in shared_src and not is_anchor
+        if clean_pos is not None:
+            clean_tok = clean_tokens[clean_pos] if clean_pos < len(clean_tokens) else "?"
+            is_anchor = (clean_pos, corrupted_pos) in anchor_set
+            is_shared = clean_pos in shared_clean and not is_anchor
             if is_anchor:
                 color = "#4CAF50"  # Green - anchor
             elif is_shared:
                 color = "#4CAF50"  # Green - shared with anchor (same semantic region)
-            elif src_tok == dst_tok:
+            elif clean_tok == corrupted_tok:
                 color = "#2196F3"  # Blue - same token
             else:
                 color = "#FF9800"  # Orange - different
-            src_label = src_pos
+            clean_label = clean_pos
         else:
-            src_tok = "∅"
+            clean_tok = "∅"
             color = "#9E9E9E"  # Gray - no mapping
-            src_label = "-"
+            clean_label = "-"
 
-        # Row 0: dst token
-        draw_token_box(ax2, dst_pos, 0, dst_tok, dst_pos, color)
-        # Row 1: src that maps here
-        draw_token_box(ax2, dst_pos, 1, src_tok, src_label, color)
+        # Row 0: corrupted token
+        draw_token_box(ax2, corrupted_pos, 0, corrupted_tok, corrupted_pos, color)
+        # Draw arrow pointing down
+        draw_arrow(ax2, corrupted_pos, 0.42, 0.58)
+        # Row 1: clean that maps here
+        draw_token_box(ax2, corrupted_pos, 1, clean_tok, clean_label, color)
 
     # Legend
     legend_elements = [
@@ -1011,6 +1073,8 @@ def visualize_pair_alignment(
     fig.legend(handles=legend_elements, loc="upper right", fontsize=8,
                ncol=4, framealpha=0.9, bbox_to_anchor=(0.99, 0.99))
 
+    add_pair_label(fig, pair_idx)
+
     _finalize_plot(save_path)
 
 
@@ -1020,6 +1084,7 @@ def visualize_position_mapping_pair(
     save_path: Path,
     max_response_tokens: int = 100,
     pair_mapping: "PairPositionMapping | None" = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Visualize position mappings for both samples in a contrastive pair.
 
@@ -1054,9 +1119,9 @@ def visualize_position_mapping_pair(
     n_rows_long, n_tokens_long = calc_rows(mapping_long)
     n_rows = max(n_rows_short, n_rows_long)
 
-    # Create figure - two panels stacked
-    fig_height = max(20, min(45, 4 + (n_rows * 1.6)))
-    fig = plt.figure(figsize=(22, fig_height))
+    # Create figure - two panels side by side with legend at bottom
+    fig_height = max(16, min(35, 5 + (n_rows * 1.2)))
+    fig = plt.figure(figsize=(32, fig_height))
 
     # Helper to draw one sample
     def draw_sample(mapping, ax, n_tokens, title_text):
@@ -1100,19 +1165,21 @@ def visualize_position_mapping_pair(
             )
             ax.add_patch(rect)
 
-            # Token text
+            # Token text - adaptive font size to fill boxes
             token_text = pos_info.decoded_token.replace("\n", "\\n").replace("\t", "\\t")
-            if len(token_text) > 12:
-                token_text = token_text[:10] + ".."
-                fontsize = 5
-            elif len(token_text) > 8:
-                fontsize = 5.5
+            if len(token_text) > 10:
+                token_text = token_text[:8] + ".."
+                fontsize = 8
+            elif len(token_text) > 7:
+                fontsize = 9
             elif len(token_text) > 5:
-                fontsize = 6
+                fontsize = 10
+            elif len(token_text) > 3:
+                fontsize = 11
             else:
-                fontsize = 7
+                fontsize = 12
 
-            ax.text(col, row - 0.12, token_text, ha="center", va="center",
+            ax.text(col, row - 0.05, token_text, ha="center", va="center",
                     fontsize=fontsize, fontfamily="monospace", fontweight="bold")
 
             # Format position label
@@ -1122,17 +1189,16 @@ def visualize_position_mapping_pair(
                     label = f"{label}:{pos_info.rel_pos}"
                 if len(label) > 12:
                     label = label[:10] + ".."
-                ax.text(col, row + 0.22, label, ha="center", va="center",
-                        fontsize=4, color="#444444")
+                ax.text(col, row + 0.25, label, ha="center", va="center",
+                        fontsize=6, color="#444444")
             else:
-                ax.text(col, row + 0.22, f"P{i}", ha="center", va="center",
-                        fontsize=4, color="gray")
+                ax.text(col, row + 0.25, f"P{i}", ha="center", va="center",
+                        fontsize=6, color="gray")
 
-            # Position number in corner
-            pos_color = "#D32F2F" if format_pos == "time_horizon" else "darkgray"
-            pos_weight = "bold" if format_pos == "time_horizon" else "normal"
-            ax.text(col - 0.35, row - 0.32, str(i), ha="left", va="center",
-                    fontsize=5, color=pos_color, fontweight=pos_weight)
+            # Position number in top-left corner
+            pos_color = "#D32F2F" if format_pos == "time_horizon" else "#555555"
+            ax.text(col - 0.40, row - 0.32, str(i), ha="left", va="center",
+                    fontsize=7, color=pos_color, fontweight="bold")
 
     # Info panel at top
     ax_info = fig.add_axes([0.05, 0.96, 0.9, 0.03])
@@ -1144,23 +1210,21 @@ def visualize_position_mapping_pair(
     )
     ax_info.text(0.5, 0.5, info_text, ha="center", va="center", fontsize=11, fontweight="bold")
 
-    # Draw short-term sample (top)
-    ax_short = fig.add_axes([0.02, 0.52, 0.75, 0.42])
+    add_pair_label(fig, pair_idx)
+
+    # Draw short-term sample (left side)
+    ax_short = fig.add_axes([0.02, 0.18, 0.47, 0.76])
     draw_sample(
         mapping_short, ax_short, n_tokens_short,
         f"Sample 0 (Short-term/Clean)    |    Prompt: {mapping_short.prompt_len} tokens"
     )
 
-    # Draw long-term sample (bottom)
-    ax_long = fig.add_axes([0.02, 0.05, 0.75, 0.42])
+    # Draw long-term sample (right side)
+    ax_long = fig.add_axes([0.51, 0.18, 0.47, 0.76])
     draw_sample(
         mapping_long, ax_long, n_tokens_long,
         f"Sample 1 (Long-term/Corrupted)    |    Prompt: {mapping_long.prompt_len} tokens"
     )
-
-    # Legend (shared) - single column, compact layout
-    ax_legend = fig.add_axes([0.78, 0.02, 0.21, 0.94])
-    ax_legend.axis("off")
 
     # Get unique format_pos values from both samples
     unique_formats = set()
@@ -1174,40 +1238,44 @@ def visualize_position_mapping_pair(
     # Build dynamic legend sections from present format_pos values
     sections_with_items = _build_dynamic_legend_sections(unique_formats)
 
-    # Count total items to calculate spacing
-    total_items = sum(len(items) + 1 for _, items in sections_with_items)  # +1 for header
+    # Legend at bottom - horizontal layout with grouped sections (larger)
+    ax_legend = fig.add_axes([0.02, 0.01, 0.96, 0.14])
+    ax_legend.axis("off")
 
-    # Calculate spacing
-    available_height = 0.96
-    item_height = available_height / max(total_items, 1)
-    item_height = min(item_height, 0.022)  # Cap max height
+    # Calculate layout for horizontal legend
+    n_sections = len(sections_with_items)
+    section_width = 0.95 / max(n_sections, 1)
 
-    y = 0.98
-    for section_name, present_items in sections_with_items:
-        # Section header - bold, larger
-        ax_legend.text(0.0, y, section_name, fontsize=9, fontweight="bold",
+    for section_idx, (section_name, present_items) in enumerate(sections_with_items):
+        x_base = 0.02 + section_idx * section_width
+
+        # Section header - larger
+        ax_legend.text(x_base, 0.95, section_name, fontsize=14, fontweight="bold",
                        va="top", transform=ax_legend.transAxes, color="#000000")
-        y -= item_height * 1.1
 
-        # Section items
-        for fmt in present_items:
+        # Section items - stack vertically within the section
+        n_items = len(present_items)
+        item_height = min(0.16, 0.75 / max(n_items, 1))
+
+        for item_idx, fmt in enumerate(present_items):
+            y = 0.72 - item_idx * item_height
+            if y < 0.05:
+                break
+
             color = FORMAT_POS_COLORS.get(fmt, "#CCCCCC")
 
-            # Draw color swatch (small square)
+            # Draw color swatch - larger
             rect = mpatches.Rectangle(
-                (0.0, y - item_height * 0.35), 0.10, item_height * 0.7,
-                facecolor=color, edgecolor="#666666", linewidth=0.5,
+                (x_base, y - item_height * 0.35), 0.02, item_height * 0.7,
+                facecolor=color, edgecolor="#666666", linewidth=1,
                 transform=ax_legend.transAxes, clip_on=False,
             )
             ax_legend.add_patch(rect)
 
-            # Format display name - remove underscores, keep full name
+            # Format display name - larger font
             display_name = fmt.replace("_", " ")
-
-            # Tail items in italics
             fontstyle = "italic" if "_tail" in fmt else "normal"
-            ax_legend.text(0.12, y - item_height * 0.1, display_name, fontsize=8, va="center",
+            ax_legend.text(x_base + 0.025, y, display_name, fontsize=11, va="center",
                            fontstyle=fontstyle, transform=ax_legend.transAxes)
-            y -= item_height
 
     _finalize_plot(save_path)

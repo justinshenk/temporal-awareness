@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ....common import profile
+from ....viz.plot_helpers import save_figure
 
 if TYPE_CHECKING:
     from ....attribution_patching import AttributionSummary, AttrPatchAggregatedResults
@@ -102,9 +103,7 @@ def plot_top_scores_text(
     ax.axis("off")
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile
@@ -152,9 +151,7 @@ def plot_top_scores_bar(
     ax.set_axisbelow(True)
 
     plt.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    save_figure(fig, output_path, dpi=150)
 
 
 @profile

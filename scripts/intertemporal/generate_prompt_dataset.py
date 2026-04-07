@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections import Counter
 from pathlib import Path
 
 # Bootstrap path before imports
@@ -23,7 +22,7 @@ from src.intertemporal.common.project_paths import (
     get_prompt_dataset_dir,
     get_prompt_dataset_configs_dir,
 )
-from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
+from src.intertemporal.data.default_configs import MINIMAL_EXPERIMENT_CONFIG
 
 
 def generate_and_save_dataset(
@@ -44,7 +43,11 @@ def generate_and_save_dataset(
     """
     if output_filename:
         # Ensure .json extension
-        filename = output_filename if output_filename.endswith(".json") else f"{output_filename}.json"
+        filename = (
+            output_filename
+            if output_filename.endswith(".json")
+            else f"{output_filename}.json"
+        )
     else:
         filename = cfg.get_filename()
     output_filepath = Path(output_dirpath) / filename
@@ -107,7 +110,9 @@ def print_dataset_ranges(generator: PromptDatasetGenerator, dataset) -> None:
 
     print(f"\n{'ST Time':<12} {'LT Time':<12} {'Horizon':<12} {'# Samples':<10}")
     print("-" * 46)
-    for (st_time, lt_time, horizon), count in sorted(time_horizon_counts.items(), key=sort_key):
+    for (st_time, lt_time, horizon), count in sorted(
+        time_horizon_counts.items(), key=sort_key
+    ):
         horizon_str = str(horizon) if horizon else "None"
         print(f"{str(st_time):<12} {str(lt_time):<12} {horizon_str:<12} {count:<10}")
 
@@ -164,7 +169,7 @@ def get_args():
         nargs="*",
         default=None,
         help="Dataset config file path (or config name from configs/prompt_datasets/). "
-        "If not provided, uses FULL_EXPERIMENT_CONFIG.",
+        "If not provided, uses MINIMAL_EXPERIMENT_CONFIG.",
     )
     parser.add_argument(
         "--output-dir",
@@ -192,10 +197,13 @@ def parse_args(args):
     runs = []
     if not args.config:
         # Use built-in default config
-        config = PromptDatasetConfig.from_dict(FULL_EXPERIMENT_CONFIG["dataset_config"])
+        print(f"MINIMAL_EXPERIMENT_CONFIG = {MINIMAL_EXPERIMENT_CONFIG}")
+        config = PromptDatasetConfig.from_dict(
+            MINIMAL_EXPERIMENT_CONFIG["dataset_config"]
+        )
         runs.append(config)
-        print("Using FULL_EXPERIMENT_CONFIG:")
-        for key, value in FULL_EXPERIMENT_CONFIG.items():
+        print("Using MINIMAL_EXPERIMENT_CONFIG:")
+        for key, value in MINIMAL_EXPERIMENT_CONFIG.items():
             print(f"  {key}: {value}")
     else:
         for filename in args.config:

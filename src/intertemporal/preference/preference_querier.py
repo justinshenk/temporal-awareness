@@ -195,6 +195,9 @@ class PreferenceQuerier:
                 activation_names, cache
             )
 
+        # Extract divergent_logits before clearing heavy data
+        stored_logits = choice.divergent_logits
+
         # Clear heavy data from choice tree before storing
         choice.pop_heavy()
         clear_gpu_memory()
@@ -222,10 +225,11 @@ class PreferenceQuerier:
             formatting_id=sample.formatting_id,
             context_id=sample.context_id,
             short_term_first=sample.short_term_first,
+            stored_divergent_logits=stored_logits,
         )
 
     def query_dataset(
-        self, prompt_dataset: PromptDataset, model_name: str
+        self, prompt_dataset: PromptDataset, model_name: str, verbose: bool = False
     ) -> PreferenceDataset:
         """Query a single dataset with a model. Returns results in memory."""
 
@@ -261,6 +265,18 @@ class PreferenceQuerier:
             pref = self.query_sample(
                 sample, runner, choice_prefix, activation_names, intervention
             )
+            if verbose:
+                print("\n")
+                if pref.response_text:
+                    print(pref.response_text)
+                else:
+                    chosen_label = (
+                        pref.short_term_label
+                        if pref.choice.choice_idx == 0
+                        else pref.long_term_label
+                    )
+                    print(chosen_label)
+                print("\n")
             preferences.append(pref)
 
         return PreferenceDataset(

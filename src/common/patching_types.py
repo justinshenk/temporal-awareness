@@ -7,17 +7,19 @@ from typing import Literal
 # =============================================================================
 
 # All model components (for hooks/capturing)
-COMPONENTS = ("resid_pre", "resid_post", "attn_out", "mlp_out", "attn_z")
-Component = Literal["resid_pre", "resid_post", "attn_out", "mlp_out", "attn_z"]
+# Order follows data flow: resid_pre -> attn -> resid_mid -> mlp -> resid_post
+COMPONENTS = ("resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out", "attn_z")
+Component = Literal["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out", "attn_z"]
 """All model components for activation capture.
 
+resid_mid: Residual stream after attention but BEFORE MLP. Captures attention's contribution.
 attn_z: Per-head attention output BEFORE O projection. Shape [batch, seq, n_heads, d_head].
         Use for head-level interventions.
 """
 
-# Components used in patching/attribution (resid_pre excluded as redundant)
-PATCHING_COMPONENTS = ("resid_post", "attn_out", "mlp_out", "attn_z")
-PatchingComponent = Literal["resid_post", "attn_out", "mlp_out", "attn_z"]
+# Components used in patching/attribution
+PATCHING_COMPONENTS = ("resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out", "attn_z")
+PatchingComponent = Literal["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out", "attn_z"]
 """Components used for patching and attribution.
 
 attn_z: Per-head attention output BEFORE O projection. Use with head parameter for head-level patching.

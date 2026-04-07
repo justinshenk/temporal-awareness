@@ -10,6 +10,7 @@ import numpy as np
 import torch
 
 from ....common.logging import log
+from ....viz.plot_helpers import save_figure
 from . import DiffMeansAggregatedResults, DiffMeansConfig, DiffMeansPairResult
 
 if TYPE_CHECKING:
@@ -92,7 +93,7 @@ def visualize_diffmeans(
         # Parse into base_name and subdirectory
         if ":" in format_pos:
             base_name, rel_pos = format_pos.rsplit(":", 1)
-            pos_dir = output_dir / base_name / f"rel_pos_{rel_pos}"
+            pos_dir = output_dir / base_name / rel_pos
         else:
             # Combined (no :N suffix)
             pos_dir = output_dir / format_pos / "combined"
@@ -156,7 +157,13 @@ def visualize_diffmeans_pair(
         if not layer_results:
             continue
 
-        pos_dir = output_dir / format_pos
+        # Parse into base_name and subdirectory (consistent with aggregated viz)
+        if ":" in format_pos:
+            base_name, rel_pos = format_pos.rsplit(":", 1)
+            pos_dir = output_dir / base_name / rel_pos
+        else:
+            # Combined (no :N suffix)
+            pos_dir = output_dir / format_pos / "combined"
         pos_dir.mkdir(parents=True, exist_ok=True)
 
         # Plot cosine trajectory
@@ -284,8 +291,7 @@ def _plot_single_cosine_trajectory(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_single_rotation(
@@ -323,8 +329,7 @@ def _plot_single_rotation(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_single_diff_norm(
@@ -352,8 +357,7 @@ def _plot_single_diff_norm(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_single_cosine_to_logit(
@@ -383,8 +387,7 @@ def _plot_single_cosine_to_logit(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_single_cosine_to_initial(
@@ -413,8 +416,7 @@ def _plot_single_cosine_to_initial(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -465,8 +467,7 @@ def _plot_cosine_trajectory(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_cosine_trajectory_zoomed(
@@ -518,8 +519,7 @@ def _plot_cosine_trajectory_zoomed(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_rotation_decomposition(
@@ -598,8 +598,7 @@ def _plot_rotation_decomposition(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_diff_norm_trajectory(
@@ -670,8 +669,7 @@ def _plot_diff_norm_trajectory(
     _setup_grid(ax2)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_svd_metrics(
@@ -722,8 +720,7 @@ def _plot_svd_metrics(
         _setup_grid(ax2)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -777,8 +774,7 @@ def _plot_cosine_to_logit(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_cosine_to_initial(
@@ -826,8 +822,7 @@ def _plot_cosine_to_initial(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_component_norm_decomposition(
@@ -883,8 +878,7 @@ def _plot_component_norm_decomposition(
     _setup_grid(ax)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 def _plot_diff_norm_by_position(
@@ -978,8 +972,7 @@ def _plot_diff_norm_by_position(
 
     plt.suptitle("Activation Difference by Position", fontsize=14, y=1.02)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
 
 # =============================================================================
@@ -1098,8 +1091,7 @@ def visualize_ov_projection(
 
     plt.tight_layout()
     output_path = output_dir / "ov_projection.png"
-    plt.savefig(output_path, dpi=DPI, bbox_inches="tight")
-    plt.close()
+    save_figure(None, output_path, dpi=DPI)
 
     log(f"[diffmeans_viz] Saved OV projection: {output_path}")
     return 1

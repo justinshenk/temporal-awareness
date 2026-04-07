@@ -22,7 +22,7 @@ class LineConfig:
     label: str
     color_key: str
     markevery_offset: int = 0
-    markevery_step: int = 2
+    markevery_step: int = 1  # Show ALL data points with markers
     hollow_marker: bool = False
 
     @property
@@ -82,6 +82,7 @@ def add_dual_axis_legend(
     ax_primary: plt.Axes,
     ax_secondary: plt.Axes,
     fontsize: int = 9,
+    show: bool = True,
 ) -> None:
     """Add combined legend for dual-axis plot below the axes.
 
@@ -91,24 +92,27 @@ def add_dual_axis_legend(
         ax_primary: Primary (left) y-axis
         ax_secondary: Secondary (right) y-axis
         fontsize: Legend font size
+        show: Whether to actually show the legend
     """
+    if not show:
+        return
+
     lines1, labels1 = ax_primary.get_legend_handles_labels()
     lines2, labels2 = ax_secondary.get_legend_handles_labels()
-    n_items = len(lines1) + len(lines2)
-    # Use 2-3 columns for balanced layout
-    ncol = min(3, max(2, (n_items + 1) // 2))
+    # Vertically stacked (1 column), large and centered in white space
     ax_primary.legend(
         lines1 + lines2,
         labels1 + labels2,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.14),
+        bbox_to_anchor=(0.5, -0.12),
         fontsize=fontsize,
-        ncol=ncol,
+        ncol=1,
         frameon=True,
         fancybox=True,
-        columnspacing=0.4,
-        handletextpad=0.2,
-        handlelength=1.5,
+        handletextpad=1.0,
+        handlelength=3.5,
+        labelspacing=1.0,
+        markerscale=2.0,
     )
 
 

@@ -70,41 +70,31 @@ def get_seq_len(cache: dict, hook_name: str) -> int:
     return act.shape[1] if act.ndim == 3 else act.shape[0]
 
 
-def get_caches_for_attribution(
+def get_all_caches(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     mode: PatchingMode,
     names_filter: callable | None = None,
-    grad_at: TrajectoryType = "corrupted",
-) -> tuple[torch.Tensor, dict, dict, dict]:
-    """Get clean and corrupted caches with gradients at specified point.
+) -> tuple[torch.Tensor, torch.Tensor, dict, dict]:
+    """Get clean and corrupted caches, both with gradients enabled.
+
+    This allows reusing the same caches for both denoising and noising modes.
 
     Args:
         runner: Model runner
         pair: Contrastive pair with trajectories
         mode: "denoising" or "noising"
         names_filter: Hook filter for caching
-        grad_at: Where to compute gradients ("clean" or "corrupted")
 
     Returns:
-        (grad_logits, clean_cache, corr_cache, grad_cache) tuple
-        grad_cache is a reference to either clean_cache or corr_cache
+        (clean_logits, corr_logits, clean_cache, corr_cache) tuple
+        Both caches have requires_grad=True for gradient computation.
     """
-    if grad_at == "corrupted":
-        _, clean_cache = get_cache(
-            runner, pair, "clean", mode, names_filter, with_grad=False
-        )
-        grad_logits, corr_cache = get_cache(
-            runner, pair, "corrupted", mode, names_filter, with_grad=True
-        )
-        grad_cache = corr_cache
-    else:  # grad_at == "clean"
-        grad_logits, clean_cache = get_cache(
-            runner, pair, "clean", mode, names_filter, with_grad=True
-        )
-        _, corr_cache = get_cache(
-            runner, pair, "corrupted", mode, names_filter, with_grad=False
-        )
-        grad_cache = clean_cache
+    clean_logits, clean_cache = get_cache(
+        runner, pair, "clean", mode, names_filter, with_grad=True
+    )
+    corr_logits, corr_cache = get_cache(
+        runner, pair, "corrupted", mode, names_filter, with_grad=True
+    )
 
-    return grad_logits, clean_cache, corr_cache, grad_cache
+    return clean_logits, corr_logits, clean_cache, corr_cache

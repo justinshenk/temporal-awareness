@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Header, ControlPanel, InfoPanel, ScatterPlot3D, ScatterPlot2D, Legend, LegendItem, PositionSelector, TrajectoryPlot, TrajectoryPlot3D, FilterPanel, ScreePlot, AlignmentHeatmap } from './components';
+import type { ScatterPlot2DExportHandle } from './components/ScatterPlot2D';
 import { Toggle } from './components/ui/Toggle';
 import { Select } from './components/ui/Select';
 import { Card, CardHeader, CardTitle, CardContent } from './components/ui/Card';
@@ -20,9 +21,11 @@ import {
   toFloat32Array,
   valuesToColors,
   categoricalColors,
+  timeScaleCategoricalColors,
   timeGradientColors,
   getAdaptiveTierLabels,
   TimeScaleType,
+  PCAMode,
 } from './hooks/useEmbeddings';
 
 // Logging helper
@@ -52,9 +55,16 @@ function App() {
   renderCount.current++;
   log('App', `Render #${renderCount.current}`);
 
+  // Export ref for ScatterPlot2D
+  const scatterPlot2DRef = useRef<ScatterPlot2DExportHandle>(null);
+  // Ref for the plot container (for universal export)
+  const plotContainerRef = useRef<HTMLDivElement>(null);
+
   // UI state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('3D');
+  const [pcaMode, setPcaMode] = useState<PCAMode>('aligned');
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
 
   // Control state - layer and position are initialized to -1/'', then set from config
   const [layer, setLayer] = useState<number>(-1);
@@ -207,7 +217,8 @@ function App() {
   const layerTrajectory = useLayerTrajectory(
     component,
     position,
-    viewMode === '1DxLayer'
+    viewMode === '1DxLayer',
+    pcaMode
   );
 
   // Fetch trajectory data for 1DxPos view (PC1 across positions)
@@ -215,14 +226,16 @@ function App() {
     layer,
     component,
     undefined, // Use default named positions
-    viewMode === '1DxPos'
+    viewMode === '1DxPos',
+    pcaMode
   );
 
   // Fetch 2D trajectory data for 2DxLayer view (PC1+PC2 across all layers)
   const layerTrajectory2D = useLayerTrajectory2D(
     component,
     position,
-    viewMode === '2DxLayer'
+    viewMode === '2DxLayer',
+    pcaMode
   );
 
   // Fetch 2D trajectory data for 2DxPos view (PC1+PC2 across positions)
@@ -230,7 +243,8 @@ function App() {
     layer,
     component,
     undefined,
-    viewMode === '2DxPos'
+    viewMode === '2DxPos',
+    pcaMode
   );
 
   // For Scree and Align views, use base position (strip rel_pos suffix)
@@ -400,24 +414,47 @@ function App() {
 
   // Fields that should always use gradient coloring (not categorical)
   const GRADIENT_FIELDS = [
-    'time_horizon', 'long_term_delay', 'sample_idx', 'chosen_reward',
+    // Time horizon fields (all numeric, use gradient)
+    'time_horizon', 'time_horizon_days', 'time_horizon_years', 'log_time_horizon',
+    // Choice time fields
+    'chosen_time', 'alt_time',
+    // Option fields
+    'short_term_reward', 'short_term_time', 'long_term_reward', 'long_term_time',
+    'long_term_delay',
+    // Reward fields
+    'chosen_reward', 'alt_reward',
+    // Delta/ratio fields
     'option_reward_delta', 'option_time_delta', 'option_confidence_delta',
     'reward_ratio', 'time_ratio',
-    'short_term_reward', 'short_term_time', 'long_term_reward', 'long_term_time'
+    // Probability fields (0-1)
+    'choice_confidence', 'choice_prob', 'alt_prob',
+    // Index
+    'sample_idx',
   ];
 
   // Compute effective color range (user-defined or data-derived)
   const effectiveColorRange = useMemo(() => {
-    if (!metadata?.values) return { min: 0, max: 1 };
+    if (!metadata?.values) return { min: 0, max: 1, dataMin: 0, dataMax: 1 };
+
+    // Probability fields always use 0-1 range
+    const PROBABILITY_FIELDS = ['choice_confidence', 'choice_prob', 'alt_prob'];
+    if (PROBABILITY_FIELDS.includes(colorBy)) {
+      return { min: 0, max: 1, dataMin: 0, dataMax: 1 };
+    }
 
     // For time-related fields, filter out no-horizon (sentinel -1) values for range calculation
-    const isTimeField = colorBy === 'time_horizon' ;
+    // TIME_FIELDS: fields that represent time durations in months (get special formatting)
+    const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+    const isTimeField = TIME_FIELDS.includes(colorBy);
     const valuesForRange = isTimeField
       ? metadata.values.filter(v => v >= 0)
       : metadata.values;
 
     const dataMin = valuesForRange.length > 0 ? Math.min(...valuesForRange) : 0;
     const dataMax = valuesForRange.length > 0 ? Math.max(...valuesForRange) : 1;
+
+    // DEBUG: Log the color range calculation
+    console.log(`[DEBUG] effectiveColorRange: colorBy=${colorBy}, valuesForRange.length=${valuesForRange.length}, dataMin=${dataMin}, dataMax=${dataMax} (${(dataMax/12).toFixed(2)} years), colorRangeMax=${colorRangeMax}`);
 
     return {
       min: colorRangeMin ?? dataMin,
@@ -454,10 +491,16 @@ function App() {
 
     let result: Float32Array;
     if (isCategorical) {
-      result = categoricalColors(embeddingValues, uniqueValues.size);
+      // Use special gradient colors for time_scale
+      if (colorBy === 'time_scale') {
+        result = timeScaleCategoricalColors(embeddingValues, uniqueValues.size);
+      } else {
+        result = categoricalColors(embeddingValues, uniqueValues.size);
+      }
     } else {
       // For time-related fields, use special coloring with gray for no-horizon (value 0)
-      const isTimeField = colorBy === 'time_horizon' ;
+      const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+      const isTimeField = TIME_FIELDS.includes(colorBy);
       if (isTimeField) {
         result = timeGradientColors(
           embeddingValues,
@@ -504,7 +547,8 @@ function App() {
     if (isCategorical) {
       return categoricalColors(values, uniqueValues.size);
     } else {
-      const isTimeField = colorBy === 'time_horizon';
+      const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+      const isTimeField = TIME_FIELDS.includes(colorBy);
       if (isTimeField) {
         return timeGradientColors(
           values,
@@ -621,60 +665,137 @@ function App() {
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
-      // Default categorical palette - must match useEmbeddings.ts categoricalColors
+      // Time scale colors by label - must match useEmbeddings.ts timeScaleCategoricalColors exactly!
+      // Cool blue (Seconds) → warm red (Centuries), blue-grey for No Horizon
+      const timeScaleColors: Record<string, string> = {
+        'Seconds': '#3078ED',   // blue [0.19, 0.47, 0.93]
+        'Minutes': '#199ED9',   // cyan-blue [0.10, 0.62, 0.85]
+        'Hours': '#33BAB3',     // teal [0.20, 0.73, 0.70]
+        'Days': '#66CC80',      // green [0.40, 0.80, 0.50]
+        'Weeks': '#A6D959',     // yellow-green [0.65, 0.85, 0.35]
+        'Months': '#E6CC4D',    // yellow [0.90, 0.80, 0.30]
+        'Years': '#F29940',     // orange [0.95, 0.60, 0.25]
+        'Decades': '#E66633',   // red-orange [0.90, 0.40, 0.20]
+        'Centuries': '#CC4033', // red [0.80, 0.25, 0.20]
+        'No Horizon': '#596680', // blue-grey [0.35, 0.40, 0.50]
+      };
+
+      // Default categorical palette - must match useEmbeddings.ts categoricalColors exactly!
       // Anthropic-inspired with high contrast
+      // Values from useEmbeddings: [r, g, b] -> hex
       const defaultPalette = [
-        '#D97757', // Anthropic terracotta/coral
-        '#348296', // Deep teal (high contrast)
-        '#8F70DB', // Purple
-        '#F2AD42', // Warm amber
-        '#59A678', // Forest green
-        '#E85D75', // Coral red
-        '#6B8E9F', // Slate blue
-        '#C4963A', // Bronze
+        '#D97757', // [0.85, 0.47, 0.34] Anthropic terracotta/coral
+        '#348296', // [0.20, 0.51, 0.59] Deep teal (high contrast)
+        '#8F70DB', // [0.56, 0.44, 0.86] Purple
+        '#F2AD42', // [0.95, 0.68, 0.26] Warm amber
+        '#59A678', // [0.35, 0.65, 0.47] Forest green
+        '#F08080', // [0.94, 0.5, 0.5]   Light red
+        '#9696CC', // [0.59, 0.59, 0.8]  Light purple
+        '#FFA666', // [1.0, 0.65, 0.4]   Orange
       ];
 
       const items: LegendItem[] = [];
-      const sortedValues = [...uniqueValues].sort((a, b) => Number(a) - Number(b));
+      // Filter out null/NaN/negative sentinel values and sort numerically
+      const validValues = [...uniqueValues].filter(v =>
+        v !== null && !Number.isNaN(v) && Number.isFinite(v) && v >= 0
+      );
+      const hasNullValues = uniqueValues.has(null as unknown as number) ||
+        [...uniqueValues].some(v => !Number.isFinite(v) || v < 0);
+      const sortedValues = validValues.sort((a, b) => Number(a) - Number(b));
+
+      // Track labels we've already added to avoid duplicates
+      const addedLabels = new Set<string>();
 
       sortedValues.forEach((value) => {
         let label: string;
-        // Color must match the actual point coloring logic in categoricalColors()
-        // which uses Math.floor(value) % palette.length as the index
-        const colorIdx = Math.floor(Number(value)) % defaultPalette.length;
-        const color = defaultPalette[colorIdx];
+        let color: string;
+        const numValue = Number(value);
+        const safeValue = Number.isFinite(numValue) ? Math.max(0, Math.floor(numValue)) : 0;
 
-        // Note: values can be booleans (true/false) or numbers (1/0)
-        const isTruthy = Boolean(value);
-        if (colorBy === 'has_horizon') {
-          label = isTruthy ? 'Has horizon' : 'No horizon';
+        // Special case for time_scale - use temporal gradient colors by label
+        if (colorBy === 'time_scale') {
+          // Get label from backend
+          if (metadata.labels && metadata.labels[safeValue] !== undefined) {
+            label = metadata.labels[safeValue];
+          } else {
+            label = String(numValue);
+          }
+          // Look up color by label (not index) so colors are consistent regardless of which categories are present
+          color = timeScaleColors[label] || '#999999';
+        // Special handling for known boolean fields (check FIRST, before backend labels)
+        // These fields have specific semantic labels we want to enforce
+        } else if (colorBy === 'has_horizon') {
+          label = numValue > 0 ? 'Has horizon' : 'No horizon';
+          const colorIdx = safeValue % defaultPalette.length;
+          color = defaultPalette[colorIdx];
         } else if (colorBy === 'short_term_first') {
-          label = isTruthy ? 'Short-term first' : 'Long-term first';
-        } else if (colorBy === 'chosen_time') {
-          label = isTruthy ? 'Long' : 'Short';
-        } else if (colorBy === 'matches_largest_reward') {
-          label = isTruthy ? 'Yes' : 'No';
-        } else if (colorBy === 'matches_rational') {
-          label = isTruthy ? 'Yes' : 'No';
-        } else if (colorBy === 'matches_associated') {
-          label = isTruthy ? 'Yes' : 'No';
+          label = numValue > 0 ? 'Short First' : 'Long First';
+          const colorIdx = safeValue % defaultPalette.length;
+          color = defaultPalette[colorIdx];
+        } else if (colorBy === 'matches_largest_reward' || colorBy === 'matches_rational' || colorBy === 'matches_associated') {
+          label = numValue > 0 ? 'Yes' : 'No';
+          const colorIdx = safeValue % defaultPalette.length;
+          color = defaultPalette[colorIdx];
+        // Then check backend labels for other categorical fields (choice_type, etc.)
+        } else if (metadata.labels && metadata.labels[safeValue] !== undefined) {
+          label = metadata.labels[safeValue];
+          const colorIdx = safeValue % defaultPalette.length;
+          color = defaultPalette[colorIdx];
         } else {
-          label = String(value);
+          // Format numeric values nicely (avoid raw decimals)
+          if (Number.isInteger(numValue)) {
+            label = String(numValue);
+          } else {
+            // Round to reasonable precision for display
+            label = numValue.toFixed(2).replace(/\.?0+$/, '');
+          }
+          const colorIdx = safeValue % defaultPalette.length;
+          color = defaultPalette[colorIdx];
         }
+
+        // Skip duplicate labels (can happen with rounding)
+        if (addedLabels.has(label)) {
+          return;
+        }
+        addedLabels.add(label);
         items.push({ label, color });
       });
+
+      // Add N/A entry for null/NaN/sentinel values if present
+      // For time_scale, "No Horizon" is handled as a regular category in the main loop
+      if (hasNullValues && colorBy !== 'time_scale') {
+        items.push({ label: 'N/A', color: '#999999' });
+      }
 
       return { type: 'categorical' as const, items };
     } else {
       // Gradient legend for continuous values
-      const isTimeField = colorBy === 'time_horizon' ;
+      const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+      const isTimeField = TIME_FIELDS.includes(colorBy);
       const isLogTime = false; // Removed log_time_horizon option
 
-      // Add special indicators for time fields
-      const legendItems: LegendItem[] = isTimeField ? [
+      // Add special indicators for time_horizon only (it has sentinel values)
+      // Other time fields (chosen_time, alt_time, etc.) don't have sentinel values
+      const legendItems: LegendItem[] = colorBy === 'time_horizon' ? [
         { label: 'No horizon', color: '#596680' },  // Blue-grey to match timeGradientColors
         { label: 'Out of range', color: '#d9d9d9' },
       ] : [];
+
+      // Plasma colormap - MUST MATCH useEmbeddings.ts plasmaColor()
+      // This is the actual colormap used for time gradient coloring
+      const PLASMA_COLORS = [
+        '#0d0887', // Dark blue-purple
+        '#41049d', // Purple
+        '#6a00a8', // Magenta
+        '#8f0da4', // Pink-magenta
+        '#b12a90', // Pink
+        '#cc4778', // Salmon pink
+        '#e16462', // Coral
+        '#f2844b', // Orange
+        '#fca636', // Yellow-orange
+        '#fcce25', // Yellow
+        '#f0f921', // Bright yellow
+      ];
 
       // For adaptive scale, show tier labels instead of min/max
       if (isTimeField && timeScaleType === 'adaptive') {
@@ -686,7 +807,7 @@ function App() {
             ...t,
             label: t.label.charAt(0).toUpperCase() + t.label.slice(1), // Capitalize
           })),
-          colors: ['#30123b', '#4777ef', '#1bd0d5', '#62fc6b', '#d2e935', '#fe9b2d', '#d23105'], // Turbo
+          colors: PLASMA_COLORS,
         };
       }
 
@@ -711,7 +832,7 @@ function App() {
         gradient: {
           minLabel,
           maxLabel,
-          colors: ['#30123b', '#4777ef', '#1bd0d5', '#62fc6b', '#d2e935', '#fe9b2d', '#d23105'], // Turbo
+          colors: PLASMA_COLORS,
         },
       };
     }
@@ -732,11 +853,281 @@ function App() {
     []
   );
 
-  // Handle export
-  const handleExport = useCallback(() => {
-    // TODO: Implement export functionality
-    console.log('Export clicked');
-  }, []);
+  // Calculate legend panel width for export (publication-ready)
+  const getLegendPanelWidth = useCallback((scale: number) => {
+    if (!legendData || legendCollapsed) return 0;
+    return 120 * scale; // Compact legend panel width
+  }, [legendData, legendCollapsed]);
+
+  // Helper to draw publication-ready legend panel on the right side of export canvas
+  const drawLegendPanel = useCallback((ctx: CanvasRenderingContext2D, plotWidth: number, canvasHeight: number, scale: number) => {
+    if (!legendData || legendCollapsed) return;
+
+    // Compact, professional sizing
+    const margin = 16 * scale;
+    const itemHeight = 18 * scale;
+    const fontSize = 10 * scale;
+    const swatchSize = 10 * scale;
+    const swatchGap = 6 * scale;
+    const titleGap = 12 * scale;
+
+    // Get items to display - use EXACT colors from legendData
+    let items: { label: string; color: string }[] = [];
+    if (legendData.type === 'categorical' && legendData.items) {
+      // Categorical: use item colors directly (already correct)
+      items = legendData.items;
+    } else if (legendData.type === 'adaptive' && legendData.tiers) {
+      // Adaptive: use legendData.colors if available (matches plot exactly)
+      const plotColors = legendData.colors || ['#30123b', '#4777ef', '#1bd0d5', '#62fc6b', '#d2e935', '#fe9b2d', '#d23105'];
+      items = legendData.tiers.map((tier) => {
+        const colorIndex = Math.min(Math.floor(tier.position * (plotColors.length - 1)), plotColors.length - 1);
+        return { label: tier.label, color: plotColors[colorIndex] };
+      });
+    }
+
+    if (items.length === 0) return;
+
+    // Calculate dimensions
+    const titleHeight = fontSize + titleGap;
+    const contentHeight = titleHeight + items.length * itemHeight;
+
+    // Position: top-right of legend panel area, with margin
+    const x = plotWidth + margin;
+    const y = margin;
+
+    // White background (already filled by parent)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(plotWidth, 0, 200 * scale, canvasHeight);
+
+    // Title - italic, smaller
+    ctx.fillStyle = '#333333';
+    ctx.font = `italic ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const title = colorBy.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    ctx.fillText(title, x, y);
+
+    // Items
+    let currentY = y + titleHeight;
+    ctx.font = `${fontSize}px Arial, sans-serif`;
+
+    items.forEach((item) => {
+      // Color swatch - filled rectangle, no border
+      ctx.fillStyle = item.color;
+      ctx.fillRect(x, currentY + (itemHeight - swatchSize) / 2, swatchSize, swatchSize);
+
+      // Label
+      ctx.fillStyle = '#000000';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(item.label, x + swatchSize + swatchGap, currentY + itemHeight / 2);
+
+      currentY += itemHeight;
+    });
+  }, [legendData, colorBy, legendCollapsed]);
+
+  // Handle export - exports highest-res PNG of the current plot (universal for all plot types)
+  const handleExport = useCallback(async () => {
+    try {
+      const container = plotContainerRef.current;
+      if (!container) {
+        console.error('Export: No plot container found');
+        return;
+      }
+
+    const scale = 12; // 12x resolution for publication quality (300+ DPI at typical sizes)
+
+    // Create filename: L{layer}__{position}__{colorBy}__{dataset}.png
+    const positionClean = (position || 'all').replace(/:/g, '_');
+    const filename = `L${layer}__${positionClean}__${colorBy}__${dataset}.png`;
+
+    // Calculate legend panel width (0 if collapsed)
+    const legendPanelWidth = getLegendPanelWidth(scale);
+
+    // For 2D view, use the dedicated export ref for best quality
+    if (viewMode === '2D' && scatterPlot2DRef.current) {
+      const blob = await scatterPlot2DRef.current.exportPNG(scale);
+      if (blob) {
+        const img = new Image();
+        const blobUrl = URL.createObjectURL(blob);
+        img.onload = () => {
+          // Create wider canvas to fit legend panel on right
+          const plotWidth = img.width;
+          const plotHeight = img.height;
+          const exportCanvas = document.createElement('canvas');
+          exportCanvas.width = plotWidth + legendPanelWidth;
+          exportCanvas.height = plotHeight;
+
+          const ctx = exportCanvas.getContext('2d');
+          if (ctx) {
+            // Fill with white background (publication-ready)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+            // Draw the plot
+            ctx.drawImage(img, 0, 0);
+
+            // Replace beige background with white for publication
+            const imageData = ctx.getImageData(0, 0, plotWidth, plotHeight);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i], g = data[i + 1], b = data[i + 2];
+              if ((r > 245 && g > 243 && b > 240) || (r < 30 && g < 26 && b < 23)) {
+                data[i] = 255;
+                data[i + 1] = 255;
+                data[i + 2] = 255;
+              }
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            // Draw legend panel on the right (if not collapsed)
+            drawLegendPanel(ctx, plotWidth, plotHeight, scale);
+
+            exportCanvas.toBlob((finalBlob) => {
+              if (finalBlob) {
+                const url = URL.createObjectURL(finalBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }
+            }, 'image/png', 1.0);
+          }
+          URL.revokeObjectURL(blobUrl);
+        };
+        img.src = blobUrl;
+        console.log('Exported 2D plot PNG (publication-ready)');
+      }
+      return;
+    }
+
+    // Universal export: find canvas element in container
+    const canvas = container.querySelector('canvas') as HTMLCanvasElement | null;
+
+    if (canvas) {
+      // For 2D canvases (TrajectoryPlot), the actual canvas dimensions include DPR scaling
+      // For WebGL canvases (Three.js), they match display size
+      // Use clientWidth/Height as the logical display size, or fall back to actual canvas size
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = canvas.clientWidth || (canvas.width / dpr);
+      const displayHeight = canvas.clientHeight || (canvas.height / dpr);
+
+      if (displayWidth === 0 || displayHeight === 0) {
+        console.error('Export: Canvas has zero dimensions');
+        return;
+      }
+
+      const plotWidth = displayWidth * scale;
+      const plotHeight = displayHeight * scale;
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = plotWidth + legendPanelWidth;
+      exportCanvas.height = plotHeight;
+
+      const ctx = exportCanvas.getContext('2d');
+      if (ctx) {
+        // Fill with white background (publication-ready)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        // Draw the source canvas scaled to the export size
+        ctx.drawImage(canvas, 0, 0, plotWidth, plotHeight);
+
+        // Replace beige background (#faf8f5) with pure white for publication
+        const imageData = ctx.getImageData(0, 0, plotWidth, plotHeight);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // Check if pixel is close to beige background color (250, 248, 245) or dark mode (26, 22, 19)
+          if ((r > 245 && g > 243 && b > 240) || (r < 30 && g < 26 && b < 23)) {
+            data[i] = 255;     // R
+            data[i + 1] = 255; // G
+            data[i + 2] = 255; // B
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+
+        // Draw legend panel on the right (if not collapsed)
+        drawLegendPanel(ctx, plotWidth, plotHeight, scale);
+
+        exportCanvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            console.log('Export: Downloaded successfully', { filename, size: blob.size });
+          } else {
+            console.error('Export: toBlob returned null');
+          }
+        }, 'image/png', 1.0);
+      }
+      return;
+    }
+
+    // For SVG plots (ScreePlot, AlignmentHeatmap)
+    const svg = container.querySelector('svg');
+    if (svg) {
+      const svgClone = svg.cloneNode(true) as SVGSVGElement;
+      const svgData = new XMLSerializer().serializeToString(svgClone);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+
+      const img = new Image();
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        const width = svg.clientWidth || 800;
+        const height = svg.clientHeight || 600;
+        const plotWidth = width * scale;
+        const plotHeight = height * scale;
+
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = plotWidth + legendPanelWidth;
+        exportCanvas.height = plotHeight;
+
+        const ctx = exportCanvas.getContext('2d');
+        if (ctx) {
+          // Fill with white background (publication-ready)
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+          ctx.drawImage(img, 0, 0, plotWidth, plotHeight);
+
+          // Draw legend panel on the right (if not collapsed)
+          drawLegendPanel(ctx, plotWidth, plotHeight, scale);
+
+          exportCanvas.toBlob((blob) => {
+            if (blob) {
+              const downloadUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = downloadUrl;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(downloadUrl);
+              console.log('Exported SVG as PNG with legend successfully');
+            }
+          }, 'image/png', 1.0);
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+      return;
+    }
+
+    console.error('Export: No canvas or SVG found in plot container');
+    } catch (error) {
+      console.error('Export: Error during export', error);
+    }
+  }, [viewMode, colorBy, dataset, layer, position, drawLegendPanel, getLegendPanelWidth]);
 
   // Clear selection
   const handleClearSelection = useCallback(() => {
@@ -850,7 +1241,7 @@ function App() {
             onTimeScaleTypeChange={setTimeScaleType}
             blendMix={blendMix}
             onBlendMixChange={setBlendMix}
-            showTimeScaleControls={colorBy === 'time_horizon' && viewMode !== 'Scree' && viewMode !== 'Align'}
+            showTimeScaleControls={['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'].includes(colorBy) && viewMode !== 'Scree' && viewMode !== 'Align'}
           />
         </aside>
 
@@ -871,7 +1262,24 @@ function App() {
 
           {/* Visualization Toolbar - above plot (hidden for Scree/Align) */}
           {viewMode !== 'Scree' && viewMode !== 'Align' && (
-            <div className="flex items-center justify-end mb-2 px-2">
+            <div className="flex items-center justify-between mb-2 px-2">
+              {/* PCA mode toggle - only for trajectory views */}
+              {isTrajectoryViewMode(viewMode) && (
+                <div className="flex items-center gap-2 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">PCA:</span>
+                  <Select
+                    value={pcaMode}
+                    onChange={(value) => setPcaMode(value as PCAMode)}
+                    options={[
+                      { value: 'aligned', label: 'Per-target (aligned)' },
+                      { value: 'shared', label: 'Shared subspace' },
+                    ]}
+                    className="w-40"
+                  />
+                </div>
+              )}
+              {/* Spacer when no PCA toggle */}
+              {!isTrajectoryViewMode(viewMode) && <div />}
               {/* Horizon filter toggles */}
               <div className="flex items-center gap-3 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
                 <Toggle
@@ -891,7 +1299,7 @@ function App() {
           )}
 
           {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
-          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
+          <div ref={plotContainerRef} className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
             {allSamplesFiltered ? (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb] dark:from-[#1a1613] dark:to-[#252220]">
                 <div className="text-center p-8">
@@ -963,7 +1371,7 @@ function App() {
                 colors={colors}
                 pointData={pointData}
                 pointSize={5}
-                showAxes={true}
+                showAxes={false}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
                 backgroundColor={isDarkMode ? '#1a1613' : '#faf8f5'}
@@ -974,6 +1382,7 @@ function App() {
               />
             ) : viewMode === '2D' ? (
               <ScatterPlot2D
+                ref={scatterPlot2DRef}
                 positions={positions}
                 colors={colors}
                 pointData={pointData}
@@ -1094,6 +1503,8 @@ function App() {
                 gradient={legendData.type === 'gradient' ? legendData.gradient : undefined}
                 tiers={legendData.type === 'adaptive' ? legendData.tiers : undefined}
                 tierColors={legendData.type === 'adaptive' ? legendData.colors : undefined}
+                collapsed={legendCollapsed}
+                onCollapsedChange={setLegendCollapsed}
               />
             )}
 

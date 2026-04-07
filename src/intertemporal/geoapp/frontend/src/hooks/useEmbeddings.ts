@@ -167,8 +167,9 @@ export function useEmbedding(
   position: string,
   method: string
 ) {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['embedding', layer, component, position, method],
+    queryKey: ['embedding', dataset, layer, component, position, method],
     queryFn: async (): Promise<EmbeddingResponse> => {
       // Backend uses path params: /embedding/{layer}/{component}/{position}?method=pca
       const response = await api.get<BackendEmbeddingResponse>(
@@ -391,8 +392,9 @@ export function useStreamingEmbedding(
 // Hook to fetch metadata for coloring points
 // CRASH BEHAVIOR: No retries - if metadata is missing, app crashes immediately
 export function useMetadata(colorBy: string) {
+  const dataset = getDataset();  // Include dataset in query key to prevent cross-dataset cache pollution
   return useQuery({
-    queryKey: ['metadata', colorBy],
+    queryKey: ['metadata', dataset, colorBy, 'v4'],  // v4: Added dataset to query key
     staleTime: 1000 * 60 * 60, // 1 hour - metadata doesn't change
     gcTime: 1000 * 60 * 120, // 2 hours
     retry: false, // CRASH: No retries - fail immediately if data is missing
@@ -406,6 +408,14 @@ export function useMetadata(colorBy: string) {
       const elapsed = performance.now() - startTime;
       log('useMetadata', 'Metadata loaded', { colorBy, dtype: response.dtype, n_values: response.values.length, elapsed_ms: elapsed.toFixed(1) });
 
+      // DEBUG: For time_horizon, log the raw response values
+      if (colorBy === 'time_horizon') {
+        const rawValues = response.values as (number | null)[];
+        const numericOnly = rawValues.filter((v): v is number => v !== null);
+        const rawMax = Math.max(...numericOnly);
+        console.log(`[DEBUG] BACKEND RESPONSE: time_horizon rawMax=${rawMax} months = ${(rawMax/12).toFixed(1)} years`);
+      }
+
       // Transform based on dtype
       let numericValues: number[];
       let labels: string[] | undefined;
@@ -413,12 +423,17 @@ export function useMetadata(colorBy: string) {
       let max = 1;
 
       if (response.dtype === 'numeric') {
-        // For time_horizon fields, backend sends null for no-horizon samples
+        // For time fields, backend sends null for no-horizon samples
         // Convert null to -1 (sentinel value) so timeGradientColors can identify them
-        const isTimeField = colorBy === 'time_horizon' ;
+        const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+        const isTimeField = TIME_FIELDS.includes(colorBy);
+        const nullCount = (response.values as (number | null)[]).filter(v => v === null).length;
+        console.log(`[DEBUG] useMetadata: colorBy=${colorBy}, nullCount=${nullCount}, isTimeField=${isTimeField}`);
         numericValues = (response.values as (number | null)[]).map(v =>
           v === null ? -1 : v
         );
+        const negativeCount = numericValues.filter(v => v < 0).length;
+        console.log(`[DEBUG] useMetadata: After transform, negativeCount=${negativeCount}`);
 
 
         // For min/max calculation, exclude sentinel values (-1)
@@ -430,18 +445,52 @@ export function useMetadata(colorBy: string) {
           min = Math.min(...validValues);
           max = Math.max(...validValues);
         }
+        // DEBUG: Log the calculated min/max for time_horizon
+        console.log(`[DEBUG] useMetadata min/max: colorBy=${colorBy}, validValues.length=${validValues.length}, min=${min}, max=${max} (${(max/12).toFixed(2)} years)`);
+        // DEBUG: Find the actual max values to verify
+        if (colorBy === 'time_horizon') {
+          const sortedDesc = [...validValues].sort((a, b) => b - a);
+          console.log(`[DEBUG] useMetadata TOP 10 time_horizon values: ${sortedDesc.slice(0, 10).map(v => `${v.toFixed(0)}mo/${(v/12).toFixed(1)}yr`).join(', ')}`);
+        }
         // If empty, keep defaults min=0, max=1
       } else if (response.dtype === 'boolean') {
-        numericValues = (response.values as boolean[]).map(v => v ? 1 : 0);
-        labels = ['false', 'true'];
+        // Map booleans to 0/1, with null mapped to -1 (sentinel)
+        numericValues = (response.values as (boolean | null)[]).map(v =>
+          v === null ? -1 : (v ? 1 : 0)
+        );
+        // Labels at indices 0 and 1 correspond to values 0 (false) and 1 (true)
+        labels = ['No', 'Yes'];
         min = 0;
         max = 1;
       } else {
         // Categorical - create numeric mapping
-        const uniqueVals = [...new Set(response.values as string[])];
+        // Filter out null values when building unique values list
+        const rawValues = response.values as (string | null)[];
+        const uniqueVals = [...new Set(rawValues.filter((v): v is string => v !== null))];
+
+        // Time scale ordering: temporal order from smallest to largest, No Horizon last
+        const TIME_SCALE_ORDER: Record<string, number> = {
+          'Seconds': 0, 'Minutes': 1, 'Hours': 2, 'Days': 3, 'Weeks': 4,
+          'Months': 5, 'Years': 6, 'Decades': 7, 'Centuries': 8, 'No Horizon': 99
+        };
+
+        // Sort: use temporal order for time_scale fields, alphabetical for others
+        uniqueVals.sort((a, b) => {
+          const aOrder = TIME_SCALE_ORDER[a];
+          const bOrder = TIME_SCALE_ORDER[b];
+          // If both are time scale values, use temporal order
+          if (aOrder !== undefined && bOrder !== undefined) {
+            return aOrder - bOrder;
+          }
+          // Otherwise: No Horizon last, then alphabetical
+          if (a === 'No Horizon') return 1;
+          if (b === 'No Horizon') return -1;
+          return a.localeCompare(b);
+        });
         labels = uniqueVals;
-        numericValues = (response.values as string[]).map(v =>
-          uniqueVals.indexOf(v)
+        // Map values to indices, with null mapped to -1 (sentinel)
+        numericValues = rawValues.map(v =>
+          v === null ? -1 : uniqueVals.indexOf(v)
         );
         min = 0;
         // Ensure max >= 1 to avoid division by zero in color calculations
@@ -462,8 +511,9 @@ export function useMetadata(colorBy: string) {
 // Hook to fetch sample details
 // CRASH BEHAVIOR: No retries - if sample data is missing, app crashes immediately
 export function useSample(idx: number | null) {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['sample', idx],
+    queryKey: ['sample', dataset, idx],
     queryFn: async (): Promise<SampleResponse> => {
       const response = await api.get<BackendSampleResponse>(`/sample/${idx}`);
       const metadata = response.metadata || {};
@@ -490,8 +540,9 @@ export function useSample(idx: number | null) {
 // Hook to fetch all samples for filtering
 // CRASH BEHAVIOR: No retries - if samples data is missing, app crashes immediately
 export function useSamples() {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['samples'],
+    queryKey: ['samples', dataset],
     queryFn: () => api.get<SampleResponse[]>('/samples'),
     retry: false, // CRASH: No retries - fail immediately if data is missing
   });
@@ -513,11 +564,19 @@ export function valuesToColors(
   const range = max - min || 1;
 
   for (let i = 0; i < values.length; i++) {
-    const t = (values[i] - min) / range;
-    const [r, g, b] = getColormapColor(t, colormap);
-    colors[i * 3] = r;
-    colors[i * 3 + 1] = g;
-    colors[i * 3 + 2] = b;
+    const value = values[i];
+    // Handle null/undefined/NaN values with gray
+    if (value == null || isNaN(value)) {
+      colors[i * 3] = 0.5;
+      colors[i * 3 + 1] = 0.5;
+      colors[i * 3 + 2] = 0.5;
+    } else {
+      const t = (value - min) / range;
+      const [r, g, b] = getColormapColor(t, colormap);
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = g;
+      colors[i * 3 + 2] = b;
+    }
   }
 
   return colors;
@@ -528,6 +587,10 @@ function getColormapColor(
   t: number,
   colormap: 'viridis' | 'plasma' | 'turbo'
 ): [number, number, number] {
+  // Handle NaN/null/undefined by returning gray
+  if (t == null || isNaN(t)) {
+    return [0.5, 0.5, 0.5];
+  }
   t = Math.max(0, Math.min(1, t));
 
   switch (colormap) {
@@ -665,15 +728,74 @@ export function categoricalColors(
     [1.0, 0.65, 0.4],   // Orange
   ];
 
+  // Gray color for N/A values (null/NaN/negative sentinel)
+  const naColor = [0.6, 0.6, 0.6]; // #999999
+
   for (let i = 0; i < values.length; i++) {
-    // Handle NaN, negative values, and ensure valid index
     const value = values[i];
-    const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-    const categoryIdx = safeValue % palette.length;
-    const color = palette[categoryIdx];
-    colors[i * 3] = color[0];
-    colors[i * 3 + 1] = color[1];
-    colors[i * 3 + 2] = color[2];
+
+    // Check for N/A values (NaN, negative sentinel like -1, or non-finite)
+    if (!Number.isFinite(value) || value < 0) {
+      colors[i * 3] = naColor[0];
+      colors[i * 3 + 1] = naColor[1];
+      colors[i * 3 + 2] = naColor[2];
+    } else {
+      // Valid category index
+      const categoryIdx = Math.floor(value) % palette.length;
+      const color = palette[categoryIdx];
+      colors[i * 3] = color[0];
+      colors[i * 3 + 1] = color[1];
+      colors[i * 3 + 2] = color[2];
+    }
+  }
+
+  return colors;
+}
+
+// Generate colors for time_scale categorical field (temporal gradient)
+// Order: Seconds(0) → Minutes(1) → Hours(2) → Days(3) → Weeks(4) → Months(5) → Years(6) → Decades(7) → Centuries(8), No Horizon(9) is grey
+// Note: No Horizon is always index 9 based on TIME_SCALE_ORDER in useMetadata
+const NO_HORIZON_INDEX = 9;
+
+export function timeScaleCategoricalColors(
+  values: number[],
+  _numCategories: number  // Unused - kept for API compatibility
+): Float32Array {
+  const colors = new Float32Array(values.length * 3);
+
+  // Turbo-like gradient for temporal scale (9 time categories, indices 0-8)
+  // From cool blue (Seconds) to warm red (Centuries)
+  const timeGradient = [
+    [0.19, 0.47, 0.93], // 0: Seconds - blue
+    [0.10, 0.62, 0.85], // 1: Minutes - cyan-blue
+    [0.20, 0.73, 0.70], // 2: Hours - teal
+    [0.40, 0.80, 0.50], // 3: Days - green
+    [0.65, 0.85, 0.35], // 4: Weeks - yellow-green
+    [0.90, 0.80, 0.30], // 5: Months - yellow
+    [0.95, 0.60, 0.25], // 6: Years - orange
+    [0.90, 0.40, 0.20], // 7: Decades - red-orange
+    [0.80, 0.25, 0.20], // 8: Centuries - red
+  ];
+
+  // Grey for No Horizon (index 9 or sentinel value -1)
+  const noHorizonColor = [0.35, 0.40, 0.50]; // Blue-grey like timeGradientColors
+
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i];
+
+    // Check for No Horizon: sentinel (-1), non-finite, or explicit No Horizon index (9)
+    if (!Number.isFinite(value) || value < 0 || value === NO_HORIZON_INDEX) {
+      colors[i * 3] = noHorizonColor[0];
+      colors[i * 3 + 1] = noHorizonColor[1];
+      colors[i * 3 + 2] = noHorizonColor[2];
+    } else {
+      // Valid time scale category index (0-8)
+      const categoryIdx = Math.floor(value);
+      const color = categoryIdx < timeGradient.length ? timeGradient[categoryIdx] : timeGradient[timeGradient.length - 1];
+      colors[i * 3] = color[0];
+      colors[i * 3 + 1] = color[1];
+      colors[i * 3 + 2] = color[2];
+    }
   }
 
   return colors;
@@ -798,16 +920,25 @@ export function timeGradientColors(
 ): Float32Array {
   const colors = new Float32Array(values.length * 3);
 
+  const negativeCount = values.filter(v => v < 0).length;
+  console.log(`[DEBUG] timeGradientColors: n_values=${values.length}, negativeCount=${negativeCount}, min=${min}, max=${max}, first10values=${JSON.stringify(values.slice(0, 10))}`);
 
   for (let i = 0; i < values.length; i++) {
     const value = values[i];
 
-    if (value < 0) {
+    // Handle null/undefined/NaN values with gray
+    if (value == null || isNaN(value)) {
+      colors[i * 3] = 0.5;
+      colors[i * 3 + 1] = 0.5;
+      colors[i * 3 + 2] = 0.5;
+    } else if (value < 0) {
       // Distinct blue-grey for no-horizon samples (sentinel value -1 from backend)
       // Using a cool grey that's clearly different from the warm plasma colormap
       colors[i * 3] = 0.35;      // R
       colors[i * 3 + 1] = 0.4;   // G
       colors[i * 3 + 2] = 0.5;   // B - slightly blue-tinted grey
+      // DEBUG: Log when we apply grey
+      if (i < 5) console.log(`[DEBUG] Applying grey to index ${i}, value=${value}`);
     } else if (value < min || value > max) {
       // White/light gray for out-of-range samples (but NOT no-horizon)
       colors[i * 3] = 0.85;
@@ -867,6 +998,11 @@ function plasmaColor(t: number): [number, number, number] {
     [0.940015, 0.975158, 0.131326],
   ];
 
+  // Handle NaN/undefined/null by returning gray
+  if (t == null || isNaN(t)) {
+    return [0.5, 0.5, 0.5];
+  }
+
   t = Math.max(0, Math.min(1, t));
   const idx = t * (stops.length - 1);
   const i = Math.floor(idx);
@@ -905,8 +1041,9 @@ export interface HeatmapData {
 // Hook to fetch heatmap data
 // CRASH BEHAVIOR: No retries - if heatmap data is missing, app crashes immediately
 export function useHeatmap(component: string, metric: string = 'r2') {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['heatmap', component, metric],
+    queryKey: ['heatmap', dataset, component, metric],
     queryFn: async (): Promise<HeatmapData> => {
       return api.get<HeatmapData>(`/heatmap/${component}?metric=${metric}`);
     },
@@ -1002,11 +1139,13 @@ export function usePrefetch(
 ) {
   const queryClient = useQueryClient();
 
+  const dataset = getDataset();  // Include dataset in query key
+
   useEffect(() => {
     // Prefetch all color options in background
     colorByOptions.forEach((colorByOption) => {
       queryClient.prefetchQuery({
-        queryKey: ['metadata', colorByOption],
+        queryKey: ['metadata', dataset, colorByOption, 'v4'],  // v4: Added dataset to query key
         queryFn: async (): Promise<MetadataResponse> => {
           const response = await api.get<BackendMetadataResponse>(
             `/metadata?color_by=${colorByOption}`
@@ -1017,9 +1156,10 @@ export function usePrefetch(
           let max = 1;
 
           if (response.dtype === 'numeric') {
-            // For time_horizon fields, backend sends null for no-horizon samples
+            // For time fields, backend sends null for no-horizon samples
             // Convert null to -1 (sentinel value) so timeGradientColors can identify them
-            const isTimeField = colorByOption === 'time_horizon' ;
+            const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
+            const isTimeField = TIME_FIELDS.includes(colorByOption);
             numericValues = (response.values as (number | null)[]).map(v =>
               v === null ? -1 : v
             );
@@ -1035,13 +1175,41 @@ export function usePrefetch(
             }
             // If empty, keep defaults min=0, max=1
           } else if (response.dtype === 'boolean') {
-            numericValues = (response.values as boolean[]).map(v => v ? 1 : 0);
-            labels = ['false', 'true'];
+            // Map booleans to 0/1, with null mapped to -1 (sentinel)
+            numericValues = (response.values as (boolean | null)[]).map(v =>
+              v === null ? -1 : (v ? 1 : 0)
+            );
+            // Labels at indices 0 and 1 correspond to values 0 (false) and 1 (true)
+            labels = ['No', 'Yes'];
           } else {
-            const uniqueVals = [...new Set(response.values as string[])];
+            // Categorical - create numeric mapping
+            // Filter out null values when building unique values list
+            const rawValues = response.values as (string | null)[];
+            const uniqueVals = [...new Set(rawValues.filter((v): v is string => v !== null))];
+
+            // Time scale ordering: temporal order from smallest to largest, No Horizon last
+            const TIME_SCALE_ORDER: Record<string, number> = {
+              'Seconds': 0, 'Minutes': 1, 'Hours': 2, 'Days': 3, 'Weeks': 4,
+              'Months': 5, 'Years': 6, 'Decades': 7, 'Centuries': 8, 'No Horizon': 99
+            };
+
+            // Sort: use temporal order for time_scale fields, alphabetical for others
+            uniqueVals.sort((a, b) => {
+              const aOrder = TIME_SCALE_ORDER[a];
+              const bOrder = TIME_SCALE_ORDER[b];
+              // If both are time scale values, use temporal order
+              if (aOrder !== undefined && bOrder !== undefined) {
+                return aOrder - bOrder;
+              }
+              // Otherwise: No Horizon last, then alphabetical
+              if (a === 'No Horizon') return 1;
+              if (b === 'No Horizon') return -1;
+              return a.localeCompare(b);
+            });
             labels = uniqueVals;
-            numericValues = (response.values as string[]).map(v =>
-              uniqueVals.indexOf(v)
+            // Map values to indices, with null mapped to -1 (sentinel)
+            numericValues = rawValues.map(v =>
+              v === null ? -1 : uniqueVals.indexOf(v)
             );
             // Ensure max >= 1 to avoid division by zero in color calculations
             max = Math.max(1, uniqueVals.length - 1);
@@ -1067,7 +1235,7 @@ export function usePrefetch(
     // Prefetch embeddings for adjacent layers (same position)
     adjacentLayers.forEach((layer) => {
       queryClient.prefetchQuery({
-        queryKey: ['embedding', layer, component, position, method],
+        queryKey: ['embedding', dataset, layer, component, position, method],
         queryFn: async (): Promise<EmbeddingResponse> => {
           const response = await api.get<BackendEmbeddingResponse>(
             `/embedding/${layer}/${component}/${encodeURIComponent(position)}?method=${method.toLowerCase()}`
@@ -1085,7 +1253,7 @@ export function usePrefetch(
     // Prefetch embeddings for adjacent positions (same layer)
     adjacentPositions.forEach((pos) => {
       queryClient.prefetchQuery({
-        queryKey: ['embedding', currentLayer, component, pos, method],
+        queryKey: ['embedding', dataset, currentLayer, component, pos, method],
         queryFn: async (): Promise<EmbeddingResponse> => {
           const response = await api.get<BackendEmbeddingResponse>(
             `/embedding/${currentLayer}/${component}/${encodeURIComponent(pos)}?method=${method.toLowerCase()}`
@@ -1131,23 +1299,28 @@ export interface TrajectoryData {
   error: Error | null;
 }
 
+// PCA mode type for trajectory views
+export type PCAMode = 'aligned' | 'shared';
+
 // Hook to fetch PC1 trajectory across layers
 // CRASH BEHAVIOR: No retries - if trajectory data is missing, app crashes immediately
 export function useLayerTrajectory(
   component: string,
   position: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  mode: PCAMode = 'aligned'
 ): TrajectoryData {
+  const dataset = getDataset();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['trajectory', 'layers', component, position],
+    queryKey: ['trajectory', dataset, 'layers', component, position, mode],
     queryFn: async (): Promise<TrajectoryResponse> => {
-      log('useLayerTrajectory', 'Fetching trajectory', { component, position });
+      log('useLayerTrajectory', 'Fetching trajectory', { component, position, mode });
       const startTime = performance.now();
       const response = await api.get<TrajectoryResponse>(
-        `/trajectory/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}`
+        `/trajectory/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}?mode=${mode}`
       );
       const elapsed = performance.now() - startTime;
-      log('useLayerTrajectory', 'Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      log('useLayerTrajectory', 'Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, mode, elapsed_ms: elapsed.toFixed(1) });
       return response;
     },
     enabled: enabled && !!component && !!position,
@@ -1197,21 +1370,24 @@ export function usePositionTrajectory(
   layer: number,
   component: string,
   positions?: string[], // Optional filter
-  enabled: boolean = true
+  enabled: boolean = true,
+  mode: PCAMode = 'aligned'
 ): TrajectoryData {
+  const dataset = getDataset();
   const positionsFilter = positions?.join(',') || '';
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['trajectory', 'positions', layer, component, positionsFilter],
+    queryKey: ['trajectory', dataset, 'positions', layer, component, positionsFilter, mode],
     queryFn: async (): Promise<TrajectoryResponse> => {
-      log('usePositionTrajectory', 'Fetching trajectory', { layer, component });
+      log('usePositionTrajectory', 'Fetching trajectory', { layer, component, mode });
       const startTime = performance.now();
-      const url = `/trajectory/positions/${layer}/${encodeURIComponent(component)}${
-        positionsFilter ? `?positions_filter=${encodeURIComponent(positionsFilter)}` : ''
-      }`;
+      const queryParams = new URLSearchParams();
+      if (positionsFilter) queryParams.set('positions_filter', positionsFilter);
+      queryParams.set('mode', mode);
+      const url = `/trajectory/positions/${layer}/${encodeURIComponent(component)}?${queryParams.toString()}`;
       const response = await api.get<TrajectoryResponse>(url);
       const elapsed = performance.now() - startTime;
-      log('usePositionTrajectory', 'Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      log('usePositionTrajectory', 'Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, mode, elapsed_ms: elapsed.toFixed(1) });
       return response;
     },
     enabled: enabled && layer >= 0 && !!component,
@@ -1288,18 +1464,20 @@ export interface Trajectory2DData {
 export function useLayerTrajectory2D(
   component: string,
   position: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  mode: PCAMode = 'aligned'
 ): Trajectory2DData {
+  const dataset = getDataset();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['trajectory2d', 'layers', component, position],
+    queryKey: ['trajectory2d', dataset, 'layers', component, position, mode],
     queryFn: async (): Promise<Trajectory2DResponse> => {
-      log('useLayerTrajectory2D', 'Fetching 2D trajectory', { component, position });
+      log('useLayerTrajectory2D', 'Fetching 2D trajectory', { component, position, mode });
       const startTime = performance.now();
       const response = await api.get<Trajectory2DResponse>(
-        `/trajectory2d/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}`
+        `/trajectory2d/layers/${encodeURIComponent(component)}/${encodeURIComponent(position)}?mode=${mode}`
       );
       const elapsed = performance.now() - startTime;
-      log('useLayerTrajectory2D', '2D Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      log('useLayerTrajectory2D', '2D Trajectory loaded', { n_layers: response.x_values.length, n_samples: response.n_samples, mode, elapsed_ms: elapsed.toFixed(1) });
       return response;
     },
     enabled: enabled && !!component && !!position,
@@ -1354,21 +1532,24 @@ export function usePositionTrajectory2D(
   layer: number,
   component: string,
   positions?: string[],
-  enabled: boolean = true
+  enabled: boolean = true,
+  mode: PCAMode = 'aligned'
 ): Trajectory2DData {
+  const dataset = getDataset();
   const positionsFilter = positions?.join(',') || '';
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['trajectory2d', 'positions', layer, component, positionsFilter],
+    queryKey: ['trajectory2d', dataset, 'positions', layer, component, positionsFilter, mode],
     queryFn: async (): Promise<Trajectory2DResponse> => {
-      log('usePositionTrajectory2D', 'Fetching 2D trajectory', { layer, component });
+      log('usePositionTrajectory2D', 'Fetching 2D trajectory', { layer, component, mode });
       const startTime = performance.now();
-      const url = `/trajectory2d/positions/${layer}/${encodeURIComponent(component)}${
-        positionsFilter ? `?positions_filter=${encodeURIComponent(positionsFilter)}` : ''
-      }`;
+      const queryParams = new URLSearchParams();
+      if (positionsFilter) queryParams.set('positions_filter', positionsFilter);
+      queryParams.set('mode', mode);
+      const url = `/trajectory2d/positions/${layer}/${encodeURIComponent(component)}?${queryParams.toString()}`;
       const response = await api.get<Trajectory2DResponse>(url);
       const elapsed = performance.now() - startTime;
-      log('usePositionTrajectory2D', '2D Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, elapsed_ms: elapsed.toFixed(1) });
+      log('usePositionTrajectory2D', '2D Trajectory loaded', { n_positions: response.x_values.length, n_samples: response.n_samples, mode, elapsed_ms: elapsed.toFixed(1) });
       return response;
     },
     enabled: enabled && layer >= 0 && !!component,
@@ -1436,8 +1617,9 @@ export function useScreeData(
   nComponents: number = 10,
   enabled: boolean = true
 ) {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['scree', position, nComponents],
+    queryKey: ['scree', dataset, position, nComponents],
     queryFn: async (): Promise<ScreeData> => {
       log('useScreeData', 'Fetching scree data', { position, nComponents });
       const startTime = performance.now();
@@ -1468,8 +1650,9 @@ export function useAlignmentData(
   pcIndex: number = 0,
   enabled: boolean = true
 ) {
+  const dataset = getDataset();
   return useQuery({
-    queryKey: ['alignment', position, pcIndex],
+    queryKey: ['alignment', dataset, position, pcIndex],
     queryFn: async (): Promise<AlignmentData> => {
       log('useAlignmentData', 'Fetching alignment data', { position, pcIndex });
       const startTime = performance.now();

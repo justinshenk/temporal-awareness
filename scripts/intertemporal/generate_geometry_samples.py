@@ -56,6 +56,7 @@ from src.intertemporal.common.semantic_positions import (
 from src.intertemporal.data.default_configs import DEFAULT_MODEL, FULL_EXPERIMENT_CONFIG
 from src.intertemporal.geometry import GeometryConfig, TargetSpec
 from src.intertemporal.geometry.geometry_pipeline import generate_geo_samples
+from src.intertemporal.geometry.geometry_utils import COMPONENTS, LAYERS, POSITIONS
 from src.intertemporal.prompt import PromptDatasetConfig
 
 logging.basicConfig(
@@ -68,28 +69,6 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Configuration
 # =============================================================================
-
-# Layers selected based on circuit analysis
-LAYERS = [
-    0,  # baseline embedding
-    1,  # early embedding
-    3,  # early embedding
-    12,  # mid-network (before circuit)
-    18,  # just before circuit onset
-    19,  # circuit onset
-    21,  # integration point
-    24,  # top attention layer
-    28,  # secondary MLP processor
-    31,  # most reliable MLP
-    34,  # final processing
-    35,  # penultimate layer
-]
-
-# Activation components to extract
-COMPONENTS = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
-
-# All positions for extraction
-ALL_POSITIONS = PROMPT_POSITIONS + RESPONSE_POSITIONS
 
 
 def build_targets(
@@ -108,11 +87,10 @@ def build_targets(
 
 # Default configuration
 DEFAULT_CONFIG = {
-    "targets": build_targets(LAYERS, COMPONENTS, ALL_POSITIONS),
+    "targets": build_targets(LAYERS, COMPONENTS, POSITIONS),
     "base_dir": "out/geo",
     "model": DEFAULT_MODEL,
     "seed": 42,
-    "n_pca_components": 10,
 }
 
 
@@ -164,6 +142,12 @@ def get_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Maximum number of samples to use (default: all)",
+    )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Resume from existing output directory (e.g., out/geo/cityhousing_geometry_20260401_182424)",
     )
 
     return parser.parse_args()
@@ -270,9 +254,16 @@ def main() -> int:
     dataset_config = parse_config(args)
     dataset_name = dataset_config.name
 
-    # Generate timestamped output directory: out/geo/{dataset_name}_{timestamp}
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path(args.base_dir) / f"{dataset_name}_{timestamp}"
+    # Use resume directory or generate new timestamped output directory
+    if args.resume:
+        output_dir = Path(args.resume)
+        if not output_dir.exists():
+            logger.error(f"Resume directory does not exist: {output_dir}")
+            return 1
+        logger.info(f"RESUMING from existing directory: {output_dir}")
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = Path(args.base_dir) / f"{dataset_name}_{timestamp}"
 
     # Build geometry config with dataset_cfg dict for collect_samples
     config = GeometryConfig(
@@ -281,7 +272,6 @@ def main() -> int:
         model=args.model,
         seed=args.seed,
         max_samples=args.max_samples,
-        n_pca_components=DEFAULT_CONFIG["n_pca_components"],
         dataset_cfg=dataset_config.to_dict(),
     )
 
@@ -295,7 +285,7 @@ def main() -> int:
     logger.info(f"Layers: {LAYERS}")
     logger.info(f"Components: {COMPONENTS}")
     logger.info(
-        f"Positions: {len(ALL_POSITIONS)} ({len(PROMPT_POSITIONS)} prompt + {len(RESPONSE_POSITIONS)} response)"
+        f"Positions: {len(POSITIONS)} ({len(PROMPT_POSITIONS)} prompt + {len(RESPONSE_POSITIONS)} response)"
     )
     logger.info(f"Total targets: {len(config.targets)}")
 
@@ -319,7 +309,7 @@ def main() -> int:
                 break
 
     # Sparse positions: positions that were requested but only exist in some samples
-    sparse_positions = [p for p in ALL_POSITIONS if p not in positions_with_data]
+    sparse_positions = [p for p in POSITIONS if p not in positions_with_data]
 
     # Create summary.json
     create_summary_json(
@@ -327,7 +317,7 @@ def main() -> int:
         n_samples=len(data.samples),
         layers=LAYERS,
         components=COMPONENTS,
-        all_positions=ALL_POSITIONS,
+        all_positions=POSITIONS,
         sparse_positions=sparse_positions,
         dataset_name=dataset_name,
     )

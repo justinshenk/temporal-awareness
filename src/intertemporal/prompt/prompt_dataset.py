@@ -141,8 +141,17 @@ class PromptDataset:
         )
 
         if not filepath.exists():
-            raise FileNotFoundError(
-                f"No prompt dataset found: {filepath}"
-            )
+            # Try searching for files with name prefix: {name}_{id}.json
+            matches = list(directory.glob(f"*_{identifier}.json"))
+            if len(matches) == 1:
+                filepath = matches[0]
+            elif len(matches) > 1:
+                raise FileNotFoundError(
+                    f"Multiple datasets match ID {identifier}: {[m.name for m in matches]}"
+                )
+            else:
+                raise FileNotFoundError(
+                    f"No prompt dataset found: {filepath}"
+                )
 
         return cls.from_json(filepath)

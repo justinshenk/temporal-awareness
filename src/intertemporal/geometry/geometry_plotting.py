@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 from src.common.device_utils import clear_gpu_memory
+from src.viz.plot_helpers import save_figure
 
 from .geometry_analysis import EmbeddingResult, LinearProbeResult, NoHorizonProjectionResult, PCAResult
 from .geometry_config import (
@@ -35,7 +36,7 @@ from .geometry_data import ActivationData, VisualizationData, get_time_horizon_m
 PlotData = Union[ActivationData, VisualizationData]
 
 # Known component names for key parsing
-KNOWN_COMPONENTS = {"resid_pre", "attn_out", "mlp_out", "resid_post"}
+KNOWN_COMPONENTS = {"resid_pre", "resid_mid", "attn_out", "mlp_out", "resid_post"}
 
 
 def _parse_target_key(key: str) -> tuple[int, str, str] | None:
@@ -237,7 +238,7 @@ def _get_horizons(data: PlotData) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     else:
         horizons_months = np.array([get_time_horizon_months(s) for s in data.samples], dtype=ACTIVATION_DTYPE)
     horizons = np.array([_months_to_years(m) for m in horizons_months], dtype=ACTIVATION_DTYPE)
-    log_horizons = np.log10(horizons + 0.1).astype(ACTIVATION_DTYPE)
+    log_horizons = np.log10(horizons + 1)  # Consistent offset.astype(ACTIVATION_DTYPE)
     buckets = np.digitize(horizons, [1, 5, 10]).astype(np.int8)
     return horizons, log_horizons, buckets
 
@@ -323,8 +324,7 @@ def plot_summary_dashboard(
         ax.set_title(f"Linear Probe R² - {component}\n(Green=high decodability, Red=low)")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"dashboard_{component}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"dashboard_{component}.png", dpi=150)
 
     # Combined dashboard
     n_components = len(components)
@@ -370,8 +370,7 @@ def plot_summary_dashboard(
     plt.suptitle("Summary Dashboard: Linear Probe R² by Layer, Position, Component", fontsize=12)
     # Use tight_layout with rect to leave space for colorbar on right
     plt.tight_layout(rect=[0, 0, 0.92, 0.96])
-    plt.savefig(output_dir / "dashboard_combined.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "dashboard_combined.png", dpi=150)
 
     logger.info(f"Saved summary dashboards to {output_dir}")
 
@@ -417,7 +416,7 @@ def plot_trajectory(
         # ActivationData needs to compute from samples
         horizons_months = np.array([get_time_horizon_months(s) for s in data.samples])
     horizons_years = horizons_months / 12.0
-    log_horizons = np.log10(horizons_years + 0.1)
+    log_horizons = np.log10(horizons_years + 1)  # Consistent offset
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -471,8 +470,7 @@ def plot_trajectory(
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"trajectory_{key_id}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"trajectory_{key_id}.png", dpi=150)
 
     logger.info(f"Saved trajectory plots to {output_dir}")
 
@@ -500,15 +498,17 @@ def plot_component_decomposition(
         layer_pos_key = f"L{layer}_{position}"
         if layer_pos_key not in target_info:
             target_info[layer_pos_key] = {}
+        if key not in linear_probe_results:
+            raise KeyError(f"Key '{key}' not in linear_probe_results. Available: {list(linear_probe_results.keys())}")
         target_info[layer_pos_key][component] = {
             "key": key,
             "pca": pca_results[key],
-            "r2": linear_probe_results.get(key, None),
+            "r2": linear_probe_results[key],
         }
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    components_order = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
+    components_order = ["resid_pre", "attn_out", "resid_mid", "mlp_out", "resid_post"]
 
     scheme = next((s for s in schemes if not s.is_categorical), schemes[0] if schemes else None)
     if scheme is None:
@@ -535,7 +535,7 @@ def plot_component_decomposition(
             best_corr = pca_result.pc_correlations[0][1]
 
             r2_info = comp_data[component]["r2"]
-            r2_val = r2_info.r2_mean if r2_info else 0
+            r2_val = r2_info.r2_mean
 
             _scatter_with_scheme(ax, X_pca[:, 0], X_pca[:, best_pc_idx], scheme, add_colorbar=False, n_samples=X_pca.shape[0])
             ax.set_xlabel("PC0")
@@ -548,8 +548,7 @@ def plot_component_decomposition(
 
         plt.suptitle(f"Component Decomposition: {layer_pos_key}", fontsize=12)
         plt.tight_layout()
-        plt.savefig(output_dir / f"decomp_{layer_pos_key}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"decomp_{layer_pos_key}.png", dpi=150)
 
     logger.info(f"Saved component decomposition plots to {output_dir}")
 
@@ -584,16 +583,18 @@ def plot_component_decomposition_3d(
         layer_pos_key = f"L{layer}_{position}"
         if layer_pos_key not in target_info:
             target_info[layer_pos_key] = {}
+        if key not in linear_probe_results:
+            raise KeyError(f"Key '{key}' not in linear_probe_results. Available: {list(linear_probe_results.keys())}")
         target_info[layer_pos_key][component] = {
             "key": key,
             "pca": pca_results[key],
-            "r2": linear_probe_results.get(key, None),
+            "r2": linear_probe_results[key],
         }
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    components_order = ["resid_pre", "attn_out", "mlp_out", "resid_post"]
-    component_colors = {"resid_pre": "blue", "attn_out": "green", "mlp_out": "orange", "resid_post": "red"}
+    components_order = ["resid_pre", "attn_out", "resid_mid", "mlp_out", "resid_post"]
+    component_colors = {"resid_pre": "blue", "attn_out": "green", "resid_mid": "purple", "mlp_out": "orange", "resid_post": "red"}
 
     # Use first continuous scheme for coloring
     scheme = next((s for s in schemes if not s.is_categorical), schemes[0] if schemes else None)
@@ -633,7 +634,7 @@ def plot_component_decomposition_3d(
                 top_pcs.append(0)
 
             r2_info = comp_data[component]["r2"]
-            r2_val = r2_info.r2_mean if r2_info else 0
+            r2_val = r2_info.r2_mean
 
             # Color by time horizon
             values = scheme.values[:n_samples] if n_samples < len(scheme.values) else scheme.values
@@ -733,8 +734,7 @@ def plot_direction_alignment(
     ax.set_title("Direction Alignment: PC1 Cosine Similarity Across Targets")
 
     plt.tight_layout()
-    plt.savefig(output_dir / "direction_alignment.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "direction_alignment.png", dpi=150)
 
     # Per-position alignment plots
     position_groups = {}
@@ -773,8 +773,7 @@ def plot_direction_alignment(
         ax.set_title(f"Direction Alignment: Position={pos}")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"direction_alignment_{pos}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"direction_alignment_{pos}.png", dpi=150)
 
     logger.info(f"Saved direction alignment plots to {output_dir}")
 
@@ -851,8 +850,7 @@ def plot_decision_boundary(
 
     plt.suptitle("Linear Probe Accuracy for Predicting Choice (Short vs Long Term)", fontsize=12)
     plt.tight_layout()
-    plt.savefig(output_dir / "decision_boundary.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "decision_boundary.png", dpi=150)
 
     logger.info(f"Saved decision boundary plot to {output_dir}")
 
@@ -902,8 +900,7 @@ def plot_scree(
         plt.tight_layout()
 
         safe_name = target_key.replace("/", "_")
-        plt.savefig(output_dir / f"scree_{safe_name}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"scree_{safe_name}.png", dpi=150)
 
     # Summary scree
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -925,8 +922,7 @@ def plot_scree(
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "scree_comparison.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "scree_comparison.png", dpi=150)
 
     logger.info(f"Saved scree plots to {output_dir}")
 
@@ -968,8 +964,7 @@ def plot_linear_probe_summary(
         ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "linear_probe_summary.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "linear_probe_summary.png", dpi=150)
 
     # Scatter plots for top 16 only
     scatter_targets = all_targets[:16]
@@ -1011,8 +1006,7 @@ def plot_linear_probe_summary(
         axes[row, col].axis("off")
 
     plt.tight_layout()
-    plt.savefig(output_dir / "linear_probe_scatter.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "linear_probe_scatter.png", dpi=150)
 
 
 # =============================================================================
@@ -1122,8 +1116,7 @@ def plot_target_pca(
 
     plt.suptitle(f"{target_key} - PCA Analysis", fontsize=14)
     plt.tight_layout()
-    plt.savefig(pca_dir / "summary.png", dpi=150)
-    plt.close()
+    save_figure(None, pca_dir / "summary.png", dpi=150)
 
     # Per-coloring plots
     for scheme in schemes:
@@ -1133,8 +1126,7 @@ def plot_target_pca(
         ax.set_ylabel(f"PC{best_pc_idx} (r={best_corr:.2f})")
         ax.set_title(f"{scheme.label}")
         plt.tight_layout()
-        plt.savefig(pca_dir / f"{scheme.name}.png", dpi=150)
-        plt.close()
+        save_figure(None, pca_dir / f"{scheme.name}.png", dpi=150)
 
 
 def plot_target_embeddings(
@@ -1159,8 +1151,7 @@ def plot_target_embeddings(
         ax.set_ylabel("PC2")
         ax.set_title(f"PCA 2D - {scheme.label}")
         plt.tight_layout()
-        plt.savefig(emb_dir / f"{scheme.name}.png", dpi=150)
-        plt.close()
+        save_figure(None, emb_dir / f"{scheme.name}.png", dpi=150)
 
 
 def plot_target_3d(
@@ -1203,7 +1194,12 @@ def plot_target_3d(
                 color_map = {0: "purple", 1: "blue", 2: "green", 3: "orange"}
             else:
                 color_map = {0: "blue", 1: "red", 2: "green", 3: "orange"}
-            colors = [color_map.get(int(v), "gray") for v in values]
+            colors = []
+            for v in values:
+                int_v = int(v)
+                if int_v not in color_map:
+                    raise KeyError(f"Value '{int_v}' not in color_map. Available: {list(color_map.keys())}")
+                colors.append(color_map[int_v])
             hover_text = [scheme.categories[int(v)] if scheme.categories and int(v) < len(scheme.categories) else str(int(v)) for v in values]
             marker = dict(size=4, color=colors, opacity=0.8)
         else:
@@ -1303,8 +1299,7 @@ def plot_cross_position_similarity(
         ax.set_title("Cross-Position Similarity: Source to Dest PC0 Direction\n(High = temporal direction similar to decision direction)")
 
         plt.tight_layout()
-        plt.savefig(output_dir / "cross_position_summary.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / "cross_position_summary.png", dpi=150)
 
     # 2. Per-component: layer trajectory of similarity
     for component, layer_results in component_results.items():
@@ -1328,8 +1323,7 @@ def plot_cross_position_similarity(
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"cross_position_{component}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"cross_position_{component}.png", dpi=150)
 
     # 3. Per layer-component detailed matrices
     for lc_key, result in cross_position_results.items():
@@ -1359,8 +1353,7 @@ def plot_cross_position_similarity(
         ax.set_title(f"{lc_key}: Source vs Dest PC0 Direction Similarity")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"cross_position_{lc_key}_matrix.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"cross_position_{lc_key}_matrix.png", dpi=150)
 
     logger.info(f"Saved cross-position similarity plots to {output_dir}")
 
@@ -1426,8 +1419,7 @@ def plot_continuous_time_probe(
         ax.text(max(r2, 0) + 0.02, i, f"{r2:.3f}", va="center", fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "continuous_time_probe_summary.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "continuous_time_probe_summary.png", dpi=150)
 
     # 2. Layer trajectory by position type
     position_results = {}
@@ -1473,7 +1465,9 @@ def plot_continuous_time_probe(
             layers = sorted(layer_data.keys())
             r2s = [layer_data[l] for l in layers]
 
-            color = position_colors.get(position, "#607D8B")
+            if position not in position_colors:
+                raise KeyError(f"Position '{position}' not in position_colors. Available: {list(position_colors.keys())}")
+            color = position_colors[position]
             ax.plot(layers, r2s, marker="o", linewidth=2, label=position, color=color)
 
         ax.set_xlabel("Layer")
@@ -1484,8 +1478,7 @@ def plot_continuous_time_probe(
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"continuous_time_probe_{component}_trajectory.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"continuous_time_probe_{component}_trajectory.png", dpi=150)
 
     # 3. Scatter plots for top targets
     scatter_targets = [k for k, _ in sorted_results[:9]]
@@ -1536,8 +1529,7 @@ def plot_continuous_time_probe(
             axes[row, col].axis("off")
 
         plt.tight_layout()
-        plt.savefig(output_dir / "continuous_time_probe_scatter.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / "continuous_time_probe_scatter.png", dpi=150)
 
     logger.info(f"Saved continuous time probe plots to {output_dir}")
 
@@ -1612,8 +1604,7 @@ def plot_logit_lens(
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "logit_lens_trajectory.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "logit_lens_trajectory.png", dpi=150)
 
     # 2. Heatmap: samples x layers
     fig, ax = plt.subplots(figsize=(14, 8))
@@ -1653,8 +1644,7 @@ def plot_logit_lens(
     )
 
     plt.tight_layout()
-    plt.savefig(output_dir / "logit_lens_heatmap.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "logit_lens_heatmap.png", dpi=150)
 
     # 3. Cosine similarity plot
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -1684,8 +1674,7 @@ def plot_logit_lens(
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "logit_lens_cosine_sim.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "logit_lens_cosine_sim.png", dpi=150)
 
     # 4. Combined plot (2x2)
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -1762,8 +1751,7 @@ def plot_logit_lens(
         fontsize=14,
     )
     plt.tight_layout()
-    plt.savefig(output_dir / "logit_lens_summary.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "logit_lens_summary.png", dpi=150)
 
     logger.info(f"Saved logit lens plots to {output_dir}")
 
@@ -1868,8 +1856,7 @@ def plot_no_horizon_projection(
                      f"(Red = closer to short-horizon, Blue = closer to long-horizon)")
 
         plt.tight_layout()
-        plt.savefig(output_dir / f"no_horizon_bias_heatmap_{position}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"no_horizon_bias_heatmap_{position}.png", dpi=150)
 
     # =========================================================================
     # 2. Summary bar chart: top targets by bias
@@ -1915,8 +1902,7 @@ def plot_no_horizon_projection(
     ax.legend(loc="lower right", fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_dir / "no_horizon_bias_summary.png", dpi=150)
-    plt.close()
+    save_figure(None, output_dir / "no_horizon_bias_summary.png", dpi=150)
 
     # =========================================================================
     # 3. Per-target scatter plots (top targets)
@@ -2033,8 +2019,7 @@ def plot_no_horizon_projection(
             axes[row, col].axis("off")
 
         plt.tight_layout()
-        plt.savefig(output_dir / "no_horizon_scatter.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / "no_horizon_scatter.png", dpi=150)
 
     # =========================================================================
     # 4. Distribution histogram
@@ -2079,8 +2064,7 @@ def plot_no_horizon_projection(
                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         plt.tight_layout()
-        plt.savefig(output_dir / "no_horizon_distribution.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / "no_horizon_distribution.png", dpi=150)
 
     # =========================================================================
     # 5. Layer trajectory of bias
@@ -2119,8 +2103,7 @@ def plot_no_horizon_projection(
 
         plt.tight_layout()
         safe_key = group_key.replace("/", "_").replace("\\", "_")
-        plt.savefig(output_dir / f"no_horizon_trajectory_{safe_key}.png", dpi=150)
-        plt.close()
+        save_figure(None, output_dir / f"no_horizon_trajectory_{safe_key}.png", dpi=150)
 
     logger.info(f"Saved no-horizon projection plots to {output_dir}")
 
@@ -2195,7 +2178,7 @@ def _plot_target_summary(
 
     fig.suptitle(target_key, fontsize=12)
     plt.tight_layout()
-    plt.savefig(output_dir / f"{target_key}_summary.png", dpi=100)
+    save_figure(None, output_dir / f"{target_key}_summary.png", dpi=100)
     plt.close()
 
     # === 2. Interactive 3D plots (if plotly available) ===

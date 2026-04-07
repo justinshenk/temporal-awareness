@@ -62,7 +62,7 @@ class TargetSpec:
     position: str
 
     def __post_init__(self):
-        valid_components = {"resid_pre", "resid_post", "mlp_out", "attn_out"}
+        valid_components = {"resid_pre", "resid_mid", "resid_post", "mlp_out", "attn_out"}
 
         if self.component not in valid_components:
             raise ValueError(f"Invalid component: {self.component}")
@@ -81,6 +81,7 @@ class TargetSpec:
         """TransformerLens hook name."""
         patterns = {
             "resid_pre": f"blocks.{self.layer}.hook_resid_pre",
+            "resid_mid": f"blocks.{self.layer}.hook_resid_mid",
             "resid_post": f"blocks.{self.layer}.hook_resid_post",
             "mlp_out": f"blocks.{self.layer}.hook_mlp_out",
             "attn_out": f"blocks.{self.layer}.hook_attn_out",
@@ -131,20 +132,23 @@ class GeometryConfig:
 
     @classmethod
     def from_dict(cls, d: dict) -> "GeometryConfig":
-        """Create config from dictionary."""
+        """Create config from dictionary.
+
+        All required fields must be present - missing keys will raise KeyError.
+        """
         targets = [
-            TargetSpec(**t) if isinstance(t, dict) else t for t in d.get("targets", [])
+            TargetSpec(**t) if isinstance(t, dict) else t for t in d["targets"]
         ]
         return cls(
             targets=targets,
-            output_dir=Path(d.get("output_dir", "out/geometry")),
-            model=d.get("model", ""),
-            seed=d.get("seed", 42),
-            max_samples=d.get("max_samples"),
-            n_pca_components=d.get("n_pca_components", 50),
-            dataset_cfg=d.get("dataset_cfg"),
-            extraction_buffer_size=d.get("extraction_buffer_size", EXTRACTION_BUFFER_SIZE),
-            use_compressed_storage=d.get("use_compressed_storage", USE_COMPRESSED_STORAGE),
+            output_dir=Path(d["output_dir"]),
+            model=d["model"],
+            seed=d["seed"],
+            max_samples=d["max_samples"],
+            n_pca_components=d["n_pca_components"],
+            dataset_cfg=d["dataset_cfg"],
+            extraction_buffer_size=d["extraction_buffer_size"],
+            use_compressed_storage=d["use_compressed_storage"],
         )
 
     def to_dict(self) -> dict:
