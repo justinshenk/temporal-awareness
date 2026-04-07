@@ -315,7 +315,34 @@ def extract_activations_for_condition(
 
     # Build prompts
     prompts = [build_prompt(ex, rep_count, model_config) for ex in examples]
-    labels = [ex.get("answer", "") for ex in examples]
+
+    # Extract answer-index labels (letter codes A/B/C/D)
+    # Different datasets store this differently:
+    #   - TRAM arithmetic: "answer" is already a letter ("A", "B", "C", "D")
+    #   - MedQA: "answer" is the full text, "answer_idx" has the letter
+    #   - AG News: "answer" is the category text, need to map via options
+    labels = []
+    for ex in examples:
+        if "answer_idx" in ex:
+            # MedQA style: answer_idx has the letter code
+            labels.append(ex["answer_idx"])
+        elif ex.get("answer", "") in {"A", "B", "C", "D"}:
+            # TRAM style: answer is already a letter
+            labels.append(ex["answer"])
+        elif "options" in ex and isinstance(ex["options"], dict):
+            # AG News style: answer is text, find matching option letter
+            answer_text = ex.get("answer", "")
+            matched = False
+            for letter, text in ex["options"].items():
+                if text == answer_text:
+                    labels.append(letter)
+                    matched = True
+                    break
+            if not matched:
+                labels.append(ex.get("category", "unknown"))
+        else:
+            labels.append(ex.get("answer", "unknown"))
+
     categories = [ex.get("category", "") for ex in examples]
 
     print(f"    Extracting: {len(prompts)} prompts, rep={rep_count}, "
@@ -371,26 +398,27 @@ def train_probe(
 
 
 def make_binary_labels(labels: list[str], dataset_key: str) -> np.ndarray:
-    """Convert answer labels to binary for probe training.
+    """Convert answer labels to numeric for probe training.
 
-    For MCQ datasets, we use whether the model-preferred answer matches
-    the correct answer. For cross-domain comparison, we create a
-    domain-indicator label.
+    Maps A/B/C/D letter codes to 0/1/2/3. For non-letter labels
+    (e.g., category text), maps unique values to sequential integers.
 
-    For simplicity in Phase 2, we use the answer letter as a multi-class
-    target — the probe tests if activations encode the correct answer.
+    The probe tests whether activations encode the correct answer class.
     """
-    # Convert answer letters to integers
     label_map = {"A": 0, "B": 1, "C": 2, "D": 3}
-    numeric = []
-    for l in labels:
-        if isinstance(l, str) and l.upper() in label_map:
-            numeric.append(label_map[l.upper()])
-        elif isinstance(l, int):
-            numeric.append(l)
-        else:
-            numeric.append(0)  # fallback
-    return np.array(numeric)
+
+    # Check if all labels are letter codes
+    all_letters = all(
+        isinstance(l, str) and l.upper() in label_map for l in labels
+    )
+
+    if all_letters:
+        return np.array([label_map[l.upper()] for l in labels])
+
+    # Fallback: map unique string values to sequential integers
+    unique_vals = sorted(set(str(l) for l in labels))
+    val_to_int = {v: i for i, v in enumerate(unique_vals)}
+    return np.array([val_to_int[str(l)] for l in labels])
 
 
 # ---------------------------------------------------------------------------
