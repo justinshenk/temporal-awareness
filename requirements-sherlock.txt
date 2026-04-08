@@ -1,0 +1,41 @@
+# Pinned for Sherlock compatibility (Python 3.12, system pyarrow 18.1.0, torch 2.4.0)
+# Key constraints:
+#   - datasets<4.0 (so pyarrow 18.1.0 is accepted — datasets 4.x requires pyarrow>=21)
+#   - No torch upgrade (system torch 2.4.0 matches Sherlock CUDA drivers)
+#   - Requires HF auth: huggingface-cli login (gemma-2-2b is gated)
+#
+# Install: pip install -r requirements-sherlock.txt
+# Note: use --no-deps for transformer-lens and sae-lens first, then install this file
+
+# Core ML
+transformer-lens==2.17.0
+sae-lens==6.37.6
+
+# Constrained versions
+datasets>=3.0,<4.0
+transformers>=4.38.1,<6.0
+huggingface-hub>=1.3.0,<2.0
+
+# transformer-lens deps
+accelerate>=0.23.0
+beartype>=0.14.1,<0.15.0
+better-abc>=0.0.3,<0.0.4
+einops>=0.6.0
+fancy-einsum>=0.0.3
+jaxtyping>=0.2.11
+transformers-stream-generator>=0.0.5,<0.0.6
+typeguard>=4.2,<5.0
+
+# sae-lens deps
+babe>=0.0.7,<0.0.8
+nltk>=3.8.1
+plotly>=5.19.0
+plotly-express>=0.4.1
+python-dotenv>=1.0.1
+simple-parsing>=0.1.6,<0.2.0
+tenacity>=9.0.0
+
+# Experiment deps
+wandb
+matplotlib
+scikit-learn
