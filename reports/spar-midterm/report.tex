@@ -11,12 +11,12 @@
   Independent Researcher
   \and
   Jyotin Goel,
-  Tejas Bijoor,
+  Tejas Dahiya,
   Michal Mraz,
   Vansh Gupta,
-  Ipshita Das,\\
-  Ronen Raj Roy,
-  Harleen Bagga,
+  Ipshita Bandyopadhyay,\\
+  Ronen Roy,
+  Harleen Kaur Bagga,
   Avigya Paudel,
   Archit Sharma,\\
   Tim Obiso,
@@ -66,11 +66,11 @@ We evaluate models across four architecture families and a range of scales: GPT-
 
 \subsection{Datasets and Evaluation}
 
-Each sub-project constructs task-specific evaluation sets, with contrastive pair datasets following the Contrastive Activation Addition (CAA) framework \cite{rimsky2024steering}. Notable datasets include: 1,000 validated implicit temporal pairs across 40 categories and 8 domains, with no explicit temporal keywords (Paudel); code generation samples with 500 examples across 5 return types for the planning study (Bijoor); sycophancy benchmarks with social pressure conditions (Bagga); and repetition-degradation benchmarks across 4 datasets with 10 repetition counts (Molofsky). We use bootstrap resampling (typically 1,000 iterations) for statistical significance testing and PCA for dimensionality reduction where applicable.
+Each sub-project constructs task-specific evaluation sets, with contrastive pair datasets following the Contrastive Activation Addition (CAA) framework \cite{rimsky2024steering}. Notable datasets include: 1,000 validated implicit temporal pairs across 40 categories and 8 domains, with no explicit temporal keywords (Paudel); code generation samples with 500 examples across 5 return types for the planning study (Dahiya); sycophancy benchmarks with social pressure conditions (Bagga); and repetition-degradation benchmarks across 4 datasets with 10 repetition counts (Molofsky). We use bootstrap resampling (typically 1,000 iterations) for statistical significance testing and PCA for dimensionality reduction where applicable.
 
 \subsection{Methodological Innovations}
 
-Three innovations emerged from the sub-projects. First, a \textbf{baseline staircase protocol} (Bijoor): chance $\to$ bag-of-words $\to$ name-only $\to$ name+params $\to$ probe, which progressively tests whether probe accuracy reflects genuine internal computation or surface features. Second, \textbf{pooled-activation probes} (Mraz): aggregating across token positions rather than using only the last token, yielding improved probe performance. Third, \textbf{implicit temporal pairs} (Paudel): evaluation data that tests temporal reasoning without temporal keywords, preventing probes from relying on lexical shortcuts.
+Three innovations emerged from the sub-projects. First, a \textbf{baseline staircase protocol} (Dahiya): chance $\to$ bag-of-words $\to$ name-only $\to$ name+params $\to$ probe, which progressively tests whether probe accuracy reflects genuine internal computation or surface features. Second, \textbf{pooled-activation probes} (Mraz): aggregating across token positions rather than using only the last token, yielding improved probe performance. Third, \textbf{implicit temporal pairs} (Paudel): evaluation data that tests temporal reasoning without temporal keywords, preventing probes from relying on lexical shortcuts.
 
 % ============================================================================
 % PRELIMINARY RESULTS
@@ -94,7 +94,7 @@ Sharma confirms temporal representations exist across all three models tested bu
 
 \subsection{Baselines Matter: Deflating Apparent Planning Signal}
 
-Bijoor's investigation of lookahead planning in code generation provides a cautionary result. Across all 11 models tested (GPT-2 family, Pythia 410M--2.8B, SantaCoder, CodeLlama-7B, Llama-3.2-1B), initial probing suggested 80--91\% accuracy at predicting return types --- apparently strong evidence of planning. However, the baseline staircase reveals this is fully explained by surface features: a name+params baseline (a classifier trained on function name and parameter names alone) achieves 87--95\% accuracy, consistently beating the probe ($p \approx 1.0$ across every model and layer). Misleading-name experiments confirm models follow parameter names 56\% of the time and function names 22--34\%. Generation-time probing shows probe accuracy actually \emph{decays} during generation, and acrostic behavioral tests (4--20\%, near chance) confirm these models cannot perform structural planning. This frames as a methodology contribution: a ``baseline staircase'' protocol for deflating spurious probing results.
+Dahiya's investigation of lookahead planning in code generation provides a cautionary result. Across all 11 models tested (GPT-2 family, Pythia 410M--2.8B, SantaCoder, CodeLlama-7B, Llama-3.2-1B), initial probing suggested 80--91\% accuracy at predicting return types --- apparently strong evidence of planning. However, the baseline staircase reveals this is fully explained by surface features: a name+params baseline (a classifier trained on function name and parameter names alone) achieves 87--95\% accuracy, consistently beating the probe ($p \approx 1.0$ across every model and layer). Misleading-name experiments confirm models follow parameter names 56\% of the time and function names 22--34\%. Generation-time probing shows probe accuracy actually \emph{decays} during generation, and acrostic behavioral tests (4--20\%, near chance) confirm these models cannot perform structural planning. This frames as a methodology contribution: a ``baseline staircase'' protocol for deflating spurious probing results.
 
 \subsection{Safety-Relevant Phenomena}
 
@@ -102,7 +102,7 @@ Bijoor's investigation of lookahead planning in code generation provides a cauti
 
 \textbf{Context fatigue.} Raj Roy demonstrates that entropy collapse is a real problem as context fills, with models growing more confident without corresponding accuracy gains. This is partially counteracted by in-context learning, where models sometimes improve at a task pattern over the context window.
 
-\textbf{Uncertainty encoding.} Das finds that uncertainty is strongly encoded at the first reasoning step but weakens after subsequent reasoning, is distributed across layers, and only weakly predicts future states. Across datasets, uncertainty encoding varies significantly and consistently degrades from step 1 to step 2.
+\textbf{Uncertainty encoding.} Bandyopadhyay finds that uncertainty is strongly encoded at the first reasoning step but weakens after subsequent reasoning, is distributed across layers, and only weakly predicts future states. Across datasets, uncertainty encoding varies significantly and consistently degrades from step 1 to step 2.
 
 \textbf{Steering and safety.} Obiso observes that steering toward long-term thinking monotonically increases output safety, while short-term steering produces more violent completions --- a finding that, if confirmed, would link temporal horizon representations directly to safety-relevant behavior. Additionally, smaller models (4B) show stronger deception detection than larger ones (9B), suggesting internal ``honesty'' may degrade with scale.
 
@@ -123,12 +123,12 @@ Goel is developing an analysis of token trajectories for multihop questions, wit
 \textbf{Fellow} & \textbf{Research Question} & \textbf{Key Finding} & \textbf{Target} \\
 \midrule
 Jyotin Goel & Token trajectories for multihop reasoning & Initial outline on trajectory analysis & Publication \\
-Tejas Bijoor & Lookahead planning in code generation & No planning found; baseline staircase deflates all signal & Publication \\
+Tejas Dahiya & Lookahead planning in code generation & No planning found; baseline staircase deflates all signal & Publication \\
 Michal Mraz & Improved probe training for temporal features & Pooled probes outperform last-token; causal steering confirmed & Publication \\
 Vansh Gupta & Phase transitions in temporal horizon & Establishing short-to-long horizon transition & Publication \\
-Ipshita Das & Uncertainty encoding across reasoning steps & Uncertainty strong at step 1, degrades after reasoning & Publication \\
-Ronen Raj Roy & Context fatigue in long contexts & Entropy collapse is real; partially offset by ICL & Publication \\
-Harleen Bagga & Sycophancy detection via hidden states & Sycophancy rare (1.5--15.5\%); confidence unreliable as monitor & Publication \\
+Ipshita Bandyopadhyay & Uncertainty encoding across reasoning steps & Uncertainty strong at step 1, degrades after reasoning & Publication \\
+Ronen Roy & Context fatigue in long contexts & Entropy collapse is real; partially offset by ICL & Publication \\
+Harleen Kaur Bagga & Sycophancy detection via hidden states & Sycophancy rare (1.5--15.5\%); confidence unreliable as monitor & Publication \\
 Avigya Paudel & Temporal steering on implicit pairs & 99.2\% probe accuracy; $4\times$ steering effect at layer 22 & Pub + Demo \\
 Archit Sharma & Cross-model temporal representation comparison & Signal varies: Qwen robust, Phi weak, Llama intermediate & Publication \\
 Tim Obiso & Causal localization of temporal computation & Last 3 layers; linear component transfers cross-domain & Publication \\
@@ -150,7 +150,7 @@ Adrian Molofsky & Patience degradation under repetition & Degradation is model- 
 
 \textbf{Linear vs.\ nonlinear representations.} Obiso's finding that linear probe components transfer across domains while nonlinear components are domain-specific raises interpretive questions: are we capturing the safety-relevant signal with linear probes, or missing critical nonlinear structure?
 
-\textbf{Surface cue confounds.} The baseline staircase result (Bijoor) demonstrates that probe accuracy can be entirely explained by surface features. This motivates broader adoption of rigorous baselines across all probing sub-projects and careful evaluation of whether temporal probes in other contexts might face similar confounds.
+\textbf{Surface cue confounds.} The baseline staircase result (Dahiya) demonstrates that probe accuracy can be entirely explained by surface features. This motivates broader adoption of rigorous baselines across all probing sub-projects and careful evaluation of whether temporal probes in other contexts might face similar confounds.
 
 % ============================================================================
 % NEXT STEPS
@@ -167,7 +167,7 @@ For the second half of the program, we prioritize the following:
 
 \textbf{New directions.} Gupta will test the phase transition hypothesis for temporal horizon representations. Goel will complete the token trajectory analysis for multihop reasoning. Raj Roy will further characterize the interaction between context fatigue and in-context learning.
 
-\textbf{Target venues.} We aim for NeurIPS 2026 (main conference or workshops) for the strongest results, with blog posts and web demos for preliminary or negative findings. The baseline staircase methodology (Bijoor) and temporal steering results (Obiso, Paudel) are the most publication-ready.
+\textbf{Target venues.} We aim for NeurIPS 2026 (main conference or workshops) for the strongest results, with blog posts and web demos for preliminary or negative findings. The baseline staircase methodology (Dahiya) and temporal steering results (Obiso, Paudel) are the most publication-ready.
 
 % ============================================================================
 % REFERENCES
