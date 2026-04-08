@@ -320,10 +320,6 @@ def _plot_layer_position_heatmap(
         title = "Denoising Recovery" if mode == "denoising" else "Noising Disruption"
         ax.set_title(f"{title}", fontsize=12, fontweight="bold")
 
-    # Clear title: what it shows, not methodology
     fig.suptitle("Layer × Position Importance Map", fontsize=14, fontweight="bold", y=1.02)
-    # Methodology note as subtitle
-    fig.text(0.5, 0.98, "(Outer product of marginal layer and position effects)",
-             fontsize=9, ha="center", va="top", style="italic", color="gray")
     plt.tight_layout()
     save_plot(fig, output_dir, "layer_position_heatmap.png")

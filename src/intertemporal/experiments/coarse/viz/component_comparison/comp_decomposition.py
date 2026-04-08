@@ -27,6 +27,7 @@ def plot_decomposition(
     _plot_component_importance(layer_data, output_dir)
     _plot_cumulative_recovery(layer_data, output_dir)
     _plot_marginal_contribution(layer_data, output_dir)
+    _plot_layer_interaction(layer_data, output_dir)
     _plot_position_interaction(pos_data, output_dir)
     _plot_position_interaction_zoomed(pos_data, output_dir)  # NEW: zoomed version
 
@@ -388,9 +389,9 @@ def _plot_marginal_contribution(
     fig, ax = create_figure(figsize=(12, 6))
 
     ax.plot(valid_layers, denoise_marginal, "o-", color="#2ca02c", linewidth=2,
-            markersize=6, label="Denoising (recovery)", alpha=0.8)
+            markersize=6, label="Δ Sufficiency", alpha=0.8)
     ax.plot(valid_layers, noise_marginal, "s-", color="#d62728", linewidth=2,
-            markersize=6, label="Noising (disruption)", alpha=0.8)
+            markersize=6, label="Δ Necessity", alpha=0.8)
 
     # Mark key layers
     denoise_sorted = sorted(zip(valid_layers, denoise_marginal), key=lambda x: abs(x[1]), reverse=True)
@@ -404,19 +405,19 @@ def _plot_marginal_contribution(
     ax.set_ylabel("Marginal: resid_post[L] - resid_pre[L]", fontsize=12, fontweight="bold")
     ax.set_title("Marginal Contribution per Layer", fontsize=14, fontweight="bold")
 
-    # Secondary y-axis with absolute values for resid_pre, resid_mid, and resid_post
+    # Secondary y-axis with recovery values for resid_pre, resid_mid, and resid_post
     ax2 = ax.twinx()
     ax2.plot(valid_layers, resid_pre_denoise, "v--", color=COMPONENT_COLORS["resid_pre"], linewidth=2,
-             markersize=6, label="Absolute resid_pre", alpha=0.7)
+             markersize=6, label="resid_pre", alpha=0.7)
     # Plot resid_mid if we have any valid values
     if any(v is not None for v in resid_mid_denoise):
         mid_layers = [l for l, v in zip(valid_layers, resid_mid_denoise) if v is not None]
         mid_values = [v for v in resid_mid_denoise if v is not None]
         ax2.plot(mid_layers, mid_values, "d-", color=COMPONENT_COLORS["resid_mid"], linewidth=2.5,
-                 markersize=8, label="Absolute resid_mid", alpha=0.9, zorder=5)
+                 markersize=8, label="resid_mid", alpha=0.9, zorder=5)
     ax2.plot(valid_layers, resid_post_denoise, "^--", color=COMPONENT_COLORS["resid_post"], linewidth=2,
-             markersize=6, label="Absolute resid_post", alpha=0.7)
-    ax2.set_ylabel("Absolute Recovery", fontsize=10)
+             markersize=6, label="resid_post", alpha=0.7)
+    ax2.set_ylabel("Recovery", fontsize=10)
 
     # Combined legend
     lines1, labels1 = ax.get_legend_handles_labels()
@@ -467,6 +468,73 @@ def _detect_hub_regions(
         regions.append((start, positions[-1]))
 
     return regions
+
+
+def _plot_layer_interaction(
+    layer_data: dict[str, SweepStepResults | None],
+    output_dir: Path,
+) -> None:
+    """Plot layer × component interaction with shared y-scale."""
+    all_layers = set()
+    for comp, data in layer_data.items():
+        if data:
+            all_layers.update(data.keys())
+
+    if not all_layers:
+        return
+
+    layers = sorted(all_layers)
+
+    # Collect all values for shared limits
+    all_values = []
+    data_by_mode = {}
+
+    for mode in ["denoising", "noising"]:
+        mode_data = {}
+        for comp in COMPONENTS:
+            data = layer_data.get(comp)
+            if not data:
+                continue
+            values, valid_layers = [], []
+            for layer in layers:
+                if data.get(layer) is not None:
+                    val = data[layer].recovery if mode == "denoising" else data[layer].disruption
+                    if val is not None:
+                        values.append(val)
+                        valid_layers.append(layer)
+                        all_values.append(val)
+            if valid_layers:
+                mode_data[comp] = (valid_layers, values)
+        data_by_mode[mode] = mode_data
+
+    if not all_values:
+        return
+
+    y_min = min(all_values) - 0.05
+    y_max = max(all_values) + 0.05
+
+    fig, axes = create_figure(1, 2, figsize=(16, 6))
+
+    for ax_idx, mode in enumerate(["denoising", "noising"]):
+        ax = axes[ax_idx]
+
+        mode_data = data_by_mode[mode]
+        for comp in COMPONENTS:
+            if comp in mode_data:
+                valid_layers, values = mode_data[comp]
+                ax.plot(valid_layers, values, "o-", color=COMPONENT_COLORS[comp],
+                        linewidth=1.5, markersize=4, label=comp, alpha=0.7)
+
+        ax.set_ylim(y_min, y_max)
+        ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
+        ax.set_ylabel("Recovery" if mode == "denoising" else "Disruption", fontsize=12, fontweight="bold")
+        title = "Denoising" if mode == "denoising" else "Noising"
+        ax.set_title(f"Layer × Component Interaction - {title}", fontsize=12, fontweight="bold")
+        ax.legend(loc="best", fontsize=9)
+        setup_grid(ax)
+
+    plt.tight_layout()
+    save_plot(fig, output_dir, "layer_component_interaction.png")
 
 
 def _plot_position_interaction(

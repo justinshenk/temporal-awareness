@@ -253,8 +253,10 @@ def apply_only_viz_agg_flag(config: dict) -> None:
 
 
 def apply_camera_ready_flag(config: dict) -> None:
-    """Enable SVG output alongside PNGs for publication-quality figures."""
-    config.setdefault("viz_cfg", VIZ_CFG.copy())["save_svg"] = True
+    """Enable SVG and PDF output alongside PNGs for publication-quality figures."""
+    viz_cfg = config.setdefault("viz_cfg", VIZ_CFG.copy())
+    viz_cfg["save_svg"] = True
+    viz_cfg["save_pdf"] = True
 
 
 def apply_json_overrides(config: dict, args: argparse.Namespace) -> None:
@@ -369,6 +371,7 @@ def main() -> int:
         # Apply camera-ready flag even when using cached config
         if args.camera_ready:
             working_cfg.viz_cfg["save_svg"] = True
+            working_cfg.viz_cfg["save_pdf"] = True
         exp_cfg = working_cfg
     else:
         # Build experiment config from CLI args

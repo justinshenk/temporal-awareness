@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from ...common import profile
 from ...common.device_utils import clear_gpu_memory
 from ...common.logging import log
-from ...viz.plot_helpers import set_svg_mode
+from ...viz.plot_helpers import set_pdf_mode, set_svg_mode
 from ...activation_patching.coarse import (
     run_coarse_act_patching,
     CoarseActPatchAggregatedResults,
@@ -238,9 +238,11 @@ def process_coarse(
 
     config: CoarsePatchingConfig = step.config
 
-    # Load aggregators from disk if not initialized
+    # Load aggregators for ALL cached components (not just config.components)
+    # This ensures visualization includes all available data
     if not ctx.coarse_agg_by_component:
-        ctx.load_coarse_agg(config)
+        ctx.load_coarse_agg()  # Loads ALL cached components
+    # Also init aggregators for config.components we're about to compute
     for component in config.components:
         if component not in ctx.coarse_agg_by_component:
             ctx.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults()
@@ -632,7 +634,9 @@ def process_progressive_agg(
             log("[attrib] Generated attribution visualizations")
         ctx.unload_attrib_agg()
 
-    # Coarse
+    # Coarse - rebuild aggregates from ALL cached per-pair data
+    # This ensures we include all components, not just those in config
+    ctx.rebuild_coarse_agg_from_pairs()
     if ctx.coarse_agg_by_component:
         for agg in ctx.coarse_agg_by_component.values():
             agg.print_summary()
@@ -747,7 +751,7 @@ def finalize_analysis(ctx: ExperimentContext) -> None:
 # =============================================================================
 
 
-PROGRESSIVE_AGG = 30  # Aggregate every N pairs
+PROGRESSIVE_AGG = 42  # Aggregate every N pairs
 
 
 @profile("run_experiment_per_pair")
@@ -767,8 +771,9 @@ def run_experiment_per_pair(
     ctx = ExperimentContext(cfg, output_dir=output_dir, backend=backend)
     cfg.save(ctx.output_dir)
 
-    # Set SVG mode for camera-ready figures
+    # Set camera-ready mode for publication figures (SVG + PDF)
     set_svg_mode(ctx.save_svg)
+    set_pdf_mode(ctx.save_pdf)
 
     # Load preference data
     step_preference_data(ctx, try_loading_data=True)

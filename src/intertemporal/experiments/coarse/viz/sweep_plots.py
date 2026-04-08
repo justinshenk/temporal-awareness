@@ -1,7 +1,7 @@
 """Sweep plot visualization for coarse activation patching.
 
 Provides unified plotting for layer and position sweeps with
-2x6 subplot grids (denoising on top, noising on bottom).
+2x5 subplot grids (denoising on top, noising on bottom).
 """
 
 from __future__ import annotations
@@ -303,11 +303,17 @@ def plot_layer_sweep(
         )
         secondary_axes_by_row.append(row_secondary)
 
-        # Row label - positioned based on subplot locations
+    _synchronize_y_axes(axes, secondary_axes_by_row)
+
+    # Add row labels centered on each row's plot area
+    for row_idx, mode in enumerate(["denoising", "noising"]):
         row_label = "Denoising" if mode == "denoising" else "Noising"
+        # Get the vertical center of this row's axes
+        ax_pos = axes[row_idx][0].get_position()
+        row_center = (ax_pos.y0 + ax_pos.y1) / 2
         fig.text(
             0.012,
-            0.62 - row_idx * 0.36,
+            row_center,
             row_label,
             fontsize=28,
             fontweight="bold",
@@ -315,8 +321,6 @@ def plot_layer_sweep(
             va="center",
             ha="center",
         )
-
-    _synchronize_y_axes(axes, secondary_axes_by_row)
 
     add_pair_label(fig, pair_idx)
 
@@ -415,10 +419,17 @@ def plot_position_sweep(
             ax.set_xlim(x_min - 1, x_max + 1)
             add_xaxis_boundary_markers(ax, prompt_boundary, choice_div_pos)
 
+    _synchronize_y_axes(axes, secondary_axes_by_row)
+
+    # Add row labels centered on each row's plot area
+    for row_idx, mode in enumerate(["denoising", "noising"]):
         row_label = "Denoising" if mode == "denoising" else "Noising"
+        # Get the vertical center of this row's axes
+        ax_pos = axes[row_idx][0].get_position()
+        row_center = (ax_pos.y0 + ax_pos.y1) / 2
         fig.text(
             0.012,
-            0.62 - row_idx * 0.36,
+            row_center,
             row_label,
             fontsize=28,
             fontweight="bold",
@@ -427,10 +438,7 @@ def plot_position_sweep(
             ha="center",
         )
 
-    _synchronize_y_axes(axes, secondary_axes_by_row)
-
-    add_token_type_legend(fig)
-    add_boundary_legend(fig)
+    # Token type and boundary legends removed - not needed with per-column legends
 
     add_pair_label(fig, pair_idx)
 
