@@ -33,7 +33,7 @@
 % ABSTRACT
 % ============================================================================
 \begin{abstract}
-We investigate how large language models internally represent and process temporal information, an open question with direct implications for AI safety --- particularly for understanding planning capability, deception detection, and oversight robustness. Across 12 complementary sub-projects, we apply linear probes, causal interventions (activation steering), and behavioral evaluations to models ranging from 1B to 30B parameters. Our preliminary findings show that temporal representations are genuinely encoded in LLM activations and can be causally steered, but that careful baselines are essential: in code generation, what appears to be planning signal is fully explained by surface features. We also find safety-relevant phenomena including context fatigue (entropy collapse over long contexts), rare but real sycophantic surrender under social pressure, and a link between short-term temporal steering and more harmful outputs. These results motivate both methodological caution in probing studies and further investigation of temporal representations as a lever for AI safety monitoring.
+We investigate how large language models internally represent and process temporal information, an open question with direct implications for AI safety --- particularly for understanding planning capability, deception detection, and oversight robustness. Across 11 complementary sub-projects, we apply linear probes, causal interventions (activation steering), and behavioral evaluations to models ranging from 1B to 30B parameters. Our preliminary findings show that temporal representations are genuinely encoded in LLM activations and can be causally steered, but that careful baselines are essential: in code generation, what appears to be planning signal is fully explained by surface features. We also find safety-relevant phenomena including context fatigue (entropy collapse over long contexts), rare but real sycophantic surrender under social pressure, and a link between short-term temporal steering and more harmful outputs. These results motivate both methodological caution in probing studies and further investigation of temporal representations as a lever for AI safety monitoring.
 \end{abstract}
 
 \keywords{mechanistic interpretability \and temporal reasoning \and linear probes \and activation steering \and AI safety}
@@ -43,9 +43,9 @@ We investigate how large language models internally represent and process tempor
 % ============================================================================
 \section{Introduction}
 
-Understanding how LLMs represent time internally is relevant to several AI safety concerns. Models that encode temporal horizons may develop planning capabilities \cite{wei2022chain}, and the ability to detect and steer these representations could inform oversight mechanisms \cite{elhage2021mathematical}. If a model distinguishes short-term from long-term reasoning, this distinction may also relate to deceptive alignment \cite{hubinger2019risks} --- where a model behaves differently based on perceived temporal context such as training versus deployment \cite{park2023ai}.
+Understanding how LLMs represent time internally is relevant to several AI safety concerns. Models that encode temporal horizons may develop planning capabilities, and the ability to detect and steer these representations could inform oversight mechanisms \cite{li2023inference, rimsky2024steering}. If a model distinguishes short-term from long-term reasoning, this distinction may also relate to deceptive alignment \cite{hubinger2019risks} --- where a model behaves differently based on perceived temporal context such as training versus deployment \cite{park2023ai}.
 
-This project brings together 12 researchers investigating complementary facets of temporal representation in LLMs. Sub-projects span probing for temporal structure in activations, causal steering of temporal horizons, evaluating lookahead planning in code generation, measuring context fatigue over long sequences, detecting sycophantic surrender under social pressure, tracking uncertainty encoding across reasoning steps, and analyzing activation stability under repetition.
+This project brings together 11 researchers investigating complementary facets of temporal representation in LLMs. Sub-projects span probing for temporal structure in activations, causal steering of temporal horizons, evaluating lookahead planning in code generation, measuring context fatigue over long sequences, detecting sycophantic surrender under social pressure, tracking uncertainty encoding across reasoning steps, and analyzing activation stability under repetition.
 
 Our shared codebase\footnote{\url{https://github.com/justinshenk/temporal-awareness}} and common methodological toolkit --- linear probes on residual stream activations, activation steering via probe-derived directions, and behavioral evaluations --- enable cross-model and cross-task comparisons that no single sub-project could achieve alone.
 
@@ -100,7 +100,7 @@ Dahiya's investigation of lookahead planning in code generation provides a cauti
 
 \textbf{Sycophancy.} Bagga finds that social pressure causes answer flip rates of 10--62.5\%, but true sycophantic surrender occurs in only 1.5--15.5\% of cases. Output confidence is an unreliable safety monitor: 23.4\% of high-confidence correct answers still surrendered under pressure, including some at confidence 1.0. Hidden-state signal for predicting surrender emerges only in the final layer quartile, but the critical probe remains underpowered (11 positive examples; $\sim$1,000 needed).
 
-\textbf{Context fatigue.} Raj Roy demonstrates that entropy collapse is a real problem as context fills, with models growing more confident without corresponding accuracy gains. This is partially counteracted by in-context learning, where models sometimes improve at a task pattern over the context window.
+\textbf{Context fatigue.} Roy demonstrates that entropy collapse is a real problem as context fills, with models growing more confident without corresponding accuracy gains. This is partially counteracted by in-context learning, where models sometimes improve at a task pattern over the context window.
 
 \textbf{Uncertainty encoding.} Bandyopadhyay finds that uncertainty is strongly encoded at the first reasoning step but weakens after subsequent reasoning, is distributed across layers, and only weakly predicts future states. Across datasets, uncertainty encoding varies significantly and consistently degrades from step 1 to step 2.
 
@@ -157,17 +157,19 @@ Adrian Molofsky & Patience degradation under repetition & Degradation is model- 
 % ============================================================================
 \section{Next Steps}
 
-For the second half of the program, we prioritize the following:
+For the second half of the program, we prioritize:
 
-\textbf{Scaling critical experiments.} Bagga will expand the sycophancy dataset to $\sim$1,000 positive examples to properly power the hidden-state prediction probe. Molofsky will complete Phase 2 (activation probes + SAEs) for the remaining 4 models, targeting precursor gap detection before accuracy degradation manifests.
+\begin{enumerate}
+  \item \textbf{Scale underpowered experiments}: Bagga will expand the sycophancy dataset to $\sim$1,000 positive examples to properly power the hidden-state prediction probe. Molofsky will complete Phase 2 (activation probes + SAEs) for the remaining 4 models, targeting precursor gap detection.
 
-\textbf{Testing generalization.} Paudel has 1,000 validated implicit temporal pairs across 40 categories that remain unused as a clean held-out test. Running probes and steering experiments on this set will establish whether findings generalize beyond training distributions. Sharma will extend cross-model analysis with causal patching to determine whether temporal representations are functionally equivalent across architectures.
+  \item \textbf{Test generalization}: Paudel has 1,000 validated implicit temporal pairs across 40 categories that remain unused as a clean held-out set. Sharma will extend cross-model analysis with causal patching to determine whether temporal representations are functionally equivalent across architectures.
 
-\textbf{Confirming safety links.} Obiso's observation that short-term steering increases violent completions requires systematic confirmation with larger sample sizes and controlled generation. If confirmed, this would be a strong safety-relevant finding linking temporal representations to harmful behavior.
+  \item \textbf{Confirm steering--safety link}: Obiso's observation that short-term steering increases violent completions requires systematic confirmation with larger sample sizes and controlled generation.
 
-\textbf{New directions.} Gupta will test the phase transition hypothesis for temporal horizon representations. Goel will complete the token trajectory analysis for multihop reasoning. Raj Roy will further characterize the interaction between context fatigue and in-context learning.
+  \item \textbf{New directions}: Gupta will test the phase transition hypothesis for temporal horizon representations. Goel will complete the token trajectory analysis for multihop reasoning. Roy will further characterize the interaction between context fatigue and in-context learning.
 
-\textbf{Target venues.} We aim for NeurIPS 2026 (main conference or workshops) for the strongest results, with blog posts and web demos for preliminary or negative findings. The baseline staircase methodology (Dahiya) and temporal steering results (Obiso, Paudel) are the most publication-ready.
+  \item \textbf{Publication targets}: We aim for NeurIPS 2026 (main conference or workshops) for the strongest results, with blog posts and web demos for preliminary or negative findings. The baseline staircase methodology (Dahiya) and temporal steering results (Obiso, Paudel) are the most publication-ready.
+\end{enumerate}
 
 % ============================================================================
 % REFERENCES
