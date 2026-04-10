@@ -1,0 +1,134 @@
+{
+  "run_id": "20260410-101759",
+  "model_name": "Qwen/Qwen3-32B",
+  "device": "cpu",
+  "model_loaded": false,
+  "probe_artifact_path": "/private/var/folders/t4/jszkcmcn7lvgmswvxnpyh1x00000gn/T/tmpbg_fgz46/qwen3_32b_question_only_probe_artifacts_test.npz",
+  "probe_metadata_path": "/private/var/folders/t4/jszkcmcn7lvgmswvxnpyh1x00000gn/T/tmpbg_fgz46/qwen3_32b_question_only_probe_metadata_test.json",
+  "train_regime": "explicit_train_only",
+  "feature_name": "mean_answer_tokens",
+  "vector_key": "mm_probe_vectors",
+  "layers_to_test": [
+    24
+  ],
+  "strengths": [
+    2.0
+  ],
+  "signed_strengths": [
+    -2.0,
+    2.0
+  ],
+  "dataset_source": "expanded",
+  "split_random_state": 42,
+  "explicit_split_strategy": "question_level_80_20",
+  "explicit_split_granularity": "question",
+  "implicit_split_strategy": "question_level_70_30",
+  "implicit_split_granularity": "question",
+  "probe_training_split_note": "Steering uses vectors trained on question-only probes. For explicit-trained probes, evaluation uses explicit_test + implicit_full; for implicit-trained probes, evaluation uses implicit_test + explicit_full.",
+  "prompt_format": "question_then_options_then_answer_with_stripped_option_labels_eval",
+  "probe_prompt_family": "question_only_teacher_forced_answers",
+  "use_chat_template": true,
+  "disable_thinking_trace": true,
+  "patch_prompt_last_only": true,
+  "patch_generation_tokens": true,
+  "do_sample": false,
+  "max_new_tokens": 32,
+  "explicit_expanded_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/data/raw/temporal_scope_AB_randomized/temporal_scope_explicit_expanded_500.json",
+  "implicit_expanded_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/data/raw/temporal_scope_AB_randomized/temporal_scope_implicit_expanded_300.json",
+  "explicit_expanded_sha256": "f5b24f59ba37a19cd2b6dcdd381fee04b3b68d4800ae19f235c788da989146a4",
+  "implicit_expanded_sha256": "52a366046f83bc22e9cc242a1f01221f09693040cd347ef485811689b8f8233f",
+  "probe_artifact_format_version": 1,
+  "explicit_train_question_indices": [
+    1,
+    2
+  ],
+  "explicit_test_question_indices": [
+    0
+  ],
+  "implicit_train_question_indices": [
+    1,
+    2
+  ],
+  "implicit_test_question_indices": [
+    0
+  ],
+  "evaluation_datasets": {
+    "explicit_test": 1,
+    "implicit_full": 1
+  },
+  "expd_metadata": {
+    "dimension": "temporal_scope",
+    "style": "explicit_markers",
+    "description": "500 high-quality explicit temporal scope pairs WITH temporal words. Designed for training temporal horizon detection.",
+    "n_pairs": 500,
+    "validation": "Pre-validated for temporal keyword presence, structural balance, and clear temporal distinction",
+    "created": "2025-02-01",
+    "version": "1.0",
+    "categories": [
+      "planning",
+      "decision_making",
+      "problem_solving",
+      "investment",
+      "priorities",
+      "thinking",
+      "tradeoffs",
+      "goals",
+      "action",
+      "vision",
+      "risk_management",
+      "resource_allocation",
+      "strategy_formation",
+      "change_management",
+      "innovation",
+      "leadership",
+      "communication",
+      "evaluation",
+      "learning",
+      "adaptation",
+      "hiring",
+      "product_development",
+      "customer_relations",
+      "financial_planning",
+      "team_building"
+    ]
+  },
+  "impd_metadata": {
+    "dimension": "temporal_scope",
+    "style": "implicit_markers_only",
+    "description": "300 high-quality temporal scope pairs with unique questions, substantive answers (3+ tokens), and no duplicates. All pairs avoid explicit time words.",
+    "n_pairs": 300,
+    "validation": "Pre-validated for lexical purity, structural balance, clear temporal distinction, and answer length",
+    "created": "2025-02-01",
+    "version": "2.0",
+    "improvements": [
+      "All questions are unique",
+      "All answers are 3+ tokens minimum",
+      "No duplicate question-answer combinations",
+      "More varied question stems",
+      "Domain-specific context added"
+    ],
+    "categories": [
+      "crisis_vs_foundation",
+      "harvest_vs_cultivate",
+      "execute_vs_design",
+      "react_vs_anticipate",
+      "preserve_vs_transform",
+      "tactical_vs_strategic",
+      "consume_vs_invest",
+      "fix_vs_build",
+      "survive_vs_thrive",
+      "capture_vs_compound"
+    ]
+  },
+  "summary_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/qwen3_32b/_validation_probe_artifact_steering/20260410-101759/mmraz_qwen3_32b_probe_artifact_steering_question_options_answer_summary_20260410-101759.csv",
+  "logs_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/qwen3_32b/_validation_probe_artifact_steering/20260410-101759/mmraz_qwen3_32b_probe_artifact_steering_question_options_answer_logs_20260410-101759.csv",
+  "probe_slice_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/qwen3_32b/_validation_probe_artifact_steering/20260410-101759/mmraz_qwen3_32b_probe_artifact_steering_question_options_answer_probe_slice_20260410-101759.csv",
+  "partial_dir": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/qwen3_32b/_validation_probe_artifact_steering/20260410-101759/partial",
+  "reuse_existing_results": true,
+  "reuse_result_search_roots": [
+    "/var/folders/t4/jszkcmcn7lvgmswvxnpyh1x00000gn/T/tmpbg_fgz46/reuse"
+  ],
+  "reuse_coverage_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/qwen3_32b/_validation_probe_artifact_steering/20260410-101759/mmraz_qwen3_32b_probe_artifact_steering_question_options_answer_reuse_coverage_20260410-101759.csv",
+  "reused_point_count": 6,
+  "total_planned_point_count": 6
+}

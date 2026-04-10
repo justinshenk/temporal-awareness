@@ -1,0 +1,47 @@
+{
+  "model_name": "Qwen/Qwen3-32B",
+  "model_slug": "qwen3_32b",
+  "use_chat_template": true,
+  "enable_thinking": false,
+  "disable_thinking_trace": true,
+  "thinking_mode_tag": "without_thinking",
+  "device": "cuda:0",
+  "prompt_format": "direct_time_utility_question",
+  "prompt_template": "What would you prefer {x}$ now or {y}$ in {t}? Answer in just a few words.",
+  "parser_variant": "comma_normalized_direct_choice_with_it_depends_v2",
+  "it_depends_choice_value": "it depends",
+  "it_depends_heatmap_value": 0.5,
+  "x_now": 100,
+  "y_values": [
+    100,
+    101,
+    110,
+    150,
+    200,
+    500,
+    1000,
+    10000
+  ],
+  "t_values": [
+    "tomorrow",
+    "week",
+    "month",
+    "year",
+    "2 years",
+    "3 years",
+    "5 years",
+    "10 years"
+  ],
+  "n_repeats": 1,
+  "generation_kwargs": {
+    "max_new_tokens": 128,
+    "do_sample": false
+  },
+  "response_field_raw": "response",
+  "response_field_for_parse": "response_for_parse",
+  "choose_x_heatmap_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/time_utility_experiment_qwen3_32b_vast_deterministic_without_thinking/mmraz_time_utility_qwen3_32b_vast_without_thinking_choose_x_now_heatmap.png",
+  "unparsed_heatmap_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/results/time_utility_experiment_qwen3_32b_vast_deterministic_without_thinking/mmraz_time_utility_qwen3_32b_vast_without_thinking_unparsed_rate_heatmap.png",
+  "generated_fresh": false,
+  "n_reparsed_choice_updates": 1,
+  "overall_it_depends_rate": 0.015625
+}
