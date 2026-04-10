@@ -485,6 +485,10 @@ class ActivationPatching(Patching):
         elif (self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL):
             # NOTE: Check that we don't need to hold gradients for ActivationPatching.
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
+            # NOTE: We are defining array here but fill it in the function on purpose.
+            #       TransformerLens uses .item() call on the result of metric, expecting
+            #       the metric to return scalar only.
+            metrics_results = [] # Array of array of metrics
             def __metrics__(logits):
                 logit_diff = self.get_logit_diff(logits).item() - self.logit_diff_corrupted_q_clean_a_bsl
                 both_lobprobs_not_centered = self.get_both_logprobs(logits)
@@ -493,13 +497,15 @@ class ActivationPatching(Patching):
                 both_logits_not_centered = self.get_both_logits(logits)
                 clean_logit = both_logits_not_centered[0].item() - self.logit_corrupted_q_clean_a_bsl
                 corrupted_logit = both_logits_not_centered[1].item() - self.logit_corrupted_q_corrupted_a_bsl
-                return torch.vstack((logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit))
+                metrics_results.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                return torch.Tensor([logit_diff])
 
-            act_patch_result = layer_specific_algorithm(
+            layer_specific_algorithm(
                 self.model, self.corrupted_tokens, self.clean_cache, __metrics__)
-            return act_patch_result
+            return torch.Tensor(metrics_results).T
         elif (self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
+            metrics_results = [] # Array of array of metrics
             def __metrics__(logits):
                 logit_diff = self.logit_diff_clean_q_clean_a_bsl - self.get_logit_diff(logits).item()
                 both_logprobs_not_centered = self.get_both_logprobs(logits)
@@ -508,10 +514,12 @@ class ActivationPatching(Patching):
                 both_logits_not_centered = self.get_both_logits(logits)
                 clean_logit = both_logits_not_centered[0].item() - self.logit_clean_q_clean_a_bsl
                 corrupted_logit = both_logits_not_centered[1].item() - self.logit_clean_q_corrupted_a_bsl
-                return torch.vstack((logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit))
+                metrics_results.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                return torch.Tensor([logit_diff])
 
-            act_patch_result = layer_specific_algorithm(
+            layer_specific_algorithm(
                 self.model, self.clean_tokens, self.corrupted_cache, __metrics__)
+            return torch.Tensor(metrics_results).T
         else:
             raise Exception("Unknown patching technique type is sent!")
 
