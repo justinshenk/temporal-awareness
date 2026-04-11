@@ -312,7 +312,32 @@ class ActivationPatching(Patching):
             __, self.corrupted_cache = self.model.run_with_cache(self.corrupted_tokens)
             self.caches_and_baselines_ready = True
 
-    def __patch__(self, layer_specific_algorithm):
+    # Helper for call of ActivationPatching wih custom metrics.
+    def __create_indices__(self, activation_name, index_axis_names, tokens_to_run):
+        assert index_axis_names is not None
+
+        number_of_heads = self.model.cfg.n_heads
+        # For some models, the number of key value heads is not the same as the number of attention heads
+        if activation_name in ["k", "v"] and self.model.cfg.n_key_value_heads is not None:
+            number_of_heads = self.model.cfg.n_key_value_heads
+
+        # Get the max range for all possible axes
+        max_axis_range = {
+            "layer": self.model.cfg.n_layers,
+            "pos": tokens_to_run.shape[-1],
+            "head_index": number_of_heads,
+        }
+        max_axis_range["src_pos"] = max_axis_range["pos"]
+        max_axis_range["dest_pos"] = max_axis_range["pos"]
+        max_axis_range["head"] = max_axis_range["head_index"]
+
+        # Get the max range for each axis we iterate over
+        index_axis_max_range = [max_axis_range[axis_name] for axis_name in index_axis_names]
+
+        # Get the dataframe where each row is a tuple of indices
+        return index_axis_max_range
+
+    def __patch__(self, layer_specific_algorithm, activation_name="", index_axis_names=""):
         # Precalculate caches and baselines if not yet:
         self.__precalculate_caches_and_baselines__()
         assert(self.caches_and_baselines_ready)
@@ -487,8 +512,10 @@ class ActivationPatching(Patching):
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
             # NOTE: We are defining array here but fill it in the function on purpose.
             #       TransformerLens uses .item() call on the result of metric, expecting
-            #       the metric to return scalar only.
-            metrics_results = [] # Array of array of metrics
+            #       the metric to return a scalar only.
+            # We will just accumulate all metrics in one array
+            # Then, we will map flattened output to non-flattened indices returned from TransformerLens.
+            metrics_output = []
             def __metrics__(logits):
                 logit_diff = self.get_logit_diff(logits).item() - self.logit_diff_corrupted_q_clean_a_bsl
                 both_lobprobs_not_centered = self.get_both_logprobs(logits)
@@ -497,15 +524,29 @@ class ActivationPatching(Patching):
                 both_logits_not_centered = self.get_both_logits(logits)
                 clean_logit = both_logits_not_centered[0].item() - self.logit_corrupted_q_clean_a_bsl
                 corrupted_logit = both_logits_not_centered[1].item() - self.logit_corrupted_q_corrupted_a_bsl
-                metrics_results.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
                 return torch.Tensor([logit_diff])
 
-            layer_specific_algorithm(
-                self.model, self.corrupted_tokens, self.clean_cache, __metrics__)
-            return torch.Tensor(metrics_results).T
+            # index_df contains rows that corresponds to multi-level indices
+            ___, index_df = layer_specific_algorithm(self.model, self.corrupted_tokens, self.clean_cache,
+                                                     __metrics__, return_index_df=True)
+
+            assert(len(metrics_output) > 0, "More than one layer were processed!")
+            first_layer_metrics = metrics_output[0]
+
+            index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.corrupted_tokens)
+            # Ex: For (layer, pos) index_axis_max_range is [model.cfg.n_layers, tokens_to_run.shape[-1]]
+            patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                      for i in range(0, len(first_layer_metrics))]
+ 
+            for i in range(0, len(first_layer_metrics)):
+                for c, index_row in enumerate(list(index_df.iterrows())):
+                    index = index_row[1].to_list()
+                    patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
+            return torch.stack(patched_metrics_output)
         elif (self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
-            metrics_results = [] # Array of array of metrics
+            metrics_output = []
             def __metrics__(logits):
                 logit_diff = self.logit_diff_clean_q_clean_a_bsl - self.get_logit_diff(logits).item()
                 both_logprobs_not_centered = self.get_both_logprobs(logits)
@@ -514,12 +555,25 @@ class ActivationPatching(Patching):
                 both_logits_not_centered = self.get_both_logits(logits)
                 clean_logit = both_logits_not_centered[0].item() - self.logit_clean_q_clean_a_bsl
                 corrupted_logit = both_logits_not_centered[1].item() - self.logit_clean_q_corrupted_a_bsl
-                metrics_results.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
                 return torch.Tensor([logit_diff])
 
-            layer_specific_algorithm(
-                self.model, self.clean_tokens, self.corrupted_cache, __metrics__)
-            return torch.Tensor(metrics_results).T
+            ___, index_df = layer_specific_algorithm(self.model, self.clean_tokens, self.corrupted_cache,
+                                                     __metrics__, return_index_df=True)
+
+            assert(len(metrics_output) > 0, "More than one layer were processed!")
+            first_layer_metrics = metrics_output[0]
+
+            index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.clean_tokens)
+            patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                      for i in range(0, len(first_layer_metrics))]
+
+            for i in range(0, len(first_layer_metrics)):
+                for c, index_row in enumerate(list(index_df.iterrows())):
+                    index = index_row[1].to_list()
+                    patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
+
+            return torch.stack(patched_metrics_output)
         else:
             raise Exception("Unknown patching technique type is sent!")
 
@@ -527,16 +581,27 @@ class ActivationPatching(Patching):
         return df
 
     def patch_residual(self):
-        return self.__patch__(patching.get_act_patch_resid_pre)
+        return self.__patch__(patching.get_act_patch_resid_pre,
+                              activation_name="resid_pre",
+                              index_axis_names=("layer", "pos"))
+
+    def patch_residual_mid(self):
+        return self.__patch__(patching.get_act_patch_resid_mid,
+                              activation_name="resid_mid",
+                              index_axis_names=("layer", "pos"))
 
     def patch_layer_out(self):
         raise NotImplementedError()
 
     def patch_attn_out(self):
-        return self.__patch__(patching.get_act_patch_attn_out)
+        return self.__patch__(patching.get_act_patch_attn_out,
+                              activation_name="attn_out",
+                              index_axis_names=("layer", "pos"))
 
     def patch_mlp_out(self):
-        return self.__patch__(patching.get_act_patch_mlp_out)
+        return self.__patch__(patching.get_act_patch_mlp_out,
+                              activation_name="mlp_out",
+                              index_axis_names=("layer", "pos"))
 
 
 class AttributionPatching(Patching):
