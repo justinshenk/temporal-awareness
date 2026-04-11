@@ -6,12 +6,17 @@
 #
 # Usage:
 #   sbatch scripts/experiments/submit_phase3_implicit.sh Llama-3.1-8B-Instruct
+#   sbatch scripts/experiments/submit_phase3_implicit.sh Qwen3-8B
 #   sbatch scripts/experiments/submit_phase3_implicit.sh Qwen3-30B-A3B
+#   sbatch scripts/experiments/submit_phase3_implicit.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase3_implicit.sh Ouro-2.6B
+#   sbatch scripts/experiments/submit_phase3_implicit.sh Llama-3.1-8B
 
 #SBATCH --job-name=p3-impli
 #SBATCH --time=06:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
+#SBATCH -C GPU_MEM:32GB
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB

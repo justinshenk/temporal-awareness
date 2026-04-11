@@ -24,7 +24,7 @@ set -euo pipefail
 WAVE="${1:-all}"
 SCRIPT_DIR="scripts/experiments"
 
-MODELS_8B=("Llama-3.1-8B-Instruct" "Qwen3-8B" "DeepSeek-R1-Distill-Qwen-7B" "Llama-3.1-8B")
+MODELS_8B=("Llama-3.1-8B-Instruct" "Qwen3-8B" "DeepSeek-R1-Distill-Qwen-7B" "Ouro-2.6B" "Llama-3.1-8B")
 MODEL_30B="Qwen3-30B-A3B"
 
 # Time configs: experiment -> 8B time, 30B time

@@ -148,6 +148,16 @@ MODEL_CONFIGS = {
         "is_reasoning": True,
         "sae_source": "airi",  # AIRI-Institute SAEs
     },
+    "Ouro-2.6B": {
+        "hf_name": "ByteDance/Ouro-2.6B",
+        "layers": [0, 3, 6, 9, 12, 15, 18, 21, 23],
+        "quick_layers": [6, 12, 18],
+        "n_layers": 24,
+        "d_model": 2048,
+        "is_instruct": True,
+        "max_new_tokens": 512,
+        "sae_source": None,
+    },
 }
 
 # Repetition counts — matches Phase 1 for comparability

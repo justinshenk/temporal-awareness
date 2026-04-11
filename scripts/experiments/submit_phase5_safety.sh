@@ -12,12 +12,14 @@
 #   sbatch scripts/experiments/submit_phase5_safety.sh Qwen3-8B
 #   sbatch scripts/experiments/submit_phase5_safety.sh Qwen3-30B-A3B
 #   sbatch scripts/experiments/submit_phase5_safety.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase5_safety.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_phase5_safety.sh Llama-3.1-8B
 
 #SBATCH --job-name=p5-safety
 #SBATCH --time=08:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
+#SBATCH -C GPU_MEM:32GB
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB

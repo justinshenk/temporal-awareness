@@ -182,6 +182,14 @@ MODEL_CONFIGS = {
         "d_model": 3584,
         "chat_template": "deepseek",
     },
+    "Ouro-2.6B": {
+        "hf_name": "ByteDance/Ouro-2.6B",
+        "layers": [0, 3, 6, 9, 12, 15, 18, 21, 23],
+        "quick_layers": [6, 12, 18],
+        "n_layers": 24,
+        "d_model": 2048,
+        "chat_template": "ouro",
+    },
     # Base model (no instruction tuning) — tests whether RLHF creates degradation
     "Llama-3.1-8B": {
         "hf_name": "meta-llama/Llama-3.1-8B",

@@ -159,6 +159,14 @@ MODEL_CONFIGS = {
         "d_model": 3584,
         "n_heads": 28,
     },
+    "Ouro-2.6B": {
+        "hf_name": "ByteDance/Ouro-2.6B",
+        "layers": [0, 3, 6, 9, 12, 15, 18, 21, 23],
+        "quick_layers": [6, 12, 18],
+        "n_layers": 24,
+        "d_model": 2048,
+        "n_heads": 16,
+    },
 }
 
 

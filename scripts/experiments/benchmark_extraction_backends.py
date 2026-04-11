@@ -137,6 +137,14 @@ MODEL_CONFIGS = {
         "chat_template": "deepseek",
         "analyze_layers": [0, 4, 7, 10, 14, 18, 21, 24, 27],
     },
+    "Ouro-2.6B": {
+        "hf_name": "ByteDance/Ouro-2.6B",
+        "family": "ouro",
+        "n_layers": 24,
+        "d_model": 2048,
+        "chat_template": "ouro",
+        "analyze_layers": [0, 3, 6, 9, 12, 15, 18, 21, 23],
+    },
     "Llama-3.1-8B": {
         "hf_name": "meta-llama/Llama-3.1-8B",
         "family": "llama",

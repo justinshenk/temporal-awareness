@@ -8,12 +8,14 @@
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Qwen3-8B
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Qwen3-30B-A3B
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Llama-3.1-8B
 
 #SBATCH --job-name=p3-prompt-dim
 #SBATCH --time=04:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
+#SBATCH -C GPU_MEM:32GB
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
