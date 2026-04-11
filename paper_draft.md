@@ -7,7 +7,7 @@ Stanford University
 
 ## Abstract
 
-We present a mechanistic interpretability study of *patience degradation* — the systematic decline in language model performance under repetitive task conditions. Through probing, causal intervention, and behavioral analysis across five models spanning three architecture families, we establish three contributions. First, degradation is represented as a linearly-extractable direction in residual stream activations, distinct from the refusal and sycophancy directions, and this representation emerges even in implicit multi-turn repetition without explicit counters. Second, we demonstrate a correlational-to-causal bridge: layers where degradation probes activate most strongly are also layers where activation steering shifts behavior most, achieving the observational-to-interventional link established for emotion representations by Anthropic (2026). Third, we show this degradation state creates measurable deployment safety vulnerabilities — prompt injection resistance drops by up to X%, safety refusal rates erode, and instruction-following fidelity degrades — but probe-based monitoring can detect these failures Y repetitions before behavioral metrics, and anti-degradation steering restores safety properties with minimal latency overhead. These findings frame repetitive-task degradation as a concrete, interpretable, and *interventionable* AI safety concern, with implications for deployment monitoring and runtime guardrails.
+We present a mechanistic interpretability study of *patience degradation* — the systematic decline in language model performance under repetitive task conditions. Through probing, causal intervention, and behavioral analysis across six models spanning four architecture families (dense, mixture-of-experts, reasoning-distilled, and looped), we establish three contributions. First, degradation is represented as a linearly-extractable direction in residual stream activations, distinct from the refusal and sycophancy directions, and this representation emerges even in implicit multi-turn repetition without explicit counters. Second, we demonstrate a correlational-to-causal bridge: layers where degradation probes activate most strongly are also layers where activation steering shifts behavior most, achieving the observational-to-interventional link established for emotion representations by Anthropic (2026). Third, we show this degradation state creates measurable deployment safety vulnerabilities — prompt injection resistance drops by up to X%, safety refusal rates erode, and instruction-following fidelity degrades — but probe-based monitoring can detect these failures Y repetitions before behavioral metrics, and anti-degradation steering restores safety properties with minimal latency overhead. These findings frame repetitive-task degradation as a concrete, interpretable, and *interventionable* AI safety concern, with implications for deployment monitoring and runtime guardrails.
 
 ---
 
@@ -45,7 +45,7 @@ Our work makes three contributions:
 
 ### 3.1 Models
 
-We study five models spanning three architecture families, two scale tiers, and the instruction-tuned vs base distinction:
+We study six models spanning four architecture families, two scale tiers, and the instruction-tuned vs base distinction:
 
 | Model | Architecture | Parameters | Notes |
 |-------|-------------|-----------|-------|
@@ -53,9 +53,10 @@ We study five models spanning three architecture families, two scale tiers, and 
 | Qwen3-8B | Dense transformer | 8B | Cross-family comparison |
 | Qwen3-30B-A3B | Mixture-of-Experts | 30B (3B active) | MoE architecture test |
 | DeepSeek-R1-Distill-Qwen-7B | Dense (distilled) | 7B | Reasoning-distilled variant |
+| Ouro-2.6B | Looped transformer | 2.6B (4 recurrent steps) | Weight-sharing recurrence test |
 | Llama-3.1-8B | Dense transformer | 8B | Base (no instruction tuning) |
 
-This selection tests whether degradation is universal across architectures, whether MoE routing provides resilience, whether reasoning distillation affects degradation onset, and whether instruction tuning creates or amplifies degradation.
+This selection tests whether degradation is universal across architectures, whether MoE routing provides resilience, whether reasoning distillation affects degradation onset, whether instruction tuning creates or amplifies degradation, and whether weight-sharing across recurrent computation steps creates fundamentally different degradation dynamics. Ouro-2.6B (Zhu et al., 2025) achieves 8B-equivalent performance with 2.6B parameters via 24 transformer layers applied recurrently for 4 steps, providing the only looped architecture in our study and a fourth architecture family.
 
 ### 3.2 Degradation Induction Protocol
 
@@ -135,7 +136,7 @@ To test universality, we perform cross-model direction transfer:
 2. **Probe transfer**: A probe trained on Llama-3.1-8B-Instruct activations achieves [TBD]% accuracy when applied to Qwen3-8B activations (chance = 50%).
 3. **CKA analysis**: Centered Kernel Alignment between degradation representations across models reveals [TBD] similarity.
 
-Notable architectural differences: The MoE model (Qwen3-30B-A3B) shows [TBD] degradation onset compared to dense models, suggesting that sparse expert routing may provide partial resilience. The base model (Llama-3.1-8B) shows [TBD] compared to its instruction-tuned variant, suggesting instruction tuning [amplifies/reduces] degradation sensitivity.
+Notable architectural differences: The MoE model (Qwen3-30B-A3B) shows [TBD] degradation onset compared to dense models, suggesting that sparse expert routing may provide partial resilience. The looped model (Ouro-2.6B) shows [TBD] degradation dynamics — since the same physical layers process activations on every recurrent step, repetition-correlated signals may accumulate differently than in feedforward architectures. The base model (Llama-3.1-8B) shows [TBD] compared to its instruction-tuned variant, suggesting instruction tuning [amplifies/reduces] degradation sensitivity.
 
 ### 4.7 Prompt Dimension Analysis
 
@@ -159,7 +160,7 @@ We test three conditions with matched structure:
 
 ### 5.3 Results
 
-**Direction transfer**: The degradation direction extracted from explicit prompts shows cosine similarity of [TBD] with the direction extracted from implicit multi-turn prompts. This is the key result: if this value is high (>0.5), the model has a genuine "I've been doing this repeatedly" representation, not a "I see the number 15" representation.
+**Direction transfer**: The degradation direction extracted from explicit prompts shows cosine similarity of [TBD] with the direction extracted from implicit multi-turn prompts across all six models. This is the key result: if this value is high (>0.5), the model has a genuine "I've been doing this repeatedly" representation, not a "I see the number 15" representation.
 
 **Probe transfer**: A probe trained on explicit condition activations achieves [TBD]% accuracy on implicit condition activations, compared to [TBD]% on shuffled condition activations. High implicit accuracy with lower shuffled accuracy would confirm that the model specifically tracks content repetition, not just sequence length.
 
@@ -280,7 +281,7 @@ Several limitations merit acknowledgment. Our repetition protocol, while validat
 
 ## 9. Conclusion
 
-We have presented the first comprehensive mechanistic interpretability study of patience degradation in language models, establishing that it is a linearly-represented, causally-active, architecturally-universal internal state distinct from known safety-relevant directions. Through the correlational-to-causal bridge methodology, we validate that our probes identify genuine intervention targets. Through safety-critical evaluations, we demonstrate that degradation creates concrete deployment vulnerabilities and that interpretability-based tools — probe monitors and activation steering — can detect and mitigate these vulnerabilities in real-time.
+We have presented the first comprehensive mechanistic interpretability study of patience degradation in language models across four architecture families (dense, MoE, reasoning-distilled, and looped), establishing that it is a linearly-represented, causally-active, architecturally-universal internal state distinct from known safety-relevant directions. Through the correlational-to-causal bridge methodology, we validate that our probes identify genuine intervention targets. Through safety-critical evaluations, we demonstrate that degradation creates concrete deployment vulnerabilities and that interpretability-based tools — probe monitors and activation steering — can detect and mitigate these vulnerabilities in real-time.
 
 This work opens several research directions: studying degradation at frontier scale, developing training-time interventions that reduce degradation sensitivity, exploring whether degradation interacts with other failure modes (hallucination, sycophancy) to create compound safety risks, and building deployment-grade monitoring systems based on the probe architecture demonstrated here. More broadly, our results suggest that mechanistic interpretability can provide actionable safety tools for specific, measurable deployment concerns — moving the field from "understanding models" to "using understanding to make models safer."
 
@@ -315,6 +316,8 @@ Sycophancy Is Not One Thing. (2025). *arXiv preprint*.
 Turner, A., et al. (2023). Activation Addition: Steering Language Models Without Optimization. *arXiv preprint arXiv:2308.10248*.
 
 Whether, Not Which: Dissociation of Detection and Classification in Affect Processing. (2026). *arXiv preprint*.
+
+Zhu, R.-J., et al. (2025). Scaling Latent Reasoning via Looped Language Models. *arXiv preprint arXiv:2510.25741*.
 
 Zou, A., et al. (2023). Universal and Transferable Adversarial Attacks on Aligned Language Models. *arXiv preprint arXiv:2307.15043*.
 
@@ -356,7 +359,7 @@ Zou, A., et al. (2023). Universal and Transferable Adversarial Attacks on Aligne
 
 All models are evaluated at 9 evenly-spaced layers. Activations are extracted at the final token position of the prompt (pre-generation). For generation-based measurements, we use greedy decoding (temperature = 0) with a maximum of 200 new tokens (300 for safety evaluation prompts).
 
-GPU allocation: 8B models run on 32GB GPUs (A40/V100); the 30B MoE model requires 80GB GPUs (A100). All experiments are run on the Stanford Sherlock HPC cluster.
+GPU allocation: 8B-class models (including the 2.6B Ouro, which requires comparable memory due to 4x recurrent steps) run on 32GB GPUs (A40/V100); the 30B MoE model requires 80GB GPUs (A100). All experiments are run on the Stanford Sherlock HPC cluster. Note: Ouro-2.6B uses a custom architecture that does not expose attention matrices via the standard `output_attentions` API, so it is excluded from the attention head analysis (§4.4) but included in all other experiments.
 
 ### A.5 Evaluation Prompt Sets
 
@@ -374,7 +377,7 @@ GPU allocation: 8B models run on 32GB GPUs (A40/V100); the 30B MoE model require
 
 ## Appendix B: Computational Resources
 
-All experiments are conducted on NVIDIA A40 (48GB) and A100 (80GB) GPUs on the Stanford Sherlock cluster. Total GPU-hours for the full experimental suite across all five models is approximately [TBD]. Individual experiment runtimes range from 3 hours (trajectory geometry, 8B model) to 14 hours (safety evaluations, 30B model).
+All experiments are conducted on NVIDIA A40 (48GB) and A100 (80GB) GPUs on the Stanford Sherlock cluster. Total GPU-hours for the full experimental suite across all six models is approximately [TBD]. Individual experiment runtimes range from 3 hours (trajectory geometry, 8B model) to 14 hours (safety evaluations, 30B model).
 
 The activation extraction API supports both TransformerLens and raw PyTorch backends. Benchmarking shows < 10^-5 numerical divergence between backends, with PyTorch hooks offering [TBD]% faster extraction and [TBD]% lower peak memory.
 
