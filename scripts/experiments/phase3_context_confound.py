@@ -415,6 +415,7 @@ def run_context_confound_experiment(
     primary_dataset: str = "medium_temporal",
     wandb_project: Optional[str] = None,
     output_dir: Optional[str] = None,
+    backend: str = "pytorch",
 ):
     """Run the context length confound control experiment.
 
@@ -468,7 +469,7 @@ def run_context_confound_experiment(
     print("Step 1: Initializing ActivationExtractor...")
 
     # Resolve backend choice
-    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
     config = ExtractionConfig(
         layers=layers,
@@ -823,6 +824,7 @@ def main():
             primary_dataset=args.primary_dataset,
             wandb_project=args.wandb_project,
             output_dir=args.output_dir,
+            backend=args.backend,
         )
 
 

@@ -450,6 +450,7 @@ def extract_activations_at_layer(
     layer: int,
     examples: list[dict],
     rep_counts: list[int],
+    backend: str = "pytorch",
 ) -> Tuple[np.ndarray, np.ndarray, list[str]]:
     """
     Extract activations from a model at a given layer using ActivationExtractor.
@@ -476,7 +477,7 @@ def extract_activations_at_layer(
 
     # Initialize extractor for this model
     # Resolve backend choice
-    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
     extraction_config = ExtractionConfig(
         layers=[layer],  # just the one layer we need
@@ -514,6 +515,7 @@ def train_probe_transfer(
     train_layer: int = 8,
     test_layer: int = 8,
     max_examples: int = 30,
+    backend: str = "pytorch",
 ) -> ProbeTransferResult:
     """
     Train a degradation probe on source model, test on target model.
@@ -528,12 +530,12 @@ def train_probe_transfer(
 
     # Extract activations from source
     source_acts, source_reps, _ = extract_activations_at_layer(
-        source_model, train_layer, dataset["examples"], rep_counts
+        source_model, train_layer, dataset["examples"], rep_counts, backend=backend
     )
 
     # Extract activations from target
     target_acts, target_reps, _ = extract_activations_at_layer(
-        target_model, test_layer, dataset["examples"], rep_counts
+        target_model, test_layer, dataset["examples"], rep_counts, backend=backend
     )
 
     # Binary classification: rep <= 1 (fresh) vs rep >= 8 (degraded)
@@ -986,6 +988,7 @@ def main():
                             train_layer=layers_per_model[model_a][len(layers_per_model[model_a]) // 2],
                             test_layer=layers_per_model[model_b][len(layers_per_model[model_b]) // 2],
                             max_examples=30 if args.quick else 50,
+                            backend=args.backend,
                         )
                         transfer_results.append(result)
                         all_results["probe_transfer"].append(asdict(result))

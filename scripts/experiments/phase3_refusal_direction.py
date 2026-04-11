@@ -1104,6 +1104,7 @@ def run_refusal_comparison(
     degradation_datasets: list[str] = None,
     wandb_project: Optional[str] = None,
     output_dir: Optional[str] = None,
+    backend: str = "pytorch",
 ):
     """Run the full refusal vs degradation direction comparison for one model.
 
@@ -1146,7 +1147,7 @@ def run_refusal_comparison(
     print("Step 1: Initializing ActivationExtractor...")
 
     # Resolve backend choice
-    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
     config = ExtractionConfig(
         layers=layers,
@@ -1448,6 +1449,7 @@ def main():
             degradation_datasets=args.degradation_datasets,
             wandb_project=args.wandb_project,
             output_dir=args.output_dir,
+            backend=args.backend,
         )
 
 

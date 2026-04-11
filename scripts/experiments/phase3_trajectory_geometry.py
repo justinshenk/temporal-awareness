@@ -601,6 +601,7 @@ def analyze_trajectory(
     device: str,
     layers: list[int],
     quick: bool = False,
+    backend: str = "pytorch",
 ) -> TrajectoryResult:
     """Analyze activation trajectory for a model."""
     print(f"\n{'='*70}")
@@ -623,7 +624,7 @@ def analyze_trajectory(
     analyze_layers = config["quick_layers"] if quick else config["layers"]
 
     # Resolve backend choice
-    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
     extraction_config = ExtractionConfig(
         layers=analyze_layers,
@@ -908,6 +909,7 @@ def main():
                 device=args.device,
                 layers=MODEL_CONFIGS[model_key]["layers"],
                 quick=args.quick,
+                backend=args.backend,
             )
             all_results.append(result)
             save_results(result, args.output_dir)

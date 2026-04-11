@@ -884,6 +884,7 @@ def run_causal_patching(
     direction_source_dir: Optional[str] = None,
     wandb_project: Optional[str] = None,
     output_dir: Optional[str] = None,
+    backend: str = "pytorch",
 ):
     """Run the full causal patching experiment for one model.
 
@@ -987,7 +988,7 @@ def run_causal_patching(
         print(f"\n  Computing {len(missing_dirs)} missing degradation directions on-the-fly...")
 
         # Resolve backend choice
-        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
         config = ExtractionConfig(
             layers=layers,
@@ -1293,6 +1294,7 @@ def main():
                 direction_source_dir=args.direction_dir,
                 wandb_project=args.wandb_project,
                 output_dir=args.output_dir,
+                backend=args.backend,
             )
         except Exception as e:
             print(f"\nERROR running {model_key}: {e}")

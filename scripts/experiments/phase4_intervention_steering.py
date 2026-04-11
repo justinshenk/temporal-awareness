@@ -399,6 +399,7 @@ def compute_direction_on_the_fly(
     low_rep: int = 1,
     high_rep: int = 15,
     max_examples: int = 30,
+    backend: str = "pytorch",
 ) -> Optional[np.ndarray]:
     """Compute degradation direction on-the-fly using mean-diff method.
 
@@ -437,7 +438,7 @@ def compute_direction_on_the_fly(
         print(f"    Extracting activations at layer {layer}...")
 
         # Resolve backend choice
-        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
         extraction_config = ExtractionConfig(
             layers=[layer],
@@ -1184,6 +1185,7 @@ def run_phase4_steering(
                 model_config["hf_name"],
                 model_config["d_model"],
                 device,
+                backend=args.backend,
             )
             if direction is None:
                 print(f"  SKIPPING layer {layer}")

@@ -645,6 +645,7 @@ def analyze_early_detection(
     layers: List[int],
     lookahead_window: int = 5,
     quick: bool = False,
+    backend: str = "pytorch",
 ) -> EarlyDetectionResult:
     """Analyze early detection for a model."""
     print(f"\n{'='*70}")
@@ -678,7 +679,7 @@ def analyze_early_detection(
     analyze_layers = config["quick_layers"] if quick else config["layers"]
 
     # Resolve backend choice
-    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[backend]
 
     extraction_config = ExtractionConfig(
         layers=analyze_layers,
@@ -1020,6 +1021,7 @@ def main():
                 layers=MODEL_CONFIGS[model_key]["layers"],
                 lookahead_window=args.lookahead_window,
                 quick=args.quick,
+                backend=args.backend,
             )
             all_results.append(result)
             save_results(result, args.output_dir)
