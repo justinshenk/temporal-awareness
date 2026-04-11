@@ -725,6 +725,7 @@ def main():
                         choices=list(DATASET_FILES.keys()))
     parser.add_argument("--output-dir", type=Path, default=RESULTS_DIR)
     parser.add_argument("--wandb-project", default=None)
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
 
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)

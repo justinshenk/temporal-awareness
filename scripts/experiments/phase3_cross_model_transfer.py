@@ -475,6 +475,9 @@ def extract_activations_at_layer(
             example_ids.append(ex_id)
 
     # Initialize extractor for this model
+    # Resolve backend choice
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
     extraction_config = ExtractionConfig(
         layers=[layer],  # just the one layer we need
         module_types=["resid_post"],
@@ -484,7 +487,7 @@ def extract_activations_at_layer(
         model_dtype="float16",
         dtype="float32",
         max_seq_len=2048,
-        use_transformer_lens=False,
+        use_transformer_lens=use_tl,
     )
     extractor = ActivationExtractor(
         model=MODEL_CONFIGS[model_key]["hf_name"],
@@ -898,6 +901,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=RESULTS_DIR)
     parser.add_argument("--direction-dir", type=Path, default=DIRECTIONS_DIR)
     parser.add_argument("--wandb-project", default=None)
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
 
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)

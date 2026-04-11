@@ -1442,6 +1442,10 @@ def run_prompt_dimensions(
 
     # ── Step 2: Initialize extractor ─────────────────────────────
     print("\nStep 2: Initializing ActivationExtractor...")
+
+    # Resolve backend choice
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
     config = ExtractionConfig(
         layers=layers,
         module_types=["resid_post"],
@@ -1451,7 +1455,7 @@ def run_prompt_dimensions(
         model_dtype="float16",
         dtype="float32",
         max_seq_len=2048,
-        use_transformer_lens=False,
+        use_transformer_lens=use_tl,
     )
 
     extractor = ActivationExtractor(
@@ -1674,6 +1678,7 @@ def parse_args():
                         choices=list(DATASET_FILES.keys()))
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
     parser.add_argument("--skip-accuracy", action="store_true",
                         help="Skip generation-based accuracy eval (faster)")
     return parser.parse_args()

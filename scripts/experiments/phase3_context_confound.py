@@ -467,6 +467,9 @@ def run_context_confound_experiment(
     # ── Step 1: Initialize extractor ─────────────────────────────────
     print("Step 1: Initializing ActivationExtractor...")
 
+    # Resolve backend choice
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
     config = ExtractionConfig(
         layers=layers,
         module_types=["resid_post"],
@@ -476,7 +479,7 @@ def run_context_confound_experiment(
         model_dtype="float16",
         dtype="float32",
         max_seq_len=2048,
-        use_transformer_lens=False,
+        use_transformer_lens=use_tl,
     )
 
     extractor = ActivationExtractor(
@@ -798,6 +801,7 @@ def parse_args():
     parser.add_argument("--primary-dataset", type=str, default="medium_temporal")
     parser.add_argument("--wandb-project", type=str, default=None)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
     return parser.parse_args()
 
 

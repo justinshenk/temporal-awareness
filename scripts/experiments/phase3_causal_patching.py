@@ -986,6 +986,9 @@ def run_causal_patching(
     if missing_dirs:
         print(f"\n  Computing {len(missing_dirs)} missing degradation directions on-the-fly...")
 
+        # Resolve backend choice
+        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
         config = ExtractionConfig(
             layers=layers,
             module_types=["resid_post"],
@@ -995,7 +998,7 @@ def run_causal_patching(
             model_dtype="float16",
             dtype="float32",
             max_seq_len=2048,
-            use_transformer_lens=False,
+            use_transformer_lens=use_tl,
         )
 
         extractor = ActivationExtractor(
@@ -1248,6 +1251,7 @@ def main():
                         help="W&B project name (optional)")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Override output directory")
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
     parser.add_argument("--quick", action="store_true",
                         help="Quick validation mode (1 model, 1 layer, fewer examples)")
 

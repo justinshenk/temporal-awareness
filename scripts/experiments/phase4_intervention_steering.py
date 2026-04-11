@@ -435,6 +435,10 @@ def compute_direction_on_the_fly(
 
         # Extract activations using ActivationExtractor
         print(f"    Extracting activations at layer {layer}...")
+
+        # Resolve backend choice
+        use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
         extraction_config = ExtractionConfig(
             layers=[layer],
             module_types=["resid_post"],
@@ -444,7 +448,7 @@ def compute_direction_on_the_fly(
             model_dtype="float16",
             dtype="float32",
             max_seq_len=2048,
-            use_transformer_lens=False,
+            use_transformer_lens=use_tl,
         )
         extractor = ActivationExtractor(
             model=model_hf_name,
@@ -1326,6 +1330,7 @@ def main():
                         help="W&B project name (optional)")
     parser.add_argument("--output-dir", type=str, default=None,
                         help="Override output directory")
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
 
     args = parser.parse_args()
 

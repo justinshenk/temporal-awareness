@@ -677,6 +677,9 @@ def analyze_early_detection(
     # Load activation extractor
     analyze_layers = config["quick_layers"] if quick else config["layers"]
 
+    # Resolve backend choice
+    use_tl = {"pytorch": False, "transformer_lens": True, "auto": None}[args.backend]
+
     extraction_config = ExtractionConfig(
         layers=analyze_layers,
         module_types=["resid_post"],
@@ -686,7 +689,7 @@ def analyze_early_detection(
         model_dtype="float16",
         dtype="float32",
         max_seq_len=2048,
-        use_transformer_lens=False,
+        use_transformer_lens=use_tl,
     )
     extractor = ActivationExtractor(
         model=config["hf_name"],
@@ -966,6 +969,7 @@ def main():
         default=None,
         help="W&B project for logging (optional)",
     )
+    parser.add_argument("--backend", type=str, default="pytorch", choices=["pytorch", "transformer_lens", "auto"], help="Activation extraction backend")
 
     args = parser.parse_args()
 
