@@ -28,14 +28,14 @@ declare -A TIME_8B=(
     ["patching"]="04:00:00"   ["trajectory"]="03:00:00"
     ["early_detection"]="03:00:00"  ["attention"]="04:00:00"
     ["cross_model"]="03:00:00"     ["steering"]="05:00:00"
-    ["prompt_dimensions"]="04:00:00"
+    ["prompt_dimensions"]="04:00:00" ["causal_bridge"]="06:00:00"
 )
 declare -A TIME_30B=(
     ["refusal"]="08:00:00"    ["confound"]="06:00:00"
     ["patching"]="08:00:00"   ["trajectory"]="06:00:00"
     ["early_detection"]="06:00:00"  ["attention"]="08:00:00"
     ["cross_model"]="06:00:00"     ["steering"]="10:00:00"
-    ["prompt_dimensions"]="08:00:00"
+    ["prompt_dimensions"]="08:00:00" ["causal_bridge"]="12:00:00"
 )
 
 # Script map
@@ -49,10 +49,11 @@ declare -A SCRIPT_MAP=(
     ["cross_model"]="submit_phase3_cross_model.sh"
     ["steering"]="submit_phase4_steering.sh"
     ["prompt_dimensions"]="submit_phase3_prompt_dimensions.sh"
+    ["causal_bridge"]="submit_phase4_causal_bridge.sh"
 )
 
 WAVE1_EXPS=("refusal" "confound" "trajectory" "early_detection" "attention" "prompt_dimensions")
-WAVE2_EXPS=("patching" "steering" "cross_model")
+WAVE2_EXPS=("patching" "steering" "cross_model" "causal_bridge")
 
 TOTAL=0
 REFUSAL_JOBS=()
