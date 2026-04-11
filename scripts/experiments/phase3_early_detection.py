@@ -675,12 +675,24 @@ def analyze_early_detection(
         tokenizer.eos_token_id = tokenizer.pad_token_id
 
     # Load activation extractor
+    analyze_layers = config["quick_layers"] if quick else config["layers"]
+
+    extraction_config = ExtractionConfig(
+        layers=analyze_layers,
+        module_types=["resid_post"],
+        positions="last",
+        stream_to="cpu",
+        batch_size=2,
+        model_dtype="float16",
+        dtype="float32",
+        max_seq_len=2048,
+        use_transformer_lens=False,
+    )
     extractor = ActivationExtractor(
-        model_name=config["hf_name"],
+        model=config["hf_name"],
+        config=extraction_config,
         device=device,
     )
-
-    analyze_layers = config["quick_layers"] if quick else config["layers"]
     print(f"  Analyzing {len(analyze_layers)} layers: {analyze_layers}")
 
     rep_counts = [1, 2, 3, 5, 8, 12, 16, 20]
@@ -689,7 +701,7 @@ def analyze_early_detection(
         model=model_key,
         dataset=dataset_key,
         timestamp=datetime.now().isoformat(),
-        config=asdict(config),
+        config=config,
     )
 
     # Evaluate behavioral accuracy at each rep

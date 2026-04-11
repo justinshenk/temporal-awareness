@@ -618,13 +618,26 @@ def analyze_trajectory(
     print(f"  Loaded {len(dataset['examples'])} examples")
 
     config = MODEL_CONFIGS[model_key]
-    extractor = ActivationExtractor(
-        model_name=config["hf_name"],
-        device=device,
-    )
 
     # Set layers to analyze
     analyze_layers = config["quick_layers"] if quick else config["layers"]
+
+    extraction_config = ExtractionConfig(
+        layers=analyze_layers,
+        module_types=["resid_post"],
+        positions="last",
+        stream_to="cpu",
+        batch_size=2,
+        model_dtype="float16",
+        dtype="float32",
+        max_seq_len=2048,
+        use_transformer_lens=False,
+    )
+    extractor = ActivationExtractor(
+        model=config["hf_name"],
+        config=extraction_config,
+        device=device,
+    )
     print(f"  Analyzing {len(analyze_layers)} layers: {analyze_layers}")
 
     # Repetition counts to sample
@@ -634,7 +647,7 @@ def analyze_trajectory(
         model=model_key,
         dataset=dataset_key,
         timestamp=datetime.now().isoformat(),
-        config=asdict(config),
+        config=config,
     )
 
     print(f"\n[2/5] Extracting activations at {len(rep_counts)} repetition counts...")

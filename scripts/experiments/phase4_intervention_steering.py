@@ -393,22 +393,100 @@ def generate_random_direction(d_model: int, seed: int = 42) -> np.ndarray:
 def compute_direction_on_the_fly(
     dataset: dict,
     layer: int,
+    model_hf_name: str,
+    d_model: int,
+    device: str = "cuda",
     low_rep: int = 1,
     high_rep: int = 15,
     max_examples: int = 30,
-) -> np.ndarray:
+) -> Optional[np.ndarray]:
     """Compute degradation direction on-the-fly using mean-diff method.
 
     If no saved directions exist, compute from dataset activations.
     This matches Phase 3 methodology.
+
+    Args:
+        dataset: Dataset dict with "examples" key.
+        layer: Layer index to extract activations from.
+        model_hf_name: HuggingFace model name.
+        d_model: Model hidden dimension.
+        device: Device to run extraction on.
+        low_rep: Repetition count for low-degradation examples.
+        high_rep: Repetition count for high-degradation examples.
+        max_examples: Max examples to use for direction computation.
+
+    Returns:
+        Normalized direction vector (d_model,) or None on error.
     """
-    # For now, return a placeholder
-    # In full implementation, would extract activations
-    # For this script, we assume directions are pre-computed
-    d_model = 4096  # Will be overridden by model config
-    vec = np.random.randn(d_model).astype(np.float32)
-    vec /= np.linalg.norm(vec)
-    return vec
+    try:
+        examples = dataset.get("examples", [])
+        if not examples:
+            print("    WARNING: No examples in dataset")
+            return None
+
+        # Limit to max_examples
+        if len(examples) > max_examples:
+            examples = examples[:max_examples]
+
+        # Build prompts at low and high rep counts
+        print(f"    Building prompts at rep={low_rep} and rep={high_rep}...")
+        low_prompts = [build_prompt(ex, low_rep) for ex in examples]
+        high_prompts = [build_prompt(ex, high_rep) for ex in examples]
+
+        # Extract activations using ActivationExtractor
+        print(f"    Extracting activations at layer {layer}...")
+        extraction_config = ExtractionConfig(
+            layers=[layer],
+            module_types=["resid_post"],
+            positions="last",
+            stream_to="cpu",
+            batch_size=2,
+            model_dtype="float16",
+            dtype="float32",
+            max_seq_len=2048,
+            use_transformer_lens=False,
+        )
+        extractor = ActivationExtractor(
+            model=model_hf_name,
+            config=extraction_config,
+            device=device,
+        )
+
+        # Extract for low rep
+        print(f"    Extracting activations for low-rep ({low_rep})...")
+        result_low = extractor.extract(low_prompts, return_tokens=False)
+        acts_low = result_low.numpy(f"resid_post.layer{layer}")  # (n_prompts, d_model)
+
+        # Extract for high rep
+        print(f"    Extracting activations for high-rep ({high_rep})...")
+        result_high = extractor.extract(high_prompts, return_tokens=False)
+        acts_high = result_high.numpy(f"resid_post.layer{layer}")  # (n_prompts, d_model)
+
+        # Clean up extractor to free GPU memory
+        del extractor
+        torch.cuda.empty_cache()
+
+        # Compute direction as mean difference
+        mean_low = acts_low.mean(axis=0)
+        mean_high = acts_high.mean(axis=0)
+        direction = mean_high - mean_low
+
+        # Normalize to unit vector
+        norm = np.linalg.norm(direction)
+        if norm > 0:
+            direction = direction / norm
+        else:
+            print("    WARNING: Direction has zero norm, returning None")
+            return None
+
+        print(f"    Computed degradation direction (norm={norm:.4f})")
+        return direction.astype(np.float32)
+
+    except Exception as e:
+        print(f"    ERROR computing direction on-the-fly: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -1096,7 +1174,13 @@ def run_phase4_steering(
         if direction is None:
             print(f"  WARNING: Could not load degradation direction for layer {layer}")
             # Try to compute on-the-fly
-            direction = compute_direction_on_the_fly(dataset, layer)
+            direction = compute_direction_on_the_fly(
+                dataset,
+                layer,
+                model_config["hf_name"],
+                model_config["d_model"],
+                device,
+            )
             if direction is None:
                 print(f"  SKIPPING layer {layer}")
                 continue

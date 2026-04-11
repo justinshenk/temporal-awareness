@@ -35,6 +35,7 @@ export HF_HOME=$SCRATCH/.cache/huggingface
 export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
 export TOKENIZERS_PARALLELISM=false
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export WANDB_MODE=online
 
 # ── Parse arguments ──────────────────────────────────────────
 MODEL="${1:-Llama-3.1-8B-Instruct}"

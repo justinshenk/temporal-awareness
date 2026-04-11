@@ -117,6 +117,7 @@ from src.activation_api import ExtractionConfig, ActivationExtractor, Activation
 from src.inference.interventions.intervention import (
     Intervention, InterventionTarget, create_intervention_hook,
 )
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 # ---------------------------------------------------------------------------
@@ -451,29 +452,55 @@ def extract_activations_at_layer(
     rep_counts: list[int],
 ) -> Tuple[np.ndarray, np.ndarray, list[str]]:
     """
-    Extract activations from a model at a given layer.
+    Extract activations from a model at a given layer using ActivationExtractor.
     Returns: (activation_matrix, rep_labels, example_ids)
     """
     if not HAS_TORCH:
         raise ImportError("torch required")
 
-    # This is a simplified stub; in production, use ActivationExtractor
-    print(f"  [stub] Extracting activations from {model_key} L{layer}")
-    print(f"       {len(examples)} examples × {len(rep_counts)} repetitions")
+    print(f"  Extracting activations from {model_key} L{layer}")
+    print(f"    {len(examples)} examples × {len(rep_counts)} repetition levels")
 
-    # Placeholder: return dummy activations
-    n_samples = len(examples) * len(rep_counts)
-    d_model = MODEL_CONFIGS[model_key]["d_model"]
-    acts = np.random.randn(n_samples, d_model)
-
+    # Build prompts for all (example, rep_count) pairs
+    prompts = []
     rep_labels = []
-    for ex in examples:
+    example_ids = []
+
+    for i, ex in enumerate(examples):
+        ex_id = ex.get("id", f"ex_{i}")
         for rep in rep_counts:
+            prompt = build_prompt(ex, rep)
+            prompts.append(prompt)
             rep_labels.append(rep)
+            example_ids.append(ex_id)
 
-    example_ids = [ex.get("id", f"ex_{i}") for i in range(len(examples))
-                   for _ in rep_counts]
+    # Initialize extractor for this model
+    extraction_config = ExtractionConfig(
+        layers=[layer],  # just the one layer we need
+        module_types=["resid_post"],
+        positions="last",
+        stream_to="cpu",
+        batch_size=2,
+        model_dtype="float16",
+        dtype="float32",
+        max_seq_len=2048,
+        use_transformer_lens=False,
+    )
+    extractor = ActivationExtractor(
+        model=MODEL_CONFIGS[model_key]["hf_name"],
+        config=extraction_config,
+        device="cuda",
+    )
 
+    # Extract activations
+    result = extractor.extract(prompts, return_tokens=False)
+    acts = result.numpy(f"resid_post.layer{layer}")  # (n_prompts, d_model)
+
+    # Clean up to free GPU memory
+    del extractor
+    torch.cuda.empty_cache()
+
+    print(f"    Extracted shape: {acts.shape}")
     return acts, np.array(rep_labels), example_ids
 
 
@@ -536,6 +563,46 @@ def train_probe_transfer(
 # Direction injection transfer
 # ---------------------------------------------------------------------------
 
+def _find_residual_module(model: nn.Module, layer: int) -> Optional[nn.Module]:
+    """Find the residual stream output module for a given layer.
+
+    Supports common HuggingFace architectures:
+      - LlamaForCausalLM: model.layers[layer]
+      - Qwen2ForCausalLM: model.layers[layer]
+      - GPTNeoXForCausalLM: model.gpt_neox.layers[layer]
+      - DeepSeekForCausalLM: model.layers[layer]
+    """
+    # Try common paths
+    candidates = [
+        # Llama, Qwen, Mistral, DeepSeek
+        lambda: model.model.layers[layer],
+        # GPT-NeoX
+        lambda: model.gpt_neox.layers[layer],
+        # GPT-2
+        lambda: model.transformer.h[layer],
+    ]
+
+    for candidate in candidates:
+        try:
+            module = candidate()
+            if module is not None:
+                return module
+        except (AttributeError, IndexError):
+            continue
+
+    # Fallback: walk named_modules
+    target_names = [
+        f"model.layers.{layer}",
+        f"gpt_neox.layers.{layer}",
+        f"transformer.h.{layer}",
+    ]
+    for name, module in model.named_modules():
+        if name in target_names:
+            return module
+
+    return None
+
+
 def inject_direction_into_model(
     source_model: str,
     target_model: str,
@@ -546,36 +613,163 @@ def inject_direction_into_model(
 ) -> DirectionInjectionResult:
     """
     Load direction from source_model, inject into target_model, measure impact.
-    This is a simplified version; full implementation uses causal patching hooks.
+    Uses forward hooks to add the direction to activations at the target layer.
     """
+    if not HAS_TORCH:
+        raise ImportError("torch required")
+
     direction = load_direction(source_model, layer, dataset_key)
     if direction is None:
         raise FileNotFoundError(f"Direction not found for {source_model} L{layer}")
 
     dataset = load_benchmark_dataset(dataset_key, max_examples)
+    examples = dataset["examples"][:max_examples]
 
     print(f"\n  Injecting {source_model} direction into {target_model} L{layer}")
+    print(f"    Direction norm: {np.linalg.norm(direction):.4f}")
+    print(f"    Testing on {len(examples)} examples")
 
-    # Stub: in production, this would use intervention hooks
-    # For now, return a plausible result
-    n_examples = len(dataset["examples"])
-    baseline_accuracy = np.random.uniform(0.7, 0.9)
-    injected_accuracy = baseline_accuracy - injection_strength * 0.15
-
-    result = DirectionInjectionResult(
-        source_model=source_model,
-        target_model=target_model,
-        layer=layer,
-        dataset=dataset_key,
-        baseline_accuracy=baseline_accuracy,
-        injected_accuracy=injected_accuracy,
-        accuracy_delta=injected_accuracy - baseline_accuracy,
-        injection_strength=injection_strength,
-        n_examples=n_examples,
+    # Load target model and tokenizer
+    model_name = MODEL_CONFIGS[target_model]["hf_name"]
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="cuda",
     )
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-    print(f"    Baseline: {baseline_accuracy:.4f}, Injected: {injected_accuracy:.4f}")
-    return result
+    model.eval()
+    device = "cuda"
+
+    try:
+        # Measure baseline accuracy (no hook)
+        correct_baseline = 0
+        for ex in examples:
+            prompt = build_prompt(ex, rep_count=1)  # Fresh (rep=1)
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
+                             max_length=2048).to(device)
+
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=5,
+                    do_sample=False,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+
+            new_tokens = outputs[0, inputs["input_ids"].shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+            # Extract first letter
+            pred = ""
+            for ch in response:
+                if ch.isalpha():
+                    pred = ch.upper()
+                    break
+
+            gt = extract_answer(ex)
+            if pred == gt:
+                correct_baseline += 1
+
+        baseline_accuracy = correct_baseline / len(examples) if examples else 0.0
+
+        # Normalize direction
+        direction_tensor = torch.tensor(
+            direction / (np.linalg.norm(direction) + 1e-8),
+            dtype=torch.float32,
+            device=device,
+        )
+
+        # Find residual module to hook
+        hook_module = _find_residual_module(model, layer)
+        if hook_module is None:
+            print(f"    WARNING: Could not find residual module for layer {layer}")
+            # Return neutral result
+            result = DirectionInjectionResult(
+                source_model=source_model,
+                target_model=target_model,
+                layer=layer,
+                dataset=dataset_key,
+                baseline_accuracy=baseline_accuracy,
+                injected_accuracy=baseline_accuracy,
+                accuracy_delta=0.0,
+                injection_strength=injection_strength,
+                n_examples=len(examples),
+            )
+            return result
+
+        # Measure accuracy WITH direction injection
+        correct_injected = 0
+
+        def hook_fn(module, input, output):
+            """Hook to inject the direction."""
+            if isinstance(output, tuple):
+                hidden = output[0]
+            else:
+                hidden = output
+
+            # Add injection_strength * direction to last token position
+            hidden[:, -1, :] = hidden[:, -1, :] + injection_strength * direction_tensor
+            if isinstance(output, tuple):
+                return (hidden,) + output[1:]
+            return hidden
+
+        for ex in examples:
+            prompt = build_prompt(ex, rep_count=1)  # Fresh (rep=1)
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
+                             max_length=2048).to(device)
+
+            # Register hook
+            handle = hook_module.register_forward_hook(hook_fn)
+            try:
+                with torch.no_grad():
+                    outputs = model.generate(
+                        **inputs,
+                        max_new_tokens=5,
+                        do_sample=False,
+                        pad_token_id=tokenizer.eos_token_id,
+                    )
+            finally:
+                handle.remove()
+
+            new_tokens = outputs[0, inputs["input_ids"].shape[1]:]
+            response = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+            # Extract first letter
+            pred = ""
+            for ch in response:
+                if ch.isalpha():
+                    pred = ch.upper()
+                    break
+
+            gt = extract_answer(ex)
+            if pred == gt:
+                correct_injected += 1
+
+        injected_accuracy = correct_injected / len(examples) if examples else 0.0
+
+        result = DirectionInjectionResult(
+            source_model=source_model,
+            target_model=target_model,
+            layer=layer,
+            dataset=dataset_key,
+            baseline_accuracy=baseline_accuracy,
+            injected_accuracy=injected_accuracy,
+            accuracy_delta=injected_accuracy - baseline_accuracy,
+            injection_strength=injection_strength,
+            n_examples=len(examples),
+        )
+
+        print(f"    Baseline: {baseline_accuracy:.4f}, Injected: {injected_accuracy:.4f}, "
+              f"Δ: {result.accuracy_delta:+.4f}")
+        return result
+
+    finally:
+        # Clean up
+        del model
+        torch.cuda.empty_cache()
 
 
 # ---------------------------------------------------------------------------

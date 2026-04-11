@@ -97,6 +97,12 @@ try:
 except ImportError:
     HAS_MPL = False
 
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    HAS_TRANSFORMERS = True
+except ImportError:
+    HAS_TRANSFORMERS = False
+
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -305,36 +311,113 @@ def extract_attention_patterns(
     """
     Extract attention patterns from a model for given examples and repetitions.
 
+    Args:
+        model_key: Key in MODEL_CONFIGS
+        examples: List of examples to process
+        rep_counts: List of repetition counts (e.g., [1, 15])
+        device: Device to load model on ("cuda" or "cpu")
+
     Returns:
         attention_fresh: {layer: (n_examples, n_heads, seq_len, seq_len)}
-        attention_degraded: similar structure
+        attention_degraded: {layer: (n_examples, n_heads, seq_len, seq_len)}
     """
     if not HAS_TORCH:
         raise ImportError("torch required")
+    if not HAS_TRANSFORMERS:
+        raise ImportError("transformers required")
 
     print(f"\n  Extracting attention patterns from {model_key}")
     print(f"  Examples: {len(examples)}, Repetitions: {rep_counts}")
 
-    # Stub implementation: in production, would load model and forward pass
     config = MODEL_CONFIGS[model_key]
+    hf_name = config["hf_name"]
+    layers_to_extract = config["layers"]
     n_heads = config["n_heads"]
-    n_layers = config["n_layers"]
 
-    attention_fresh = {}
-    attention_degraded = {}
+    # Load model and tokenizer
+    print(f"  Loading model {hf_name}...")
+    model = AutoModelForCausalLM.from_pretrained(
+        hf_name,
+        device_map=device,
+        torch_dtype=torch.float16,
+        output_attentions=True,
+    )
+    model.eval()
 
-    # Generate dummy attention data for demonstration
-    max_seq_len = 512
-    for layer in config["layers"]:
-        # Fresh: rep=1
-        attn_fresh_shape = (len(examples), n_heads, max_seq_len, max_seq_len)
-        attention_fresh[layer] = np.random.dirichlet([1.0] * max_seq_len,
-                                                      size=(len(examples), n_heads, max_seq_len))
+    print(f"  Loading tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(hf_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-        # Degraded: rep=15 (more diffuse)
-        attn_deg_shape = (len(examples), n_heads, max_seq_len, max_seq_len)
-        attention_degraded[layer] = np.random.dirichlet([0.5] * max_seq_len,
-                                                         size=(len(examples), n_heads, max_seq_len))
+    # Storage for attention patterns
+    attention_by_rep = {}
+
+    # Process each repetition count
+    for rep_count in rep_counts:
+        print(f"  Processing rep_count={rep_count}...")
+        attention_storage = {}  # {layer: []}
+
+        # Process each example
+        with torch.no_grad():
+            for ex_idx, example in enumerate(examples):
+                if (ex_idx + 1) % max(1, len(examples) // 5) == 0:
+                    print(f"    Example {ex_idx + 1}/{len(examples)}")
+
+                # Build prompt for this repetition
+                prompt = build_prompt(example, rep_count)
+
+                # Tokenize
+                inputs = tokenizer(
+                    prompt,
+                    return_tensors="pt",
+                    padding=True,
+                    truncation=True,
+                    max_length=2048,
+                )
+                inputs = {k: v.to(device) for k, v in inputs.items()}
+
+                # Forward pass
+                outputs = model(**inputs, output_attentions=True)
+
+                # Extract attention from specified layers
+                # outputs.attentions is a tuple of (batch, n_heads, seq_len, seq_len)
+                # per layer for all layers
+                attention_tuple = outputs.attentions
+
+                for layer_idx, attn_tensor in enumerate(attention_tuple):
+                    # Only extract from specified layers
+                    if layer_idx not in layers_to_extract:
+                        continue
+
+                    # Move to CPU and convert to numpy
+                    attn_np = attn_tensor.cpu().detach().numpy()
+                    # Shape: (batch, n_heads, seq_len, seq_len)
+
+                    if layer_idx not in attention_storage:
+                        attention_storage[layer_idx] = []
+
+                    # Store for this example
+                    # Take the first batch element if batch_size > 1
+                    attention_storage[layer_idx].append(attn_np[0])
+
+        # Aggregate examples into arrays
+        attention_by_rep[rep_count] = {}
+        for layer_idx in attention_storage:
+            # Stack all examples: list of (n_heads, seq_len, seq_len) -> (n_examples, n_heads, seq_len, seq_len)
+            stacked = np.stack(attention_storage[layer_idx], axis=0)
+            attention_by_rep[rep_count][layer_idx] = stacked
+
+    # Clean up GPU memory
+    del model
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+    # Organize by fresh/degraded based on rep_counts order
+    # Assuming rep_counts = [1, 15] where 1 is fresh and 15 is degraded
+    fresh_rep = rep_counts[0]
+    degraded_rep = rep_counts[1] if len(rep_counts) > 1 else rep_counts[0]
+
+    attention_fresh = attention_by_rep[fresh_rep]
+    attention_degraded = attention_by_rep[degraded_rep]
 
     return attention_fresh, attention_degraded
 
