@@ -88,10 +88,10 @@ for MODEL in "${MODELS_8B[@]}"; do
     echo "  $MODEL → job $JOB_ID (32GB, $TIME)"
 done
 
-# Submit 30B model on 48GB GPU
+# Submit 30B model on 80GB GPU (A100) — 30B MoE needs ~60GB in float16
 TIME="${TIME_30B[$EXPERIMENT]}"
-JOB_ID=$(sbatch -C GPU_MEM:48GB --time=$TIME "$SCRIPT_PATH" "$MODEL_30B" 2>&1 | grep -oP '\d+')
-echo "  $MODEL_30B → job $JOB_ID (48GB, $TIME)"
+JOB_ID=$(sbatch -C GPU_MEM:80GB --time=$TIME "$SCRIPT_PATH" "$MODEL_30B" 2>&1 | grep -oP '\d+')
+echo "  $MODEL_30B → job $JOB_ID (80GB/A100, $TIME)"
 
 echo "=========================================="
 echo "Done. Check status: squeue -u \$USER"

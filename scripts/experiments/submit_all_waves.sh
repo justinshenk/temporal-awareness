@@ -86,8 +86,8 @@ submit_experiment() {
     local DEP_FLAG=""
     [ -n "$DEP" ] && DEP_FLAG="--dependency=$DEP"
     local JOB_ID
-    JOB_ID=$(sbatch -C GPU_MEM:48GB --time="$TIME" $DEP_FLAG "$SCRIPT_PATH" "$MODEL_30B" 2>&1 | grep -oP '\d+')
-    echo "    $MODEL_30B → job $JOB_ID (48GB, $TIME)"
+    JOB_ID=$(sbatch -C GPU_MEM:80GB --time="$TIME" $DEP_FLAG "$SCRIPT_PATH" "$MODEL_30B" 2>&1 | grep -oP '\d+')
+    echo "    $MODEL_30B → job $JOB_ID (80GB/A100, $TIME)"
 
     if [ "$EXP" = "refusal" ]; then
         REFUSAL_JOBS+=("$JOB_ID")
