@@ -1,38 +1,23 @@
 #!/usr/bin/bash
-#SBATCH --job-name=phase4-steering
-#SBATCH --time=10:00:00
+# ── Per-model SLURM submission for Phase 4: Intervention Steering ──
+# IMPORTANT: Run refusal experiment first — this loads saved .npy directions.
+#
+# Usage (submit one job per model):
+#   sbatch scripts/experiments/submit_phase4_steering.sh Llama-3.1-8B-Instruct
+#   sbatch scripts/experiments/submit_phase4_steering.sh Qwen3-8B
+#   sbatch scripts/experiments/submit_phase4_steering.sh Qwen3-30B-A3B
+#   sbatch scripts/experiments/submit_phase4_steering.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase4_steering.sh Llama-3.1-8B
+
+#SBATCH --job-name=p4-steering
+#SBATCH --time=05:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
-#SBATCH -C GPU_MEM:32GB
-#SBATCH --output=logs/phase4_steering_%j_%x.out
-#SBATCH --error=logs/phase4_steering_%j_%x.err
-
-# Phase 4: Intervention Experiments — Activation Steering, Context Refresh,
-# Prompt Restructuring
-# ---------------------------------------------------
-# Tests three intervention strategies for mitigating degradation:
-#   1. Continuous activation steering (Turner et al. 2023)
-#   2. Context refresh (truncate + summarize at probe threshold)
-#   3. Prompt restructuring (emphasis, reframing, system reset)
-# Plus controls: random direction steering, sycophancy direction steering.
-#
-# IMPORTANT: Run Phase 3 Exp 1 (refusal direction) first — this script loads
-# the saved degradation and refusal direction .npy files.
-#
-# Usage:
-#   sbatch scripts/experiments/submit_phase4_steering.sh
-#   sbatch scripts/experiments/submit_phase4_steering.sh Qwen3-8B
-#   sbatch scripts/experiments/submit_phase4_steering.sh ALL
-#   sbatch scripts/experiments/submit_phase4_steering.sh Llama-3.1-8B-Instruct quick
-#
-# This experiment is generation-heavy (full rep sequence per strategy)
-# so it takes longer than Phase 3 experiments. Allow 4–5hr per model.
-#
-# GPU: V100 32GB for 8B models, L40S 48GB for Qwen3-30B-A3B:
-#   sbatch -C GPU_MEM:48GB --time=14:00:00 scripts/experiments/submit_phase4_steering.sh Qwen3-30B-A3B
+#SBATCH --output=logs/phase4_steering_%j.out
+#SBATCH --error=logs/phase4_steering_%j.err
 
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
@@ -59,13 +44,7 @@ cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
 
 # ── Build command ────────────────────────────────────────────
-COMMON_ARGS="--device cuda --wandb-project patience-degradation"
-
-if [ "$MODEL" = "ALL" ]; then
-    RUN_ARGS="--all-models $COMMON_ARGS"
-else
-    RUN_ARGS="--model $MODEL $COMMON_ARGS"
-fi
+RUN_ARGS="--model $MODEL --device cuda --wandb-project patience-degradation"
 
 if [ "$MODE" = "quick" ]; then
     RUN_ARGS="$RUN_ARGS --quick"
@@ -82,9 +61,7 @@ echo "Job ID:  ${SLURM_JOB_ID:-local}"
 echo "Started: $(date)"
 echo "=========================================="
 
-# ── Run experiment ───────────────────────────────────────────
-srun python3 scripts/experiments/phase4_intervention_steering.py \
-    $RUN_ARGS
+srun python3 scripts/experiments/phase4_intervention_steering.py $RUN_ARGS
 
 EXIT_CODE=$?
 

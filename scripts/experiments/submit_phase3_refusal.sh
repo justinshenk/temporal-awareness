@@ -1,30 +1,24 @@
 #!/usr/bin/bash
-#SBATCH --job-name=phase3-refusal
-#SBATCH --time=06:00:00
+# ── Per-model SLURM submission for Phase 3 Exp 1: Refusal Direction ──
+# Usage (submit one job per model):
+#   sbatch scripts/experiments/submit_phase3_refusal.sh Llama-3.1-8B-Instruct
+#   sbatch scripts/experiments/submit_phase3_refusal.sh Qwen3-8B
+#   sbatch scripts/experiments/submit_phase3_refusal.sh Qwen3-30B-A3B
+#   sbatch scripts/experiments/submit_phase3_refusal.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase3_refusal.sh Llama-3.1-8B
+#
+# Or quick mode:
+#   sbatch scripts/experiments/submit_phase3_refusal.sh Llama-3.1-8B-Instruct quick
+
+#SBATCH --job-name=p3-refusal
+#SBATCH --time=04:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
-#SBATCH -C GPU_MEM:32GB
-#SBATCH --output=logs/phase3_refusal_%j_%x.out
-#SBATCH --error=logs/phase3_refusal_%j_%x.err
-
-# Phase 3, Experiment 1: Refusal vs Degradation Direction Comparison
-# -------------------------------------------------------------------
-# Extracts refusal directions (AdvBench + HarmBench) and degradation
-# directions, computes cosine similarity, saves .npy direction vectors
-# for downstream causal patching (Experiment 3).
-#
-# Usage:
-#   sbatch scripts/experiments/submit_phase3_refusal.sh
-#   sbatch scripts/experiments/submit_phase3_refusal.sh Qwen3-8B
-#   sbatch scripts/experiments/submit_phase3_refusal.sh ALL
-#   sbatch scripts/experiments/submit_phase3_refusal.sh Llama-3.1-8B-Instruct quick
-#
-# GPU: ~16GB model + activations. V100 32GB sufficient for all models
-# except Qwen3-30B-A3B which needs L40S 48GB:
-#   sbatch -C GPU_MEM:48GB scripts/experiments/submit_phase3_refusal.sh Qwen3-30B-A3B
+#SBATCH --output=logs/phase3_refusal_%j.out
+#SBATCH --error=logs/phase3_refusal_%j.err
 
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
@@ -51,13 +45,7 @@ cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
 
 # ── Build command ────────────────────────────────────────────
-COMMON_ARGS="--device cuda --wandb-project patience-degradation"
-
-if [ "$MODEL" = "ALL" ]; then
-    RUN_ARGS="--all-models $COMMON_ARGS"
-else
-    RUN_ARGS="--model $MODEL $COMMON_ARGS"
-fi
+RUN_ARGS="--model $MODEL --device cuda --wandb-project patience-degradation"
 
 if [ "$MODE" = "quick" ]; then
     RUN_ARGS="$RUN_ARGS --quick"
@@ -74,9 +62,7 @@ echo "Job ID:  ${SLURM_JOB_ID:-local}"
 echo "Started: $(date)"
 echo "=========================================="
 
-# ── Run experiment ───────────────────────────────────────────
-srun python3 scripts/experiments/phase3_refusal_direction.py \
-    $RUN_ARGS
+srun python3 scripts/experiments/phase3_refusal_direction.py $RUN_ARGS
 
 EXIT_CODE=$?
 

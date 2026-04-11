@@ -1,32 +1,21 @@
 #!/usr/bin/bash
-#SBATCH --job-name=phase3-trajectory
-#SBATCH --time=06:00:00
+# ── Per-model SLURM submission for Phase 3: Trajectory Geometry ──
+# Usage (submit one job per model):
+#   sbatch scripts/experiments/submit_phase3_trajectory.sh Llama-3.1-8B-Instruct
+#   sbatch scripts/experiments/submit_phase3_trajectory.sh Qwen3-8B
+#   sbatch scripts/experiments/submit_phase3_trajectory.sh Qwen3-30B-A3B
+#   sbatch scripts/experiments/submit_phase3_trajectory.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase3_trajectory.sh Llama-3.1-8B
+
+#SBATCH --job-name=p3-trajectory
+#SBATCH --time=03:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
-#SBATCH -C GPU_MEM:32GB
-#SBATCH --output=logs/phase3_trajectory_%j_%x.out
-#SBATCH --error=logs/phase3_trajectory_%j_%x.err
-
-# Phase 3: Activation Trajectory Geometry Analysis
-# ---------------------------------------------------
-# Extracts activations at every repetition count (1, 3, 5, 8, 12, 16, 20),
-# computes PCA trajectories, velocity, acceleration, curvature, and critical
-# transition detection. Tests whether degradation follows a predictable
-# two-phase pattern (slow drift → rapid transition).
-#
-# Usage:
-#   sbatch scripts/experiments/submit_phase3_trajectory.sh
-#   sbatch scripts/experiments/submit_phase3_trajectory.sh Qwen3-8B
-#   sbatch scripts/experiments/submit_phase3_trajectory.sh ALL
-#   sbatch scripts/experiments/submit_phase3_trajectory.sh Llama-3.1-8B-Instruct quick
-#
-# Allow 2–3hr per model. Moderate compute — extraction at 7 rep counts.
-#
-# GPU: V100 32GB for 8B models, L40S 48GB for Qwen3-30B-A3B:
-#   sbatch -C GPU_MEM:48GB --time=08:00:00 scripts/experiments/submit_phase3_trajectory.sh Qwen3-30B-A3B
+#SBATCH --output=logs/phase3_trajectory_%j.out
+#SBATCH --error=logs/phase3_trajectory_%j.err
 
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
@@ -53,13 +42,7 @@ cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
 
 # ── Build command ────────────────────────────────────────────
-COMMON_ARGS="--device cuda --wandb-project patience-degradation"
-
-if [ "$MODEL" = "ALL" ]; then
-    RUN_ARGS="--all-models $COMMON_ARGS"
-else
-    RUN_ARGS="--model $MODEL $COMMON_ARGS"
-fi
+RUN_ARGS="--model $MODEL --device cuda --wandb-project patience-degradation"
 
 if [ "$MODE" = "quick" ]; then
     RUN_ARGS="$RUN_ARGS --quick"
@@ -76,9 +59,7 @@ echo "Job ID:  ${SLURM_JOB_ID:-local}"
 echo "Started: $(date)"
 echo "=========================================="
 
-# ── Run experiment ───────────────────────────────────────────
-srun python3 scripts/experiments/phase3_trajectory_geometry.py \
-    $RUN_ARGS
+srun python3 scripts/experiments/phase3_trajectory_geometry.py $RUN_ARGS
 
 EXIT_CODE=$?
 

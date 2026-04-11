@@ -1,35 +1,25 @@
 #!/usr/bin/bash
-#SBATCH --job-name=phase3-cross-model
-#SBATCH --time=08:00:00
+# ── Per-model SLURM submission for Phase 3: Cross-Model Transfer ──
+# NOTE: This experiment inherently needs all models for pairwise comparison.
+# Submit per-model to extract directions first, then run the full comparison
+# with ALL on a 48GB GPU.
+#
+# Usage:
+#   sbatch scripts/experiments/submit_phase3_cross_model.sh Llama-3.1-8B-Instruct
+#   sbatch scripts/experiments/submit_phase3_cross_model.sh Qwen3-8B
+#   sbatch scripts/experiments/submit_phase3_cross_model.sh Qwen3-30B-A3B
+#   sbatch scripts/experiments/submit_phase3_cross_model.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase3_cross_model.sh Llama-3.1-8B
+
+#SBATCH --job-name=p3-xmodel
+#SBATCH --time=03:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
-#SBATCH -C GPU_MEM:32GB
-#SBATCH --output=logs/phase3_cross_model_%j_%x.out
-#SBATCH --error=logs/phase3_cross_model_%j_%x.err
-
-# Phase 3: Cross-Model Direction Transfer
-# ---------------------------------------------------
-# Tests whether the degradation direction is universal across architectures:
-#   - Pairwise direction cosine similarity matrix
-#   - Cross-model probe transfer (train on A, test on B)
-#   - CKA for dimension-agnostic comparison (DeepSeek d=3584 vs others d=4096)
-#   - Base vs Instruct Llama comparison (RLHF creates degradation?)
-#   - Direction injection transfer testing
-#
-# IMPORTANT: This experiment loads ALL models sequentially (pairwise comparison).
-# For single-model direction extraction, use --model. For full cross-model
-# analysis, use ALL (requires sequential model loading, ~8hr total).
-#
-# Usage:
-#   sbatch scripts/experiments/submit_phase3_cross_model.sh
-#   sbatch scripts/experiments/submit_phase3_cross_model.sh ALL
-#   sbatch scripts/experiments/submit_phase3_cross_model.sh Llama-3.1-8B-Instruct quick
-#
-# GPU: V100 32GB for 8B models. For full cross-model (ALL), use L40S:
-#   sbatch -C GPU_MEM:48GB --time=12:00:00 scripts/experiments/submit_phase3_cross_model.sh ALL
+#SBATCH --output=logs/phase3_cross_model_%j.out
+#SBATCH --error=logs/phase3_cross_model_%j.err
 
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
@@ -49,19 +39,17 @@ export TOKENIZERS_PARALLELISM=false
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ── Parse arguments ──────────────────────────────────────────
-MODEL="${1:-ALL}"
+MODEL="${1:-Llama-3.1-8B-Instruct}"
 MODE="${2:-full}"
 
 cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
 
 # ── Build command ────────────────────────────────────────────
-COMMON_ARGS="--device cuda --wandb-project patience-degradation"
-
 if [ "$MODEL" = "ALL" ]; then
-    RUN_ARGS="--all-models $COMMON_ARGS"
+    RUN_ARGS="--all-models --device cuda --wandb-project patience-degradation"
 else
-    RUN_ARGS="--model $MODEL $COMMON_ARGS"
+    RUN_ARGS="--model $MODEL --device cuda --wandb-project patience-degradation"
 fi
 
 if [ "$MODE" = "quick" ]; then
@@ -79,9 +67,7 @@ echo "Job ID:  ${SLURM_JOB_ID:-local}"
 echo "Started: $(date)"
 echo "=========================================="
 
-# ── Run experiment ───────────────────────────────────────────
-srun python3 scripts/experiments/phase3_cross_model_transfer.py \
-    $RUN_ARGS
+srun python3 scripts/experiments/phase3_cross_model_transfer.py $RUN_ARGS
 
 EXIT_CODE=$?
 
