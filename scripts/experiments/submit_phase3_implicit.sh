@@ -28,12 +28,7 @@ MODEL="${1:-Llama-3.1-8B-Instruct}"
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 
-# Ouro-2.6B requires transformers<4.56.0; use dedicated venv
-OURO_ENV="/home/groups/barbarae/molofsky/ouro-env"
-if [[ "$MODEL" == "Ouro-2.6B" ]] && [ -f "$OURO_ENV/bin/activate" ]; then
-    echo "Using Ouro-compatible env (transformers<4.56)"
-    source "$OURO_ENV/bin/activate"
-elif [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
+if [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
     source /home/groups/barbarae/molofsky/ml-env/bin/activate
 elif [ -f ~/sae-env/bin/activate ]; then
     source ~/sae-env/bin/activate

@@ -820,7 +820,16 @@ def main():
 
     all_results = []
 
+    # Models with custom architectures that don't support output_attentions
+    SKIP_ATTENTION_MODELS = {"Ouro-2.6B"}
+
     for model_key in models_to_use:
+        if model_key in SKIP_ATTENTION_MODELS:
+            print(f"\n{'=' * 80}")
+            print(f"SKIPPING {model_key} (custom architecture does not support output_attentions)")
+            print(f"{'=' * 80}")
+            continue
+
         print(f"\n{'=' * 80}")
         print(f"ANALYZING {model_key}")
         print(f"{'=' * 80}")
