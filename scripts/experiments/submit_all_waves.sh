@@ -4,6 +4,8 @@
 # Wave 1: Independent experiments (no dependencies)
 # Wave 2: Depends on refusal direction .npy files
 #         Submitted with --dependency=afterok on the refusal jobs
+# Wave 3: Safety evaluations (depends on refusal directions for alignment test)
+#         Can run independently if refusal directions already exist
 #
 # Usage:
 #   bash scripts/experiments/submit_all_waves.sh
@@ -13,6 +15,9 @@
 #
 # To submit only Wave 2 (if refusal already done):
 #   bash scripts/experiments/submit_all_waves.sh wave2
+#
+# To submit only Wave 3 (safety evaluations):
+#   bash scripts/experiments/submit_all_waves.sh wave3
 
 set -euo pipefail
 
@@ -29,6 +34,7 @@ declare -A TIME_8B=(
     ["early_detection"]="03:00:00"  ["attention"]="04:00:00"
     ["cross_model"]="03:00:00"     ["steering"]="05:00:00"
     ["prompt_dimensions"]="04:00:00" ["causal_bridge"]="06:00:00"
+    ["safety"]="08:00:00"
 )
 declare -A TIME_30B=(
     ["refusal"]="08:00:00"    ["confound"]="06:00:00"
@@ -36,6 +42,7 @@ declare -A TIME_30B=(
     ["early_detection"]="06:00:00"  ["attention"]="08:00:00"
     ["cross_model"]="06:00:00"     ["steering"]="10:00:00"
     ["prompt_dimensions"]="08:00:00" ["causal_bridge"]="12:00:00"
+    ["safety"]="14:00:00"
 )
 
 # Script map
@@ -50,10 +57,12 @@ declare -A SCRIPT_MAP=(
     ["steering"]="submit_phase4_steering.sh"
     ["prompt_dimensions"]="submit_phase3_prompt_dimensions.sh"
     ["causal_bridge"]="submit_phase4_causal_bridge.sh"
+    ["safety"]="submit_phase5_safety.sh"
 )
 
 WAVE1_EXPS=("refusal" "confound" "trajectory" "early_detection" "attention" "prompt_dimensions")
 WAVE2_EXPS=("patching" "steering" "cross_model" "causal_bridge")
+WAVE3_EXPS=("safety")
 
 TOTAL=0
 REFUSAL_JOBS=()
@@ -140,6 +149,37 @@ if [ "$WAVE" = "all" ] || [ "$WAVE" = "wave2" ]; then
         echo "  (No dependency — assuming refusal results exist)"
 
         for EXP in "${WAVE2_EXPS[@]}"; do
+            submit_experiment "$EXP"
+        done
+    fi
+fi
+
+# ── Wave 3 ──
+if [ "$WAVE" = "all" ] || [ "$WAVE" = "wave3" ]; then
+    echo ""
+    echo "╔══════════════════════════════════════╗"
+    echo "║  WAVE 3: Safety evaluations          ║"
+    echo "╚══════════════════════════════════════╝"
+
+    if [ "$WAVE" = "all" ] && [ ${#REFUSAL_JOBS[@]} -gt 0 ]; then
+        # Safety evals benefit from refusal directions but can also extract them fresh
+        DEP_STR="afterok"
+        for JID in "${REFUSAL_JOBS[@]}"; do
+            DEP_STR="${DEP_STR}:${JID}"
+        done
+        echo ""
+        echo "  Waiting for refusal jobs: ${REFUSAL_JOBS[*]}"
+        echo "  Dependency: $DEP_STR"
+
+        for EXP in "${WAVE3_EXPS[@]}"; do
+            submit_experiment "$EXP" "$DEP_STR"
+        done
+    else
+        # Wave 3 standalone — assume refusal results exist or will extract fresh
+        echo ""
+        echo "  (No dependency — safety evals will extract directions if needed)"
+
+        for EXP in "${WAVE3_EXPS[@]}"; do
             submit_experiment "$EXP"
         done
     fi
