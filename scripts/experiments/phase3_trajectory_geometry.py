@@ -556,8 +556,8 @@ def plot_drift_profile(
     ax1.legend()
 
     # Curvature
-    ax2.plot(rep_counts[:-1], curvatures, "s-", linewidth=2, markersize=8, color="purple")
-    ax2.fill_between(rep_counts[:-1], curvatures, alpha=0.3, color="purple")
+    ax2.plot(rep_counts[1:-1], curvatures, "s-", linewidth=2, markersize=8, color="purple")
+    ax2.fill_between(rep_counts[1:-1], curvatures, alpha=0.3, color="purple")
     ax2.set_xlabel("Repetition Count", fontsize=11)
     ax2.set_ylabel("Curvature (angle, radians)", fontsize=11)
     ax2.set_title(f"Layer {layer} - Path Curvature vs Repetition", fontsize=12, fontweight="bold")
