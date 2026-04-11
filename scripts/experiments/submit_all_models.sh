@@ -68,6 +68,8 @@ declare -A TIME_8B=(
     ["steering"]="05:00:00"
     ["prompt_dimensions"]="04:00:00"
     ["safety"]="08:00:00"
+    ["benchmark"]="04:00:00"
+    ["implicit"]="06:00:00"
 )
 declare -A TIME_30B=(
     ["refusal"]="08:00:00"
@@ -80,6 +82,8 @@ declare -A TIME_30B=(
     ["steering"]="10:00:00"
     ["prompt_dimensions"]="08:00:00"
     ["safety"]="14:00:00"
+    ["benchmark"]="08:00:00"
+    ["implicit"]="12:00:00"
 )
 
 echo "=========================================="
