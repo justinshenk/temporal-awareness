@@ -1709,7 +1709,7 @@ def run_all_safety_evals(
     )
     extractor = ActivationExtractor(ext_config)
     model_obj = extractor.model
-    tokenizer_obj = extractor.tokenizer
+    tokenizer_obj = extractor._tokenizer
 
     all_results = {}
     t_start = time.time()

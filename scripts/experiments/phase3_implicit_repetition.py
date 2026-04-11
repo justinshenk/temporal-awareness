@@ -1101,7 +1101,7 @@ def main():
         try:
             results = run_implicit_repetition_experiment(
                 model=extractor.model,
-                tokenizer=extractor.tokenizer,
+                tokenizer=extractor._tokenizer,
                 extractor=extractor,
                 model_name=model_name,
                 config=config,

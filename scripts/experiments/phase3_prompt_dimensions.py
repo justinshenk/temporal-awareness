@@ -1116,7 +1116,7 @@ def evaluate_accuracy_per_condition(
     results = {}
 
     model = extractor.model
-    tokenizer = extractor.tokenizer
+    tokenizer = extractor._tokenizer
 
     for dimension in PROMPT_DIMENSIONS:
         dim_results = {}

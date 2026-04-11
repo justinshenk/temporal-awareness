@@ -318,8 +318,8 @@ def extract_attention_patterns(
         device: Device to load model on ("cuda" or "cpu")
 
     Returns:
-        attention_fresh: {layer: (n_examples, n_heads, seq_len, seq_len)}
-        attention_degraded: {layer: (n_examples, n_heads, seq_len, seq_len)}
+        attention_fresh: {layer: {"entropy": (n_examples, n_heads), "task_attn": (n_examples, n_heads)}}
+        attention_degraded: {layer: {"entropy": (n_examples, n_heads), "task_attn": (n_examples, n_heads)}}
     """
     if not HAS_TORCH:
         raise ImportError("torch required")
@@ -349,13 +349,15 @@ def extract_attention_patterns(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Storage for attention patterns
-    attention_by_rep = {}
+    # Storage for per-example, per-head metrics (NOT raw attention matrices,
+    # since each example has a different seq_len and np.stack would fail).
+    # metrics_by_rep[rep][layer] = list of dicts with per-head entropy & task_attn
+    metrics_by_rep = {}
 
     # Process each repetition count
     for rep_count in rep_counts:
         print(f"  Processing rep_count={rep_count}...")
-        attention_storage = {}  # {layer: []}
+        metrics_storage = {}  # {layer: [{"entropy": (n_heads,), "task_attn": (n_heads,)}, ...]}
 
         # Process each example
         with torch.no_grad():
@@ -390,34 +392,84 @@ def extract_attention_patterns(
                         continue
 
                     # Move to CPU and convert to numpy
-                    attn_np = attn_tensor.cpu().detach().numpy()
-                    # Shape: (batch, n_heads, seq_len, seq_len)
+                    attn_np = attn_tensor[0].cpu().detach().float().numpy()
+                    # Shape: (n_heads, seq_len, seq_len)
+                    cur_n_heads, cur_seq_len, _ = attn_np.shape
 
-                    if layer_idx not in attention_storage:
-                        attention_storage[layer_idx] = []
+                    if layer_idx not in metrics_storage:
+                        metrics_storage[layer_idx] = []
 
-                    # Store for this example
-                    # Take the first batch element if batch_size > 1
-                    attention_storage[layer_idx].append(attn_np[0])
+                    # Compute per-head entropy for this example
+                    head_entropies = np.zeros(cur_n_heads)
+                    head_task_attn = np.zeros(cur_n_heads)
+                    task_start = int(cur_seq_len * 0.8)  # last 20% is task tokens
 
-        # Aggregate examples into arrays
-        attention_by_rep[rep_count] = {}
-        for layer_idx in attention_storage:
-            # Stack all examples: list of (n_heads, seq_len, seq_len) -> (n_examples, n_heads, seq_len, seq_len)
-            stacked = np.stack(attention_storage[layer_idx], axis=0)
-            attention_by_rep[rep_count][layer_idx] = stacked
+                    for h in range(cur_n_heads):
+                        attn = attn_np[h]  # (seq_len, seq_len)
+                        # Mean entropy across query positions
+                        eps = 1e-10
+                        row_entropies = []
+                        for i in range(cur_seq_len):
+                            dist = attn[i, :] + eps
+                            if HAS_SCIPY:
+                                row_entropies.append(entropy(dist))
+                            else:
+                                row_entropies.append(-np.sum(dist * np.log(dist)))
+                        head_entropies[h] = float(np.mean(row_entropies))
+
+                        # Task token attention fraction
+                        task_attention = attn[:, task_start:].sum()
+                        total_attention = attn.sum()
+                        head_task_attn[h] = float(task_attention / (total_attention + eps))
+
+                    metrics_storage[layer_idx].append({
+                        "entropy": head_entropies,
+                        "task_attn": head_task_attn,
+                        "seq_len": cur_seq_len,
+                    })
+
+        metrics_by_rep[rep_count] = metrics_storage
 
     # Clean up GPU memory
     del model
     torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
     # Organize by fresh/degraded based on rep_counts order
-    # Assuming rep_counts = [1, 15] where 1 is fresh and 15 is degraded
     fresh_rep = rep_counts[0]
     degraded_rep = rep_counts[1] if len(rep_counts) > 1 else rep_counts[0]
 
-    attention_fresh = attention_by_rep[fresh_rep]
-    attention_degraded = attention_by_rep[degraded_rep]
+    # Convert per-example metrics into stacked arrays for downstream:
+    # {layer: (n_examples, n_heads)} for entropy and task_attn
+    attention_fresh = {}
+    attention_degraded = {}
+
+    for layer_idx in metrics_by_rep.get(fresh_rep, {}):
+        fresh_items = metrics_by_rep[fresh_rep][layer_idx]
+        n_examples = len(fresh_items)
+        n_heads = len(fresh_items[0]["entropy"])
+        ent_arr = np.zeros((n_examples, n_heads))
+        task_arr = np.zeros((n_examples, n_heads))
+        for i, item in enumerate(fresh_items):
+            ent_arr[i] = item["entropy"]
+            task_arr[i] = item["task_attn"]
+        attention_fresh[layer_idx] = {
+            "entropy": ent_arr,
+            "task_attn": task_arr,
+        }
+
+    for layer_idx in metrics_by_rep.get(degraded_rep, {}):
+        deg_items = metrics_by_rep[degraded_rep][layer_idx]
+        n_examples = len(deg_items)
+        n_heads = len(deg_items[0]["entropy"])
+        ent_arr = np.zeros((n_examples, n_heads))
+        task_arr = np.zeros((n_examples, n_heads))
+        for i, item in enumerate(deg_items):
+            ent_arr[i] = item["entropy"]
+            task_arr[i] = item["task_attn"]
+        attention_degraded[layer_idx] = {
+            "entropy": ent_arr,
+            "task_attn": task_arr,
+        }
 
     return attention_fresh, attention_degraded
 
@@ -513,18 +565,15 @@ def analyze_attention_heads(
     for layer in layers:
         print(f"  Layer {layer}: computing head metrics...")
 
-        attn_f = attention_fresh[layer]  # (n_examples, n_heads, seq_len, seq_len)
-        attn_d = attention_degraded[layer]
+        # New format: each layer maps to a dict with pre-computed metrics
+        # {"entropy": np.array(n_examples, n_heads), "task_attn": np.array(n_examples, n_heads)}
+        layer_fresh = attention_fresh[layer]
+        layer_degraded = attention_degraded[layer]
 
-        seq_len = attn_f.shape[2]
-
-        # Compute entropies
-        entropies_fresh = compute_attention_entropy(attn_f)  # (n_examples, n_heads)
-        entropies_degraded = compute_attention_entropy(attn_d)
-
-        # Compute task attention
-        task_attn_fresh = compute_task_attention_fraction(attn_f, seq_len)
-        task_attn_degraded = compute_task_attention_fraction(attn_d, seq_len)
+        entropies_fresh = layer_fresh["entropy"]      # (n_examples, n_heads)
+        entropies_degraded = layer_degraded["entropy"]
+        task_attn_fresh = layer_fresh["task_attn"]     # (n_examples, n_heads)
+        task_attn_degraded = layer_degraded["task_attn"]
 
         # Per-head analysis
         for head_idx in range(n_heads):
@@ -754,7 +803,11 @@ def main():
     print(f"Models: {models_to_use}")
 
     if args.wandb_project and HAS_WANDB:
-        wandb.init(project=args.wandb_project, config=vars(args))
+        wandb.init(
+            project=args.wandb_project,
+            config=vars(args),
+            name=f"attention-{args.model}",
+        )
 
     all_results = []
 
