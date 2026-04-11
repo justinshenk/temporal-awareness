@@ -148,7 +148,7 @@ MODEL_CONFIGS = {
         "layers": [0, 6, 12, 18, 24, 30, 36, 42, 47],
         "quick_layers": [12, 24, 36],
         "n_layers": 48,
-        "d_model": 4096,
+        "d_model": 2048,
     },
     "DeepSeek-R1-Distill-Qwen-7B": {
         "hf_name": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
@@ -677,8 +677,9 @@ def analyze_early_detection(
         config["hf_name"],
         device_map=device,
         torch_dtype=torch.float16,
+        trust_remote_code=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained(config["hf_name"])
+    tokenizer = AutoTokenizer.from_pretrained(config["hf_name"], trust_remote_code=True)
     if tokenizer.eos_token_id is None:
         tokenizer.eos_token_id = tokenizer.pad_token_id
 

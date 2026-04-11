@@ -153,7 +153,7 @@ MODEL_CONFIGS = {
         "layers": [0, 6, 12, 18, 24, 30, 36, 42, 47],
         "quick_layers": [12, 24, 36],
         "n_layers": 48,
-        "d_model": 4096,
+        "d_model": 2048,
         "n_heads": 32,
     },
     "DeepSeek-R1-Distill-Qwen-7B": {
@@ -648,8 +648,9 @@ def inject_direction_into_model(
         model_name,
         torch_dtype=torch.float16,
         device_map="cuda",
+        trust_remote_code=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 

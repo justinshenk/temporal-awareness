@@ -835,7 +835,7 @@ def run_behavioral_experiment(
         import warnings
         warnings.filterwarnings("ignore", message=".*right-padding was detected.*")
         hf_name = config["hf_name"]
-        tokenizer = AutoTokenizer.from_pretrained(hf_name)
+        tokenizer = AutoTokenizer.from_pretrained(hf_name, trust_remote_code=True)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "left"  # correct for decoder-only generation
@@ -851,6 +851,7 @@ def run_behavioral_experiment(
         # Always use fp16 for models > 1B params to save VRAM
         if config.get("is_instruct") or model_name in ("gemma-2-2b",):
             load_kwargs["torch_dtype"] = torch.float16
+        load_kwargs["trust_remote_code"] = True
         model = AutoModelForCausalLM.from_pretrained(hf_name, **load_kwargs)
         if device == "cpu" or "device_map" not in load_kwargs:
             model = model.to(device)

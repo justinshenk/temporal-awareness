@@ -158,9 +158,9 @@ class ActivationExtractor:
                 _dtype_key = "torch_dtype"
             kwargs[_dtype_key] = load_dtype
 
-        self._model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
+        self._model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, **kwargs)
         if self._tokenizer is None:
-            self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
             if self._tokenizer.pad_token is None:
                 self._tokenizer.pad_token = self._tokenizer.eos_token
 

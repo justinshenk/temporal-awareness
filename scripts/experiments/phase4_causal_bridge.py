@@ -1412,9 +1412,9 @@ def run_causal_bridge(
         from transformers import AutoModelForCausalLM, AutoTokenizer
         print("Loading HF model for generation...")
         model = AutoModelForCausalLM.from_pretrained(
-            hf_name, torch_dtype=torch.float16, device_map=device
+            hf_name, torch_dtype=torch.float16, device_map=device, trust_remote_code=True
         )
-        tokenizer = AutoTokenizer.from_pretrained(hf_name)
+        tokenizer = AutoTokenizer.from_pretrained(hf_name, trust_remote_code=True)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 

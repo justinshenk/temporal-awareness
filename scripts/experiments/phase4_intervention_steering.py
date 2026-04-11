@@ -147,7 +147,7 @@ MODEL_CONFIGS = {
         "layers": [0, 6, 12, 18, 24, 30, 36, 42, 47],
         "quick_layers": [12, 24, 36],
         "n_layers": 48,
-        "d_model": 4096,
+        "d_model": 2048,
         "chat_template": "qwen",
     },
     "DeepSeek-R1-Distill-Qwen-7B": {
@@ -1150,8 +1150,9 @@ def run_phase4_steering(
             model_config["hf_name"],
             device_map=device,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            trust_remote_code=True,
         )
-        tokenizer = AutoTokenizer.from_pretrained(model_config["hf_name"])
+        tokenizer = AutoTokenizer.from_pretrained(model_config["hf_name"], trust_remote_code=True)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
     except Exception as e:

@@ -420,10 +420,10 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (pyvene)...")
         self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype
+            self.model_name, torch_dtype=self.dtype, trust_remote_code=True,
         ).to(self.device)
         self._model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
         self._backend = PyveneBackend(self)
 
     def _init_huggingface(self) -> None:
@@ -431,10 +431,10 @@ class ModelRunner:
 
         print(f"Loading {self.model_name} on {self.device} (HuggingFace)...")
         self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype
+            self.model_name, torch_dtype=self.dtype, trust_remote_code=True,
         ).to(self.device)
         self._model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
         self._backend = HuggingFaceBackend(self)
 
     def _init_mlx(self) -> None:
