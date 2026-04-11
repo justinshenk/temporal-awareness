@@ -37,12 +37,14 @@ declare -A SCRIPT_MAP=(
     ["steering"]="submit_phase4_steering.sh"
     ["prompt_dimensions"]="submit_phase3_prompt_dimensions.sh"
     ["safety"]="submit_phase5_safety.sh"
+    ["benchmark"]="submit_benchmark_backends.sh"
+    ["implicit"]="submit_phase3_implicit.sh"
 )
 
 SCRIPT="${SCRIPT_MAP[$EXPERIMENT]:-}"
 if [ -z "$SCRIPT" ]; then
     echo "ERROR: Unknown experiment '$EXPERIMENT'"
-    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, prompt_dimensions, safety"
+    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, prompt_dimensions, safety, benchmark, implicit"
     exit 1
 fi
 

@@ -9,23 +9,34 @@
 #   sbatch scripts/experiments/submit_benchmark_backends.sh Qwen3-8B
 #   sbatch scripts/experiments/submit_benchmark_backends.sh Qwen3-30B-A3B
 #   sbatch scripts/experiments/submit_benchmark_backends.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_benchmark_backends.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_benchmark_backends.sh Llama-3.1-8B
 
 #SBATCH --job-name=bench-backends
 #SBATCH --time=04:00:00
 #SBATCH -p gpu
 #SBATCH -G 1
+#SBATCH -C GPU_MEM:32GB
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=80GB
 #SBATCH --output=logs/benchmark_backends_%j.out
 #SBATCH --error=logs/benchmark_backends_%j.err
 
+# ── Parse arguments (before env setup so we can switch venvs) ─
+MODEL="${1:-Llama-3.1-8B-Instruct}"
+MODE="${2:-full}"
+
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 
-if [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
+# Ouro-2.6B requires transformers<4.56.0; use dedicated venv
+OURO_ENV="/home/groups/barbarae/molofsky/ouro-env"
+if [[ "$MODEL" == "Ouro-2.6B" ]] && [ -f "$OURO_ENV/bin/activate" ]; then
+    echo "Using Ouro-compatible env (transformers<4.56)"
+    source "$OURO_ENV/bin/activate"
+elif [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
     source /home/groups/barbarae/molofsky/ml-env/bin/activate
 elif [ -f ~/sae-env/bin/activate ]; then
     source ~/sae-env/bin/activate
@@ -38,10 +49,6 @@ export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
 export TOKENIZERS_PARALLELISM=false
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export WANDB_MODE=online
-
-# ── Parse arguments ──────────────────────────────────────────
-MODEL="${1:-Llama-3.1-8B-Instruct}"
-MODE="${2:-full}"
 
 cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
