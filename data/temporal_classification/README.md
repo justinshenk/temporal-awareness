@@ -2,7 +2,7 @@
 
 ## Overview
 
-200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
+200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). A filtered subset of 135 pairs that Qwen3-4B correctly classifies is also available (see [Model Evaluation](#model-evaluation)). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
 
 Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (answer: " long"). Patching activations from corrupted into clean at specific model components reveals which components encode the temporal representation.
 
@@ -56,6 +56,51 @@ Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (
 | swimming | 8 | | | |
 | singing | 8 | | | |
 | hiking | 8 | | | |
+
+## Model Evaluation
+
+### Qwen3-4B
+
+Qwen3-4B was evaluated on all 200 pairs. It correctly classified 135/200 pairs (67.5% accuracy). The 65 failing pairs are recorded in `Qwen3_4B_failing_pairs.json`.
+
+A filtered dataset of the 135 surviving pairs is available in `dataset_135.json` (original IDs preserved). 12 pairs had their question order flipped from SL to LS to rebalance the subset.
+
+#### Surviving Dataset Statistics (135 pairs)
+
+| Metric | Value |
+|--------|-------|
+| Total pairs | 135 |
+| Question order | 68 SL / 67 LS |
+
+#### Surviving Temporal Cue Types
+
+| Type | Count | % | Description |
+|------|-------|---|-------------|
+| Growth (G) | 38 | 28.1% | Transforming something small into something large/established |
+| Career/Mastery (C) | 66 | 48.9% | Achieving elite status or deep expertise |
+| Accumulation (A) | 31 | 23.0% | Exhaustive scope requiring years of sustained effort |
+
+#### Surviving Domain Distribution
+
+25 domains, 1–8 pairs each (mean 5.4):
+
+| Domain | Pairs | | Domain | Pairs |
+|--------|-------|-|--------|-------|
+| gardening | 8 | | singing | 5 |
+| board games | 8 | | team sports | 5 |
+| programming | 8 | | combat sports | 5 |
+| boating | 8 | | stargazing | 5 |
+| cooking | 7 | | languages | 4 |
+| writing | 7 | | dance | 4 |
+| photography | 7 | | beekeeping | 3 |
+| music | 6 | | birding | 3 |
+| woodworking | 6 | | collecting | 2 |
+| riding | 6 | | ceramics | 1 |
+| hiking | 6 | | | |
+| pets | 6 | | | |
+| fitness | 5 | | | |
+| visual art | 5 | | | |
+| swimming | 5 | | | |
 
 ## Design Constraints
 
