@@ -1713,6 +1713,7 @@ def run_all_safety_evals(
         layers=layers,
         positions="last",
         device=device,
+        model_dtype="float16",
         use_transformer_lens=use_tl,
     )
     extractor = ActivationExtractor(

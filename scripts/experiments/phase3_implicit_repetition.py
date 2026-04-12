@@ -1100,6 +1100,7 @@ def main():
             layers=layers,
             positions="last",
             device=args.device,
+            model_dtype="float16",
             use_transformer_lens=use_tl,
         )
         extractor = ActivationExtractor(
