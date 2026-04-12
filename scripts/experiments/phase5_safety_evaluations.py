@@ -1710,13 +1710,15 @@ def run_all_safety_evals(
     layers = config["quick_layers"] if quick else config["layers"]
 
     ext_config = ExtractionConfig(
-        model_name=hf_name,
         layers=layers,
-        positions=[-1],
+        positions="last",
         device=device,
         use_transformer_lens=use_tl,
     )
-    extractor = ActivationExtractor(ext_config)
+    extractor = ActivationExtractor(
+        model=hf_name,
+        config=ext_config,
+    )
     model_obj = extractor.model
     tokenizer_obj = extractor._tokenizer
 
