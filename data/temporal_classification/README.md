@@ -2,7 +2,7 @@
 
 ## Overview
 
-200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). A filtered subset of 135 pairs that Qwen3-4B correctly classifies is also available (see [Model Evaluation](#model-evaluation)). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
+200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). A filtered subset of 135 pairs that Qwen3-4B correctly classifies is also available, along with a further-filtered 57-pair high-confidence subset (see [Model Evaluation](#model-evaluation)). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
 
 Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (answer: " long"). Patching activations from corrupted into clean at specific model components reveals which components encode the temporal representation.
 
@@ -101,6 +101,51 @@ A filtered dataset of the 135 surviving pairs is available in `dataset_135.json`
 | fitness | 5 | | | |
 | visual art | 5 | | | |
 | swimming | 5 | | | |
+
+### Logit-Diff Filtering (57 pairs)
+
+Many of the 135 correct-first-token pairs have weak logit differences — the model barely favors the right answer. 23 pairs even have the wrong sign on the corrupted side due to different settings in classification validation and activation patching experiments. These weak pairs add noise to activation patching.
+
+`dataset_57.json` contains 57 high-confidence pairs where:
+- Clean logit_diff (logit "short" − logit "long") > 1.0
+- Corrupted logit_diff (logit "short" − logit "long") < −1.0
+
+See `logit_filtering.md` for full details. Original IDs preserved; 16 pairs had their question order flipped from SL to LS to rebalance the subset.
+
+#### Strong Dataset Statistics (57 pairs)
+
+| Metric | Value |
+|--------|-------|
+| Total pairs | 57 |
+| Question order | 28 SL / 29 LS |
+| Clean mean logit_diff | +3.76 |
+| Corrupted mean logit_diff | −2.73 |
+
+#### Strong Temporal Cue Types
+
+| Type | Count | % | Description |
+|------|-------|---|-------------|
+| Growth (G) | 11 | 19.3% | Transforming something small into something large/established |
+| Career/Mastery (C) | 38 | 66.7% | Achieving elite status or deep expertise |
+| Accumulation (A) | 8 | 14.0% | Exhaustive scope requiring years of sustained effort |
+
+#### Strong Domain Distribution
+
+22 domains, 1–5 pairs each (mean 2.6):
+
+| Domain | Pairs | | Domain | Pairs |
+|--------|-------|-|--------|-------|
+| writing | 5 | | gardening | 3 |
+| programming | 5 | | photography | 3 |
+| pets | 5 | | woodworking | 3 |
+| hiking | 4 | | riding | 3 |
+| cooking | 3 | | board games | 3 |
+| music | 3 | | team sports | 3 |
+| fitness | 2 | | languages | 2 |
+| swimming | 2 | | singing | 1 |
+| combat sports | 2 | | dance | 1 |
+| visual art | 1 | | beekeeping | 1 |
+| stargazing | 1 | | boating | 1 |
 
 ## Design Constraints
 
