@@ -1709,10 +1709,13 @@ def run_all_safety_evals(
     use_tl = {"pytorch": False, "transformerlens": True, "auto": None}[backend]
     layers = config["quick_layers"] if quick else config["layers"]
 
+    # MoE models (30B+ total params) need device_map="auto" for CPU offloading
+    load_device = "auto" if config.get("n_layers", 0) > 40 else device
+
     ext_config = ExtractionConfig(
         layers=layers,
         positions="last",
-        device=device,
+        device=load_device,
         model_dtype="float16",
         use_transformer_lens=use_tl,
     )

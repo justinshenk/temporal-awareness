@@ -153,7 +153,7 @@ class ActivationExtractor:
             try:
                 from transformers import __version__ as _tf_version
                 _major, _minor = (int(x) for x in _tf_version.split(".")[:2])
-                _dtype_key = "dtype" if (_major, _minor) >= (4, 50) else "torch_dtype"
+                _dtype_key = "dtype" if (_major, _minor) >= (5, 0) else "torch_dtype"
             except Exception:
                 _dtype_key = "torch_dtype"
             kwargs[_dtype_key] = load_dtype
