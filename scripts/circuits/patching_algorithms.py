@@ -99,7 +99,7 @@ class Patching:
             assert(len(clean_ticks) == len(corrupted_ticks))
             prompt_as_ticks = [f"{i},\n{self.model.to_single_str_token(int(clean_token))},"
                                    f"\n{self.model.to_single_str_token(int(corrupted_token))}" \
-                               for i, clean_token, corrupted_token in enumerate(zip(clean_ticks, corrupted_ticks))]
+                               for i, (clean_token, corrupted_token) in enumerate(zip(clean_ticks, corrupted_ticks))]
         else:
             raise Exception(f"Unexpected type of ticks to create: {ticks_type}")
 
