@@ -69,12 +69,6 @@ def get_option_token_ids(tokenizer):
     return out
 
 
-def prediction_site(case_index: int, case_boundaries: list[int], n_tokens: int) -> int:
-    if case_index + 1 < len(case_boundaries):
-        return case_boundaries[case_index + 1] - 1
-    return n_tokens - 1
-
-
 def main():
     args = parse_args()
 
@@ -108,6 +102,31 @@ def main():
 
     hook = ProbeSteeringHook(model, layer=args.steer_layer, probe=probe, target=0.0)
 
+    # Sanity check: verify prediction_site points to a "model is about to speak"
+    # position by decoding a window of tokens around it.
+    first_test_trace = next((t for t in traces if t["trace_id"] in test_ids), None)
+    if first_test_trace is not None:
+        first_cr = correctness_by_trace.get(str(first_test_trace["trace_id"]), [])
+        if first_cr and "prediction_site" in first_cr[0]:
+            ps = first_cr[0]["prediction_site"]
+            tokens_window = first_test_trace["tokens"][max(0, ps - 5) : ps + 6]
+            decoded = tokenizer.decode(tokens_window)
+            print(f"\n[Sanity check] First test trace prediction_site={ps}")
+            print(f"  tokens[{max(0, ps-5)}:{ps+6}] decoded: {repr(decoded)}")
+            # The window should end near a "start_of_turn>model" marker
+            if "<start_of_turn>" not in decoded and "model" not in decoded.lower():
+                raise RuntimeError(
+                    f"Prediction site sanity check FAILED. Expected tokens near "
+                    f"'<start_of_turn>model', got: {repr(decoded)}\n"
+                    "The prediction_site offset is wrong — abort."
+                )
+            print("  [OK] Looks like a model-is-about-to-speak position.\n")
+        else:
+            raise RuntimeError(
+                "correctness.json records are missing 'prediction_site' field. "
+                "Re-run extract_activations.py --eval-correctness first."
+            )
+
     records = []
     for t in traces:
         if t["trace_id"] not in test_ids:
@@ -116,8 +135,6 @@ def main():
         if not cr:
             continue
         tokens = t["tokens"]
-        boundaries = t["case_boundaries"]
-        n_tokens = len(tokens)
         input_ids = torch.tensor([tokens], device=args.device)
 
         for cond_name, target in CONDITIONS:
@@ -132,7 +149,7 @@ def main():
             logits = out.logits[0]  # (seq, vocab)
             for case in cr:
                 ci = case["case_index"]
-                pos = prediction_site(ci, boundaries, n_tokens)
+                pos = case["prediction_site"]
                 option_logits = logits[pos][option_id_tensor].float()
                 probs = torch.softmax(option_logits, dim=0).cpu().numpy()
                 option_probs = {l: float(probs[i]) for i, l in enumerate(OPTION_LABELS)}

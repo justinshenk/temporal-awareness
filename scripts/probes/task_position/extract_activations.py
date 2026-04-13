@@ -187,6 +187,13 @@ def build_trace(
 
             pred = max(option_probs, key=option_probs.get)
 
+            # Compute prediction_site: token offset in the FINAL trace where
+            # the model would emit case i's answer.  Tokenise prompt_text the
+            # same way final_ids is computed (no add_special_tokens=False) so
+            # the prefix length is measured consistently.
+            prefix_ids = tokenizer(prompt_text, return_tensors="pt").input_ids[0]
+            prediction_site = len(prefix_ids) - 1
+
             correctness_records.append(
                 {
                     "case_index": case_index,
@@ -194,6 +201,7 @@ def build_trace(
                     "pred": pred,
                     "correct": pred == gold_letter,
                     "option_probs": option_probs,
+                    "prediction_site": prediction_site,
                 }
             )
 
