@@ -7,6 +7,7 @@ shape `(seq_len, hidden_dim)` on CPU in float32.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import Sequence
 
 import torch
@@ -17,10 +18,8 @@ class PerTokenResidualCapture:
 
     Usage:
         capture = PerTokenResidualCapture(model, layers=[0, 10, 20, 30, 41])
-        capture.enabled = True
-        with torch.no_grad():
+        with capture.capturing(), torch.no_grad():
             _ = model(input_ids, use_cache=False)
-        capture.enabled = False
         acts = capture.captured  # dict[int, Tensor(seq_len, hidden_dim)]
         capture.clear()
         ...
@@ -42,12 +41,21 @@ class PerTokenResidualCapture:
             if not self.enabled:
                 return
             hs = output[0] if isinstance(output, tuple) else output
+            assert hs.shape[0] == 1, f"PerTokenResidualCapture assumes batch=1, got {hs.shape[0]}"
             self.captured[layer_idx] = hs[0].detach().float().cpu()
 
         return hook_fn
 
     def clear(self) -> None:
         self.captured = {}
+
+    @contextmanager
+    def capturing(self):
+        self.enabled = True
+        try:
+            yield self
+        finally:
+            self.enabled = False
 
     def remove(self) -> None:
         for h in self._hooks:
