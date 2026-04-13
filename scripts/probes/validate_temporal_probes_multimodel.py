@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-Validate temporal probes on the implicit dataset for multiple models.
+Validate implicit-trained temporal probes on the explicit AB-randomized CAA
+dataset for multiple models.
 
-This script reuses:
-- explicit probe checkpoints from `research/probes`
-- explicit training metrics from `research/results/*_temporal_probe_results_caa.csv`
-
-For each model it:
-1. Loads the already-trained explicit-data probes
-2. Extracts activations on the implicit dataset
-3. Evaluates every layer's probe on implicit data
-4. Writes a notebook-compatible validation JSON per model
-
-It also writes a small comparison JSON that summarizes all successful runs.
+This script supports the same probe methods as the trainer:
+- lr: LogisticRegression on residual-stream hidden states
+- dmm: difference-of-means direction on residual-stream hidden states
+- attn: LogisticRegression on attention-pattern summary features
 """
 
 from __future__ import annotations
@@ -25,8 +19,8 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 import torch
@@ -40,22 +34,39 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from scripts.probes.train_temporal_probes_caa_multimodel import (
+from scripts.probes.train_temporal_probes_caa_multimodel import (  # noqa: E402
+    PROBE_DISPLAY_NAMES,
+    PROBE_METHODS,
     SUPPORTED_MODELS,
     create_probe_dataset,
     get_default_attention_implementation,
     load_caa_dataset,
     load_model_and_tokenizer,
     make_model_tag,
+    method_probe_dir,
+    normalize_probe_method,
+    predict_probe_artifact,
     resolve_model_name,
+    results_csv_path,
 )
 
 print(f"Using ROOT directory: {ROOT}")
 
 DATA_DIR = ROOT / "data" / "raw" / "temporal_scope_AB_randomized"
 PROBES_DIR = ROOT / "research" / "probes"
-EXPLICIT_RESULTS_DIR = ROOT / "research" / "results"
 VALIDATION_RESULTS_DIR = ROOT / "results" / "probe_validation"
+
+
+def method_validation_dir(probe_method: str) -> Path:
+    return VALIDATION_RESULTS_DIR / probe_method
+
+
+def validation_json_path(probe_method: str, model_tag: str) -> Path:
+    return method_validation_dir(probe_method) / f"{model_tag}_probe_validation_{probe_method}.json"
+
+
+def comparison_json_path(probe_method: str) -> Path:
+    return method_validation_dir(probe_method) / f"model_comparison_{probe_method}.json"
 
 
 def hash_file(path: Path) -> str:
@@ -132,65 +143,76 @@ def get_dataset_info() -> dict:
     }
 
 
-def load_explicit_results(model_tag: str) -> list[dict]:
-    results_path = EXPLICIT_RESULTS_DIR / f"{model_tag}_temporal_probe_results_caa.csv"
-    if not results_path.exists():
+def load_implicit_training_results(probe_method: str, model_tag: str) -> list[dict]:
+    path = results_csv_path(PROBES_DIR, probe_method, model_tag)
+    if not path.exists():
         raise FileNotFoundError(
-            f"Missing explicit-results CSV for {model_tag}: {results_path}"
+            f"Missing implicit training-results CSV for {model_tag} / {probe_method}: {path}"
         )
 
-    df = pd.read_csv(results_path).sort_values("layer")
+    df = pd.read_csv(path).sort_values("layer")
     return [
         {
             "layer": int(row.layer),
+            "probe_method": probe_method,
             "cv_mean": float(row.cv_accuracy_mean),
             "cv_std": float(row.cv_accuracy_std),
-            "test_acc": float(row.test_accuracy),
+            "implicit_acc": float(row.test_accuracy),
+            "n_features": int(row.n_features),
         }
         for row in df.itertuples(index=False)
     ]
 
 
-def load_probes(model_tag: str) -> dict[int, object]:
-    probes = {}
-    pattern = f"temporal_caa_layer_{model_tag}_*_probe.pkl"
-    for probe_path in sorted(PROBES_DIR.glob(pattern)):
-        layer = int(probe_path.stem.split("_")[-2])
-        with open(probe_path, "rb") as f:
-            probes[layer] = pickle.load(f)
+def load_probe_artifacts(probe_method: str, model_tag: str) -> dict[int, dict]:
+    probe_dir = method_probe_dir(PROBES_DIR, probe_method, model_tag)
+    pattern = f"temporal_probe_{probe_method}_{model_tag}_layer_*.pkl"
+    artifacts = {}
+    for path in sorted(probe_dir.glob(pattern)):
+        if path.stem.endswith("_scaler"):
+            continue
+        layer = int(path.stem.rsplit("_layer_", 1)[1])
+        with open(path, "rb") as f:
+            artifacts[layer] = pickle.load(f)
 
-    if not probes:
+    if not artifacts:
         raise FileNotFoundError(
-            f"No saved probes found for {model_tag} in {PROBES_DIR}"
+            f"No saved {probe_method} probes found for {model_tag} in {probe_dir}"
         )
 
-    return probes
+    return artifacts
 
 
-def evaluate_on_implicit(probes: dict[int, object], X_implicit_by_layer, y_implicit) -> list[dict]:
+def evaluate_on_explicit(
+    artifacts: dict[int, dict],
+    X_explicit_by_layer,
+    y_explicit,
+) -> list[dict]:
     results = []
-    for layer in sorted(probes):
-        probe = probes[layer]
-        X = X_implicit_by_layer[layer]
-        implicit_acc = float(probe.score(X, y_implicit))
+    for layer in sorted(artifacts):
+        artifact = artifacts[layer]
+        y_pred = predict_probe_artifact(artifact, X_explicit_by_layer[layer])
+        explicit_acc = float(np.mean(y_pred == y_explicit))
         results.append(
             {
                 "layer": layer,
-                "implicit_acc": implicit_acc,
+                "probe_method": artifact["method"],
+                "explicit_acc": explicit_acc,
+                "test_acc": explicit_acc,
             }
         )
-        print(f"  Layer {layer:2d}: implicit accuracy = {implicit_acc:.3f}")
+        print(f"  Layer {layer:2d}: explicit accuracy = {explicit_acc:.3f}")
 
     return results
 
 
-def summarize_results(explicit_results: list[dict], implicit_results: list[dict]) -> dict:
+def summarize_results(implicit_results: list[dict], explicit_results: list[dict]) -> dict:
     explicit_by_layer = {row["layer"]: row for row in explicit_results}
     implicit_by_layer = {row["layer"]: row for row in implicit_results}
 
     merged = []
     for layer in sorted(explicit_by_layer):
-        explicit_acc = explicit_by_layer[layer]["test_acc"]
+        explicit_acc = explicit_by_layer[layer]["explicit_acc"]
         implicit_acc = implicit_by_layer[layer]["implicit_acc"]
         merged.append(
             {
@@ -201,15 +223,16 @@ def summarize_results(explicit_results: list[dict], implicit_results: list[dict]
             }
         )
 
-    best = max(merged, key=lambda row: row["implicit_acc"])
-    semantic_layers = [row["layer"] for row in merged if row["implicit_acc"] >= 0.70]
-    weak_layers = [row["layer"] for row in merged if 0.55 <= row["implicit_acc"] < 0.70]
-    lexical_layers = [row["layer"] for row in merged if row["implicit_acc"] < 0.55]
+    best = max(merged, key=lambda row: row["explicit_acc"])
+    semantic_layers = [row["layer"] for row in merged if row["explicit_acc"] >= 0.70]
+    weak_layers = [row["layer"] for row in merged if 0.55 <= row["explicit_acc"] < 0.70]
+    lexical_layers = [row["layer"] for row in merged if row["explicit_acc"] < 0.55]
 
     return {
         "best_semantic_layer": best["layer"],
+        "best_explicit_accuracy": best["explicit_acc"],
         "best_implicit_accuracy": best["implicit_acc"],
-        "validation_passed": best["implicit_acc"] >= 0.70,
+        "validation_passed": best["explicit_acc"] >= 0.70,
         "semantic_layers": semantic_layers,
         "weak_layers": weak_layers,
         "lexical_layers": lexical_layers,
@@ -220,6 +243,7 @@ def summarize_results(explicit_results: list[dict], implicit_results: list[dict]
 
 
 def validate_single_model(args, model_alias: str) -> dict:
+    probe_method = normalize_probe_method(args.probe_method)
     model_name = resolve_model_name(model_alias)
     model_tag = make_model_tag(model_name)
     attn_implementation = (
@@ -227,6 +251,8 @@ def validate_single_model(args, model_alias: str) -> dict:
         if args.attn_implementation != "auto"
         else get_default_attention_implementation(model_name)
     )
+    if probe_method == "attn" and attn_implementation is None:
+        attn_implementation = "eager"
 
     explicit_path = DATA_DIR / "temporal_scope_caa.json"
     implicit_path = DATA_DIR / "temporal_scope_implicit.json"
@@ -237,59 +263,64 @@ def validate_single_model(args, model_alias: str) -> dict:
     print("\n" + "=" * 70)
     print(f"MODEL: {model_name}")
     print("=" * 70)
+    print(f"Probe method: {probe_method} ({PROBE_DISPLAY_NAMES[probe_method]})")
     print(f"Model tag: {model_tag}")
     print(f"Attention implementation: {attn_implementation or 'model default'}")
+    print(f"Device map: {args.device_map}")
 
-    explicit_results = load_explicit_results(model_tag)
-    probes = load_probes(model_tag)
+    implicit_results = load_implicit_training_results(probe_method, model_tag)
+    artifacts = load_probe_artifacts(probe_method, model_tag)
 
-    print(f"Loaded {len(probes)} saved probes from {PROBES_DIR}")
-    print(f"Loaded explicit metrics from {EXPLICIT_RESULTS_DIR / f'{model_tag}_temporal_probe_results_caa.csv'}")
+    print(f"Loaded {len(artifacts)} saved probes from {method_probe_dir(PROBES_DIR, probe_method, model_tag)}")
+    print(f"Loaded implicit training metrics from {results_csv_path(PROBES_DIR, probe_method, model_tag)}")
 
-    print("\nLoading model for implicit evaluation...")
+    print("\nLoading model for explicit evaluation...")
     model, tokenizer = load_model_and_tokenizer(
         model_name,
         trust_remote_code=args.trust_remote_code,
         attn_implementation=attn_implementation,
         local_files_only=args.local_files_only,
+        device_map=args.device_map,
     )
 
-    print("\nExtracting implicit activations...")
-    X_implicit_by_layer, y_implicit = create_probe_dataset(
+    print("\nExtracting explicit features...")
+    X_explicit_by_layer, y_explicit = create_probe_dataset(
         model=model,
         tokenizer=tokenizer,
-        pairs=implicit_pairs,
+        pairs=explicit_pairs,
         batch_size=args.batch_size,
         max_length=args.max_length,
+        probe_method=probe_method,
     )
 
-    print("\nEvaluating saved probes on implicit dataset...")
-    implicit_results = evaluate_on_implicit(probes, X_implicit_by_layer, y_implicit)
-    summary = summarize_results(explicit_results, implicit_results)
+    print("\nEvaluating saved probes on explicit dataset...")
+    explicit_results = evaluate_on_explicit(artifacts, X_explicit_by_layer, y_explicit)
+    summary = summarize_results(implicit_results, explicit_results)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     results = {
         "metadata": {
             "experiment": "probe_semantic_validation",
-            "description": "Validate that probes detect semantic temporal features, not keywords",
+            "description": "Validate implicit-trained probes on explicit temporal examples",
             **get_reproducibility_info(model_name, model_tag, device),
         },
         "datasets": get_dataset_info(),
         "config": {
             "device": device,
+            "probe_method": probe_method,
+            "probe_type": PROBE_DISPLAY_NAMES[probe_method],
             "n_explicit_pairs": len(explicit_pairs),
             "n_implicit_pairs": len(implicit_pairs),
             "train_test_split": 0.2,
             "cv_folds": 5,
-            "probe_type": "LogisticRegression",
-            "probe_max_iter": 1000,
             "batch_size": args.batch_size,
             "max_length": args.max_length,
             "attn_implementation": attn_implementation or "model_default",
+            "device_map": args.device_map,
             "local_files_only": args.local_files_only,
-            "probe_source_dir": str(PROBES_DIR.relative_to(ROOT)),
-            "explicit_results_csv": str(
-                (EXPLICIT_RESULTS_DIR / f"{model_tag}_temporal_probe_results_caa.csv").relative_to(ROOT)
+            "probe_source_dir": str(method_probe_dir(PROBES_DIR, probe_method, model_tag).relative_to(ROOT)),
+            "implicit_training_results_csv": str(
+                results_csv_path(PROBES_DIR, probe_method, model_tag).relative_to(ROOT)
             ),
         },
         "explicit_results": explicit_results,
@@ -297,7 +328,7 @@ def validate_single_model(args, model_alias: str) -> dict:
         "summary": summary,
     }
 
-    output_path = VALIDATION_RESULTS_DIR / f"{model_tag}_probe_validation_results.json"
+    output_path = validation_json_path(probe_method, model_tag)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
@@ -307,23 +338,26 @@ def validate_single_model(args, model_alias: str) -> dict:
     return {
         "model_name": model_name,
         "model_tag": model_tag,
+        "probe_method": probe_method,
         "output_path": str(output_path.relative_to(ROOT)),
         "summary": summary,
     }
 
 
 def write_comparison_file(successes: list[dict], failures: list[dict], args) -> Path:
+    probe_method = normalize_probe_method(args.probe_method)
     comparison = {
         "metadata": {
             "experiment": "probe_semantic_validation_comparison",
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "probe_method": probe_method,
             "requested_models": args.models,
         },
         "successful_models": successes,
         "failed_models": failures,
     }
 
-    output_path = VALIDATION_RESULTS_DIR / "model_comparison.json"
+    output_path = comparison_json_path(probe_method)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(comparison, f, indent=2)
@@ -333,7 +367,13 @@ def write_comparison_file(successes: list[dict], failures: list[dict], args) -> 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Validate saved temporal probes on the implicit dataset for multiple models"
+        description="Validate implicit-trained temporal probes on the explicit dataset for multiple models"
+    )
+    parser.add_argument(
+        "--probe-method",
+        default="lr",
+        choices=PROBE_METHODS,
+        help="Probe method to validate",
     )
     parser.add_argument(
         "--models",
@@ -348,7 +388,7 @@ def main():
         "--batch-size",
         type=int,
         default=2,
-        help="Batch size for implicit activation extraction",
+        help="Batch size for explicit feature extraction",
     )
     parser.add_argument(
         "--max-length",
@@ -372,6 +412,15 @@ def main():
         action="store_true",
         help="Load model/tokenizer only from the local Hugging Face cache",
     )
+    parser.add_argument(
+        "--device-map",
+        default="single",
+        choices=["single", "auto"],
+        help=(
+            "Device placement for model loading. 'single' keeps the whole model on cuda:0 "
+            "when CUDA is available; 'auto' allows Accelerate to shard across visible devices."
+        ),
+    )
     args = parser.parse_args()
 
     successes = []
@@ -383,11 +432,12 @@ def main():
         except Exception as error:
             failure = {
                 "model": model_alias,
+                "probe_method": args.probe_method,
                 "error": str(error),
             }
             failures.append(failure)
             print("\n" + "!" * 70)
-            print(f"FAILED: {model_alias}")
+            print(f"FAILED: {model_alias} / {args.probe_method}")
             print(error)
             print("!" * 70)
             if len(args.models) == 1:
