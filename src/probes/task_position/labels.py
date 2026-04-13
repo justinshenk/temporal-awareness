@@ -40,26 +40,31 @@ def label_trace(
 
     Args:
         trace_length: total number of tokens in the trace
-        case_boundaries: sorted list of token indices where each case begins.
-            Must start at 0 (first case begins at token 0). The sentinel
-            boundary at `trace_length` is appended internally — callers must
-            NOT include it.
+        case_boundaries: strictly increasing list of token indices where each
+            case begins. Must start at 0 (first case begins at token 0). The
+            sentinel boundary at `trace_length` is appended internally —
+            callers must NOT include it.
 
     Returns:
-        TaskPositionLabels with arrays of length `trace_length`.
+        TaskPositionLabels with arrays of length `trace_length`. The final
+        token of the trace receives `tokens_until_boundary = 1`, treating the
+        trace end as a virtual boundary.
 
     Raises:
-        ValueError: if boundaries are not sorted, not starting at 0, or empty.
+        ValueError: if boundaries are not strictly increasing, not starting at
+            0, or empty.
     """
     if not case_boundaries:
         raise ValueError("case_boundaries must be non-empty")
     if case_boundaries[0] != 0:
         raise ValueError(f"case_boundaries must start at 0, got {case_boundaries[0]}")
-    if list(case_boundaries) != sorted(case_boundaries):
-        raise ValueError("case_boundaries must be sorted ascending")
+    bs = list(case_boundaries)
+    if any(bs[i] >= bs[i + 1] for i in range(len(bs) - 1)):
+        raise ValueError("case_boundaries must be strictly increasing")
     if case_boundaries[-1] >= trace_length:
         raise ValueError(
-            f"last boundary {case_boundaries[-1]} must be < trace_length {trace_length}"
+            f"last case boundary {case_boundaries[-1]} must be < trace_length {trace_length};"
+            " do not include the sentinel end-of-trace boundary"
         )
 
     boundaries = list(case_boundaries) + [trace_length]
