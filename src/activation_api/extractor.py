@@ -384,7 +384,7 @@ class ActivationExtractor:
                     ).to(self._device)
 
                     with torch.no_grad():
-                        self._model(**encoded)
+                        self._model(**encoded, use_cache=False)
 
                     if return_tokens:
                         for i in range(len(batch_texts)):
