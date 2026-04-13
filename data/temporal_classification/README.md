@@ -2,7 +2,7 @@
 
 ## Overview
 
-200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). A filtered subset of 135 pairs that Qwen3-4B correctly classifies is also available, along with a further-filtered 57-pair high-confidence subset (see [Model Evaluation](#model-evaluation)). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
+200 prompt pairs for activation patching to locate where Qwen3-4B encodes temporal duration (short-term vs. long-term). A filtered subset of 116 pairs that Qwen3-4B correctly classifies and creates correct logit differences for is also available. Two main datasets that should be used in patching experiments are further-filtered subsets of 45 high-confidence pairs and 24 asymmetry-analysis pairs (see [Model Evaluation](#model-evaluation)). Methodology follows Neel Nanda's attribution patching approach from "Attribution Patching: Activation Patching At Industrial Scale."
 
 Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (answer: " long"). Patching activations from corrupted into clean at specific model components reveals which components encode the temporal representation.
 
@@ -31,8 +31,8 @@ Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (
 
 | Type | Count | % | Description |
 |------|-------|---|-------------|
-| Growth (G) | 80 | 40% | Transforming something small into something large/established |
 | Career/Mastery (C) | 77 | 38.5% | Achieving elite status or deep expertise |
+| Growth (G) | 80 | 40% | Transforming something small into something large/established |
 | Accumulation (A) | 43 | 21.5% | Exhaustive scope requiring years of sustained effort |
 
 ## Domain Distribution
@@ -61,91 +61,109 @@ Each pair consists of a clean prompt (answer: " short") and a corrupted prompt (
 
 ### Qwen3-4B
 
-Qwen3-4B was evaluated on all 200 pairs. It correctly classified 135/200 pairs (67.5% accuracy). The 65 failing pairs are recorded in `Qwen3_4B_failing_pairs.json`.
+Qwen3-4B was evaluated on all 200 pairs. It correctly classified and created correct logit differences on 116/200 pairs (58% accuracy). However, per prompt (not per pair) validation shown 83.5% accuracy.
+A filtered dataset of the 116 surviving pairs is available in `datasets/survived_dataset_116.json` (original IDs preserved). SL/LS question order isn't balanced.
 
-A filtered dataset of the 135 surviving pairs is available in `dataset_135.json` (original IDs preserved). 12 pairs had their question order flipped from SL to LS to rebalance the subset.
-
-#### Surviving Dataset Statistics (135 pairs)
+#### Surviving Dataset Statistics (116 pairs)
 
 | Metric | Value |
 |--------|-------|
-| Total pairs | 135 |
-| Question order | 68 SL / 67 LS |
+| Total pairs | 116 |
+| Question order | 72 SL / 44 LS |
 
 #### Surviving Temporal Cue Types
 
 | Type | Count | % | Description |
 |------|-------|---|-------------|
-| Growth (G) | 38 | 28.1% | Transforming something small into something large/established |
-| Career/Mastery (C) | 66 | 48.9% | Achieving elite status or deep expertise |
-| Accumulation (A) | 31 | 23.0% | Exhaustive scope requiring years of sustained effort |
+| Career/Mastery (C) | 63 | 54.3% | Achieving elite status or deep expertise |
+| Growth (G) | 28 | 24.1% | Transforming something small into something large/established |
+| Accumulation (A) | 25 | 21.6% | Exhaustive scope requiring years of sustained effort |
 
-#### Surviving Domain Distribution
+### Logit-Diff Filtering (45 pairs)
 
-25 domains, 1–8 pairs each (mean 5.4):
+Many of the 116 correctly classified pairs have weak logit differences - the model barely favors the right answer. This adds noise to activation patching.
 
-| Domain | Pairs | | Domain | Pairs |
-|--------|-------|-|--------|-------|
-| gardening | 8 | | singing | 5 |
-| board games | 8 | | team sports | 5 |
-| programming | 8 | | combat sports | 5 |
-| boating | 8 | | stargazing | 5 |
-| cooking | 7 | | languages | 4 |
-| writing | 7 | | dance | 4 |
-| photography | 7 | | beekeeping | 3 |
-| music | 6 | | birding | 3 |
-| woodworking | 6 | | collecting | 2 |
-| riding | 6 | | ceramics | 1 |
-| hiking | 6 | | | |
-| pets | 6 | | | |
-| fitness | 5 | | | |
-| visual art | 5 | | | |
-| swimming | 5 | | | |
-
-### Logit-Diff Filtering (57 pairs)
-
-Many of the 135 correct-first-token pairs have weak logit differences — the model barely favors the right answer. 23 pairs even have the wrong sign on the corrupted side due to different settings in classification validation and activation patching experiments. These weak pairs add noise to activation patching.
-
-`dataset_57.json` contains 57 high-confidence pairs where:
+`datasets/strong_dataset_45.json` contains 45 high-confidence pairs where:
 - Clean logit_diff (logit "short" − logit "long") > 1.0
 - Corrupted logit_diff (logit "short" − logit "long") < −1.0
 
-See `logit_filtering.md` for full details. Original IDs preserved; 16 pairs had their question order flipped from SL to LS to rebalance the subset.
-
-#### Strong Dataset Statistics (57 pairs)
+#### Strong Dataset Statistics (45 pairs)
 
 | Metric | Value |
 |--------|-------|
-| Total pairs | 57 |
-| Question order | 28 SL / 29 LS |
-| Clean mean logit_diff | +3.76 |
-| Corrupted mean logit_diff | −2.73 |
+| Total pairs | 45 |
+| Question order | 24 SL / 21 LS |
+| Clean mean logit_diff | +3.98 |
+| Corrupted mean logit_diff | −2.50 |
+| Baseline ratio | 1.59 |
 
 #### Strong Temporal Cue Types
 
 | Type | Count | % | Description |
 |------|-------|---|-------------|
-| Growth (G) | 11 | 19.3% | Transforming something small into something large/established |
-| Career/Mastery (C) | 38 | 66.7% | Achieving elite status or deep expertise |
-| Accumulation (A) | 8 | 14.0% | Exhaustive scope requiring years of sustained effort |
+| Career/Mastery (C) | 31 | 68.9% | Achieving elite status or deep expertise |
+| Growth (G) | 9 | 20.0% | Transforming something small into something large/established |
+| Accumulation (A) | 5 | 11.1% | Exhaustive scope requiring years of sustained effort |
 
 #### Strong Domain Distribution
 
-22 domains, 1–5 pairs each (mean 2.6):
+22 domains, 1–4 pairs each (mean 2.0):
 
 | Domain | Pairs | | Domain | Pairs |
 |--------|-------|-|--------|-------|
-| writing | 5 | | gardening | 3 |
-| programming | 5 | | photography | 3 |
-| pets | 5 | | woodworking | 3 |
-| hiking | 4 | | riding | 3 |
-| cooking | 3 | | board games | 3 |
-| music | 3 | | team sports | 3 |
-| fitness | 2 | | languages | 2 |
+| pets | 4 | | programming | 2 |
+| cooking | 3 | | hiking | 2 |
+| music | 3 | | singing | 1 |
+| woodworking | 3 | | dance | 1 |
+| riding | 3 | | visual art | 1 |
+| board games | 3 | | beekeeping | 1 |
+| team sports | 3 | | languages | 1 |
+| writing | 3 | | stargazing | 1 |
+| fitness | 2 | | boating | 1 |
+| gardening | 2 | | combat sports | 1 |
+| swimming | 2 | | photography | 2 |
+
+### Asymmetry Analysis Set (24 pairs)
+
+For testing whether layer importance differs between short→long and long→short patching directions, a stricter threshold is needed to ensure both sides have strong baselines. Otherwise, raw patching effects are dominated by whichever side has the larger logit_diff, producing spurious asymmetry.
+
+`datasets/asymmetry_dataset_24.json` contains 24 pairs with stricter thresholds:
+- Clean logit_diff (logit "short" − logit "long") > 2.0
+- Corrupted logit_diff (logit "short" − logit "long") < −2.0
+
+#### Asymmetry Dataset Statistics (24 pairs)
+
+| Metric | Value |
+|--------|-------|
+| Total pairs | 24 |
+| Question order | 14 SL / 10 LS |
+| Clean mean logit_diff | +4.60 |
+| Corrupted mean logit_diff | −3.45 |
+| Baseline ratio | 1.33 |
+
+#### Asymmetry Temporal Cue Types
+
+| Type | Count | % | Description |
+|------|-------|---|-------------|
+| Career/Mastery (C) | 20 | 83.3% | Achieving elite status or deep expertise |
+| Growth (G) | 3 | 12.5% | Transforming something small into something large/established |
+| Accumulation (A) | 1 | 4.2% | Exhaustive scope requiring years of sustained effort |
+
+#### Asymmetry Domain Distribution
+
+18 domains, 1–3 pairs each (mean 1.3):
+
+| Domain | Pairs | | Domain | Pairs |
+|--------|-------|-|--------|-------|
+| riding | 3 | | board games | 1 |
 | swimming | 2 | | singing | 1 |
-| combat sports | 2 | | dance | 1 |
-| visual art | 1 | | beekeeping | 1 |
-| stargazing | 1 | | boating | 1 |
+| woodworking | 2 | | programming | 1 |
+| cooking | 2 | | dance | 1 |
+| pets | 2 | | team sports | 1 |
+| fitness | 1 | | writing | 1 |
+| music | 1 | | visual art | 1 |
+| photography | 1 | | hiking | 1 |
+| gardening | 1 | | boating | 1 |
 
 ## Design Constraints
 
@@ -183,6 +201,5 @@ Most short-term goals are domestic/mundane while most long-term goals are aspira
 
 1. **Run activation patching** across all 200 pairs and average.
 2. **Split-half correlation:** run on two random halves and verify top components agree.
-3. **Split by cue type:** compare C vs. A vs. G to check if the same circuit handles all three temporal cue types.
-4. **Validation dataset:** test discovered circuits on ambition-decoupled pairs.
-5. **Token-position analysis:** 96% of pairs are word-count-aligned, enabling position-level patching comparison.
+3. **Validation dataset:** test discovered circuits on ambition-decoupled pairs.
+4. **Token-position analysis:** 96% of pairs are word-count-aligned, enabling position-level patching comparison.
