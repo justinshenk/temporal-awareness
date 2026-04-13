@@ -107,9 +107,25 @@ def format_case_mcq(
 
 
 def extract_mcq_answer(text: str) -> str | None:
-    """Extract A-E answer letter from model output."""
+    """Extract A-E answer letter from model output.
+
+    Parses common Gemma/Qwen MCQ continuations:
+      - "B"           -> "B"
+      - " B"          -> "B"
+      - "B."          -> "B"
+      - "B) ..."      -> "B"
+      - "Answer: B"   -> "B"
+      - "The answer is B" -> "B"
+      - "B because..." -> "B"
+      - "wrong format" -> None
+    """
+    if not text:
+        return None
     text = text.strip().upper()
-    if text and text[0] in "ABCDE":
-        return text[0]
+    if not text:
+        return None
+    m = re.match(r"^[\s\W]*([ABCDE])\b", text)
+    if m:
+        return m.group(1)
     m = re.search(r"\b([ABCDE])\b", text)
     return m.group(1) if m else None
