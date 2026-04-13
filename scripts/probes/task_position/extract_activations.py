@@ -4,9 +4,9 @@ Runs Gemma-9B-IT through a multi-case DDXPlus trace, capturing residual
 streams at specified layers for every token. Saves activations and per-token
 labels to disk.
 
-When --eval-correctness is passed, the script additionally generates a
-per-case prediction (greedy decode) and records option-letter probabilities,
-saving everything to correctness.json next to activations.pt.
+When --eval-correctness is passed, the script additionally records per-case
+option-letter probabilities and derives predictions via argmax, saving
+everything to correctness.json next to activations.pt.
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from src.probes.ddxplus import (
     OPTION_LABELS,
     SYSTEM_PROMPT,
-    extract_mcq_answer,
     format_case_mcq,
     load_evidence_db,
 )
@@ -53,13 +52,7 @@ def parse_args():
     p.add_argument(
         "--eval-correctness",
         action="store_true",
-        help="Generate per-case predictions and option-letter probabilities.",
-    )
-    p.add_argument(
-        "--max-new",
-        type=int,
-        default=5,
-        help="Max new tokens for per-case greedy decode in --eval-correctness mode.",
+        help="Record per-case option-letter probabilities and argmax predictions.",
     )
     return p.parse_args()
 
@@ -116,16 +109,15 @@ def build_trace(
     fill_target,
     rng,
     model=None,
-    max_new=5,
     option_token_ids=None,
     device="cuda",
 ):
     """Build one trace: accumulate DDXPlus cases until context fills.
 
     When model is None, inserts gold letters as assistant turns (original
-    behaviour). When model is provided, generates a prediction per case,
-    records option-letter probabilities, and uses the generated text as the
-    assistant turn.
+    behaviour). When model is provided, records option-letter probabilities
+    and derives predictions via argmax. The assistant turn always uses the
+    gold letter so activation context is consistent across cases.
 
     Returns:
         tokens: list[int], the tokenized concatenated conversation
@@ -181,18 +173,6 @@ def build_trace(
                 prompt_text, return_tensors="pt", add_special_tokens=False
             ).input_ids.to(device)
 
-            with torch.no_grad():
-                gen_ids = model.generate(
-                    prompt_ids,
-                    max_new_tokens=max_new,
-                    do_sample=False,
-                    pad_token_id=tokenizer.eos_token_id,
-                )
-
-            new_token_ids = gen_ids[0, prompt_ids.shape[1]:]
-            generated_text = tokenizer.decode(new_token_ids, skip_special_tokens=True)
-            pred = extract_mcq_answer(generated_text)
-
             # Single forward pass for option-letter logits at the last prompt token
             with torch.no_grad():
                 logits = model(prompt_ids, use_cache=False).logits
@@ -205,6 +185,8 @@ def build_trace(
                 for i, letter in enumerate(OPTION_LABELS)
             }
 
+            pred = max(option_probs, key=option_probs.get)
+
             correctness_records.append(
                 {
                     "case_index": case_index,
@@ -215,9 +197,7 @@ def build_trace(
                 }
             )
 
-            assistant_content = generated_text
-        else:
-            assistant_content = gold_letter
+        assistant_content = gold_letter
 
         conversation.append({"role": "assistant", "content": assistant_content})
         case_index += 1
@@ -296,7 +276,6 @@ def main():
             args.fill_target,
             trace_rng,
             model=eval_model,
-            max_new=args.max_new,
             option_token_ids=option_token_ids,
             device=args.device,
         )
