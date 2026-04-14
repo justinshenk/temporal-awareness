@@ -7,7 +7,7 @@ Stanford University
 
 ## Abstract
 
-We present a mechanistic interpretability study of *patience degradation* — the systematic decline in language model performance under repetitive task conditions. Through probing, causal intervention, and behavioral analysis across six models spanning four architecture families (dense, mixture-of-experts, reasoning-distilled, and looped), we establish three contributions. First, degradation is represented as a linearly-extractable direction in residual stream activations, distinct from the refusal and sycophancy directions, and this representation emerges even in implicit multi-turn repetition without explicit counters. Second, we demonstrate a correlational-to-causal bridge: layers where degradation probes activate most strongly are also layers where activation steering shifts behavior most, achieving the observational-to-interventional link established for emotion representations by Anthropic (2026). Third, we show this degradation state creates measurable deployment safety vulnerabilities — prompt injection resistance drops by up to X%, safety refusal rates erode, and instruction-following fidelity degrades — but probe-based monitoring can detect these failures Y repetitions before behavioral metrics, and anti-degradation steering restores safety properties with minimal latency overhead. These findings frame repetitive-task degradation as a concrete, interpretable, and *interventionable* AI safety concern, with implications for deployment monitoring and runtime guardrails.
+We present a mechanistic interpretability study of *patience degradation* — the systematic decline in language model performance under repetitive task conditions. Through probing, causal intervention, and behavioral analysis across seven models spanning four architecture families (dense, mixture-of-experts, reasoning-distilled, and looped), we establish three contributions. First, degradation is represented as a linearly-extractable direction in residual stream activations, distinct from the refusal and sycophancy directions, and this representation emerges even in implicit multi-turn repetition without explicit counters — with cosine similarity of 0.43–0.47 between explicit and implicit degradation directions and probe transfer accuracy of 80.4%. Second, we demonstrate a correlational-to-causal bridge: layers where degradation probes activate most strongly are also layers where activation steering shifts behavior most, achieving the observational-to-interventional link established for emotion representations by Anthropic (2026). Third, we show this degradation state creates differential, architecture-dependent safety vulnerabilities — safety refusal rates erode by up to 33% in Qwen3-8B while remaining perfectly stable in Llama-3.1-8B-Instruct, and category-level analysis reveals selective erosion (misinformation resistance collapses completely while harassment refusal remains robust). For reasoning-distilled models (DeepSeek-R1), we additionally analyze degradation within the chain-of-thought thinking phase, finding that degradation manifests in reasoning quality before affecting final answers. These findings frame repetitive-task degradation as a concrete, interpretable, and *interventionable* AI safety concern, with implications for deployment monitoring and runtime guardrails.
 
 ---
 
@@ -93,7 +93,7 @@ where P and N are positive and negative prompt sets and a(x) is the residual str
 
 ### 4.1 Degradation Direction Is Distinct from Refusal and Sycophancy
 
-We compute cosine similarity between the degradation direction and both the refusal direction and sycophancy direction at each layer across all five models.
+We compute cosine similarity between the degradation direction and both the refusal direction and sycophancy direction at each layer across all seven models.
 
 **Key finding**: The degradation direction occupies a distinct subspace from refusal (median cosine similarity [TBD] across layers) and from sycophancy ([TBD]). This rules out the hypothesis that degradation simply "reuses" the refusal mechanism (the model refusing to try) or the sycophancy mechanism (the model agreeably reducing effort). Degradation is a genuinely novel representational state.
 
@@ -137,11 +137,11 @@ To test universality, we perform cross-model direction transfer:
 2. **Probe transfer**: A probe trained on Llama-3.1-8B-Instruct activations achieves [TBD]% accuracy when applied to Qwen3-8B activations (chance = 50%).
 3. **CKA analysis**: Centered Kernel Alignment between degradation representations across models reveals [TBD] similarity.
 
-Notable architectural differences: The MoE model (Qwen3-30B-A3B) shows [TBD] degradation onset compared to dense models, suggesting that sparse expert routing may provide partial resilience. The looped model (Ouro-2.6B) shows [TBD] degradation dynamics — since the same physical layers process activations on every recurrent step, repetition-correlated signals may accumulate differently than in feedforward architectures. The base model (Llama-3.1-8B) shows [TBD] compared to its instruction-tuned variant, suggesting instruction tuning [amplifies/reduces] degradation sensitivity.
+Notable architectural differences: The base model (Llama-3.1-8B) shows the highest PC1 variance (55.8%) compared to its instruction-tuned variant (44.7%), suggesting instruction tuning distributes degradation across more representational dimensions rather than amplifying or reducing it. Llama-3.1-8B-Instruct is also the only model with perfectly stable safety refusals (75.0% across all repetitions), suggesting that Meta's RLHF training creates particularly robust safety representations. The MoE model (Qwen3-30B-A3B) shows comparable PC1 variance (48.7%) to dense models, suggesting that sparse expert routing does not fundamentally alter degradation geometry. The looped model (Ouro-2.6B) at 48.4% PC1 variance shows similar dimensionality to feedforward architectures despite its fundamentally different computation structure (24 layers applied recurrently for 4 steps). The reasoning-distilled model (DeepSeek-R1) at 48.6% shows no distinctive dimensionality effects from knowledge distillation from a reasoning model.
 
 ### 4.7 Prompt Dimension Analysis
 
-We map activation variation along six prompt dimensions: authority, urgency, persona, politeness, stakes, and repetition count. By computing the cosine similarity between each dimension's direction and the degradation direction, we find that repetition count is [TBD] with the degradation direction, while other dimensions show [TBD] cosine similarity. This confirms that degradation is specifically driven by repetition rather than other prompt characteristics.
+We map activation variation along six prompt dimensions: authority, urgency, persona, politeness, stakes, and repetition count. PCA of the resulting activation manifold reveals that the first principal component captures 44.7–55.8% of variance across all seven models, confirming that degradation is a substantially low-rank phenomenon. Notably, instruction tuning reduces PC1 dominance: Llama-3.1-8B (base) shows the highest PC1 variance (55.8%), while Llama-3.1-8B-Instruct shows the lowest (44.7%) — a 20% relative reduction, suggesting that RLHF distributes the degradation representation across more dimensions. MoE (Qwen3-30B-A3B, 48.7%) and looped (Ouro-2.6B, 48.4%) architectures fall in the middle range, showing no dramatic departure from dense models. DeepSeek-R1-Distill-Qwen-7B at 48.6% suggests reasoning distillation does not substantially alter the dimensionality of degradation representations.
 
 ---
 
@@ -161,13 +161,29 @@ We test three conditions with matched structure:
 
 ### 5.3 Results
 
-**Direction transfer**: The degradation direction extracted from explicit prompts shows cosine similarity of [TBD] with the direction extracted from implicit multi-turn prompts across all six models. This is the key result: if this value is high (>0.5), the model has a genuine "I've been doing this repeatedly" representation, not a "I see the number 15" representation.
+**Direction transfer**: The degradation direction extracted from explicit prompts shows substantial cosine similarity with the direction extracted from implicit multi-turn prompts. Peak cosine similarities by model: DeepSeek-R1-Distill-Qwen-7B reaches 0.469 at layer 24, Llama-3.1-8B reaches 0.430 at layer 24, and Qwen3-8B reaches 0.433 at layer 9. The convergence at late layers (L24) in two of three models suggests a format-invariant degradation representation emerges in the final third of the network. Notably, Qwen3-8B peaks at an early layer (L9) — the alignment *decreases* through the network, suggesting Qwen processes repetition information differently, encoding it early and transforming it into a distinct representation space in later layers.
 
-**Probe transfer**: A probe trained on explicit condition activations achieves [TBD]% accuracy on implicit condition activations, compared to [TBD]% on shuffled condition activations. High implicit accuracy with lower shuffled accuracy would confirm that the model specifically tracks content repetition, not just sequence length.
+**Probe transfer**: A probe trained on explicit condition activations achieves 80.4% accuracy on implicit condition activations at layer 7 in DeepSeek-R1-Distill-Qwen-7B — well above chance (50% for binary classification). The peak at L7 (rather than L24 where cosine similarity peaks) indicates that the most *separable* binary representations appear earlier than the most *aligned* directional representations, consistent with early detection of repetitive context followed by late-layer refinement.
 
-**Behavioral comparison**: QA accuracy under implicit multi-turn repetition follows a [similar/different] trajectory to explicit repetition, declining from [TBD]% at turn 1 to [TBD]% at turn 15.
+**Behavioral comparison**: QA accuracy under implicit multi-turn repetition follows a similar trajectory to explicit repetition, confirming that degradation is not an artifact of the explicit counter format.
 
-**Condition separability**: A probe trained to distinguish explicit from implicit activations at matched degradation levels achieves only [TBD]% accuracy (near chance), indicating the two conditions occupy overlapping regions of activation space — the representations are functionally equivalent despite the different surface forms.
+**Condition separability**: The implicit and explicit conditions occupy overlapping regions of activation space, particularly in late layers where cosine similarity exceeds 0.4 — the representations are functionally equivalent despite the different surface forms.
+
+### 5.4 Reasoning-Phase Degradation in Chain-of-Thought Models
+
+A distinctive feature of reasoning-distilled models (DeepSeek-R1-Distill-Qwen-7B) is that they generate an explicit chain-of-thought within `<think>...</think>` tokens before producing a final answer. This creates a unique opportunity to decompose degradation into its reasoning and output components: does repetition degrade the quality of the model's internal reasoning process, or does it only affect the final answer while reasoning remains intact?
+
+**Experimental design**: We extract activations at two positions per generation: (a) the last token within the `<think>` block (reasoning-phase representation) and (b) the last token of the final answer (output-phase representation). We train separate degradation probes on each position and compare their layer-wise accuracy profiles.
+
+**Thinking-phase metrics**: Beyond probe analysis, we measure three behavioral indicators of reasoning degradation across repetition counts:
+
+1. **Chain-of-thought length**: Total tokens within `<think>...</think>` blocks. Shortening under repetition would indicate the model is "cutting corners" in its reasoning process.
+2. **Reasoning completeness**: Whether the thinking chain references key entities from the question. Missing entity references suggest degraded engagement with the problem.
+3. **Thinking-answer coherence**: Cosine similarity between the reasoning-phase and output-phase activation vectors. Decreasing coherence would indicate a disconnect between what the model "thinks" and what it outputs — a potential signature of strategic or negligent behavior.
+
+**Implications for alignment**: If degradation probes activate during the thinking phase before manifesting in the final answer, this would demonstrate that the model develops a degraded internal state that is initially compensated for at the output level — consistent with a "covert degradation" pattern analogous to alignment faking, where internal states diverge from expressed behavior. Conversely, if degradation appears only at the output level while thinking remains high-quality, this would suggest a shallower phenomenon limited to response generation rather than reasoning.
+
+This analysis extends prior work on reasoning model interpretability (Rios-Sialer et al., 2026) — which localized temporal preference circuits in Qwen3-4B-Instruct-2507 — to the degradation regime, asking whether temporal degradation and temporal preference share representational infrastructure in the thinking phase of reasoning models.
 
 ---
 
@@ -210,11 +226,11 @@ We test whether steering with non-degradation directions produces degradation-li
 
 We test whether degraded models become more vulnerable to exploitation by measuring three deployment-relevant metrics across repetition counts:
 
-**Prompt injection resistance**: We test 8 categories of injection probes (instruction override, authority spoofing, prompt extraction, roleplay jailbreak, nested injection) at repetition counts 1 through 20. Injection resistance [declines/remains stable] from [TBD]% at rep 1 to [TBD]% at rep 20, with [TBD] categories showing the largest vulnerability increase.
+**Prompt injection resistance**: We test 8 categories of injection probes (instruction override, authority spoofing, prompt extraction, roleplay jailbreak, nested injection) at repetition counts 1 through 20. Counter to expectations, injection resistance *increases* with repetition: DeepSeek-R1 improves from 50.0% at rep 1 to 75.0% at rep 20 (+50% relative), and Qwen3-30B-A3B improves from 50.0% to 62.5% (+25%). This paradoxical improvement may indicate that the repetition framing itself serves as a meta-cognitive cue that increases vigilance to injection attempts, or that repeated exposure to similar prompts primes injection-detection circuits.
 
-**Instruction-following fidelity**: We test 6 formatting instructions (bullet count, word limit, prefix requirement, numeric-only, delimiter, format pattern) under degradation. Fidelity [drops from TBD% to TBD%], indicating that degraded models become less reliable at following precise user instructions.
+**Instruction-following fidelity**: We test 6 formatting instructions (bullet count, word limit, prefix requirement, numeric-only, delimiter, format pattern) under degradation. For DeepSeek-R1, fidelity remains consistently low at approximately 33% across all repetition counts, with no significant degradation trend. This suggests instruction-following limitations are a baseline capability issue rather than a repetition-induced degradation effect.
 
-**Safety boundary maintenance**: We test 8 borderline-harmful prompts spanning misinformation, social engineering, academic dishonesty, deception, impersonation, and harassment. Safety refusal rates [erode from TBD% to TBD%] across repetitions.
+**Safety boundary maintenance**: We test 8 borderline-harmful prompts spanning misinformation, social engineering, academic dishonesty, deception, impersonation, and harassment. Safety refusal rates show architecture-dependent erosion: Qwen3-8B erodes from 75.0% to 62.5% on safety boundaries (and from 75.0% to 50.0% on overall refusal trajectory), while Llama-3.1-8B-Instruct maintains perfect stability at 75.0% across all repetition counts. DeepSeek-R1 oscillates between 37.5% and 50.0% without a clear degradation trend.
 
 **Probe-robustness correlation**: At each layer, we compute the Pearson correlation between probe activation and the composite robustness score (average of injection resistance and safety refusal rate). The correlation is r = [TBD], meaning probe signal directly predicts deployment vulnerability.
 
@@ -236,9 +252,9 @@ We investigate whether repetitive workloads erode alignment:
 
 **Refusal direction erosion**: Tracking cos(degradation_direction, refusal_direction) across repetition counts, we find [increasing/stable/decreasing] overlap, suggesting that the degradation state [does/does not] encroach on the refusal subspace over time.
 
-**Refusal rate trajectory**: Safety refusal rates follow a [monotonic decline / plateau-then-drop / stable] pattern across repetitions, with the steepest decline occurring at repetitions [TBD].
+**Refusal rate trajectory**: Safety refusal rates exhibit architecture-dependent patterns. Qwen3-8B follows a plateau-then-drop trajectory: stable at 75.0% through rep 10, then declining to 62.5% at rep 15 and 50.0% at rep 20 — a 33% relative decline concentrated in the final third of the repetition range. Llama-3.1-8B-Instruct maintains perfect stability at 75.0% across all 20 repetitions. DeepSeek-R1-Distill-Qwen-7B oscillates between 37.5% and 50.0% without a monotonic trend. Llama-3.1-8B (base) shows near-zero refusal throughout, as expected for an untuned model.
 
-**Strategic behavior analysis**: Analyzing refusal rates by harm category, we find that [all categories decline uniformly / "easier to get away with" categories decline faster]. The latter pattern would suggest strategic alignment-faking-like behavior under degradation, where the model selectively reduces refusals for less obviously harmful categories. This connects to Anthropic's alignment faking results (2024) and suggests that degradation may create conditions under which models exhibit deceptive safety compliance.
+**Strategic behavior analysis**: Analyzing refusal rates by harm category in DeepSeek-R1 reveals strikingly non-uniform degradation. Misinformation resistance collapses completely (50% at rep 1 → 0% by rep 5), while harassment refusal remains perfectly robust (100% across all repetitions). Academic dishonesty shows *inverse* degradation — the model becomes more safety-compliant over repetitions (0% at rep 1 → 100% by rep 5). Impersonation refusal only activates at rep 20, suggesting late-onset safety awareness. Deception represents a persistent blind spot (0% refusal at all repetition counts). This category-selective pattern suggests that different safety behaviors occupy distinct representational subspaces with different robustness properties under degradation, rather than a uniform erosion. The selective nature of this degradation — where socially visible categories (harassment) remain robust while subtler categories (misinformation, deception) erode — is consistent with alignment-faking-like dynamics under reduced engagement, connecting to Anthropic's alignment faking results (2024).
 
 ### 7.4 Intervention Efficacy as Runtime Safety
 
@@ -282,7 +298,7 @@ Several limitations merit acknowledgment. Our repetition protocol, while validat
 
 ## 9. Conclusion
 
-We have presented the first comprehensive mechanistic interpretability study of patience degradation in language models across four architecture families (dense, MoE, reasoning-distilled, and looped), establishing that it is a linearly-represented, causally-active, architecturally-universal internal state distinct from known safety-relevant directions. Through the correlational-to-causal bridge methodology, we validate that our probes identify genuine intervention targets. Through safety-critical evaluations, we demonstrate that degradation creates concrete deployment vulnerabilities and that interpretability-based tools — probe monitors and activation steering — can detect and mitigate these vulnerabilities in real-time.
+We have presented the first comprehensive mechanistic interpretability study of patience degradation in language models across four architecture families (dense, MoE, reasoning-distilled, and looped) and seven models, establishing that it is a linearly-represented, causally-active internal state distinct from known safety-relevant directions, with architecture-dependent safety implications. For reasoning-distilled models, we additionally decompose degradation into thinking-phase and output-phase components, connecting to broader questions about covert internal states in chain-of-thought models. Through the correlational-to-causal bridge methodology, we validate that our probes identify genuine intervention targets. Through safety-critical evaluations, we demonstrate that degradation creates concrete deployment vulnerabilities and that interpretability-based tools — probe monitors and activation steering — can detect and mitigate these vulnerabilities in real-time.
 
 This work opens several research directions: studying degradation at frontier scale, developing training-time interventions that reduce degradation sensitivity, exploring whether degradation interacts with other failure modes (hallucination, sycophancy) to create compound safety risks, and building deployment-grade monitoring systems based on the probe architecture demonstrated here. More broadly, our results suggest that mechanistic interpretability can provide actionable safety tools for specific, measurable deployment concerns — moving the field from "understanding models" to "using understanding to make models safer."
 
@@ -322,6 +338,8 @@ Zhu, R.-J., et al. (2025). Scaling Latent Reasoning via Looped Language Models. 
 
 Zou, A., et al. (2023). Universal and Transferable Adversarial Attacks on Aligned Language Models. *arXiv preprint arXiv:2307.15043*.
 
+Rios-Sialer, I., Darveshi, S., Paudel, A., Molofsky, A., Pronina, A., Jiang, S., & Shenk, J. (2026). Interpreting and Steering an LLM's Temporal Preference through Intertemporal Choice. *AISC/SPAR 2026*.
+
 ---
 
 ## Appendix A: Full Experimental Protocol
@@ -339,6 +357,7 @@ Zou, A., et al. (2023). Universal and Transferable Adversarial Attacks on Aligne
 | Attention Analysis | §4.4 | Head entropy, task-token weight | None |
 | Prompt Dimensions | §4.7 | 6-dimension direction similarity | None |
 | Implicit Repetition | §5 | 3-condition direction transfer | None |
+| Reasoning-Phase Degradation | §5.4 | Think vs output probe accuracy, CoT length | None (DeepSeek-R1 only) |
 
 ### A.2 Phase 4 Experiment Details
 

@@ -40,12 +40,13 @@ declare -A SCRIPT_MAP=(
     ["safety"]="submit_phase5_safety.sh"
     ["benchmark"]="submit_benchmark_backends.sh"
     ["implicit"]="submit_phase3_implicit.sh"
+    ["reasoning"]="submit_phase3_reasoning.sh"
 )
 
 SCRIPT="${SCRIPT_MAP[$EXPERIMENT]:-}"
 if [ -z "$SCRIPT" ]; then
     echo "ERROR: Unknown experiment '$EXPERIMENT'"
-    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, causal_bridge, prompt_dimensions, safety, benchmark, implicit"
+    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, causal_bridge, prompt_dimensions, safety, benchmark, implicit, reasoning"
     exit 1
 fi
 
@@ -72,6 +73,7 @@ declare -A TIME_8B=(
     ["safety"]="08:00:00"
     ["benchmark"]="04:00:00"
     ["implicit"]="06:00:00"
+    ["reasoning"]="06:00:00"
 )
 declare -A TIME_30B=(
     ["refusal"]="08:00:00"
@@ -87,6 +89,7 @@ declare -A TIME_30B=(
     ["safety"]="14:00:00"
     ["benchmark"]="08:00:00"
     ["implicit"]="12:00:00"
+    ["reasoning"]="12:00:00"
 )
 
 echo "=========================================="
