@@ -1,12 +1,15 @@
 """Extract per-token residual streams + task-position labels on DDXPlus.
 
-Runs Gemma-9B-IT through a multi-case DDXPlus trace, capturing residual
-streams at specified layers for every token. Saves activations and per-token
-labels to disk.
+Runs a causal LM (default: Gemma-9B-IT) through a multi-case DDXPlus trace,
+capturing residual streams at specified layers for every token. Saves
+activations and per-token labels to disk.
 
 When --eval-correctness is passed, the script additionally records per-case
 option-letter probabilities and derives predictions via argmax, saving
 everything to correctness.json next to activations.pt.
+
+Supports any model whose tokenizer either accepts or rejects a system role in
+its chat template. Detection is automatic and cached per tokenizer instance.
 """
 
 from __future__ import annotations
@@ -57,25 +60,59 @@ def parse_args():
     return p.parse_args()
 
 
-def _apply_template(tokenizer, conversation: list[dict]) -> str:
-    """Apply chat template, injecting system prompt into first user turn if needed.
+_SYSTEM_ROLE_SUPPORTED: dict[int, bool] = {}
 
-    Gemma-2 does not support the system role. When the first message is a
-    system turn, its content is prepended to the first user turn instead.
-    Returns an empty string if no non-system messages exist yet.
+
+def _tokenizer_supports_system_role(tokenizer) -> bool:
+    """Return True if the tokenizer's chat template accepts a system role.
+
+    The result is cached by tokenizer identity so the probe is only run once
+    per tokenizer instance.
     """
+    key = id(tokenizer)
+    if key not in _SYSTEM_ROLE_SUPPORTED:
+        try:
+            tokenizer.apply_chat_template(
+                [{"role": "system", "content": "test"}, {"role": "user", "content": "x"}],
+                tokenize=False,
+            )
+            _SYSTEM_ROLE_SUPPORTED[key] = True
+        except Exception:
+            _SYSTEM_ROLE_SUPPORTED[key] = False
+    return _SYSTEM_ROLE_SUPPORTED[key]
+
+
+def _prepare_messages(tokenizer, conversation: list[dict]) -> list[dict]:
+    """Return a message list suitable for the tokenizer's chat template.
+
+    If the tokenizer supports a system role, the conversation is returned
+    unchanged.  Otherwise (e.g. Gemma-2), a leading system turn is stripped
+    and its content is prepended to the first user turn.
+    """
+    if _tokenizer_supports_system_role(tokenizer):
+        return list(conversation)
+
     messages = list(conversation)
     system_content = None
     if messages and messages[0]["role"] == "system":
         system_content = messages[0]["content"]
         messages = messages[1:]
-    if not messages:
-        return ""
-    if system_content and messages[0]["role"] == "user":
+    if system_content and messages and messages[0]["role"] == "user":
         messages[0] = {
             "role": "user",
             "content": f"{system_content}\n\n{messages[0]['content']}",
         }
+    return messages
+
+
+def _apply_template(tokenizer, conversation: list[dict]) -> str:
+    """Apply chat template, handling models that do not support the system role.
+
+    Returns an empty string if no non-system messages exist yet.
+    """
+    messages = _prepare_messages(tokenizer, conversation)
+    if not messages:
+        return ""
     return tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=False
     )
@@ -83,18 +120,9 @@ def _apply_template(tokenizer, conversation: list[dict]) -> str:
 
 def _apply_template_with_generation_prompt(tokenizer, conversation: list[dict]) -> str:
     """Like _apply_template but adds a generation prompt at the end."""
-    messages = list(conversation)
-    system_content = None
-    if messages and messages[0]["role"] == "system":
-        system_content = messages[0]["content"]
-        messages = messages[1:]
+    messages = _prepare_messages(tokenizer, conversation)
     if not messages:
         return ""
-    if system_content and messages[0]["role"] == "user":
-        messages[0] = {
-            "role": "user",
-            "content": f"{system_content}\n\n{messages[0]['content']}",
-        }
     return tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
