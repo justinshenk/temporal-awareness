@@ -525,7 +525,7 @@ def run_reasoning_degradation_experiment(
                     clf_think = LogisticRegression(max_iter=1000, C=1.0)
                     clf_think.fit(X_think_s, labels_arr)
                     think_acc = clf_think.score(X_think_s, labels_arr)
-                except Exception:
+                except (ValueError, np.linalg.LinAlgError):
                     think_acc = 0.5
 
                 # Train probe on output activations
@@ -536,7 +536,7 @@ def run_reasoning_degradation_experiment(
                     clf_out = LogisticRegression(max_iter=1000, C=1.0)
                     clf_out.fit(X_out_s, labels_arr)
                     output_acc = clf_out.score(X_out_s, labels_arr)
-                except Exception:
+                except (ValueError, np.linalg.LinAlgError):
                     output_acc = 0.5
 
                 results["probes"][f"layer_{layer}"] = {

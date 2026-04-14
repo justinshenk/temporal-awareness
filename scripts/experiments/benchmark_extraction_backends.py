@@ -356,7 +356,7 @@ def extract_with_backend(
     if result is not None:
         try:
             del extractor
-        except Exception:
+        except NameError:
             pass
     gc.collect()
     if device == "cuda" and torch.cuda.is_available():

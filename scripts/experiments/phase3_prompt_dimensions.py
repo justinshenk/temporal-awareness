@@ -858,7 +858,7 @@ def extract_dimension_directions(
                 y_pred = clf.predict(X[perm[split:]])
                 acc = accuracy_score(y[perm[split:]], y_pred)
                 f1 = f1_score(y[perm[split:]], y_pred, zero_division=0)
-            except Exception:
+            except (ValueError, np.linalg.LinAlgError):
                 pass
 
         result = DimensionDirection(
