@@ -35,6 +35,7 @@ declare -A SCRIPT_MAP=(
     ["attention"]="submit_phase3_attention.sh"
     ["cross_model"]="submit_phase3_cross_model.sh"
     ["steering"]="submit_phase4_steering.sh"
+    ["causal_bridge"]="submit_phase4_causal_bridge.sh"
     ["prompt_dimensions"]="submit_phase3_prompt_dimensions.sh"
     ["safety"]="submit_phase5_safety.sh"
     ["benchmark"]="submit_benchmark_backends.sh"
@@ -44,7 +45,7 @@ declare -A SCRIPT_MAP=(
 SCRIPT="${SCRIPT_MAP[$EXPERIMENT]:-}"
 if [ -z "$SCRIPT" ]; then
     echo "ERROR: Unknown experiment '$EXPERIMENT'"
-    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, prompt_dimensions, safety, benchmark, implicit"
+    echo "Valid options: refusal, confound, patching, trajectory, early_detection, attention, cross_model, steering, causal_bridge, prompt_dimensions, safety, benchmark, implicit"
     exit 1
 fi
 
@@ -66,6 +67,7 @@ declare -A TIME_8B=(
     ["attention"]="04:00:00"
     ["cross_model"]="03:00:00"
     ["steering"]="05:00:00"
+    ["causal_bridge"]="06:00:00"
     ["prompt_dimensions"]="04:00:00"
     ["safety"]="08:00:00"
     ["benchmark"]="04:00:00"
@@ -80,6 +82,7 @@ declare -A TIME_30B=(
     ["attention"]="08:00:00"
     ["cross_model"]="06:00:00"
     ["steering"]="10:00:00"
+    ["causal_bridge"]="12:00:00"
     ["prompt_dimensions"]="08:00:00"
     ["safety"]="14:00:00"
     ["benchmark"]="08:00:00"

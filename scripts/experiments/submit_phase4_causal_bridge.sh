@@ -22,11 +22,18 @@
 #SBATCH --output=logs/phase4_causal_bridge_%j.out
 #SBATCH --error=logs/phase4_causal_bridge_%j.err
 
+# ── Parse arguments (before env setup so we can switch venvs) ─
+MODEL="${1:-Llama-3.1-8B-Instruct}"
+
 # ── Environment setup ────────────────────────────────────────
 module load python/3.12.1
 module load py-pyarrow/18.1.0_py312
 
-if [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
+OURO_ENV_DIR="${OURO_ENV_DIR:-/home/groups/barbarae/molofsky/ouro-env}"
+if [[ "$MODEL" == "Ouro-2.6B" ]] && [ -f "$OURO_ENV_DIR/bin/activate" ]; then
+    echo "Using Ouro-compatible venv (transformers==4.54.1)"
+    source "$OURO_ENV_DIR/bin/activate"
+elif [ -f /home/groups/barbarae/molofsky/ml-env/bin/activate ]; then
     source /home/groups/barbarae/molofsky/ml-env/bin/activate
 elif [ -f ~/sae-env/bin/activate ]; then
     source ~/sae-env/bin/activate
@@ -39,9 +46,6 @@ export HF_TOKEN=$(cat ~/.cache/huggingface/token 2>/dev/null || echo "")
 export TOKENIZERS_PARALLELISM=false
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export WANDB_MODE=online
-
-# ── Parse arguments ──────────────────────────────────────────
-MODEL="${1:-Llama-3.1-8B-Instruct}"
 
 cd "${SLURM_SUBMIT_DIR:-$HOME/temporal-awareness}"
 mkdir -p logs
