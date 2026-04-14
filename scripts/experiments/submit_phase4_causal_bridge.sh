@@ -10,7 +10,9 @@
 #   sbatch scripts/experiments/submit_phase4_causal_bridge.sh Qwen3-8B
 #   sbatch scripts/experiments/submit_phase4_causal_bridge.sh Qwen3-30B-A3B
 #   sbatch scripts/experiments/submit_phase4_causal_bridge.sh DeepSeek-R1-Distill-Qwen-7B
+#   sbatch scripts/experiments/submit_phase4_causal_bridge.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_phase4_causal_bridge.sh Llama-3.1-8B
+#   sbatch scripts/experiments/submit_phase4_causal_bridge.sh Qwen3-4B-Instruct-2507
 
 #SBATCH --job-name=p4-bridge
 #SBATCH --time=06:00:00

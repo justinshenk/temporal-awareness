@@ -199,6 +199,15 @@ MODEL_CONFIGS = {
         "quick_layers": [8, 16, 24],
         "chat_template": "none",
     },
+    "Qwen3-4B-Instruct-2507": {
+        "hf_name": "Qwen/Qwen3-4B-Instruct-2507",
+        "family": "qwen",
+        "n_layers": 36,
+        "d_model": 2560,
+        "layers": [0, 4, 9, 14, 18, 23, 27, 32, 35],
+        "quick_layers": [9, 18, 27],
+        "chat_template": "qwen",
+    },
 }
 
 

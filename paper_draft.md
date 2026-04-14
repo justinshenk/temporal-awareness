@@ -45,18 +45,19 @@ Our work makes three contributions:
 
 ### 3.1 Models
 
-We study six models spanning four architecture families, two scale tiers, and the instruction-tuned vs base distinction:
+We study seven models spanning four architecture families, multiple scale tiers, and the instruction-tuned vs base distinction:
 
 | Model | Architecture | Parameters | Notes |
 |-------|-------------|-----------|-------|
 | Llama-3.1-8B-Instruct | Dense transformer | 8B | Primary subject, instruction-tuned |
 | Qwen3-8B | Dense transformer | 8B | Cross-family comparison |
+| Qwen3-4B-Instruct-2507 | Dense transformer | 4B | Within-family scale comparison; shared with Rios-Sialer et al. (2026) |
 | Qwen3-30B-A3B | Mixture-of-Experts | 30B (3B active) | MoE architecture test |
 | DeepSeek-R1-Distill-Qwen-7B | Dense (distilled) | 7B | Reasoning-distilled variant |
 | Ouro-2.6B | Looped transformer | 2.6B (4 recurrent steps) | Weight-sharing recurrence test |
 | Llama-3.1-8B | Dense transformer | 8B | Base (no instruction tuning) |
 
-This selection tests whether degradation is universal across architectures, whether MoE routing provides resilience, whether reasoning distillation affects degradation onset, whether instruction tuning creates or amplifies degradation, and whether weight-sharing across recurrent computation steps creates fundamentally different degradation dynamics. Ouro-2.6B (Zhu et al., 2025) achieves 8B-equivalent performance with 2.6B parameters via 24 transformer layers applied recurrently for 4 steps, providing the only looped architecture in our study and a fourth architecture family.
+This selection tests whether degradation is universal across architectures, whether MoE routing provides resilience, whether reasoning distillation affects degradation onset, whether instruction tuning creates or amplifies degradation, and whether weight-sharing across recurrent computation steps creates fundamentally different degradation dynamics. Ouro-2.6B (Zhu et al., 2025) achieves 8B-equivalent performance with 2.6B parameters via 24 transformer layers applied recurrently for 4 steps, providing the only looped architecture in our study and a fourth architecture family. Qwen3-4B-Instruct-2507 enables direct comparison with concurrent work on temporal preference subgraph localization in the same model (Rios-Sialer et al., 2026), providing a within-family scale ladder (4B → 8B → 30B MoE) for the Qwen3 architecture.
 
 ### 3.2 Degradation Induction Protocol
 

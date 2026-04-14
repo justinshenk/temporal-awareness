@@ -10,6 +10,7 @@
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh DeepSeek-R1-Distill-Qwen-7B
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Llama-3.1-8B
+#   sbatch scripts/experiments/submit_phase3_prompt_dimensions.sh Qwen3-4B-Instruct-2507
 
 #SBATCH --job-name=p3-prompt-dim
 #SBATCH --time=04:00:00

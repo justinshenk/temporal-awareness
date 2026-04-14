@@ -11,6 +11,7 @@
 #   sbatch scripts/experiments/submit_phase3_implicit.sh DeepSeek-R1-Distill-Qwen-7B
 #   sbatch scripts/experiments/submit_phase3_implicit.sh Ouro-2.6B
 #   sbatch scripts/experiments/submit_phase3_implicit.sh Llama-3.1-8B
+#   sbatch scripts/experiments/submit_phase3_implicit.sh Qwen3-4B-Instruct-2507
 
 #SBATCH --job-name=p3-impli
 #SBATCH --time=06:00:00
