@@ -125,6 +125,32 @@ class GeneratedTrajectory(TokenTrajectory):
         )
 
     @classmethod
+    def from_logprobs(
+        cls,
+        token_ids: list[int],
+        logprobs: list[float],
+    ) -> GeneratedTrajectory:
+        """Build a GeneratedTrajectory from token_ids and logprobs only.
+
+        Used when KV-cached generation provides logprobs directly without full logits.
+        Sets logits to logprobs (scalar approximation) and full_logits to None.
+
+        Args:
+            token_ids: Full sequence of token IDs
+            logprobs: Log probability for each token
+
+        Returns:
+            GeneratedTrajectory with logprobs but no full_logits
+        """
+        return cls(
+            token_ids=token_ids,
+            logprobs=logprobs,
+            logits=logprobs,  # Use logprobs as scalar logit approximation
+            full_logits=None,
+            internals={},
+        )
+
+    @classmethod
     def from_token_trajectory(
         cls,
         trajectory: TokenTrajectory,

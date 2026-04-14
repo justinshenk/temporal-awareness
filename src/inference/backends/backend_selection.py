@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import torch
 
-from .backend import ModelBackend
+from .model_backend import ModelBackend
 
 
 def _is_apple_silicon() -> bool:
@@ -57,17 +57,10 @@ def get_recommended_backend_inference() -> ModelBackend:
 def get_recommended_backend_internals() -> ModelBackend:
     """Get the recommended backend for capturing internal activations.
 
-    Prioritizes activation caching support and hook infrastructure.
-    TransformerLens has the best hook infrastructure with consistent
-    naming conventions. HuggingFace is a good alternative with
-    standard PyTorch hooks.
-
-    Note: MLX does not support activation caching (returns empty dict).
-
     Returns:
         ModelBackend: Recommended backend for internals/caching
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.TRANSFORMERLENS
 
 
 def get_recommended_backend_interventions() -> ModelBackend:
@@ -76,10 +69,7 @@ def get_recommended_backend_interventions() -> ModelBackend:
     Interventions include activation patching, steering, and other
     modifications to internal model states during forward passes.
 
-    Note: MLX does not support interventions.
-
     Returns:
         ModelBackend: Recommended backend for interventions
-
     """
-    return ModelBackend.PYVENE
+    return ModelBackend.TRANSFORMERLENS

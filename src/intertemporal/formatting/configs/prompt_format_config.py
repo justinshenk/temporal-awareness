@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
-if TYPE_CHECKING:
-    from src.common import TimeValue
+from src.common import TimeValue
 
 
 class PromptFormatConfig(ABC):
@@ -21,10 +20,9 @@ class PromptFormatConfig(ABC):
         """Return the name of this prompt format."""
         ...
 
+    @property
     @abstractmethod
-    def get_exact_prefix_before_choice(self) -> str:
-        """Return the EXACT prefix (including) right before  choice"""
-        ...
+    def get_id(self) -> str: ...
 
     @abstractmethod
     def question_template(self, time_horizon: Optional[TimeValue] = None) -> str:
@@ -39,7 +37,7 @@ class PromptFormatConfig(ABC):
         ...
 
     @abstractmethod
-    def get_prompt_section_markers(self) -> dict[str, str]:
+    def get_prompt_markers(self) -> dict[str, str]:
         """Return mapping of prompt section names to their marker text.
 
         Only includes prompt-structure markers (not response markers).
@@ -56,19 +54,6 @@ class PromptFormatConfig(ABC):
         ...
 
     @abstractmethod
-    def get_interesting_positions(self) -> list[dict]:
-        """Return token position specs for all prompt and response markers.
-
-        Prompt const_keywords are searched as first-occurrence.
-        Response const_keywords are searched as last-occurrence.
-        """
-        ...
-
-    @abstractmethod
-    def get_anchor_texts(self) -> list[str]:
-        """Return text anchors for position alignment between sequences.
-
-        Extracts text values suitable for aligning token positions
-        across different prompts with the same structure.
-        """
+    def get_response_prefix_before_choice(self) -> str:
+        """Return the EXACT prefix right before  choice"""
         ...

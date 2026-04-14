@@ -6,17 +6,18 @@ Provides TokenTree for representing branching token sequences.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Any, Sequence
 
 import torch
 
-from .token_trajectory import TokenTrajectory
-from .branching_node import BranchingNode
+from .base_schema import BaseSchema
 from .binary_fork import BinaryFork
+from .branching_node import BranchingNode
+from .token_trajectory import TokenTrajectory
 
 
 @dataclass
-class TokenTree:
+class TokenTree(BaseSchema):
     """A tree of token trajectories with branching points."""
 
     trajs: tuple[TokenTrajectory, ...]
@@ -103,14 +104,24 @@ class TokenTree:
         return len(self.groups)
 
     def pop_heavy(self) -> None:
-        """Pop full_logits from all trajectories.
+        """Remove heavy data from tree to reduce memory/serialization size.
 
-        Returns:
-            Dict mapping trajectory index to its full_logits tensor.
-            Only includes trajectories that had full_logits.
+        Clears:
+        - full_logits from all trajectories
+        - vocab_logits from all nodes and forks (full vocabulary distributions)
         """
         for traj in self.trajs:
             traj.pop_heavy()
+
+        # Clear vocab_logits from nodes (full vocab distributions at branch points)
+        if self.nodes:
+            for node in self.nodes:
+                node.vocab_logits = None
+
+        # Clear vocab_logits from forks
+        if self.forks:
+            for fork in self.forks:
+                fork.vocab_logits = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "TokenTree":
@@ -153,6 +164,7 @@ class TokenTree:
         )
 
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Tree Parsing — Internal Types
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -163,7 +175,7 @@ class _Branch:
     """One arm of a divergence: a group of trajectories that share the same
     logits (and therefore the same next-token distribution) at a position."""
 
-    logits: torch.Tensor
+    logits: torch.Tensor | None
     traj_indices: list[int]
     token_id: int
     token_logprob: float
@@ -177,6 +189,7 @@ class _TreeAccumulator:
     trajs: list[TokenTrajectory]
     nodes: list[BranchingNode] = field(default_factory=list)
     forks: list[BinaryFork] = field(default_factory=list)
+    fork_keys: set[tuple[int, int]] = field(default_factory=set)  # O(1) fork lookup
     traj_to_groups: list[tuple[int, ...]] = field(
         default_factory=list
     )  # traj_idx -> groups
@@ -417,7 +430,8 @@ def _group_by_token_id(
 
     for idx in traj_indices:
         token_id = trajs[idx].token_ids[pos]
-        logits = trajs[idx].full_logits[pos]
+        full_logits = trajs[idx].full_logits
+        logits = full_logits[pos] if full_logits is not None else None
         logprob = trajs[idx].logprobs[pos]
 
         if token_id in token_to_branch:
@@ -510,7 +524,13 @@ def _create_forks_for_arms(acc: _TreeAccumulator) -> None:
             continue
 
         # Create forks only for specified fork_arms
-        fork_indices = _create_forks_for_node(acc, branches_with_groups)
+        # Pass vocab_logits from node (use first trajectory's logits if available)
+        node_vocab_logits = None
+        if node.vocab_logits and len(node.vocab_logits) > 0:
+            node_vocab_logits = node.vocab_logits[0]
+        fork_indices = _create_forks_for_node(
+            acc, branches_with_groups, node_vocab_logits
+        )
 
         # Update node's forks_idx
         if fork_indices:
@@ -568,8 +588,14 @@ def _get_branches_with_groups(
 def _create_forks_for_node(
     acc: _TreeAccumulator,
     branches: list[_BranchWithGroups],
+    vocab_logits: list[float] | None = None,
 ) -> list[int]:
     """Create forks between branches for specified fork_arms.
+
+    Args:
+        acc: Tree accumulator
+        branches: List of branches with group membership
+        vocab_logits: Full vocabulary logits at this position (for raw logit extraction)
 
     Returns indices of created forks in acc.forks.
     """
@@ -588,24 +614,26 @@ def _create_forks_for_node(
                 if b_i.token_id == b_j.token_id:
                     continue
 
-                # Check if this fork already exists
-                fork_exists = any(
-                    (
-                        f.next_token_ids == (b_i.token_id, b_j.token_id)
-                        or f.next_token_ids == (b_j.token_id, b_i.token_id)
-                    )
-                    for f in acc.forks
+                # Check if this fork already exists using O(1) set lookup
+                # Include fork_arm (g_i, g_j) in key to distinguish between
+                # different label pairs that may have the same token IDs
+                fork_key = (
+                    g_i, g_j,
+                    min(b_i.token_id, b_j.token_id),
+                    max(b_i.token_id, b_j.token_id),
                 )
-                if fork_exists:
+                if fork_key in acc.fork_keys:
                     continue
 
                 # Create fork with g_i's branch first (deterministic ordering)
                 fork_idx = len(acc.forks)
+                acc.fork_keys.add(fork_key)
                 acc.forks.append(
                     BinaryFork(
                         next_token_ids=(b_i.token_id, b_j.token_id),
                         next_token_logprobs=(b_i.token_logprob, b_j.token_logprob),
                         group_idx=(g_i, g_j),
+                        vocab_logits=vocab_logits,
                     )
                 )
                 fork_indices.append(fork_idx)

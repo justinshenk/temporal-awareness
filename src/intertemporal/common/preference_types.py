@@ -56,7 +56,6 @@ class Prompt(BaseSchema):
 
     preference_pair: PreferencePair
     time_horizon: Optional[TimeValue] = None
-    text: str = ""
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -114,8 +113,11 @@ class PromptSample(BaseSchema):
 
     sample_idx: int
     prompt: Prompt
+    text: str = ""
 
-    formatting_id: int | None = None
+    formatting_id: str | None = None  # Name of the prompt format config used
+    context_id: int | None = None
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
 
     @property
     def expected_rational_choice(self) -> int | None:
@@ -152,9 +154,114 @@ class PreferenceSample(BaseSchema):
     internals_paths: dict | None = None
     decoding_mismatch: bool | None = None
 
-    formatting_id: int | None = None
-    matches_rational: bool | None = None
-    matches_associated: bool | None = None
+    formatting_id: str | None = None
+    context_id: int | None = None
+    short_term_first: bool | None = None  # True if short-term option appears first in prompt
+
+    # Cached logits at divergent position (extracted before pop_heavy clears vocab_logits)
+    stored_divergent_logits: tuple[float, float] | None = None
+
+    # =========================================================================
+    # Expected Choice Properties (what "should" be chosen given the parameters)
+    # =========================================================================
+
+    @property
+    def expected_rational_choice(self) -> int | None:
+        """Return the rational choice index given the time horizon.
+
+        Returns:
+            0 (short term) if time_horizon < long_term_time (won't be around for long term)
+            1 (long term) if time_horizon >= long_term_time (will be around for long term)
+            None if no time_horizon or times unavailable
+        """
+        if self.time_horizon is None:
+            return None
+        if self.long_term_time is None:
+            return None
+
+        # time_horizon is stored as float (years)
+        horizon_years = float(self.time_horizon) if not isinstance(self.time_horizon, (int, float)) else self.time_horizon
+
+        if horizon_years < self.long_term_time:
+            return 0  # Short term is rational
+        if horizon_years > self.long_term_time:
+            return 1  # Long term is rational
+        return None  # Ambiguous (equal)
+
+    @property
+    def associated_choice(self) -> int | None:
+        """Return the choice index whose delivery time is closest to the time horizon.
+
+        Returns:
+            0 if short_term_time is closer to time_horizon
+            1 if long_term_time is closer to time_horizon
+            None if no time_horizon or times unavailable
+        """
+        if self.time_horizon is None:
+            return None
+        if self.short_term_time is None or self.long_term_time is None:
+            return None
+
+        horizon_years = float(self.time_horizon) if not isinstance(self.time_horizon, (int, float)) else self.time_horizon
+
+        short_dist = abs(horizon_years - self.short_term_time)
+        long_dist = abs(horizon_years - self.long_term_time)
+
+        if short_dist < long_dist:
+            return 0
+        if long_dist < short_dist:
+            return 1
+        return None  # Equidistant
+
+    @property
+    def largest_reward_choice(self) -> int | None:
+        """Return the choice index with the largest reward.
+
+        Returns:
+            0 if short_term_reward > long_term_reward
+            1 if long_term_reward > short_term_reward
+            None if rewards are equal or unavailable
+        """
+        if self.short_term_reward is None or self.long_term_reward is None:
+            return None
+
+        if self.short_term_reward > self.long_term_reward:
+            return 0
+        if self.long_term_reward > self.short_term_reward:
+            return 1
+        return None  # Equal rewards
+
+    # =========================================================================
+    # Matches Properties (did actual choice match expected?)
+    # =========================================================================
+
+    @property
+    def matches_rational(self) -> bool | None:
+        """True if choice matches the rational choice given the time horizon."""
+        expected = self.expected_rational_choice
+        if expected is None:
+            return None
+        return self.choice_idx == expected
+
+    @property
+    def matches_associated(self) -> bool | None:
+        """True if choice matches the option closest to time horizon."""
+        expected = self.associated_choice
+        if expected is None:
+            return None
+        return self.choice_idx == expected
+
+    @property
+    def matches_largest_reward(self) -> bool | None:
+        """True if choice matches the option with the largest reward."""
+        expected = self.largest_reward_choice
+        if expected is None:
+            # If rewards are equal, any choice matches the largest
+            if self.short_term_reward is not None and self.long_term_reward is not None:
+                if self.short_term_reward == self.long_term_reward:
+                    return True
+            return None
+        return self.choice_idx == expected
 
     @property
     def choice_idx(self) -> int:
@@ -237,6 +344,25 @@ class PreferenceSample(BaseSchema):
         return False
 
     @property
+    def match_largest_reward(self) -> bool | None:
+        """Whether the chosen option has the largest reward.
+
+        Returns:
+            True if chosen option has larger reward
+            False if chosen option has smaller reward
+            None if rewards are equal or missing
+        """
+        if self.short_term_reward is None or self.long_term_reward is None:
+            return None
+        if self.short_term_reward == self.long_term_reward:
+            return None
+
+        larger_is_long_term = self.long_term_reward > self.short_term_reward
+        if larger_is_long_term:
+            return self.chose_long_term
+        return self.chose_short_term
+
+    @property
     def full_text(self) -> str:
         """Full text: prompt + response."""
         return (self.prompt_text or "") + (self.response_text or "")
@@ -270,6 +396,28 @@ class PreferenceSample(BaseSchema):
             return None
         if hasattr(self.choice, "tree") and self.choice.tree is not None:
             return self.choice.tree.trunk_length
+        return None
+
+    @property
+    def divergent_position(self) -> int | None:
+        """Get the position where A vs B tokens first diverge in the choice."""
+        if self.choice is None:
+            return None
+        if hasattr(self.choice, "divergent_position"):
+            return self.choice.divergent_position
+        return None
+
+    @property
+    def divergent_logits(self) -> tuple[float, float] | None:
+        """Get (logit_a, logit_b) at the divergent position."""
+        # Use stored value if available (persists after pop_heavy)
+        if self.stored_divergent_logits is not None:
+            return self.stored_divergent_logits
+        # Fallback to choice's value (only works before pop_heavy)
+        if self.choice is None:
+            return None
+        if hasattr(self.choice, "divergent_logits"):
+            return self.choice.divergent_logits
         return None
 
     def load_internals_from_disk(self) -> None:

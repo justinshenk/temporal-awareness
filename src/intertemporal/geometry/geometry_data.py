@@ -1,0 +1,884 @@
+"""Data collection and extraction for geometric visualization.
+
+Structure:
+    data/
+        metadata.json             - Dataset metadata
+        prompt_dataset.json       - Full PromptDataset (if generated)
+        samples/
+            sample_0/
+                position_mapping.json   - Maps abs_pos -> format_pos for this sample
+                preference_sample.json  - PreferenceSample with choice info
+                choice.json             - ChoiceInfo (quick access)
+                L35_resid_post_129.npy  - Activation at position 129
+                L35_resid_post_130.npy
+            sample_1/
+                ...
+
+    preference_datasets/          - Global preference dataset location
+        {prompt_dataset_id}_{model}_{name}.json
+"""
+
+import json
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import numpy as np
+
+from src.common.device_utils import clear_gpu_memory
+from src.common.file_io import save_json
+
+from ..common.preference_types import PromptSample
+from ..common.sample_position_mapping import (
+    DatasetPositionMapping,
+    SamplePositionMapping,
+)
+from .geometry_config import GeometryConfig, TargetSpec, ACTIVATION_DTYPE
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Choice Info
+# =============================================================================
+
+# Note: time_scale is computed at runtime in data_loader.py from time_horizon_months
+# using the expanded 9-category system (Seconds through Centuries)
+
+
+@dataclass(slots=True)
+class ChoiceInfo:
+    """Choice information for a single sample.
+
+    Fields:
+        chose_short_term: Whether the model chose the short-term option
+        chose_long_term: Whether the model chose the long-term option
+        chosen_time_months: Delivery time of the CHOSEN option (months)
+        chosen_reward: Reward value of the chosen option
+        choice_prob: Model's confidence in the choice (0-1)
+        alt_time_months: Delivery time of the ALTERNATIVE option (months)
+        alt_reward: Reward value of the alternative option
+        alt_prob: Model's probability for the alternative option
+        time_horizon_days: Time horizon constraint in days (None for no-horizon)
+        time_horizon_months: Time horizon constraint in months (None for no-horizon)
+        time_horizon_years: Time horizon constraint in years (None for no-horizon)
+    """
+
+    chose_short_term: bool
+    chose_long_term: bool
+    chosen_time_months: float
+    chosen_reward: float
+    choice_prob: float
+    alt_time_months: float
+    alt_reward: float
+    alt_prob: float
+    time_horizon_days: float | None
+    time_horizon_months: float | None
+    time_horizon_years: float | None
+
+    def to_dict(self) -> dict:
+        return {
+            "chose_short_term": self.chose_short_term,
+            "chose_long_term": self.chose_long_term,
+            "chosen_time_months": self.chosen_time_months,
+            "chosen_reward": self.chosen_reward,
+            "choice_prob": self.choice_prob,
+            "alt_time_months": self.alt_time_months,
+            "alt_reward": self.alt_reward,
+            "alt_prob": self.alt_prob,
+            "time_horizon_days": self.time_horizon_days,
+            "time_horizon_months": self.time_horizon_months,
+            "time_horizon_years": self.time_horizon_years,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ChoiceInfo":
+        # All fields are REQUIRED - crash if missing
+        return cls(
+            chose_short_term=data["chose_short_term"],
+            chose_long_term=data["chose_long_term"],
+            chosen_time_months=data["chosen_time_months"],
+            chosen_reward=data["chosen_reward"],
+            choice_prob=data["choice_prob"],
+            alt_time_months=data["alt_time_months"],
+            alt_reward=data["alt_reward"],
+            alt_prob=data["alt_prob"],
+            time_horizon_days=data["time_horizon_days"],
+            time_horizon_months=data["time_horizon_months"],
+            time_horizon_years=data["time_horizon_years"],
+        )
+
+
+# =============================================================================
+# File I/O
+# =============================================================================
+
+
+def _save_array(path: Path, arr: np.ndarray, compressed: bool = False):
+    """Save numpy array."""
+    if compressed:
+        np.savez_compressed(path.with_suffix(".npz"), data=arr)
+    else:
+        np.save(path.with_suffix(".npy"), arr)
+
+
+def _load_array(path: Path) -> np.ndarray:
+    """Load numpy array (handles both .npy and .npz)."""
+    npz_path = path.with_suffix(".npz")
+    npy_path = path.with_suffix(".npy")
+
+    if npz_path.exists():
+        with np.load(npz_path) as f:
+            return f["data"]
+    elif npy_path.exists():
+        return np.load(npy_path)
+    else:
+        raise FileNotFoundError(f"No array file found: {path}")
+
+
+# =============================================================================
+# Activation Data Container
+# =============================================================================
+
+
+@dataclass
+class ActivationData:
+    """Container for extracted activations.
+
+    New structure: per-sample folders with absolute position filenames.
+    Use long_position_mapping.json / short_position_mapping.json to map abs_pos -> format_pos.
+    """
+
+    samples: list[PromptSample]
+    choices: list[ChoiceInfo] | None = None
+    position_mappings: DatasetPositionMapping | None = None
+    n_samples: int = 0
+    _data_dir: Path | None = None
+    _compressed: bool = False
+    _target_keys: list[str] = field(default_factory=list)
+    _cache: dict[str, np.ndarray] = field(default_factory=dict)
+
+    def get_sample_dir(self, sample_idx: int) -> Path:
+        """Get path to sample's activation folder."""
+        if self._data_dir is None:
+            raise ValueError("Data directory not set")
+        return self._data_dir / "samples" / f"sample_{sample_idx}"
+
+    def load_activation(
+        self, sample_idx: int, layer: int, component: str, abs_pos: int
+    ) -> np.ndarray:
+        """Load activation for a specific (sample, layer, component, position)."""
+        sample_dir = self.get_sample_dir(sample_idx)
+        filename = f"L{layer}_{component}_{abs_pos}"
+        return _load_array(sample_dir / filename)
+
+    def load_activations_by_format_pos(
+        self, layer: int, component: str, format_pos: str, rel_pos: int | None = None
+    ) -> np.ndarray:
+        """Load activations for all samples at a given format position.
+
+        Uses position mappings to find the absolute position for each sample.
+
+        Args:
+            layer: Transformer layer
+            component: Activation component (resid_pre, attn_out, etc.)
+            format_pos: Semantic position name (e.g., "time_horizon")
+            rel_pos: If specified, load only this token index within the position.
+                     If None, loads the first token (rel_pos=0).
+
+        Returns: (n_samples, hidden_dim) array
+        """
+        if self.position_mappings is None:
+            raise ValueError("Position mappings not loaded")
+
+        # Default to first token when rel_pos not specified
+        target_rel_pos = rel_pos if rel_pos is not None else 0
+
+        activations = []
+        for sample_idx in range(self.n_samples):
+            mapping = self.position_mappings.get(sample_idx)
+            if mapping is None:
+                continue
+
+            # Find abs_pos for this format_pos
+            abs_positions = mapping.named_positions.get(format_pos, [])
+            if not abs_positions:
+                continue
+
+            # Check if this sample has the requested rel_pos
+            if target_rel_pos >= len(abs_positions):
+                continue
+
+            abs_pos = abs_positions[target_rel_pos]
+            try:
+                act = self.load_activation(sample_idx, layer, component, abs_pos)
+                activations.append(act)
+            except FileNotFoundError as e:
+                raise RuntimeError(
+                    f"Activation file missing for sample {sample_idx}, "
+                    f"layer {layer}, component {component}, abs_pos {abs_pos}, "
+                    f"format_pos {format_pos}: {e}"
+                ) from e
+
+        if not activations:
+            raise ValueError(f"No activations found for {format_pos} (rel_pos={target_rel_pos})")
+
+        return np.stack(activations)
+
+    # =========================================================================
+    # Analysis Pipeline Interface
+    # =========================================================================
+
+    def get_target_keys(self) -> list[str]:
+        """Get list of available target keys for analysis pipeline.
+
+        Target key format: L{layer}_{component}_{format_pos}
+
+        Only returns keys for positions that actually have activation files.
+        Note: Returns combined keys only (not per-rel_pos). Per-rel_pos handling
+        is done in compute_geometry_analysis.py.
+        """
+        if self._target_keys:
+            return self._target_keys.copy()
+
+        # Build target keys from what's actually available
+        if self.position_mappings is None or self.n_samples == 0:
+            return []
+
+        # Get all format positions from first sample's mapping
+        first_mapping = self.position_mappings.get(0)
+        if first_mapping is None:
+            return []
+
+        # Scan sample_0 folder for available (layer, component, abs_pos) combinations
+        sample_dir = self.get_sample_dir(0)
+        if not sample_dir.exists():
+            return []
+
+        # Build reverse mapping: abs_pos -> format_pos for sample_0
+        # Map ALL abs_pos values (not just first) to their format_pos
+        abs_pos_to_format_pos: dict[int, str] = {}
+        for format_pos, abs_positions in first_mapping.named_positions.items():
+            for abs_pos in abs_positions:
+                abs_pos_to_format_pos[abs_pos] = format_pos
+
+        # Scan files to get (layer, component, format_pos) tuples that actually exist
+        layer_component_pos: set[tuple[str, str, str]] = set()
+        for f in sample_dir.glob("*.npy"):
+            parts = f.stem.split("_")
+            if len(parts) >= 3:
+                layer = parts[0]  # L35
+                component = "_".join(parts[1:-1])  # resid_post
+                try:
+                    abs_pos = int(parts[-1])  # 127
+                except ValueError:
+                    continue
+                # Map abs_pos back to format_pos
+                format_pos = abs_pos_to_format_pos.get(abs_pos)
+                if format_pos is not None:
+                    layer_component_pos.add((layer, component, format_pos))
+
+        # Build target keys for each (layer, component, format_pos) that exists
+        target_keys = [
+            f"{layer}_{component}_{format_pos}"
+            for layer, component, format_pos in sorted(layer_component_pos)
+        ]
+
+        self._target_keys = target_keys
+        return target_keys.copy()
+
+    def load_target(self, target_key: str) -> np.ndarray:
+        """Load activations for a target key.
+
+        Target key format: L{layer}_{component}_{format_pos}
+        Returns: (n_samples, hidden_dim) array
+        """
+        if target_key in self._cache:
+            return self._cache[target_key]
+
+        # Parse target key using KNOWN valid components
+        # Format: L{layer}_{component}_{format_pos}
+        # Components are: resid_pre, resid_mid, resid_post, mlp_out, attn_out
+        VALID_COMPONENTS = ["resid_pre", "resid_mid", "resid_post", "mlp_out", "attn_out"]
+
+        parts = target_key.split("_")
+        layer = int(parts[0][1:])  # L35 -> 35
+
+        # Find component by matching against known valid components
+        component = None
+        format_pos = None
+
+        # Try each valid component and see if it matches the start of remaining parts
+        for valid_comp in VALID_COMPONENTS:
+            comp_parts = valid_comp.split("_")
+            comp_len = len(comp_parts)
+
+            # Check if parts[1:1+comp_len] matches this component
+            if len(parts) > comp_len and "_".join(parts[1:1+comp_len]) == valid_comp:
+                component = valid_comp
+                format_pos = "_".join(parts[1+comp_len:])
+                break
+
+        if component is None or format_pos is None:
+            raise ValueError(f"Could not parse target key: {target_key}")
+
+        activations = self.load_activations_by_format_pos(layer, component, format_pos)
+        self._cache[target_key] = activations
+        return activations
+
+    def get_sample_count(self, target_key: str) -> int:
+        """Get sample count for a target."""
+        return self.n_samples
+
+    def unload_target(self, target_key: str):
+        """Remove target from cache."""
+        if target_key in self._cache:
+            del self._cache[target_key]
+
+    def clear_cache(self):
+        """Clear all cached activations."""
+        self._cache.clear()
+        clear_gpu_memory(aggressive=True)
+
+    def iter_targets(self):
+        """Iterate over targets, yielding (key, activations) pairs."""
+        for key in self.get_target_keys():
+            try:
+                activations = self.load_target(key)
+                yield key, activations
+                self.unload_target(key)
+            except (ValueError, FileNotFoundError) as e:
+                raise RuntimeError(
+                    f"Failed to load target '{key}': {e}"
+                ) from e
+        clear_gpu_memory(aggressive=True)
+
+    def save(self, path: Path):
+        """Save metadata only.
+
+        Per-sample data (preference_sample.json, choice.json, position_mapping.json)
+        is saved during extraction in extract_activations().
+        """
+        path.mkdir(parents=True, exist_ok=True)
+
+        # Save metadata
+        metadata = {
+            "n_samples": self.n_samples,
+            "compressed": self._compressed,
+        }
+        with open(path / "metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        logger.info(f"Saved metadata for {self.n_samples} samples to {path}")
+
+    @classmethod
+    def load(cls, path: Path) -> "ActivationData":
+        """Load from disk.
+
+        Data is loaded from per-sample files in samples/sample_*/
+        """
+        # Load metadata first to get n_samples
+        metadata_path = path / "metadata.json"
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"metadata.json not found: {metadata_path}\n"
+                "Re-run data extraction to regenerate metadata."
+            )
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        # REQUIRED fields in metadata.json
+        if "n_samples" not in metadata:
+            raise KeyError(f"n_samples missing from {metadata_path}")
+        if "compressed" not in metadata:
+            raise KeyError(f"compressed missing from {metadata_path}")
+        n_samples = metadata["n_samples"]
+        compressed = metadata["compressed"]
+
+        # Load from per-sample files
+        samples_dir = path / "samples"
+        samples = []
+        choices = []
+        position_mappings = DatasetPositionMapping()
+
+        for sample_idx in range(n_samples):
+            sample_dir = samples_dir / f"sample_{sample_idx}"
+            if not sample_dir.exists():
+                continue
+
+            # Load prompt sample
+            prompt_path = sample_dir / "prompt_sample.json"
+            if prompt_path.exists():
+                with open(prompt_path) as f:
+                    prompt_data = json.load(f)
+                samples.append(PromptSample.from_dict(prompt_data))
+
+            # Load choice info
+            choice_path = sample_dir / "choice.json"
+            if choice_path.exists():
+                with open(choice_path) as f:
+                    choice_data = json.load(f)
+                choices.append(ChoiceInfo.from_dict(choice_data))
+
+            # Load position mapping
+            mapping_path = sample_dir / "position_mapping.json"
+            if mapping_path.exists():
+                with open(mapping_path) as f:
+                    mapping_data = json.load(f)
+                position_mappings.add(SamplePositionMapping.from_dict(mapping_data))
+
+        data = cls(
+            samples=samples,
+            choices=choices if choices else None,
+            position_mappings=position_mappings,
+            n_samples=n_samples,
+            _data_dir=path,
+            _compressed=compressed,
+        )
+
+        logger.info(f"Loaded {n_samples} samples from {path}")
+        return data
+
+
+# =============================================================================
+# Sample Collection
+# =============================================================================
+
+
+def get_time_horizon_months(sample: PromptSample) -> float | None:
+    """Get time horizon in months from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
+    if sample.prompt.time_horizon is None:
+        return None
+    return sample.prompt.time_horizon.to_months()
+
+
+def get_time_horizon_days(sample: PromptSample) -> float | None:
+    """Get time horizon in days from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
+    months = get_time_horizon_months(sample)
+    if months is None:
+        return None
+    return months * 30.0
+
+
+def get_time_horizon_years(sample: PromptSample) -> float | None:
+    """Get time horizon in years from a PromptSample.
+
+    Returns None for no-horizon samples (valid experimental condition).
+    """
+    months = get_time_horizon_months(sample)
+    if months is None:
+        return None
+    return months / 12.0
+
+
+def _format_prompt_sample(sample: PromptSample) -> str:
+    """Format a prompt sample for logging."""
+    pair = sample.prompt.preference_pair
+    horizon = sample.prompt.time_horizon
+    horizon_str = str(horizon) if horizon else "None"
+    return (
+        f"  idx={sample.sample_idx} | "
+        f"short={pair.short_term.reward.value:,} in {pair.short_term.time} | "
+        f"long={pair.long_term.reward.value:,} in {pair.long_term.time} | "
+        f"horizon={horizon_str}"
+    )
+
+
+def collect_samples(
+    output_dir: Path | None = None,
+    try_load: bool = True,
+    dataset_cfg: dict | None = None,
+) -> "PromptDataset":
+    """Load or generate samples with diverse time horizons.
+
+    Args:
+        output_dir: Output directory. If provided and try_load=True, will attempt
+            to load existing prompt_dataset.json from here first.
+        try_load: If True, try to load existing data before generating.
+        dataset_cfg: Dataset configuration dict. If None, uses GEOMETRY_CFG from
+            default_datasets.
+
+    Returns:
+        PromptDataset with samples.
+    """
+    from ..data.default_datasets import GEOMETRY_CFG
+    from ..prompt import PromptDataset, PromptDatasetConfig, PromptDatasetGenerator
+
+    # Use provided config or default to GEOMETRY_CFG
+    cfg = dataset_cfg if dataset_cfg is not None else GEOMETRY_CFG
+
+    dataset = None
+
+    # Try to load existing dataset
+    if try_load and output_dir is not None:
+        prompt_dataset_path = output_dir / "data" / "prompt_dataset.json"
+        if prompt_dataset_path.exists():
+            logger.info(f"Loading existing prompt dataset from {prompt_dataset_path}")
+            dataset = PromptDataset.from_json(prompt_dataset_path)
+            logger.info(f"Loaded {len(dataset.samples)} samples")
+
+    # Generate if not loaded
+    if dataset is None:
+        logger.info(f"Generating new prompt dataset using config: {cfg.get('name', 'unnamed')}")
+        dataset_config = PromptDatasetConfig.from_dict(cfg)
+        dataset = PromptDatasetGenerator(dataset_config).generate()
+        logger.info(f"Generated {len(dataset.samples)} samples")
+
+        # Save generated dataset
+        if output_dir is not None:
+            data_dir = output_dir / "data"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            dataset.save_as_json(data_dir / "prompt_dataset.json")
+            logger.info(f"Saved prompt dataset to {data_dir / 'prompt_dataset.json'}")
+
+    # Print first few prompt samples
+    n_preview = min(5, len(dataset.samples))
+    logger.info(f"First {n_preview} prompt samples:")
+    for sample in dataset.samples[:n_preview]:
+        logger.info(_format_prompt_sample(sample))
+    if len(dataset.samples) > n_preview:
+        logger.info(f"  ... and {len(dataset.samples) - n_preview} more")
+
+    # Print full text of first sample
+    if dataset.samples:
+        logger.info("First sample prompt text:")
+        for line in dataset.samples[0].text.split("\n"):
+            logger.info(f"  | {line}")
+
+    return dataset
+
+
+# =============================================================================
+# Activation Extraction
+# =============================================================================
+
+
+def extract_activations(
+    dataset: "PromptDataset", targets: list[TargetSpec], config: GeometryConfig
+) -> ActivationData:
+    """Extract activations organized by sample with absolute positions.
+
+    Output structure:
+        samples/sample_{idx}/
+            position_mapping.json     - Maps abs_pos -> format_pos for this sample
+            prompt_sample.json        - Original PromptSample
+            preference_sample.json    - PreferenceSample with choice
+            choice.json               - Quick access to choice info
+            L{layer}_{component}_{abs_pos}.npy - Activations
+    """
+    from ..formatting.prompt_formats import find_prompt_format_config
+    from ..preference import PreferenceQuerier, PreferenceQueryConfig
+
+    logger.info(f"Loading model {config.model}...")
+
+    query_config = PreferenceQueryConfig(skip_generation=True)
+    querier = PreferenceQuerier(query_config)
+    runner = querier._load_model(config.model)
+
+    samples = dataset.samples
+    if config.max_samples is not None and len(samples) > config.max_samples:
+        samples = samples[: config.max_samples]
+        logger.info(f"Limited to {config.max_samples} samples")
+
+    hook_names = list({t.hook_name for t in targets})
+
+    # Setup output
+    data_dir = config.output_dir / "data"
+    samples_dir = data_dir / "samples"
+    samples_dir.mkdir(parents=True, exist_ok=True)
+
+    compressed = config.use_compressed_storage
+
+    valid_samples = []
+    valid_preferences = []
+    choices = []
+    position_mappings = DatasetPositionMapping()
+    skipped = 0
+    valid_idx = 0
+
+    logger.info(f"Extracting activations (per-sample, compressed={compressed})...")
+
+    # Build set of already-processed sample indices for resume
+    processed_sample_indices: set[int] = set()
+    for existing_dir in samples_dir.glob("sample_*"):
+        choice_file = existing_dir / "choice.json"
+        prompt_file = existing_dir / "prompt_sample.json"
+        if choice_file.exists() and prompt_file.exists():
+            try:
+                with open(choice_file) as f:
+                    choice_data = json.load(f)
+                with open(prompt_file) as f:
+                    prompt_data = json.load(f)
+                # Check if it has the new format (chose_short_term field)
+                if "chose_short_term" in choice_data:
+                    processed_sample_indices.add(prompt_data["sample_idx"])
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    if processed_sample_indices:
+        valid_idx = len(processed_sample_indices)
+        logger.info(f"  RESUMING: Found {valid_idx} existing samples with new format, skipping them")
+
+    for i, sample in enumerate(samples):
+        if i % 50 == 0:
+            logger.info(
+                f"  Sample {i}/{len(samples)} | valid: {valid_idx} | skipped: {skipped}"
+            )
+
+        # Skip samples we've already processed
+        if sample.sample_idx in processed_sample_indices:
+            continue
+
+        prompt_format = find_prompt_format_config(sample.formatting_id)
+        choice_prefix = prompt_format.get_response_prefix_before_choice()
+
+        pref = querier.query_sample(
+            sample, runner, choice_prefix, activation_names=hook_names
+        )
+
+        if pref.chosen_traj is None:
+            logger.warning(
+                f"  !!! SKIPPED SAMPLE {i}/{len(samples)} !!! "
+                f"Reason: chosen_traj is None (model failed to make a valid choice). "
+                f"Sample formatting_id={sample.formatting_id}"
+            )
+            skipped += 1
+            continue
+
+        # Build position mapping (this gives us abs_pos -> format_pos)
+        # NOTE: This MUST NOT fail - position mapping validation will crash if there are issues
+        pos_mapping = SamplePositionMapping.build(sample, runner, pref=pref)
+
+        # CRITICAL: Override sample_idx to match the output directory index (valid_idx)
+        # The original sample.sample_idx is from the source dataset, but we need
+        # the position_mapping.json to use the filtered/valid index that matches
+        # the directory name (sample_{valid_idx}).
+        pos_mapping.sample_idx = valid_idx
+
+        # Create sample folder
+        sample_dir = samples_dir / f"sample_{valid_idx}"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+
+        # Extract and save activations for ALL tokens at each position
+        sample_has_data = False
+        for target in targets:
+            abs_positions = pos_mapping.named_positions.get(target.position, [])
+            if not abs_positions:
+                continue
+
+            # Save ALL tokens at this position (not just the first one)
+            # Organize by layer subfolder: sample_0/L0/attn_out_121.npy
+            layer_dir = sample_dir / f"L{target.layer}"
+            layer_dir.mkdir(parents=True, exist_ok=True)
+
+            for abs_pos in abs_positions:
+                try:
+                    act = pref.internals.activations[target.hook_name][abs_pos, :]
+                    act_np = act.numpy().astype(ACTIVATION_DTYPE)
+
+                    filename = f"{target.component}_{abs_pos}"
+                    _save_array(layer_dir / filename, act_np, compressed=compressed)
+                    sample_has_data = True
+
+                except (ValueError, KeyError, IndexError) as e:
+                    raise RuntimeError(
+                        f"Failed to extract activation for sample {i}, "
+                        f"target {target.hook_name}, abs_pos {abs_pos}, "
+                        f"position {target.position}: {e}"
+                    ) from e
+
+        if not sample_has_data:
+            logger.warning(
+                f"  !!! SKIPPED SAMPLE {i}/{len(samples)} !!! "
+                f"Reason: No activation data extracted (no valid positions found). "
+                f"Requested positions: {[t.position for t in targets]}, "
+                f"Available named_positions: {list(pos_mapping.named_positions.keys())}"
+            )
+            sample_dir.rmdir()
+            skipped += 1
+            pref.internals = None
+            continue
+
+        # Save per-sample position mapping
+        save_json(pos_mapping.to_dict(), sample_dir / "position_mapping.json", readable_text=False)
+
+        # Save per-sample prompt sample
+        save_json(sample.to_dict(), sample_dir / "prompt_sample.json")
+
+        # Save per-sample preference sample
+        save_json(pref.to_dict(), sample_dir / "preference_sample.json")
+
+        # Record and save choice info
+        pair = sample.prompt.preference_pair
+        chose_long = pref.chose_long_term
+        chose_short = not chose_long
+
+        # Chosen option
+        if chose_long:
+            chosen_time = pair.long_term.time.to_months()
+            chosen_reward = pair.long_term.reward.value
+            alt_time = pair.short_term.time.to_months()
+            alt_reward = pair.short_term.reward.value
+        else:
+            chosen_time = pair.short_term.time.to_months()
+            chosen_reward = pair.short_term.reward.value
+            alt_time = pair.long_term.time.to_months()
+            alt_reward = pair.long_term.reward.value
+
+        # Get time horizon from prompt in multiple units (None for no-horizon)
+        time_horizon_days = get_time_horizon_days(sample)
+        time_horizon_months = get_time_horizon_months(sample)
+        time_horizon_years = get_time_horizon_years(sample)
+
+        # Alternative probability
+        alt_prob = pref.alternative_prob
+
+        choice_info = ChoiceInfo(
+            chose_short_term=chose_short,
+            chose_long_term=chose_long,
+            chosen_time_months=chosen_time,
+            chosen_reward=chosen_reward,
+            choice_prob=pref.choice_prob,
+            alt_time_months=alt_time,
+            alt_reward=alt_reward,
+            alt_prob=alt_prob,
+            time_horizon_days=time_horizon_days,
+            time_horizon_months=time_horizon_months,
+            time_horizon_years=time_horizon_years,
+        )
+        choices.append(choice_info)
+
+        # Save per-sample choice info
+        save_json(choice_info.to_dict(), sample_dir / "choice.json", readable_text=False)
+
+        valid_samples.append(sample)
+        position_mappings.add(pos_mapping)
+        pref.internals = None
+        valid_preferences.append(pref)
+
+        # Log first few preference samples
+        if valid_idx < 5:
+            choice_str = "long_term" if chose_long else "short_term"
+            logger.info(
+                f"  Preference sample {valid_idx}: "
+                f"chose={choice_str} ({pref.choice_prob:.2%}) | "
+                f"reward={chosen_reward:,.0f} in {chosen_time:.1f}mo"
+            )
+
+        valid_idx += 1
+
+        if valid_idx % 100 == 0:
+            clear_gpu_memory(aggressive=True)
+
+    clear_gpu_memory(aggressive=True)
+    logger.info(f"Extracted {valid_idx} valid samples (skipped {skipped})")
+
+    # Create data container
+    data = ActivationData(
+        samples=valid_samples,
+        choices=choices,
+        position_mappings=position_mappings,
+        n_samples=valid_idx,
+        _data_dir=data_dir,
+        _compressed=compressed,
+    )
+
+    # Save metadata
+    data.save(data_dir)
+
+    return data
+
+
+# =============================================================================
+# Cache Loading
+# =============================================================================
+
+
+def load_cached_data(config: GeometryConfig) -> ActivationData | None:
+    """Load cached data if available.
+
+    Returns None only if no cache exists. Raises on corrupted cache.
+    """
+    cache_path = config.output_dir / "data"
+
+    # Check for metadata.json or samples/ directory
+    if not (cache_path / "metadata.json").exists() and not (cache_path / "samples").exists():
+        return None
+
+    # Cache exists - loading MUST succeed or crash with helpful error
+    return ActivationData.load(cache_path)
+
+
+@dataclass
+@dataclass(slots=True)
+class VisualizationData:
+    """Lightweight data container for visualization only.
+
+    Contains only what's needed for plotting - no full prompt text or position mappings.
+    """
+    n_samples: int
+    time_horizons_months: list[float]  # Time horizon in months for each sample
+    choices: list[ChoiceInfo]  # Choice info for each sample
+
+
+def load_visualization_data(config: GeometryConfig) -> VisualizationData | None:
+    """Load minimal data needed for visualization (memory efficient).
+
+    Only loads choice.json files, not full prompt samples or position mappings.
+    Uses pre-computed time_horizon_months from choice.json.
+    """
+    cache_path = config.output_dir / "data"
+
+    # STRICT: metadata.json REQUIRED
+    metadata_path = cache_path / "metadata.json"
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"metadata.json not found: {metadata_path}\n"
+            "Re-run data extraction to regenerate metadata."
+        )
+    with open(metadata_path) as f:
+        metadata = json.load(f)
+    if "n_samples" not in metadata:
+        raise KeyError(f"n_samples missing from {metadata_path}")
+    n_samples = metadata["n_samples"]
+
+    # Only load choice.json files (small, has all color data)
+    samples_dir = cache_path / "samples"
+    if not samples_dir.exists():
+        raise FileNotFoundError(f"samples directory not found: {samples_dir}")
+
+    choices = []
+    time_horizons_months = []
+
+    for sample_idx in range(n_samples):
+        sample_dir = samples_dir / f"sample_{sample_idx}"
+        if not sample_dir.exists():
+            raise FileNotFoundError(
+                f"Sample directory missing: {sample_dir}\n"
+                "Data extraction incomplete. Re-run extraction."
+            )
+
+        choice_path = sample_dir / "choice.json"
+        if not choice_path.exists():
+            raise FileNotFoundError(
+                f"choice.json missing for sample {sample_idx}: {choice_path}\n"
+                "Re-run data extraction to regenerate choice.json files."
+            )
+        with open(choice_path) as f:
+            choice_data = json.load(f)
+        # STRICT: from_dict will crash if required fields are missing
+        choices.append(ChoiceInfo.from_dict(choice_data))
+        # time_horizon_months is REQUIRED, from_dict already validated it
+        time_horizons_months.append(choice_data["time_horizon_months"])
+
+    logger.info(f"Loaded visualization data for {n_samples} samples (lightweight mode)")
+    return VisualizationData(
+        n_samples=n_samples,
+        time_horizons_months=time_horizons_months,
+        choices=choices,
+    )

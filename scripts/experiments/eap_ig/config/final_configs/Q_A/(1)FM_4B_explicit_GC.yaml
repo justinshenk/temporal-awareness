@@ -1,0 +1,26 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 64
+  dtype: "bfloat16"
+  granularity: "fine"
+  quadrature: "gauss-chebyshev"
+
+paths:
+  data_loc: "./data/raw/refined_datasets"
+  save_loc: "./results/node_wise/explicit/(1)"
+
+input:
+  data_file: "temporal_scope_explicit_expanded_500_debiased.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(1)", "(2)" ]
+  prompt_suffix: "("
+  horizon: [ "ST", "LT" ]
+
+output:
+  filename: "(1)_explicit"
+
+parameters:
+  system_prompt: "Recommend an approach for the given scenario. Reply only with (1) or (2)"
+  steps: [ 20 ]
+  metric_type: "option-logit"

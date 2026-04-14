@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from ...common.file_io import load_json, save_json, ensure_dir, get_timestamp
+from ...common.file_io import load_json, save_json, ensure_dir, get_timestamp, parse_file_path
 from ..common.project_paths import get_prompt_dataset_dir
 from ..common.preference_types import (
     IntertemporalOption,
@@ -94,13 +94,16 @@ class PromptDataset:
                     short_term=short_term, long_term=long_term
                 ),
                 time_horizon=time_horizon,
-                text=prompt_data["text"],
             )
 
             samples.append(
                 PromptSample(
                     sample_idx=s["sample_idx"],
                     prompt=prompt,
+                    text=s.get("text", ""),
+                    formatting_id=s.get("formatting_id"),
+                    context_id=s.get("context_id"),
+                    short_term_first=s.get("short_term_first"),
                 )
             )
 
@@ -113,16 +116,13 @@ class PromptDataset:
     @classmethod
     def load_from_id(
         cls,
-        dataset_id: str,
+        identifier: str,
         directory: Optional[Path] = None,
     ) -> "PromptDataset":
-        """Load prompt dataset by its ID.
-
-        Searches for a file matching *_{dataset_id}.json or dataset_{dataset_id}.json
-        in the specified directory.
+        """Load prompt dataset by ID, path, or filename.
 
         Args:
-            dataset_id: The dataset ID to search for
+            identifier: Dataset ID, path, or filename
             directory: Directory to search in (default: get_prompt_dataset_dir())
 
         Returns:
@@ -133,14 +133,25 @@ class PromptDataset:
         """
         if directory is None:
             directory = get_prompt_dataset_dir()
-        directory = Path(directory)
 
-        # Search for files matching the dataset_id pattern: {name}_{dataset_id}.json
-        pattern = f"*_{dataset_id}.json"
-        matches = list(directory.glob(pattern))
-        if matches:
-            return cls.from_json(matches[0])
-
-        raise FileNotFoundError(
-            f"No prompt dataset found with ID '{dataset_id}' in {directory}"
+        filepath = parse_file_path(
+            identifier,
+            default_ext=".json",
+            default_dir_path=str(directory),
         )
+
+        if not filepath.exists():
+            # Try searching for files with name prefix: {name}_{id}.json
+            matches = list(directory.glob(f"*_{identifier}.json"))
+            if len(matches) == 1:
+                filepath = matches[0]
+            elif len(matches) > 1:
+                raise FileNotFoundError(
+                    f"Multiple datasets match ID {identifier}: {[m.name for m in matches]}"
+                )
+            else:
+                raise FileNotFoundError(
+                    f"No prompt dataset found: {filepath}"
+                )
+
+        return cls.from_json(filepath)

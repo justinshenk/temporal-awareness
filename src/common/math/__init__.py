@@ -12,7 +12,7 @@ Module hierarchy:
 
 Application-level metrics (wrap entropy_diversity with domain-specific signatures):
 - trajectory_metrics: Sequence metrics (perplexity, alpha_inv_perplexity, etc.)
-- branch_metrics: Distribution metrics (q_branch_diversity, vocab_entropy_from_logits)
+- node_metrics: Distribution metrics (q_node_diversity, vocab_entropy_from_logits, compute_tcb)
 - fork_metrics: Binary choice metrics (q_fork_diversity, log_odds, margin, etc.)
 
 Usage:

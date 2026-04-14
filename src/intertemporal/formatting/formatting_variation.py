@@ -22,73 +22,38 @@ from src.common import TimeValue, TIME_UNIT_TO_YEARS, TIME_UNITS
 # =============================================================================
 
 # Different label pair styles
-SELECT_LABEL_STYLES: list[tuple[str, str]] = [
+SIMPLE_LABEL_STYLES: list[tuple[str, str]] = [
     ("a)", "b)"),
-    ("x)", "y)"),
+    ("x.", "y."),
+]
+# Additional styles for full variation grid - varied but natural formats
+MORE_LABEL_STYLES: list[tuple[str, str]] = [
     ("[i]", "[ii]"),
-    ("[I]", "[II]"),
+    ("<1>", "<2>"),
+    ("(AA)", "(BB)"),
+    ("{Option A}", "{Option B}"),
+    ("Choice (a)", "Choice (b)"),
+    ("[ONE]", "[TWO]"),
     ("first_option", "second_option"),
 ]
-MORE_LABEL_STYLES: list[tuple[str, str]] = [
-    ("A)", "B)"),
-    ("a.", "b."),
-    ("A.", "B."),
-    ("X)", "Y)"),
-    ("[a]", "[b]"),
-    ("[A]", "[B]"),
-    ("[1]", "[2]"),
-    ("(1)", "(2)"),
-    ("(a)", "(b)"),
-    ("(A)", "(B)"),
-    ("Option A:", "Option B:"),
-    ("Option 1:", "Option 2:"),
-    ("Choice A:", "Choice B:"),
-    ("Choice 1:", "Choice 2:"),
-    ("OPTION_ONE:", "OPTION_TWO:"),
-    ("FIRST:", "SECOND:"),
-]
-LABEL_STYLES: list[tuple[str, str]] = SELECT_LABEL_STYLES + MORE_LABEL_STYLES
+FULL_LABEL_STYLES: list[tuple[str, str]] = SIMPLE_LABEL_STYLES + MORE_LABEL_STYLES
 
-def get_formatting_id(label_a: str, label_b: str) -> int:
-    """
-    Get a formatting ID from label pair.
 
-    The ID is deterministic: same labels always produce the same ID.
-    Swapped labels produce the negated ID: (a, b) -> +N, (b, a) -> -N.
-
-    Args:
-        label_a: First label
-        label_b: Second label
-
-    Returns:
-        Signed integer ID (positive for canonical order, negative for swapped)
-    """
-    # Create canonical ordering (alphabetically first label comes first)
-    if label_a <= label_b:
-        canonical = (label_a, label_b)
-        sign = 1
-    else:
-        canonical = (label_b, label_a)
-        sign = -1
-
-    # Hash the canonical pair to get a positive ID
-    base_id = hash(canonical) & 0x7FFFFFFF  # Ensure positive by masking sign bit
-
-    return sign * base_id
-
-def get_random_labels() -> tuple[str, str]:
+def get_random_labels(from_full: bool = True) -> tuple[str, str]:
     """Get a random label pair."""
-    return random.choice(LABEL_STYLES)
+    if from_full:
+        return random.choice(FULL_LABEL_STYLES)
+    return random.choice(SIMPLE_LABEL_STYLES)
 
 
-def get_select_label_styles() -> list[tuple[str, str]]:
+def get_simple_label_styles() -> list[tuple[str, str]]:
     """Get all available label styles."""
-    return SELECT_LABEL_STYLES.copy()
+    return SIMPLE_LABEL_STYLES.copy()
 
 
 def get_all_label_styles() -> list[tuple[str, str]]:
     """Get all available label styles."""
-    return LABEL_STYLES.copy()
+    return FULL_LABEL_STYLES.copy()
 
 
 # =============================================================================
@@ -288,13 +253,16 @@ def format_time_spelled(tv: TimeValue) -> Optional[str]:
     return f"{spelled} {unit}"
 
 
-def format_time_value(tv: TimeValue, spell_out: bool = False) -> str:
+def format_time_value(
+    tv: TimeValue, spell_out: bool = False, min_length: int = 0
+) -> str:
     """
     Format a TimeValue, optionally spelling out numbers.
 
     Args:
         tv: TimeValue to format
         spell_out: Whether to attempt spelling out numbers
+        min_length: Minimum length with padding (0 = no padding)
 
     Returns:
         Formatted string
@@ -304,19 +272,8 @@ def format_time_value(tv: TimeValue, spell_out: bool = False) -> str:
         if spelled:
             return spelled
 
-    # Default numerical format
-    value = tv.value
-    unit = tv.unit
-
-    # Round to reasonable precision
-    if value == int(value):
-        value_str = str(int(value))
-    elif value < 10:
-        value_str = f"{value:.2f}".rstrip("0").rstrip(".")
-    else:
-        value_str = f"{value:.1f}".rstrip("0").rstrip(".")
-
-    return f"{value_str} {unit}"
+    # Use TimeValue.to_string with optional padding
+    return tv.to_string(min_length=min_length)
 
 
 # =============================================================================
@@ -338,20 +295,32 @@ class FormattingVariation:
         return cls(
             labels=get_random_labels(),
             flip_order=random.choice([True, False]),
-            time_unit_variation=random.choice([True, False]),
-            spell_numbers=random.choice(
-                [True, False, False, False]
-            ),  # Less likely to spell
+            time_unit_variation=False,
+            spell_numbers=False,
         )
 
     @classmethod
-    def get_grid(cls) -> list["FormattingVariation"]:
-        labels_grid = get_select_label_styles()
+    def get_simple_grid(cls) -> list["FormattingVariation"]:
+        labels_grid = get_simple_label_styles()
         flip_grid = [True, False]
 
         # Not variations on these yet
         random_unit_grid = [False]
         spell_grid = [False]
+
+        full_grid = product(labels_grid, flip_grid, random_unit_grid, spell_grid)
+        return [cls(*p) for p in full_grid]
+
+    @classmethod
+    def get_full_grid(cls) -> list["FormattingVariation"]:
+        """Get full grid including ALL variations (labels, flip, time unit, spelling).
+
+        WARNING: Creates 21 × 2 × 2 × 2 = 168 variations per content combination.
+        """
+        labels_grid = get_all_label_styles()
+        flip_grid = [True, False]
+        random_unit_grid = [True, False]
+        spell_grid = [True, False]
 
         full_grid = product(labels_grid, flip_grid, random_unit_grid, spell_grid)
         return [cls(*p) for p in full_grid]
@@ -370,6 +339,7 @@ class FormattingVariation:
 def apply_time_variation(
     tv: TimeValue,
     variation: FormattingVariation,
+    min_length: int = 0,
 ) -> tuple[TimeValue, str]:
     """
     Apply time variation to a TimeValue.
@@ -377,6 +347,7 @@ def apply_time_variation(
     Args:
         tv: Original TimeValue
         variation: Formatting variation config
+        min_length: Minimum length with padding (0 = no padding)
 
     Returns:
         Tuple of (possibly converted TimeValue, formatted string)
@@ -387,7 +358,9 @@ def apply_time_variation(
     if variation.time_unit_variation:
         result_tv = convert_to_random_unit(tv)
 
-    # Format with or without spelling
-    formatted = format_time_value(result_tv, spell_out=variation.spell_numbers)
+    # Format with or without spelling, with optional padding
+    formatted = format_time_value(
+        result_tv, spell_out=variation.spell_numbers, min_length=min_length
+    )
 
     return result_tv, formatted

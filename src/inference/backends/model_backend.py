@@ -1,0 +1,409 @@
+"""Abstract base class for model backends."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Optional, Sequence
+
+import torch
+
+from ..interventions import Intervention
+
+
+@dataclass
+class BinaryChoiceResult:
+    """Result of a binary choice query from API backend.
+
+    Used by API backends (OpenAI, Anthropic) to return choice probabilities
+    without requiring full trajectory computation.
+    """
+
+    choice_idx: int  # 0 for A, 1 for B, -1 if neither
+    probs: tuple[float, float]  # (prob_a, prob_b)
+    logprobs: tuple[float, float]  # (logprob_a, logprob_b)
+    tokens: tuple[str, str]  # The actual tokens used
+
+
+class ModelBackend(Enum):
+    """Available model backends."""
+
+    PYVENE = "pyvene"
+    MLX = "mlx"
+    TRANSFORMERLENS = "transformerlens"
+    HUGGINGFACE = "huggingface"
+    NNSIGHT = "nnsight"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+
+
+class Backend(ABC):
+    """Abstract base class for model backends.
+
+    All backends must implement these methods to provide a consistent interface
+    for model inference and interventions.
+    """
+
+    supports_inference_mode: bool = (
+        True  # Override to False if backend conflicts with inference_mode
+    )
+
+    @property
+    def is_cloud_api(self) -> bool:
+        """Whether this is a cloud API backend (no local model weights)."""
+        return False
+
+    def __init__(self, runner: Any):
+        """Initialize backend with a reference to the ModelRunner.
+
+        Args:
+            runner: ModelRunner instance that owns this backend
+        """
+        self.runner = runner
+
+    @abstractmethod
+    def get_tokenizer(self):
+        """Get the tokenizer for this backend."""
+        ...
+
+    @abstractmethod
+    def get_n_layers(self) -> int:
+        """Get the number of layers in the model."""
+        ...
+
+    @abstractmethod
+    def get_d_model(self) -> int:
+        """Get the hidden dimension of the model."""
+        ...
+
+    @abstractmethod
+    def encode(
+        self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
+    ) -> torch.Tensor:
+        """Encode text into token IDs tensor."""
+        ...
+
+    @abstractmethod
+    def decode(self, token_ids: torch.Tensor) -> str:
+        """Decode token IDs back to text."""
+        ...
+
+    @abstractmethod
+    def generate(
+        self,
+        prompt: str,
+        max_new_tokens: int,
+        temperature: float,
+        intervention: Optional[Intervention],
+        past_kv_cache: Any = None,
+    ) -> str:
+        """Generate text from a prompt."""
+        ...
+
+    @abstractmethod
+    def get_next_token_probs(
+        self, prompt: str, target_tokens: Sequence[str], past_kv_cache: Any = None
+    ) -> dict[str, float]:
+        """Get next token probabilities for target tokens."""
+        ...
+
+    @abstractmethod
+    def get_next_token_probs_by_id(
+        self, prompt: str, token_ids: Sequence[int], past_kv_cache: Any = None
+    ) -> dict[int, float]:
+        """Get next token probabilities by token ID."""
+        ...
+
+    @abstractmethod
+    def run_with_cache(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+        past_kv_cache: Any = None,
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward pass and return activation cache."""
+        ...
+
+    @abstractmethod
+    def run_with_cache_and_grad(
+        self,
+        input_ids: torch.Tensor,
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward pass with gradients enabled."""
+        ...
+
+    @abstractmethod
+    def generate_from_cache(
+        self,
+        prefill_logits: torch.Tensor,
+        frozen_kv_cache: Any,
+        max_new_tokens: int,
+        temperature: float,
+    ) -> str:
+        """Generate using prefill logits and frozen KV cache."""
+        ...
+
+    @abstractmethod
+    def init_kv_cache(self):
+        """Initialize a KV cache for the model."""
+        ...
+
+    @abstractmethod
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        """Run forward pass and return logits.
+
+        Args:
+            input_ids: Token IDs tensor of shape [batch, seq_len]
+
+        Returns:
+            Logits tensor of shape [batch, seq_len, vocab_size]
+        """
+        ...
+
+    @abstractmethod
+    def run_with_intervention(
+        self,
+        input_ids: torch.Tensor,
+        interventions: Sequence[Intervention],
+    ) -> torch.Tensor:
+        """Run forward pass with interventions, returning logits."""
+        ...
+
+    @abstractmethod
+    def run_with_intervention_and_cache(
+        self,
+        input_ids: torch.Tensor,
+        interventions: Sequence[Intervention],
+        names_filter: Optional[callable],
+    ) -> tuple[torch.Tensor, dict]:
+        """Run forward with interventions AND capture activations with gradients."""
+        ...
+
+    @abstractmethod
+    def generate_trajectory(
+        self,
+        token_ids: list[int],
+        max_new_tokens: int,
+        temperature: float,
+    ) -> tuple[list[int], list[float]]:
+        """Generate trajectory with KV caching.
+
+        Args:
+            token_ids: Input token IDs
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0.0 = greedy)
+
+        Returns:
+            Tuple of (all_token_ids, logprobs) where logprobs[i] is the
+            log probability of token_ids[i] given the previous tokens.
+            The first token has logprob=0.0 (no prior context).
+        """
+        ...
+
+    def get_embeddings(self, token_ids: torch.Tensor) -> torch.Tensor:
+        """Get token embeddings from the model.
+
+        Args:
+            token_ids: Token IDs [batch, seq_len] or [seq_len]
+
+        Returns:
+            Embeddings tensor [batch, seq_len, d_model]
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_embeddings"
+        )
+
+    def get_W_E(self) -> torch.Tensor:
+        """Get the token embedding matrix W_E.
+
+        Returns:
+            Embedding matrix of shape [vocab_size, d_model]
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_E"
+        )
+
+    def get_W_U(self) -> torch.Tensor:
+        """Get the unembedding matrix W_U.
+
+        Returns:
+            Unembedding matrix of shape [d_model, vocab_size]
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_U"
+        )
+
+    def get_b_U(self) -> torch.Tensor | None:
+        """Get the unembedding bias b_U.
+
+        Returns:
+            Unembedding bias of shape [vocab_size], or None if no bias
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_b_U"
+        )
+
+    def get_n_heads(self) -> int:
+        """Get the number of attention heads per layer.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_n_heads"
+        )
+
+    def get_d_head(self) -> int:
+        """Get the dimension of each attention head.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_head"
+        )
+
+    def get_d_mlp(self) -> int:
+        """Get the MLP intermediate dimension.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_mlp"
+        )
+
+    def get_W_Q(self, layer: int | None = None) -> torch.Tensor:
+        """Get query weight matrix W_Q.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_Q"
+        )
+
+    def get_W_K(self, layer: int | None = None) -> torch.Tensor:
+        """Get key weight matrix W_K.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_K"
+        )
+
+    def get_W_V(self, layer: int | None = None) -> torch.Tensor:
+        """Get value weight matrix W_V.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_V"
+        )
+
+    def get_W_O(self, layer: int | None = None) -> torch.Tensor:
+        """Get output weight matrix W_O.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_head, d_model]
+            If layer specified: [n_heads, d_head, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_O"
+        )
+
+    def get_W_OV(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined OV matrix for a specific head.
+
+        W_OV = W_V @ W_O projects input through value and output matrices.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_OV matrix of shape [d_model, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_OV"
+        )
+
+    def get_W_QK(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined QK matrix for a specific head.
+
+        W_QK = W_Q @ W_K^T determines attention pattern computation.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_QK matrix of shape [d_model, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_QK"
+        )
+
+    def get_MLP_W_in(self, layer: int) -> torch.Tensor:
+        """Get MLP input projection weights.
+
+        Returns:
+            W_in of shape [d_model, d_mlp]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_MLP_W_in"
+        )
+
+    def get_MLP_W_out(self, layer: int) -> torch.Tensor:
+        """Get MLP output projection weights.
+
+        Returns:
+            W_out of shape [d_mlp, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_MLP_W_out"
+        )
+

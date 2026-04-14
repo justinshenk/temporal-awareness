@@ -11,12 +11,15 @@ Generates prompt datasets from config files with support for:
 from __future__ import annotations
 
 import math
-import random
 import re
 from typing import Optional
 from itertools import product
-from ..formatting.formatting_variation import FormattingVariation, apply_time_variation, get_formatting_id
-from .prompt_dataset_config import PromptDatasetConfig, StepType
+from ..formatting.formatting_variation import (
+    FormattingVariation,
+    apply_time_variation,
+)
+from .prompt_dataset_config import PromptDatasetConfig, ContextConfig, StepType
+from .prompt_dataset_variations import get_context_variations, apply_context_variation
 from .prompt_dataset import PromptDataset
 from ..common.preference_types import (
     PromptSample,
@@ -26,6 +29,9 @@ from ..common.preference_types import (
     RewardValue,
     TimeValue,
 )
+
+# Time horizon padding: 20 chars with 25% left / 75% right padding
+TIME_HORIZON_MIN_LENGTH = 20
 
 
 class PromptDatasetGenerator:
@@ -110,15 +116,33 @@ class PromptDatasetGenerator:
             min_months, max_months, num_intervals, step_type
         )
 
-        # Convert back, using appropriate unit based on magnitude
+        # If both limits have the same unit, preserve that unit
+        if min_time.unit == max_time.unit:
+            target_unit = min_time.unit
+            result = []
+            for val_in_months in month_values:
+                converted = TimeValue(value=val_in_months, unit="months").to_unit(target_unit)
+                result.append(TimeValue(value=round(converted, 1), unit=target_unit))
+            return result
+
+        # Otherwise, auto-select appropriate unit based on magnitude
         result = []
         for months in month_values:
             if months >= 12:
                 # Use years for 12+ months
                 years = months / 12
                 result.append(TimeValue(value=round(years, 1), unit="years"))
-            else:
+            elif months >= 1:
+                # Use months for 1+ months
                 result.append(TimeValue(value=round(months, 1), unit="months"))
+            elif months >= 1 / 4:  # ~1 week
+                # Use weeks for 1+ weeks
+                weeks = months * 4.33  # ~4.33 weeks per month
+                result.append(TimeValue(value=round(weeks, 1), unit="weeks"))
+            else:
+                # Use days for small values
+                days = months * 30.44  # avg days per month
+                result.append(TimeValue(value=max(1, round(days)), unit="days"))
 
         return result
 
@@ -142,6 +166,10 @@ class PromptDatasetGenerator:
             opt.reward_steps[1],
         )
 
+        # Apply reward rounding if enabled
+        if self.dataset_config.round_reward_units:
+            rewards = [self._round_reward(r) for r in rewards]
+
         # Generate time steps
         times = self.generate_time_steps(
             opt.time_range[0],
@@ -150,6 +178,10 @@ class PromptDatasetGenerator:
             opt.time_steps[1],
         )
 
+        # Apply time rounding if enabled
+        if self.dataset_config.round_time_units:
+            times = [self._round_time(t) for t in times]
+
         # Create grid
         grid = []
         for reward in rewards:
@@ -157,6 +189,14 @@ class PromptDatasetGenerator:
                 grid.append((reward, time))
 
         return grid
+
+    def _round_reward(self, value: float) -> float:
+        """Round reward to a nice integer value."""
+        return round(value)
+
+    def _round_time(self, time: TimeValue) -> TimeValue:
+        """Round time to a nice whole number."""
+        return TimeValue(value=round(time.value), unit=time.unit)
 
     def format_question(
         self,
@@ -167,6 +207,7 @@ class PromptDatasetGenerator:
         left_time_str: Optional[str] = None,
         right_time_str: Optional[str] = None,
         horizon_time_str: Optional[str] = None,
+        context: Optional[ContextConfig] = None,
     ) -> str:
         """
         Format prompt text using template and context.
@@ -184,23 +225,32 @@ class PromptDatasetGenerator:
             left_time_str: Optional formatted time string for left option
             right_time_str: Optional formatted time string for right option
             horizon_time_str: Optional formatted time string for horizon
+            context: Optional context config (uses dataset_config.context if None)
 
         Returns:
             Formatted prompt text
         """
-        ctx = self.dataset_config.context
+        ctx = context if context is not None else self.dataset_config.context
         pf = self.dataset_config.prompt_format_config
 
         # Assemble question template (conditionally includes time-horizon spec)
         prompt = pf.question_template(time_horizon)
 
-        # Use provided time strings or default to str(time)
-        left_time = left_time_str if left_time_str else str(left_option.time)
-        right_time = right_time_str if right_time_str else str(right_option.time)
+        # Use provided time strings or format explicitly
+        # Options: no padding (min_length=0)
+        # Horizon: padded to 12 chars (25% left, 75% right)
+        left_time = (
+            left_time_str if left_time_str else left_option.time.to_string(min_length=0)
+        )
+        right_time = (
+            right_time_str
+            if right_time_str
+            else right_option.time.to_string(min_length=0)
+        )
         horizon_str = (
             horizon_time_str
             if horizon_time_str
-            else (str(time_horizon) if time_horizon else "")
+            else (time_horizon.to_string(min_length=TIME_HORIZON_MIN_LENGTH) if time_horizon else "")
         )
 
         # Build var_keywords values dict
@@ -237,12 +287,15 @@ class PromptDatasetGenerator:
             prompt = prompt.replace(f"[{key}]", value)
 
         # Validate no unreplaced placeholders remain
-        self._validate_no_unreplaced_placeholders(prompt, "question_template")
+        # Exclude the labels from placeholder detection
+        self._validate_no_unreplaced_placeholders(
+            prompt, "question_template", exclude_strings=list(labels)
+        )
 
         return prompt
 
     def _validate_no_unreplaced_placeholders(
-        self, text: str, context: str = ""
+        self, text: str, context: str = "", exclude_strings: list[str] | None = None
     ) -> None:
         """
         Validate that no [PLACEHOLDER] patterns remain in text.
@@ -250,17 +303,22 @@ class PromptDatasetGenerator:
         Args:
             text: Text to check
             context: Description of where this text came from (for error messages)
+            exclude_strings: Strings to exclude from placeholder detection (e.g., labels)
 
         Raises:
             ValueError: If unreplaced placeholders are found
         """
+        exclude_set = set(exclude_strings) if exclude_strings else set()
+
         # Find [WORD] patterns that look like placeholders:
         # - Must contain underscore OR be longer than 2 chars
         # - This excludes labels like [A], [B], [1], [2] which are intentional
         all_brackets = re.findall(r"\[[A-Z][A-Z0-9_]*\]", text)
         placeholders = [
-            p for p in all_brackets if "_" in p or len(p) > 4
-        ]  # [XX] = 4 chars
+            p
+            for p in all_brackets
+            if (("_" in p or len(p) > 4) and p not in exclude_set)
+        ]
         if placeholders:
             unique = sorted(set(placeholders))
             ctx = f" in {context}" if context else ""
@@ -274,14 +332,23 @@ class PromptDatasetGenerator:
         default_var.labels = self.dataset_config.context.labels
         return default_var
 
+    def do_formatting_grid(self):
+        return (
+            self.dataset_config.do_formatting_variation_grid
+            or self.dataset_config.do_full_formatting_variation_grid
+        )
+
+    def do_random_formatting(self):
+        if self.do_formatting_grid():
+            return False
+        if not self.dataset_config.add_formatting_noise:
+            return False
+        return True
+
     def _process_formatting_variation(
         self, variation: Optional[FormattingVariation]
     ) -> FormattingVariation:
-        need_to_reformat = (
-            self.dataset_config.add_formatting_variations
-            and not self.dataset_config.do_variation_grid
-        )
-        if need_to_reformat:
+        if self.do_random_formatting():
             return FormattingVariation.random()
         if not variation:
             return self.get_default_formatting()
@@ -294,6 +361,7 @@ class PromptDatasetGenerator:
         long_term_data: tuple[float, TimeValue],
         time_horizon: Optional[TimeValue],
         variation: Optional[FormattingVariation] = None,
+        context: Optional[ContextConfig] = None,
     ) -> PromptSample:
         """
         Create a dataset sample from option data.
@@ -306,20 +374,31 @@ class PromptDatasetGenerator:
             short_term_data: (reward, time) for short-term option
             long_term_data: (reward, time) for long-term option
             time_horizon: Decision time horizon (None = no constraint)
+            variation: Optional formatting variation
+            context: Optional context config (uses dataset_config.context if None)
 
         Returns:
             PromptSample instance
+
+        Raises:
+            ValueError: If short_term time >= long_term time
         """
-        ctx = self.dataset_config.context
+        # Validate: short_term time must be less than long_term time
+        short_time_months = short_term_data[1].to_months()
+        long_time_months = long_term_data[1].to_months()
+        if short_time_months >= long_time_months:
+            raise ValueError(
+                f"short_term time ({short_term_data[1]}) must be less than "
+                f"long_term time ({long_term_data[1]})"
+            )
+
+        ctx = context if context is not None else self.dataset_config.context
 
         variation = self._process_formatting_variation(variation)
         labels = variation.labels
 
-        # Randomly assign short_term to left (index 0) or right (index 1)
-        # The variation.flip_order adds another layer of randomization
-        short_on_left = random.choice([True, False])
-        if variation.flip_order:
-            short_on_left = not short_on_left
+        # Deterministic flip: flip_order=True means long-term option goes first
+        short_on_left = not variation.flip_order
         if short_on_left:
             left_label, right_label = labels[0], labels[1]
             short_term_label, long_term_label = left_label, right_label
@@ -351,10 +430,10 @@ class PromptDatasetGenerator:
         _, left_time_str = apply_time_variation(left_option.time, variation)
         _, right_time_str = apply_time_variation(right_option.time, variation)
 
-        # Apply time variation to horizon if present
+        # Apply time variation to horizon if present (with padding)
         horizon_time_str = None
         if time_horizon is not None:
-            _, horizon_time_str = apply_time_variation(time_horizon, variation)
+            _, horizon_time_str = apply_time_variation(time_horizon, variation, min_length=TIME_HORIZON_MIN_LENGTH)
 
         question_text = self.format_question(
             left_option,
@@ -364,6 +443,7 @@ class PromptDatasetGenerator:
             left_time_str=left_time_str,
             right_time_str=right_time_str,
             horizon_time_str=horizon_time_str,
+            context=ctx,
         )
 
         # Format response_template with labels and prompt_const_keywords
@@ -383,30 +463,55 @@ class PromptDatasetGenerator:
         prompt = Prompt(
             preference_pair=pair,
             time_horizon=time_horizon,
-            text=prompt_text,
         )
 
-        # Compute formatting_id based on which label is assigned to short_term
-        formatting_id = get_formatting_id(short_term_label, long_term_label)
+        # Compute context_id from the context config
+        context_id = ctx.get_context_id()
 
         return PromptSample(
             sample_idx=sample_idx,
             prompt=prompt,
-            formatting_id=formatting_id,
+            text=prompt_text,
+            formatting_id=self.dataset_config.prompt_format,
+            context_id=context_id,
+            short_term_first=short_on_left,
         )
 
     def generate_formatting_variation_grid(self):
-        if self.dataset_config.do_variation_grid:
-            return FormattingVariation.get_grid()
+        if self.dataset_config.do_full_formatting_variation_grid:
+            return FormattingVariation.get_full_grid()
+        if self.dataset_config.do_formatting_variation_grid:
+            return FormattingVariation.get_simple_grid()
         return [self.get_default_formatting()]
+
+    def generate_context_variation_grid(self) -> list[ContextConfig]:
+        """Generate list of context configs to use.
+
+        If do_context_variations is True, returns the base context plus
+        all variations applied to it. Otherwise, returns just the base context.
+        """
+        base_context = self.dataset_config.context
+        if not self.dataset_config.do_context_variations:
+            return [base_context]
+
+        # Start with base context
+        contexts = [base_context]
+
+        # Add all variations applied to base
+        for variation in get_context_variations():
+            varied_context = apply_context_variation(base_context, variation)
+            contexts.append(varied_context)
+
+        return contexts
 
     def generate_grid(self):
         short_term_grid = self.generate_option_grid("short_term")
         long_term_grid = self.generate_option_grid("long_term")
         time_horizons_grid = self.dataset_config.time_horizons
         var_grid = self.generate_formatting_variation_grid()
+        context_grid = self.generate_context_variation_grid()
         full_grid = product(
-            short_term_grid, long_term_grid, time_horizons_grid, var_grid
+            short_term_grid, long_term_grid, time_horizons_grid, var_grid, context_grid
         )
         return full_grid
 
@@ -418,16 +523,28 @@ class PromptDatasetGenerator:
         - Short-term option grid
         - Long-term option grid
         - Time horizons
+        - Formatting variations (if enabled)
+        - Context variations (if enabled)
+
+        Filters out invalid samples where short_term time >= long_term time.
 
         Returns:
             List of PromptSample objects
         """
 
         samples = []
+        sample_idx = 0
         grid = self.generate_grid()
-        for i, params in enumerate(grid):
-            sample = self.create_sample(i, *params)
+        for params in grid:
+            short_term_data, long_term_data, *rest = params
+            # Filter: short_term time must be less than long_term time
+            if short_term_data[1].to_months() >= long_term_data[1].to_months():
+                continue
+            sample = self.create_sample(
+                sample_idx, short_term_data, long_term_data, *rest
+            )
             samples.append(sample)
+            sample_idx += 1
 
         return samples
 
