@@ -131,12 +131,32 @@ class ActivationPatching(Patching):
     def __init__(self, model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers,
                  metric_type=Metric.LOGIT_DIFF,
                  technique_type=Technique.DENOISING,
-                 viz_type=Viz.UP_MEANS_HIGH_ATTRIBUTION):
+                 viz_type=Viz.UP_MEANS_HIGH_ATTRIBUTION,
+                 unbatched=False, pairs_ids=None, dump=False):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
         self.metric_type = metric_type
         self.technique_type = technique_type
         self.viz_type = viz_type
+        self.unbatched = unbatched
+        self.pairs_ids = pairs_ids
+        if self.pairs_ids == None:
+            self.pairs_ids = [i for i in range(0, len(clean_prompts))]
+        self.dump = dump
+
+        if (self.unbatched):
+            # FIXME: Make these types to be chosen by default!
+            assert self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL or self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL, \
+            "Unbatched version of Activation Patching is only supported with DENOISING_OPTIMAL and NOISING_OPTIMAL techniques!"
+            assert self.viz_type == ActivationPatching.Viz.READER_FRIENDLY, \
+            "Unbatched version of Activation Patching is only supported with READER_FRIENDLY visualization type!"
+
+        if (self.dump):
+            # FIXME: Make this flag True by default!
+            assert self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL or self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL, \
+            "Dumping is only supported in DENOISING_OPTIMAL and NOISING_OPTIMAL techniques!"
+            assert self.viz_type == ActivationPatching.Viz.READER_FRIENDLY, \
+            "Dumping is only supported with READER_FRIENDLY visualization type!"
 
         # Define answer_token_indices needed for logit_metric function
         answer_token_indices = torch.tensor(
@@ -193,21 +213,77 @@ class ActivationPatching(Patching):
             return correct_logprobs.mean()
         self.get_logprob = __inner_get_logprob__
 
+        ##### Unbatched patching metrics #####
+        def __inner_unbatched_get_both_logprobs__(logits,
+                                                  clean_answer_id,
+                                                  corrupted_answer_id):
+            if len(logits.shape) == 3:
+                # Get final logits only
+                logits = logits[-1, -1, :]
+            logits_logprobs = torch.nn.functional.log_softmax(logits, dim=-1)
+            clean_logprob = logits_logprobs[clean_answer_id]
+            corrupted_logprob = logits_logprobs[corrupted_answer_id]
+            return clean_logprob, corrupted_logprob
+        self.get_both_logprobs_unbatched = __inner_unbatched_get_both_logprobs__
+
+        def __inner_unbatched_get_both_logits__(logits,
+                                                clean_answer_id,
+                                                corrupted_answer_id):
+            if len(logits.shape) == 3:
+                # Get final logits only
+                logits = logits[-1, -1, :]
+            clean_logit = logits[clean_answer_id]
+            corrupted_logit = logits[corrupted_answer_id]
+            return clean_logit, corrupted_logit
+        self.get_both_logits_unbatched = __inner_unbatched_get_both_logits__
+
+        def __inner_unbatched_get_logit_diff__(logits,
+                                               clean_answer_id,
+                                               corrupted_answer_id):
+            if len(logits.shape) == 3:
+                # Get final logits only
+                logits = logits[-1, -1, :]
+            clean_logit = logits[clean_answer_id]
+            corrupted_logit = logits[corrupted_answer_id]
+            return clean_logit - corrupted_logit
+        self.get_logit_diff_unbatched = __inner_unbatched_get_logit_diff__
+
+        def __inner_unbatched_get_logit__(logits,
+                                          clean_answer_id,
+                                          corrupted_answer_id):
+            if len(logits.shape) == 3:
+                # Get final logits only
+                logits = logits[-1, -1, :]
+            clean_logit = logits[clean_answer_id]
+            return clean_logit
+        self.get_logit_unbatched = __inner_unbatched_get_logit__
+    
+        def __inner_unbatched_get_logprob__(logits,
+                                            clean_answer_id,
+                                            corrupted_answer_id):
+            if len(logits.shape) == 3:
+                # Get final logits only
+                logits = logits[-1, -1, :]
+            logits_logprobs = torch.nn.functional.log_softmax(logits, dim=-1)
+            clean_logprob = logits_logprobs[clean_answer_id]
+            return clean_logprob
+        self.get_logprob_unbatched = __inner_unbatched_get_logprob__
+    
         self.inner_metric = None
         if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
             self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or
             self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS_CUSTOM or
             self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS_CUSTOM):
-            self.inner_metric = __inner_get_both_logprobs__
+            self.inner_metric = __inner_get_both_logprobs__ if not self.unbatched else __inner_unbatched_get_both_logprobs__
         elif (self.metric_type == ActivationPatching.Metric.LOGIT_DIFF):
             # Implement batched version of logit_metric that uses defined variables:
-            self.inner_metric = __inner_get_logit_diff__
+            self.inner_metric = __inner_get_logit_diff__ if not self.unbatched else __inner_unbatched_get_logit_diff__
         elif (self.metric_type == ActivationPatching.Metric.LOGIT):
-            self.inner_metric = __inner_get_logit__
+            self.inner_metric = __inner_get_logit__ if not self.unbatched else __inner_unbatched_get_logit__
         elif (self.metric_type == ActivationPatching.Metric.LOGPROB):
-            self.inner_metric = __inner_get_logprob__
-
-    # TODO: Is removing gradients save for Activation Patching (not for Attribution Patching)?
+            self.inner_metric = __inner_get_logprob__ if not self.unbatched else __inner_unbatched_get_logprob__
+    
+    # TODO: Is removing gradients safe for Activation Patching (not for Attribution Patching)?
     def __precalculate_caches_and_baselines__(self):
         if not self.baselines_ready:
             num_prompts = len(self.clean_tokens)
@@ -216,7 +292,6 @@ class ActivationPatching(Patching):
             batched_clean_logits = []
             batched_corrupted_logits = []
 
-            # Try run without cache
             for i in range(0, num_prompts):
                 clean_logits, clean_cache = self.model.run_with_cache(self.clean_tokens[i])
                 del clean_cache
@@ -312,6 +387,170 @@ class ActivationPatching(Patching):
             __, self.corrupted_cache = self.model.run_with_cache(self.corrupted_tokens)
             self.caches_and_baselines_ready = True
 
+    def __precalculate_caches_and_baselines_unbatched__(self):
+        if not self.baselines_ready:
+            num_prompts = len(self.clean_tokens)
+
+            headers_to_dump = []
+            baselines_to_dump = []
+            if self.dump:
+                headers_to_dump = ["Pair ID", "Clean Q, Logit Diff",
+                                   "Clean Q, Logit clean", "Clean Q, Logprob clean",
+                                   "Clean Q, Logit corrupted", "Clean Q, Logprob corrupted",
+                                   "Corrupted Q, Logit Diff",                                       
+                                   "Corrupted Q, Logit clean", "Corrupted Q, Logprob clean",
+                                   "Corrupted Q, Logit corrupted", "Corrupted Q, Logprob corrupted"]
+                for i in range(0, num_prompts):
+                    baselines_to_dump.append([])
+
+            self.clean_logits_top_3 = []
+            self.corrupted_logits_top_3 = []
+
+            self.clean_q_clean_a_bsl = 0
+            self.clean_q_corrupted_a_bsl = 0
+            self.logit_diff_clean_q_clean_a_bsl = 0
+            self.logprob_clean_q_clean_a_bsl = 0
+            self.logprob_clean_q_corrupted_a_bsl = 0
+            self.logit_clean_q_clean_a_bsl = 0
+            self.logit_clean_q_corrupted_a_bsl = 0
+
+            for i in range(0, num_prompts):
+                clean_logits, clean_cache = self.model.run_with_cache(self.clean_tokens[i])
+                del clean_cache
+                gc.collect()
+                self.clean_logits_top_3.append(torch.sort(clean_logits[-1, -1, :], descending=True).indices[0:3])
+
+                if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
+                    self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or
+                    self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS_CUSTOM or
+                    self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS_CUSTOM):
+                    clean_q_clean_a_bsl, clean_q_corrupted_a_bsl = self.inner_metric(clean_logits,
+                                                                                     self.clean_answer_ids[i],
+                                                                                     self.corrupted_answer_ids[i])
+                    self.clean_q_clean_a_bsl += clean_q_clean_a_bsl.item() / num_prompts
+                    self.clean_q_corrupted_a_bsl += clean_q_corrupted_a_bsl.item() / num_prompts
+                elif (self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL or
+                      self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
+                    logit_diff = self.get_logit_diff_unbatched(clean_logits,
+                                                               self.clean_answer_ids[i],
+                                                               self.corrupted_answer_ids[i]).item()
+                    self.logit_diff_clean_q_clean_a_bsl +=  logit_diff / num_prompts
+                    logprob_clean_q_clean_a_bsl, logprob_clean_q_corrupted_a_bsl = self.get_both_logprobs_unbatched(clean_logits,
+                                                                                                                    self.clean_answer_ids[i],
+                                                                                                                    self.corrupted_answer_ids[i])
+                    self.logprob_clean_q_clean_a_bsl += logprob_clean_q_clean_a_bsl.item() / num_prompts
+                    self.logprob_clean_q_corrupted_a_bsl += logprob_clean_q_corrupted_a_bsl.item() / num_prompts
+                    logit_clean_q_clean_a_bsl, logit_clean_q_corrupted_a_bsl = self.get_both_logits_unbatched(clean_logits,
+                                                                                                              self.clean_answer_ids[i],
+                                                                                                              self.corrupted_answer_ids[i])
+                    self.logit_clean_q_clean_a_bsl += logit_clean_q_clean_a_bsl.item() / num_prompts
+                    self.logit_clean_q_corrupted_a_bsl += logit_clean_q_corrupted_a_bsl.item() / num_prompts
+
+                    if self.dump:
+                        baselines_to_dump[i].extend([self.pairs_ids[i], logit_diff,
+                                                     logit_clean_q_clean_a_bsl.item(), logprob_clean_q_clean_a_bsl.item(),
+                                                     logit_clean_q_corrupted_a_bsl.item(), logprob_clean_q_corrupted_a_bsl.item()])
+                else:
+                    self.clean_q_clean_a_bsl += self.inner_metric(clean_logits,
+                                                                  self.clean_answer_ids[i],
+                                                                  self.corrupted_answer_ids[i]).item() / num_prompts
+            gc.collect()
+
+            self.corrupted_q_clean_a_bsl = 0
+            self.corrupted_q_corrupted_a_bsl = 0
+            self.logit_diff_corrupted_q_clean_a_bsl = 0
+            self.logprob_corrupted_q_clean_a_bsl = 0
+            self.logprob_corrupted_q_corrupted_a_bsl = 0
+            self.logit_corrupted_q_clean_a_bsl = 0
+            self.logit_corrupted_q_corrupted_a_bsl = 0
+
+            for i in range(0, num_prompts):
+                corrupted_logits, corrupted_cache = self.model.run_with_cache(self.corrupted_tokens[i])
+                del corrupted_cache
+                gc.collect()
+                self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
+
+                if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
+                    self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or 
+                    self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS_CUSTOM or
+                    self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS_CUSTOM):
+                    corrupted_q_clean_a_bsl, corrupted_q_corrupted_a_bsl = self.inner_metric(corrupted_logits,
+                                                                                             self.clean_answer_ids[i],
+                                                                                             self.corrupted_answer_ids[i])
+                    self.corrupted_q_clean_a_bsl += corrupted_q_clean_a_bsl.item() / num_prompts
+                    self.corrupted_q_corrupted_a_bsl += corrupted_q_corrupted_a_bsl.item() / num_prompts
+                elif (self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL or
+                      self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
+                    logit_diff = self.get_logit_diff_unbatched(corrupted_logits,
+                                                               self.clean_answer_ids[i],
+                                                               self.corrupted_answer_ids[i]).item()
+                    self.logit_diff_corrupted_q_clean_a_bsl += logit_diff / num_prompts
+                    logprob_corrupted_q_clean_a_bsl, logprob_corrupted_q_corrupted_a_bsl = self.get_both_logprobs_unbatched(corrupted_logits,
+                                                                                                                            self.clean_answer_ids[i],
+                                                                                                                            self.corrupted_answer_ids[i])
+                    self.logprob_corrupted_q_clean_a_bsl += logprob_corrupted_q_clean_a_bsl.item() / num_prompts
+                    self.logprob_corrupted_q_corrupted_a_bsl += logprob_corrupted_q_corrupted_a_bsl.item() / num_prompts
+                    logit_corrupted_q_clean_a_bsl, logit_corrupted_q_corrupted_a_bsl = self.get_both_logits_unbatched(corrupted_logits,
+                                                                                                                      self.clean_answer_ids[i],
+                                                                                                                      self.corrupted_answer_ids[i])
+                    self.logit_corrupted_q_clean_a_bsl += logit_corrupted_q_clean_a_bsl.item() / num_prompts
+                    self.logit_corrupted_q_corrupted_a_bsl += logit_corrupted_q_corrupted_a_bsl.item() / num_prompts
+
+                    if self.dump:
+                        baselines_to_dump[i].extend([logit_diff,
+                                                     logit_corrupted_q_clean_a_bsl.item(), logprob_corrupted_q_clean_a_bsl.item(),
+                                                     logit_corrupted_q_corrupted_a_bsl.item(), logprob_corrupted_q_corrupted_a_bsl.item()])
+                else:      
+                    self.corrupted_q_clean_a_bsl += self.inner_metric(corrupted_logits,
+                                                                      self.clean_answer_ids[i],
+                                                                      self.corrupted_answer_ids[i]).item() / num_prompts
+            gc.collect()
+
+            self.baselines_ready = True
+
+        clean_tokens_top3 = self.model.to_string(torch.stack(self.clean_logits_top_3))
+        clean_tokens_top3 = {self.pairs_ids[id] : value for id, value in enumerate(clean_tokens_top3)}
+        corrupted_tokens_top3 = self.model.to_string(torch.stack(self.corrupted_logits_top_3))
+        corrupted_tokens_top3 = {self.pairs_ids[id] : value for id, value in enumerate(corrupted_tokens_top3)}
+        print(f"Clean logit TOP-3: {clean_tokens_top3}")
+        print()
+        print(f"Corrupted logit TOP-3: {corrupted_tokens_top3}")
+        print()
+        print()
+
+        if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
+            self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or
+            self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS_CUSTOM or
+            self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS_CUSTOM):
+            print(f"Clean(clean) baseline metric: {self.clean_q_clean_a_bsl:.4f}")
+            print(f"Corrupted(clean) baseline metric: {self.corrupted_q_clean_a_bsl:.4f}")
+            print(f"Clean(corrupted) baseline metric: {self.clean_q_corrupted_a_bsl:.4f}")
+            print(f"Corrupted(corrupted) baseline metric: {self.corrupted_q_corrupted_a_bsl:.4f}")
+        elif (self.technique_type == ActivationPatching.Technique.DENOISING_OPTIMAL or
+              self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
+            print(f"Logit_diff clean baseline metric: {self.logit_diff_clean_q_clean_a_bsl:.4f}")
+            print(f"Logit_diff corrupted baseline metric: {self.logit_diff_corrupted_q_clean_a_bsl:.4f}")
+            print()
+            print(f"Logprob clean answer(clean prompt) baseline metric: {self.logprob_clean_q_clean_a_bsl:.4f}")
+            print(f"Logprob corrupted answer(clean prompt) baseline metric: {self.logprob_clean_q_corrupted_a_bsl:.4f}")
+            print(f"Logprob clean answer(corrupted prompt) baseline metric: {self.logprob_corrupted_q_clean_a_bsl:.4f}")
+            print(f"Logprob corrupted answer(corrupted prompt) baseline metric: {self.logprob_corrupted_q_corrupted_a_bsl:.4f}")
+            print()
+            print(f"Logit clean answer(clean prompt) baseline metric: {self.logit_clean_q_clean_a_bsl:.4f}")
+            print(f"Logit corrupted answer(clean prompt) baseline metric: {self.logit_clean_q_corrupted_a_bsl:.4f}")
+            print(f"Logit clean answer(corrupted prompt) baseline metric: {self.logit_corrupted_q_clean_a_bsl:.4f}")
+            print(f"Logit corrupted answer(corrupted prompt) baseline metric: {self.logit_corrupted_q_corrupted_a_bsl:.4f}")
+        else:
+            print(f"Clean baseline metric: {self.clean_q_clean_a_bsl:.4f}")
+            print(f"Corrupted baseline metric: {self.corrupted_q_clean_a_bsl:.4f}")
+
+        if self.dump:
+            df_to_dump = pd.DataFrame(baselines_to_dump, columns=headers_to_dump)
+            df_to_dump.to_csv("computed_baselines.csv")
+            print("Dumped baseline metrics into \"computed_baselines.csv\"!")
+
+        assert not self.caches_and_baselines_ready
+
     # Helper for call of ActivationPatching wih custom metrics.
     def __create_indices__(self, activation_name, index_axis_names, tokens_to_run):
         assert index_axis_names is not None
@@ -339,8 +578,12 @@ class ActivationPatching(Patching):
 
     def __patch__(self, layer_specific_algorithm, activation_name="", index_axis_names=""):
         # Precalculate caches and baselines if not yet:
-        self.__precalculate_caches_and_baselines__()
-        assert(self.caches_and_baselines_ready)
+        if not self.unbatched:
+            self.__precalculate_caches_and_baselines__()
+            assert(self.caches_and_baselines_ready)
+        else:
+            self.__precalculate_caches_and_baselines_unbatched__()
+            assert not self.caches_and_baselines_ready
 
         if (self.technique_type == self.Technique.DENOISING):
             # for batch..
@@ -515,65 +758,189 @@ class ActivationPatching(Patching):
             #       the metric to return a scalar only.
             # We will just accumulate all metrics in one array
             # Then, we will map flattened output to non-flattened indices returned from TransformerLens.
-            metrics_output = []
-            def __metrics__(logits):
-                logit_diff = self.get_logit_diff(logits).item() - self.logit_diff_corrupted_q_clean_a_bsl
-                both_lobprobs_not_centered = self.get_both_logprobs(logits)
-                clean_logprob = both_lobprobs_not_centered[0].item() - self.logprob_corrupted_q_clean_a_bsl
-                corrupted_logprob = both_lobprobs_not_centered[1].item() - self.logprob_corrupted_q_corrupted_a_bsl
-                both_logits_not_centered = self.get_both_logits(logits)
-                clean_logit = both_logits_not_centered[0].item() - self.logit_corrupted_q_clean_a_bsl
-                corrupted_logit = both_logits_not_centered[1].item() - self.logit_corrupted_q_corrupted_a_bsl
-                metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
-                return torch.Tensor([logit_diff])
+            if not self.unbatched:
+                metrics_output = []
+                def __metrics__(logits):
+                    logit_diff = (self.get_logit_diff(logits).item() - self.logit_diff_corrupted_q_clean_a_bsl) / (
+                                  self.logit_diff_clean_q_clean_a_bsl - self.logit_diff_corrupted_q_clean_a_bsl)
+                    both_lobprobs_not_normalized = self.get_both_logprobs(logits)
+                    clean_logprob = (both_lobprobs_not_normalized[0].item() - self.logprob_corrupted_q_clean_a_bsl) / (
+                                     self.logprob_clean_q_clean_a_bsl - self.logprob_corrupted_q_clean_a_bsl)
+                    corrupted_logprob = - (both_lobprobs_not_normalized[1].item() - self.logprob_corrupted_q_corrupted_a_bsl) / (
+                                           self.logprob_clean_q_corrupted_a_bsl - self.logprob_corrupted_q_corrupted_a_bsl)
+                    both_logits_not_normalized = self.get_both_logits(logits)
+                    clean_logit = (both_logits_not_normalized[0].item() - self.logit_corrupted_q_clean_a_bsl) / (
+                                   self.logit_clean_q_clean_a_bsl - self.logit_corrupted_q_clean_a_bsl)
+                    corrupted_logit = - (both_logits_not_normalized[1].item() - self.logit_corrupted_q_corrupted_a_bsl) / (
+                                         self.logit_clean_q_corrupted_a_bsl - self.logit_corrupted_q_corrupted_a_bsl)
+                    metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                    return torch.Tensor([logit_diff])
 
-            # index_df contains rows that corresponds to multi-level indices
-            ___, index_df = layer_specific_algorithm(self.model, self.corrupted_tokens, self.clean_cache,
-                                                     __metrics__, return_index_df=True)
+                # index_df contains rows that corresponds to multi-level indices
 
-            assert(len(metrics_output) > 0, "More than one layer were processed!")
-            first_layer_metrics = metrics_output[0]
+                ___, index_df = layer_specific_algorithm(self.model, self.corrupted_tokens, self.clean_cache,
+                                                         __metrics__, return_index_df=True)
 
-            index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.corrupted_tokens)
-            # Ex: For (layer, pos) index_axis_max_range is [model.cfg.n_layers, tokens_to_run.shape[-1]]
-            patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
-                                      for i in range(0, len(first_layer_metrics))]
- 
-            for i in range(0, len(first_layer_metrics)):
-                for c, index_row in enumerate(list(index_df.iterrows())):
-                    index = index_row[1].to_list()
-                    patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
-            return torch.stack(patched_metrics_output)
+                assert len(metrics_output) > 0, "More than one layer were processed!"
+                first_layer_metrics = metrics_output[0]
+
+                index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.corrupted_tokens)
+                # Ex: For (layer, pos) index_axis_max_range is [model.cfg.n_layers, tokens_to_run.shape[-1]]
+                patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                        for i in range(0, len(first_layer_metrics))]
+    
+                for i in range(0, len(first_layer_metrics)):
+                    for c, index_row in enumerate(list(index_df.iterrows())):
+                        index = index_row[1].to_list()
+                        patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
+                return torch.stack(patched_metrics_output)
+            else:
+                print(f"Launching DENOISING_OPTIMAL!")
+
+                metrics_output = []
+                idx_state = 0
+
+                def __metrics_unbatched__(logits):
+                    nonlocal idx_state
+                    nonlocal metrics_output
+                    prompt_number = idx_state
+                    clean_answer_id = self.clean_answer_ids[prompt_number]
+                    corrupted_answer_id = self.corrupted_answer_ids[prompt_number]
+
+                    logit_diff = (self.get_logit_diff_unbatched(logits, clean_answer_id, corrupted_answer_id).item() - self.logit_diff_corrupted_q_clean_a_bsl) / (
+                                  self.logit_diff_clean_q_clean_a_bsl - self.logit_diff_corrupted_q_clean_a_bsl)
+                    both_lobprobs_not_normalized = self.get_both_logprobs_unbatched(logits, clean_answer_id, corrupted_answer_id)
+                    clean_logprob = (both_lobprobs_not_normalized[0].item() - self.logprob_corrupted_q_clean_a_bsl) / (
+                                     self.logprob_clean_q_clean_a_bsl - self.logprob_corrupted_q_clean_a_bsl)
+                    corrupted_logprob = - (both_lobprobs_not_normalized[1].item() - self.logprob_corrupted_q_corrupted_a_bsl) / (
+                                           self.logprob_clean_q_corrupted_a_bsl - self.logprob_corrupted_q_corrupted_a_bsl)
+                    both_logits_not_normalized = self.get_both_logits_unbatched(logits, clean_answer_id, corrupted_answer_id)
+                    clean_logit = (both_logits_not_normalized[0].item() - self.logit_corrupted_q_clean_a_bsl) / (
+                                   self.logit_clean_q_clean_a_bsl - self.logit_corrupted_q_clean_a_bsl)
+                    corrupted_logit = - (both_logits_not_normalized[1].item() - self.logit_corrupted_q_corrupted_a_bsl) / (
+                                         self.logit_clean_q_corrupted_a_bsl - self.logit_corrupted_q_corrupted_a_bsl)
+                    metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+
+                    return torch.Tensor([logit_diff])
+
+                metrics_number = 5
+                assert len(self.corrupted_tokens) > 0
+                # FIXME: Here we are relying on the fact that all prompts has the same token count!!!!!
+                index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.corrupted_tokens[0])
+                # Ex: For (layer, pos) index_axis_max_range is [model.cfg.n_layers, tokens_to_run.shape[-1]]
+                patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                          for _ in range(0, metrics_number)]
+                num_prompts = len(self.clean_tokens)
+                for i in range(0, num_prompts):
+                    idx_state = i
+                    print(f"Handling pair : {self.pairs_ids[i]}")
+                    clean_result, clean_cache = self.model.run_with_cache(self.clean_tokens[i])
+                    del clean_result
+                    gc.collect()
+
+                    ___, index_df = layer_specific_algorithm(self.model, self.corrupted_tokens[i], clean_cache,
+                                                             __metrics_unbatched__, return_index_df=True)
+
+                    assert len(metrics_output) > 0, "More than one layer were processed!"        
+                    for m in range(0, metrics_number):
+                        for c, index_row in enumerate(list(index_df.iterrows())):
+                            index = index_row[1].to_list()
+                            patched_metrics_output[m][tuple(index)] += metrics_output[c][m] / num_prompts
+                    metrics_output = []
+                idx_state = 0
+                return torch.stack(patched_metrics_output)
         elif (self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
-            metrics_output = []
-            def __metrics__(logits):
-                logit_diff = self.logit_diff_clean_q_clean_a_bsl - self.get_logit_diff(logits).item()
-                both_logprobs_not_centered = self.get_both_logprobs(logits)
-                clean_logprob = both_logprobs_not_centered[0].item() - self.logprob_clean_q_clean_a_bsl
-                corrupted_logprob = both_logprobs_not_centered[1].item() - self.logprob_clean_q_corrupted_a_bsl
-                both_logits_not_centered = self.get_both_logits(logits)
-                clean_logit = both_logits_not_centered[0].item() - self.logit_clean_q_clean_a_bsl
-                corrupted_logit = both_logits_not_centered[1].item() - self.logit_clean_q_corrupted_a_bsl
-                metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
-                return torch.Tensor([logit_diff])
+            if not self.unbatched:
+                metrics_output = []
+                def __metrics__(logits):
+                    logit_diff =  (self.logit_diff_clean_q_clean_a_bsl - self.get_logit_diff(logits).item()) / (
+                                   self.logit_diff_clean_q_clean_a_bsl - self.logit_diff_corrupted_q_clean_a_bsl)
+                    both_logprobs_not_normalized = self.get_both_logprobs(logits)
+                    clean_logprob = - (both_logprobs_not_normalized[0].item() - self.logprob_clean_q_clean_a_bsl) / (
+                                       self.logprob_corrupted_q_clean_a_bsl - self.logprob_clean_q_clean_a_bsl)
+                    corrupted_logprob = (self.logprob_clean_q_corrupted_a_bsl -  both_logprobs_not_normalized[1].item()) / (
+                                         self.logprob_clean_q_corrupted_a_bsl - self.logprob_corrupted_q_corrupted_a_bsl)
+                    both_logits_not_normalized = self.get_both_logits(logits)
+                    clean_logit = - (both_logits_not_normalized[0].item() - self.logit_clean_q_clean_a_bsl) / (
+                                     self.logit_corrupted_q_clean_a_bsl - self.logit_clean_q_clean_a_bsl)
+                    corrupted_logit = (self.logit_clean_q_corrupted_a_bsl -  both_logits_not_normalized[1].item()) / (
+                                       self.logit_clean_q_corrupted_a_bsl - self.logit_corrupted_q_corrupted_a_bsl)
+                    metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+                    return torch.Tensor([logit_diff])
 
-            ___, index_df = layer_specific_algorithm(self.model, self.clean_tokens, self.corrupted_cache,
-                                                     __metrics__, return_index_df=True)
+                ___, index_df = layer_specific_algorithm(self.model, self.clean_tokens, self.corrupted_cache,
+                                                         __metrics__, return_index_df=True)
 
-            assert(len(metrics_output) > 0, "More than one layer were processed!")
-            first_layer_metrics = metrics_output[0]
+                assert len(metrics_output) > 0, "More than one layer were processed!"
+                first_layer_metrics = metrics_output[0]
 
-            index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.clean_tokens)
-            patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
-                                      for i in range(0, len(first_layer_metrics))]
+                index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.clean_tokens)
+                patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                          for i in range(0, len(first_layer_metrics))]
 
-            for i in range(0, len(first_layer_metrics)):
-                for c, index_row in enumerate(list(index_df.iterrows())):
-                    index = index_row[1].to_list()
-                    patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
+                for i in range(0, len(first_layer_metrics)):
+                    for c, index_row in enumerate(list(index_df.iterrows())):
+                        index = index_row[1].to_list()
+                        patched_metrics_output[i][tuple(index)] = metrics_output[c][i]
 
-            return torch.stack(patched_metrics_output)
+                return torch.stack(patched_metrics_output)
+            else:
+                print(f"Launching NOISING_OPTIMAL!")
+
+                metrics_output = []
+                idx_state = 0
+
+                def __metrics_unbatched__(logits):
+                    nonlocal idx_state
+                    nonlocal metrics_output
+                    prompt_number = idx_state
+
+                    clean_answer_id = self.clean_answer_ids[prompt_number]
+                    corrupted_answer_id = self.corrupted_answer_ids[prompt_number]
+                    logit_diff =  (self.logit_diff_clean_q_clean_a_bsl - self.get_logit_diff_unbatched(logits, clean_answer_id, corrupted_answer_id).item()) / (
+                                   self.logit_diff_clean_q_clean_a_bsl - self.logit_diff_corrupted_q_clean_a_bsl)
+                    both_logprobs_not_normalized = self.get_both_logprobs_unbatched(logits, clean_answer_id, corrupted_answer_id)
+                    clean_logprob = - (both_logprobs_not_normalized[0].item() - self.logprob_clean_q_clean_a_bsl) / (
+                                       self.logprob_corrupted_q_clean_a_bsl - self.logprob_clean_q_clean_a_bsl)
+                    corrupted_logprob = (self.logprob_clean_q_corrupted_a_bsl -  both_logprobs_not_normalized[1].item()) / (
+                                         self.logprob_clean_q_corrupted_a_bsl - self.logprob_corrupted_q_corrupted_a_bsl)
+                    both_logits_not_normalized = self.get_both_logits_unbatched(logits, clean_answer_id, corrupted_answer_id)
+                    clean_logit = - (both_logits_not_normalized[0].item() - self.logit_clean_q_clean_a_bsl) / (
+                                     self.logit_corrupted_q_clean_a_bsl - self.logit_clean_q_clean_a_bsl)
+                    corrupted_logit = (self.logit_clean_q_corrupted_a_bsl -  both_logits_not_normalized[1].item()) / (
+                                       self.logit_clean_q_corrupted_a_bsl - self.logit_corrupted_q_corrupted_a_bsl)
+                    metrics_output.append([logit_diff, clean_logprob, corrupted_logprob, clean_logit, corrupted_logit])
+
+                    return torch.Tensor([logit_diff])
+
+                metrics_number = 5
+                assert len(self.clean_tokens) > 0
+                # FIXME: Here we are relying on the fact that all prompts has the same token count!!!!!
+                index_axis_max_range = self.__create_indices__(activation_name, index_axis_names, self.clean_tokens[0])
+                # Ex: For (layer, pos) index_axis_max_range is [model.cfg.n_layers, tokens_to_run.shape[-1]]
+                patched_metrics_output = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                          for _ in range(0, metrics_number)]
+                num_prompts = len(self.clean_tokens)
+                for i in range(0, num_prompts):
+                    idx_state = i
+                    print(f"Handling pair : {self.pairs_ids[i]}")
+
+                    corrupted_result, corrupted_cache = self.model.run_with_cache(self.corrupted_tokens[i])
+                    del corrupted_result
+                    gc.collect()
+
+                    ___, index_df = layer_specific_algorithm(self.model, self.clean_tokens[i], corrupted_cache,
+                                                             __metrics_unbatched__, return_index_df=True)
+
+                    assert len(metrics_output) > 0, "More than one layer were processed!"        
+                    for m in range(0, metrics_number):
+                        for c, index_row in enumerate(list(index_df.iterrows())):
+                            index = index_row[1].to_list()
+                            patched_metrics_output[m][tuple(index)] += metrics_output[c][m] / num_prompts
+                    metrics_output = []
+                idx_state = 0
+                return torch.stack(patched_metrics_output)
         else:
             raise Exception("Unknown patching technique type is sent!")
 
