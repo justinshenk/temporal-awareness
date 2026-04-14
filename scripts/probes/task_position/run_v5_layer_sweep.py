@@ -49,6 +49,7 @@ def parse_args():
         default="results/probes/task_position/2026-04-13-v5-layer-sweep.md",
     )
     p.add_argument("--alpha", type=float, default=1.0)
+    p.add_argument("--model-label", default="Gemma-9B-IT")
     return p.parse_args()
 
 
@@ -167,7 +168,7 @@ def main():
     out_md = Path(args.out_md)
     out_md.parent.mkdir(parents=True, exist_ok=True)
     lines = []
-    lines.append("# v5: dense early-layer probe sweep (Gemma-9B-IT, DDXPlus)\n\n")
+    lines.append(f"# v5: dense early-layer probe sweep ({args.model_label}, DDXPlus)\n\n")
     lines.append(
         f"Trained ridge probes at layers {layers} using the same 20-trace "
         "extraction and the same train/test split (16/4, seed 42) as v1. "

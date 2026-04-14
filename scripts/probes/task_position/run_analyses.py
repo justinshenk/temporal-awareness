@@ -41,6 +41,7 @@ def parse_args():
         default="results/probes/task_position/2026-04-13-v1-results.md",
     )
     p.add_argument("--calibration-layer", type=int, default=10)
+    p.add_argument("--model-label", default="Gemma-9B-IT")
     return p.parse_args()
 
 
@@ -88,6 +89,7 @@ def main():
         a2=a2,
         a4=a4,
         calibration_layer=args.calibration_layer,
+        model_label=args.model_label,
     )
     print(f"\nWrote {out}")
 
@@ -102,6 +104,7 @@ def write_results_markdown(
     a2: pd.DataFrame,
     a4: pd.DataFrame,
     calibration_layer: int,
+    model_label: str = "Gemma-9B-IT",
 ) -> None:
     best = (
         metrics_df.loc[metrics_df.groupby("target")["metric"].idxmax()]
@@ -126,9 +129,9 @@ def write_results_markdown(
         a2_strong_success = bool((a2["delta"] > 0.05).any())
 
     lines = []
-    lines.append("# Task-Position Probes v1 Results (Gemma-9B-IT, DDXPlus)\n")
+    lines.append(f"# Task-Position Probes v1 Results ({model_label}, DDXPlus)\n")
     lines.append(
-        "Multi-case DDXPlus traces accumulated to ~90% of Gemma-2-9B-IT's 8k context. "
+        f"Multi-case DDXPlus traces accumulated to ~90% of {model_label}'s 8k context. "
         "Per-token residual streams captured at layers "
         f"{layers}. Twenty traces split 80/20 by trace id "
         f"(train={sorted(train_ids)}, test={sorted(test_ids)}, seed=42).\n"
