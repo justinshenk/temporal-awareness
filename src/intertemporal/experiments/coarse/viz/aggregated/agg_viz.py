@@ -429,6 +429,7 @@ def plot_all_aggregated_slices(
                     comp_comparison_dir,
                     processed_results=comp_processed,
                     position_mapping=position_mapping,
+                    agg_by_component=filtered_agg,
                 )
 
     print(f"[viz] All aggregated slices saved to {output_dir}")

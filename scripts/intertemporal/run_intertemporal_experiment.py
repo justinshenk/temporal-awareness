@@ -71,6 +71,7 @@ from src.intertemporal.experiments.experiment_config import (
 )
 from src.intertemporal.experiments.intertemporal_experiment import (
     ExperimentConfig,
+    run_agg_only,
     run_experiment_per_pair,
 )
 # =============================================================================
@@ -163,6 +164,11 @@ def parse_args() -> argparse.Namespace:
         "--camera-ready",
         action="store_true",
         help="Save SVG files alongside PNGs for publication-quality figures",
+    )
+    parser.add_argument(
+        "--agg-only",
+        action="store_true",
+        help="Only regenerate aggregated visualizations from cached per-pair data",
     )
 
     # --- Phase overrides (JSON, ordered to match run_experiment) ---
@@ -423,12 +429,20 @@ def main() -> int:
 
     # Run experiment
     try:
-        run_experiment_per_pair(
-            exp_cfg,
-            try_loading_data=try_loading_data,
-            output_dir=output_dir,
-            backend=args.backend,
-        )
+        if args.agg_only:
+            # Aggregation-only mode: regenerate viz from cached per-pair data
+            run_agg_only(
+                exp_cfg,
+                output_dir=output_dir,
+                backend=args.backend,
+            )
+        else:
+            run_experiment_per_pair(
+                exp_cfg,
+                try_loading_data=try_loading_data,
+                output_dir=output_dir,
+                backend=args.backend,
+            )
         P.report()
         P.save(output_dir / "profile.json")
     finally:

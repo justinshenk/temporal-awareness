@@ -666,6 +666,7 @@ class ExperimentMixin:
             self.attn_agg,
             self.agg_dir / "attn",
             self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
+            pairs_dir=self.output_dir / "pairs",
         )
 
     def make_fine_viz(self, _) -> Callable[[], None]:
@@ -784,7 +785,9 @@ class ExperimentMixin:
         result = self.attn[pair_idx]
         out_dir = self.get_attn_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        visualize_attn_pair(result, out_dir, mapping=mapping, pair_idx=pair_idx)
+        visualize_attn_pair(result, out_dir, pair_idx=pair_idx)
+        # Drop heavy attention patterns now that per-pair viz is done.
+        result.pop_heavy()
 
     def viz_fine_pair(self, pair_idx: int, mapping=None) -> None:
         """Generate visualizations for a single fine-grained pair.

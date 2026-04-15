@@ -19,6 +19,8 @@ def plot_decomposition(
     pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
     processed_results: ComponentComparisonResults | None = None,
+    position_mapping=None,
+    agg_by_component: dict | None = None,
 ) -> None:
     """Generate all component decomposition plots."""
     _plot_attn_vs_mlp_scatter(layer_data, output_dir, "layer")
@@ -27,8 +29,10 @@ def plot_decomposition(
     _plot_component_importance(layer_data, output_dir)
     _plot_cumulative_recovery(layer_data, output_dir)
     _plot_marginal_contribution(layer_data, output_dir)
+    if agg_by_component:
+        _plot_marginal_contribution_var(agg_by_component, output_dir)
     _plot_layer_interaction(layer_data, output_dir)
-    _plot_position_interaction(pos_data, output_dir)
+    _plot_position_interaction(pos_data, output_dir, position_mapping)
     _plot_position_interaction_zoomed(pos_data, output_dir)  # NEW: zoomed version
 
 
@@ -171,25 +175,18 @@ def _plot_attn_vs_mlp_paired(
     movement_threshold = np.median(movements) if movements else 0
 
     for i, (layer, attn_den, mlp_den, attn_noi, mlp_noi) in enumerate(paired_data):
-        color = cmap(color_values[i])
         dist = movements[i]
+        if dist <= movement_threshold:
+            continue  # Skip layers without significant movement
+        color = cmap(color_values[i])
 
-        # Denoising point (circle)
         ax.scatter(attn_den, mlp_den, c=[color], s=80, marker="o", edgecolors="black", linewidth=0.5)
-
-        # Noising point (square)
         ax.scatter(attn_noi, mlp_noi, c=[color], s=80, marker="s", edgecolors="black", linewidth=0.5)
-
-        # Only draw arrow and label if movement exceeds threshold
-        if dist > movement_threshold:
-            # Arrow from denoising to noising
-            ax.annotate("", xy=(attn_noi, mlp_noi), xytext=(attn_den, mlp_den),
-                        arrowprops=dict(arrowstyle="->", color=color, alpha=0.6, lw=1.5))
-
-            # Label at midpoint
-            mid_x = (attn_den + attn_noi) / 2
-            mid_y = (mlp_den + mlp_noi) / 2
-            ax.text(mid_x, mid_y, f"L{layer}", fontsize=7, alpha=0.7, ha="center", va="center")
+        ax.annotate("", xy=(attn_noi, mlp_noi), xytext=(attn_den, mlp_den),
+                    arrowprops=dict(arrowstyle="->", color=color, alpha=0.6, lw=1.5))
+        mid_x = (attn_den + attn_noi) / 2
+        mid_y = (mlp_den + mlp_noi) / 2
+        ax.text(mid_x, mid_y, f"L{layer}", fontsize=7, alpha=0.7, ha="center", va="center")
 
     # Reference elements
     ax.plot([min_val, max_val], [min_val, max_val], "k--", alpha=0.5, linewidth=1)
@@ -200,7 +197,7 @@ def _plot_attn_vs_mlp_paired(
     ax.set_ylim(min_val, max_val)
     ax.set_xlabel("attn_out effect", fontsize=12, fontweight="bold")
     ax.set_ylabel("mlp_out effect", fontsize=12, fontweight="bold")
-    ax.set_title("Paired Attn vs MLP: Denoising (○) → Noising (□)\n(Arrows shown only for layers with significant movement)",
+    ax.set_title("Paired Attn vs MLP Significant: Denoising (○) → Noising (□)",
                  fontsize=14, fontweight="bold")
 
     # Legend
@@ -216,7 +213,7 @@ def _plot_attn_vs_mlp_paired(
 def _plot_component_importance(
     layer_data: dict[str, SweepStepResults | None],
     output_dir: Path,
-    top_n: int = 15,
+    top_n: int = 20,
 ) -> None:
     """Plot top N components with denoising and noising scores side-by-side.
 
@@ -242,8 +239,8 @@ def _plot_component_importance(
     if not all_components:
         return
 
-    # Sort by recovery
-    all_components.sort(key=lambda x: x["recovery"], reverse=True)
+    # Sort by combined (recovery + disruption) to rank by BOTH metrics
+    all_components.sort(key=lambda x: x["recovery"] + x["disruption"], reverse=True)
     top_components = all_components[:top_n]
 
     labels = [c["label"] for c in top_components]
@@ -281,6 +278,7 @@ def _plot_cumulative_recovery(
     """Plot cumulative recovery stacked area with dip annotations."""
     attn_data = layer_data.get("attn_out")
     mlp_data = layer_data.get("mlp_out")
+    resid_post_data = layer_data.get("resid_post")
 
     if not attn_data or not mlp_data:
         return
@@ -301,38 +299,28 @@ def _plot_cumulative_recovery(
     ax.fill_between(layers, 0, attn_cumsum, alpha=0.6, color=COMPONENT_COLORS["attn_out"], label="attn_out")
     ax.fill_between(layers, attn_cumsum, total_cumsum, alpha=0.6, color=COMPONENT_COLORS["mlp_out"], label="mlp_out")
 
-    # Reference line at y=1.0
-    ax.axhline(y=1.0, color="black", linestyle="--", linewidth=2, alpha=0.7)
-    ax.annotate("Full Recovery (1.0)", xy=(layers[0], 1.0), xytext=(layers[0] + 2, 1.05),
-                fontsize=10, fontweight="bold", color="black", alpha=0.7)
-
-    # Detect and annotate only the most significant dips (counterproductive attention)
-    # Only annotate the top 3 most negative layers to avoid clutter
-    if len(attn_recovery) > 3:
-        negative_layers = [(i, layers[i], attn_recovery[i])
-                           for i in range(len(attn_recovery)) if attn_recovery[i] < -0.02]
-        # Sort by most negative
-        negative_layers.sort(key=lambda x: x[2])
-        # Only annotate top 3
-        for idx, layer, attn_val in negative_layers[:3]:
-            ax.annotate(f"L{layer} attn\ncounterproductive",
-                        xy=(layer, attn_cumsum[idx]), xytext=(layer + 2, attn_cumsum[idx] - 0.1),
-                        fontsize=9, fontweight="bold", color="red", alpha=0.9,
-                        arrowprops=dict(arrowstyle="->", color="red", alpha=0.6))
-
-    # Mark key layers (top contributors)
-    total_per_layer = [a + m for a, m in zip(attn_recovery, mlp_recovery)]
-    key_layers = sorted(zip(layers, total_per_layer), key=lambda x: x[1], reverse=True)[:5]
-    for layer, val in key_layers:
-        ax.axvline(x=layer, color="gray", linestyle=":", alpha=0.5, linewidth=1.5)
-        idx = layers.index(layer)
-        ax.annotate(f"L{layer}", xy=(layer, total_cumsum[idx]), xytext=(layer + 0.5, total_cumsum[idx] + 0.1),
-                    fontsize=8, fontweight="bold", color="gray")
+    # resid_post: already an absolute "cumulative recovery up to layer L"
+    # since patching the full residual stream subsumes everything before it.
+    if resid_post_data:
+        rp_layers = [l for l in layers if l in resid_post_data and resid_post_data[l].recovery is not None]
+        rp_vals = [resid_post_data[l].recovery for l in rp_layers]
+        if rp_layers:
+            ax.fill_between(
+                rp_layers, 0, rp_vals,
+                color=COMPONENT_COLORS.get("resid_post", "#d62728"),
+                alpha=0.25, label="resid_post",
+            )
+            ax.plot(rp_layers, rp_vals, "-",
+                    color=COMPONENT_COLORS.get("resid_post", "#d62728"),
+                    linewidth=2)
 
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
     ax.set_ylabel("Cumulative Recovery", fontsize=12, fontweight="bold")
     ax.set_title("Cumulative Recovery Build-up Through Network", fontsize=14, fontweight="bold")
-    ax.legend(loc="upper left")
+    ax.set_ylim(0, 1.0)
+    ax.set_xticks(layers)
+    ax.set_xticklabels([str(l) for l in layers])
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), fontsize=9, frameon=False)
     # Ensure x-axis only shows integer layer values
     ax.set_xticks(layers)
     ax.set_xticklabels([str(l) for l in layers])
@@ -393,36 +381,26 @@ def _plot_marginal_contribution(
     ax.plot(valid_layers, noise_marginal, "s-", color="#d62728", linewidth=2,
             markersize=6, label="Δ Necessity", alpha=0.8)
 
-    # Mark key layers
+    # Mark key layers (vertical guides only — no text labels)
     denoise_sorted = sorted(zip(valid_layers, denoise_marginal), key=lambda x: abs(x[1]), reverse=True)
-    for layer, val in denoise_sorted[:3]:
+    for layer, _val in denoise_sorted[:3]:
         ax.axvline(x=layer, color="#2ca02c", linestyle=":", alpha=0.4, linewidth=1.5)
-        ax.annotate(f"L{layer}", (layer, val), fontsize=8, color="#2ca02c",
-                    xytext=(5, 5), textcoords="offset points", fontweight="bold")
 
-    ax.axhline(y=0, color="black", linestyle="--", alpha=0.5)
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
     ax.set_ylabel("Marginal: resid_post[L] - resid_pre[L]", fontsize=12, fontweight="bold")
     ax.set_title("Marginal Contribution per Layer", fontsize=14, fontweight="bold")
 
-    # Secondary y-axis with recovery values for resid_pre, resid_mid, and resid_post
+    # Secondary y-axis: only resid_post recovery, faded
     ax2 = ax.twinx()
-    ax2.plot(valid_layers, resid_pre_denoise, "v--", color=COMPONENT_COLORS["resid_pre"], linewidth=2,
-             markersize=6, label="resid_pre", alpha=0.7)
-    # Plot resid_mid if we have any valid values
-    if any(v is not None for v in resid_mid_denoise):
-        mid_layers = [l for l, v in zip(valid_layers, resid_mid_denoise) if v is not None]
-        mid_values = [v for v in resid_mid_denoise if v is not None]
-        ax2.plot(mid_layers, mid_values, "d-", color=COMPONENT_COLORS["resid_mid"], linewidth=2.5,
-                 markersize=8, label="resid_mid", alpha=0.9, zorder=5)
-    ax2.plot(valid_layers, resid_post_denoise, "^--", color=COMPONENT_COLORS["resid_post"], linewidth=2,
-             markersize=6, label="resid_post", alpha=0.7)
+    ax2.plot(valid_layers, resid_post_denoise, "^--", color=COMPONENT_COLORS["resid_post"],
+             linewidth=1.5, markersize=5, label="resid_post", alpha=0.35)
     ax2.set_ylabel("Recovery", fontsize=10)
 
-    # Combined legend
+    # Combined legend - place outside plot to avoid overlap
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc="best", fontsize=9)
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left",
+              bbox_to_anchor=(0, -0.12), fontsize=9, ncol=5, frameon=False)
 
     # Ensure x-axis only shows integer layer values
     ax.set_xticks(valid_layers)
@@ -430,6 +408,96 @@ def _plot_marginal_contribution(
     setup_grid(ax)
     plt.tight_layout()
     save_plot(fig, output_dir, "marginal_contribution.png")
+
+
+def _plot_marginal_contribution_var(
+    agg_by_component: dict,
+    output_dir: Path,
+) -> None:
+    """Variance variant of marginal_contribution: per-pair scatter + mean ± std bands."""
+    pre_agg = agg_by_component.get("resid_pre")
+    post_agg = agg_by_component.get("resid_post")
+    if pre_agg is None or post_agg is None:
+        return
+    if not getattr(pre_agg, "by_sample", None) or not getattr(post_agg, "by_sample", None):
+        return
+
+    # Collect per-pair (layer -> recovery) for resid_pre and resid_post
+    def _per_pair_layer_recovery(agg) -> dict[int, list[float]]:
+        out: dict[int, list[float]] = {}
+        for sample in agg.by_sample.values():
+            steps = list(sample.layer_results.keys())
+            if not steps:
+                continue
+            step = min(int(s) for s in steps)
+            sw = sample.get_layer_results_for_step(step)
+            if not sw:
+                continue
+            for layer in sw.keys():
+                tr = sw.get(layer)
+                if tr is None or tr.recovery is None:
+                    continue
+                out.setdefault(int(layer), []).append(float(tr.recovery))
+        return out
+
+    def _per_pair_layer_disruption(agg) -> dict[int, list[float]]:
+        out: dict[int, list[float]] = {}
+        for sample in agg.by_sample.values():
+            steps = list(sample.layer_results.keys())
+            if not steps:
+                continue
+            step = min(int(s) for s in steps)
+            sw = sample.get_layer_results_for_step(step)
+            if not sw:
+                continue
+            for layer in sw.keys():
+                tr = sw.get(layer)
+                if tr is None or tr.disruption is None:
+                    continue
+                out.setdefault(int(layer), []).append(float(tr.disruption))
+        return out
+
+    pre_rec = _per_pair_layer_recovery(pre_agg)
+    post_rec = _per_pair_layer_recovery(post_agg)
+    pre_dis = _per_pair_layer_disruption(pre_agg)
+    post_dis = _per_pair_layer_disruption(post_agg)
+
+    layers = sorted(set(pre_rec.keys()) & set(post_rec.keys()) & set(pre_dis.keys()) & set(post_dis.keys()))
+    if not layers:
+        return
+
+    # Compute per-pair marginals (post - pre) for each layer
+    suff_means, suff_stds, nec_means, nec_stds = [], [], [], []
+    for L in layers:
+        n = min(len(pre_rec[L]), len(post_rec[L]))
+        suff = np.array(post_rec[L][:n]) - np.array(pre_rec[L][:n])
+        n2 = min(len(pre_dis[L]), len(post_dis[L]))
+        nec = np.array(post_dis[L][:n2]) - np.array(pre_dis[L][:n2])
+        suff_means.append(float(suff.mean()) if len(suff) else 0.0)
+        suff_stds.append(float(suff.std()) if len(suff) else 0.0)
+        nec_means.append(float(nec.mean()) if len(nec) else 0.0)
+        nec_stds.append(float(nec.std()) if len(nec) else 0.0)
+
+    suff_means = np.array(suff_means)
+    suff_stds = np.array(suff_stds)
+    nec_means = np.array(nec_means)
+    nec_stds = np.array(nec_stds)
+
+    fig, ax = create_figure(figsize=(12, 6))
+    ax.plot(layers, suff_means, "o-", color="#2ca02c", linewidth=2, markersize=6, label="Δ Sufficiency", alpha=0.9)
+    ax.fill_between(layers, suff_means - suff_stds, suff_means + suff_stds, color="#2ca02c", alpha=0.2)
+    ax.plot(layers, nec_means, "s-", color="#d62728", linewidth=2, markersize=6, label="Δ Necessity", alpha=0.9)
+    ax.fill_between(layers, nec_means - nec_stds, nec_means + nec_stds, color="#d62728", alpha=0.2)
+
+    ax.set_xlabel("Layer", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Marginal: resid_post[L] - resid_pre[L]", fontsize=12, fontweight="bold")
+    ax.set_title("Marginal Contribution per Layer (mean ± std across pairs)", fontsize=14, fontweight="bold")
+    ax.set_xticks(layers)
+    ax.set_xticklabels([str(l) for l in layers])
+    ax.legend(loc="upper left", fontsize=9)
+    setup_grid(ax)
+    plt.tight_layout()
+    save_plot(fig, output_dir, "marginal_contribution_var.png")
 
 
 def _detect_hub_regions(
@@ -489,9 +557,10 @@ def _plot_layer_interaction(
     all_values = []
     data_by_mode = {}
 
+    plot_components = ["attn_out", "mlp_out", "resid_post"]
     for mode in ["denoising", "noising"]:
         mode_data = {}
-        for comp in COMPONENTS:
+        for comp in plot_components:
             data = layer_data.get(comp)
             if not data:
                 continue
@@ -519,7 +588,7 @@ def _plot_layer_interaction(
         ax = axes[ax_idx]
 
         mode_data = data_by_mode[mode]
-        for comp in COMPONENTS:
+        for comp in plot_components:
             if comp in mode_data:
                 valid_layers, values = mode_data[comp]
                 ax.plot(valid_layers, values, "o-", color=COMPONENT_COLORS[comp],
@@ -531,6 +600,8 @@ def _plot_layer_interaction(
         title = "Denoising" if mode == "denoising" else "Noising"
         ax.set_title(f"Layer × Component Interaction - {title}", fontsize=12, fontweight="bold")
         ax.legend(loc="best", fontsize=9)
+        ax.set_xticks(layers)
+        ax.set_xticklabels([str(l) for l in layers])
         setup_grid(ax)
 
     plt.tight_layout()
@@ -540,6 +611,7 @@ def _plot_layer_interaction(
 def _plot_position_interaction(
     pos_data: dict[str, SweepStepResults | None],
     output_dir: Path,
+    position_mapping=None,
 ) -> None:
     """Plot position × component interaction with hub shading and shared y-scale."""
     all_positions = set()
@@ -556,22 +628,52 @@ def _plot_position_interaction(
     all_values = []
     data_by_mode = {}
 
+    plot_components = ["attn_out", "mlp_out", "resid_post"]
+
+    # Build groups: format_pos label -> ordered list of abs positions
+    def _group_label(pos: int) -> str:
+        if position_mapping is None:
+            return f"P{pos}"
+        info = position_mapping.get_position(pos)
+        if not info or not info.format_pos:
+            return f"P{pos}"
+        fp = info.format_pos
+        if fp.startswith("left_"):
+            fp = "L_" + fp[5:]
+        elif fp.startswith("right_"):
+            fp = "R_" + fp[6:]
+        return fp
+
+    group_order: list[str] = []
+    group_positions: dict[str, list[int]] = {}
+    for pos in positions:
+        lbl = _group_label(pos)
+        if lbl not in group_positions:
+            group_positions[lbl] = []
+            group_order.append(lbl)
+        group_positions[lbl].append(pos)
+
     for mode in ["denoising", "noising"]:
         mode_data = {}
-        for comp in COMPONENTS:
+        for comp in plot_components:
             data = pos_data.get(comp)
             if not data:
                 continue
-            values, valid_pos = [], []
-            for pos in positions:
-                if data.get(pos) is not None:
-                    val = data[pos].recovery if mode == "denoising" else data[pos].disruption
-                    if val is not None:
-                        values.append(val)
-                        valid_pos.append(pos)
-                        all_values.append(val)
-            if valid_pos:
-                mode_data[comp] = (valid_pos, values)
+            values, valid_groups = [], []
+            for gi, lbl in enumerate(group_order):
+                vs = []
+                for p in group_positions[lbl]:
+                    if data.get(p) is not None:
+                        v = data[p].recovery if mode == "denoising" else data[p].disruption
+                        if v is not None:
+                            vs.append(v)
+                if vs:
+                    mean_v = float(np.mean(vs))
+                    values.append(mean_v)
+                    valid_groups.append(gi)
+                    all_values.append(mean_v)
+            if valid_groups:
+                mode_data[comp] = (valid_groups, values)
         data_by_mode[mode] = mode_data
 
     if not all_values:
@@ -593,18 +695,35 @@ def _plot_position_interaction(
         #     ax.axvspan(start, end, alpha=0.15, color="yellow", zorder=0)
 
         mode_data = data_by_mode[mode]
-        for comp in COMPONENTS:
+        # Draw resid_post first (background), then mlp_out, then attn_out on top
+        # so attn_out remains visible when values overlap with mlp_out.
+        draw_order = [
+            ("resid_post", {"marker": "o", "linestyle": "-", "linewidth": 2.5, "ms": 6, "alpha": 0.7}),
+            ("mlp_out",    {"marker": "s", "linestyle": "-", "linewidth": 1.8, "ms": 5, "alpha": 0.85}),
+            ("attn_out",   {"marker": "x", "linestyle": "--", "linewidth": 1.8, "ms": 7, "alpha": 1.0}),
+        ]
+        for comp, style in draw_order:
             if comp in mode_data:
-                valid_pos, values = mode_data[comp]
-                ax.plot(valid_pos, values, "o-", color=COMPONENT_COLORS[comp],
-                        linewidth=1.5, markersize=4, label=comp, alpha=0.7)
+                valid_groups, values = mode_data[comp]
+                ax.plot(
+                    valid_groups, values,
+                    color=COMPONENT_COLORS[comp],
+                    marker=style["marker"], linestyle=style["linestyle"],
+                    linewidth=style["linewidth"], markersize=style["ms"], alpha=style["alpha"],
+                    label=comp,
+                )
 
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel("Position", fontsize=12, fontweight="bold")
+        ax.set_xlabel("format_pos", fontsize=12, fontweight="bold")
         ax.set_ylabel("Recovery" if mode == "denoising" else "Disruption", fontsize=12, fontweight="bold")
         title = "Denoising" if mode == "denoising" else "Noising"
         ax.set_title(f"Position × Component Interaction - {title}", fontsize=12, fontweight="bold")
         ax.legend(loc="best", fontsize=9)
+
+        # X-tick per format_pos group
+        ax.set_xticks(range(len(group_order)))
+        ax.set_xticklabels(group_order, rotation=60, ha='right', fontsize=7)
+
         setup_grid(ax)
 
     plt.tight_layout()

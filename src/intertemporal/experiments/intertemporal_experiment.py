@@ -450,24 +450,23 @@ def process_attn(
         if ctx.load_attn_pair(pair_idx):
             ctx.attn_agg.add(ctx.attn[pair_idx])
             if step.viz_per_pair:
-                # Use "short" mapping (longer sequence with all semantic positions)
-                mapping = ctx.get_position_mapping(pair_idx, sample="short")
-                ctx.viz_attn_pair(pair_idx, mapping)
+                ctx.viz_attn_pair(pair_idx)
             log(f"[attn] Loaded cached pair {pair_idx + 1}")
             del ctx.attn[pair_idx]
             return
         # Cache file exists but load failed - fall through to recompute
         log(f"[attn] Cache load failed for pair {pair_idx + 1}, recomputing")
 
-    # Get position mapping
-    mapping = ctx.get_position_mapping(pair_idx)
-    if mapping is None:
-        log(f"[attn] Pair {pair_idx}: No position mapping found, skipping")
-        return
+    # Get both position mappings (long = corrupted frame, short = clean frame)
+    mapping = ctx.get_position_mapping(pair_idx, sample="long")
+    clean_mapping = ctx.get_position_mapping(pair_idx, sample="short")
+    assert mapping is not None and clean_mapping is not None, (
+        f"[attn] Pair {pair_idx}: position mappings must exist"
+    )
 
     # 1. Attention pattern analysis
     result = run_attn_analysis(
-        ctx.runner, pair, mapping, pair_idx=pair_idx, config=config
+        ctx.runner, pair, mapping, clean_mapping, pair_idx=pair_idx, config=config,
     )
     ctx.attn[pair_idx] = result
     ctx.attn_agg.add(result)
@@ -644,9 +643,10 @@ def process_progressive_agg(
         ctx.processed_results = ctx.processed_results or ProcessedResults()
         process_coarse_results(ctx)
         ctx.save_processed_results()
-        if steps.coarse.viz_agg:
-            ctx.make_coarse_viz(steps.coarse.config)()
-            log("[coarse] Generated coarse patching visualizations")
+        # Always regenerate viz when rebuilding from cached data
+        # (this is called during progressive agg with --cache)
+        ctx.make_coarse_viz(None)()
+        log("[coarse] Generated coarse patching visualizations")
         ctx.unload_coarse_agg()
 
     # Diffmeans
@@ -751,7 +751,84 @@ def finalize_analysis(ctx: ExperimentContext) -> None:
 # =============================================================================
 
 
-PROGRESSIVE_AGG = 42  # Aggregate every N pairs
+PROGRESSIVE_AGG = 40  # Aggregate every N pairs
+
+
+@profile("run_agg_only")
+def run_agg_only(
+    cfg: ExperimentConfig,
+    output_dir: Path | None = None,
+    backend: str | None = None,
+) -> ExperimentContext:
+    """Regenerate aggregation and visualization from cached per-pair data.
+
+    This skips all per-pair processing and only:
+    1. Loads preference data (for position mapping)
+    2. Rebuilds aggregation from ALL cached per-pair data
+    3. Generates aggregated visualizations
+
+    Use this when you have cached per-pair results and want to regenerate
+    aggregation/visualization without re-running the full experiment.
+    """
+    from ...common.logging import log_header
+
+    log_header("AGGREGATION-ONLY MODE", gap=1)
+    log("[agg-only] Skipping per-pair processing, rebuilding from cached data")
+
+    ctx = ExperimentContext(cfg, output_dir=output_dir, backend=backend)
+
+    # Set camera-ready mode for publication figures (SVG + PDF)
+    set_svg_mode(ctx.save_svg)
+    set_pdf_mode(ctx.save_pdf)
+
+    # Load preference data (needed for position mapping in viz)
+    step_preference_data(ctx, try_loading_data=True)
+
+    # Initialize step configs for visualization
+    steps = ExperimentSteps.from_cfg(
+        cfg, try_loading_data=True, viz_enabled=ctx.viz_enabled
+    )
+
+    # Rebuild and visualize all aggregations
+    log("[agg-only] Rebuilding aggregations from cached per-pair data...", gap=1)
+
+    # Coarse - rebuild from ALL cached per-pair data
+    ctx.rebuild_coarse_agg_from_pairs()
+    if ctx.coarse_agg_by_component:
+        for comp, agg in ctx.coarse_agg_by_component.items():
+            log(f"[coarse] {comp}: {agg.n_samples} pairs")
+            agg.print_summary()
+        ctx.save_coarse_agg()
+        ctx.processed_results = ctx.processed_results or ProcessedResults()
+        process_coarse_results(ctx)
+        ctx.save_processed_results()
+        # Always generate visualizations in agg-only mode (ignore no_viz config)
+        ctx.make_coarse_viz(None)()
+        log("[coarse] Generated coarse patching visualizations")
+        ctx.unload_coarse_agg()
+
+    # Attn — rebuild aggregation from cached per-pair attn_results.json
+    if steps.attn.enabled:
+        ctx.attn_agg = AttnAggregatedResults(layers_analyzed=steps.attn.config.layers)
+        # Discover pair count from the pairs directory on disk
+        pairs_dir = ctx.output_dir / "pairs"
+        pair_dirs = sorted(pairs_dir.glob("pair_*")) if pairs_dir.exists() else []
+        for pair_dir in pair_dirs:
+            pair_idx = int(pair_dir.name.split("_")[1])
+            if ctx.load_attn_pair(pair_idx):
+                ctx.attn_agg.add(ctx.attn[pair_idx])
+                del ctx.attn[pair_idx]
+        if ctx.attn_agg.n_pairs > 0:
+            ctx.attn_agg.print_summary()
+            ctx.attn_agg.save(ctx.agg_dir / "attn")
+            ctx.make_attn_viz(None)()
+            log("[attn] Generated attention analysis visualizations")
+
+    # Finalize analysis
+    finalize_analysis(ctx)
+
+    log("[agg-only] Aggregation-only mode complete", gap=1)
+    return ctx
 
 
 @profile("run_experiment_per_pair")

@@ -62,14 +62,13 @@ def _plot_noise_vs_denoise(
     else:
         max_idx, min_idx = 1, 0
 
-    # Create grid that fits all components (2 columns, enough rows)
-    n_components = len(COMPONENTS)
-    n_cols = 2
-    n_rows = (n_components + n_cols - 1) // n_cols  # Ceiling division
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 6 * n_rows), facecolor="white")
-    axes = axes.flatten() if n_rows > 1 else [axes] if n_cols == 1 else axes.flatten()
+    # Show only resid_post, attn_out, mlp_out as a single row
+    plot_comps = ["resid_post", "attn_out", "mlp_out"]
+    n_components = len(plot_comps)
+    fig, axes = plt.subplots(1, n_components, figsize=(7 * n_components, 6), facecolor="white")
+    axes = list(axes)
 
-    for ax_idx, comp in enumerate(COMPONENTS):
+    for ax_idx, comp in enumerate(plot_comps):
         ax = axes[ax_idx]
         ax.set_facecolor("white")
 
@@ -117,11 +116,15 @@ def _plot_noise_vs_denoise(
         ax.axhline(y=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
         ax.axvline(x=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
 
-        # AND/OR labels
-        ax.text(0.25, 0.75, "AND", fontsize=24, fontweight="bold", color="gray", alpha=0.15,
-                ha="center", va="center", zorder=0)
-        ax.text(0.75, 0.25, "OR", fontsize=24, fontweight="bold", color="gray", alpha=0.15,
-                ha="center", va="center", zorder=0)
+        # Background labels: AND-like/NECESSARY (upper-left), OR-like/SUFFICIENT (lower-right)
+        ax.text(0.25, 0.78, "AND-like", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.25, 0.70, "NECESSARY", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.75, 0.30, "OR-like", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.75, 0.22, "SUFFICIENT", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
 
         ax.set_xlabel("Denoising Recovery", fontsize=10, fontweight="bold")
         ax.set_ylabel("Noising Disruption", fontsize=10, fontweight="bold")
@@ -131,9 +134,6 @@ def _plot_noise_vs_denoise(
         ax.set_ylim(-0.05, 1.05)
         setup_grid(ax)
 
-    # Hide unused axes
-    for ax_idx in range(n_components, len(axes)):
-        axes[ax_idx].axis("off")
 
     # Shared colorbar
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])

@@ -88,25 +88,47 @@ class AttnLayerResult(BaseSchema):
 
 
 @dataclass
+class DstGroupAttention(BaseSchema):
+    """Attention from one destination format_pos group, label-aligned across frames.
+
+    All canonical labels (the union of named positions in clean+corrupted frames)
+    form the columns. ``clean[layer]`` and ``corrupted[layer]`` are
+    ``[n_heads, n_labels]`` arrays sliced from the corresponding frame at the
+    canonical-label index — values are 0 where a label has no position in
+    that frame. Both sides are MEAN attention across rel_pos within the
+    destination group (so e.g. dst="format_content" averages all
+    "format_content:0..N" positions).
+    """
+
+    dst_label: str = ""
+    canonical_labels: list[str] = field(default_factory=list)
+    dst_position_indices: list[int] = field(default_factory=list)
+    clean: dict[int, list[list[float]]] = field(default_factory=dict)
+    corrupted: dict[int, list[list[float]]] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "DstGroupAttention":
+        return cls(
+            dst_label=d.get("dst_label", ""),
+            canonical_labels=list(d.get("canonical_labels", [])),
+            dst_position_indices=list(d.get("dst_position_indices", [])),
+            clean={int(k): v for k, v in d.get("clean", {}).items()},
+            corrupted={int(k): v for k, v in d.get("corrupted", {}).items()},
+        )
+
+
+@dataclass
 class AttnPairResult(BaseSchema):
     """Attention analysis results for a single pair."""
 
     pair_idx: int = 0
-    dest_position: int = 0  # Primary destination position analyzed (corrupted frame)
-    source_positions: list[int] = field(default_factory=list)  # Source positions in CORRUPTED frame
-    source_positions_clean: list[int] = field(default_factory=list)  # Source positions in CLEAN frame
-    source_position_names: list[str] = field(default_factory=list)  # Semantic names (e.g., ["time_horizon"])
-    dest_position_names: list[str] = field(default_factory=list)  # Semantic names (e.g., ["response_choice"])
 
     layer_results: list[AttnLayerResult] = field(default_factory=list)
 
-    # Full attention patterns for visualization (optional, can be heavy)
-    # Shape per layer: [n_heads, seq_len] - attention from P_dest to all positions
-    attention_patterns: dict[int, list[list[float]]] = field(default_factory=dict)
-
-    # Corrupted attention patterns for side-by-side comparison (optional)
-    # Same shape as attention_patterns: [n_heads, seq_len]
-    corrupted_attention_patterns: dict[int, list[list[float]]] = field(default_factory=dict)
+    # Per-dst-format_pos attention. Built for EVERY format_pos that appears
+    # in the position mapping (clean ∪ corrupted) — both sides treat all
+    # format_pos as candidate destinations and as candidate sources.
+    dst_group_attention: dict[str, DstGroupAttention] = field(default_factory=dict)
 
     # Head attribution results (causal importance of each head)
     head_attribution: "HeadAttributionResults | None" = None
@@ -130,11 +152,7 @@ class AttnPairResult(BaseSchema):
     def get_all_source_attending_heads(
         self, threshold: float = 0.1
     ) -> list[tuple[int, int, float]]:
-        """Get all heads that attend to source positions above threshold.
-
-        Returns:
-            List of (layer, head_idx, attn_to_source) tuples
-        """
+        """Get all heads that attend to source positions above threshold."""
         heads = []
         for lr in self.layer_results:
             for hi in lr.head_results:
@@ -143,23 +161,17 @@ class AttnPairResult(BaseSchema):
         return sorted(heads, key=lambda x: x[2], reverse=True)
 
     def pop_heavy(self) -> None:
-        """Remove heavy data (attention patterns) to save memory."""
-        self.attention_patterns = {}
-        self.corrupted_attention_patterns = {}
+        """Remove heavy attention pattern data to save memory."""
+        self.dst_group_attention = {}
 
     @classmethod
     def from_dict(cls, d: dict) -> "AttnPairResult":
         """Custom deserialization to handle nested dataclasses."""
-        result = cls(
-            pair_idx=d.get("pair_idx", 0),
-            dest_position=d.get("dest_position", 0),
-            source_positions=d.get("source_positions", []),
-            source_positions_clean=d.get("source_positions_clean", []),
-            source_position_names=d.get("source_position_names", []),
-            dest_position_names=d.get("dest_position_names", []),
-            attention_patterns=d.get("attention_patterns", {}),
-            corrupted_attention_patterns=d.get("corrupted_attention_patterns", {}),
-        )
+        result = cls(pair_idx=d.get("pair_idx", 0))
+        result.dst_group_attention = {
+            k: DstGroupAttention.from_dict(v)
+            for k, v in (d.get("dst_group_attention", {}) or {}).items()
+        }
 
         # Deserialize layer_results
         result.layer_results = [
@@ -193,9 +205,9 @@ class AttnAggregatedResults(BaseSchema):
 
     pair_results: list[AttnPairResult] = field(default_factory=list)
 
-    # Configuration used
+    # Layers that the head_attribution / position_patching steps were configured to use.
+    # The per-pair analysis itself sweeps ALL model layers regardless.
     layers_analyzed: list[int] = field(default_factory=list)
-    source_positions: list[int] = field(default_factory=list)
 
     @property
     def n_pairs(self) -> int:
@@ -288,10 +300,7 @@ class AttnAggregatedResults(BaseSchema):
 
     def filter_by_indices(self, indices: list[int]) -> "AttnAggregatedResults":
         """Create a filtered copy containing only the specified pair indices."""
-        filtered = AttnAggregatedResults(
-            layers_analyzed=self.layers_analyzed,
-            source_positions=self.source_positions,
-        )
+        filtered = AttnAggregatedResults(layers_analyzed=self.layers_analyzed)
         for idx in indices:
             if idx < len(self.pair_results):
                 filtered.pair_results.append(self.pair_results[idx])

@@ -17,11 +17,18 @@ if TYPE_CHECKING:
 
 
 def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
-    """Get semantic label for a position if available, else fall back to P{pos}."""
+    """Semantic position label: format_pos:rel_pos with R_/L_ normalized."""
     if mapping:
-        pos_info = mapping.get_position(pos)
-        if pos_info and pos_info.format_pos:
-            return pos_info.format_pos
+        info = mapping.get_position(pos)
+        if info and info.format_pos:
+            fp = info.format_pos
+            if fp.startswith("left_"):
+                fp = "L_" + fp[5:]
+            elif fp.startswith("right_"):
+                fp = "R_" + fp[6:]
+            if info.rel_pos is not None:
+                return f"{fp}:{info.rel_pos}"
+            return fp
     return f"P{pos}"
 
 
@@ -257,7 +264,10 @@ def _plot_layer_position_heatmap(
         return
 
     layer_data = result.get_layer_results_for_step(layer_step_size)
-    pos_data = result.get_position_results_for_step(pos_step_size)
+    # Use the densest available position sweep so the x-axis shows every
+    # named position, not just the coarse one chosen for other plots.
+    densest_step = min(result.position_step_sizes) if result.position_step_sizes else pos_step_size
+    pos_data = result.get_position_results_for_step(densest_step)
 
     if not layer_data or not pos_data:
         return
@@ -297,14 +307,14 @@ def _plot_layer_position_heatmap(
         im = ax.imshow(interaction_flipped, aspect="auto", cmap="hot", vmin=0, vmax=1)
         plt.colorbar(im, ax=ax, label="Interaction Strength")
 
-        # Position labels
-        if n_positions > 20:
-            step = max(1, n_positions // 15)
-            ax.set_xticks(range(0, n_positions, step))
-            ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_positions, step)], rotation=45, ha="right")
-        else:
-            ax.set_xticks(range(n_positions))
-            ax.set_xticklabels([_get_position_label(p, position_mapping) for p in positions], rotation=45, ha="right")
+        # Position labels — show as many named positions as possible, small font
+        ax.set_xticks(range(n_positions))
+        ax.set_xticklabels(
+            [_get_position_label(p, position_mapping) for p in positions],
+            rotation=90,
+            ha="center",
+            fontsize=5,
+        )
 
         # Layer labels
         if n_layers > 20:

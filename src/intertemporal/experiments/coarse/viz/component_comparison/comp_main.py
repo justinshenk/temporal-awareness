@@ -31,6 +31,7 @@ def plot_all_component_comparisons(
     step_size: int = 1,
     processed_results: ComponentComparisonResults | None = None,
     position_mapping: "SamplePositionMapping | None" = None,
+    agg_by_component: dict | None = None,
 ) -> None:
     """Generate all multi-component comparison plots organized by category.
 
@@ -60,23 +61,21 @@ def plot_all_component_comparisons(
     for d in [sanity_dir, overview_dir, decomp_dir, redundancy_dir, synthesis_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Detect position step size from the data (may differ from layer step size)
-    pos_step_size = step_size
-    for comp in COMPONENTS:
-        if comp in results_by_component:
-            result = results_by_component[comp]
-            if result.position_step_sizes:
-                pos_step_size = result.position_step_sizes[0]
-                break
-
     # Extract layer and position data for each component
+    # Position step size may differ per component, so use each component's own step size
     layer_data = {}
     pos_data = {}
+    pos_step_size = step_size  # default, will be updated per-component
     for comp in COMPONENTS:
         if comp in results_by_component:
             result = results_by_component[comp]
             layer_data[comp] = result.get_layer_results_for_step(step_size)
-            pos_data[comp] = result.get_position_results_for_step(pos_step_size)
+            # Use this component's own position step size (may differ from layer step size)
+            comp_pos_step = result.position_step_sizes[0] if result.position_step_sizes else step_size
+            pos_data[comp] = result.get_position_results_for_step(comp_pos_step)
+            # Track the last pos_step_size for API compatibility (some plots may need it)
+            if result.position_step_sizes:
+                pos_step_size = comp_pos_step
 
     if not layer_data:
         print("[viz] No component data available for comparison plots")
@@ -85,7 +84,7 @@ def plot_all_component_comparisons(
     # Generate plots by category
     plot_sanity_checks(layer_data, sanity_dir)
     plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size, position_mapping)
-    plot_decomposition(layer_data, pos_data, decomp_dir, processed_results)
+    plot_decomposition(layer_data, pos_data, decomp_dir, processed_results, position_mapping, agg_by_component)
     plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results, position_mapping)
     if processed_results is not None:
         plot_synthesis(synthesis_dir, processed_results)
