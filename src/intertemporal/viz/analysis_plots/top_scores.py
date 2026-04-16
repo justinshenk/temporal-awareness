@@ -21,13 +21,14 @@ if TYPE_CHECKING:
 
 def _get_layer_component_scores(
     summary: AttributionSummary,
-) -> list[tuple[int, str, float]]:
-    """Get scores aggregated by (layer, component).
+) -> list[tuple[int, str, float, float]]:
+    """Get scores and std aggregated by (layer, component).
 
     Returns:
-        List of (layer, component, score) tuples
+        List of (layer, component, score, std) tuples
     """
     scores: dict[tuple[int, str], float] = {}
+    stds: dict[tuple[int, str], float] = {}
 
     for key, result in summary.results.items():
         comp_type = "attn" if "attn" in result.component else "mlp" if "mlp" in result.component else "resid"
@@ -36,8 +37,12 @@ def _get_layer_component_scores(
             key_tuple = (layer, comp_type)
             score = float(np.sum(result.scores[layer_idx]))
             scores[key_tuple] = scores.get(key_tuple, 0.0) + score
+            if result.std_scores is not None:
+                std_val = float(np.sum(result.std_scores[layer_idx]))
+                stds[key_tuple] = stds.get(key_tuple, 0.0) + std_val
 
-    return [(layer, comp, score) for (layer, comp), score in scores.items()]
+    return [(layer, comp, score, stds.get((layer, comp), 0.0))
+            for (layer, comp), score in scores.items()]
 
 
 @profile
@@ -59,7 +64,7 @@ def plot_top_scores_text(
     if not all_scores:
         return
 
-    # Sort by score
+    # Sort by score (tuples are (layer, comp, score, std))
     sorted_scores = sorted(all_scores, key=lambda x: x[2])
     top_negative = sorted_scores[:n_top]
     top_positive = sorted_scores[-n_top:][::-1]
@@ -70,7 +75,7 @@ def plot_top_scores_text(
     # Format as text
     def format_scores(scores_list: list) -> str:
         lines = []
-        for layer, comp, score in scores_list:
+        for layer, comp, score, *_ in scores_list:
             lines.append(f"({layer}, '{comp}'): {score:.6f}")
         return "\n".join(lines)
 
@@ -129,16 +134,17 @@ def plot_top_scores_bar(
     top_negative = sorted_scores[:n_top]
     top_positive = sorted_scores[-n_top:][::-1]
 
-    # Combine and plot
     combined = top_negative + top_positive
-    labels = [f"L{layer} ({comp})" for layer, comp, _ in combined]
-    values = [score for _, _, score in combined]
+    labels = [f"L{layer} ({comp})" for layer, comp, _, _ in combined]
+    values = [score for _, _, score, _ in combined]
+    errs = [std for _, _, _, std in combined]
     colors = ["#EF5350" if v < 0 else "#4CAF50" for v in values]
 
     fig, ax = plt.subplots(figsize=(10, 8))
     y_pos = np.arange(len(labels))
 
-    ax.barh(y_pos, values, color=colors, edgecolor="white", linewidth=0.5)
+    ax.barh(y_pos, values, color=colors, edgecolor="white", linewidth=0.5,
+            xerr=errs if any(e > 0 for e in errs) else None, capsize=2, ecolor="gray")
     ax.axvline(x=0, color="black", linewidth=0.5)
 
     ax.set_yticks(y_pos)

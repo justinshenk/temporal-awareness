@@ -807,6 +807,25 @@ def run_agg_only(
         log("[coarse] Generated coarse patching visualizations")
         ctx.unload_coarse_agg()
 
+    # Attrib — rebuild aggregation from cached per-pair attrib_results.json
+    if steps.attrib.enabled:
+        ctx.attrib_agg = AttrPatchAggregatedResults()
+        pairs_dir = ctx.output_dir / "pairs"
+        pair_dirs = sorted(pairs_dir.glob("pair_*")) if pairs_dir.exists() else []
+        for pair_dir in pair_dirs:
+            pair_idx = int(pair_dir.name.split("_")[1])
+            if ctx.load_attrib_pair(pair_idx):
+                ctx.attrib_agg.add(ctx.attrib_patching[pair_idx])
+                del ctx.attrib_patching[pair_idx]
+        n_dn = len(ctx.attrib_agg.denoising)
+        n_ns = len(ctx.attrib_agg.noising)
+        if n_dn > 0 or n_ns > 0:
+            log(f"[attrib] Rebuilt aggregation: {n_dn} denoising, {n_ns} noising pairs")
+            ctx.attrib_agg.print_summary()
+            ctx.save_attrib_agg()
+            ctx.make_attrib_viz(None)()
+            log("[attrib] Generated attribution analysis visualizations")
+
     # Attn — rebuild aggregation from cached per-pair attn_results.json
     if steps.attn.enabled:
         ctx.attn_agg = AttnAggregatedResults(layers_analyzed=steps.attn.config.layers)

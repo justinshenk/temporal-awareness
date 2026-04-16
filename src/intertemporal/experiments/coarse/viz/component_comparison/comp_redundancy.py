@@ -33,11 +33,12 @@ def plot_redundancy(
     output_dir: Path,
     processed_results: ComponentComparisonResults | None = None,
     position_mapping: "SamplePositionMapping | None" = None,
+    agg_by_component: dict | None = None,
 ) -> None:
     """Generate all redundancy analysis plots."""
     _plot_noise_vs_denoise(layer_data, output_dir, "layer")
     _plot_noise_vs_denoise(pos_data, output_dir, "position", position_mapping)
-    _plot_redundancy_gap(layer_data, output_dir)
+    _plot_redundancy_gap(layer_data, output_dir, agg_by_component=agg_by_component)
     _plot_redundancy_gap_sorted(layer_data, output_dir)
     _plot_difference_heatmap(layer_data, output_dir, "layer")
     _plot_difference_heatmap(pos_data, output_dir, "position", position_mapping)
@@ -149,8 +150,9 @@ def _plot_noise_vs_denoise(
 def _plot_redundancy_gap(
     layer_data: dict[str, SweepStepResults | None],
     output_dir: Path,
+    agg_by_component: dict | None = None,
 ) -> None:
-    """Plot redundancy gap per layer with trend lines."""
+    """Plot redundancy gap per layer with ±std error bars across pairs."""
     all_layers = set()
     for comp, data in layer_data.items():
         if data:
@@ -168,23 +170,49 @@ def _plot_redundancy_gap(
 
     fig, ax = create_figure(figsize=(max(12, n_layers * 0.4), 6))
 
+    # Per-pair gap std from aggregated data
+    from .comp_decomposition import _per_pair_layer_values
+    gap_stds: dict[str, dict[int, float]] = {}
+    if agg_by_component:
+        for comp in plot_components:
+            agg = agg_by_component.get(comp)
+            if agg is None:
+                continue
+            rv = _per_pair_layer_values(agg, "recovery")
+            dv = _per_pair_layer_values(agg, "disruption")
+            comp_stds: dict[int, float] = {}
+            for l in layers:
+                rs = rv.get(int(l), [])
+                ds = dv.get(int(l), [])
+                n = min(len(rs), len(ds))
+                if n > 1:
+                    pair_gaps = [ds[j] - rs[j] for j in range(n)]
+                    comp_stds[int(l)] = float(np.std(pair_gaps))
+            gap_stds[comp] = comp_stds
+
     gaps_by_comp = {}
     for i, comp in enumerate(plot_components):
         data = layer_data.get(comp)
         gaps = []
+        errs = []
         for layer in layers:
             if data and data.get(layer) is not None:
                 rec = data[layer].recovery
                 dis = data[layer].disruption
                 if rec is not None and dis is not None:
                     gaps.append(dis - rec)
+                    errs.append(gap_stds.get(comp, {}).get(int(layer), 0.0))
                 else:
                     gaps.append(0)
+                    errs.append(0)
             else:
                 gaps.append(0)
+                errs.append(0)
 
         gaps_by_comp[comp] = gaps
-        ax.bar(x + i * bar_width, gaps, bar_width, label=comp, color=COMPONENT_COLORS[comp], alpha=0.8)
+        ax.bar(x + i * bar_width, gaps, bar_width, yerr=errs,
+               label=comp, color=COMPONENT_COLORS[comp], alpha=0.8,
+               capsize=2, ecolor="gray")
 
     ax.axhline(y=0, color="black", linestyle="-", linewidth=1)
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")

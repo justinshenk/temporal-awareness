@@ -85,7 +85,7 @@ def plot_all_component_comparisons(
     plot_sanity_checks(layer_data, sanity_dir)
     plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size, position_mapping)
     plot_decomposition(layer_data, pos_data, decomp_dir, processed_results, position_mapping, agg_by_component)
-    plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results, position_mapping)
+    plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results, position_mapping, agg_by_component)
     if processed_results is not None:
         plot_synthesis(synthesis_dir, processed_results)
 
