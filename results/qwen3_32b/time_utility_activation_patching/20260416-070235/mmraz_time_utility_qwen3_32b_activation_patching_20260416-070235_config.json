@@ -1,0 +1,102 @@
+{
+  "run_id": "20260416-070235",
+  "experiment_type": "time_utility_clean_corrupt_activation_patching",
+  "model_name": "Qwen/Qwen3-32B",
+  "model_slug": "qwen3_32b",
+  "device": "cuda:0",
+  "use_chat_template": true,
+  "disable_thinking_trace": true,
+  "user_pov": true,
+  "prompt_format": "user_pov_time_utility_question",
+  "time_delay_format": "day_counts",
+  "x_now": 100,
+  "x_now_text": "100",
+  "y_values": [
+    100,
+    101,
+    110,
+    150,
+    200,
+    500,
+    1000,
+    10000
+  ],
+  "amount_scale_factors": [
+    0.3,
+    0.5,
+    0.7,
+    1,
+    1.4,
+    2,
+    6,
+    8
+  ],
+  "amount_scale_factor_texts": [
+    "0.3",
+    "0.5",
+    "0.7",
+    "1",
+    "1.4",
+    "2",
+    "6",
+    "8"
+  ],
+  "t_values": [
+    "1 hour",
+    "8 hours",
+    "1 day",
+    "2 days",
+    "7 days",
+    "30 days",
+    "90 days",
+    "365 days",
+    "730 days",
+    "1095 days",
+    "1825 days",
+    "3650 days"
+  ],
+  "n_repeats": 1,
+  "generation_kwargs": {
+    "max_new_tokens": 128,
+    "do_sample": false,
+    "pad_token_id": 151645,
+    "eos_token_id": 151645
+  },
+  "parser_variant": "comma_normalized_direct_choice_with_it_depends_scaled_amounts_delay_aliases_v4",
+  "patch_layer": 40,
+  "patch_positions": [
+    "question_mark",
+    "sentence_period"
+  ],
+  "patch_site_definition": {
+    "question_mark": "token containing the question mark in the user prompt",
+    "sentence_period": "token containing the final period in 'Answer in just a few words.'"
+  },
+  "selection_rules": {
+    "corrupt_y": "For each amount scale factor and delay, select baseline rows where 1.01x and 100x produce different parsed binary choices.",
+    "corrupt_t": "For each amount scale factor and y multiplier, select the closest pair of delays whose parsed binary choices differ, then patch both directed clean/corrupt orders.",
+    "include_reverse_y_patches": true
+  },
+  "score_forced_choice": true,
+  "reuse_baseline": true,
+  "reuse_patches": true,
+  "max_patch_cases": null,
+  "n_baseline_rows": 768,
+  "n_patch_cases": 202,
+  "n_patch_cases_by_family": {
+    "corrupt_y": 106,
+    "corrupt_t": 96
+  },
+  "n_patch_rows": 404,
+  "n_patch_rows_by_family": {
+    "corrupt_y": 212,
+    "corrupt_t": 192
+  },
+  "baseline_raw_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_baseline_raw.csv",
+  "baseline_activations_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_baseline_layer40_activations.pt",
+  "patch_cases_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_patch_cases.csv",
+  "patch_raw_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_patch_results_raw.csv",
+  "patch_summary_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_patch_results_summary.csv",
+  "config_path": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235/mmraz_time_utility_qwen3_32b_activation_patching_20260416-070235_config.json",
+  "output_dir": "/workspace/results/qwen3_32b/time_utility_activation_patching/20260416-070235"
+}
