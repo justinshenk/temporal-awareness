@@ -105,6 +105,10 @@ class DstGroupAttention(BaseSchema):
     dst_position_indices: list[int] = field(default_factory=list)
     clean: dict[int, list[list[float]]] = field(default_factory=dict)
     corrupted: dict[int, list[list[float]]] = field(default_factory=dict)
+    # Per-label validity: True if that canonical label has an actual position
+    # in that frame (False = zero-filled because the position doesn't exist).
+    clean_valid: list[bool] = field(default_factory=list)
+    corrupted_valid: list[bool] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict) -> "DstGroupAttention":
@@ -112,6 +116,8 @@ class DstGroupAttention(BaseSchema):
             dst_label=d.get("dst_label", ""),
             canonical_labels=list(d.get("canonical_labels", [])),
             dst_position_indices=list(d.get("dst_position_indices", [])),
+            clean_valid=list(d.get("clean_valid", [])),
+            corrupted_valid=list(d.get("corrupted_valid", [])),
             clean={int(k): v for k, v in d.get("clean", {}).items()},
             corrupted={int(k): v for k, v in d.get("corrupted", {}).items()},
         )

@@ -62,7 +62,8 @@ def plot_decomposition(
     _plot_attn_vs_mlp_paired(layer_data, output_dir)
     _plot_component_importance(layer_data, output_dir, agg_by_component=agg_by_component)
     _plot_cumulative_recovery(layer_data, output_dir, agg_by_component=agg_by_component)
-    _plot_marginal_contribution(layer_data, output_dir, agg_by_component=agg_by_component)
+    if agg_by_component:
+        _plot_marginal_contribution(layer_data, output_dir, agg_by_component=agg_by_component)
     if agg_by_component:
         _plot_marginal_contribution_var(agg_by_component, output_dir)
     _plot_layer_interaction(layer_data, output_dir, agg_by_component=agg_by_component)
@@ -407,80 +408,57 @@ def _plot_marginal_contribution(
     output_dir: Path,
     agg_by_component: dict | None = None,
 ) -> None:
-    """Plot marginal contribution with ±std bands and secondary y-axis."""
-    resid_pre = layer_data.get("resid_pre")
-    resid_mid = layer_data.get("resid_mid")
-    resid_post = layer_data.get("resid_post")
+    """Plot marginal contribution using population mean across all pairs."""
+    pre_agg = agg_by_component.get("resid_pre") if agg_by_component else None
+    post_agg = agg_by_component.get("resid_post") if agg_by_component else None
 
-    if not resid_pre or not resid_post:
+    if not pre_agg or not post_agg:
         return
 
-    layers = sorted(set(resid_pre.keys()) & set(resid_post.keys()))
-    if not layers:
+    pre_rec = _per_pair_layer_values(pre_agg, "recovery")
+    post_rec = _per_pair_layer_values(post_agg, "recovery")
+    pre_dis = _per_pair_layer_values(pre_agg, "disruption")
+    post_dis = _per_pair_layer_values(post_agg, "disruption")
+
+    valid_layers = sorted(
+        set(pre_rec.keys()) & set(post_rec.keys()) &
+        set(pre_dis.keys()) & set(post_dis.keys())
+    )
+    if not valid_layers:
         return
 
     denoise_marginal = []
     noise_marginal = []
-    resid_pre_denoise = []
-    resid_mid_denoise = []
-    resid_post_denoise = []
-    valid_layers = []
+    suff_stds = []
+    nec_stds = []
+    resid_post_mean = []
 
-    for layer in layers:
-        pre_rec = resid_pre[layer].recovery
-        post_rec = resid_post[layer].recovery
-        pre_dis = resid_pre[layer].disruption
-        post_dis = resid_post[layer].disruption
+    for L in valid_layers:
+        n_rec = min(len(pre_rec[L]), len(post_rec[L]))
+        suff = np.array(post_rec[L][:n_rec]) - np.array(pre_rec[L][:n_rec])
+        denoise_marginal.append(float(suff.mean()))
+        suff_stds.append(float(suff.std()) if n_rec > 1 else 0.0)
 
-        if all(v is not None for v in [pre_rec, post_rec, pre_dis, post_dis]):
-            valid_layers.append(layer)
-            denoise_marginal.append(post_rec - pre_rec)
-            noise_marginal.append(post_dis - pre_dis)
-            resid_pre_denoise.append(pre_rec)
-            resid_post_denoise.append(post_rec)
-            # Get resid_mid if available
-            if resid_mid and layer in resid_mid and resid_mid[layer].recovery is not None:
-                resid_mid_denoise.append(resid_mid[layer].recovery)
-            else:
-                resid_mid_denoise.append(None)
+        n_dis = min(len(pre_dis[L]), len(post_dis[L]))
+        nec = np.array(post_dis[L][:n_dis]) - np.array(pre_dis[L][:n_dis])
+        noise_marginal.append(float(nec.mean()))
+        nec_stds.append(float(nec.std()) if n_dis > 1 else 0.0)
 
-    if not valid_layers:
-        return
+        resid_post_mean.append(float(np.mean(post_rec[L])))
 
     fig, ax = create_figure(figsize=(12, 6))
 
-    ax.plot(valid_layers, denoise_marginal, "o-", color="#2ca02c", linewidth=2,
-            markersize=6, label="Δ Sufficiency", alpha=0.8)
-    ax.plot(valid_layers, noise_marginal, "s-", color="#d62728", linewidth=2,
-            markersize=6, label="Δ Necessity", alpha=0.8)
+    dm = np.array(denoise_marginal)
+    nm = np.array(noise_marginal)
+    ss = np.array(suff_stds)
+    ns = np.array(nec_stds)
 
-    # ±std bands from per-pair data
-    if agg_by_component:
-        pre_agg = agg_by_component.get("resid_pre")
-        post_agg = agg_by_component.get("resid_post")
-        if pre_agg and post_agg:
-            pre_rec = _per_pair_layer_values(pre_agg, "recovery")
-            post_rec = _per_pair_layer_values(post_agg, "recovery")
-            pre_dis = _per_pair_layer_values(pre_agg, "disruption")
-            post_dis = _per_pair_layer_values(post_agg, "disruption")
-            suff_stds, nec_stds = [], []
-            for L in valid_layers:
-                n = min(len(pre_rec.get(int(L), [])), len(post_rec.get(int(L), [])))
-                if n > 1:
-                    sg = np.array(post_rec[int(L)][:n]) - np.array(pre_rec[int(L)][:n])
-                    suff_stds.append(float(sg.std()))
-                else:
-                    suff_stds.append(0.0)
-                n2 = min(len(pre_dis.get(int(L), [])), len(post_dis.get(int(L), [])))
-                if n2 > 1:
-                    ng = np.array(post_dis[int(L)][:n2]) - np.array(pre_dis[int(L)][:n2])
-                    nec_stds.append(float(ng.std()))
-                else:
-                    nec_stds.append(0.0)
-            dm = np.array(denoise_marginal); nm = np.array(noise_marginal)
-            ss = np.array(suff_stds); ns = np.array(nec_stds)
-            ax.fill_between(valid_layers, dm - ss, dm + ss, color="#2ca02c", alpha=0.15)
-            ax.fill_between(valid_layers, nm - ns, nm + ns, color="#d62728", alpha=0.15)
+    ax.plot(valid_layers, dm, "o-", color="#2ca02c", linewidth=2,
+            markersize=6, label="Δ Sufficiency", alpha=0.8)
+    ax.fill_between(valid_layers, dm - ss, dm + ss, color="#2ca02c", alpha=0.15)
+    ax.plot(valid_layers, nm, "s-", color="#d62728", linewidth=2,
+            markersize=6, label="Δ Necessity", alpha=0.8)
+    ax.fill_between(valid_layers, nm - ns, nm + ns, color="#d62728", alpha=0.15)
 
     # Mark key layers (vertical guides only)
     denoise_sorted = sorted(zip(valid_layers, denoise_marginal), key=lambda x: abs(x[1]), reverse=True)
@@ -493,7 +471,7 @@ def _plot_marginal_contribution(
 
     # Secondary y-axis: only resid_post recovery, faded
     ax2 = ax.twinx()
-    ax2.plot(valid_layers, resid_post_denoise, "^--", color=COMPONENT_COLORS["resid_post"],
+    ax2.plot(valid_layers, resid_post_mean, "^--", color=COMPONENT_COLORS["resid_post"],
              linewidth=1.5, markersize=5, label="resid_post", alpha=0.35)
     ax2.set_ylabel("Recovery", fontsize=10)
 

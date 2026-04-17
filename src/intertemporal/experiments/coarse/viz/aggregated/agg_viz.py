@@ -410,12 +410,14 @@ def plot_all_aggregated_slices(
         # Multi-component comparison plots
         has_multi_component = len(filtered_agg) > 1
         if has_multi_component:
-            # Get first sample from each component for component_comparison plots
+            # Build results_by_component as a compatibility shim — comp_main.py
+            # now prefers agg_by_component for population means, but some
+            # downstream functions still accept results_by_component for
+            # step-size discovery and sanity-check access.
             results_by_component: dict[str, CoarseActPatchResults] = {}
             for comp, agg_result in filtered_agg.items():
                 if agg_result.by_sample:
-                    first_sample = next(iter(agg_result.by_sample.values()))
-                    results_by_component[comp] = first_sample
+                    results_by_component[comp] = next(iter(agg_result.by_sample.values()))
 
             if results_by_component:
                 comp_comparison_dir = slice_dir / "sweep_component_comparison"

@@ -40,15 +40,21 @@ def plot_overview(
     layer_step_size: int = 1,
     pos_step_size: int = 10,
     position_mapping: "SamplePositionMapping | None" = None,
+    agg_by_component: dict | None = None,
 ) -> None:
-    """Generate all overview plots."""
+    """Generate all overview plots.
+
+    layer_data and pos_data are now POPULATION MEANS (computed by comp_main.py
+    from agg_by_component). The overview heatmaps therefore show the mean
+    across all pairs, not a single arbitrary pair.
+    """
     _plot_layer_heatmap(layer_data, output_dir, "denoising")
     _plot_layer_heatmap(layer_data, output_dir, "noising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "denoising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "noising")
     _plot_position_heatmap(pos_data, output_dir, "denoising", position_mapping)
     _plot_position_heatmap(pos_data, output_dir, "noising", position_mapping)
-    _plot_layer_position_heatmap(results_by_component, output_dir, layer_step_size, pos_step_size, position_mapping)
+    _plot_layer_position_heatmap(layer_data, pos_data, output_dir, position_mapping)
 
 
 def _build_layer_matrix(
@@ -252,22 +258,17 @@ def _plot_position_heatmap(
 
 
 def _plot_layer_position_heatmap(
-    results_by_component: dict[str, CoarseActPatchResults],
+    layer_data_all: dict[str, SweepStepResults | None],
+    pos_data_all: dict[str, SweepStepResults | None],
     output_dir: Path,
-    layer_step_size: int = 1,
-    pos_step_size: int = 10,
     position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
-    """Plot Layer × Position 2D localization heatmap."""
-    result = results_by_component.get("resid_post") or next(iter(results_by_component.values()), None)
-    if not result:
-        return
+    """Plot Layer × Position 2D localization heatmap using population-mean data.
 
-    layer_data = result.get_layer_results_for_step(layer_step_size)
-    # Use the densest available position sweep so the x-axis shows every
-    # named position, not just the coarse one chosen for other plots.
-    densest_step = min(result.position_step_sizes) if result.position_step_sizes else pos_step_size
-    pos_data = result.get_position_results_for_step(densest_step)
+    Uses resid_post layer and position sweep means for the outer product.
+    """
+    layer_data = layer_data_all.get("resid_post")
+    pos_data = pos_data_all.get("resid_post")
 
     if not layer_data or not pos_data:
         return

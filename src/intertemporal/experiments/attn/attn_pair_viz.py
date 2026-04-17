@@ -69,11 +69,35 @@ def _zeros_like_other(dga: DstGroupAttention, layer: int) -> "list[list[float]] 
     return [[0.0] * n_labels for _ in range(len(other))]
 
 
-def _row_max_normalize(arr: np.ndarray) -> np.ndarray:
+def _row_max_normalize(arr: np.ndarray, valid_mask: np.ndarray | None = None) -> np.ndarray:
+    """Normalize each row so its max is 1.0.
+
+    If valid_mask is provided (boolean, shape [n_cols]), only considers
+    valid columns when computing the row max. Invalid columns (positions
+    that don't exist in this frame) are left as-is (zero).
+    """
     arr = np.asarray(arr, dtype=float)
-    row_max = arr.max(axis=1, keepdims=True)
-    row_max = np.where(row_max > 0, row_max, 1.0)
+    if valid_mask is not None:
+        masked = np.where(valid_mask[np.newaxis, :], arr, -np.inf)
+        row_max = masked.max(axis=1, keepdims=True)
+        row_max = np.where(row_max > 0, row_max, 1.0)
+    else:
+        row_max = arr.max(axis=1, keepdims=True)
+        row_max = np.where(row_max > 0, row_max, 1.0)
     return arr / row_max
+
+
+def _valid_mask(dga: DstGroupAttention, side: str) -> np.ndarray:
+    """Boolean mask [n_labels] — True where the label exists in this frame."""
+    v = dga.clean_valid if side == "clean" else dga.corrupted_valid
+    if v:
+        return np.array(v, dtype=bool)
+    return np.ones(len(dga.canonical_labels), dtype=bool)
+
+
+def _both_valid_mask(dga: DstGroupAttention) -> np.ndarray:
+    """Boolean mask [n_labels] — True where label exists in BOTH frames."""
+    return _valid_mask(dga, "clean") & _valid_mask(dga, "corrupted")
 
 
 def _layer_matrix(dga: DstGroupAttention, side: str, layers: list[int]) -> np.ndarray:
@@ -171,7 +195,7 @@ def _plot_layer_heatmap(dga: DstGroupAttention, out: Path, pidx: int) -> int:
     layers = _union_layer_keys(dga)
     if not layers:
         return 0
-    mat = _row_max_normalize(_layer_matrix(dga, "clean", layers))
+    mat = _row_max_normalize(_layer_matrix(dga, "clean", layers), _valid_mask(dga, "clean"))
     nl = len(dga.canonical_labels)
     sub = out / "attn_heatmaps"; sub.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(max(14, nl * 0.14), max(4, len(layers) * 0.30)))
@@ -190,8 +214,8 @@ def _plot_layer_sidebyside(dga: DstGroupAttention, out: Path, pidx: int) -> int:
     layers = _union_layer_keys(dga)
     if not layers:
         return 0
-    cmat = _row_max_normalize(_layer_matrix(dga, "clean", layers))
-    kmat = _row_max_normalize(_layer_matrix(dga, "corrupted", layers))
+    cmat = _row_max_normalize(_layer_matrix(dga, "clean", layers), _valid_mask(dga, "clean"))
+    kmat = _row_max_normalize(_layer_matrix(dga, "corrupted", layers), _valid_mask(dga, "corrupted"))
     nl = len(dga.canonical_labels)
     sub = out / "attn_sidebyside"; sub.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(1, 2, figsize=(max(16, nl * 0.18), max(4, len(layers) * 0.30)), squeeze=False)
@@ -211,9 +235,15 @@ def _plot_layer_diff(dga: DstGroupAttention, out: Path, pidx: int) -> int:
     layers = _union_layer_keys(dga)
     if not layers:
         return 0
-    cmat = _row_max_normalize(_layer_matrix(dga, "clean", layers))
-    kmat = _row_max_normalize(_layer_matrix(dga, "corrupted", layers))
-    diff = cmat - kmat; vabs = max(abs(diff.min()), abs(diff.max()), 0.01)
+    cmat = _row_max_normalize(_layer_matrix(dga, "clean", layers), _valid_mask(dga, "clean"))
+    kmat = _row_max_normalize(_layer_matrix(dga, "corrupted", layers), _valid_mask(dga, "corrupted"))
+    both = _both_valid_mask(dga)
+    diff = cmat - kmat
+    # Positions valid in only one frame are not meaningful diffs — set to NaN
+    # so they render as background gray instead of misleading red/blue.
+    diff[:, ~both] = np.nan
+    finite = diff[np.isfinite(diff)]
+    vabs = max(abs(finite.min()), abs(finite.max()), 0.01) if finite.size > 0 else 0.01
     norm = TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
     nl = len(dga.canonical_labels)
     sub = out / "attn_diff"; sub.mkdir(parents=True, exist_ok=True)
@@ -236,6 +266,7 @@ def _plot_consistency(dga: DstGroupAttention, out: Path, pidx: int) -> int:
     if not layers:
         return 0
     nl = len(dga.canonical_labels)
+    both = _both_valid_mask(dga)
     head_labels: list[str] = []; rows: list[list[float]] = []; WINDOW = 3
     for layer in layers:
         cm = _layer_get(dga.clean, layer) or _zeros_like_other(dga, layer)
@@ -247,6 +278,9 @@ def _plot_consistency(dga: DstGroupAttention, out: Path, pidx: int) -> int:
         for h in range(nh):
             row = []
             for ci in range(nl):
+                if not both[ci]:
+                    row.append(float('nan'))  # position doesn't exist in both frames
+                    continue
                 lo, hi = max(0, ci - WINDOW), min(nl, ci + WINDOW + 1)
                 a, b = ca[h, lo:hi], ka[h, lo:hi]
                 na, nb = np.linalg.norm(a), np.linalg.norm(b)
@@ -491,7 +525,11 @@ def _plot_head_diff_per_layer(dga: DstGroupAttention, out: Path, pidx: int) -> i
         if not cm or not km:
             continue
         ca, ka = np.array(cm, dtype=float), np.array(km, dtype=float)
-        diff = ca - ka; vabs = max(abs(diff.min()), abs(diff.max()), 0.01)
+        both = _both_valid_mask(dga)
+        diff = ca - ka
+        diff[:, ~both] = np.nan
+        finite = diff[np.isfinite(diff)]
+        vabs = max(abs(finite.min()), abs(finite.max()), 0.01) if finite.size > 0 else 0.01
         norm = TwoSlopeNorm(vmin=-vabs, vcenter=0, vmax=vabs)
         fig, ax = plt.subplots(figsize=(max(16, nl * 0.16), max(6, ca.shape[0] * 0.20)))
         im = ax.imshow(diff, aspect='auto', cmap=DIFF_CMAP, norm=norm); ax.invert_yaxis()

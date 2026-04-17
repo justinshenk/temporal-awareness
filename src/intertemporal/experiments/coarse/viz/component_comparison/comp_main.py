@@ -61,20 +61,28 @@ def plot_all_component_comparisons(
     for d in [sanity_dir, overview_dir, decomp_dir, redundancy_dir, synthesis_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Extract layer and position data for each component
-    # Position step size may differ per component, so use each component's own step size
+    # Extract POPULATION-MEAN layer and position data for each component.
+    # When agg_by_component is available (aggregated across pairs), use
+    # get_mean_layer_results / get_mean_position_results which compute
+    # the mean recovery/disruption across all pairs. Only fall back to
+    # single-pair data (results_by_component) when no aggregation exists.
     layer_data = {}
     pos_data = {}
-    pos_step_size = step_size  # default, will be updated per-component
+    pos_step_size = step_size
     for comp in COMPONENTS:
-        if comp in results_by_component:
-            result = results_by_component[comp]
-            layer_data[comp] = result.get_layer_results_for_step(step_size)
-            # Use this component's own position step size (may differ from layer step size)
-            comp_pos_step = result.position_step_sizes[0] if result.position_step_sizes else step_size
-            pos_data[comp] = result.get_position_results_for_step(comp_pos_step)
-            # Track the last pos_step_size for API compatibility (some plots may need it)
-            if result.position_step_sizes:
+        agg = agg_by_component.get(comp) if agg_by_component else None
+        single = results_by_component.get(comp)
+        if agg and agg.n_samples > 0:
+            layer_data[comp] = agg.get_mean_layer_results(step_size)
+            comp_pos_step = agg.position_step_sizes[0] if agg.position_step_sizes else step_size
+            pos_data[comp] = agg.get_mean_position_results(comp_pos_step)
+            if agg.position_step_sizes:
+                pos_step_size = comp_pos_step
+        elif single:
+            layer_data[comp] = single.get_layer_results_for_step(step_size)
+            comp_pos_step = single.position_step_sizes[0] if single.position_step_sizes else step_size
+            pos_data[comp] = single.get_position_results_for_step(comp_pos_step)
+            if single.position_step_sizes:
                 pos_step_size = comp_pos_step
 
     if not layer_data:
@@ -83,7 +91,7 @@ def plot_all_component_comparisons(
 
     # Generate plots by category
     plot_sanity_checks(layer_data, sanity_dir)
-    plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size, position_mapping)
+    plot_overview(layer_data, pos_data, results_by_component, overview_dir, step_size, pos_step_size, position_mapping, agg_by_component)
     plot_decomposition(layer_data, pos_data, decomp_dir, processed_results, position_mapping, agg_by_component)
     plot_redundancy(layer_data, pos_data, redundancy_dir, processed_results, position_mapping, agg_by_component)
     if processed_results is not None:

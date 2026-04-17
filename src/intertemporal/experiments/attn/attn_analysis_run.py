@@ -352,12 +352,19 @@ def run_attn_analysis(
                 if full.split(":", 1)[0] == grp
             ]
 
+            # Per-label validity: True if the label has an actual abs position
+            # in that frame (not zero-filled because the position doesn't exist)
+            c_valid = [lbl in clean_label_to_pos for lbl in canonical_labels]
+            k_valid = [lbl in corr_label_to_pos for lbl in canonical_labels]
+
             dst_group_attention[grp] = DstGroupAttention(
                 dst_label=grp,
                 canonical_labels=canonical_labels,
                 dst_position_indices=dst_indices,
                 clean=clean_layer_map,
                 corrupted=corr_layer_map,
+                clean_valid=c_valid,
+                corrupted_valid=k_valid,
             )
 
     return AttnPairResult(
