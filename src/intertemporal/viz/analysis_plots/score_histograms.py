@@ -45,33 +45,49 @@ def plot_score_histogram(
     summary: AttributionSummary,
     output_path: Path,
     title: str = "EAP-IG Score Distribution",
-    n_bins: int = 50,
+    n_bins: int = 100,
 ) -> None:
-    """Plot histogram of attribution scores.
+    """Plot histogram of attribution scores at multiple scales.
 
-    Args:
-        summary: Attribution summary to plot
-        output_path: Path to save the plot
-        title: Plot title
-        n_bins: Number of histogram bins
+    Creates a 2-row figure:
+      Top: full distribution clipped to the 1st–99th percentile range
+           with log-scale y-axis to show tail structure.
+      Bottom: zoomed into the central 50% of the data (25th–75th
+              percentile) with linear y-axis.
     """
     scores = _collect_all_scores(summary)
     if len(scores) == 0:
         return
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    p1, p25, p75, p99 = np.percentile(scores, [1, 25, 75, 99])
 
-    ax.hist(scores, bins=n_bins, color="#1976D2", edgecolor="white", linewidth=0.5)
+    fig, axes = plt.subplots(2, 1, figsize=(10, 8))
+    fig.suptitle(title, fontsize=13)
+
+    # Top: full range (1st–99th), log y
+    ax = axes[0]
+    clipped = scores[(scores >= p1) & (scores <= p99)]
+    ax.hist(clipped, bins=n_bins, color="#1976D2", edgecolor="white", linewidth=0.3)
+    ax.set_yscale("log")
     ax.axvline(x=0, color="gray", linestyle="--", linewidth=1, alpha=0.7)
-
     ax.set_xlabel("Attribution Score")
-    ax.set_ylabel("Count")
-    ax.set_title(title)
-    ax.minorticks_on()
-    ax.grid(True, which="major", alpha=0.5, linewidth=0.6, axis="y")
-    ax.grid(True, which="minor", alpha=0.25, linewidth=0.3, axis="y")
+    ax.set_ylabel("Count (log)")
+    ax.set_title("1st–99th percentile (log scale)", fontsize=10)
+    ax.grid(True, which="major", alpha=0.4, axis="y")
     ax.set_axisbelow(True)
 
+    # Bottom: central 50% (25th–75th), linear y
+    ax = axes[1]
+    central = scores[(scores >= p25) & (scores <= p75)]
+    ax.hist(central, bins=n_bins, color="#43A047", edgecolor="white", linewidth=0.3)
+    ax.axvline(x=0, color="gray", linestyle="--", linewidth=1, alpha=0.7)
+    ax.set_xlabel("Attribution Score")
+    ax.set_ylabel("Count")
+    ax.set_title("25th–75th percentile (linear scale)", fontsize=10)
+    ax.grid(True, which="major", alpha=0.4, axis="y")
+    ax.set_axisbelow(True)
+
+    plt.tight_layout()
     save_figure(fig, output_path, dpi=150)
 
 

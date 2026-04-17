@@ -33,11 +33,12 @@ def plot_redundancy(
     output_dir: Path,
     processed_results: ComponentComparisonResults | None = None,
     position_mapping: "SamplePositionMapping | None" = None,
+    agg_by_component: dict | None = None,
 ) -> None:
     """Generate all redundancy analysis plots."""
     _plot_noise_vs_denoise(layer_data, output_dir, "layer")
     _plot_noise_vs_denoise(pos_data, output_dir, "position", position_mapping)
-    _plot_redundancy_gap(layer_data, output_dir)
+    _plot_redundancy_gap(layer_data, output_dir, agg_by_component=agg_by_component)
     _plot_redundancy_gap_sorted(layer_data, output_dir)
     _plot_difference_heatmap(layer_data, output_dir, "layer")
     _plot_difference_heatmap(pos_data, output_dir, "position", position_mapping)
@@ -62,14 +63,13 @@ def _plot_noise_vs_denoise(
     else:
         max_idx, min_idx = 1, 0
 
-    # Create grid that fits all components (2 columns, enough rows)
-    n_components = len(COMPONENTS)
-    n_cols = 2
-    n_rows = (n_components + n_cols - 1) // n_cols  # Ceiling division
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 6 * n_rows), facecolor="white")
-    axes = axes.flatten() if n_rows > 1 else [axes] if n_cols == 1 else axes.flatten()
+    # Show only resid_post, attn_out, mlp_out as a single row
+    plot_comps = ["resid_post", "attn_out", "mlp_out"]
+    n_components = len(plot_comps)
+    fig, axes = plt.subplots(1, n_components, figsize=(7 * n_components, 6), facecolor="white")
+    axes = list(axes)
 
-    for ax_idx, comp in enumerate(COMPONENTS):
+    for ax_idx, comp in enumerate(plot_comps):
         ax = axes[ax_idx]
         ax.set_facecolor("white")
 
@@ -117,11 +117,15 @@ def _plot_noise_vs_denoise(
         ax.axhline(y=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
         ax.axvline(x=0.5, color="red", linestyle="-", alpha=0.6, linewidth=2)
 
-        # AND/OR labels
-        ax.text(0.25, 0.75, "AND", fontsize=24, fontweight="bold", color="gray", alpha=0.15,
-                ha="center", va="center", zorder=0)
-        ax.text(0.75, 0.25, "OR", fontsize=24, fontweight="bold", color="gray", alpha=0.15,
-                ha="center", va="center", zorder=0)
+        # Background labels: AND-like/NECESSARY (upper-left), OR-like/SUFFICIENT (lower-right)
+        ax.text(0.25, 0.78, "AND-like", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.25, 0.70, "NECESSARY", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.75, 0.30, "OR-like", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
+        ax.text(0.75, 0.22, "SUFFICIENT", fontsize=20, fontweight="bold", color="gray",
+                alpha=0.15, ha="center", va="center", zorder=0)
 
         ax.set_xlabel("Denoising Recovery", fontsize=10, fontweight="bold")
         ax.set_ylabel("Noising Disruption", fontsize=10, fontweight="bold")
@@ -131,9 +135,6 @@ def _plot_noise_vs_denoise(
         ax.set_ylim(-0.05, 1.05)
         setup_grid(ax)
 
-    # Hide unused axes
-    for ax_idx in range(n_components, len(axes)):
-        axes[ax_idx].axis("off")
 
     # Shared colorbar
     cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
@@ -149,8 +150,9 @@ def _plot_noise_vs_denoise(
 def _plot_redundancy_gap(
     layer_data: dict[str, SweepStepResults | None],
     output_dir: Path,
+    agg_by_component: dict | None = None,
 ) -> None:
-    """Plot redundancy gap per layer with trend lines."""
+    """Plot redundancy gap per layer with ±std error bars across pairs."""
     all_layers = set()
     for comp, data in layer_data.items():
         if data:
@@ -168,23 +170,49 @@ def _plot_redundancy_gap(
 
     fig, ax = create_figure(figsize=(max(12, n_layers * 0.4), 6))
 
+    # Per-pair gap std from aggregated data
+    from .comp_decomposition import _per_pair_layer_values
+    gap_stds: dict[str, dict[int, float]] = {}
+    if agg_by_component:
+        for comp in plot_components:
+            agg = agg_by_component.get(comp)
+            if agg is None:
+                continue
+            rv = _per_pair_layer_values(agg, "recovery")
+            dv = _per_pair_layer_values(agg, "disruption")
+            comp_stds: dict[int, float] = {}
+            for l in layers:
+                rs = rv.get(int(l), [])
+                ds = dv.get(int(l), [])
+                n = min(len(rs), len(ds))
+                if n > 1:
+                    pair_gaps = [ds[j] - rs[j] for j in range(n)]
+                    comp_stds[int(l)] = float(np.std(pair_gaps))
+            gap_stds[comp] = comp_stds
+
     gaps_by_comp = {}
     for i, comp in enumerate(plot_components):
         data = layer_data.get(comp)
         gaps = []
+        errs = []
         for layer in layers:
             if data and data.get(layer) is not None:
                 rec = data[layer].recovery
                 dis = data[layer].disruption
                 if rec is not None and dis is not None:
                     gaps.append(dis - rec)
+                    errs.append(gap_stds.get(comp, {}).get(int(layer), 0.0))
                 else:
                     gaps.append(0)
+                    errs.append(0)
             else:
                 gaps.append(0)
+                errs.append(0)
 
         gaps_by_comp[comp] = gaps
-        ax.bar(x + i * bar_width, gaps, bar_width, label=comp, color=COMPONENT_COLORS[comp], alpha=0.8)
+        ax.bar(x + i * bar_width, gaps, bar_width, yerr=errs,
+               label=comp, color=COMPONENT_COLORS[comp], alpha=0.8,
+               capsize=2, ecolor="gray")
 
     ax.axhline(y=0, color="black", linestyle="-", linewidth=1)
     ax.set_xlabel("Layer", fontsize=12, fontweight="bold")

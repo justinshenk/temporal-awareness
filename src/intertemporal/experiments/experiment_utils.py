@@ -227,8 +227,14 @@ class ExperimentMixin:
         log("[coarse] Saved.")
 
     def load_coarse_agg(self, config=None) -> bool:
-        """Load aggregated results for specified components."""
-        components = config.components if config and hasattr(config, 'components') else self.detect_cached_components()
+        """Load aggregated results for ALL cached components.
+
+        Always loads all cached components, not just config.components.
+        This ensures visualization includes all available data even when
+        running with a subset of components.
+        """
+        # Always load ALL cached components, not just config.components
+        components = self.detect_cached_components()
         coarse_dir = self.get_coarse_agg_dir()
         any_loaded = False
         for component in components:
@@ -237,6 +243,39 @@ class ExperimentMixin:
                 self.coarse_agg_by_component[component] = CoarseActPatchAggregatedResults.from_json(path)
                 any_loaded = True
         return any_loaded
+
+    def rebuild_coarse_agg_from_pairs(self) -> None:
+        """Rebuild ALL coarse aggregates from per-pair cached data.
+
+        This ensures aggregated data is consistent and includes all pairs,
+        regardless of which components were in the original config.
+        Call this before saving/visualizing aggregated results.
+        """
+        components = self.detect_cached_components()
+        if not components:
+            log("[coarse] No cached components found for rebuild")
+            return
+
+        log(f"[coarse] Rebuilding aggregates from per-pair data for: {components}")
+
+        # Clear existing aggregators and rebuild from scratch
+        self.coarse_agg_by_component.clear()
+
+        for component in components:
+            agg = CoarseActPatchAggregatedResults()
+            cached_pairs = self.detect_cached_coarse_pairs(component)
+            log(f"[coarse] {component}: found {len(cached_pairs)} cached pairs")
+
+            for pair_idx in cached_pairs:
+                if self.load_coarse_pair(pair_idx, component):
+                    key = (pair_idx, component)
+                    agg.add(self.coarse_patching[key])
+                    del self.coarse_patching[key]
+
+            if agg.n_samples > 0:
+                self.coarse_agg_by_component[component] = agg
+
+        log(f"[coarse] Rebuild complete: {list(self.coarse_agg_by_component.keys())}")
 
     def detect_cached_coarse_pairs(self, component: str) -> list[int]:
         """Detect all pair indices that have cached coarse results for a component."""
@@ -257,6 +296,27 @@ class ExperimentMixin:
         pair_0 = self.get_pair_dir(0)
         if pair_0.exists():
             coarse_dir = pair_0 / "coarse"
+            if coarse_dir.exists():
+                for d in coarse_dir.iterdir():
+                    if d.is_dir() and d.name.startswith("sweep_"):
+                        comp = d.name.replace("sweep_", "")
+                        if (d / "coarse_results.json").exists():
+                            components.append(comp)
+        return components
+
+    def get_all_cached_components_for_pair(self, pair_idx: int) -> list[str]:
+        """Get all components with cached coarse patching data for a specific pair.
+
+        Args:
+            pair_idx: Pair index
+
+        Returns:
+            List of component names that have cached results for this pair
+        """
+        components = []
+        pair_dir = self.get_pair_dir(pair_idx)
+        if pair_dir.exists():
+            coarse_dir = pair_dir / "coarse"
             if coarse_dir.exists():
                 for d in coarse_dir.iterdir():
                     if d.is_dir() and d.name.startswith("sweep_"):
@@ -575,12 +635,15 @@ class ExperimentMixin:
 
     def make_coarse_viz(self, _) -> Callable[[], None]:
         """Return visualization function for coarse patching results."""
+        # Get position mapping from pair_0 for semantic labels in aggregated viz
+        position_mapping = self.get_position_mapping(0, sample="short")
         return lambda: visualize_all_aggregated(
             self.coarse_agg_by_component,
             self.agg_dir / "coarse",
             self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
             self.output_dir,
             self.processed_results,
+            position_mapping,
         )
 
     def make_diffmeans_viz(self, config: "DiffMeansConfig") -> Callable[[], None]:
@@ -603,6 +666,7 @@ class ExperimentMixin:
             self.attn_agg,
             self.agg_dir / "attn",
             self.pref_pairs if hasattr(self, "_pref_pairs") and self._pref_pairs else None,
+            pairs_dir=self.output_dir / "pairs",
         )
 
     def make_fine_viz(self, _) -> Callable[[], None]:
@@ -662,15 +726,26 @@ class ExperimentMixin:
         visualize_coarse_patching(result, out_dir)
 
     def viz_coarse_pair_component_comparison(
-        self, pair_idx: int, components: list[str]
+        self, pair_idx: int, components: list[str] | None = None
     ) -> None:
         """Generate component_comparison visualizations for a pair.
 
-        This requires results from all specified components to be loaded.
+        Loads ALL cached components for this pair (not just the specified ones),
+        ensuring component comparison plots show all available data.
+
+        Args:
+            pair_idx: Pair index
+            components: Ignored - always uses all cached components for this pair
         """
+        # Get ALL cached components for this pair (ignore the components arg)
+        all_cached = self.get_all_cached_components_for_pair(pair_idx)
+
+        # Load all cached components
         results_by_component = {}
-        for component in components:
+        for component in all_cached:
             key = (pair_idx, component)
+            if key not in self.coarse_patching:
+                self.load_coarse_pair(pair_idx, component)
             if key in self.coarse_patching:
                 results_by_component[component] = self.coarse_patching[key]
 
@@ -710,7 +785,9 @@ class ExperimentMixin:
         result = self.attn[pair_idx]
         out_dir = self.get_attn_pair_dir(pair_idx)
         out_dir.mkdir(parents=True, exist_ok=True)
-        visualize_attn_pair(result, out_dir, mapping=mapping, pair_idx=pair_idx)
+        visualize_attn_pair(result, out_dir, pair_idx=pair_idx)
+        # Drop heavy attention patterns now that per-pair viz is done.
+        result.pop_heavy()
 
     def viz_fine_pair(self, pair_idx: int, mapping=None) -> None:
         """Generate visualizations for a single fine-grained pair.

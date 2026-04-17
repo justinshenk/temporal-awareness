@@ -611,21 +611,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         sample_info = data_loader.get_sample_info(idx)
 
-        # Extract time horizon from prompt structure (same source as coloring)
-        # This is the prompt's explicit time horizon, NOT the chosen option's delay
-        prompt = sample_info.get("prompt", {})
-        time_horizon_data = prompt.get("time_horizon") if isinstance(prompt, dict) else None
-
-        if time_horizon_data and isinstance(time_horizon_data, dict):
-            th_value = time_horizon_data.get("value")
-            th_unit = time_horizon_data.get("unit", "months")
-            if th_value is not None:
-                # Convert to months for consistency
-                time_horizon_months = data_loader._convert_to_months(th_value, th_unit)
-            else:
-                time_horizon_months = None
-        else:
-            time_horizon_months = None
+        time_horizon_months = sample_info.get("time_horizon_months")
 
         # Extract known fields
         known_fields = {

@@ -36,9 +36,9 @@ COARSE_CFG: dict = {
     ### CONFIG VALUES  ###
     ######################
     "layer_steps": [1],
-    "pos_steps": [1],
-    "components": ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"],
-    # "components": ["resid_post"],
+    "pos_steps": [],
+    # "components": ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"],
+    "components": ["resid_post"],
 }
 
 # Attribution patching
@@ -53,12 +53,12 @@ ATTRIB_CFG: dict = {
     ### CONFIG VALUES  ###
     ######################
     "ig_steps": 20,
-    "methods": ["standard", "eap_ig", "eap"],
-    "components": ["resid_pre", "resid_mid", "mlp_out", "attn_out", "resid_post"],
-    "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
-    # "methods": ["standard"],
-    # "components": ["resid_post"],
-    # "quadrature": ["midpoint"],
+    # "methods": ["standard", "eap_ig", "eap"],
+    # "components": ["resid_pre", "resid_mid", "mlp_out", "attn_out", "resid_post"],
+    # "quadrature": ["midpoint", "gauss-chebyshev", "gauss-legendre"],
+    "methods": ["standard"],
+    "components": ["resid_post"],
+    "quadrature": ["midpoint"],
 }
 
 # Difference-of-means analysis
@@ -98,9 +98,9 @@ ATTN_CFG: dict = {
     "store_patterns": True,
     "dynamic_threshold": 0.05,
     # Head attribution
-    "head_attribution_enabled": True,
+    "head_attribution_enabled": False,
     # Position patching for top heads
-    "position_patching_enabled": True,
+    "position_patching_enabled": False,
     "n_top_heads_for_position": 10,
 }
 

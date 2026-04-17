@@ -545,6 +545,9 @@ function App() {
     const isCategorical = !forceGradient && uniqueValues.size <= 10;
 
     if (isCategorical) {
+      if (colorBy === 'time_scale') {
+        return timeScaleCategoricalColors(values, uniqueValues.size);
+      }
       return categoricalColors(values, uniqueValues.size);
     } else {
       const TIME_FIELDS = ['time_horizon', 'chosen_time', 'alt_time', 'short_term_time', 'long_term_time'];
@@ -889,7 +892,6 @@ function App() {
 
     // Calculate dimensions
     const titleHeight = fontSize + titleGap;
-    const contentHeight = titleHeight + items.length * itemHeight;
 
     // Position: top-right of legend panel area, with margin
     const x = plotWidth + margin;
@@ -936,9 +938,12 @@ function App() {
 
     const scale = 12; // 12x resolution for publication quality (300+ DPI at typical sizes)
 
-    // Create filename: L{layer}__{position}__{colorBy}__{dataset}.png
+    // Build filename including only the parameters that are fixed for this view.
+    // Layer varies along X in *xLayer views; position varies along X in *xPos views.
     const positionClean = (position || 'all').replace(/:/g, '_');
-    const filename = `L${layer}__${positionClean}__${colorBy}__${dataset}.png`;
+    const layerPart = (viewMode === '1DxLayer' || viewMode === '2DxLayer') ? '' : `__L${layer}`;
+    const positionPart = (viewMode === '1DxPos' || viewMode === '2DxPos') ? '' : `__${positionClean}`;
+    const filename = `${viewMode}${layerPart}${positionPart}__${colorBy}__${dataset}.png`;
 
     // Calculate legend panel width (0 if collapsed)
     const legendPanelWidth = getLegendPanelWidth(scale);

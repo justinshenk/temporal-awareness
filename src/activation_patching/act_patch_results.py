@@ -41,13 +41,21 @@ class ActPatchTargetResult(BaseSchema):
 
     @property
     def recovery(self) -> float | None:
-        """Recovery from denoising mode."""
-        return self.denoising.recovery if self.denoising else None
+        """Recovery from denoising mode (falls back to cached metrics)."""
+        if self.denoising:
+            return self.denoising.recovery
+        if self.denoising_metrics:
+            return self.denoising_metrics.recovery
+        return None
 
     @property
     def disruption(self) -> float | None:
-        """Disruption from noising mode."""
-        return self.noising.disruption if self.noising else None
+        """Disruption from noising mode (falls back to cached metrics)."""
+        if self.noising:
+            return self.noising.disruption
+        if self.noising_metrics:
+            return self.noising_metrics.disruption
+        return None
 
     @property
     def mean_effect(self) -> float:
@@ -62,6 +70,31 @@ class ActPatchTargetResult(BaseSchema):
     def score(self) -> float:
         """Score for sorting/ranking (higher = more important)."""
         return self.mean_effect
+
+    @classmethod
+    def mean_of(cls, results: list["ActPatchTargetResult"]) -> "ActPatchTargetResult":
+        """Build a synthetic result whose recovery/disruption are population means.
+
+        Used by aggregated visualizations that need a single representative
+        result per (layer/position) from multiple pairs.
+        """
+        from .act_patch_metrics import IntervenedChoiceMetrics
+
+        recoveries = [r.recovery for r in results if r.recovery is not None]
+        disruptions = [r.disruption for r in results if r.disruption is not None]
+        mean_rec = sum(recoveries) / len(recoveries) if recoveries else 0.0
+        mean_dis = sum(disruptions) / len(disruptions) if disruptions else 0.0
+
+        target = results[0].target if results else InterventionTarget()
+        return cls(
+            target=target,
+            denoising_metrics=IntervenedChoiceMetrics(
+                mode="denoising", recovery=mean_rec,
+            ) if recoveries else None,
+            noising_metrics=IntervenedChoiceMetrics(
+                mode="noising", disruption=mean_dis,
+            ) if disruptions else None,
+        )
 
     def pop_heavy(self) -> None:
         """Remove heavy data from choices.

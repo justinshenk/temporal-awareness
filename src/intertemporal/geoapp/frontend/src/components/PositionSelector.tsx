@@ -116,11 +116,8 @@ export function PositionSelector({
   const responsePositions = sortedPositions.filter(p => RESPONSE_POSITIONS.has(p));
 
   const handlePositionClick = (name: string) => {
-    if (relPosMode === 'combined') {
-      onPositionChange(name);
-    } else {
-      onPositionChange(`${name}:${relPosMode}`);
-    }
+    setRelPosMode('combined');
+    onPositionChange(name);
   };
 
   const handleRelPosModeChange = (mode: 'combined' | number) => {

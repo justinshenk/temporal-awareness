@@ -1,6 +1,6 @@
-"""Trajectory column: inverse perplexity and TCB.
+"""Trajectory column: inverse perplexity.
 
-Shows trajectory-level metrics for model confidence and behavior.
+Shows trajectory-level metrics for model confidence.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 
 from ......activation_patching import IntervenedChoiceMetrics
-from ..coarse_colors import METRIC_COLORS
 from .column_base import LineConfig, add_dual_axis_legend, plot_line, setup_column
 
 
@@ -26,7 +25,6 @@ def plot(
     """Plot trajectory metrics column.
 
     Primary axis (left): inv_perplexity(short), inv_perplexity(long)
-    Secondary axis (right): TCB (if available)
 
     Args:
         ax: Matplotlib axes
@@ -43,15 +41,6 @@ def plot(
     # Extract metric arrays
     inv_perps_short = [m.traj_inv_perplexity_short for m in metrics]
     inv_perps_long = [m.traj_inv_perplexity_long for m in metrics]
-    vocab_tcbs = [m.vocab_tcb for m in metrics]
-
-    # Check if TCB data is available and meaningful (not all None and has variation)
-    non_none_tcbs = [v for v in vocab_tcbs if v is not None]
-    if len(non_none_tcbs) > 0:
-        tcb_min, tcb_max = min(non_none_tcbs), max(non_none_tcbs)
-        has_tcb = (tcb_max - tcb_min) > 0.01  # Need meaningful variation
-    else:
-        has_tcb = False
 
     # Primary axis: inverse perplexity
     plot_line(
@@ -75,34 +64,12 @@ def plot(
         ),
     )
 
-    title = "Trajectory + TCB" if has_tcb else "Trajectory"
-    setup_column(ax, title, xlabel, "Inv Perplexity", tick_positions)
+    setup_column(ax, "Trajectory", xlabel, "Inv Perplexity", tick_positions)
 
-    # Secondary axis: TCB (only if available)
+    # No secondary axis for this column
     ax_right = ax.twinx()
-    if has_tcb:
-        plot_line(
-            ax_right,
-            x_values,
-            LineConfig(
-                values=vocab_tcbs,
-                label="TCB",
-                color_key="vocab_tcb",
-            ),
-        )
-        ax_right.set_ylabel(
-            "TCB",
-            fontsize=16,
-            color=METRIC_COLORS["vocab_tcb"],
-            fontweight="bold",
-        )
-        ax_right.tick_params(
-            axis="y", labelcolor=METRIC_COLORS["vocab_tcb"], labelsize=13
-        )
-    else:
-        # Hide secondary axis if no TCB data
-        ax_right.set_yticks([])
-        ax_right.set_ylabel("")
+    ax_right.set_yticks([])
+    ax_right.set_ylabel("")
 
     add_dual_axis_legend(ax, ax_right, fontsize=legend_fontsize, show=show_legend)
 
