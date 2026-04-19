@@ -1,0 +1,120 @@
+nohup: ignoring input
+2026-04-18 19:05:57,480 [INFO] ======================================================================
+2026-04-18 19:05:57,480 [INFO] FUTURE LENS MULTI-MODEL WITH BOOTSTRAP CIs
+2026-04-18 19:05:57,480 [INFO] Models: Pythia-2.8B, Llama-3.2-1B, GPT-J-6B
+2026-04-18 19:05:57,480 [INFO] Bootstrap: 500, Probe seeds: [42, 123, 456]
+2026-04-18 19:05:57,480 [INFO] ======================================================================
+2026-04-18 19:05:58,573 [INFO] 
+======================================================================
+2026-04-18 19:05:58,573 [INFO] MODEL: pythia-2.8b
+2026-04-18 19:05:58,573 [INFO] ======================================================================
+/venv/main/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+2026-04-18 19:06:00,407 [WARNING] With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+/venv/main/lib/python3.12/site-packages/torch/cuda/__init__.py:235: UserWarning: 
+NVIDIA GeForce RTX 5070 Ti with CUDA capability sm_120 is not compatible with the current PyTorch installation.
+The current PyTorch install supports CUDA capabilities sm_50 sm_60 sm_70 sm_75 sm_80 sm_86 sm_90.
+If you want to use the NVIDIA GeForce RTX 5070 Ti GPU with PyTorch, please check the instructions at https://pytorch.org/get-started/locally/
+
+  warnings.warn(
+Loaded pretrained model pythia-2.8b into HookedTransformer
+2026-04-18 19:06:09,905 [INFO]   32 layers, d_model=2560
+2026-04-18 19:06:09,905 [INFO]   Generating 80 tokens for 50 prompts...
+2026-04-18 19:06:09,925 [ERROR]   pythia-2.8b FAILED: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 151, in run_model
+    gen = model.generate(tokens, max_new_tokens=N_GEN_TOKENS, temperature=0.0)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 2152, in generate
+    finished_sequences = torch.zeros(batch_size, dtype=torch.bool, device=self.cfg.device)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-04-18 19:06:09,934 [INFO] 
+======================================================================
+2026-04-18 19:06:09,934 [INFO] MODEL: Qwen/Qwen2.5-1.5B
+2026-04-18 19:06:09,934 [INFO] ======================================================================
+2026-04-18 19:06:48,915 [WARNING] With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+2026-04-18 19:06:49,176 [WARNING] You are not using LayerNorm, so the writing weights can't be centered! Skipping
+Loaded pretrained model Qwen/Qwen2.5-1.5B into HookedTransformer
+2026-04-18 19:06:51,917 [INFO]   28 layers, d_model=1536
+2026-04-18 19:06:51,917 [INFO]   Generating 80 tokens for 50 prompts...
+2026-04-18 19:06:51,918 [ERROR]   Qwen/Qwen2.5-1.5B FAILED: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 151, in run_model
+    gen = model.generate(tokens, max_new_tokens=N_GEN_TOKENS, temperature=0.0)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 2152, in generate
+    finished_sequences = torch.zeros(batch_size, dtype=torch.bool, device=self.cfg.device)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-04-18 19:06:51,927 [INFO] 
+======================================================================
+2026-04-18 19:06:51,927 [INFO] MODEL: EleutherAI/gpt-j-6b
+2026-04-18 19:06:51,927 [INFO] ======================================================================
+2026-04-18 19:07:19,437 [WARNING] With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+Loaded pretrained model EleutherAI/gpt-j-6b into HookedTransformer
+2026-04-18 19:07:40,016 [INFO]   28 layers, d_model=4096
+2026-04-18 19:07:40,016 [INFO]   Generating 80 tokens for 50 prompts...
+2026-04-18 19:07:40,021 [ERROR]   EleutherAI/gpt-j-6b FAILED: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 151, in run_model
+    gen = model.generate(tokens, max_new_tokens=N_GEN_TOKENS, temperature=0.0)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 2152, in generate
+    finished_sequences = torch.zeros(batch_size, dtype=torch.bool, device=self.cfg.device)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-04-18 19:07:40,024 [INFO] 
+======================================================================
+2026-04-18 19:07:40,024 [INFO] CROSS-MODEL SUMMARY
+2026-04-18 19:07:40,024 [INFO] ======================================================================
+2026-04-18 19:07:40,024 [INFO] Model                       K   Chance    Context      Probe      Gap                   CI
+2026-04-18 19:07:40,024 [INFO] --------------------------------------------------------------------------------
+2026-04-18 19:07:40,025 [INFO] 
+Saved to results/lookahead/final/future_lens_multimodel.json
+2026-04-18 19:07:40,025 [INFO] 
+======================================================================
+2026-04-18 19:07:40,025 [INFO] DONE — MULTI-MODEL FUTURE LENS
+2026-04-18 19:07:40,025 [INFO] ======================================================================

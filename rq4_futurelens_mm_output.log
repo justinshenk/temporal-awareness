@@ -1,0 +1,169 @@
+nohup: ignoring input
+2026-04-18 18:11:11,875 [INFO] ======================================================================
+2026-04-18 18:11:11,875 [INFO] FUTURE LENS MULTI-MODEL WITH BOOTSTRAP CIs
+2026-04-18 18:11:11,875 [INFO] Models: Pythia-2.8B, Llama-3.2-1B, GPT-J-6B
+2026-04-18 18:11:11,875 [INFO] Bootstrap: 500, Probe seeds: [42, 123, 456]
+2026-04-18 18:11:11,875 [INFO] ======================================================================
+The cache for model files in Transformers v4.22.0 has been updated. Migrating your old cache. This is a one-time only operation. You can interrupt this and resume the migration later on by calling `transformers.utils.move_cache()`.
+0it [00:00, ?it/s]0it [00:00, ?it/s]
+2026-04-18 18:11:12,745 [INFO] 
+======================================================================
+2026-04-18 18:11:12,745 [INFO] MODEL: pythia-2.8b
+2026-04-18 18:11:12,745 [INFO] ======================================================================
+/venv/main/lib/python3.12/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+2026-04-18 18:27:44,849 [WARNING] With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+2026-04-18 18:27:52,570 [ERROR]   pythia-2.8b FAILED: The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver.
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 134, in run_model
+    model = HookedTransformer.from_pretrained(model_name, device="cuda", dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 1343, in from_pretrained
+    model.move_model_modules_to_device()
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 1057, in move_model_modules_to_device
+    self.embed.to(devices.get_device_for_block_index(0, self.cfg))
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1384, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 965, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1370, in convert
+    return t.to(
+           ^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/cuda/__init__.py", line 478, in _lazy_init
+    torch._C._cuda_init()
+RuntimeError: The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver.
+2026-04-18 18:27:52,676 [INFO] 
+======================================================================
+2026-04-18 18:27:52,676 [INFO] MODEL: meta-llama/Llama-3.2-1B
+2026-04-18 18:27:52,676 [INFO] ======================================================================
+2026-04-18 18:27:53,199 [ERROR]   meta-llama/Llama-3.2-1B FAILED: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/Llama-3.2-1B.
+401 Client Error. (Request ID: Root=1-69e3cd29-63fac7844b1187c63b905712;38cabf6e-6919-4e9e-beb7-0ce7ab738e91)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-3.2-1B/resolve/main/config.json.
+Access to model meta-llama/Llama-3.2-1B is restricted. You must have access to it and be authenticated to access it. Please log in.
+Traceback (most recent call last):
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 403, in hf_raise_for_status
+    response.raise_for_status()
+  File "/venv/main/lib/python3.12/site-packages/requests/models.py", line 1028, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/meta-llama/Llama-3.2-1B/resolve/main/config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/venv/main/lib/python3.12/site-packages/transformers/utils/hub.py", line 402, in cached_file
+    resolved_file = hf_hub_download(
+                    ^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1014, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1121, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1662, in _raise_on_head_call_error
+    raise head_call_error
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1550, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1467, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/venv/main/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 420, in hf_raise_for_status
+    raise _format(GatedRepoError, message, response) from e
+huggingface_hub.errors.GatedRepoError: 401 Client Error. (Request ID: Root=1-69e3cd29-63fac7844b1187c63b905712;38cabf6e-6919-4e9e-beb7-0ce7ab738e91)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-3.2-1B/resolve/main/config.json.
+Access to model meta-llama/Llama-3.2-1B is restricted. You must have access to it and be authenticated to access it. Please log in.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 134, in run_model
+    model = HookedTransformer.from_pretrained(model_name, device="cuda", dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 1321, in from_pretrained
+    state_dict = loading.get_pretrained_state_dict(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/loading_from_pretrained.py", line 1837, in get_pretrained_state_dict
+    hf_model = AutoModelForCausalLM.from_pretrained(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformers/models/auto/auto_factory.py", line 524, in from_pretrained
+    config, kwargs = AutoConfig.from_pretrained(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 976, in from_pretrained
+    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformers/configuration_utils.py", line 632, in get_config_dict
+    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformers/configuration_utils.py", line 689, in _get_config_dict
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformers/utils/hub.py", line 420, in cached_file
+    raise EnvironmentError(
+OSError: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/meta-llama/Llama-3.2-1B.
+401 Client Error. (Request ID: Root=1-69e3cd29-63fac7844b1187c63b905712;38cabf6e-6919-4e9e-beb7-0ce7ab738e91)
+
+Cannot access gated repo for url https://huggingface.co/meta-llama/Llama-3.2-1B/resolve/main/config.json.
+Access to model meta-llama/Llama-3.2-1B is restricted. You must have access to it and be authenticated to access it. Please log in.
+2026-04-18 18:27:53,204 [INFO] 
+======================================================================
+2026-04-18 18:27:53,204 [INFO] MODEL: EleutherAI/gpt-j-6b
+2026-04-18 18:27:53,204 [INFO] ======================================================================
+2026-04-18 18:44:06,491 [WARNING] With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+2026-04-18 18:44:27,219 [ERROR]   EleutherAI/gpt-j-6b FAILED: The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver.
+Traceback (most recent call last):
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 353, in main
+    all_results[model_name] = run_model(model_name, dtype)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/temporal-awareness/run_rq4_futurelens_multimodel.py", line 134, in run_model
+    model = HookedTransformer.from_pretrained(model_name, device="cuda", dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 1343, in from_pretrained
+    model.move_model_modules_to_device()
+  File "/venv/main/lib/python3.12/site-packages/transformer_lens/HookedTransformer.py", line 1057, in move_model_modules_to_device
+    self.embed.to(devices.get_device_for_block_index(0, self.cfg))
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1384, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 965, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1370, in convert
+    return t.to(
+           ^^^^^
+  File "/venv/main/lib/python3.12/site-packages/torch/cuda/__init__.py", line 478, in _lazy_init
+    torch._C._cuda_init()
+RuntimeError: The NVIDIA driver on your system is too old (found version 12080). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver.
+2026-04-18 18:44:27,487 [INFO] 
+======================================================================
+2026-04-18 18:44:27,487 [INFO] CROSS-MODEL SUMMARY
+2026-04-18 18:44:27,487 [INFO] ======================================================================
+2026-04-18 18:44:27,487 [INFO] Model                       K   Chance    Context      Probe      Gap                   CI
+2026-04-18 18:44:27,487 [INFO] --------------------------------------------------------------------------------
+2026-04-18 18:44:27,488 [INFO] 
+Saved to results/lookahead/final/future_lens_multimodel.json
+2026-04-18 18:44:27,488 [INFO] 
+======================================================================
+2026-04-18 18:44:27,488 [INFO] DONE — MULTI-MODEL FUTURE LENS
+2026-04-18 18:44:27,488 [INFO] ======================================================================
