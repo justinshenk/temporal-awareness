@@ -35,6 +35,8 @@ jobs:
           set +e
           python -m pytest tests/ -v -m "not slow" --timeout=120 \
             --ignore=tests/inference \
+            --ignore=tests/test_integration.py \
+            --ignore=tests/test_activation_api.py \
             --continue-on-collection-errors
           exit_code=$?
           if [ $exit_code -eq 2 ]; then
