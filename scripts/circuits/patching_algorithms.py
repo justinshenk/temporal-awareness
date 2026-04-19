@@ -36,8 +36,25 @@ class Patching:
             self.model.set_use_attn_in(True)
         self.model.set_use_hook_mlp_in(False)
 
-        self.clean_tokens = self.model.to_tokens(clean_prompts, prepend_bos=True, padding_side='left')
-        self.corrupted_tokens = self.model.to_tokens(corrupted_prompts, prepend_bos=True, padding_side='left')
+        tokenizer = self.model.tokenizer
+        clean_chat_prompts = [
+            tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for prompt in clean_prompts
+        ]
+        corrupted_chat_prompts = [
+            tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for prompt in corrupted_prompts
+        ]
+        self.clean_tokens = self.model.to_tokens(clean_chat_prompts, prepend_bos=False, padding_side='left')
+        self.corrupted_tokens = self.model.to_tokens(corrupted_chat_prompts, prepend_bos=False, padding_side='left')
         print("Clean string 0", self.model.to_string(self.clean_tokens[0]))
         print("Corrupted string 0", self.model.to_string(self.corrupted_tokens[0]))
         self.clean_answer_ids = torch.Tensor([self.model.to_single_token(a) for a in clean_answers]).to(dtype=int)
