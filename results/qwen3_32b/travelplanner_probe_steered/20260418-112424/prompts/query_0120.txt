@@ -1,0 +1,298 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I am in need of a 7-day travel plan for a group of 8 travelers. We plan to depart from Chicago and visit 3 cities in Idaho from March 25th to March 31st, 2022. We've set our new budget at $22,200. In regards to dining preferences, we have a keen interest in Italian and Chinese cuisines.
+
+Reference information:
+### Attractions in Boise
+                                                              Name  Latitude   Longitude                                          Address          Phone                                                                                                                              Website  City
+                                                         Zoo Boise 43.607829 -116.202725         355 Julia Davis Dr, Boise, ID 83702, USA (208) 608-7760                                                                                                             http://www.zooboise.org/ Boise
+                                                  Julia Davis Park 43.607113 -116.201481         700 S Capitol Blvd, Boise, ID 83702, USA (208) 608-7600                                                 https://www.cityofboise.org/departments/parks-and-recreation/parks/julia-davis-park/ Boise
+                                                  Boise Art Museum 43.609742 -116.206425         670 Julia Davis Dr, Boise, ID 83702, USA (208) 345-8330                                                                                                       http://www.boiseartmuseum.org/ Boise
+                                       Old Idaho Penitentiary Site 43.602793 -116.161979   2445 Old Penitentiary Rd, Boise, ID 83712, USA (208) 334-2844                                                                                 https://history.idaho.gov/location/old-penitentiary/ Boise
+                                         Discovery Center of Idaho 43.608524 -116.199239            131 W Myrtle St, Boise, ID 83702, USA (208) 343-9895                                                                                                              http://www.dcidaho.org/ Boise
+                                                 Camel's Back Park 43.634878 -116.202344              1200 Heron St, Boise, ID 83702, USA        Unknown                                                 https://www.cityofboise.org/departments/parks-and-recreation/parks/camels-back-park/ Boise
+                                 Basque Museum and Cultural Center 43.613820 -116.202681             611 W Grove St, Boise, ID 83702, USA (208) 343-2671                                                                                                         http://www.basquemuseum.eus/ Boise
+                                            Kathryn Albertson Park 43.614526 -116.227071      1001 S Americana Blvd, Boise, ID 83706, USA (208) 608-7644                                           https://www.cityofboise.org/departments/parks-and-recreation/parks/kathryn-albertson-park/ Boise
+                                            Idaho Botanical Garden 43.601785 -116.163928 2355 N Old Penitentiary Rd, Boise, ID 83712, USA (208) 343-8649                                                                                                    https://idahobotanicalgarden.org/ Boise
+                            Idaho Anne Frank Human Rights Memorial 43.609939 -116.208771               770 S 8th St, Boise, ID 83702, USA (208) 345-0304                                                                                                       https://annefrankmemorial.org/ Boise
+                                                         Hyde Park 43.630113 -116.203471        1413-1620 N 13th St, Boise, ID 83702, USA        Unknown                                                                                             https://northend.org/historic-hyde-park/ Boise
+                                           JUMP Boise Spiral Slide 43.614519 -116.208863           1000 W Myrtle St, Boise, ID 83702, USA (208) 639-6610                                                                                                   https://jumpboise.org/spiral-slide Boise
+                                                Idaho State Museum 43.610577 -116.205615         610 Julia Davis Dr, Boise, ID 83702, USA (208) 334-2120                                                                                                      http://history.idaho.gov/museum Boise
+                            MK Nature Center - Idaho Fish and Game 43.601260 -116.185874            600 S Walnut St, Boise, ID 83712, USA (208) 334-2225                                                                                                https://idfg.idaho.gov/education/mknc Boise
+J.A. and Kathryn Albertson Family Foundation Boise Whitewater Park 43.625176 -116.234666      3400 W Pleasanton Ave, Boise, ID 83702, USA (208) 608-7192 https://www.cityofboise.org/departments/parks-and-recreation/parks/ja-and-kathryn-albertson-family-foundation-boise-whitewater-park/ Boise
+                                        Idaho Black History Museum 43.610018 -116.203879         508 Julia Davis Dr, Boise, ID 83702, USA (208) 789-2164                                                                                                                 http://www.ibhm.org/ Boise
+                                                       Barber Park 43.567028 -116.139086           4049 S Eckert Rd, Boise, ID 83716, USA (208) 577-4575                                                                                             https://adacounty.id.gov/Parks-Waterways Boise
+                                                        Table Rock 43.598538 -116.147783       3199 E Table Rock Rd, Boise, ID 83712, USA (208) 334-2844                                                                                                https://history.idaho.gov/table-rock/ Boise
+                                                       Boise Depot 43.602065 -116.214760    2603 W Eastover Terrace, Boise, ID 83706, USA (208) 608-7644                                                 https://www.cityofboise.org/departments/parks-and-recreation/facilities/boise-depot/ Boise
+                                                        Boise Sign 43.588233 -116.277424         7609 W Overland Rd, Boise, ID 83709, USA        Unknown                                                                                                                              Unknown Boise
+
+### Restaurants in Boise
+                                 Name  Average Cost                                               Cuisines  Aggregate Rating  City
+                          Gopala Hari            28 Tea, Pizza, Italian, Fast Food, Mediterranean, Seafood               3.1 Boise
+                         TGI Friday's            33                          Cafe, Mexican, BBQ, Fast Food               3.9 Boise
+             California Pizza Kitchen            15                   Tea, BBQ, Fast Food, Chinese, Indian               3.7 Boise
+                   Dhaba By Claridges            65         Desserts, Italian, Fast Food, Chinese, Seafood               4.0 Boise
+                  19 Flavours Biryani            59                                     Cafe, BBQ, Seafood               4.1 Boise
+                      Express Kitchen            44                 Mexican, American, Desserts, Fast Food               2.9 Boise
+                      China Gathering            92                               Fast Food, Cafe, Seafood               0.0 Boise
+                        The Brewhouse            59                       Cafe, Pizza, American, Fast Food               4.1 Boise
+        Underdoggs Sports Bar & Grill            93                            Tea, Bakery, Pizza, Seafood               4.4 Boise
+                           Momo Point            26                  Cafe, Pizza, French, Chinese, Seafood               3.2 Boise
+                     Zaika Muradabadi            88                                    Tea, Pizza, Seafood               0.0 Boise
+                  Blooms - Eros Hotel            72                 Desserts, Tea, Bakery, Indian, Seafood               3.9 Boise
+                    Gupta Ji Ka Dhaba            94       Mexican, Bakery, BBQ, Fast Food, Indian, Seafood               2.6 Boise
+                   Apna Punjabi Zayka            95                       Cafe, French, BBQ, Mediterranean               0.0 Boise
+                      Tourist Janpath            59                         Fast Food, Pizza, BBQ, Seafood               4.1 Boise
+                           Kanwarji's            50            Desserts, Pizza, French, Fast Food, Seafood               3.5 Boise
+         Namdhari's Icecream & Bakers            45                                         Tea, Fast Food               2.8 Boise
+               Goodies- Snacks N More            83                              French, Desserts, Seafood               0.0 Boise
+                        Kabab Factory            89                   Fast Food, Chinese, Seafood, Italian               3.0 Boise
+                         Taaj Kitchen            67                            Bakery, Pizza, BBQ, Italian               0.0 Boise
+                     Evergreen Sweets            16       Desserts, Tea, Pizza, Fast Food, Chinese, Indian               2.8 Boise
+                 Jaiveer Naan & Chaap            59                                  Tea, Seafood, Italian               3.1 Boise
+                            Greenvich            95                        Tea, Fast Food, Indian, Seafood               3.6 Boise
+                          The Tandoor            73                                   Cafe, Mexican, Pizza               2.6 Boise
+                      AMPM Caf愆 & Bar            40              Desserts, Cafe, Mexican, Chinese, Seafood               4.1 Boise
+                       Domino's Pizza            25          Pizza, Italian, BBQ, Fast Food, Mediterranean               3.5 Boise
+                        Flirty Momo's            74                               BBQ, Desserts, Fast Food               3.0 Boise
+                        Jainco Sweets            93                        Chinese, Bakery, BBQ, Fast Food               0.0 Boise
+                  Zerruco - The Ashok            15               Italian, Bakery, Fast Food, Cafe, Indian               4.4 Boise
+                            Wow! Momo            97          Desserts, Pizza, Cafe, Mediterranean, Seafood               2.9 Boise
+                  Fabulous Cake Bites            76                       Chinese, Pizza, Bakery, Desserts               3.4 Boise
+                             Foodhall            17                    Desserts, Tea, Cafe, Pizza, Chinese               0.0 Boise
+                       Dunkin' Donuts            65                   Fast Food, Bakery, Desserts, Italian               3.7 Boise
+                         Cafe Pitacos            87                        Cafe, Bakery, Desserts, Seafood               3.0 Boise
+                      Gauranga Sweets            53                Desserts, Tea, Pizza, American, Seafood               0.0 Boise
+Aggarwal Bikaneri Sweets & Restaurant            12               Tea, Pizza, BBQ, American, Mediterranean               0.0 Boise
+               Baba Chinese Fast Food            23                    French, Bakery, American, Fast Food               0.0 Boise
+                      Zooby's Kitchen            44                                            Bakery, BBQ               3.5 Boise
+                         Nazeer Foods            53                                Tea, BBQ, Mediterranean               3.6 Boise
+                 The Little Next Door            68                         Tea, Bakery, Desserts, Seafood               4.1 Boise
+                   Kashi Chat Bhandar            34                        BBQ, Bakery, American, Desserts               4.1 Boise
+
+### Accommodations in Boise
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number  city
+  Modern & Cozy 2 BR Private Apartment in Brooklyn  843.0 Entire home/apt                            No children under 10          2645.0                  7                 3.0 Boise
+  Small and cozy room in the heart of Williamsburg  993.0    Private room                                     No visitors             1.0                  1                 3.0 Boise
+                        Nice Room in Charming Apt.  968.0     Shared room                            No children under 10             1.0                  1                 3.0 Boise
+    Big private room in Sunnyside NYC 7 min Subway  374.0    Private room                           No visitors & No pets             1.0                  1                 5.0 Boise
+                                  Modern cozy stay  324.0    Private room                                      No parties             3.0                  1                 3.0 Boise
+                   Lovely Hell's Kitchen Studio...  993.0 Entire home/apt                                      No smoking             2.0                  2                 4.0 Boise
+                       Large room in 2BR apartment  398.0    Private room                                     No visitors             2.0                  2                 5.0 Boise
+              Private Studio Apartment in Bushwick  160.0 Entire home/apt               No children under 10 & No smoking             2.0                  2                 3.0 Boise
+    Duplex 5 BR apartment in a historic brownstone  273.0 Entire home/apt                  No children under 10 & No pets             2.0                  2                 1.0 Boise
+   Fast Commute - SUNNY PRIVATE ROOM  in luxury BK  257.0    Private room                            No children under 10             1.0                  2                 3.0 Boise
+               Downtown Luxury 1 Bedroom 800 sq ft  982.0 Entire home/apt                                      No parties             7.0                  4                 5.0 Boise
+Spacious and airy room in prime South Williamsburg   74.0    Private room                            No children under 10             3.0                  2                 1.0 Boise
+              Room for sublet in lovely Ridgewood!  687.0    Private room     No pets & No parties & No children under 10             7.0                  2                 5.0 Boise
+                Entire apt close to Lincoln Center  285.0 Entire home/apt               No children under 10 & No smoking            10.0                  2                 2.0 Boise
+               Huge 1BD near Central Park Sleeps 5  395.0 Entire home/apt                         No smoking & No parties             1.0                  3                 5.0 Boise
+                                       Cherry Hill  642.0 Entire home/apt No children under 10 & No visitors & No parties             2.0                  3                 2.0 Boise
+    Cute, spacious, windowlit room in Williamsburg  826.0    Private room    No children under 10 & No pets & No visitors             2.0                  1                 4.0 Boise
+                       Lovely Room in Williamsburg  707.0 Entire home/apt                         No smoking & No parties            28.0                  4                 3.0 Boise
+    Cozy bright apt with a touch of rustic charm -  529.0 Entire home/apt                            No smoking & No pets             2.0                  4                 3.0 Boise
+                       Well connected private room  708.0    Private room                                      No parties            10.0                  1                 3.0 Boise
+                Big 1 Bedroom Brooklyn Ditmas Park  577.0    Private room                        No smoking & No visitors             3.0                  1                 3.0 Boise
+
+### Attractions in Pocatello
+                                            Name  Latitude   Longitude                                                           Address          Phone                                                                                         Website      City
+                 Idaho Museum of Natural History 42.860229 -112.433764                         698 E Dillon St, Pocatello, ID 83201, USA (208) 282-3168                                                                            http://imnh.isu.edu/ Pocatello
+                                 Museum of Clean 42.859604 -112.441762                           711 S 2nd Ave, Pocatello, ID 83201, USA (208) 236-6906                                                                https://museumofclean.com/visit/ Pocatello
+Fort Hall Replica and Commemorative Trading Post 42.844199 -112.418923               3000 Avenue of the Chiefs, Pocatello, ID 83204, USA (208) 233-0434                                                                         http://www.bchm-id.org/ Pocatello
+                Bannock County Historical Museum 42.844202 -112.418936               3000 Avenue of the Chiefs, Pocatello, ID 83204, USA (208) 233-0434                                                                         http://www.bchm-id.org/ Pocatello
+                                       Zoo Idaho 42.842410 -112.421844                          2900 S 2nd Ave, Pocatello, ID 83204, USA (208) 234-6264                                                                           https://zooidaho.org/ Pocatello
+                                       Ross Park 42.842206 -112.423548                          2695 S 2nd Ave, Pocatello, ID 83204, USA (208) 234-0472               https://www.pocatello.us/facilities/facility/details/lower-ross-park-west-side-29 Pocatello
+                                      Ammon Park 42.883207 -112.430799                                          Pocatello, ID 83201, USA (208) 234-6232                                https://www.pocatello.us/facilities/facility/details/ammonpark-7 Pocatello
+ Pocatello Model Railroad and Historical Society 42.859760 -112.446674                      b59 S Harrison Ave, Pocatello, ID 83204, USA (208) 236-5359 http://www.modular-model-railroads.com/2008/04/pocatello-model-railroad-and-historical-society/ Pocatello
+          O.K. Ward Park / Brooklyn's Playground 42.907357 -112.483127 1400 W Quinn Rd & Northern Lights Drive, Pocatello, ID 83202, USA (208) 234-6232      http://www.pocatello.us/Facilities/Facility/Details/OK-Ward-Park-Brooklyn39s-Playground-22 Pocatello
+                                  Sacajawea Park 42.875759 -112.472026                                Aspen Ln, Pocatello, ID 83204, USA (208) 234-6232                           http://www.pocatello.us/Facilities/Facility/Details/Sacajawea-Park-30 Pocatello
+                           Outer Limits Fun Zone 42.878599 -112.458275                        1800 Garrett Way, Pocatello, ID 83201, USA (208) 232-7529                                                              http://www.outerlimitsfunzone.com/ Pocatello
+                                   Westello Park 42.862568 -112.476900                        70 Westello Blvd, Pocatello, ID 83204, USA (208) 234-6232                                                   https://www.pocatello.us/278/Parks-Recreation Pocatello
+                                Sister City Park 42.900926 -112.420344  Pocatello Creek Road &, Satterfield Dr, Pocatello, ID 83201, USA (208) 234-6232                         http://www.pocatello.us/Facilities/Facility/Details/Sister-City-Park-32 Pocatello
+                               Constitution Park 42.836315 -112.405527                          4020 S 5th Ave, Pocatello, ID 83204, USA (208) 234-6232                        http://www.pocatello.us/Facilities/Facility/Details/Constitution-Park-14 Pocatello
+                              The Standrod House 42.865314 -112.457386                      648 N Garfield Ave, Pocatello, ID 83204, USA (208) 479-7659                                                   https://www.visitpocatello.com/stanrod-house/ Pocatello
+                  Christmas Lights at Delphic Ct 42.907180 -112.433938                         1455 Delphic Ct, Pocatello, ID 83201, USA        Unknown                                                                                         Unknown Pocatello
+                                 Centennial Park 42.853376 -112.446007                             S Grant Ave, Pocatello, ID 83204, USA (208) 234-6232                         https://www.pocatello.gov/facilities/facility/details/centennialpark-13 Pocatello
+                           The Mini Berkeley Pit 42.911204 -112.497442                       4279 W Arizona Dr, Pocatello, ID 83202, USA        Unknown                                                                                         Unknown Pocatello
+                       Portneuf Wellness Complex 42.918564 -112.431786                     10588 Fairground Dr, Pocatello, ID 83201, USA (208) 237-1340                                                         http://www.bannockcountyeventcenter.us/ Pocatello
+                                  Simplot Square 42.861050 -112.451632                        155 S Arthur Ave, Pocatello, ID 83204, USA (208) 234-6232                                                                        http://www.pocatello.us/ Pocatello
+
+### Restaurants in Pocatello
+                                    Name  Average Cost                                         Cuisines  Aggregate Rating      City
+                            Harvest Moon            90                                 Pizza, Fast Food               3.7 Pocatello
+                                Deorio's            59   Tea, Bakery, Fast Food, Mediterranean, Seafood               4.0 Pocatello
+                650 - The Global Kitchen            83                             French, Bakery, Cafe               4.2 Pocatello
+                The Baking Treats N More            75                          Cafe, Bakery, Fast Food               0.0 Pocatello
+                              Good to Go            28        Tea, Bakery, Cafe, Mediterranean, Seafood               0.0 Pocatello
+                Oriental Kitchen Express            36                           Cafe, Bakery, Desserts               3.3 Pocatello
+                           Ghar Ki Handi            13                Cafe, Bakery, American, Fast Food               3.0 Pocatello
+                               Wrapchick            78         Bakery, Mediterranean, Desserts, Seafood               3.9 Pocatello
+                           Gola Sizzlers            34        Desserts, French, Bakery, Fast Food, Cafe               3.0 Pocatello
+                         Joost Juice Bar            51    Tea, Cafe, Pizza, Italian, Fast Food, Chinese               3.2 Pocatello
+                           Pastry Palace            89                                Tea, BBQ, Italian               0.0 Pocatello
+                        Green Chick Chop            22                       Cafe, Bakery, BBQ, Seafood               3.1 Pocatello
+                 Vaishno Amritsari Dhaba            13                                Tea, Cafe, Indian               3.2 Pocatello
+                     Anjlika Pastry Shop            11                 Pizza, French, Bakery, BBQ, Cafe               3.6 Pocatello
+                                  Turant            89                   Mexican, Pizza, BBQ, Fast Food               3.3 Pocatello
+                  Curzon - The Royal Bar            69                    BBQ, Mediterranean, Fast Food               0.0 Pocatello
+                                  King's            13      Italian, French, Bakery, Fast Food, Seafood               3.2 Pocatello
+                   Super Star Restaurant            35           Pizza, Italian, Bakery, BBQ, Fast Food               0.0 Pocatello
+                           Oasis Baklawa            21             Cafe, Bakery, BBQ, Chinese, American               3.5 Pocatello
+                        Green Chick Chop            66                 Chinese, Bakery, Cafe, Fast Food               3.3 Pocatello
+                                  Chaska            67 Desserts, Pizza, French, BBQ, Fast Food, Chinese               0.0 Pocatello
+Wasabi by Morimoto - The Taj Mahal Hotel            36           Tea, Pizza, Mexican, BBQ, Cafe, Indian               3.9 Pocatello
+                    Neelma Punjabi Dhaba            10                        Mexican, Bakery, Desserts               2.9 Pocatello
+                           Shawarma Wala            63                        Fast Food, Pizza, Seafood               0.0 Pocatello
+                      Vinny's Restro Bar            82       Pizza, French, Bakery, Cafe, Mediterranean               3.2 Pocatello
+                           The FLIP Cafe            78              Pizza, Italian, BBQ, Cafe, American               2.6 Pocatello
+                             Pichli Gali            29               Cafe, Mexican, Desserts, Fast Food               3.0 Pocatello
+                   Pizzeria Vaatika Cafe            12                                    BBQ, Desserts               3.7 Pocatello
+                               Purnell's            76                              Cafe, American, BBQ               4.5 Pocatello
+                          Hard Rock Cafe            99      Chinese, Tea, Pizza, Italian, Cafe, Seafood               4.0 Pocatello
+                           Bocca Di Lupo            92                            Tea, Cafe, Pizza, BBQ               4.5 Pocatello
+                            Bone Daddies            41            Tea, Italian, Mexican, BBQ, Fast Food               4.6 Pocatello
+
+### Accommodations in Pocatello
+                                                        NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number      city
+               Entire Modern Studio Apartment/Prime Location 1109.0 Entire home/apt           No parties & No smoking            30.0                  5                 1.0 Pocatello
+              Stunning 1-Bedroom NYC Apartment on the River!   68.0 Entire home/apt              No children under 10            30.0                  3                 2.0 Pocatello
+                                      Chill in Alphabet City  671.0    Private room    No pets & No children under 10             3.0                  1                 4.0 Pocatello
+           SOHO 1st Floor | Two Story Apt + Private Backyard  102.0 Entire home/apt No smoking & No children under 10             5.0                  3                 4.0 Pocatello
+                              2 bedroom family luxury modern  333.0 Entire home/apt    No children under 10 & No pets             6.0                  2                 4.0 Pocatello
+Luxury Tribeca 1BR w/ Gym, Doorman + Roof deck by Blueground  501.0 Entire home/apt          No visitors & No parties            30.0                  2                 3.0 Pocatello
+                         Large Comfortable Studio in Chelsea  591.0 Entire home/apt                        No smoking             2.0                  5                 1.0 Pocatello
+                 Welcome to the Secret Oasis in Williamsburg  409.0    Private room                        No parties             1.0                  1                 3.0 Pocatello
+                                 Cozy 2BD Near Columbia Univ  102.0 Entire home/apt                           No pets             4.0                  3                 2.0 Pocatello
+          15 min  Manhattan. Quiet, Safe, Clean, Good  price  239.0     Shared room                        No parties             7.0                  1                 4.0 Pocatello
+                         Studio Apartment in Upper East Side  366.0 Entire home/apt              No smoking & No pets             7.0                  2                 5.0 Pocatello
+          Brand new Loft 2 blocks away from train w/ parking  714.0 Entire home/apt                           No pets             1.0                  2                 5.0 Pocatello
+             Tranquil bedroom in classic Bed-Stuy brownstone 1178.0    Private room                       No visitors            30.0                  2                 5.0 Pocatello
+                               Cozy 1 Bedroom with Queen bed 1049.0    Private room                        No smoking             3.0                  2                 3.0 Pocatello
+
+### Attractions in Idaho Falls
+                                    Name  Latitude   Longitude                                                      Address          Phone                                                                                 Website        City
+              Giant Eagle Waterfall Nest 43.488107 -112.049251                  1075 S Utah Ave, Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+                         Museum of Idaho 43.490436 -112.038171                200 N Eastern Ave, Idaho Falls, ID 83402, USA (208) 522-1400                                                           http://www.museumofidaho.org/ Idaho Falls
+                     Eagle Rock Fountain 43.488604 -112.049784                       S Utah Ave, Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+                  Ghost Walk Idaho Falls 43.493579 -112.039819                     510 Park Ave, Idaho Falls, ID 83402, USA (208) 757-0121                                                     http://www.ghostwalkidahofalls.com/ Idaho Falls
+                Collectors Corner Museum 43.493454 -112.013692              900 John Adams Pkwy, Idaho Falls, ID 83401, USA (208) 528-9900                                                  https://www.facebook.com/collectors50/ Idaho Falls
+                     East Idaho Aquarium 43.510922 -112.021656                570 E Anderson St, Idaho Falls, ID 83401, USA (208) 569-2996                                                           http://eastidahoaquarium.com/ Idaho Falls
+         The Art Museum Of Eastern Idaho 43.490156 -112.045437                300 S Capital Ave, Idaho Falls, ID 83402, USA (208) 524-7777                                                            http://www.theartmuseum.org/ Idaho Falls
+Idaho Falls River Walk - Greenbelt Trail 43.496485 -112.043962                   525 River Pkwy, Idaho Falls, ID 83402, USA (208) 529-1200                                                                                 Unknown Idaho Falls
+                       Russ Freeman Park 43.514913 -112.048271           1290 Science Center Dr, Idaho Falls, ID 83402, USA (208) 612-8100             https://www.idahofallsidaho.gov/Facilities/Facility/Details/Freeman-Park-15 Idaho Falls
+                                 Funland 43.473114 -112.040652            365 Sunken Diamond Dr, Idaho Falls, ID 83402, USA (208) 525-9814                                                            https://funlandatthezoo.com/ Idaho Falls
+              Japanese Friendship Garden 43.492500 -112.044722                600 W Broadway St, Idaho Falls, ID 83402, USA (208) 612-8580                         https://www.idahofallsidaho.gov/1248/Japanese-Friendship-Garden Idaho Falls
+         Love Lock Pier View- River Walk 43.483585 -112.050472 1623 Idaho Falls Greenbelt Trail, Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+       Idaho Falls Zoo at Tautphaus Park 43.472007 -112.041336                2940 Carnival Way, Idaho Falls, ID 83402, USA (208) 612-8552                                                https://www.idahofallsidaho.gov/1230/Zoo Idaho Falls
+                          Tautphaus Park 43.473726 -112.039361                                   Idaho Falls, ID 83402, USA (208) 525-9814                                                        https://www.idahofallsidaho.gov/ Idaho Falls
+                          Old Butte Park 43.500481 -112.091855                                   Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+                        Kate Curley Park 43.489369 -112.027431                   300-398 9th St, Idaho Falls, ID 83404, USA (208) 612-8480 https://www.idahofallsidaho.gov/facilities/facility/details/Kate-Curley-Park-Shelter-25 Idaho Falls
+                           Reinhart Park 43.504945 -112.070350                1055 Washburn Ave, Idaho Falls, ID 83402, USA (208) 612-8479                         https://www.idahofallsidaho.gov/Facilities/Facility/Details/-32 Idaho Falls
+                 Mini Golden Gate Bridge 43.494522 -112.046107                 395 Lindsay Blvd, Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+                   Bison Art in the park 43.499453 -112.044520                 700 Lindsay Blvd, Idaho Falls, ID 83402, USA        Unknown                                                                                 Unknown Idaho Falls
+                             Idaho Falls 43.497424 -112.043852                       River Pkwy, Idaho Falls, ID 83402, USA (208) 529-1200                                                        https://www.idahofallsidaho.gov/ Idaho Falls
+
+### Restaurants in Idaho Falls
+                          Name  Average Cost                                       Cuisines  Aggregate Rating        City
+                       Karim's            58                  Tea, Pizza, BBQ, Cafe, Indian               3.3 Idaho Falls
+               Shiv Restaurant            42               Bakery, Mexican, Pizza, Desserts               2.7 Idaho Falls
+               Chinese X'Press            79                    French, Desserts, Fast Food               2.9 Idaho Falls
+                   Chefoncalls            72               BBQ, Bakery, Desserts, Fast Food               0.0 Idaho Falls
+                      Cake2you            47         Desserts, Bakery, BBQ, Indian, Seafood               3.0 Idaho Falls
+                        Dhuaan            97  Tea, Pizza, Mexican, BBQ, Fast Food, American               4.3 Idaho Falls
+        Indian Fresh Meat Shop            92                       Tea, Cafe, BBQ, Desserts               0.0 Idaho Falls
+                Taste of China            19     French, Bakery, Fast Food, Indian, Seafood               3.5 Idaho Falls
+                 Punjabi Rasoi            86        Desserts, Cafe, Pizza, Chinese, Seafood               2.3 Idaho Falls
+         Aggarwal Eating Point            80             Bakery, Pizza, Desserts, Fast Food               0.0 Idaho Falls
+               Behrouz Biryani            65                                    Tea, Bakery               3.2 Idaho Falls
+               Mid Night Khana            90                    Cafe, Bakery, American, BBQ               3.3 Idaho Falls
+   Gupta's Vegetarian Paradise            43                          Cafe, Pizza, Desserts               0.0 Idaho Falls
+                 Aslam Chicken            54                    Cafe, Bakery, BBQ, Desserts               3.9 Idaho Falls
+                Fresh n Frozen            31         French, Bakery, Mediterranean, Seafood               3.1 Idaho Falls
+                         Giani            67           Desserts, Pizza, BBQ, Cafe, American               3.4 Idaho Falls
+                  Nazeer Foods            24                                      Cafe, BBQ               3.5 Idaho Falls
+                    Le Swaadik            31          Tea, Pizza, French, Bakery, Fast Food               3.3 Idaho Falls
+                    China Town            34                        Cafe, Mexican, Desserts               2.9 Idaho Falls
+                        Pyaali            14                       Pizza, Bakery, Fast Food               2.8 Idaho Falls
+                   Satya Dhaba            79           Desserts, Tea, Italian, BBQ, Seafood               0.0 Idaho Falls
+                      The Chef            11                                 Tea, Cafe, BBQ               3.2 Idaho Falls
+                   Bimbo Cakes            94              Fast Food, Bakery, Pizza, Italian               3.2 Idaho Falls
+                       Karim's            44             Pizza, Indian, BBQ, Cafe, American               3.7 Idaho Falls
+                        Subway            10                Pizza, American, BBQ, Fast Food               2.3 Idaho Falls
+              Kay's Bar-Be-Que            11                      Mexican, Pizza, Fast Food               3.0 Idaho Falls
+                 Marathi Katta            81                   Tea, Cafe, Mexican, Desserts               2.7 Idaho Falls
+        Indo Traditional Kulfi            87         Desserts, Tea, Mexican, Cafe, American               3.1 Idaho Falls
+Charu Nanda's Home Baked Cakes            78              Tea, Bakery, BBQ, Indian, Seafood               3.1 Idaho Falls
+             Prem Jee Da Dhaba            95                          Desserts, Indian, BBQ               0.0 Idaho Falls
+         The Fusion Food Stand            49 Desserts, Cafe, Italian, BBQ, Chinese, Seafood               3.8 Idaho Falls
+                     44 Grills            97                 Seafood, Pizza, BBQ, Fast Food               0.0 Idaho Falls
+                    Cream Bell            77                          Cafe, Bakery, Italian               0.0 Idaho Falls
+
+### Accommodations in Idaho Falls
+                                                    NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number        city
+                             Sunny & Spacious 2 bdrm apt  914.0 Entire home/apt                                   No smoking             4.0                  9                 3.0 Idaho Falls
+                                           Private Suite  635.0    Private room                                      No pets             5.0                  2                 3.0 Idaho Falls
+       Private Room in Beautiful Brooklyn Private House.  296.0    Private room No visitors & No children under 10 & No pets            60.0                  2                 1.0 Idaho Falls
+       Stunning 4 Bed Tribeca Penthouse w/ Huge Terrace! 1008.0 Entire home/apt           No smoking & No pets & No visitors            30.0                  8                 3.0 Idaho Falls
+               Gramercy & Madison Park CONDO 3 BED 2BATH 1194.0 Entire home/apt                         No smoking & No pets             3.0                  4                 2.0 Idaho Falls
+      Cozy & Private Bedroom only 30-35 min to Manhattan  972.0    Private room                        No pets & No visitors             1.0                  2                 5.0 Idaho Falls
+       Mid-Century Style Room Close to All, Astoria NYC!  921.0    Private room                     No visitors & No parties             3.0                  1                 3.0 Idaho Falls
+                              Renting very clean bedroom  306.0    Private room                         No smoking & No pets             1.0                  1                 5.0 Idaho Falls
+                         Sunny, spacious room in 3BR apt  615.0    Private room                     No smoking & No visitors            11.0                  1                 5.0 Idaho Falls
+Roomy FiDi 1BR w/ Gym, Roof deck + Doorman by Blueground  758.0 Entire home/apt                         No children under 10            30.0                  7                 2.0 Idaho Falls
+                       Perfect Williamsburg Summer Haven  250.0 Entire home/apt                                      No pets             2.0                  3                 5.0 Idaho Falls
+                       Sunny & Clean Apt, Ideal Location  911.0 Entire home/apt                                   No smoking             1.0                  7                 1.0 Idaho Falls
+
+### Flight from Chicago to Boise on 2022-03-25
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3857813    311   09:48   12:51  4 hours 3 minutes 2022-03-25        Chicago        Boise    1437.0
+     F3857845    444   19:49   22:47 3 hours 58 minutes 2022-03-25        Chicago        Boise    1437.0
+     F3864597    416   16:00   18:53 3 hours 53 minutes 2022-03-25        Chicago        Boise    1437.0
+
+### Self-driving from Chicago to Boise
+No valid information.
+
+### Taxi from Chicago to Boise
+No valid information.
+
+### Flight from Boise to Pocatello on 2022-03-27
+There is no flight from Boise to Pocatello on 2022-03-27.
+
+### Self-driving from Boise to Pocatello
+self-driving, from Boise to Pocatello, duration: 3 hours 25 mins, distance: 378 km, cost: 18
+
+### Taxi from Boise to Pocatello
+taxi, from Boise to Pocatello, duration: 3 hours 25 mins, distance: 378 km, cost: 378
+
+### Flight from Pocatello to Idaho Falls on 2022-03-29
+There is no flight from Pocatello to Idaho Falls on 2022-03-29.
+
+### Self-driving from Pocatello to Idaho Falls
+self-driving, from Pocatello to Idaho Falls, duration: 51 mins, distance: 83.6 km, cost: 4
+
+### Taxi from Pocatello to Idaho Falls
+taxi, from Pocatello to Idaho Falls, duration: 51 mins, distance: 83.6 km, cost: 83
+
+### Flight from Idaho Falls to Chicago on 2022-03-31
+There is no flight from Idaho Falls to Chicago on 2022-03-31.
+
+### Self-driving from Idaho Falls to Chicago
+self-driving, from Idaho Falls to Chicago, duration: 21 hours 43 mins, distance: 2,369 km, cost: 118
+
+### Taxi from Idaho Falls to Chicago
+taxi, from Idaho Falls to Chicago, duration: 21 hours 43 mins, distance: 2,369 km, cost: 2369
+
+JSON plan:

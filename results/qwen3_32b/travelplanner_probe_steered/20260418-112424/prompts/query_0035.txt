@@ -1,0 +1,191 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you curate a 5-day travel itinerary for one person starting in Gainesville and visiting 2 cities in North Carolina, from March 23rd to March 27th, 2022? The budget for this plan is set at $2,900.
+
+Reference information:
+### Attractions in Wilmington
+                                   Name  Latitude  Longitude                                                  Address          Phone                                                                   Website       City
+                 Bellamy Mansion Museum 34.236148 -77.943010                 503 Market St, Wilmington, NC 28401, USA (910) 251-3700                                            http://www.bellamymansion.org/ Wilmington
+Cape Fear Museum of History and Science 34.235818 -77.938356                 814 Market St, Wilmington, NC 28401, USA (910) 798-4370                               https://www.nhcgov.com/548/Cape-Fear-Museum Wilmington
+                   Wilmington Riverwalk 34.235220 -77.949973 Wilmington Downtown Riverwalk, Wilmington, NC 28401, USA        Unknown                           https://www.wilmingtonnc.gov/visitors/riverwalk Wilmington
+             Wilmington Railroad Museum 34.241680 -77.950803                   505 Nutt St, Wilmington, NC 28401, USA (910) 763-2634                                                      http://www.wrrm.org/ Wilmington
+                  Museum of the Bizarre 34.232685 -77.949015                201 S Water St, Wilmington, NC 28401, USA (910) 399-2641                                             http://www.museumbizarre.com/ Wilmington
+                         Airlie Gardens 34.218298 -77.830242                 300 Airlie Rd, Wilmington, NC 28403, USA (910) 798-7700                                                 http://airliegardens.org/ Wilmington
+       Burgwin-Wright House and Gardens 34.235207 -77.946286                 224 Market St, Wilmington, NC 28401, USA (910) 762-0570                                        http://www.burgwinwrighthouse.com/ Wilmington
+    The Children's Museum of Wilmington 34.232741 -77.947496                 116 Orange St, Wilmington, NC 28401, USA (910) 254-3534                                            http://www.playwilmington.org/ Wilmington
+          Jungle Rapids Family Fun Park 34.207308 -77.863080              5320 Oleander Dr, Wilmington, NC 28403, USA (910) 791-0666                                              http://www.junglerapids.com/ Wilmington
+              Battleship North Carolina 34.236552 -77.954370            1 Battleship Rd NE, Wilmington, NC 28401, USA (910) 399-9100                                              http://www.battleshipnc.com/ Wilmington
+                     Cameron Art Museum 34.184095 -77.915415                3201 S 17th St, Wilmington, NC 28412, USA (910) 395-5999                                          http://www.cameronartmuseum.org/ Wilmington
+                          Latimer House 34.233218 -77.946143                  126 S 3rd St, Wilmington, NC 28401, USA (910) 606-4343                                              http://www.latimerhouse.org/ Wilmington
+              One Tree Hill: The Bridge 34.243811 -77.942927                  694 N 6th St, Wilmington, NC 28401, USA        Unknown                                                                   Unknown Wilmington
+                     1898 Memorial Park 34.247834 -77.947119                 1018 N 3rd St, Wilmington, NC 28401, USA (910) 341-7852            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+                        Halyburton Park 34.175631 -77.905358                4099 S 17th St, Wilmington, NC 28412, USA (910) 341-0075 https://www.wilmingtonnc.gov/departments/parks-recreation/halyburton-park Wilmington
+                             Bijou Park 34.238030 -77.949287                209 N Front St, Wilmington, NC 28401, USA        Unknown            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+       Wilmington Downtown Incorporated 34.238118 -77.948567      226 N Front St Suite 130, Wilmington, NC 28401, USA (910) 998-7744                                        http://www.wilmingtondowntown.com/ Wilmington
+                        Battleship Park 34.235667 -77.952398 191-199 USS North Carolina Rd, Wilmington, NC 28401, USA        Unknown                                             https://www.battleshipnc.com/ Wilmington
+                Poplar Grove Plantation 34.320633 -77.765526                  10200 Hwy 17, Wilmington, NC 28411, USA        Unknown                                               http://www.poplargrove.org/ Wilmington
+                         Long Leaf Park 34.208175 -77.881924             314 Pine Grove Dr, Wilmington, NC 28409, USA (910) 798-7275                                                 https://parks.nhcgov.com/ Wilmington
+
+### Restaurants in Wilmington
+                      Name  Average Cost                                      Cuisines  Aggregate Rating       City
+                    Azteca            56                             Cafe, Indian, BBQ               4.3 Wilmington
+            Bandit Burrito            26  Desserts, French, Bakery, Fast Food, Seafood               4.0 Wilmington
+   Moonie's Texas Barbecue            38                    Chinese, Bakery, Fast Food               4.1 Wilmington
+                  Taco Bus            59                                Tea, Cafe, BBQ               4.5 Wilmington
+                  Momo-Cha            92          Desserts, Cafe, French, BBQ, Chinese               2.7 Wilmington
+Wangchuk's Ladakhi Kitchen            93                         Cafe, Bakery, Italian               3.6 Wilmington
+            Dunkin' Donuts            25         Desserts, Tea, Pizza, Italian, French               3.7 Wilmington
+           The Yellow Chef            45         French, BBQ, Mediterranean, Fast Food               3.7 Wilmington
+                  Kebabish            64 Desserts, Italian, BBQ, Cafe, Indian, Seafood               0.0 Wilmington
+     Aggarwal Sweet Corner            66                           Tea, Pizza, Italian               3.4 Wilmington
+             Biryani Blues            90               Bakery, BBQ, Seafood, Fast Food               3.9 Wilmington
+            ToLoveFromLove            53               Cafe, Bakery, Indian, Fast Food               0.0 Wilmington
+              Chaap Chaska            95                  Cafe, BBQ, Desserts, Seafood               0.0 Wilmington
+              Hungry Folks            91                    Tea, French, BBQ, Desserts               0.0 Wilmington
+                 Rose Cafe            96    Italian, Bakery, Fast Food, Cafe, American               4.1 Wilmington
+ P2 Tandoori Momos Station            64                       Bakery, Indian, Seafood               3.1 Wilmington
+                 Keventers            78                                Cafe, Desserts               3.8 Wilmington
+        Welcome Food Point            68                              Bakery, Desserts               2.3 Wilmington
+                   Karim's            93          Cafe, Pizza, Bakery, Chinese, Indian               0.0 Wilmington
+             Chicken Kraft            89              Cafe, Mexican, Desserts, Italian               2.9 Wilmington
+           Chaska By Taste            72 Tea, Fast Food, Cafe, American, Mediterranean               2.9 Wilmington
+
+### Accommodations in Wilmington
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+    Prime East Village location w/backyard garden!  978.0 Entire home/apt                            No pets & No smoking             4.0                  7                 5.0 Wilmington
+                  Private Bedroom in Williamsburg!  400.0    Private room                                         No pets             5.0                  2                 5.0 Wilmington
+               Doorman Harlem Apt with Great Views  921.0 Entire home/apt                           No visitors & No pets             1.0                  7                 3.0 Wilmington
+    Brooklyn Bedroom - Warm & Cozy Near Subway (1)  339.0    Private room              No visitors & No children under 10             2.0                  1                 5.0 Wilmington
+               #1 PRIVATE STUDIO IN BX,15MINS NYC. 1128.0    Private room                        No parties & No visitors             2.0                  2                 4.0 Wilmington
+    Wyndham Midtown 45 (1 Bedroom Presidential) 2A 1194.0 Entire home/apt                           No visitors & No pets             3.0                  5                 2.0 Wilmington
+                            Private: The Grey Room  954.0    Private room                                      No smoking             1.0                  2                 2.0 Wilmington
+  3BR/1.5BA East Harlem - Families, Space , Quiet!  616.0 Entire home/apt                                      No smoking             1.0                  2                 3.0 Wilmington
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room               No children under 10 & No smoking             1.0                  2                 3.0 Wilmington
+Close to East Side Hospitals- Modern 2 Bedroom Apt  285.0 Entire home/apt                                      No smoking            30.0                  3                 3.0 Wilmington
+                             Vibrant Crown Heights  343.0    Private room No visitors & No smoking & No children under 10             3.0                  1                 5.0 Wilmington
+                   A Lovely One Bedroom Apartment!  882.0 Entire home/apt                                      No parties            10.0                  8                 5.0 Wilmington
+    Full-Service Junior Suite in Midtown Manhattan  368.0 Entire home/apt                            No smoking & No pets             3.0                  2                 3.0 Wilmington
+Private room for 2 (10 min to city) - Females only  453.0    Private room           No parties & No smoking & No visitors             1.0                  1                 4.0 Wilmington
+                              Semi Private Bedroom  840.0     Shared room                        No smoking & No visitors             1.0                  1                 3.0 Wilmington
+ Luxury 3 bedroom apartment on the Upper East Side  481.0 Entire home/apt               No children under 10 & No smoking             2.0                  3                 5.0 Wilmington
+                                 Big and cozy room  104.0    Private room                         No smoking & No parties             3.0                  2                 5.0 Wilmington
+                Charming 1BR in heart of Chinatown  503.0    Private room               No smoking & No children under 10             2.0                  2                 2.0 Wilmington
+         Luxury Apt very close to public transport  871.0    Private room                  No pets & No children under 10             5.0                  2                 4.0 Wilmington
+                BEAUTIFUL&BRIGHT 1 bd (E. Village)  207.0    Private room                                         No pets             1.0                  1                 5.0 Wilmington
+
+### Attractions in Fayetteville
+                                                         Name  Latitude  Longitude                                           Address          Phone                                                                                          Website         City
+The Fayetteville Area Transportation and Local History Museum 35.052081 -78.882170      325 Franklin St, Fayetteville, NC 28301, USA (910) 433-1457 https://www.fcpr.us/facilities/museums/fayetteville-area-transportation-and-local-history-museum Fayetteville
+                                      Museum of the Cape Fear 35.054508 -78.892657      801 Arsenal Ave, Fayetteville, NC 28305, USA (910) 500-4240                                                           https://museumofthecapefear.ncdcr.gov/ Fayetteville
+                                                Lake Rim Park 35.029502 -79.044830     2214 Tar Kiln Dr, Fayetteville, NC 28304, USA (910) 433-1018                                                                                          Unknown Fayetteville
+              Airborne & Special Operations Museum Foundation 35.055841 -78.885000       100 Bragg Blvd, Fayetteville, NC 28301, USA (910) 643-2778                                                                            http://www.asomf.org/ Fayetteville
+                                Fascinate-U Children's Museum 35.053149 -78.877847         116 Green St, Fayetteville, NC 28301, USA (910) 829-9171                                                                      http://www.fascinate-u.com/ Fayetteville
+                                   Cape Fear Botanical Garden 35.055855 -78.859187   536 N Eastern Blvd, Fayetteville, NC 28301, USA (910) 486-0221                                                                       http://www.capefearbg.org/ Fayetteville
+                                                Festival Park 35.058503 -78.882308          335 Ray Ave, Fayetteville, NC 28301, USA (910) 433-1547                                                                                          Unknown Fayetteville
+                                 North Carolina Veterans Park 35.057837 -78.885169       300 Bragg Blvd, Fayetteville, NC 28301, USA (910) 433-1457                                                                                          Unknown Fayetteville
+                                     Clark Park Nature Center 35.087774 -78.870772       631 Sherman Dr, Fayetteville, NC 28301, USA (910) 433-1579                                                    https://fcpr.us/parks-trails/parks/clark-park Fayetteville
+                                     Fayetteville Rose Garden 35.066403 -78.924810         2201 Hull Rd, Fayetteville, NC 28303, USA (910) 678-8228                                          http://www.visitnc.com/listing/fayetteville-rose-garden Fayetteville
+                                                Mazarick Park 35.071680 -78.901142   1400 Belvedere Ave, Fayetteville, NC 28305, USA (910) 433-1547                                                 https://fcpr.us/parks-trails/parks/mazarick-park Fayetteville
+                     ZipQuest - Waterfall & Treetop Adventure 35.149236 -78.855032 533 Carvers Falls Rd, Fayetteville, NC 28311, USA (910) 488-8787                                                                         http://www.zipquest.com/ Fayetteville
+                                               1897 Poe House 35.054180 -78.892690     206 Bradford Ave, Fayetteville, NC 28305, USA (910) 500-4240                                             https://museumofthecapefear.ncdcr.gov/1897-poe-house Fayetteville
+                                                 Arsenal Park 35.053860 -78.894771       215 Myrover St, Fayetteville, NC 28305, USA (910) 500-4240                                               https://museumofthecapefear.ncdcr.gov/arsenal-park Fayetteville
+                                               Sandford House 35.048889 -78.877980                       Fayetteville, NC 28301, USA        Unknown                                                                                          Unknown Fayetteville
+                                                     Art Park 35.054313 -78.879063                       Fayetteville, NC 28301, USA        Unknown                                                                                          Unknown Fayetteville
+                                   Fayetteville Veterans Park 35.058331 -78.873480         220 Lamon St, Fayetteville, NC 28301, USA (910) 433-1004                                                                                          Unknown Fayetteville
+                                  Downtown Fayetteville Tours 35.049682 -78.878752     215 Gillespie St, Fayetteville, NC 28301, USA (910) 444-0034                                                                 http://www.downtownfaytours.com/ Fayetteville
+                                        Freedom Memorial Park 35.056104 -78.886915       111 Bragg Blvd, Fayetteville, NC 28301, USA (980) 314-1002                                                              http://www.freedommemorialpark.org/ Fayetteville
+                                                 Arnette Park 35.005473 -78.856838  2165 Wilmington Hwy, Fayetteville, NC 28306, USA (910) 433-1547                       http://fcpr.us/Home/Components/FacilityDirectory/FacilityDirectory/86/2974 Fayetteville
+
+### Restaurants in Fayetteville
+                                       Name  Average Cost                                          Cuisines  Aggregate Rating         City
+                                     DiVine            32               Mexican, BBQ, Bakery, Cafe, Seafood               3.4 Fayetteville
+                              Pind Balluchi            80                       Cafe, Pizza, BBQ, Fast Food               3.2 Fayetteville
+                                 Eat Street            63                         Tea, French, BBQ, Seafood               4.3 Fayetteville
+                       The Great Indian Pub            95                           Fast Food, Tea, Seafood               4.9 Fayetteville
+                            Kay's Food Land            87                                  Cafe, Pizza, BBQ               3.1 Fayetteville
+                            Biryani By Kilo            53 Desserts, Pizza, American, Mediterranean, Seafood               3.9 Fayetteville
+                            Oriental Fusion            56                              Bakery, BBQ, Seafood               3.3 Fayetteville
+                              Oasis Kitchen            89                          Chinese, Pizza, Desserts               2.9 Fayetteville
+                               Smoke N Oven            26         Desserts, Cafe, Pizza, Fast Food, Chinese               3.5 Fayetteville
+                               Delhi Darbar            84                                      BBQ, Seafood               2.2 Fayetteville
+                                The Mustard            86                         Tea, Bakery, Mexican, BBQ               2.9 Fayetteville
+                                     Subway            52               Pizza, Italian, Bakery, BBQ, Indian               3.5 Fayetteville
+                                    Fa Yian            63              Desserts, Tea, Cafe, Chinese, Indian               4.0 Fayetteville
+                 Gulshan Fish & Chicken Fry            89                               Desserts, Fast Food               3.2 Fayetteville
+                 Noshi - Yum Asian Delivery            27                         French, Bakery, Cafe, BBQ               4.2 Fayetteville
+                                 South Gate           100               Chinese, Bakery, BBQ, Mediterranean               0.0 Fayetteville
+                          Maharashtra Sadan            43                         Cafe, American, Fast Food               3.8 Fayetteville
+                            Fresh n Refresh            33                     Fast Food, Cafe, BBQ, Italian               2.8 Fayetteville
+                                Cafe Turtle            67                      Fast Food, Tea, BBQ, Seafood               3.6 Fayetteville
+                            Chatorey Chacha            11                       Tea, American, BBQ, Italian               3.3 Fayetteville
+                                  Bake Town            83                     Tea, Mexican, American, Pizza               0.0 Fayetteville
+                          Brown Town Bakers            77           Cafe, Italian, Bakery, Chinese, Seafood               0.0 Fayetteville
+                             Domino's Pizza            54    Desserts, Pizza, BBQ, Fast Food, Mediterranean               3.0 Fayetteville
+                           Ice Pan Creamery            75              Pizza, French, Bakery, Cafe, Seafood               4.2 Fayetteville
+                                Chowringhee            87               Pizza, Bakery, BBQ, Chinese, Indian               3.6 Fayetteville
+                                Da Bawarchi            73                               French, Bakery, BBQ               0.0 Fayetteville
+                            Dare To Deliver            88                        Chinese, Desserts, Seafood               2.3 Fayetteville
+                                     Circus            40                   Seafood, BBQ, Desserts, Italian               4.0 Fayetteville
+Atrium Bar  & Lounge - The Suryaa New Delhi            45                              Cafe, Pizza, Italian               3.1 Fayetteville
+                       New Vishal's Kitchen            31                            American, BBQ, Seafood               2.5 Fayetteville
+                    The Great Kabab Factory            13            Fast Food, BBQ, Mediterranean, Seafood               3.5 Fayetteville
+               The Saffron Plant Restaurant            19                  Tea, BBQ, Mediterranean, Seafood               0.0 Fayetteville
+                                Beyond Food            26  Desserts, BBQ, Fast Food, Mediterranean, Seafood               0.0 Fayetteville
+                         Andaaz E Paranthas            18                         Tea, Cafe, Pizza, Seafood               3.2 Fayetteville
+
+### Accommodations in Fayetteville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number         city
+                Private BRoom ,Bathroom & backyard   56.0    Private room     No parties & No children under 10 & No pets             4.0                  2                 1.0 Fayetteville
+                  *CoZy Private Williamsburg Home*  546.0 Entire home/apt No children under 10 & No smoking & No visitors             2.0                  5                 2.0 Fayetteville
+ 24 Lex Prime Location of East NYC 15min to TimeSq  509.0 Entire home/apt                            No children under 10             2.0                  3                 2.0 Fayetteville
+                                 Brownstone Studio  396.0 Entire home/apt                                      No smoking             3.0                  3                 4.0 Fayetteville
+              3 B   GREAT 1BR APT IN NEW YORK CITY  135.0 Entire home/apt                                         No pets            30.0                  2                 1.0 Fayetteville
+                    Light-filled South Slope Nest!  790.0 Entire home/apt                            No children under 10             2.0                  2                 2.0 Fayetteville
+ TRANQUIL HAVEN W/PRIVATE BATH-8 MINS TO JFK RM.#1  251.0    Private room No visitors & No parties & No children under 10             1.0                  2                 4.0 Fayetteville
+                 Modern Luxury Studio in Manhattan 1125.0 Entire home/apt                                         No pets             7.0                 11                 3.0 Fayetteville
+Modern 4story building w/private bathroom elavator  276.0    Private room                        No parties & No visitors             2.0                  2                 3.0 Fayetteville
+              Charming 1 Bedroom in Ideal Location  433.0 Entire home/apt                           No pets & No visitors             3.0                  3                 3.0 Fayetteville
+                                      Ruby Bedroom  585.0    Private room                                      No parties             2.0                  2                 2.0 Fayetteville
+                                           #ERROR!  442.0    Private room                                      No smoking            25.0                  1                 3.0 Fayetteville
+
+### Flight from Gainesville to Wilmington on 2022-03-23
+There is no flight from Gainesville to Wilmington on 2022-03-23.
+
+### Self-driving from Gainesville to Wilmington
+self-driving, from Gainesville to Wilmington, duration: 7 hours 29 mins, distance: 814 km, cost: 40
+
+### Taxi from Gainesville to Wilmington
+taxi, from Gainesville to Wilmington, duration: 7 hours 29 mins, distance: 814 km, cost: 814
+
+### Flight from Wilmington to Fayetteville on 2022-03-25
+There is no flight from Wilmington to Fayetteville on 2022-03-25.
+
+### Self-driving from Wilmington to Fayetteville
+self-driving, from Wilmington to Fayetteville, duration: 1 hour 43 mins, distance: 149 km, cost: 7
+
+### Taxi from Wilmington to Fayetteville
+taxi, from Wilmington to Fayetteville, duration: 1 hour 43 mins, distance: 149 km, cost: 149
+
+### Flight from Fayetteville to Gainesville on 2022-03-27
+There is no flight from Fayetteville to Gainesville on 2022-03-27.
+
+### Self-driving from Fayetteville to Gainesville
+self-driving, from Fayetteville to Gainesville, duration: 6 hours 45 mins, distance: 743 km, cost: 37
+
+### Taxi from Fayetteville to Gainesville
+taxi, from Fayetteville to Gainesville, duration: 6 hours 45 mins, distance: 743 km, cost: 743
+
+JSON plan:

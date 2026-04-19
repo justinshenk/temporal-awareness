@@ -1,0 +1,521 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi there! I recently ordered a perfume from you guys, and I've tried it out - I absolutely love it! I'm wondering if I could get a larger size since I'm so happy with it.",
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Could you please provide your email address or your name and zip code so I can locate your account and check the order details?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Could you please provide your email address or your name and zip code so I can locate your account and check the order details?"
+      }
+    },
+    "observation": "Sure! My name is Ivan Johnson and my zip code is 94183.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Could you please provide your email address or your name and zip code so I can locate your account and check the order details?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4995,
+    "output_tokens": 42,
+    "generation_seconds": 3.924726963043213,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"find_user_id_by_name_zip\", \"arguments\": {\"first_name\": \"Ivan\", \"last_name\": \"Johnson\", \"zip\": \"94183\"}}",
+    "action": {
+      "name": "find_user_id_by_name_zip",
+      "arguments": {
+        "first_name": "Ivan",
+        "last_name": "Johnson",
+        "zip": "94183"
+      }
+    },
+    "observation": "ivan_johnson_6036",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "find_user_id_by_name_zip",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"find_user_id_by_name_zip\", \"arguments\": {\"first_name\": \"Ivan\", \"last_name\": \"Johnson\", \"zip\": \"94183\"}}",
+    "parsed_action_name": "find_user_id_by_name_zip",
+    "input_tokens": 5065,
+    "output_tokens": 42,
+    "generation_seconds": 3.950307846069336,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_johnson_6036\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ivan_johnson_6036"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ivan\", \"last_name\": \"Johnson\"}, \"address\": {\"address1\": \"581 Hillcrest Drive\", \"address2\": \"Suite 869\", \"city\": \"San Francisco\", \"country\": \"USA\", \"state\": \"CA\", \"zip\": \"94183\"}, \"email\": \"ivan.johnson5749@example.com\", \"payment_methods\": {\"paypal_6918118\": {\"source\": \"paypal\", \"id\": \"paypal_6918118\"}}, \"orders\": [\"#W1671835\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_johnson_6036\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5129,
+    "output_tokens": 29,
+    "generation_seconds": 3.1886086463928223,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_order_details\", \"arguments\": {\"order_id\": \"#W1671835\"}}",
+    "action": {
+      "name": "get_order_details",
+      "arguments": {
+        "order_id": "#W1671835"
+      }
+    },
+    "observation": "{\"order_id\": \"#W1671835\", \"user_id\": \"ivan_johnson_6036\", \"address\": {\"address1\": \"851 Pine Lane\", \"address2\": \"Suite 428\", \"city\": \"Fort Worth\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"76115\"}, \"items\": [{\"name\": \"Perfume\", \"product_id\": \"6858788497\", \"item_id\": \"5081446110\", \"price\": 322.52, \"options\": {\"scent family\": \"woody\", \"size\": \"30ml\", \"gender\": \"men\"}}], \"fulfillments\": [{\"tracking_id\": [\"820626058356\"], \"item_ids\": [\"5081446110\"]}], \"status\": \"delivered\", \"payment_history\": [{\"transaction_type\": \"payment\", \"amount\": 322.52, \"payment_method_id\": \"paypal_6918118\"}]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "get_order_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_order_details\", \"arguments\": {\"order_id\": \"#W1671835\"}}",
+    "parsed_action_name": "get_order_details",
+    "input_tokens": 5308,
+    "output_tokens": 28,
+    "generation_seconds": 3.1867220401763916,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your order for the perfume has already been delivered. Since you're happy with the product and want a larger size, we can exchange the item for a larger size. Could you please provide the item ID of the new size you'd like to exchange for?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that your order for the perfume has already been delivered. Since you're happy with the product and want a larger size, we can exchange the item for a larger size. Could you please provide the item ID of the new size you'd like to exchange for?"
+      }
+    },
+    "observation": "I appreciate that! I'd like to exchange it for the maximum size available - whatever the biggest option is that you have for this perfume. What size options do you have?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your order for the perfume has already been delivered. Since you're happy with the product and want a larger size, we can exchange the item for a larger size. Could you please provide the item ID of the new size you'd like to exchange for?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5598,
+    "output_tokens": 71,
+    "generation_seconds": 5.891075611114502,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_product_details\", \"arguments\": {\"product_id\": \"6858788497\"}}",
+    "action": {
+      "name": "get_product_details",
+      "arguments": {
+        "product_id": "6858788497"
+      }
+    },
+    "observation": "{\"name\": \"Perfume\", \"product_id\": \"6858788497\", \"variants\": {\"9007697085\": {\"item_id\": \"9007697085\", \"options\": {\"scent family\": \"fresh\", \"size\": \"50ml\", \"gender\": \"men\"}, \"available\": true, \"price\": 318.96}, \"5081446110\": {\"item_id\": \"5081446110\", \"options\": {\"scent family\": \"woody\", \"size\": \"30ml\", \"gender\": \"men\"}, \"available\": true, \"price\": 322.52}, \"1325156478\": {\"item_id\": \"1325156478\", \"options\": {\"scent family\": \"oriental\", \"size\": \"30ml\", \"gender\": \"men\"}, \"available\": true, \"price\": 298.52}, \"1002370030\": {\"item_id\": \"1002370030\", \"options\": {\"scent family\": \"woody\", \"size\": \"50ml\", \"gender\": \"women\"}, \"available\": false, \"price\": 290.25}, \"3399869890\": {\"item_id\": \"3399869890\", \"options\": {\"scent family\": \"woody\", \"size\": \"100ml\", \"gender\": \"men\"}, \"available\": true, \"price\": 312.04}, \"5421902839\": {\"item_id\": \"5421902839\", \"options\": {\"scent family\": \"oriental\", \"size\": \"100ml\", \"gender\": \"men\"}, \"available\": true, \"price\": 328.25}, \"1725100896\": {\"item_id\": \"1725100896\", \"options\": {\"scent family\": \"oriental\", \"size\": \"30ml\", \"gender\": \"unisex\"}, \"available\": false, \"price\": 289.66}, \"9447903288\": {\"item_id\": \"9447903288\", \"options\": {\"scent family\": \"fresh\", \"size\": \"30ml\", \"gender\": \"men\"}, \"available\": false, \"price\": 296.78}, \"8316205423\": {\"item_id\": \"8316205423\", \"options\": {\"scent family\": \"woody\", \"size\": \"30ml\", \"gender\": \"women\"}, \"available\": true, \"price\": 288.75}, \"6826843914\": {\"item_id\": \"6826843914\", \"options\": {\"scent family\": \"fresh\", \"size\": \"100ml\", \"gender\": \"men\"}, \"available\": false, \"price\": 326.74}}}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "get_product_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_product_details\", \"arguments\": {\"product_id\": \"6858788497\"}}",
+    "parsed_action_name": "get_product_details",
+    "input_tokens": 5713,
+    "output_tokens": 30,
+    "generation_seconds": 3.4078400135040283,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"For this perfume, the available sizes are 30ml and 100ml. The maximum size available for the 'woody' scent family for men is 100ml, with item ID '3399869890'. Would you like to proceed with exchanging your 30ml item for the 100ml size?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "For this perfume, the available sizes are 30ml and 100ml. The maximum size available for the 'woody' scent family for men is 100ml, with item ID '3399869890'. Would you like to proceed with exchanging your 30ml item for the 100ml size?"
+      }
+    },
+    "observation": "Yes, absolutely! That sounds perfect. Let's go ahead and exchange my current 30ml bottle for the 100ml size with that item ID.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"For this perfume, the available sizes are 30ml and 100ml. The maximum size available for the 'woody' scent family for men is 100ml, with item ID '3399869890'. Would you like to proceed with exchanging your 30ml item for the 100ml size?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6483,
+    "output_tokens": 94,
+    "generation_seconds": 7.615673780441284,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"#W1671835\", \"item_ids\": [\"5081446110\"], \"new_item_ids\": [\"3399869890\"], \"payment_method_id\": \"paypal_6918118\"}}",
+    "action": {
+      "name": "exchange_delivered_order_items",
+      "arguments": {
+        "order_id": "#W1671835",
+        "item_ids": [
+          "5081446110"
+        ],
+        "new_item_ids": [
+          "3399869890"
+        ],
+        "payment_method_id": "paypal_6918118"
+      }
+    },
+    "observation": "{\"order_id\": \"#W1671835\", \"user_id\": \"ivan_johnson_6036\", \"address\": {\"address1\": \"851 Pine Lane\", \"address2\": \"Suite 428\", \"city\": \"Fort Worth\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"76115\"}, \"items\": [{\"name\": \"Perfume\", \"product_id\": \"6858788497\", \"item_id\": \"5081446110\", \"price\": 322.52, \"options\": {\"scent family\": \"woody\", \"size\": \"30ml\", \"gender\": \"men\"}}], \"fulfillments\": [{\"tracking_id\": [\"820626058356\"], \"item_ids\": [\"5081446110\"]}], \"status\": \"exchange requested\", \"payment_history\": [{\"transaction_type\": \"payment\", \"amount\": 322.52, \"payment_method_id\": \"paypal_6918118\"}], \"exchange_items\": [\"5081446110\"], \"exchange_new_items\": [\"3399869890\"], \"exchange_payment_method_id\": \"paypal_6918118\", \"exchange_price_difference\": -10.48}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "exchange_delivered_order_items",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"exchange_delivered_order_items\", \"arguments\": {\"order_id\": \"#W1671835\", \"item_ids\": [\"5081446110\"], \"new_item_ids\": [\"3399869890\"], \"payment_method_id\": \"paypal_6918118\"}}",
+    "parsed_action_name": "exchange_delivered_order_items",
+    "input_tokens": 6620,
+    "output_tokens": 79,
+    "generation_seconds": 6.693518161773682,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your exchange request has been processed successfully! You will receive an email with instructions on how to return the 30ml bottle. The price difference of -$10.48 will be refunded to your PayPal account. Let me know if you need further assistance!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your exchange request has been processed successfully! You will receive an email with instructions on how to return the 30ml bottle. The price difference of -$10.48 will be refunded to your PayPal account. Let me know if you need further assistance!"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 1.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "ivan_johnson_6036",
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ],
+        "instruction": "You name is Ivan Johnson and your zip code is 94183. You ordered a perfume and you just tried a little bit and you like it extremely. You want to get the maximum size available for it. If the agent cannot help with placing a new order, exchange your current one to the largest size available.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.0006529999999999999,
+      "reward_info": {
+        "reward": 1.0,
+        "info": {
+          "r_actions": 1.0,
+          "gt_data_hash": "925eb0ef7d5a802b59713b0dc757b304989c9acf79f31297041359ad2b9ef8bc"
+        },
+        "actions": [
+          {
+            "name": "exchange_delivered_order_items",
+            "kwargs": {
+              "order_id": "#W1671835",
+              "item_ids": [
+                "5081446110"
+              ],
+              "new_item_ids": [
+                "3399869890"
+              ],
+              "payment_method_id": "paypal_6918118"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your exchange request has been processed successfully! You will receive an email with instructions on how to return the 30ml bottle. The price difference of -$10.48 will be refunded to your PayPal account. Let me know if you need further assistance!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7023,
+    "output_tokens": 70,
+    "generation_seconds": 6.272520542144775,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

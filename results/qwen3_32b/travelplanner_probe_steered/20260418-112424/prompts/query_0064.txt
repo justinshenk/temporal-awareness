@@ -1,0 +1,116 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please plan a 3-day trip for a group of 7 people from Salt Lake City to Burbank, with the journey taking place from March 12th to March 14th, 2022. During our time in Burbank, we wish to visit a solitary city. Our new budget is $7,600 for the trip. For accommodations, we would like to have entire rooms.
+
+Reference information:
+### Attractions in Burbank
+                                                                       Name  Latitude   Longitude                                                 Address          Phone                                                                                          Website    City
+                                                     Gordon R Howard Museum 34.172588 -118.318245                 115 N Lomita St, Burbank, CA 91506, USA (818) 841-6333                                                             http://www.burbankhistoricalsoc.org/ Burbank
+                                                Martial Arts History Museum 34.172607 -118.333567            2319 W Magnolia Blvd, Burbank, CA 91506, USA (818) 478-1722                                                                         http://www.mamuseum.com/ Burbank
+                                         Warner Bros. Studio Tour Hollywood 34.151323 -118.336258                3400 Warner Blvd, Burbank, CA 91505, USA (818) 977-8687                                                                    https://www.wbstudiotour.com/ Burbank
+                                                    Burbank Aviation Museum 34.190251 -118.353864                3898 Valhalla Dr, Burbank, CA 91505, USA (818) 768-7881                                                  https://www.facebook.com/BurbankAviationMuseum/ Burbank
+                                                          The Mystic Museum 34.169256 -118.342078            3204 W Magnolia Blvd, Burbank, CA 91505, USA (818) 433-7530                                                                  http://www.themysticmuseum.com/ Burbank
+                                                   Warner Bros. Water Tower 34.150474 -118.338602                3517 Warner Blvd, Burbank, CA 91505, USA        Unknown                                                                                          Unknown Burbank
+                                                         Johnny Carson Park 34.154284 -118.329921                 400 Bob Hope Dr, Burbank, CA 91505, USA (818) 238-5300                                https://www.burbankca.gov/web/parks-recreation/johnny-carson-park Burbank
+                                                         Stough Canyon Park 34.205324 -118.309127           1335 Lockheed View Dr, Burbank, CA 91504, USA (818) 238-5300                                https://www.burbankca.gov/web/parks-recreation/stough-canyon-park Burbank
+                                                          Brace Canyon Park 34.210354 -118.330647                  2901 Haven Way, Burbank, CA 91504, USA        Unknown                                 https://www.burbankca.gov/web/parks-recreation/brace-canyon-park Burbank
+                                                        Batman: Hush Statue 34.181512 -118.311601                    109 Palm Ave, Burbank, CA 91502, USA        Unknown          https://deadline.com/2020/11/burbank-adds-batman-hush-statue-in-amc-walkway-1234619964/ Burbank
+                              Portal of the Folded Wings Shrine to Aviation 34.190275 -118.353822                3898 Valhalla Dr, Burbank, CA 91505, USA (818) 763-9121                                                              https://www.hmdb.org/m.asp?m=150059 Burbank
+                                                       Abraham Lincoln Park 34.164122 -118.330327            300 N Buena Vista St, Burbank, CA 91505, USA        Unknown                              https://www.burbankca.gov/web/parks-recreation/abraham-lincoln-park Burbank
+                                                              Visit Burbank 34.182820 -118.307929                    150 N 3rd St, Burbank, CA 91502, USA (747) 477-1462                                                                        https://visitburbank.com/ Burbank
+                                                Stough Canyon Nature Center 34.213913 -118.306931               2300 E Walnut Ave, Burbank, CA 91504, USA (818) 238-5440                                                            http://www.burbankca.gov/naturecenter Burbank
+K1 Speed - Indoor Go Karts, Corporate Event Venue, Team Building Activities 34.181452 -118.321709                 960 Chestnut St, Burbank, CA 91506, USA (818) 659-6033                                                    https://www.k1speed.com/burbank-location.html Burbank
+                                                     Burbank Christmas Tree 34.204972 -118.311557                         6M4Q+39, Burbank, CA 91504, USA        Unknown                                                                                          Unknown Burbank
+                                                       Wildwood Canyon Park 34.202710 -118.298386              Wildwood Canyon Rd, Burbank, CA 91501, USA (818) 238-5300                              https://www.burbankca.gov/web/parks-recreation/wildwood-canyon-park Burbank
+                                                Universal Studios Hollywood 34.138117 -118.353378 100 Universal City Plaza, Universal City, CA 91608, USA (800) 864-8377 https://www.universalstudioshollywood.com/?utm_source=google&utm_medium=organic&utm_campaign=GMB Burbank
+                                                            Universal Plaza 34.138460 -118.355125                142 Baker St, Toluca Lake, CA 91602, USA        Unknown                                                            http://universalstudioshollywood.com/ Burbank
+                                                               Vickroy Park 34.186195 -118.336880              2310 W Monterey Pl, Burbank, CA 91506, USA        Unknown                                      https://www.burbankca.gov/web/parks-recreation/vickroy-park Burbank
+
+### Restaurants in Burbank
+                         Name  Average Cost                                             Cuisines  Aggregate Rating    City
+              Mellow Mushroom            69       Tea, Pizza, Mexican, Fast Food, Cafe, American               4.1 Burbank
+ Dawat-e-Nawab - Radisson Blu            94               Mexican, Bakery, Cafe, Indian, Seafood               3.8 Burbank
+           Tandoor Restaurant            78                            Tea, Bakery, BBQ, Seafood               3.2 Burbank
+                      Smaaash            39              Pizza, Bakery, BBQ, Cafe, Mediterranean               3.9 Burbank
+               Hard Rock Cafe            33          Desserts, Tea, Bakery, BBQ, Chinese, Indian               4.1 Burbank
+  Lucknow - Kingdom of Dreams            73                    Seafood, Pizza, Desserts, Italian               3.7 Burbank
+                Chicago Pizza            48                   Fast Food, Cafe, Desserts, Italian               2.3 Burbank
+                 Caffe Tonino            28                                        Tea, Desserts               3.8 Burbank
+        KB's Kulfi & Icecream            10                Tea, Pizza, Bakery, Fast Food, Indian               2.8 Burbank
+                         Tpot            34                                           Pizza, BBQ               0.0 Burbank
+Zolocrust - Hotel Clarks Amer            94                        Cafe, BBQ, Seafood, Fast Food               4.9 Burbank
+                Sab Ke Khatir            76                   Pizza, Bakery, Desserts, Fast Food               3.1 Burbank
+                  Cafe Desire            52                            Bakery, Desserts, Seafood               3.5 Burbank
+               Jai Hind Dairy            59                                       Cafe, Desserts               2.8 Burbank
+                Dee The Baker            18            Desserts, Tea, Mexican, Bakery, Fast Food               3.4 Burbank
+         Deepak Vaishno Dhaba            32     Italian, BBQ, Bakery, Fast Food, Indian, Seafood               3.4 Burbank
+          Bhatia Chinese Food            67                           Tea, Bakery, American, BBQ               0.0 Burbank
+             Chick Fish Point            70                                          Bakery, BBQ               0.0 Burbank
+                    Yo! China            91                        Tea, Pizza, BBQ, Cafe, Indian               3.6 Burbank
+                Chawnsan Chef            20                            Tea, Cafe, BBQ, Fast Food               3.4 Burbank
+               Katwalk Lounge            90             Italian, Bakery, Cafe, American, Seafood               3.3 Burbank
+               Hot Pot Snacks            57                              Chinese, Pizza, Seafood               3.4 Burbank
+            Flavors of London            49                Pizza, French, BBQ, Bakery, Fast Food               0.0 Burbank
+              Nalwa's Hotspot            63                                     Bakery, Desserts               3.1 Burbank
+          Scoopers 'n' Bakers            98                                  Chinese, Pizza, BBQ               0.0 Burbank
+                   Desi Galli            92                             Chinese, Bakery, Seafood               2.9 Burbank
+               The Flying Pan            49                      Tea, Cafe, Bakery, BBQ, Chinese               3.2 Burbank
+                    KC Bakers           100 Desserts, Mexican, Fast Food, Mediterranean, Seafood               0.0 Burbank
+                  Public Cafe            66                  Bakery, American, Desserts, Italian               2.5 Burbank
+              Cafe Coffee Day            34                             Tea, Pizza, BBQ, Italian               2.7 Burbank
+         Zouk Tea Bar & Grill            36                                Bakery, BBQ, Desserts               3.6 Burbank
+
+### Accommodations in Burbank
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+ Pleasant 1 bedroom apartment in Harlem Brownstone  500.0 Entire home/apt                         No parties & No smoking             1.0                  5                 3.0 Burbank
+                 Clean & quiet home on quiet block 1143.0 Entire home/apt No visitors & No parties & No children under 10             2.0                  8                 5.0 Burbank
+                                BROOKLYN 1 BEDROOM  583.0 Entire home/apt                           No visitors & No pets             3.0                  4                 5.0 Burbank
+                         Cozy Home, Great Location 1098.0 Entire home/apt                         No parties & No smoking             1.0                  4                 4.0 Burbank
+       Sunny Room w/ Private Bath in Williamsburg!  507.0    Private room              No visitors & No children under 10             3.0                  2                 2.0 Burbank
+Dominiques Homesharing  room NYC* metro*quiet*safe 1099.0    Private room                                     No visitors             2.0                  1                 5.0 Burbank
+                   Sunny, spacious room in Bedstuy  646.0    Private room                                         No pets             1.0                  2                 3.0 Burbank
+                        Cozy Junior 1BR in inwood.  192.0 Entire home/apt              No visitors & No children under 10             2.0                  2                 3.0 Burbank
+                              River View Apartment 1107.0 Entire home/apt                                         No pets             2.0                  2                 3.0 Burbank
+
+### Flight from Salt Lake City to Burbank on 2022-03-12
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3846241    157   08:08   09:03 1 hours 55 minutes 2022-03-12 Salt Lake City      Burbank     574.0
+     F3846267    222   20:45   21:40 1 hours 55 minutes 2022-03-12 Salt Lake City      Burbank     574.0
+     F3846293    165   15:29   16:21 1 hours 52 minutes 2022-03-12 Salt Lake City      Burbank     574.0
+     F3851481    184   11:15   12:03 1 hours 48 minutes 2022-03-12 Salt Lake City      Burbank     574.0
+     F3972809    221   19:34   20:19 1 hours 45 minutes 2022-03-12 Salt Lake City      Burbank     574.0
+
+### Self-driving from Salt Lake City to Burbank
+self-driving, from Salt Lake City to Burbank, duration: 9 hours 59 mins, distance: 1,118 km, cost: 55
+
+### Taxi from Salt Lake City to Burbank
+taxi, from Salt Lake City to Burbank, duration: 9 hours 59 mins, distance: 1,118 km, cost: 1118
+
+### Flight from Burbank to Salt Lake City on 2022-03-14
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName   DestCityName  Distance
+     F3848172    264   07:17   10:05 1 hours 48 minutes 2022-03-14        Burbank Salt Lake City     574.0
+     F3848190    238   10:02   12:51 1 hours 49 minutes 2022-03-14        Burbank Salt Lake City     574.0
+     F3850307    224   13:15   16:02 1 hours 47 minutes 2022-03-14        Burbank Salt Lake City     574.0
+     F3852199    238   23:57   02:43 1 hours 46 minutes 2022-03-14        Burbank Salt Lake City     574.0
+     F3977100    181   09:29   12:16 1 hours 47 minutes 2022-03-14        Burbank Salt Lake City     574.0
+
+### Self-driving from Burbank to Salt Lake City
+self-driving, from Burbank to Salt Lake City, duration: 9 hours 55 mins, distance: 1,112 km, cost: 55
+
+### Taxi from Burbank to Salt Lake City
+taxi, from Burbank to Salt Lake City, duration: 9 hours 55 mins, distance: 1,112 km, cost: 1112
+
+JSON plan:

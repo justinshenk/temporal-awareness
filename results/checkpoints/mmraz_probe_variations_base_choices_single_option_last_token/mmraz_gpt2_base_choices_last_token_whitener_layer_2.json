@@ -1,0 +1,27 @@
+{
+  "model_name": "gpt2",
+  "layer": 2,
+  "train_dataset": "base_explicit_only",
+  "probe_format": "choices_single_option_last_token",
+  "activation_pooling": "last_non_padding_token",
+  "option_labels_stripped": false,
+  "train_size": 80,
+  "test_size": 20,
+  "implicit_size": 100,
+  "random_state": 42,
+  "device": "cpu",
+  "explicit_dataset_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+  "implicit_dataset_path": "/Users/michalmraz/code/spar-ai/temporal-awareness/data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+  "artifact_type": "whitener",
+  "transform_type": "center_then_right_multiply_inv_sqrt",
+  "mean_shape": [
+    768
+  ],
+  "inv_sqrt_shape": [
+    768,
+    768
+  ],
+  "reg": 0.01,
+  "cov_reg_condition_number": 6951.936236364545,
+  "array_path": "results/checkpoints/mmraz_probe_variations_base_choices_single_option_last_token/mmraz_gpt2_base_choices_last_token_whitener_layer_2.npz"
+}

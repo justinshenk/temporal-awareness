@@ -1,0 +1,310 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need assistance in crafting a 7-day travel plan for a group of 4 from Lexington to Texas. We plan to visit 3 cities in Texas from March 18th to March 24th, 2022. Please ensure that our lodging accommodations are suitable for children under 10 as we will be traveling with our younger ones. We have a budget of $16,800 for this trip.
+
+Reference information:
+### Attractions in Dallas
+                                     Name  Latitude  Longitude                                         Address          Phone                                                                                           Website   City
+                The Dallas World Aquarium 32.783474 -96.805358        1801 N Griffin St, Dallas, TX 75202, USA (214) 720-2224                                                                           https://www.dwazoo.com/ Dallas
+   The Sixth Floor Museum at Dealey Plaza 32.779819 -96.808484               411 Elm St, Dallas, TX 75202, USA (214) 747-6660                                                                              https://www.jfk.org/ Dallas
+                            Reunion Tower 32.775506 -96.808857       300 Reunion Blvd E, Dallas, TX 75207, USA (214) 296-9950                                                                      http://www.reuniontower.com/ Dallas
+                     Dallas Museum of Art 32.787696 -96.801044        1717 N Harwood St, Dallas, TX 75201, USA (214) 922-1200                                                                              https://www.dma.org/ Dallas
+The Dallas Arboretum and Botanical Garden 32.823618 -96.716624          8525 Garland Rd, Dallas, TX 75218, USA (214) 515-6615                                                                  https://www.dallasarboretum.org/ Dallas
+                               Dallas Zoo 32.740970 -96.815320  650 S R.L. Thornton Fwy, Dallas, TX 75203, USA (469) 554-7501                                                                        https://www.dallaszoo.com/ Dallas
+                        Klyde Warren Park 32.789364 -96.801618 2012 Woodall Rodgers Fwy, Dallas, TX 75201, USA (214) 716-4500                                                                       http://klydewarrenpark.org/ Dallas
+                            Old City Park 32.772753 -96.786544        1515 S Harwood St, Dallas, TX 75215, USA (214) 421-5141                                                                 http://www.oldcityparkdallas.org/ Dallas
+       Perot Museum of Nature and Science 32.786943 -96.806584          2201 N Field St, Dallas, TX 75201, USA (214) 428-5555                                                                      https://www.perotmuseum.org/ Dallas
+                            Pioneer Plaza 32.776632 -96.801199            1428 Young St, Dallas, TX 75202, USA        Unknown                          http://www.dallasparks.org/Facilities/Facility/Details/Pioneer-Plaza-624 Dallas
+                  Nasher Sculpture Center 32.788182 -96.800157            2001 Flora St, Dallas, TX 75201, USA (214) 242-5100                                                             http://www.nashersculpturecenter.org/ Dallas
+                            Giant Eyeball 32.781406 -96.798312             1601 Main St, Dallas, TX 75201, USA        Unknown https://artandseek.org/2021/03/18/why-is-there-a-giant-eyeball-in-downtown-dallas-we-take-a-look/ Dallas
+           John F. Kennedy Memorial Plaza 32.778725 -96.806451              646 Main St, Dallas, TX 75202, USA (214) 747-6660                                                https://www.jfk.org/john-f-kennedy-memorial-plaza/ Dallas
+                             Dealey Plaza 32.778818 -96.808299                           Dallas, TX 75202, USA (214) 670-4100                           http://www.dallasparks.org/Facilities/Facility/Details/Dealey-Plaza-462 Dallas
+        African American Museum of Dallas 32.779057 -96.764414           3536 Grand Ave, Dallas, TX 75210, USA (214) 565-9026                                                                         http://www.aamdallas.org/ Dallas
+               Frontiers of Flight Museum 32.842602 -96.835202          6911 Lemmon Ave, Dallas, TX 75209, USA (214) 350-3600                                                                      http://www.flightmuseum.com/ Dallas
+                     White Rock Lake Park 32.836514 -96.721612        8300 E Lawther Dr, Dallas, TX 75218, USA (214) 660-1100                                                                     http://www.whiterocklake.org/ Dallas
+             Leonhardt Lagoon Nature Walk 32.777830 -96.761946             1121 1st Ave, Dallas, TX 75210, USA (214) 426-3400                                  https://eventseeker.com/venue/1132302-leonhardt-lagoon-dallas-tx Dallas
+       George W. Bush Presidential Center 32.841183 -96.778198       2943 SMU Boulevard, Dallas, TX 75205, USA (214) 200-4300                                                                        http://www.bushcenter.org/ Dallas
+            Trinity Forest Adventure Park 32.689810 -96.675766      1800 Dowdy Ferry Rd, Dallas, TX 75217, USA (214) 391-1000                                                                       http://trinitytreetops.com/ Dallas
+
+### Restaurants in Dallas
+                       Name  Average Cost                                               Cuisines  Aggregate Rating   City
+         Coconuts Fish Cafe            38                    Cafe, BBQ, Mediterranean, Fast Food               4.5 Dallas
+        1918 Bistro & Grill            90                               Tea, Pizza, BBQ, Seafood               4.4 Dallas
+             Yanki Sizzlers            96                       Cafe, French, Tea, Mediterranean               4.1 Dallas
+               Aravali Owls            53                Pizza, Italian, Bakery, Fast Food, Cafe               0.0 Dallas
+               Kebab Xpress            93                      Tea, Bakery, Pizza, Mediterranean               2.7 Dallas
+                 Haldiram's            94                                             Tea, Pizza               3.6 Dallas
+                  Delhicacy            67            Desserts, Mexican, Bakery, Chinese, Seafood               3.8 Dallas
+                    L'Opera            77                French, Bakery, BBQ, Fast Food, Seafood               3.8 Dallas
+            Cafe Gatherings            17                               Bakery, Indian, Desserts               4.4 Dallas
+              Drifters Cafe            21                    Tea, French, Mexican, Cafe, Seafood               3.9 Dallas
+           Uma Foodies' Hut            49                                French, Bakery, Seafood               3.1 Dallas
+Belfrance Luxury Chocolates            96             Desserts, Pizza, Fast Food, Cafe, American               4.4 Dallas
+                Puri Bakers            33        Pizza, Mexican, Bakery, Fast Food, Cafe, Indian               3.7 Dallas
+             Bikaner Sweets            23                     Tea, French, Bakery, Cafe, Seafood               3.3 Dallas
+            Metro Fast Food            45             Tea, Pizza, Mexican, Bakery, BBQ, American               2.7 Dallas
+                    Wheelyz            60        Tea, Pizza, Bakery, BBQ, Chinese, Mediterranean               2.5 Dallas
+              R. Ahmad Food            58 Desserts, Bakery, BBQ, Chinese, Mediterranean, Seafood               3.0 Dallas
+                   Castle 9            32        Mexican, Bakery, BBQ, Fast Food, Cafe, American               3.1 Dallas
+               Cafe Hawkers            72                                    Bakery, Indian, BBQ               3.7 Dallas
+              Firefly India            87                        Cafe, Bakery, American, Italian               3.4 Dallas
+            Zaaika Junction            48                                      Desserts, Seafood               2.6 Dallas
+                  Papa Buns            75                       French, Pizza, Indian, Fast Food               0.0 Dallas
+                TiffinToons            99            Seafood, Mediterranean, Desserts, Fast Food               0.0 Dallas
+               Mamma Drools            45           BBQ, Fast Food, Cafe, Mediterranean, Seafood               0.0 Dallas
+                 McDonald's            56                                          Cafe, Seafood               3.5 Dallas
+            Cafe Coffee Day            76                           Fast Food, Desserts, Italian               2.9 Dallas
+                   Hardwari            28               Desserts, Tea, Pizza, Mexican, Fast Food               0.0 Dallas
+               Baker's Stop            69                Cafe, American, Mediterranean, Desserts               3.8 Dallas
+          Delhi Biryani Hut            90                               Pizza, American, Seafood               0.0 Dallas
+             Tikka Junction            86  Tea, Bakery, Fast Food, Cafe, American, Mediterranean               3.5 Dallas
+            Nutrition Theka            77                             Pizza, American, Fast Food               3.3 Dallas
+               Relax Xpress            53           Desserts, Pizza, Bakery, Cafe, Mediterranean               3.2 Dallas
+              Lodhi Knights            18                       Tea, Pizza, French, Bakery, Cafe               3.1 Dallas
+           Tandoori Khazana            61              Tea, Pizza, BBQ, Chinese, Indian, Seafood               0.0 Dallas
+                Madras Cafe            90                     Bakery, Pizza, American, Fast Food               0.0 Dallas
+                  Bake Club           100                       Cafe, Indian, Mediterranean, BBQ               3.1 Dallas
+                   Yo Tibet            96         Desserts, Pizza, BBQ, Chinese, Indian, Seafood               3.3 Dallas
+                 The Kahuna            23                          Bakery, Pizza, BBQ, Fast Food               3.1 Dallas
+            Cafe Hera Pheri            18                                         Cafe, Desserts               3.8 Dallas
+  Chanana Ice Cream Parlour            77                           Chinese, Pizza, BBQ, Italian               2.9 Dallas
+               Dilli Darbar            64                      Tea, Cafe, Mediterranean, Italian               3.3 Dallas
+     New Tayal's Restaurant            67                        Mexican, Bakery, BBQ, Fast Food               2.8 Dallas
+              Subs n Shakes            74                 French, Bakery, Mediterranean, Seafood               3.1 Dallas
+                 Soya Grill            84                            Cafe, Pizza, BBQ, Fast Food               3.0 Dallas
+             Bikaner Sweets            33                        Bakery, Pizza, Indian, Desserts               0.0 Dallas
+                     Scoops            76                       Tea, Chinese, Seafood, Fast Food               2.8 Dallas
+              Food N Shakes            23                  Desserts, Pizza, French, BBQ, Seafood               0.0 Dallas
+              Cake Knighter            95     Pizza, Fast Food, American, Mediterranean, Seafood               0.0 Dallas
+            Cafe Coffee Day            22                           Cafe, BBQ, Desserts, Seafood               3.0 Dallas
+            Sona Restaurant            47                            Tea, Cafe, Pizza, Fast Food               3.2 Dallas
+           Pirates of Grill            72                   Desserts, Italian, BBQ, Bakery, Cafe               3.9 Dallas
+    Aim Cafe And Restaurant            85                                       Tea, French, BBQ               3.3 Dallas
+             Wich 'N' Shake            31                  Tea, Mexican, Bakery, Fast Food, Cafe               0.0 Dallas
+      Kolkata Biryani House            11                     Tea, French, Cafe, Indian, Seafood               2.8 Dallas
+          Flames of Tandoor            57                      Tea, Chinese, Desserts, Fast Food               3.5 Dallas
+                 Shahenshah            92                       Fast Food, Seafood, BBQ, Italian               3.5 Dallas
+                   MS Foods            55                                   Cafe, Pizza, Italian               3.1 Dallas
+               Food Weavers            71             Tea, Bakery, BBQ, Fast Food, Mediterranean               0.0 Dallas
+             The Grill @ 76            51                                         BBQ, Fast Food               3.5 Dallas
+                      MONKS            24               Tea, Pizza, Cafe, Mediterranean, Seafood               4.2 Dallas
+        Salsa Mexican Grill            63                  Desserts, BBQ, Bakery, Cafe, American               4.3 Dallas
+                Dem Karak韄y            44                                       Pizza, Fast Food               4.5 Dallas
+
+### Accommodations in Dallas
+                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+                1BR, elevator, kitchen, doorman!  475.0 Entire home/apt                                      No parties             1.0                  3                 2.0 Dallas
+Luxury Williamsburg duplex, private roof terrace  241.0 Entire home/apt                                     No visitors             4.0                  3                 5.0 Dallas
+               Take it now you won't find better  609.0 Entire home/apt                                         No pets             1.0                  4                 2.0 Dallas
+              E. W'burg Private Room near subway  272.0    Private room                        No visitors & No smoking            15.0                  2                 2.0 Dallas
+  Cozy&Central:EmpireState/Highline/Times Square  628.0 Entire home/apt              No visitors & No pets & No smoking             3.0                  4                 3.0 Dallas
+                              *Fresh Budget Room  262.0    Private room                        No visitors & No smoking             2.0                  1                 4.0 Dallas
+                   Chic Union Square One Bedroom 1096.0 Entire home/apt                                     No visitors             3.0                  5                 5.0 Dallas
+    Bright and modern apartment in Williamsburg!  865.0 Entire home/apt                                      No smoking             6.0                  5                 4.0 Dallas
+              Jackson Heights 2 bedrooms housing  747.0 Entire home/apt  No parties & No children under 10 & No smoking             2.0                  2                 3.0 Dallas
+            Exclusive Modern Penthouse Apartment  483.0 Entire home/apt                           No pets & No visitors             1.0                  3                 3.0 Dallas
+  SUNNY, SAFE and FRIENDLY minutes to Manhattan!  559.0 Entire home/apt                                         No pets             2.0                  4                 2.0 Dallas
+                             Sunny Brooklyn room  227.0    Private room                                         No pets             7.0                  2                 3.0 Dallas
+                 Charming Suite in Historic Home  348.0 Entire home/apt               No parties & No children under 10             1.0                  3                 3.0 Dallas
+              2 Bedroom Apt in downtown Brooklyn 1180.0 Entire home/apt No visitors & No children under 10 & No parties             4.0                  5                 2.0 Dallas
+              Quite & Cozy High Raise Atmosphere  635.0    Private room                                      No smoking             1.0                  1                 5.0 Dallas
+                          Upper east side duplex  819.0 Entire home/apt                                         No pets             3.0                  7                 2.0 Dallas
+                Central Park west. Big Cozy Room  709.0    Private room                                         No pets             1.0                  2                 4.0 Dallas
+            Huge Private Room Near Prospect Park   73.0    Private room                            No parties & No pets             7.0                  2                 2.0 Dallas
+ Private room close to the center of Williamburg  231.0    Private room              No visitors & No children under 10             1.0                  1                 2.0 Dallas
+                         Spacious cozy apartment  314.0 Entire home/apt                            No children under 10             2.0                  3                 1.0 Dallas
+Charming Garden Apartment in Brooklyn Brownstone  434.0 Entire home/apt                                     No visitors             2.0                  2                 3.0 Dallas
+                                  Friendly hosts  806.0    Private room                                      No smoking             1.0                  2                 4.0 Dallas
+        Minutes from JFK airport and famous mall  711.0    Private room                        No visitors & No parties             2.0                  2                 3.0 Dallas
+
+### Attractions in San Angelo
+                                      Name  Latitude   Longitude                                                                    Address          Phone                                                                         Website       City
+            San Angelo Museum of Fine Arts 31.457409 -100.432244                                  423 S Oakes St, San Angelo, TX 76903, USA (325) 653-3333                                                           http://www.samfa.org/ San Angelo
+    Fort Concho National Historic Landmark 31.454773 -100.431234                                  630 S Oakes St, San Angelo, TX 76903, USA (325) 481-2646                                                         https://fortconcho.com/ San Angelo
+                     San Angelo State Park 31.463898 -100.508034                                     362 FM 2288, San Angelo, TX 76901, USA (325) 949-4757 http://www.tpwd.state.tx.us/state-parks/parks/find-a-park/san-angelo-state-park San Angelo
+              Railway Museum of San Angelo 31.453665 -100.435163                             703 S Chadbourne St, San Angelo, TX 76903, USA (325) 486-2140                                                    http://sanangelorailway.org/ San Angelo
+             Miss Hattie's Bordello Museum 31.460419 -100.434905                                 18 E Concho Ave, San Angelo, TX 76903, USA (325) 653-0112                                                         http://misshatties.com/ San Angelo
+        International Waterlily Collection 31.459059 -100.451536                                     2 S Park St, San Angelo, TX 76901, USA (832) 274-3377                                http://www.internationalwaterlilycollection.com/ San Angelo
+                          Concho Riverwalk 31.458691 -100.434864                                 24 W Concho Ave, San Angelo, TX 76903, USA (325) 655-2345                                     https://www.downtownsanangelo.com/riverwalk San Angelo
+                          Concho Riverwalk 31.460379 -100.442525                            301 W Beauregard Ave, San Angelo, TX 76903, USA (325) 481-2727                                                     http://www.cosatx.us/Bosque San Angelo
+                                River Walk 31.459110 -100.433138                                  332 S Oakes St, San Angelo, TX 76903, USA (325) 481-2727          https://www.cosatx.us/departments-services/parks-recreation/the-bosque San Angelo
+         The Bosque along the Concho River 31.458219 -100.435659                                 330 S Irving St, San Angelo, TX 76903, USA (325) 657-4450                                                     http://www.cosatx.us/bosque San Angelo
+       San Angelo's first Historical Mural 31.454507 -100.434672                             643 S Chadbourne St, San Angelo, TX 76903, USA (325) 653-0112                            http://historicmuralsofsanangelo.org/chadbourne.html San Angelo
+     San Angelo State Park, South Entrance 31.457759 -100.515059                                                  San Angelo, TX 76901, USA (325) 949-8935                                   https://tpwd.texas.gov/state-parks/san-angelo San Angelo
+                    Lake Nasworthy Lookout 31.389838 -100.505110                                         9FQV+WX, San Angelo, TX 76904, USA        Unknown                                                                         Unknown San Angelo
+                              Kayak Launch 31.456555 -100.440287                                                  San Angelo, TX 76903, USA        Unknown                                                                         Unknown San Angelo
+                              Mayer Museum 31.442273 -100.463829                                    2501 W Ave N, San Angelo, TX 76904, USA (325) 942-2785                                  https://www.angelo.edu/community/mayer-museum/ San Angelo
+Farm and Ranch Museum of the Concho Valley 31.460222 -100.433951                                  305 S Oakes St, San Angelo, TX 76903, USA (325) 653-3333                                              https://m.facebook.com/cvfarmranch San Angelo
+                        Middle Concho Park 31.379514 -100.519955                                Middle Concho Dr, San Angelo, TX 76904, USA (325) 657-4279 http://www.cosatx.us/Home/Components/FacilityDirectory/FacilityDirectory/30/555 San Angelo
+                            Pop Art Museum 31.460020 -100.438984                                125 W Twohig Ave, San Angelo, TX 76903, USA        Unknown                                                     https://sapopartmuseum.com/ San Angelo
+       Angelo State University Planetarium 31.441051 -100.461350                           2333 Vanderventer Ave, San Angelo, TX 76904, USA (325) 942-2136                              http://www.angelo.edu/dept/physics/planetarium.php San Angelo
+              Think In A Box - Escape Room 31.460449 -100.433014 Happy to open any day or time, 123 E Concho Ave, San Angelo, TX 76903, USA (325) 650-1755                                                  https://www.thinkinaboxtx.com/ San Angelo
+
+### Restaurants in San Angelo
+                             Name  Average Cost                                               Cuisines  Aggregate Rating       City
+DePalma's Italian Cafe - Downtown            38                        French, Pizza, Chinese, Seafood               4.0 San Angelo
+                     Chinese Food            88              Fast Food, Bakery, Mediterranean, Seafood               0.0 San Angelo
+                    Needs Gourmet            83                    Bakery, American, Desserts, Italian               3.1 San Angelo
+               6 Ballygunge Place            48                            Tea, Cafe, Bakery, Desserts               4.4 San Angelo
+                       District 6            19                            Bakery, American, Cafe, BBQ               3.8 San Angelo
+                 Break Fast Point            40                                      Tea, Cafe, Indian               3.3 San Angelo
+           Kolkata Hot Kathi Roll            74                   Desserts, Tea, Pizza, Bakery, Indian               2.7 San Angelo
+              Delhi Chaat Bhandar           100     Italian, Bakery, Fast Food, Mediterranean, Seafood               0.0 San Angelo
+                 Zaika Kathi Roll            31                     Fast Food, French, Indian, Seafood               0.0 San Angelo
+                  Laxmi Ice Cream            79        Desserts, Mexican, BBQ, Cafe, American, Seafood               3.4 San Angelo
+               Pizza Hut Delivery            33        Tea, Pizza, Bakery, Cafe, Indian, Mediterranean               2.6 San Angelo
+                         The Nest            25                                    Tea, BBQ, Fast Food               3.5 San Angelo
+        Henri's Bar - Le Meridien            70                                Tea, Cafe, BBQ, Seafood               3.3 San Angelo
+                    Kake Da Hotel            92           Desserts, Pizza, American, Fast Food, Indian               3.6 San Angelo
+                          Yumbuns            13                     Italian, French, Bakery, BBQ, Cafe               0.0 San Angelo
+                     Kitchen King            31                          Cafe, Bakery, Indian, Seafood               2.6 San Angelo
+                  The Headquarter            51                                          Tea, Desserts               4.1 San Angelo
+                  Rajinder Xpress            44                           Tea, French, Cafe, Fast Food               3.8 San Angelo
+                  Priya Panchvati            79                                      Desserts, Seafood               2.9 San Angelo
+                     Maakhansingh            53                          Tea, Bakery, Indian, Desserts               2.9 San Angelo
+                     Costa Coffee            92                  Tea, Italian, Bakery, Indian, Seafood               3.6 San Angelo
+                   Kaptain Bakery            53                            Tea, BBQ, Desserts, Seafood               0.0 San Angelo
+                Anjali Resaturant            44 Desserts, Tea, BBQ, Fast Food, American, Mediterranean               0.0 San Angelo
+            Mandeep Punjabi Rasoi            16                                 Cafe, Pizza, Fast Food               3.0 San Angelo
+               The Frozen Factory            33                     Bakery, Indian, American, Desserts               3.7 San Angelo
+                        Mr. Brown            26               Desserts, Tea, Pizza, Fast Food, Chinese               4.0 San Angelo
+                  Punjabi Pakwaan            23                           Cafe, Bakery, BBQ, Fast Food               3.0 San Angelo
+
+### Accommodations in San Angelo
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+  INCREDIBLE TOWNHOUSE 4 STORIES 5 BEDROOMS 3 BATH  338.0 Entire home/apt                            No children under 10             2.0                  3                 2.0 San Angelo
+                      Bedroom in East Williamsburg 1149.0    Private room                                      No smoking             4.0                  1                 3.0 San Angelo
+                 Beautiful Brooklyn Vacation Home! 1058.0 Entire home/apt              No visitors & No smoking & No pets             2.0                  3                 4.0 San Angelo
+    Private small accommodation specially for you!  274.0    Private room     No smoking & No pets & No children under 10             1.0                  2                 5.0 San Angelo
+   New york Multi-unit building in Williamsburg BR  123.0    Private room               No parties & No children under 10             3.0                  2                 3.0 San Angelo
+                   Near Subway and Central Park :)  466.0    Private room No visitors & No parties & No children under 10             1.0                  2                 5.0 San Angelo
+               Convenient Room Near Subway ABCD&1!  370.0    Private room                            No children under 10             2.0                  2                 4.0 San Angelo
+         Beautiful Bedroom in Trendy Neighborhood!  479.0    Private room                         No smoking & No parties             1.0                  1                 5.0 San Angelo
+Private room w/private bathroom near Central Park!  764.0    Private room                                         No pets             2.0                  1                 5.0 San Angelo
+                                    Beautiful home  351.0    Private room                            No pets & No parties             1.0                  1                 2.0 San Angelo
+
+### Attractions in Houston
+                                                           Name  Latitude  Longitude                                      Address          Phone                                                                                 Website    City
+                                              Downtown Aquarium 29.764270 -95.367379         410 Bagby St, Houston, TX 77002, USA (713) 223-3474                             http://www.aquariumrestaurants.com/downtownaquariumhouston/ Houston
+                                           Space Center Houston 29.551832 -95.098104     1601 E NASA Pkwy, Houston, TX 77058, USA (281) 244-2100                                                            https://www.spacecenter.org/ Houston
+                                                     Water Wall 29.735740 -95.461315   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                             https://uptown-houston.com/experience/parks/waterwall-park/ Houston
+                              Houston Museum of Natural Science 29.722062 -95.389562 5555 Hermann Park Dr, Houston, TX 77030, USA (713) 639-4629                                                                   https://www.hmns.org/ Houston
+                                                    Houston Zoo 29.715781 -95.390321 6200 Hermann Park Dr, Houston, TX 77030, USA (713) 533-6500                                                             https://www.houstonzoo.org/ Houston
+                               The Museum of Fine Arts, Houston 29.725623 -95.390533    1001 Bissonnet St, Houston, TX 77005, USA (713) 639-7300                                                                   https://www.mfah.org/ Houston
+                                                   Hermann Park 29.713528 -95.389952       6001 Fannin St, Houston, TX 77030, USA (713) 526-2183                                                            https://www.hermannpark.org/ Houston
+                              Houston Arboretum & Nature Center 29.765224 -95.452071      4501 Woodway Dr, Houston, TX 77024, USA (713) 681-8433                                                        http://www.houstonarboretum.org/ Houston
+Bayou Bend Collection and Gardens, Museum of Fine Arts, Houston 29.760659 -95.421693     6003 Memorial Dr, Houston, TX 77007, USA (713) 639-7750                            http://www.mfah.org/visit/bayou-bend-collection-and-gardens/ Houston
+                                             Market Square Park 29.762645 -95.362361         301 Milam St, Houston, TX 77002, USA (713) 650-3022                                                            http://marketsquarepark.com/ Houston
+                                                Discovery Green 29.753240 -95.359912     1500 McKinney St, Houston, TX 77010, USA (713) 400-7336                                                          http://www.discoverygreen.com/ Houston
+                                                   Smither Park 29.716761 -95.324637       2441 Munger St, Houston, TX 77023, USA (713) 926-6368                                                                  http://orangeshow.org/ Houston
+                                      Children's Museum Houston 29.722931 -95.385289         1500 Binz St, Houston, TX 77004, USA (713) 522-1138 https://www.cmhouston.org/?utm_source=google&utm_medium=organic&utm_campaign=gmbhouston Houston
+                                       Holocaust Museum Houston 29.725248 -95.385687     5401 Caroline St, Houston, TX 77004, USA (713) 942-8000                                                                        https://hmh.org/ Houston
+                                               Sam Houston Park 29.760137 -95.371640        1000 Bagby St, Houston, TX 77002, USA (832) 394-8805                              https://www.houstontx.gov/abouthouston/samhoustonpark.html Houston
+                            Houston Legendary Graffiti Building 29.747305 -95.359360      2011 Leeland St, Houston, TX 77003, USA (409) 245-3778          https://instagram.com/gofa_dagusto1k?utm_source=qr&igshid=MzNlNGNkZWQ4Mg%3D%3D Houston
+                                 Gerald D. Hines Waterwall Park 29.735948 -95.461302   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                                 http://www.uptown-houston.com/news/page/water-wall-park Houston
+                                                 Beer Can House 29.763759 -95.419103        222 Malone St, Houston, TX 77007, USA (713) 926-6368                                          https://www.full.orangeshow.org/beer-can-house Houston
+                                    American Statesmanship Park 29.771321 -95.366926        1400 Elder St, Houston, TX 77007, USA (713) 344-6568                   https://www.waymarking.com/waymarks/WMNHPK_Mount_Rush_Hour_Houston_TX Houston
+                                       Pioneer Memorial Obelisk 29.718633 -95.390929       6001 Fannin St, Houston, TX 77030, USA        Unknown                                                      http://www.hermannpark.org/poi/44/ Houston
+
+### Restaurants in Houston
+                              Name  Average Cost                                         Cuisines  Aggregate Rating    City
+                         Jalapenos            57            Desserts, Tea, Cafe, Chinese, Seafood               4.2 Houston
+                      Super Bakery            30                               Seafood, Fast Food               3.3 Houston
+                     Sheetla Dhaba            35 Desserts, Pizza, Bakery, American, Mediterranean               0.0 Houston
+                        Royal Mart            40        Tea, Bakery, Cafe, Mediterranean, Seafood               2.9 Houston
+                          Matchbox            33         Tea, Italian, Bakery, Fast Food, Seafood               4.8 Houston
+                    Earthen Spices            28             Tea, Mexican, Bakery, BBQ, Fast Food               2.7 Houston
+                         Chawla's宊            26   Chinese, Desserts, Bakery, Cafe, Mediterranean               2.2 Houston
+                     Cyber Adda 24            73                           Chinese, Pizza, Bakery               3.3 Houston
+The BrewMaster - The Mix Fine Dine            52                    French, Indian, Cafe, Seafood               3.9 Houston
+                   Vinayaka Mylari            14                 Fast Food, French, Cafe, Italian               4.2 Houston
+                Al Arabian Express            74                           BBQ, Desserts, Seafood               3.7 Houston
+                     Pebble Street            73                Tea, American, Mediterranean, BBQ               4.0 Houston
+                       Sultan Food            55                                 Bakery, Desserts               3.1 Houston
+                               KSG            73      Desserts, Tea, Fast Food, American, Seafood               0.0 Houston
+                             Zaika            18                       Tea, Cafe, Mexican, Bakery               2.7 Houston
+               34 Park Street Lane            67                            Chinese, Bakery, Cafe               0.0 Houston
+                Sunny Chicken Soup            60                      Tea, BBQ, Desserts, Seafood               3.6 Houston
+                             Giani            97                                 Cafe, Pizza, BBQ               3.5 Houston
+                       Bhola Dhaba            65       Tea, Italian, Cafe, Mediterranean, Seafood               2.8 Houston
+                    G's Patisserie            65        Desserts, Tea, Pizza, Fast Food, American               2.8 Houston
+                  Daawat E Mezbaan            63              Pizza, BBQ, Cafe, American, Seafood               3.1 Houston
+                Khanna's Hot Pizza            80        Pizza, Mediterranean, Desserts, Fast Food               0.0 Houston
+                          Taj Cafe            18                             French, BBQ, Seafood               3.1 Houston
+                         Dana Pani            91                          Bakery, Indian, Seafood               0.0 Houston
+                 Shiv Shakti Dhaba            54                             Tea, Pizza, American               0.0 Houston
+              Vrinda Vaishno Dhaba            54         French, Bakery, Fast Food, Cafe, Seafood               2.8 Houston
+                        Tasty Bite            15       Bakery, Fast Food, Cafe, American, Seafood               2.8 Houston
+               Hurry Curry Express            78                               Fast Food, Seafood               0.0 Houston
+                            Subway            51                   Tea, Bakery, Desserts, Seafood               2.3 Houston
+               Istanbul Restaurant            19                             Tea, Indian, Seafood               3.6 Houston
+                      Truth Coffee            29                         Pizza, American, Seafood               4.4 Houston
+
+### Accommodations in Houston
+                                              NAME  price       room type             house_rules  minimum nights  maximum occupancy  review rate number    city
+                     Sunny and Airy near Manhattan  499.0 Entire home/apt                 No pets             2.0                  4                 5.0 Houston
+                 Bright room in 2BR apt in Nolita! 1024.0    Private room    No children under 10             2.0                  2                 4.0 Houston
+                      Superhost 3 bedroom DISCOUNT  746.0 Entire home/apt                 No pets             1.0                  5                 4.0 Houston
+           Spacious room in front of prospect park  259.0    Private room              No smoking             1.0                  1                 5.0 Houston
+           Private bedroom in artsy NYC apartment.  488.0    Private room              No smoking             3.0                  1                 3.0 Houston
+                   Cozy Room near Casino and Metro 1092.0    Private room              No parties             1.0                  2                 4.0 Houston
+1BR in Newly Renovated Apartment - Rm C, Bushwick!  288.0    Private room              No smoking             1.0                  1                 4.0 Houston
+        Artsy, Sun-Soaked Pre-War Williamsburg Apt  872.0 Entire home/apt              No parties            10.0                  2                 4.0 Houston
+               Beautiful and Huge Room in Brooklyn  957.0    Private room    No parties & No pets            13.0                  1                 3.0 Houston
+         Backpackers Dream for 1 at The Funky Loft  244.0    Private room No parties & No smoking             3.0                  1                 4.0 Houston
+
+### Flight from Lexington to Dallas on 2022-03-18
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3600281    222   05:53   07:27 2 hours 34 minutes 2022-03-18      Lexington       Dallas     785.0
+
+### Self-driving from Lexington to Dallas
+self-driving, from Lexington to Dallas, duration: 12 hours 55 mins, distance: 1,408 km, cost: 70
+
+### Taxi from Lexington to Dallas
+taxi, from Lexington to Dallas, duration: 12 hours 55 mins, distance: 1,408 km, cost: 1408
+
+### Flight from Dallas to San Angelo on 2022-03-20
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3594267    113   08:32   09:32 1 hours 0 minutes 2022-03-20         Dallas   San Angelo     229.0
+     F3608910     54   12:39   13:40 1 hours 1 minutes 2022-03-20         Dallas   San Angelo     229.0
+     F3814669     89   22:36   23:43 1 hours 7 minutes 2022-03-20         Dallas   San Angelo     229.0
+     F3814676     80   16:45   17:48 1 hours 3 minutes 2022-03-20         Dallas   San Angelo     229.0
+
+### Self-driving from Dallas to San Angelo
+self-driving, from Dallas to San Angelo, duration: 3 hours 55 mins, distance: 415 km, cost: 20
+
+### Taxi from Dallas to San Angelo
+taxi, from Dallas to San Angelo, duration: 3 hours 55 mins, distance: 415 km, cost: 415
+
+### Flight from San Angelo to Houston on 2022-03-22
+There is no flight from San Angelo to Houston on 2022-03-22.
+
+### Self-driving from San Angelo to Houston
+self-driving, from San Angelo to Houston, duration: 5 hours 46 mins, distance: 586 km, cost: 29
+
+### Taxi from San Angelo to Houston
+taxi, from San Angelo to Houston, duration: 5 hours 46 mins, distance: 586 km, cost: 586
+
+### Flight from Houston to Lexington on 2022-03-24
+There is no flight from Houston to Lexington on 2022-03-24.
+
+### Self-driving from Houston to Lexington
+self-driving, from Houston to Lexington, duration: 14 hours 57 mins, distance: 1,592 km, cost: 79
+
+### Taxi from Houston to Lexington
+taxi, from Houston to Lexington, duration: 14 hours 57 mins, distance: 1,592 km, cost: 1592
+
+JSON plan:

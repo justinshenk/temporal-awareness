@@ -1,0 +1,210 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you aid in curating a 5-day travel plan for one person beginning in Denver and planning to visit 2 cities in Washington from March 23rd to March 27th, 2022? The budget for this trip is now set at $4,200.
+
+Reference information:
+### Attractions in Seattle
+                                  Name  Latitude   Longitude                                          Address          Phone                                                                  Website    City
+                      Seattle Aquarium 47.607400 -122.342956 1483 Alaskan Way Pier 59, Seattle, WA 98101, USA (206) 386-4300                                         https://www.seattleaquarium.org/ Seattle
+               The Seattle Great Wheel 47.606134 -122.342525          1301 Alaskan Wy, Seattle, WA 98101, USA (206) 623-8607                                            http://seattlegreatwheel.com/ Seattle
+              Chihuly Garden and Glass 47.620560 -122.350448          305 Harrison St, Seattle, WA 98109, USA (206) 753-4940                                   https://www.chihulygardenandglass.com/ Seattle
+                Olympic Sculpture Park 47.616603 -122.355317         2901 Western Ave, Seattle, WA 98121, USA (206) 654-3100           https://www.seattleartmuseum.org/visit/olympic-sculpture-park/ Seattle
+                          The Gum Wall 47.608361 -122.340338          1428 Post Alley, Seattle, WA 98101, USA (206) 587-2414                               https://unexpectedproductions.org/gumwall/ Seattle
+                        Seattle Center 47.620598 -122.350505          305 Harrison St, Seattle, WA 98109, USA (206) 684-7200                                           https://www.seattlecenter.com/ Seattle
+                 Museum of Pop Culture 47.621482 -122.348124            325 5th Ave N, Seattle, WA 98109, USA (206) 770-2700                                                   https://www.mopop.org/ Seattle
+                   Beneath the Streets 47.602850 -122.334093            102 Cherry St, Seattle, WA 98104, USA (206) 624-1237                                      http://www.beneath-the-streets.com/ Seattle
+                    Seattle Art Museum 47.607525 -122.337960             1300 1st Ave, Seattle, WA 98101, USA (206) 654-3100                                        https://www.seattleartmuseum.org/ Seattle
+                            Kerry Park 47.629469 -122.359922        211 W Highland Dr, Seattle, WA 98119, USA (206) 684-4075                       http://www.seattle.gov/parks/find/parks/kerry-park Seattle
+                          Space Needle 47.620506 -122.349277             400 Broad St, Seattle, WA 98109, USA (206) 905-2100                                             https://www.spaceneedle.com/ Seattle
+                           Smith Tower 47.601853 -122.331858              506 2nd Ave, Seattle, WA 98104, USA (206) 624-0414                                               http://www.smithtower.com/ Seattle
+                     Pike Place Market 47.608965 -122.340582               85 Pike St, Seattle, WA 98101, USA (206) 682-7453                                         https://www.pikeplacemarket.org/ Seattle
+                               Pier 55 47.604747 -122.339716          1101 Alaskan Wy, Seattle, WA 98101, USA (206) 623-1445                        https://www.argosycruises.com/parking-directions/ Seattle
+      Original Selfie Museum | Seattle 47.607803 -122.339772              92 Union St, Seattle, WA 98101, USA (206) 487-4500                                        https://originalselfiemuseum.com/ Seattle
+             Washington Park Arboretum 47.636416 -122.295815      2300 Arboretum Dr E, Seattle, WA 98112, USA (206) 543-8800                 https://botanicgardens.uw.edu/washington-park-arboretum/ Seattle
+Sky View Observatory - Columbia Center 47.604364 -122.331011              700 4th Ave, Seattle, WA 98104, USA (206) 386-5564                                           http://skyviewobservatory.com/ Seattle
+                        Discovery Park 47.661320 -122.417141                           Seattle, WA 98199, USA (206) 386-4236                    https://www.seattle.gov/parks/allparks/discovery-park Seattle
+                  The Museum of Flight 47.518538 -122.296854                           Seattle, WA 98108, USA (206) 764-5700                                          https://www.museumofflight.org/ Seattle
+                International Fountain 47.622523 -122.352032          305 Harrison St, Seattle, WA 98109, USA (206) 684-7200 https://www.seattlecenter.com/explore/attractions/international-fountain Seattle
+
+### Restaurants in Seattle
+                                Name  Average Cost                                          Cuisines  Aggregate Rating    City
+                  Ting's Red Lantern            24 Italian, Bakery, BBQ, Fast Food, Chinese, Seafood               4.2 Seattle
+      Ceviche Tapas Bar & Restaurant            86                            Tea, Chinese, Desserts               4.4 Seattle
+                      Mother Ringlet            63                 Tea, Cafe, Mediterranean, Seafood               2.5 Seattle
+                      Caf愆 Burger BC            43                 Tea, French, Bakery, BBQ, Seafood               3.7 Seattle
+                       The Godinho's            96           Tea, Pizza, American, BBQ, Cafe, Indian               3.8 Seattle
+                  Teddy Choco Studio            70                         Mexican, Bakery, Desserts               0.0 Seattle
+                 Goli Vada Pav No. 1            31                              Tea, Bakery, Seafood               3.4 Seattle
+                  Delhi Darbar Dhaba            69                        Cafe, Pizza, Mediterranean               3.2 Seattle
+                           Tawa King            74              Desserts, Tea, Cafe, Bakery, Chinese               0.0 Seattle
+                             Giani's            74                   Tea, Seafood, Desserts, Italian               3.6 Seattle
+                   Sarpal Restaurant            42                               Cafe, BBQ, Desserts               3.1 Seattle
+                            Depaul's            83                            BBQ, Desserts, Seafood               3.7 Seattle
+                Amul Sweets & Bakery            36                 Desserts, Tea, Pizza, BBQ, Indian               0.0 Seattle
+                         Hot Chimney            19            Tea, Pizza, Mexican, Bakery, Fast Food               2.5 Seattle
+Celebration Multi Cuisine Restaurant            65                         Pizza, American, Desserts               2.7 Seattle
+                            The Test            18                                Tea, Pizza, Bakery               2.9 Seattle
+                     Tandoori Zaaika            96                            Pizza, Indian, Seafood               3.0 Seattle
+                        Munch Nation            55       Desserts, BBQ, Cafe, Mediterranean, Seafood               3.8 Seattle
+                           Wow! Momo            28     Desserts, BBQ, Fast Food, Cafe, Mediterranean               3.2 Seattle
+                     Cafe Coffee Day            79              Pizza, Bakery, BBQ, Chinese, Seafood               3.0 Seattle
+                             Foodizm            68                      Cafe, Pizza, Bakery, Italian               0.0 Seattle
+                           Keventers            53                            Tea, Bakery, Fast Food               0.0 Seattle
+                         Durga Dhaba            95                Seafood, American, Cafe, Fast Food               2.9 Seattle
+                            FrenZone            44                                    Tea, Cafe, BBQ               3.9 Seattle
+                         Desi Kukkad            71                             Bakery, American, BBQ               0.0 Seattle
+                   The Golden Dragon            15                       BBQ, Mediterranean, Seafood               3.5 Seattle
+                           Deli Chic            91                                    Pizza, Seafood               0.0 Seattle
+                        Food Brigade            90                    Chinese, Pizza, BBQ, Fast Food               3.2 Seattle
+                     The Sassy Spoon            29                   Bakery, Mediterranean, Desserts               4.1 Seattle
+                            wagamama            21                     Tea, Pizza, Desserts, Seafood               3.7 Seattle
+
+### Accommodations in Seattle
+                                          NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+    Shared Apartment by Times Square Manhattan 1050.0     Shared room              No visitors & No pets & No smoking             1.0                  1                 4.0 Seattle
+     Large quiet private studio in East Harlem  181.0 Entire home/apt                            No children under 10             7.0                  2                 3.0 Seattle
+             Nolita 1br near Little Italy/SoHo  380.0 Entire home/apt                           No visitors & No pets            20.0                  2                 1.0 Seattle
+                  private spacious LES bedroom  325.0    Private room                            No parties & No pets             2.0                  1                 4.0 Seattle
+            Peaceful, cozy studio in Chinatown  576.0 Entire home/apt    No pets & No children under 10 & No visitors            20.0                  2                 1.0 Seattle
+     Small Private Room in quiet Manhattan Apt  105.0    Private room                                     No visitors             4.0                  1                 5.0 Seattle
+ Cozy Room Amazingly Located in Williamsburg !  448.0    Private room                                      No smoking             3.0                  2                 4.0 Seattle
+   NYC HUB HOME: Train @ 900ft; midtown 30min! 1184.0 Entire home/apt                            No parties & No pets             2.0                  7                 4.0 Seattle
+  New tidy  room attached by PRIVATE FULL BATH   73.0    Private room                         No parties & No smoking             3.0                  2                 5.0 Seattle
+     Sun Drenched Artist Loft in Williamsburg!  607.0 Entire home/apt No children under 10 & No visitors & No parties             4.0                  2                 5.0 Seattle
+**Cozy Room In Hip Ultra Location LES/NOLITA**  537.0    Private room                                     No visitors             2.0                  2                 5.0 Seattle
+                                 Comfort Haven  910.0    Private room           No smoking & No visitors & No parties             1.0                  2                 3.0 Seattle
+
+### Attractions in Yakima
+                                    Name  Latitude   Longitude                                                  Address          Phone                                               Website   City
+                    Yakima Valley Museum 46.592785 -120.537507                    2105 Tieton Dr, Yakima, WA 98902, USA (509) 248-0747                              http://www.yvmuseum.org/ Yakima
+                   Yakima Area Arboretum 46.588776 -120.472767                 1401 Arboretum Dr, Yakima, WA 98901, USA (509) 248-7337                               http://www.ahtrees.org/ Yakima
+             Yakima Sportsman State Park 46.591905 -120.462935               904 University Pkwy, Yakima, WA 98907, USA (509) 575-2774         http://parks.state.wa.us/278/Yakima-Sportsman Yakima
+                           Franklin Park 46.594089 -120.537612                    2101 Tieton Dr, Yakima, WA 98902, USA (509) 575-6020            http://www.yakimaparks.com/parks/franklin/ Yakima
+Yakima Valley Trolleys Powerhouse Museum 46.594580 -120.509940                     418 S 3rd Ave, Yakima, WA 98902, USA (509) 249-5962                   https://m.yakimavalleytrolleys.org/ Yakima
+                       Sarg Hubbard Park 46.601505 -120.474838                     111 S 18th St, Yakima, WA 98901, USA (509) 453-8280            http://www.yakimagreenway.org/#!parks/c4fi Yakima
+                            Kiwanis Park 46.599164 -120.482951                   1501 E Maple St, Yakima, WA 98901, USA (509) 575-6020             http://www.yakimaparks.com/parks/kiwanis/ Yakima
+            Arboretum & Botanical Garden 46.589338 -120.473895                                    Yakima, WA 98901, USA        Unknown                              https://www.ahtrees.org/ Yakima
+              West Valley Community Park 46.580851 -120.609794                   1323 S 80th Ave, Yakima, WA 98908, USA (509) 575-6020    http://www.yakimaparks.com/parks/west-valley-park/ Yakima
+  Yakima "Cruise-the-Ave" June-September 46.602186 -120.506186              199-101 E Yakima Ave, Yakima, WA 98901, USA        Unknown                                               Unknown Yakima
+                      Hub Area of Yakima 46.602280 -120.505796                  101 E Yakima Ave, Yakima, WA 98901, USA        Unknown                                               Unknown Yakima
+                         Chesterley Park 46.615969 -120.558355 40th Ave and River Road, River Rd, Yakima, WA 98902, USA (509) 575-6020     http://www.yakimaparks.com/parks/chesterley-park/ Yakima
+                          Harlan Landing 46.631819 -120.520866                        Rovetto Rd, Yakima, WA 98901, USA (509) 453-8280                             http://yakimagreenway.org Yakima
+                             Miller Park 46.609907 -120.505981            JF5V+WJQ, 513 N 3rd St, Yakima, WA 98901, USA (509) 575-6020              http://www.yakimaparks.com/parks/miller/ Yakima
+                    Cowiche Canyon Trail 46.620592 -120.671720      J8CH+75, 12015 Summitview Rd, Yakima, WA 98908, USA (509) 665-2100 https://www.blm.gov/visit/cowiche-canyon-trail-system Yakima
+                        Randall Dog Park 46.578401 -120.571745                   1401 S 48th Ave, Yakima, WA 98903, USA (509) 575-6020                 https://m.facebook.com/YakimaDogPark/ Yakima
+                              Lions Park 46.595345 -120.514135                     509 W Pine St, Yakima, WA 98902, USA (509) 575-6020               http://www.yakimaparks.com/parks/lions/ Yakima
+   Yakima Valley Trolleys Carbarn Museum 46.595252 -120.510695                     306 W Pine St, Yakima, WA 98902, USA (509) 249-5962                  http://www.yakimavalleytrolleys.org/ Yakima
+           Meadowbrook Family Fun Center 46.585298 -120.604720              7200 W Nob Hill Blvd, Yakima, WA 98908, USA        Unknown                                               Unknown Yakima
+                            Randall Park 46.579927 -120.570047                   1399 S 48th Ave, Yakima, WA 98908, USA (509) 575-6020             http://www.yakimaparks.com/parks/randall/ Yakima
+
+### Restaurants in Yakima
+                                   Name  Average Cost                                               Cuisines  Aggregate Rating   City
+                            Sambo Kojin            57                          Tea, Seafood, Cafe, Fast Food               4.8 Yakima
+                                 Manzu礴            25                                   Cafe, Pizza, Seafood               3.2 Yakima
+                                  Roy's            45                                   Tea, Bakery, Seafood               4.2 Yakima
+                         Flying Tandoor            99                                Cafe, Indian, Fast Food               0.0 Yakima
+              Britto's Bar & Restaurant            39                                      Tea, Mexican, BBQ               4.3 Yakima
+60 ML - Country Inn & Suites by Carlson            90                   Tea, Mexican, Bakery, BBQ, Fast Food               3.0 Yakima
+                              JVR Jayka            67                         Bakery, BBQ, Desserts, Seafood               2.9 Yakima
+               United Kitchens of India            26                          BBQ, Mediterranean, Fast Food               4.1 Yakima
+                         Dunkin' Donuts            92                        Fast Food, Cafe, Pizza, Italian               3.7 Yakima
+                   Amritsari Lassi Wala            37                      Cafe, American, Desserts, Seafood               3.8 Yakima
+                             Kanwarji's            37 Pizza, Mexican, Bakery, Fast Food, Cafe, Mediterranean               3.9 Yakima
+                     The Immigrant Cafe            75                               Cafe, Pizza, Bakery, BBQ               3.2 Yakima
+                  Chew - Pan Asian Cafe            71                              Fast Food, Pizza, Seafood               3.9 Yakima
+                         Kathi Junction            93                     Pizza, American, Desserts, Seafood               0.0 Yakima
+                                 Gyan's            25                        Tea, Pizza, Desserts, Fast Food               3.4 Yakima
+                  Dzukou Tribal Kitchen            74      Desserts, Pizza, French, Fast Food, Mediterranean               3.8 Yakima
+                       Changezi Chicken            83                       Cafe, Bakery, Seafood, Fast Food               3.7 Yakima
+                                 Wrapss            50                                           BBQ, Seafood               3.5 Yakima
+                            Burger King            98                        Pizza, Mediterranean, Fast Food               3.4 Yakima
+                          Chilli Dragon            83                     Fast Food, Cafe, Desserts, Seafood               3.3 Yakima
+                           Mehfil Dhaba            46                                   Chinese, Bakery, BBQ               3.4 Yakima
+              Sweet Toof Designer Cakes            40                           Cafe, Mediterranean, Seafood               3.1 Yakima
+                            Burger King            13                             Chinese, Desserts, Seafood               3.2 Yakima
+                               Big Wong            56                      Cafe, Bakery, American, Fast Food               4.3 Yakima
+                       Dinesh Meat Wala            12                         Tea, French, Bakery, Fast Food               0.0 Yakima
+                        Chinese Delight            57                 Tea, Cafe, Pizza, BBQ, Chinese, Indian               0.0 Yakima
+        Hangchuaa's Chinese Food Corner            37                                Fast Food, BBQ, Italian               3.1 Yakima
+                                 Haowin            12                     Fast Food, French, Indian, Seafood               3.2 Yakima
+                Bonitos Blu - The Uppal            47                   Chinese, Bakery, Desserts, Fast Food               3.0 Yakima
+                       Mickey's Kitchen            13                Desserts, Italian, Bakery, BBQ, Seafood               3.9 Yakima
+                      Fatafat Fast Food            73                                    Tea, Cafe, Desserts               3.3 Yakima
+                   Shama Chicken Corner            58                    Bakery, Indian, Desserts, Fast Food               3.1 Yakima
+                            Moonis Kada            69                           Cafe, BBQ, Desserts, Seafood               0.0 Yakima
+                     Pizza Hut Delivery            79                      Tea, Fast Food, Desserts, Seafood               2.3 Yakima
+                       The Centre Court            85                     Bakery, Pizza, Desserts, Fast Food               4.1 Yakima
+                    J'adore Chocolatier            22    Chinese, Bakery, Fast Food, Cafe, American, Seafood               4.7 Yakima
+
+### Accommodations in Yakima
+                                           NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number   city
+        A+ Chelsea Location! MSG, Javits, Penn!  833.0 Entire home/apt No children under 10 & No smoking & No pets            31.0                  4                 5.0 Yakima
+  Large 4 BR West Village townhouse/roof garden  157.0 Entire home/apt                                     No pets             2.0                  3                 1.0 Yakima
+                         Spacious studio in LIC  455.0 Entire home/apt                       No pets & No visitors             4.0                  3                 4.0 Yakima
+                Cute studio apt in West Village 1006.0 Entire home/apt                        No children under 10             7.0                  2                 2.0 Yakima
+            Close to everything, transportation 1180.0    Private room       No parties & No smoking & No visitors             1.0                  1                 1.0 Yakima
+     Single Bed  room in townhouse, near subway  827.0    Private room              No children under 10 & No pets             2.0                  2                 3.0 Yakima
+            Spacious Apartment in Crown Heights  173.0 Entire home/apt                     No parties & No smoking             3.0                  2                 3.0 Yakima
+Luxury Sun-filled Private Room near Time Square  918.0    Private room                        No children under 10             2.0                  1                 5.0 Yakima
+                       Prime West Village haven  540.0 Entire home/apt           No children under 10 & No parties             5.0                  4                 2.0 Yakima
+30 minutes to Times Square! 10 to Williamsburg!  671.0    Private room                     No smoking & No parties             4.0                  1                 5.0 Yakima
+
+### Flight from Denver to Seattle on 2022-03-23
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3519512    250   06:27   08:32  3 hours 5 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3567117    351   09:44   11:37 2 hours 53 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3749397    431   15:04   16:52 2 hours 48 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3749404    264   11:47   13:43 2 hours 56 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3749561    511   06:56   08:49 2 hours 53 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3749652    263   20:06   22:21 3 hours 15 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3834875    306   17:59   20:05  3 hours 6 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3849966    481   12:24   14:18 2 hours 54 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3893886    470   19:05   21:01 2 hours 56 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3894047    511   07:55   09:47 2 hours 52 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3894298    482   12:25   14:10 2 hours 45 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3894309    257   13:41   15:30 2 hours 49 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3894332    347   16:07   18:07  3 hours 0 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3985832    265   15:09   16:58 2 hours 49 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3985833    297   07:54   09:48 2 hours 54 minutes 2022-03-23         Denver      Seattle    1024.0
+     F3985834    399   20:45   22:29 2 hours 44 minutes 2022-03-23         Denver      Seattle    1024.0
+
+### Self-driving from Denver to Seattle
+self-driving, from Denver to Seattle, duration: 19 hours 14 mins, distance: 2,103 km, cost: 105
+
+### Taxi from Denver to Seattle
+taxi, from Denver to Seattle, duration: 19 hours 14 mins, distance: 2,103 km, cost: 2103
+
+### Flight from Seattle to Yakima on 2022-03-25
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3864326     42   22:56   23:49 0 hours 53 minutes 2022-03-25        Seattle       Yakima     103.0
+     F3864441     47   12:54   13:32 0 hours 38 minutes 2022-03-25        Seattle       Yakima     103.0
+
+### Self-driving from Seattle to Yakima
+self-driving, from Seattle to Yakima, duration: 2 hours 14 mins, distance: 229 km, cost: 11
+
+### Taxi from Seattle to Yakima
+taxi, from Seattle to Yakima, duration: 2 hours 14 mins, distance: 229 km, cost: 229
+
+### Flight from Yakima to Denver on 2022-03-27
+There is no flight from Yakima to Denver on 2022-03-27.
+
+### Self-driving from Yakima to Denver
+self-driving, from Yakima to Denver, duration: 17 hours 4 mins, distance: 1,872 km, cost: 93
+
+### Taxi from Yakima to Denver
+taxi, from Yakima to Denver, duration: 17 hours 4 mins, distance: 1,872 km, cost: 1872
+
+JSON plan:

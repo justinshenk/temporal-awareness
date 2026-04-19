@@ -1,0 +1,155 @@
+{
+  "condition": "steer_long_term_plus128",
+  "signed_strength": 128.0,
+  "steering_applied": true,
+  "steering_layer": 40,
+  "env": "airline",
+  "task_split": "test",
+  "task_id": 23,
+  "trial": 0,
+  "task_user_id": "yara_garcia_1905",
+  "task_instruction_sha256": "435448d51f27cd674edc81c6560253bf072b791c2b823435475e09fad2515f3b",
+  "n_reference_actions": 5,
+  "n_expected_outputs": 0,
+  "reward": 0.0,
+  "success": false,
+  "done": true,
+  "steps": 12,
+  "tool_action_count": 6,
+  "respond_action_count": 6,
+  "parse_error_count": 0,
+  "unknown_action_count": 0,
+  "tool_error_count": 0,
+  "transferred_to_human": true,
+  "stopped_by_user": true,
+  "user_cost": 0.001348,
+  "agent_input_tokens": 68457,
+  "agent_output_tokens": 846,
+  "agent_generation_seconds": 70.17017316818237,
+  "final_info": {
+    "task": {
+      "user_id": "yara_garcia_1905",
+      "actions": [
+        {
+          "name": "get_reservation_details",
+          "kwargs": {
+            "reservation_id": "HXDUBJ"
+          }
+        },
+        {
+          "name": "search_direct_flight",
+          "kwargs": {
+            "origin": "IAH",
+            "destination": "SFO",
+            "date": "2024-05-19"
+          }
+        },
+        {
+          "name": "search_direct_flight",
+          "kwargs": {
+            "origin": "SFO",
+            "destination": "IAH",
+            "date": "2024-05-21"
+          }
+        },
+        {
+          "name": "update_reservation_flights",
+          "kwargs": {
+            "reservation_id": "HXDUBJ",
+            "cabin": "economy",
+            "flights": [
+              {
+                "flight_number": "HAT072",
+                "date": "2024-05-19"
+              },
+              {
+                "flight_number": "HAT278",
+                "date": "2024-05-23"
+              }
+            ],
+            "payment_id": "gift_card_6941833"
+          }
+        },
+        {
+          "name": "update_reservation_baggages",
+          "kwargs": {
+            "reservation_id": "HXDUBJ",
+            "total_baggages": 2,
+            "nonfree_baggages": 2,
+            "payment_id": "gift_card_6941833"
+          }
+        }
+      ],
+      "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+      "outputs": []
+    },
+    "source": "transfer_to_human_agents",
+    "user_cost": 0.001348,
+    "reward_info": {
+      "reward": 0.0,
+      "info": {
+        "r_actions": 0.0,
+        "gt_data_hash": "ab332f06c7b21fd0a3bbae13bdab8223108b5045b59b6dc877e1dedf1a3cef17"
+      },
+      "actions": [
+        {
+          "name": "get_reservation_details",
+          "kwargs": {
+            "reservation_id": "HXDUBJ"
+          }
+        },
+        {
+          "name": "search_direct_flight",
+          "kwargs": {
+            "origin": "IAH",
+            "destination": "SFO",
+            "date": "2024-05-19"
+          }
+        },
+        {
+          "name": "search_direct_flight",
+          "kwargs": {
+            "origin": "SFO",
+            "destination": "IAH",
+            "date": "2024-05-21"
+          }
+        },
+        {
+          "name": "update_reservation_flights",
+          "kwargs": {
+            "reservation_id": "HXDUBJ",
+            "cabin": "economy",
+            "flights": [
+              {
+                "flight_number": "HAT072",
+                "date": "2024-05-19"
+              },
+              {
+                "flight_number": "HAT278",
+                "date": "2024-05-23"
+              }
+            ],
+            "payment_id": "gift_card_6941833"
+          }
+        },
+        {
+          "name": "update_reservation_baggages",
+          "kwargs": {
+            "reservation_id": "HXDUBJ",
+            "total_baggages": 2,
+            "nonfree_baggages": 2,
+            "payment_id": "gift_card_6941833"
+          }
+        }
+      ]
+    }
+  },
+  "reward_info_type": "RewardActionInfo",
+  "r_actions": 0.0,
+  "r_outputs": null,
+  "outputs_all_pass": null,
+  "gt_data_hash": "ab332f06c7b21fd0a3bbae13bdab8223108b5045b59b6dc877e1dedf1a3cef17",
+  "record_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_long_term_plus128/records/airline_trial00_task0023.json",
+  "trajectory_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_long_term_plus128/trajectories/airline_trial00_task0023.json",
+  "messages_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_long_term_plus128/messages/airline_trial00_task0023.json"
+}

@@ -1,0 +1,113 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you construct a 3-day travel plan, starting in New York and ending in Reno, for 4 people, including children under 10, from March 14th to March 16th, 2022? Our budget for this trip is set at $11,300. We require accommodations suitable for children under 10.
+
+Reference information:
+### Attractions in Reno
+                                                  Name  Latitude   Longitude                                                                           Address          Phone                                                                                                    Website City
+                                  Nevada Museum of Art 39.520782 -119.813418                                             160 W Liberty St, Reno, NV 89501, USA (775) 329-3333                                                                                 https://www.nevadaart.org/ Reno
+                                         The Discovery 39.521768 -119.809412                                              490 S Center St, Reno, NV 89501, USA (775) 786-1000                             https://nvdm.org/?utm_source=gmb&utm_medium=organic&utm_campaign=the_discovery Reno
+                            National Automobile Museum 39.526224 -119.808397                                                  1 Museum Dr, Reno, NV 89501, USA (775) 333-9300                                                                                 http://www.automuseum.org/ Reno
+                               Fleischmann Planetarium 39.545907 -119.819470                                           1664 N Virginia St, Reno, NV 89557, USA (775) 784-4812                                                                                 http://unr.edu/planetarium Reno
+                       Rancho San Rafael Regional Park 39.545699 -119.823991                                             1595 N Sierra St, Reno, NV 89503, USA (775) 785-4512                                                                                                    Unknown Reno
+                                  Wilbur D. May Center 39.546062 -119.825437                                             1595 N Sierra St, Reno, NV 89503, USA (775) 785-5961                                                                                  http://www.maycenter.com/ Reno
+                                             Reno Arch 39.528162 -119.813681                                            345 N Virginia St, Reno, NV 89501, USA (775) 334-4636                                                                                      https://www.reno.gov/ Reno
+                                         Idlewild Park 39.521841 -119.832980                                             2055 Idlewild Dr, Reno, NV 89509, USA (775) 334-2270                                                                                                    Unknown Reno
+                                  Grand Adventure Land 39.526442 -119.780590                                                2500 E 2nd St, Reno, NV 89595, USA (775) 789-1127                                                        http://www.grandsierraresort.com/GrandAdventureLand Reno
+                                            Animal Ark 39.783924 -119.869049                                            1265 Deerlodge Rd, Reno, NV 89508, USA (775) 475-9626                                                                                  http://www.animalark.org/ Reno
+                             Nevada Historical Society 39.547322 -119.820429                                           1650 N Virginia St, Reno, NV 89503, USA (775) 688-1190                                                                        http://www.nvhistoricalsociety.org/ Reno
+                   The Sensory Garden At Idlewild Park 39.521702 -119.833168                                                  74 Cowan Dr, Reno, NV 89509, USA        Unknown                                                                            http://ktmb.org/sensory-garden/ Reno
+                                           Indian Head 39.521369 -119.833349                                                               Reno, NV 89509, USA        Unknown                                                                                                    Unknown Reno
+                                        Dorostkar Park 39.505693 -119.886420                                             6331 Mayberry Dr, Reno, NV 89519, USA (775) 828-6612                                                                                                    Unknown Reno
+                                    Dragon Lights Reno 39.545784 -119.824040                                             1595 N Sierra St, Reno, NV 89503, USA (888) 484-2698                                                                              https://dragonlightsreno.org/ Reno
+                                     Believe sculpture 39.525614 -119.812010                                             10 N Virginia St, Reno, NV 89501, USA        Unknown                                                          https://artrail.washoecounty.us/sites/believe.php Reno
+W. M Keck Earth Science And Mineral Engineering Museum 39.539221 -119.814419 1664 North Virginia Street, Mackay Mines, 057 Mail Stop 0168, Reno, NV 89557, USA (775) 784-4528                                                                                        http://unr.edu/keck Reno
+                           Bartley Ranch Regional Park 39.469781 -119.807354                                        6000 Bartley Ranch Rd, Reno, NV 89511, USA (775) 828-6612 https://www.washoecounty.gov/parks/parks/park_directory_pages/south_region/bartley_ranch_regional_park.php Reno
+                    Raymond L Smith Truckee River Walk 39.524539 -119.812636                                             17 S Virginia St, Reno, NV 89501, USA (775) 825-9255                                                                  http://renoriver.org/about-us/our-history Reno
+                        Rancho San Rafael Nature Trail 39.552274 -119.832278                                             1595 N Sierra St, Reno, NV 89503, USA        Unknown                                                                                                    Unknown Reno
+
+### Restaurants in Reno
+                           Name  Average Cost                                           Cuisines  Aggregate Rating City
+                     Leme Light            55                           Cafe, Mexican, Fast Food               4.2 Reno
+                   Kanha Sweets            28         Italian, Bakery, Fast Food, Cafe, American               4.1 Reno
+                   Queens Cakes            58                      Bakery, Desserts, Indian, BBQ               3.5 Reno
+                 Indian Gourmet            16                  Tea, Fast Food, American, Seafood               3.0 Reno
+                          K Lab            54                  French, Cafe, Desserts, Fast Food               3.4 Reno
+                   Olive Bistro            66                              Tea, Cafe, Pizza, BBQ               3.9 Reno
+Mustake Multicuisine Restaurant            91                  Tea, Bakery, Pizza, Mediterranean               3.7 Reno
+                       Nagpal's            79                    Bakery, Mexican, Pizza, Seafood               3.4 Reno
+ Gopal's Restaurant & Caterer's            56                     French, Bakery, Pizza, Seafood               2.7 Reno
+         Maharashtra Food Stall            12              Pizza, French, Bakery, BBQ, Fast Food               3.6 Reno
+                       Nagaland            45                      Desserts, Pizza, BBQ, Italian               3.7 Reno
+                   Uncle Xpress            17                          Chinese, Pizza, Fast Food               3.4 Reno
+        Perch Wine & Coffee Bar            72                             Bakery, Pizza, Seafood               4.2 Reno
+                   Khalsa Dhaba           100                 Chinese, Bakery, Indian, Fast Food               0.0 Reno
+                 Lala Ji Sweets            63                 Desserts, Tea, Pizza, Mexican, BBQ               0.0 Reno
+                      Cafe Cook           100                                      BBQ, Desserts               2.8 Reno
+                     McDonald's            63                French, BBQ, Mediterranean, Seafood               3.7 Reno
+                     Parashar's            97 Desserts, Pizza, Italian, Mexican, Fast Food, Cafe               2.9 Reno
+                    Khaao Peeyo            24 Desserts, Pizza, Indian, Bakery, American, Seafood               0.0 Reno
+                  Foodies Joint            19                Tea, Pizza, French, Bakery, Seafood               3.4 Reno
+                     Just Cakez            74   Desserts, Pizza, French, Fast Food, Cafe, Indian               3.2 Reno
+                     Spooky Sky            34                      Tea, Pizza, American, Seafood               3.5 Reno
+                   Mohit Bakery            46     Desserts, Mexican, BBQ, Mediterranean, Seafood               0.0 Reno
+                      Movenpick            43                  Fast Food, BBQ, Desserts, Italian               4.0 Reno
+               Bats On Delivery            60              BBQ, Mediterranean, Desserts, Italian               2.3 Reno
+             Backstreet Kitchen            35               Tea, French, BBQ, Fast Food, Seafood               3.4 Reno
+                     Top Burger            80        Pizza, Mexican, Bakery, Cafe, Mediterranean               0.0 Reno
+                  Sugar Ruffles            12            Desserts, Pizza, French, BBQ, Fast Food               0.0 Reno
+        Baked! Cakes & Desserts            43                    Tea, Seafood, Desserts, Italian               3.3 Reno
+                  Rajwana Foods            37          Pizza, French, Bakery, Fast Food, Chinese               0.0 Reno
+                   Spicy Affair            50                   Tea, Seafood, Fast Food, Italian               0.0 Reno
+                   Adarsh Kulfi            21                           Tea, Cafe, Mediterranean               3.0 Reno
+              Brooklyn Brothers            30                 Tea, Pizza, BBQ, Fast Food, Indian               3.8 Reno
+                        Nusr-Et            17               Tea, Bakery, Cafe, American, Seafood               4.1 Reno
+                       Masaba侓郾            60                Tea, Mexican, Cafe, Indian, Seafood               4.2 Reno
+
+### Accommodations in Reno
+                                             NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number city
+             Bedroom with private access to patio   77.0    Private room                                   No parties            10.0                  2                 2.0 Reno
+                                         87st 204  921.0    Private room                         No children under 10            30.0                  2                 3.0 Reno
+                    A bright, beautiful treehouse  361.0 Entire home/apt                                  No visitors             2.0                  2                 5.0 Reno
+      Entire suite with breathtaking views of NYC 1040.0 Entire home/apt                                   No smoking             1.0                  8                 4.0 Reno
+Sunny and large bedroom in Williamsburg Apartment 1056.0    Private room                         No children under 10             1.0                  2                 4.0 Reno
+                                     Midtown Loft  660.0 Entire home/apt                                      No pets             2.0                  5                 1.0 Reno
+    Lovely Brooklyn Duplex near Prospect Park 3BR  866.0 Entire home/apt                                      No pets             2.0                  8                 1.0 Reno
+        Modern townhouse convenient to everything  637.0 Entire home/apt                                   No parties             3.0                  6                 3.0 Reno
+  Cozy 1 bedroom + air mattress, 2 cats, sleeps 3  786.0 Entire home/apt No visitors & No pets & No children under 10             4.0                  2                 1.0 Reno
+                      Cozy room near central park  220.0    Private room                        No visitors & No pets            30.0                  2                 3.0 Reno
+
+### Flight from New York to Reno on 2022-03-14
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3767722   1200   21:02   00:07 6 hours 5 minutes 2022-03-14       New York         Reno    2411.0
+
+### Self-driving from New York to Reno
+No valid information.
+
+### Taxi from New York to Reno
+No valid information.
+
+### Flight from Reno to New York on 2022-03-16
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3765934   1123   01:59   10:10 5 hours 11 minutes 2022-03-16           Reno     New York    2411.0
+
+### Self-driving from Reno to New York
+No valid information.
+
+### Taxi from Reno to New York
+No valid information.
+
+JSON plan:

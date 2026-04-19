@@ -1,0 +1,272 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you assist in creating a week-long travel plan for one person, starting from Indianapolis and venturing through 3 cities in North Carolina from March 7th to March 13th, 2022? The planned budget for the trip is $6,500.
+
+Reference information:
+### Attractions in Charlotte
+                           Name  Latitude  Longitude                                               Address          Phone                                                                                     Website      City
+                   Freedom Park 35.191449 -80.843441              1908 East Blvd, Charlotte, NC 28203, USA (980) 314-1002                                                                                     Unknown Charlotte
+ Levine Museum of the New South 35.224457 -80.846722              401 S Tryon St, Charlotte, NC 28202, USA (704) 333-1887                                                         http://www.museumofthenewsouth.org/ Charlotte
+        Discovery Place Science 35.229694 -80.841566              301 N Tryon St, Charlotte, NC 28202, USA (704) 327-2189                                                                  http://discoveryplace.org/ Charlotte
+            NASCAR Hall of Fame 35.221137 -80.843954        400 E M.L.K. Jr Blvd, Charlotte, NC 28202, USA (704) 654-4400                                                                  http://www.nascarhall.com/ Charlotte
+                The Mint Museum 35.197462 -80.814321            2730 Randolph Rd, Charlotte, NC 28207, USA (704) 337-2000                                                                  http://www.mintmuseum.org/ Charlotte
+  Bechtler Museum of Modern Art 35.224482 -80.847328              420 S Tryon St, Charlotte, NC 28202, USA (704) 353-9209                                                                        http://bechtler.org/ Charlotte
+The Charlotte Museum of History 35.233535 -80.766542            3500 Shamrock Dr, Charlotte, NC 28215, USA (704) 568-1774                                                             http://www.charlottemuseum.org/ Charlotte
+             Mint Museum Uptown 35.224408 -80.848085              500 S Tryon St, Charlotte, NC 28202, USA (704) 337-2000                                                                      http://mintmuseum.org/ Charlotte
+            Ray’s Splash Planet 35.238116 -80.851303           215 N Sycamore St, Charlotte, NC 28202, USA (980) 314-4729              https://www.mecknc.gov/ParkandRec/Aquatics/RaysSplashPlanet/Pages/default.aspx Charlotte
+               Trail of History 35.216842 -80.832673              100 N Kings Dr, Charlotte, NC 28204, USA        Unknown                                                         http://charlottetrailofhistory.org/ Charlotte
+UNC Charlotte Botanical Gardens 35.307813 -80.729735              9090 Craver Rd, Charlotte, NC 28262, USA (704) 687-0721                                                                    http://gardens.uncc.edu/ Charlotte
+                  Marshall Park 35.219210 -80.838582 Marshall Park, 800 E 3rd St, Charlotte, NC 28202, USA (704) 432-4280 https://www.mecknc.gov/ParkandRec/Parks/ParksByRegion/CentralRegion/Pages/marshallpark.aspx Charlotte
+           Billy Graham Library 35.190552 -80.909302            4330 Westmont Dr, Charlotte, NC 28217, USA (704) 401-3200                                                             https://billygrahamlibrary.org/ Charlotte
+            Romare Bearden Park 35.226970 -80.847877             300 S Church St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+                   Midtown Park 35.211013 -80.836628              510 S Kings Dr, Charlotte, NC 28204, USA (980) 314-1000                                                                                     Unknown Charlotte
+      Reedy Creek Nature Center 35.261767 -80.719380         2986 ROCKY RIVER RD, Charlotte, NC 28215, USA (980) 314-1119              https://parkandrec.mecknc.gov/Places-to-Visit/Nature/reedy-creek-nature-center Charlotte
+                First Ward Park 35.227678 -80.836459                301 E 7th St, Charlotte, NC 28202, USA (704) 336-3854                                                                                     Unknown Charlotte
+                 Books Monument 35.223480 -80.846129            435 S College St, Charlotte, NC 28202, USA        Unknown                                                                                     Unknown Charlotte
+                The Mural House 35.215190 -80.819654               1812 E 8th St, Charlotte, NC 28204, USA        Unknown                                                                                     Unknown Charlotte
+               Fourth Ward Park 35.231735 -80.842741             301 N Poplar St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+
+### Restaurants in Charlotte
+                        Name  Average Cost                                            Cuisines  Aggregate Rating      City
+             Olive Tree Cafe            23                              Tea, Chinese, Desserts               4.6 Charlotte
+              Central Perk 7            87                       Pizza, Bakery, BBQ, Fast Food               4.5 Charlotte
+                      Subway            60                Tea, Cafe, Mexican, Chinese, Seafood               2.5 Charlotte
+           Cafe Maple Street            91                             Fast Food, Tea, Italian               3.5 Charlotte
+                Kylin Skybar            44                           Tea, Cafe, Pizza, Italian               3.6 Charlotte
+   Shree Hari Vaishnav Dhaba            97                       Bakery, Pizza, American, Cafe               0.0 Charlotte
+         Unplugged Courtyard            54             Desserts, French, Bakery, Cafe, Seafood               4.0 Charlotte
+   Grover's - The Baker Shop            30             Pizza, Bakery, Chinese, Indian, Seafood               3.0 Charlotte
+Prince Snacks & Momo's Point            11                      Tea, Cafe, Desserts, Fast Food               3.4 Charlotte
+                China Garden            14                    Tea, Mexican, BBQ, Mediterranean               3.8 Charlotte
+          Nagaland's Kitchen            73                           Pizza, American, Desserts               3.8 Charlotte
+             Bombay Vada Pav            33                 Desserts, Pizza, Italian, BBQ, Cafe               2.8 Charlotte
+             Birbal Ji Dhaba            40                              Cafe, Bakery, Desserts               0.0 Charlotte
+                 Lotes Bakes            29                      BBQ, Bakery, Desserts, Seafood               0.0 Charlotte
+             Behrouz Biryani            19 Mexican, Bakery, Fast Food, Cafe, American, Seafood               3.5 Charlotte
+                Scorpio Cafe            89                     Tea, Cafe, Pizza, Mediterranean               3.7 Charlotte
+             Aggarwal Sweets            76                    Bakery, BBQ, Desserts, Fast Food               0.0 Charlotte
+     Aditya Da Vaishno Dhaba            70                        Cafe, Pizza, Indian, Seafood               0.0 Charlotte
+               Mithla Dhabha            71                                 Tea, BBQ, Fast Food               0.0 Charlotte
+                 Chicken Inn            18                   Tea, Pizza, Italian, BBQ, Seafood               3.6 Charlotte
+           Hong Kong Express            74                             Chinese, Cafe, Desserts               3.2 Charlotte
+               Pind Balluchi            42          Pizza, French, Mexican, BBQ, Cafe, Seafood               2.8 Charlotte
+              Ali Baba Caves            41                 Desserts, Tea, Bakery, Cafe, Indian               3.1 Charlotte
+                 Dial a Cake            25                        Tea, French, Indian, Seafood               0.0 Charlotte
+           Legends Barbeques            88               Desserts, Tea, Mexican, Cafe, Seafood               3.9 Charlotte
+                 Burger King            15                       Cafe, Pizza, Indian, Desserts               3.5 Charlotte
+                 Bansi Vihar            45                       Cafe, Pizza, Bakery, Desserts               3.4 Charlotte
+                     Le Club            64                                         Tea, Bakery               3.5 Charlotte
+  Tuk Tuk Indian Street Food            29                 Chinese, Bakery, Seafood, Fast Food               4.0 Charlotte
+             Life Grand Cafe            25             Tea, Bakery, Fast Food, Chinese, Indian               4.1 Charlotte
+
+### Accommodations in Charlotte
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+                              Cute Greenpoint room  335.0    Private room               No children under 10 & No pets             3.0                  1                 2.0 Charlotte
+            Elegant Studio Apt in Prospect Heights  640.0 Entire home/apt                                   No parties             2.0                  5                 5.0 Charlotte
+                  Two Bedrooms with Dedicated Bath  615.0    Private room                        No visitors & No pets             3.0                  2                 4.0 Charlotte
+               Lower East Side 1bedroom apt in NYC  861.0 Entire home/apt            No parties & No children under 10             3.0                  6                 3.0 Charlotte
+             Luxury 2 bdr/2 bath prime Williamburg  218.0 Entire home/apt  No children under 10 & No smoking & No pets             1.0                  3                 5.0 Charlotte
+                Nice apartment 4 Springbreak in NY  391.0    Private room                        No pets & No visitors             3.0                  2                 4.0 Charlotte
+   Spacious with amazing views 1 bedroom apartment  660.0 Entire home/apt                        No pets & No visitors             7.0                  5                 2.0 Charlotte
+Stunning 5 BR Townhouse with Chef's Kitchen #10288  664.0 Entire home/apt                                      No pets             3.0                  2                 4.0 Charlotte
+Designer 2 Bedroom Loft**Greenwich Village**4BEDS*  660.0 Entire home/apt                      No smoking & No parties             5.0                  6                 2.0 Charlotte
+                  1 Bedroom in 2 bedroom Apartment  286.0    Private room                                      No pets            30.0                  2                 2.0 Charlotte
+Home Away From Home. Sunny, Spacious 1BR Apartment 1008.0 Entire home/apt                                      No pets            90.0                  9                 1.0 Charlotte
+       Beautiful Williamsburg 1.5 BR-9 min to NYC! 1108.0 Entire home/apt                         No pets & No smoking             2.0                  6                 1.0 Charlotte
+            Awesome Room in the Heart of Bushwick!  404.0    Private room No visitors & No pets & No children under 10             7.0                  1                 4.0 Charlotte
+ Affordable Spacious Refurbished Room in Bushwick!  274.0    Private room                                  No visitors             2.0                  1                 1.0 Charlotte
+
+### Attractions in Wilmington
+                                   Name  Latitude  Longitude                                                  Address          Phone                                                                   Website       City
+                 Bellamy Mansion Museum 34.236148 -77.943010                 503 Market St, Wilmington, NC 28401, USA (910) 251-3700                                            http://www.bellamymansion.org/ Wilmington
+Cape Fear Museum of History and Science 34.235818 -77.938356                 814 Market St, Wilmington, NC 28401, USA (910) 798-4370                               https://www.nhcgov.com/548/Cape-Fear-Museum Wilmington
+                   Wilmington Riverwalk 34.235220 -77.949973 Wilmington Downtown Riverwalk, Wilmington, NC 28401, USA        Unknown                           https://www.wilmingtonnc.gov/visitors/riverwalk Wilmington
+             Wilmington Railroad Museum 34.241680 -77.950803                   505 Nutt St, Wilmington, NC 28401, USA (910) 763-2634                                                      http://www.wrrm.org/ Wilmington
+                  Museum of the Bizarre 34.232685 -77.949015                201 S Water St, Wilmington, NC 28401, USA (910) 399-2641                                             http://www.museumbizarre.com/ Wilmington
+                         Airlie Gardens 34.218298 -77.830242                 300 Airlie Rd, Wilmington, NC 28403, USA (910) 798-7700                                                 http://airliegardens.org/ Wilmington
+       Burgwin-Wright House and Gardens 34.235207 -77.946286                 224 Market St, Wilmington, NC 28401, USA (910) 762-0570                                        http://www.burgwinwrighthouse.com/ Wilmington
+    The Children's Museum of Wilmington 34.232741 -77.947496                 116 Orange St, Wilmington, NC 28401, USA (910) 254-3534                                            http://www.playwilmington.org/ Wilmington
+          Jungle Rapids Family Fun Park 34.207308 -77.863080              5320 Oleander Dr, Wilmington, NC 28403, USA (910) 791-0666                                              http://www.junglerapids.com/ Wilmington
+              Battleship North Carolina 34.236552 -77.954370            1 Battleship Rd NE, Wilmington, NC 28401, USA (910) 399-9100                                              http://www.battleshipnc.com/ Wilmington
+                     Cameron Art Museum 34.184095 -77.915415                3201 S 17th St, Wilmington, NC 28412, USA (910) 395-5999                                          http://www.cameronartmuseum.org/ Wilmington
+                          Latimer House 34.233218 -77.946143                  126 S 3rd St, Wilmington, NC 28401, USA (910) 606-4343                                              http://www.latimerhouse.org/ Wilmington
+              One Tree Hill: The Bridge 34.243811 -77.942927                  694 N 6th St, Wilmington, NC 28401, USA        Unknown                                                                   Unknown Wilmington
+                     1898 Memorial Park 34.247834 -77.947119                 1018 N 3rd St, Wilmington, NC 28401, USA (910) 341-7852            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+                        Halyburton Park 34.175631 -77.905358                4099 S 17th St, Wilmington, NC 28412, USA (910) 341-0075 https://www.wilmingtonnc.gov/departments/parks-recreation/halyburton-park Wilmington
+                             Bijou Park 34.238030 -77.949287                209 N Front St, Wilmington, NC 28401, USA        Unknown            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+       Wilmington Downtown Incorporated 34.238118 -77.948567      226 N Front St Suite 130, Wilmington, NC 28401, USA (910) 998-7744                                        http://www.wilmingtondowntown.com/ Wilmington
+                        Battleship Park 34.235667 -77.952398 191-199 USS North Carolina Rd, Wilmington, NC 28401, USA        Unknown                                             https://www.battleshipnc.com/ Wilmington
+                Poplar Grove Plantation 34.320633 -77.765526                  10200 Hwy 17, Wilmington, NC 28411, USA        Unknown                                               http://www.poplargrove.org/ Wilmington
+                         Long Leaf Park 34.208175 -77.881924             314 Pine Grove Dr, Wilmington, NC 28409, USA (910) 798-7275                                                 https://parks.nhcgov.com/ Wilmington
+
+### Restaurants in Wilmington
+                      Name  Average Cost                                      Cuisines  Aggregate Rating       City
+                    Azteca            56                             Cafe, Indian, BBQ               4.3 Wilmington
+            Bandit Burrito            26  Desserts, French, Bakery, Fast Food, Seafood               4.0 Wilmington
+   Moonie's Texas Barbecue            38                    Chinese, Bakery, Fast Food               4.1 Wilmington
+                  Taco Bus            59                                Tea, Cafe, BBQ               4.5 Wilmington
+                  Momo-Cha            92          Desserts, Cafe, French, BBQ, Chinese               2.7 Wilmington
+Wangchuk's Ladakhi Kitchen            93                         Cafe, Bakery, Italian               3.6 Wilmington
+            Dunkin' Donuts            25         Desserts, Tea, Pizza, Italian, French               3.7 Wilmington
+           The Yellow Chef            45         French, BBQ, Mediterranean, Fast Food               3.7 Wilmington
+                  Kebabish            64 Desserts, Italian, BBQ, Cafe, Indian, Seafood               0.0 Wilmington
+     Aggarwal Sweet Corner            66                           Tea, Pizza, Italian               3.4 Wilmington
+             Biryani Blues            90               Bakery, BBQ, Seafood, Fast Food               3.9 Wilmington
+            ToLoveFromLove            53               Cafe, Bakery, Indian, Fast Food               0.0 Wilmington
+              Chaap Chaska            95                  Cafe, BBQ, Desserts, Seafood               0.0 Wilmington
+              Hungry Folks            91                    Tea, French, BBQ, Desserts               0.0 Wilmington
+                 Rose Cafe            96    Italian, Bakery, Fast Food, Cafe, American               4.1 Wilmington
+ P2 Tandoori Momos Station            64                       Bakery, Indian, Seafood               3.1 Wilmington
+                 Keventers            78                                Cafe, Desserts               3.8 Wilmington
+        Welcome Food Point            68                              Bakery, Desserts               2.3 Wilmington
+                   Karim's            93          Cafe, Pizza, Bakery, Chinese, Indian               0.0 Wilmington
+             Chicken Kraft            89              Cafe, Mexican, Desserts, Italian               2.9 Wilmington
+           Chaska By Taste            72 Tea, Fast Food, Cafe, American, Mediterranean               2.9 Wilmington
+
+### Accommodations in Wilmington
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+    Prime East Village location w/backyard garden!  978.0 Entire home/apt                            No pets & No smoking             4.0                  7                 5.0 Wilmington
+                  Private Bedroom in Williamsburg!  400.0    Private room                                         No pets             5.0                  2                 5.0 Wilmington
+               Doorman Harlem Apt with Great Views  921.0 Entire home/apt                           No visitors & No pets             1.0                  7                 3.0 Wilmington
+    Brooklyn Bedroom - Warm & Cozy Near Subway (1)  339.0    Private room              No visitors & No children under 10             2.0                  1                 5.0 Wilmington
+               #1 PRIVATE STUDIO IN BX,15MINS NYC. 1128.0    Private room                        No parties & No visitors             2.0                  2                 4.0 Wilmington
+    Wyndham Midtown 45 (1 Bedroom Presidential) 2A 1194.0 Entire home/apt                           No visitors & No pets             3.0                  5                 2.0 Wilmington
+                            Private: The Grey Room  954.0    Private room                                      No smoking             1.0                  2                 2.0 Wilmington
+  3BR/1.5BA East Harlem - Families, Space , Quiet!  616.0 Entire home/apt                                      No smoking             1.0                  2                 3.0 Wilmington
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room               No children under 10 & No smoking             1.0                  2                 3.0 Wilmington
+Close to East Side Hospitals- Modern 2 Bedroom Apt  285.0 Entire home/apt                                      No smoking            30.0                  3                 3.0 Wilmington
+                             Vibrant Crown Heights  343.0    Private room No visitors & No smoking & No children under 10             3.0                  1                 5.0 Wilmington
+                   A Lovely One Bedroom Apartment!  882.0 Entire home/apt                                      No parties            10.0                  8                 5.0 Wilmington
+    Full-Service Junior Suite in Midtown Manhattan  368.0 Entire home/apt                            No smoking & No pets             3.0                  2                 3.0 Wilmington
+Private room for 2 (10 min to city) - Females only  453.0    Private room           No parties & No smoking & No visitors             1.0                  1                 4.0 Wilmington
+                              Semi Private Bedroom  840.0     Shared room                        No smoking & No visitors             1.0                  1                 3.0 Wilmington
+ Luxury 3 bedroom apartment on the Upper East Side  481.0 Entire home/apt               No children under 10 & No smoking             2.0                  3                 5.0 Wilmington
+                                 Big and cozy room  104.0    Private room                         No smoking & No parties             3.0                  2                 5.0 Wilmington
+                Charming 1BR in heart of Chinatown  503.0    Private room               No smoking & No children under 10             2.0                  2                 2.0 Wilmington
+         Luxury Apt very close to public transport  871.0    Private room                  No pets & No children under 10             5.0                  2                 4.0 Wilmington
+                BEAUTIFUL&BRIGHT 1 bd (E. Village)  207.0    Private room                                         No pets             1.0                  1                 5.0 Wilmington
+
+### Attractions in Asheville
+                                    Name  Latitude  Longitude                                                 Address          Phone                                                                         Website      City
+                Asheville Pinball Museum 35.596404 -82.556658        1 Battle Square Ste 1b, Asheville, NC 28801, USA (828) 776-5671                                                    http://ashevillepinball.com/ Asheville
+          Botanical Gardens at Asheville 35.612484 -82.566019            151 WT Weaver Blvd, Asheville, NC 28804, USA (828) 252-5190                                      https://www.ashevillebotanicalgardens.org/ Asheville
+    Western North Carolina Nature Center 35.579438 -82.494261            75 Gashes Creek Rd, Asheville, NC 28805, USA (828) 259-8080                                                         http://www.wildwnc.org/ Asheville
+            The North Carolina Arboretum 35.495850 -82.605223 100 Frederick Law Olmsted Way, Asheville, NC 28806, USA (828) 665-2492                                                     http://www.ncarboretum.org/ Asheville
+                   Thomas Wolfe Memorial 35.597503 -82.551341                52 N Market St, Asheville, NC 28801, USA (828) 253-8304                                                   http://www.wolfememorial.com/ Asheville
+       The Adventure Center of Asheville 35.592959 -82.583267                    85 Expo Dr, Asheville, NC 28806, USA (877) 247-5539                                     https://ashevilletreetopsadventurepark.com/ Asheville
+             Asheville Museum of Science 35.594790 -82.553396                 43 Patton Ave, Asheville, NC 28801, USA (828) 254-7162                                                   https://ashevillescience.org/ Asheville
+Asheville Ghost Tours: Oldest & Original 35.598260 -82.552019                80 Broadway St, Asheville, NC 28801, USA (828) 318-8579                                                http://www.hauntedasheville.com/ Asheville
+                                Biltmore 35.552751 -82.563690                    1 Lodge St, Asheville, NC 28803, USA (800) 411-3812                                                       https://www.biltmore.com/ Asheville
+                       Grovewood Village 35.621363 -82.544686              111 Grovewood Rd, Asheville, NC 28804, USA (828) 214-7768                                                       http://www.grovewood.com/ Asheville
+                            LaZoom Tours 35.592228 -82.550572               76 Biltmore Ave, Asheville, NC 28801, USA (828) 225-6932            http://www.lazoomtours.com/?utm_source=GMBlisting&utm_medium=organic Asheville
+                        Pack Square Park 35.595565 -82.549388                80 Court Plaza, Asheville, NC 28801, USA (828) 259-5800                                 https://www.nps.gov/nr/travel/asheville/pac.htm Asheville
+       Blue Ridge National Heritage Area 35.565868 -82.486467          195 Hemphill Knob Rd, Asheville, NC 28803, USA (828) 298-5330                                               http://www.blueridgeheritage.com/ Asheville
+                    Asheville Art Museum 35.594671 -82.551283               2 S Pack Square, Asheville, NC 28801, USA (828) 253-3227                                                    http://www.ashevilleart.org/ Asheville
+                          Pritchard Park 35.594726 -82.554458                 67 Patton Ave, Asheville, NC 28801, USA (828) 251-1122                                                     http://www.ashevillenc.gov/ Asheville
+       Asheville Treetops Adventure Park 35.592948 -82.583283                    85 Expo Dr, Asheville, NC 28806, USA (877) 247-5539 http://www.ashevilletreetopsadventurepark.com/asheville-treetops-adventure-park Asheville
+                      Biltmore Waterfall 35.531417 -82.554623              Fourmile Branch,, Asheville, NC 28806, USA (800) 441-3812                                                        http://www.biltmore.com/ Asheville
+                     River Arts District 35.582814 -82.564695               3 River Arts Pl, Asheville, NC 28801, USA (828) 388-3526                                               http://www.riverartsdistrict.com/ Asheville
+                       Statue: Childhood 35.595259 -82.550612                 121 US-74 ALT, Asheville, NC 28801, USA        Unknown                                                                         Unknown Asheville
+                             Urban Trail 35.594841 -82.551514               11 Biltmore Ave, Asheville, NC 28801, USA        Unknown                                             http://www.ashevilleurbantrail.com/ Asheville
+
+### Restaurants in Asheville
+                         Name  Average Cost                                              Cuisines  Aggregate Rating      City
+Vince's Restaurant & Pizzeria            71                         French, Bakery, Indian, Pizza               3.6 Asheville
+              Vadakkan Pepper            71 Pizza, Italian, Bakery, BBQ, Fast Food, Mediterranean               3.8 Asheville
+                    Pizza Hut            90                       Bakery, American, Cafe, Italian               3.4 Asheville
+             Glen's Bakehouse            22                  Pizza, Bakery, Cafe, Indian, Seafood               4.0 Asheville
+                  Snax Points            76             Desserts, Tea, French, Fast Food, Chinese               3.0 Asheville
+             Bisht Food Court            72      Desserts, French, Bakery, BBQ, American, Seafood               0.0 Asheville
+       Manish Sweets & Bakers            97                        Chinese, Pizza, Cafe, Desserts               2.8 Asheville
+          The Taste of Punjab            17                                Tea, Cafe, Indian, BBQ               0.0 Asheville
+               Sugar Boutique            54                     French, Indian, Desserts, Seafood               3.1 Asheville
+                 Captain Grub            61                               Cafe, Desserts, Seafood               3.3 Asheville
+    Bhogal Chole Bhature Wala            93                                  Tea, Indian, Seafood               3.8 Asheville
+      Sachdeva Chicken Corner            52                         Cafe, Mexican, Pizza, Italian               3.4 Asheville
+   Mourya Sweets Chat Bhandar            59                         Pizza, Indian, BBQ, Fast Food               2.9 Asheville
+               Chawla Kitchen            98                           Tea, Cafe, Bakery, Desserts               3.3 Asheville
+                 Hunger's Hut            71                              Tea, Bakery, Pizza, Cafe               0.0 Asheville
+           Khan's Kathi Rolls            53                                 Cafe, Indian, Seafood               3.2 Asheville
+               Not Just Dilli            46          Tea, Fast Food, Cafe, Mediterranean, Seafood               3.2 Asheville
+                   Snack Chat            48                                   Tea, French, Bakery               3.4 Asheville
+                 Chef's Curry            56               Desserts, Tea, Italian, Fast Food, Cafe               0.0 Asheville
+                    Pizza Hut            11                Pizza, French, BBQ, Fast Food, Chinese               4.3 Asheville
+
+### Accommodations in Asheville
+                                             NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+   Beautiful 2BR Apt, 1 Min Walk to Major Subway!  182.0 Entire home/apt No pets & No children under 10 & No visitors            30.0                  3                 4.0 Asheville
+                                  Beautiful place 1181.0 Entire home/apt                                      No pets             1.0                  2                 2.0 Asheville
+     Fully equipped apartment on perfect location 1091.0 Entire home/apt                                  No visitors             7.0                  7                 5.0 Asheville
+                                Little Italy/Soho  579.0 Entire home/apt        No visitors & No parties & No smoking             2.0                  5                 4.0 Asheville
+              *Beautiful Private Room near Subway  551.0    Private room                                   No parties             2.0                  1                 4.0 Asheville
+           Cozy Bedroom in the heart of Manhattan 1183.0    Private room                     No smoking & No visitors             3.0                  1                 2.0 Asheville
+                            Cute, airy attic room  522.0    Private room                                      No pets             1.0                  1                 3.0 Asheville
+    Huge 2 Bedroom, Great Location, Express Metro  745.0 Entire home/apt                                  No visitors             4.0                  4                 5.0 Asheville
+              Quaint&Cozy 1BR-Gem in East Village   65.0    Private room                                      No pets             8.0                  2                 4.0 Asheville
+                                        Nice room 1167.0    Private room            No children under 10 & No parties             2.0                  2                 5.0 Asheville
+  FANTASTIC Large 1 Bedroom near Columbus Circle.  403.0 Entire home/apt                                      No pets             2.0                  4                 2.0 Asheville
+        Sunny one bedroom in the Friends Building  472.0 Entire home/apt                                  No visitors             1.0                  4                 5.0 Asheville
+1 BED and FUTON -SUNNY ROOM  - PRIME WILLIAMSBURG  972.0    Private room                      No parties & No smoking             2.0                  1                 5.0 Asheville
+Beautiful Spacious 1 Bed in Hip Harlem Neighborhd   63.0 Entire home/apt                     No visitors & No parties             3.0                  3                 1.0 Asheville
+                               Private Bedroom #2  689.0    Private room                                   No parties             1.0                  2                 2.0 Asheville
+
+### Flight from Indianapolis to Charlotte on 2022-03-07
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3659001    105   08:07   09:50 1 hours 43 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+     F3666612    106   17:19   19:05 1 hours 46 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+     F3695451    205   19:25   20:58 1 hours 33 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+     F3696468    193   06:00   07:30 1 hours 30 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+     F3783265    106   17:33   19:38  2 hours 5 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+     F3795227    194   10:16   12:05 1 hours 49 minutes 2022-03-07   Indianapolis    Charlotte     427.0
+
+### Self-driving from Indianapolis to Charlotte
+self-driving, from Indianapolis to Charlotte, duration: 8 hours 51 mins, distance: 923 km, cost: 46
+
+### Taxi from Indianapolis to Charlotte
+taxi, from Indianapolis to Charlotte, duration: 8 hours 51 mins, distance: 923 km, cost: 923
+
+### Flight from Charlotte to Wilmington on 2022-03-09
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3666307     87   12:54   13:46 0 hours 52 minutes 2022-03-09      Charlotte   Wilmington     185.0
+     F3783482     41   09:16   10:37 1 hours 21 minutes 2022-03-09      Charlotte   Wilmington     185.0
+     F3786857     58   14:27   15:19 0 hours 52 minutes 2022-03-09      Charlotte   Wilmington     185.0
+     F4050357     54   17:28   18:24 0 hours 56 minutes 2022-03-09      Charlotte   Wilmington     185.0
+
+### Self-driving from Charlotte to Wilmington
+self-driving, from Charlotte to Wilmington, duration: 3 hours 24 mins, distance: 323 km, cost: 16
+
+### Taxi from Charlotte to Wilmington
+taxi, from Charlotte to Wilmington, duration: 3 hours 24 mins, distance: 323 km, cost: 323
+
+### Flight from Wilmington to Asheville on 2022-03-11
+There is no flight from Wilmington to Asheville on 2022-03-11.
+
+### Self-driving from Wilmington to Asheville
+self-driving, from Wilmington to Asheville, duration: 5 hours 19 mins, distance: 541 km, cost: 27
+
+### Taxi from Wilmington to Asheville
+taxi, from Wilmington to Asheville, duration: 5 hours 19 mins, distance: 541 km, cost: 541
+
+### Flight from Asheville to Indianapolis on 2022-03-13
+There is no flight from Asheville to Indianapolis on 2022-03-13.
+
+### Self-driving from Asheville to Indianapolis
+self-driving, from Asheville to Indianapolis, duration: 7 hours 6 mins, distance: 757 km, cost: 37
+
+### Taxi from Asheville to Indianapolis
+taxi, from Asheville to Indianapolis, duration: 7 hours 6 mins, distance: 757 km, cost: 757
+
+JSON plan:

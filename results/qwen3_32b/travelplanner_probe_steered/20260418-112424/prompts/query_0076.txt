@@ -1,0 +1,112 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you prepare a travel plan for a group of 7 departing from Appleton to Charlotte? This will be a 3-day trip from March 18th to March 20th, 2022. Our budget for this trip is $9,500. Please ensure our accommodations allow visitors, as per the house rules.
+
+Reference information:
+### Attractions in Charlotte
+                           Name  Latitude  Longitude                                               Address          Phone                                                                                     Website      City
+                   Freedom Park 35.191449 -80.843441              1908 East Blvd, Charlotte, NC 28203, USA (980) 314-1002                                                                                     Unknown Charlotte
+ Levine Museum of the New South 35.224457 -80.846722              401 S Tryon St, Charlotte, NC 28202, USA (704) 333-1887                                                         http://www.museumofthenewsouth.org/ Charlotte
+        Discovery Place Science 35.229694 -80.841566              301 N Tryon St, Charlotte, NC 28202, USA (704) 327-2189                                                                  http://discoveryplace.org/ Charlotte
+            NASCAR Hall of Fame 35.221137 -80.843954        400 E M.L.K. Jr Blvd, Charlotte, NC 28202, USA (704) 654-4400                                                                  http://www.nascarhall.com/ Charlotte
+                The Mint Museum 35.197462 -80.814321            2730 Randolph Rd, Charlotte, NC 28207, USA (704) 337-2000                                                                  http://www.mintmuseum.org/ Charlotte
+  Bechtler Museum of Modern Art 35.224482 -80.847328              420 S Tryon St, Charlotte, NC 28202, USA (704) 353-9209                                                                        http://bechtler.org/ Charlotte
+The Charlotte Museum of History 35.233535 -80.766542            3500 Shamrock Dr, Charlotte, NC 28215, USA (704) 568-1774                                                             http://www.charlottemuseum.org/ Charlotte
+             Mint Museum Uptown 35.224408 -80.848085              500 S Tryon St, Charlotte, NC 28202, USA (704) 337-2000                                                                      http://mintmuseum.org/ Charlotte
+            Ray’s Splash Planet 35.238116 -80.851303           215 N Sycamore St, Charlotte, NC 28202, USA (980) 314-4729              https://www.mecknc.gov/ParkandRec/Aquatics/RaysSplashPlanet/Pages/default.aspx Charlotte
+               Trail of History 35.216842 -80.832673              100 N Kings Dr, Charlotte, NC 28204, USA        Unknown                                                         http://charlottetrailofhistory.org/ Charlotte
+UNC Charlotte Botanical Gardens 35.307813 -80.729735              9090 Craver Rd, Charlotte, NC 28262, USA (704) 687-0721                                                                    http://gardens.uncc.edu/ Charlotte
+                  Marshall Park 35.219210 -80.838582 Marshall Park, 800 E 3rd St, Charlotte, NC 28202, USA (704) 432-4280 https://www.mecknc.gov/ParkandRec/Parks/ParksByRegion/CentralRegion/Pages/marshallpark.aspx Charlotte
+           Billy Graham Library 35.190552 -80.909302            4330 Westmont Dr, Charlotte, NC 28217, USA (704) 401-3200                                                             https://billygrahamlibrary.org/ Charlotte
+            Romare Bearden Park 35.226970 -80.847877             300 S Church St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+                   Midtown Park 35.211013 -80.836628              510 S Kings Dr, Charlotte, NC 28204, USA (980) 314-1000                                                                                     Unknown Charlotte
+      Reedy Creek Nature Center 35.261767 -80.719380         2986 ROCKY RIVER RD, Charlotte, NC 28215, USA (980) 314-1119              https://parkandrec.mecknc.gov/Places-to-Visit/Nature/reedy-creek-nature-center Charlotte
+                First Ward Park 35.227678 -80.836459                301 E 7th St, Charlotte, NC 28202, USA (704) 336-3854                                                                                     Unknown Charlotte
+                 Books Monument 35.223480 -80.846129            435 S College St, Charlotte, NC 28202, USA        Unknown                                                                                     Unknown Charlotte
+                The Mural House 35.215190 -80.819654               1812 E 8th St, Charlotte, NC 28204, USA        Unknown                                                                                     Unknown Charlotte
+               Fourth Ward Park 35.231735 -80.842741             301 N Poplar St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+
+### Restaurants in Charlotte
+                        Name  Average Cost                                            Cuisines  Aggregate Rating      City
+             Olive Tree Cafe            23                              Tea, Chinese, Desserts               4.6 Charlotte
+              Central Perk 7            87                       Pizza, Bakery, BBQ, Fast Food               4.5 Charlotte
+                      Subway            60                Tea, Cafe, Mexican, Chinese, Seafood               2.5 Charlotte
+           Cafe Maple Street            91                             Fast Food, Tea, Italian               3.5 Charlotte
+                Kylin Skybar            44                           Tea, Cafe, Pizza, Italian               3.6 Charlotte
+   Shree Hari Vaishnav Dhaba            97                       Bakery, Pizza, American, Cafe               0.0 Charlotte
+         Unplugged Courtyard            54             Desserts, French, Bakery, Cafe, Seafood               4.0 Charlotte
+   Grover's - The Baker Shop            30             Pizza, Bakery, Chinese, Indian, Seafood               3.0 Charlotte
+Prince Snacks & Momo's Point            11                      Tea, Cafe, Desserts, Fast Food               3.4 Charlotte
+                China Garden            14                    Tea, Mexican, BBQ, Mediterranean               3.8 Charlotte
+          Nagaland's Kitchen            73                           Pizza, American, Desserts               3.8 Charlotte
+             Bombay Vada Pav            33                 Desserts, Pizza, Italian, BBQ, Cafe               2.8 Charlotte
+             Birbal Ji Dhaba            40                              Cafe, Bakery, Desserts               0.0 Charlotte
+                 Lotes Bakes            29                      BBQ, Bakery, Desserts, Seafood               0.0 Charlotte
+             Behrouz Biryani            19 Mexican, Bakery, Fast Food, Cafe, American, Seafood               3.5 Charlotte
+                Scorpio Cafe            89                     Tea, Cafe, Pizza, Mediterranean               3.7 Charlotte
+             Aggarwal Sweets            76                    Bakery, BBQ, Desserts, Fast Food               0.0 Charlotte
+     Aditya Da Vaishno Dhaba            70                        Cafe, Pizza, Indian, Seafood               0.0 Charlotte
+               Mithla Dhabha            71                                 Tea, BBQ, Fast Food               0.0 Charlotte
+                 Chicken Inn            18                   Tea, Pizza, Italian, BBQ, Seafood               3.6 Charlotte
+           Hong Kong Express            74                             Chinese, Cafe, Desserts               3.2 Charlotte
+               Pind Balluchi            42          Pizza, French, Mexican, BBQ, Cafe, Seafood               2.8 Charlotte
+              Ali Baba Caves            41                 Desserts, Tea, Bakery, Cafe, Indian               3.1 Charlotte
+                 Dial a Cake            25                        Tea, French, Indian, Seafood               0.0 Charlotte
+           Legends Barbeques            88               Desserts, Tea, Mexican, Cafe, Seafood               3.9 Charlotte
+                 Burger King            15                       Cafe, Pizza, Indian, Desserts               3.5 Charlotte
+                 Bansi Vihar            45                       Cafe, Pizza, Bakery, Desserts               3.4 Charlotte
+                     Le Club            64                                         Tea, Bakery               3.5 Charlotte
+  Tuk Tuk Indian Street Food            29                 Chinese, Bakery, Seafood, Fast Food               4.0 Charlotte
+             Life Grand Cafe            25             Tea, Bakery, Fast Food, Chinese, Indian               4.1 Charlotte
+
+### Accommodations in Charlotte
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+                              Cute Greenpoint room  335.0    Private room               No children under 10 & No pets             3.0                  1                 2.0 Charlotte
+            Elegant Studio Apt in Prospect Heights  640.0 Entire home/apt                                   No parties             2.0                  5                 5.0 Charlotte
+                  Two Bedrooms with Dedicated Bath  615.0    Private room                        No visitors & No pets             3.0                  2                 4.0 Charlotte
+               Lower East Side 1bedroom apt in NYC  861.0 Entire home/apt            No parties & No children under 10             3.0                  6                 3.0 Charlotte
+             Luxury 2 bdr/2 bath prime Williamburg  218.0 Entire home/apt  No children under 10 & No smoking & No pets             1.0                  3                 5.0 Charlotte
+                Nice apartment 4 Springbreak in NY  391.0    Private room                        No pets & No visitors             3.0                  2                 4.0 Charlotte
+   Spacious with amazing views 1 bedroom apartment  660.0 Entire home/apt                        No pets & No visitors             7.0                  5                 2.0 Charlotte
+Stunning 5 BR Townhouse with Chef's Kitchen #10288  664.0 Entire home/apt                                      No pets             3.0                  2                 4.0 Charlotte
+Designer 2 Bedroom Loft**Greenwich Village**4BEDS*  660.0 Entire home/apt                      No smoking & No parties             5.0                  6                 2.0 Charlotte
+                  1 Bedroom in 2 bedroom Apartment  286.0    Private room                                      No pets            30.0                  2                 2.0 Charlotte
+Home Away From Home. Sunny, Spacious 1BR Apartment 1008.0 Entire home/apt                                      No pets            90.0                  9                 1.0 Charlotte
+       Beautiful Williamsburg 1.5 BR-9 min to NYC! 1108.0 Entire home/apt                         No pets & No smoking             2.0                  6                 1.0 Charlotte
+            Awesome Room in the Heart of Bushwick!  404.0    Private room No visitors & No pets & No children under 10             7.0                  1                 4.0 Charlotte
+ Affordable Spacious Refurbished Room in Bushwick!  274.0    Private room                                  No visitors             2.0                  1                 1.0 Charlotte
+
+### Flight from Appleton to Charlotte on 2022-03-18
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3796721    314   06:58   10:25 2 hours 27 minutes 2022-03-18       Appleton    Charlotte     742.0
+
+### Self-driving from Appleton to Charlotte
+self-driving, from Appleton to Charlotte, duration: 14 hours 27 mins, distance: 1,534 km, cost: 76
+
+### Taxi from Appleton to Charlotte
+taxi, from Appleton to Charlotte, duration: 14 hours 27 mins, distance: 1,534 km, cost: 1534
+
+### Flight from Charlotte to Appleton on 2022-03-20
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3788979    212   22:52   00:07 2 hours 15 minutes 2022-03-20      Charlotte     Appleton     742.0
+
+### Self-driving from Charlotte to Appleton
+self-driving, from Charlotte to Appleton, duration: 14 hours 32 mins, distance: 1,536 km, cost: 76
+
+### Taxi from Charlotte to Appleton
+taxi, from Charlotte to Appleton, duration: 14 hours 32 mins, distance: 1,536 km, cost: 1536
+
+JSON plan:

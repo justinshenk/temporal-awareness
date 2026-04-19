@@ -1,0 +1,118 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you design a 3-day travel itinerary for 2 people, departing from Ithaca and heading to Newark from March 18th to March 20th, 2022? Our budget is set at $1,200, and we require our accommodations to be entire rooms and visitor-friendly. Please note that we prefer not to drive ourselves during this trip.
+
+Reference information:
+### Attractions in Newark
+                                               Name  Latitude  Longitude                                                      Address          Phone                                                                 Website   City
+                           The Newark Museum of Art 40.742943 -74.171403                      49 Washington St, Newark, NJ 07102, USA (973) 596-6550                                         http://www.newarkmuseumart.org/ Newark
+                                      Military Park 40.739126 -74.169520                            51 Park Pl, Newark, NJ 07102, USA (973) 900-5800                                                                 Unknown Newark
+                                  Branch Brook Park 40.759629 -74.181089                & Park Avenue, Lake St, Newark, NJ 07104, USA (973) 268-3500                 http://www.essexcountyparks.org/parks/branch-brook-park Newark
+                                     Weequahic Park 40.706272 -74.197285           Elizabeth Ave &, Meeker Ave, Newark, NJ 07112, USA (973) 268-3500    http://www.essex-countynj.org/p/index.php?section=parks/sites/we#top Newark
+              Newark Riverfront Park, Orange Sticks 40.733113 -74.148997                      727 Raymond Blvd, Newark, NJ 07105, USA        Unknown                                                                 Unknown Newark
+                      New Jersey Historical Society 40.738936 -74.168748                            52 Park Pl, Newark, NJ 07102, USA (973) 596-8500                                           http://www.jerseyhistory.org/ Newark
+                    The Jewish Museum of New Jersey 40.755278 -74.169840                          145 Broadway, Newark, NJ 07104, USA (973) 485-2609                                          http://www.jewishmuseumnj.org/ Newark
+     Newark Riverfront Park - Somme Street Entrance 40.732726 -74.150258                      709 Raymond Blvd, Newark, NJ 07105, USA (201) 341-8311                                  https://newarkcityparksfoundation.com/ Newark
+                             Veterans Memorial Park 40.738900 -74.182517        W Market St & Wickliffe Street, Newark, NJ 07102, USA (973) 268-3500            http://www.essexcountyparks.org/parks/veterans-memorial-park Newark
+                                   Jesse Allen Park 40.725714 -74.188996                      Muhammad Ali Ave, Newark, NJ 07108, USA (973) 733-6454                              https://www.newarknj.gov/departments/rcass Newark
+                               Dreyfuss Planetarium 40.743217 -74.171921 49 Washington St Dreyfuss Planetarium, Newark, NJ 07102, USA (973) 596-6529                      https://newarkmuseumart.org/event/planetarium-life Newark
+                         Ex-Casa do Paulo Landim II 40.723809 -74.162335                       311 E Kinney St, Newark, NJ 07105, USA        Unknown                                                                 Unknown Newark
+                     Newark Preservation & Landmark 40.742819 -74.171710                      69 Washington St, Newark, NJ 07102, USA (973) 622-4910                                        https://www.newarklandmarks.org/ Newark
+                                     Riverbank Park 40.731729 -74.152255           Market St & VanBuren Street, Newark, NJ 07105, USA (973) 268-3500                   https://www.essexcountyparks.org/parks/riverbank-park Newark
+                      Cherry Blossom Welcome Center 40.784646 -74.172687                  Branch Brook Park Dr, Newark, NJ 07104, USA (973) 268-3500                 http://www.essexcountyparks.org/parks/branch-brook-park Newark
+                             The Feigenspan Mansion 40.727882 -74.182656     710 Dr Martin Luther King Jr Blvd, Newark, NJ 07102, USA (973) 274-0995 https://www.nj.gov/dca/njht/funded/sitedetails/feigenspan_mansion.shtml Newark
+                       Essex County Riverfront Park 40.734196 -74.143939                          1-3 Brill St, Newark, NJ 07105, USA (973) 268-3500                  https://www.essexcountyparks.org/parks/riverfront-park Newark
+              Alice Ransom Dreyfuss Memorial Garden 40.743325 -74.172239                                        Newark, NJ 07102, USA        Unknown                                                                 Unknown Newark
+Paul Robeson Galleries, Rutgers University - Newark 40.742072 -74.176153     350 Dr Martin Luther King Jr Blvd, Newark, NJ 07103, USA (973) 353-0615                               https://paulrobesongalleries.rutgers.edu/ Newark
+                                     Weequahic Park 40.700052 -74.202157                1 Thomas Carmichael Dr, Newark, NJ 07114, USA (973) 926-2520                                        http://www.essexcountyparks.org/ Newark
+
+### Restaurants in Newark
+                              Name  Average Cost                                        Cuisines  Aggregate Rating   City
+                          Artistry            79                  Cafe, Pizza, Desserts, Seafood               3.8 Newark
+               Angeethi Restaurant            12                          French, BBQ, Fast Food               3.3 Newark
+                 Mirage Restro Bar            51           Bakery, American, Desserts, Fast Food               2.4 Newark
+                Harmann Restaurant            57                  Tea, Cafe, American, Fast Food               0.0 Newark
+        Escape Terrace Bar Kitchen           100             Tea, Cafe, Bakery, Chinese, Seafood               3.4 Newark
+                            Jaguar            38                         French, Bakery, Seafood               2.8 Newark
+                     Drifters Cafe            24                                        Tea, BBQ               4.1 Newark
+                     Kettle & Kegs            67      Fast Food, Seafood, Mediterranean, Italian               0.0 Newark
+                        Bernardo's            84   Desserts, Pizza, BBQ, American, Mediterranean               4.0 Newark
+              Anaicha's Food Joint            43       Desserts, Pizza, Mexican, Bakery, Seafood               3.6 Newark
+                        Hawai Adda            17                            Tea, Pizza, Desserts               3.5 Newark
+                    Aim Delhi Cafe            87                     Tea, BBQ, Desserts, Seafood               3.4 Newark
+                       Cafe Bethak           100   Desserts, BBQ, Bakery, Mediterranean, Seafood               3.4 Newark
+               Republic of Chicken            42               Cafe, Bakery, Desserts, Fast Food               2.9 Newark
+                    All About Food            47     Pizza, Bakery, Fast Food, American, Seafood               0.0 Newark
+                          Suruchee            44                Tea, Pizza, Bakery, BBQ, Chinese               3.4 Newark
+                     Tunday Kababi            10                   Tea, Bakery, American, Indian               2.2 Newark
+                   Creamy Creation            44                         Mexican, Pizza, Seafood               0.0 Newark
+        Dilli Darbar Chicken Point            87              Desserts, Pizza, French, BBQ, Cafe               0.0 Newark
+                    Sangeeta Dhaba            47                     Tea, Cafe, Bakery, American               0.0 Newark
+          Aggarwal Bikaneri Sweets            76 Desserts, Tea, French, Fast Food, Mediterranean               0.0 Newark
+                 Mogambo Khush Hua            39           Cafe, Bakery, Mediterranean, Desserts               3.8 Newark
+Chokoreto - The Cake Design Studio            96                              Cafe, BBQ, Seafood               0.0 Newark
+                    New Garden Hut            12                     Tea, Cafe, Pizza, Fast Food               0.0 Newark
+                        Apni Rasoi            42                 Tea, Mexican, Desserts, Seafood               3.0 Newark
+                       Aapki Rasoi            98             Fast Food, Pizza, Desserts, Italian               0.0 Newark
+                Joshi Eating House            52                        Pizza, Indian, Fast Food               0.0 Newark
+                        Dev Burger            31           Tea, Italian, Bakery, Fast Food, Cafe               2.9 Newark
+                  South Indian Hut            47                        Tea, Cafe, BBQ, Desserts               0.0 Newark
+                 South Indian Cafe            83                     Indian, Desserts, Fast Food               3.3 Newark
+                         Pizza Hut            70                     Indian, Desserts, Fast Food               0.0 Newark
+                           Ahmed's            36                   Tea, Seafood, Cafe, Fast Food               0.0 Newark
+                    Baskin Robbins            77        Italian, Bakery, BBQ, Fast Food, Seafood               0.0 Newark
+
+### Accommodations in Newark
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number   city
+ Large Two Story Loft in the Heart of West Village 1127.0 Entire home/apt     No pets & No children under 10             3.0                  5                 4.0 Newark
+                   Gramercy One Bedroom w Two Beds  485.0 Entire home/apt No visitors & No children under 10             7.0                  4                 2.0 Newark
+                AMAZING TIME SQUARE!!BRICK WALLS!!  910.0 Entire home/apt     No children under 10 & No pets            30.0                  3                 1.0 Newark
+    Huge, Bright, clean Bushwick blocks from train  814.0    Private room                         No parties            20.0                  1                 4.0 Newark
+  Contemporary Brooklyn Lifestyle Apt /JFK Airport  610.0 Entire home/apt                            No pets             2.0                  6                 2.0 Newark
+Room 4 -Sunny Cozy Room in Historic Victorian Home 1196.0    Private room               No pets & No parties             2.0                  1                 4.0 Newark
+                 Large room near Times Square 31C4  798.0    Private room                         No smoking             7.0                  1                 3.0 Newark
+Up to 4 people-Only steps away from Times Square!! 1046.0    Private room           No visitors & No smoking             1.0                  2                 2.0 Newark
+                  Rustic Modern Brooklyn Apartment  294.0 Entire home/apt                            No pets            30.0                  2                 3.0 Newark
+     Sonder | Stock Exchange | Ideal 1BR + Kitchen  903.0 Entire home/apt                            No pets             2.0                  9                 4.0 Newark
+    Sunny Cozy Room Located In Prime East Flatbush  432.0    Private room           No parties & No visitors             2.0                  2                 3.0 Newark
+     Beautiful, Sunny, Artsy apartment in Brooklyn  660.0 Entire home/apt               No children under 10            21.0                  4                 3.0 Newark
+          Spacious 1 bedroom in Prime Williamsburg  515.0 Entire home/apt No pets & No visitors & No smoking             3.0                  5                 2.0 Newark
+                        1 Bedroom in UWS Manhattan  117.0 Entire home/apt            No parties & No smoking             2.0                  3                 2.0 Newark
+         Prime west village! design 1BR~Best Value 1066.0 Entire home/apt                         No smoking            30.0                  6                 4.0 Newark
+
+### Flight from Ithaca to Newark on 2022-03-18
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3924332     62   05:59   07:41 1 hours 42 minutes 2022-03-18         Ithaca       Newark     172.0
+     F3924359     62   19:08   20:43 1 hours 35 minutes 2022-03-18         Ithaca       Newark     172.0
+
+### Self-driving from Ithaca to Newark
+self-driving, from Ithaca to Newark, duration: 3 hours 38 mins, distance: 343 km, cost: 17
+
+### Taxi from Ithaca to Newark
+taxi, from Ithaca to Newark, duration: 3 hours 38 mins, distance: 343 km, cost: 343
+
+### Flight from Newark to Ithaca on 2022-03-20
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3923347     83   22:14   23:10 0 hours 56 minutes 2022-03-20         Newark       Ithaca     172.0
+     F3923348     42   17:44   18:46  1 hours 2 minutes 2022-03-20         Newark       Ithaca     172.0
+
+### Self-driving from Newark to Ithaca
+self-driving, from Newark to Ithaca, duration: 3 hours 43 mins, distance: 343 km, cost: 17
+
+### Taxi from Newark to Ithaca
+taxi, from Newark to Ithaca, duration: 3 hours 43 mins, distance: 343 km, cost: 343
+
+JSON plan:

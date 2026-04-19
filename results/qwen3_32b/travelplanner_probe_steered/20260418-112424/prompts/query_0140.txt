@@ -1,0 +1,120 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you assist in formulating a 3-day trip for two individuals, initiating from El Paso and concluding in Phoenix? The travel dates we're considering are March 4th to March 6th, 2022. We have a budget of $1,900. For accommodations, we have one constraint: the establishments must allow visitors. As far as meals go, we have a diverse taste palette, encompassing American, French, Mexican, and Indian cuisines. And to clarify, we are willing to travel, but not via flight.
+
+Reference information:
+### Attractions in Phoenix
+                                                Name  Latitude   Longitude                                                  Address          Phone                                                                                                                            Website    City
+                                         Phoenix Zoo 33.450037 -111.947006                455 N Galvin Pkwy, Phoenix, AZ 85008, USA (602) 286-3800                                                                                                        https://www.phoenixzoo.org/ Phoenix
+                                        Heard Museum 33.472581 -112.072233               2301 N Central Ave, Phoenix, AZ 85004, USA (602) 252-8840                                                                                                                 https://heard.org/ Phoenix
+                             Desert Botanical Garden 33.461680 -111.944926               1201 N Galvin Pkwy, Phoenix, AZ 85008, USA (480) 941-1225                                                                                                               https://www.dbg.org/ Phoenix
+                                  Phoenix Art Museum 33.467086 -112.072772               1625 N Central Ave, Phoenix, AZ 85004, USA (602) 257-1880                                                                                                                https://phxart.org/ Phoenix
+                     Enchanted Island Amusement Park 33.474739 -112.088152              1202 W Encanto Blvd, Phoenix, AZ 85007, USA (602) 254-1200                                                                                                    http://www.enchantedisland.com/ Phoenix
+                                    Hole in the Rock 33.456487 -111.945261                625 N Galvin Pkwy, Phoenix, AZ 85008, USA (602) 495-5458                                                                         https://www.phoenix.gov/parks/trails/locations/papago-park Phoenix
+                              Arizona Science Center 33.448528 -112.066209              600 E Washington St, Phoenix, AZ 85004, USA (602) 716-2000                                                                                                             https://azscience.org/ Phoenix
+           The Japanese Friendship Garden of Phoenix 33.460960 -112.076570                   1125 N 3rd Ave, Phoenix, AZ 85003, USA (602) 274-8700 http://www.japanesefriendshipgarden.org/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=1646036250481864746 Phoenix
+                              Arizona Capitol Museum 33.448097 -112.097024             1700 W Washington St, Phoenix, AZ 85007, USA (602) 926-3620                                                                                                     https://www.azlibrary.gov/azcm Phoenix
+                           Musical Instrument Museum 33.667990 -111.978297                 4725 E Mayo Blvd, Phoenix, AZ 85050, USA (480) 478-6000                                                                                                                   https://mim.org/ Phoenix
+                                         Papago Park 33.453632 -111.948693                625 N Galvin Pkwy, Phoenix, AZ 85008, USA (602) 495-5458                                                                         https://www.phoenix.gov/parks/trails/locations/papago-park Phoenix
+    Heritage & Science Park/Historic Heritage Square 33.450207 -112.065914                     113 N 6th St, Phoenix, AZ 85004, USA (602) 258-0048                                                                                                     https://heritagesquarephx.org/ Phoenix
+                        Children’s Museum of Phoenix 33.450403 -112.064582                     215 N 7th St, Phoenix, AZ 85034, USA (602) 253-0501                                                                                           http://www.childrensmuseumofphoenix.org/ Phoenix
+                                       Arizona Falls 33.489905 -111.958709          5802 E Indian School Rd, Phoenix, AZ 85018, USA (602) 236-8888                                                                                   https://www.srpnet.com/water/canals/azfalls.aspx Phoenix
+                                     Dobbins Lookout 33.345450 -112.058572                                   Phoenix, AZ 85042, USA        Unknown                                                                      https://www.phoenix.gov/parks/trails/locations/south-mountain Phoenix
+                                    Phoenix Bat Cave 33.514506 -112.001282            3698-3694 E Colter St, Phoenix, AZ 85018, USA        Unknown                                                                                                                            Unknown Phoenix
+                    South Mountain Park and Preserve 33.340337 -112.060947              10919 S Central Ave, Phoenix, AZ 85042, USA (602) 495-5458                                                                         http://phoenix.gov/parks/trails/locations/south/index.html Phoenix
+                           Hall of Flame Fire Museum 33.447679 -111.953272              6101 E Van Buren St, Phoenix, AZ 85008, USA (602) 275-3473                                                                                                        http://www.hallofflame.org/ Phoenix
+S'edav Va'aki Museum (formerly Pueblo Grande Museum) 33.445743 -111.984691             4619 E Washington St, Phoenix, AZ 85034, USA (602) 495-0901                                                                                                https://www.phoenix.gov/sedav-vaaki Phoenix
+                                Butterfly Wonderland 33.554511 -111.876190 9500 East Vía de Ventura F100, Scottsdale, AZ 85256, USA (480) 800-3000                                                                                                    http://butterflywonderland.com/ Phoenix
+
+### Restaurants in Phoenix
+                           Name  Average Cost                                       Cuisines  Aggregate Rating    City
+                      Pizza Hut            30                Tea, Chinese, Desserts, Seafood               4.4 Phoenix
+                   Doughlicious            41                             French, Pizza, BBQ               3.6 Phoenix
+                      Mama Loca            27    Desserts, Pizza, Italian, Bakery, Fast Food               4.2 Phoenix
+                        Mocambo            76              Tea, Chinese, Desserts, Fast Food               3.5 Phoenix
+             Village Restaurant            35                   Tea, Cafe, Desserts, Italian               3.7 Phoenix
+          Jungle The Restaurant            27                              Desserts, Seafood               3.7 Phoenix
+                 Domino's Pizza            96     Cafe, Mexican, Fast Food, Chinese, Seafood               2.8 Phoenix
+           Jaiveer Naan & Chaap            38       Cafe, Pizza, Fast Food, Chinese, Seafood               2.2 Phoenix
+       Penguin Bakers & Shakers            45                                    Cafe, Pizza               2.8 Phoenix
+                De Bone Chicken            59     Italian, BBQ, Fast Food, American, Seafood               0.0 Phoenix
+             Amritsari Naan Hut            21             Tea, Cafe, BBQ, Fast Food, Chinese               0.0 Phoenix
+                     Spooky Sky            15            Tea, Pizza, Fast Food, Cafe, Indian               3.4 Phoenix
+                    Delhi Dairy            23                       Seafood, Cafe, Fast Food               3.2 Phoenix
+                     Vero Gusto            13                          Desserts, Indian, BBQ               4.1 Phoenix
+Moti Mahal Delux Tandoori Trail            95             Mexican, Bakery, Desserts, Seafood               3.2 Phoenix
+              Special Tea Point            88              Tea, Pizza, Mexican, BBQ, Seafood               0.0 Phoenix
+                  Enigma Lounge            50 Desserts, Tea, Pizza, Italian, Mexican, Bakery               2.8 Phoenix
+             Rupa Bangali Dhaba            15                            Cafe, Pizza, Indian               0.0 Phoenix
+                         Subway            25              Cafe, Chinese, Seafood, Fast Food               3.3 Phoenix
+               Malabar Dosa Hut            92                Tea, Seafood, American, Italian               3.2 Phoenix
+                     Cafe Amigo            24                         Tea, Desserts, Italian               3.0 Phoenix
+                   Kebab Xpress            82               Tea, Cafe, Indian, Mediterranean               2.9 Phoenix
+                          Mutfi            67   Desserts, Bakery, Fast Food, Indian, Seafood               3.3 Phoenix
+                  Mughal E Azam            75                         French, BBQ, Fast Food               3.7 Phoenix
+
+### Accommodations in Phoenix
+                                               NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number    city
+                  1 BR in Carroll Gardens Townhouse  397.0    Private room           No visitors & No smoking             2.0                  1                 4.0 Phoenix
+                           Cozy Room in East Harlem  779.0    Private room                        No visitors             3.0                  2                 3.0 Phoenix
+              Lower East Side Oasis  (private room)  487.0    Private room No children under 10 & No visitors             2.0                  2                 2.0 Phoenix
+BEDSTUY BK - PAD\nSHORT/ LONG TERM STAYS\nNO EVENTS 1188.0 Entire home/apt                         No smoking             1.0                 10                 2.0 Phoenix
+  Bright, Williamsburg bedroom with private balcony 1021.0    Private room               No parties & No pets             2.0                  2                 2.0 Phoenix
+           Hudson Yard - Bright Double Double  Room  880.0    Private room              No pets & No visitors             1.0                  2                 5.0 Phoenix
+                Murray Hill, The Heart of Manhattan  361.0    Private room                         No smoking             3.0                  1                 4.0 Phoenix
+ 6 Guests! Close to JFK-Manhattan(30 min "A" train)  834.0 Entire home/apt               No pets & No parties             1.0                  8                 5.0 Phoenix
+          Large Sunny Room with Huge patio in Wburg  881.0    Private room                         No parties             2.0                  2                 4.0 Phoenix
+                       Twin Cabin with a Window One  234.0    Private room                         No parties             1.0                  1                 2.0 Phoenix
+    1,100 sq. ft. apt. Penthouse with private deck!  209.0 Entire home/apt              No visitors & No pets             1.0                  3                 5.0 Phoenix
+                     Bright big bedroom in Brooklyn  894.0    Private room                         No smoking             1.0                  2                 5.0 Phoenix
+                           Pretty Williamsburg Loft 1181.0 Entire home/apt                        No visitors             1.0                  6                 5.0 Phoenix
+                                   Brooklyn Home II  631.0    Private room No visitors & No children under 10             1.0                  2                 2.0 Phoenix
+                TriBeCa Amazing River View Loft 3BR 1195.0 Entire home/apt                         No parties            10.0                 11                 1.0 Phoenix
+   PRIME LOCATION CLEAN SOHO PRIVATE ROOM 2 BEDROOM  919.0    Private room                         No smoking             1.0                  2                 4.0 Phoenix
+
+### Flight from El Paso to Phoenix on 2022-03-04
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3801468    113   11:40   12:59 1 hours 19 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F3968527    167   12:18   13:35 1 hours 17 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F3968528    100   14:51   16:27 1 hours 36 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F3968529    141   19:24   20:50 1 hours 26 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F4044966    126   15:24   16:44 1 hours 20 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F4045961    144   19:57   21:26 1 hours 29 minutes 2022-03-04        El Paso      Phoenix     347.0
+     F4047833    156   08:45   10:21 1 hours 36 minutes 2022-03-04        El Paso      Phoenix     347.0
+
+### Self-driving from El Paso to Phoenix
+self-driving, from El Paso to Phoenix, duration: 6 hours 15 mins, distance: 692 km, cost: 34
+
+### Taxi from El Paso to Phoenix
+taxi, from El Paso to Phoenix, duration: 6 hours 15 mins, distance: 692 km, cost: 692
+
+### Flight from Phoenix to El Paso on 2022-03-06
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3803743     79   09:45   11:01 1 hours 16 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F3995959    119   21:54   22:56  1 hours 2 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F3995960     82   13:40   14:43  1 hours 3 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F3995961     79   16:15   17:15  1 hours 0 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F4044996    131   13:30   14:40 1 hours 10 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F4045984    115   16:16   17:25  1 hours 9 minutes 2022-03-06        Phoenix      El Paso     347.0
+     F4046887    157   19:38   20:44  1 hours 6 minutes 2022-03-06        Phoenix      El Paso     347.0
+
+### Self-driving from Phoenix to El Paso
+self-driving, from Phoenix to El Paso, duration: 6 hours 17 mins, distance: 694 km, cost: 34
+
+### Taxi from Phoenix to El Paso
+taxi, from Phoenix to El Paso, duration: 6 hours 17 mins, distance: 694 km, cost: 694
+
+JSON plan:

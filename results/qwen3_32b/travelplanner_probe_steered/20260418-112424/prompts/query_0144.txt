@@ -1,0 +1,189 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you suggest a 5-day travel itinerary for 2, leaving from Charlotte and visiting 2 cities in Wisconsin from March 18th to March 22nd, 2022? Our travel budget is set at $2,500. We will be traveling with children under 10, so our accommodations must be child-friendly and provide private rooms. Kindly ensure no flights are involved in the transportation planning.
+
+Reference information:
+### Attractions in Marquette
+                               Name  Latitude  Longitude                                         Address          Phone                                                                                               Website      City
+                  Presque Isle Park 46.586385 -87.382510        Peter White Dr, Marquette, MI 49855, USA (906) 228-0460 https://www.marquettemi.gov/departments/community-services/parks-and-recreation/presque-isle-rentals/ Marquette
+        Marquette Harbor Lighthouse 46.546563 -87.376294  300 N Lakeshore Blvd, Marquette, MI 49855, USA (906) 226-2006                                                                     http://www.mqtmaritimemuseum.com/ Marquette
+  Upper Peninsula Children's Museum 46.540796 -87.394771      123 W Baraga Ave, Marquette, MI 49855, USA (906) 226-3911                                                                     http://www.upchildrensmuseum.org/ Marquette
+  Marquette Regional History Center 46.541389 -87.395556       145 W Spring St, Marquette, MI 49855, USA (906) 226-3571                                                                      http://www.marquettehistory.org/ Marquette
+                  De Vos Art Museum 46.558215 -87.402601 1401 Presque Isle Ave, Marquette, MI 49855, USA (906) 227-2235                                                                             https://nmuartmuseum.com/ Marquette
+Ellwood A Mattson Lower Harbor Park 46.543626 -87.387440  200 N Lakeshore Blvd, Marquette, MI 49855, USA (906) 228-0460                      https://www.marquettemi.gov/departments/community-services/parks-and-recreation/ Marquette
+                        Black Rocks 46.592685 -87.380795      2 Peter White Dr, Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+          Marquette Mountain Resort 46.508207 -87.420810            4501 M-553, Marquette, MI 49855, USA (906) 225-1155                                                                     http://www.marquettemountain.com/ Marquette
+                  Picnic Rocks Park 46.555686 -87.384307                        Marquette, MI 49855, USA (906) 228-0460                                                                                               Unknown Marquette
+          Marquette Maritime Museum 46.545625 -87.379342   300 Lake Shore Blvd, Marquette, MI 49855, USA (906) 226-2006                                                                         http://mqtmaritimemuseum.com/ Marquette
+                   Founders Landing 46.535124 -87.394069                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+                       Sunset Point 46.592940 -87.382964      2 Peter White Dr, Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+                       Tourist Park 46.568943 -87.406698   2145 Sugar Loaf Ave, Marquette, MI 49855, USA (906) 228-0465          http://www.marquettemi.gov/departments/community-services/parks-and-recreation/tourist-park/ Marquette
+                  Lower Harbor Park 46.543497 -87.388972         201 E Main St, Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+                   Carp River Falls 46.503670 -87.446690                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+             Mt. Marquette Overlook 46.513887 -87.401081                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+                        Lakenenland 46.492492 -87.152316        2800 M-28 East, Marquette, MI 49855, USA (906) 250-5138                                                                               http://lakenenland.com/ Marquette
+                    Gold Mine Falls 46.694440 -87.584250                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+             Upper Dead River Falls 46.569260 -87.478754                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+                   Hogback Mountain 46.605117 -87.489754                        Marquette, MI 49855, USA        Unknown                                                                                               Unknown Marquette
+
+### Restaurants in Marquette
+                          Name  Average Cost                                           Cuisines  Aggregate Rating      City
+                The Chop House            81      Desserts, Tea, Pizza, Mexican, Bakery, Indian               4.0 Marquette
+             Taste of Balingup            35                                      BBQ, Desserts               3.2 Marquette
+                      Dovetail            95                    Fast Food, Indian, BBQ, Italian               3.8 Marquette
+                 Papa Mexicano            17           Italian, Bakery, BBQ, Fast Food, Seafood               3.6 Marquette
+                   Eat N Treat            15                                       Tea, Seafood               2.8 Marquette
+                        Ifthar            67                   Bakery, American, Cafe, Desserts               3.8 Marquette
+         Annapurna Sweet House            36                  French, Bakery, Desserts, Seafood               3.7 Marquette
+                   Dawat Khana            55                       Mexican, Desserts, Fast Food               2.5 Marquette
+                     Teddy Boy            99                   Pizza, Bakery, Desserts, Seafood               3.9 Marquette
+        Iqbal's Mughal Cuisine            70      Desserts, Pizza, French, BBQ, Bakery, Chinese               0.0 Marquette
+           FOG Cafe and Lounge            96              Tea, Bakery, Mediterranean, Fast Food               3.0 Marquette
+                     Pizza Hut            89                          French, Bakery, Fast Food               3.3 Marquette
+                          Miam            56      Desserts, Pizza, Mexican, Fast Food, American               3.2 Marquette
+           Shudh Vaishno Hotel            22       Desserts, Tea, BBQ, Fast Food, Mediterranean               3.4 Marquette
+                Baskin Robbins            72               Mexican, BBQ, Mediterranean, Seafood               0.0 Marquette
+                   Chap Corner            62                              Tea, French, Desserts               0.0 Marquette
+Do Bhai Paneer Wale And Sweets            97        Desserts, Pizza, Bakery, BBQ, Mediterranean               0.0 Marquette
+              Bikano Chat Cafe            78                              Tea, Bakery, Desserts               2.6 Marquette
+              Sethi Restaurant            67    Desserts, Tea, Pizza, Mexican, Chinese, Seafood               2.8 Marquette
+  Stallion - Pride Plaza Hotel            59                 Tea, American, Desserts, Fast Food               3.1 Marquette
+                   Burger King            49                                     Tea, Cafe, BBQ               3.6 Marquette
+        Aunty Chings Fast Food            42             Pizza, Bakery, Cafe, American, Seafood               0.0 Marquette
+  Machan - The Taj Mahal Hotel            84                   Bakery, BBQ, Desserts, Fast Food               3.9 Marquette
+                    Wah Ji Wah            40 Tea, Mexican, Bakery, Fast Food, American, Seafood               3.0 Marquette
+    Spice Court - Hotel Maurya            52          Desserts, Pizza, Italian, Indian, Seafood               3.7 Marquette
+                Barbeque Ville            55       Tea, Pizza, French, Mexican, Bakery, Seafood               4.4 Marquette
+                        Jamjar            83                             Bakery, Pizza, Seafood               3.1 Marquette
+           Indian Coffee House            24                       Bakery, Mexican, Indian, BBQ               3.4 Marquette
+
+### Accommodations in Marquette
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+              Huge Private Room Near Prospect Park   73.0    Private room                        No smoking & No visitors             7.0                  2                 2.0 Marquette
+                    Williamsburg high ceiling loft  395.0 Entire home/apt                           No pets & No visitors             3.0                  2                 5.0 Marquette
+        Quiet Oasis. A nice break from city chaos. 1009.0    Private room              No pets & No visitors & No parties             2.0                  1                 3.0 Marquette
+           West 57th Street by Hilton Club- Studio  570.0 Entire home/apt                            No smoking & No pets             3.0                  3                 1.0 Marquette
+                          Cozy Studio Midtown East  432.0 Entire home/apt                            No parties & No pets             3.0                  2                 5.0 Marquette
+                                     Brooklyn Loft  378.0 Entire home/apt No parties & No children under 10 & No visitors            21.0                  2                 5.0 Marquette
+                         Roomy Riverside Apartment  561.0    Private room                                         No pets             2.0                  1                 5.0 Marquette
+Large, Private, Sunny Room 8 min to Subway -Harlem   88.0    Private room                                         No pets             4.0                  2                 3.0 Marquette
+    Joy's Luxury Apartment with Free Parking Space  651.0 Entire home/apt                            No children under 10             1.0                  3                 3.0 Marquette
+  Private Studio-like room on the Upper West Side.  495.0    Private room                            No children under 10             1.0                  2                 3.0 Marquette
+  Enormous, Beautiful Apartment near Prospect Park 1068.0 Entire home/apt                                     No visitors             1.0                  7                 5.0 Marquette
+2 Bedroom midcentury Brooklyn Brownstone apartment  372.0 Entire home/apt                         No parties & No smoking             2.0                  2                 4.0 Marquette
+       Big Room by Metro/Subway-15mns to Manhattan  720.0    Private room                                      No smoking             2.0                  2                 4.0 Marquette
+                 Jewel Box Studio in Soho / Nolita  462.0 Entire home/apt                  No pets & No children under 10             1.0                  3                 2.0 Marquette
+    Parisian Apt in PRIME Carroll Gardens Brooklyn   97.0 Entire home/apt     No children under 10 & No pets & No smoking             5.0                  3                 1.0 Marquette
+ Nice bedroom in Morningside Heights spacious flat  777.0    Private room                                      No smoking            30.0                  2                 5.0 Marquette
+                         Cozy East Village walk up  128.0 Entire home/apt               No children under 10 & No smoking             3.0                  3                 2.0 Marquette
+
+### Attractions in Milwaukee
+                                Name  Latitude  Longitude                                              Address          Phone                                                                                      Website      City
+                Milwaukee Art Museum 43.040073 -87.897058        700 N Art Museum Dr, Milwaukee, WI 53202, USA (414) 224-3200                                                                              http://mam.org/ Milwaukee
+             Milwaukee Public Museum 43.040537 -87.920858             800 W Wells St, Milwaukee, WI 53233, USA (414) 278-2728                                                                         https://www.mpm.edu/ Milwaukee
+              North Point Lighthouse 43.065672 -87.871422            2650 N Wahl Ave, Milwaukee, WI 53211, USA (414) 332-6754                                                             http://northpointlighthouse.org/ Milwaukee
+                Milwaukee County Zoo 43.032716 -88.037408       10001 W Bluemound Rd, Milwaukee, WI 53226, USA (414) 771-3040                                                                    https://milwaukeezoo.org/ Milwaukee
+                     Discovery World 43.036869 -87.895735            500 N Harbor Dr, Milwaukee, WI 53202, USA (414) 765-9966                                                              https://www.discoveryworld.org/ Milwaukee
+        Milwaukee Riverwalk District 43.051261 -87.911798          101 W Pleasant St, Milwaukee, WI 53212, USA        Unknown                                                   http://www.milwaukeeriverwalkdistrict.com/ Milwaukee
+                 Mitchell Park Domes 43.026437 -87.945948          524 S Layton Blvd, Milwaukee, WI 53215, USA (414) 257-5600                                                           https://www.mitchellparkdomes.com/ Milwaukee
+                       Pabst Mansion 43.039265 -87.937994       2000 W Wisconsin Ave, Milwaukee, WI 53233, USA (414) 931-0808                                                                 http://www.pabstmansion.com/ Milwaukee
+              Harley-Davidson Museum 43.031671 -87.916524             400 W Canal St, Milwaukee, WI 53201, USA (414) 287-2789                                                                    http://www.h-dmuseum.com/ Milwaukee
+                  Museum Center Park 43.039036 -87.899142          910 E Michigan St, Milwaukee, WI 53202, USA (414) 224-3200                                                                              http://mam.org/ Milwaukee
+       Milwaukee Pierhead Lighthouse 43.025959 -87.895351                             Milwaukee, WI 53202, USA        Unknown                                                                                      Unknown Milwaukee
+                Lakeshore State Park 43.033633 -87.895518            500 N Harbor Dr, Milwaukee, WI 53202, USA (414) 274-4281                                              https://dnr.wisconsin.gov/topic/parks/lakeshore Milwaukee
+            Streets of Old Milwaukee 43.040658 -87.921883             800 W Wells St, Milwaukee, WI 53233, USA (414) 278-2702 http://www.mpm.edu/exhibitions/permanent-exhibits/first-floor-exhibits/streets-old-milwaukee Milwaukee
+Oceans of Fun with Ocean Connections 43.034296 -88.040379       10001 W Bluemound Rd, Milwaukee, WI 53226, USA (414) 453-5527                                                                 https://www.oceansoffun.org/ Milwaukee
+          Milwaukee RiverWalk | East 43.042927 -87.912532            N Riverwalk Way, Milwaukee, WI 53202, USA        Unknown                                                      https://milwaukeeriverwalkdistrict.com/ Milwaukee
+                          Swing Park 43.053671 -87.903502            1737 N Water St, Milwaukee, WI 53202, USA (414) 286-2489                                                                                      Unknown Milwaukee
+                   South Shore Beach 42.993934 -87.881021            2900 S Shore Dr, Milwaukee, WI 53207, USA        Unknown                                                                                      Unknown Milwaukee
+                       Veterans Park 43.045110 -87.890781 1010 N Lincoln Memorial Dr, Milwaukee, WI 53202, USA (414) 257-7275           https://county.milwaukee.gov/files/county/parks-department/Park-Maps/Veterans1.pdf Milwaukee
+             Jewish Museum Milwaukee 43.047991 -87.894886        1360 N Prospect Ave, Milwaukee, WI 53202, USA (414) 390-5730                                                            http://jewishmuseummilwaukee.org/ Milwaukee
+             North Point Water Tower 43.059704 -87.879856             2288 N Lake Dr, Milwaukee, WI 53202, USA (414) 286-2830                                 http://city.milwaukee.gov/water/about/North-Point-Tower-.htm Milwaukee
+
+### Restaurants in Milwaukee
+                                     Name  Average Cost                                         Cuisines  Aggregate Rating      City
+                               Cool Basil            40          Chinese, Pizza, French, Fast Food, Cafe               4.1 Milwaukee
+                                  Berco's            91          Desserts, Pizza, Italian, Cafe, Seafood               3.8 Milwaukee
+                                   Subway            48                               Tea, BBQ, Desserts               0.0 Milwaukee
+                           Shankar Sweets            66                    Tea, Bakery, Pizza, Fast Food               0.0 Milwaukee
+                                      Red            98    Desserts, BBQ, Fast Food, Cafe, Mediterranean               3.0 Milwaukee
+                                 Frontier            13                 Fast Food, Seafood, Tea, Italian               2.9 Milwaukee
+                            The Pack King            94                            French, Bakery, Pizza               0.0 Milwaukee
+               Yomo-Your Only Momo Outlet            62          Cafe, Seafood, Mediterranean, Fast Food               3.0 Milwaukee
+                             Doughlicious            59                Tea, Cafe, Mediterranean, Italian               3.3 Milwaukee
+                           Madly Bangalee            59         Pizza, American, Mediterranean, Desserts               2.7 Milwaukee
+                              Crazzy Bite            86                            Tea, Bakery, Desserts               0.0 Milwaukee
+                     Ramesh Vaishno Dhaba            36         Pizza, BBQ, Fast Food, American, Seafood               3.5 Milwaukee
+                               Meet n Eat            94                   Fast Food, Pizza, BBQ, Seafood               2.7 Milwaukee
+                      The Chinese Kitchen            23        Fast Food, Bakery, Mediterranean, Italian               3.1 Milwaukee
+                           Ekta's Kitchen            42                       French, Pizza, Indian, BBQ               3.2 Milwaukee
+                     Himalaya Food Corner            40           Desserts, Tea, BBQ, Fast Food, Chinese               2.7 Milwaukee
+                            The Beer Cafe            36                   Tea, Bakery, Desserts, Italian               3.8 Milwaukee
+              Raju De Special Paneer Wale            26                             Tea, Cafe, Fast Food               0.0 Milwaukee
+Muradabad Ki Mashoor Sama Chicken Biryani            42                               Chinese, BBQ, Cafe               2.9 Milwaukee
+                             Janta Sweets            51                    Fast Food, Cafe, BBQ, Italian               3.0 Milwaukee
+                             Cake O Frost            22                                    BBQ, Desserts               3.3 Milwaukee
+             Welcome Fast Food & Parantha            47               Cafe, Bakery, Pizza, Mediterranean               0.0 Milwaukee
+                          Shawarma King's            32                         Cafe, American, Desserts               3.1 Milwaukee
+                   Kumaon Dhaba & Service            28                         Tea, American, Fast Food               3.0 Milwaukee
+                          Darbaar Chicken            84        Tea, Pizza, BBQ, Fast Food, Mediterranean               3.0 Milwaukee
+                             World of Wok            74 Italian, Fast Food, Cafe, Mediterranean, Seafood               3.6 Milwaukee
+               Ram Ram Ji Kachori Bhandar            44                 Chinese, Desserts, American, BBQ               0.0 Milwaukee
+                              Funduz Cafe            40              Chinese, Mexican, Desserts, Seafood               0.0 Milwaukee
+                       Mama Bhanja Corner            28        Desserts, Pizza, Mexican, Fast Food, Cafe               0.0 Milwaukee
+                             Simla Bakery            51        Desserts, Pizza, BBQ, Cafe, Mediterranean               0.0 Milwaukee
+                                   Foodie            35        Desserts, Cafe, Italian, Chinese, Seafood               2.8 Milwaukee
+                                Nirmala's            26                     Tea, Cafe, Bakery, Fast Food               3.4 Milwaukee
+
+### Accommodations in Milwaukee
+                                        NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number      city
+          Spacious 1 Bedroom in Midwood, BK! 1125.0    Private room                        No children under 10             1.0                  1                 1.0 Milwaukee
+     Affordable bedroom in the East Village!  184.0    Private room                                  No parties             2.0                  2                 5.0 Milwaukee
+                            Consider it home  892.0 Entire home/apt              No children under 10 & No pets            26.0                  3                 3.0 Milwaukee
+               Delightful & Roomy 1 Bdrm Apt  911.0 Entire home/apt No pets & No smoking & No children under 10             1.0                  9                 1.0 Milwaukee
+           Sunny and Bright 1BR Factory Loft  146.0 Entire home/apt                    No smoking & No visitors            30.0                  2                 1.0 Milwaukee
+Spacious Charming NYC Apt, 10 min to Midtown  928.0 Entire home/apt                                  No smoking            10.0                  7                 3.0 Milwaukee
+
+### Flight from Charlotte to Marquette on 2022-03-18
+There is no flight from Charlotte to Marquette on 2022-03-18.
+
+### Self-driving from Charlotte to Marquette
+self-driving, from Charlotte to Marquette, duration: 13 hours 1 min, distance: 1,371 km, cost: 68
+
+### Taxi from Charlotte to Marquette
+taxi, from Charlotte to Marquette, duration: 13 hours 1 min, distance: 1,371 km, cost: 1371
+
+### Flight from Marquette to Milwaukee on 2022-03-20
+There is no flight from Marquette to Milwaukee on 2022-03-20.
+
+### Self-driving from Marquette to Milwaukee
+self-driving, from Marquette to Milwaukee, duration: 6 mins, distance: 2.0 km, cost: 0
+
+### Taxi from Marquette to Milwaukee
+taxi, from Marquette to Milwaukee, duration: 6 mins, distance: 2.0 km, cost: 2
+
+### Flight from Milwaukee to Charlotte on 2022-03-22
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3630956    271   10:20   13:16 1 hours 56 minutes 2022-03-22      Milwaukee    Charlotte     651.0
+     F3686826    196   05:05   08:01 1 hours 56 minutes 2022-03-22      Milwaukee    Charlotte     651.0
+
+### Self-driving from Milwaukee to Charlotte
+self-driving, from Milwaukee to Charlotte, duration: 12 hours 58 mins, distance: 1,369 km, cost: 68
+
+### Taxi from Milwaukee to Charlotte
+taxi, from Milwaukee to Charlotte, duration: 12 hours 58 mins, distance: 1,369 km, cost: 1369
+
+JSON plan:

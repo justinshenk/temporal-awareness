@@ -1,0 +1,101 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please create a 3-day travel plan for two people, departing from Panama City and heading to Nashville from March 23rd to March 25th, 2022. We need accommodations that are not shared rooms and have a budget limit of $2,900.
+
+Reference information:
+### Attractions in Nashville
+                                 Name  Latitude  Longitude                                             Address          Phone                                                                                                                                                                                  Website      City
+Country Music Hall of Fame and Museum 36.158263 -86.776126 222 Rep. John Lewis Way S, Nashville, TN 37203, USA (615) 416-2001                                                                                                                                                      https://countrymusichalloffame.org/ Nashville
+           Nashville Zoo at Grassmere 36.089705 -86.742096       3777 Nolensville Pk, Nashville, TN 37211, USA (615) 833-1534                                                                                                                                                             http://www.nashvillezoo.org/ Nashville
+   Belle Meade Historic Site & Winery 36.104916 -86.864695         5025 Harding Pike, Nashville, TN 37205, USA (615) 356-0501                                                                                                                                                             https://visitbellemeade.com/ Nashville
+                   Johnny Cash Museum 36.160939 -86.775757             119 3rd Ave S, Nashville, TN 37201, USA (615) 256-1777                                                                                                                                                         http://www.johnnycashmuseum.com/ Nashville
+                      Centennial Park 36.148946 -86.812750         2500 West End Ave, Nashville, TN 37203, USA (615) 862-8400                                                                                                                https://www.nashville.gov/Parks-and-Recreation/Parks/Centennial-Park.aspx Nashville
+                       Grand Ole Opry 36.206857 -86.692108         600 Opry Mills Dr, Nashville, TN 37214, USA (615) 871-6779   https://www.opry.com/?utm_campaign=opry&utm_medium=organicsearch&utm_source=googlemybusiness&utm_audience=tofu_googlemybusiness&utm_content=brandstory_google_my_business_website_link Nashville
+                     Frist Art Museum 36.157897 -86.783853              919 Broadway, Nashville, TN 37203, USA (615) 244-3340                                                                                                                                                              https://fristartmuseum.org/ Nashville
+                        The Parthenon 36.149674 -86.813347         2500 West End Ave, Nashville, TN 37203, USA (615) 862-8431                                                                                                                                                      https://www.nashvilleparthenon.com/ Nashville
+                     Nashville Shores 36.158209 -86.604915              4001 Bell Rd, Hermitage, TN 37076, USA (615) 889-7050                                                                                                                                                   http://www.nashvilleshores.com/lodging Nashville
+    Musicians Hall of Fame and Museum 36.167668 -86.782399                401 Gay St, Nashville, TN 37219, USA (615) 244-3263                                                                                                                                                     https://www.musicianshalloffame.com/ Nashville
+ Bicentennial Capitol Mall State Park 36.170887 -86.787589  600 James Robertson Pkwy, Nashville, TN 37243, USA (888) 867-2757                                                                                                                                         https://tnstateparks.com/parks/bicentennial-mall Nashville
+                    Lane Motor Museum 36.140197 -86.734580     702 Murfreesboro Pike, Nashville, TN 37210, USA (615) 742-7445                                                                                                                                                          http://www.lanemotormuseum.org/ Nashville
+                   Honky Tonk Highway 36.160393 -86.778432              501 Broadway, Nashville, TN 37203, USA (800) 657-6910                                                                                                                                 https://www.visitmusiccity.com/visitors/honkytonkhighway Nashville
+             Adventure Science Center 36.146614 -86.775481      800 Fort Negley Blvd, Nashville, TN 37203, USA (615) 862-5160                                                                                                                                                             http://www.adventuresci.org/ Nashville
+                   Patsy Cline Museum 36.160904 -86.776030             119 3rd Ave S, Nashville, TN 37201, USA (615) 454-4722                                                                                                                                                             https://www.patsymuseum.com/ Nashville
+           Andrew Jackson’s Hermitage 36.213757 -86.615310           4580 Rachels Ln, Hermitage, TN 37076, USA (615) 889-2941                                                                                                                                                             http://www.thehermitage.com/ Nashville
+                      NashTrash Tours 36.169474 -86.788254     900 Rosa L Parks Blvd, Nashville, TN 37208, USA (615) 226-7300                                                                                                                                                                http://www.nashtrash.com/ Nashville
+                     Fort Nashborough 36.164268 -86.775430             170 1st Ave N, Nashville, TN 37201, USA (615) 862-8400                                                                                                      https://www.nashville.gov/Parks-and-Recreation/Historic-Sites/Fort-Nashborough.aspx Nashville
+                     Ryman Auditorium 36.161248 -86.778471             116 5th Ave N, Nashville, TN 37219, USA (615) 889-3060 https://www.ryman.com/?utm_campaign=ryman&utm_medium=organicsearch&utm_source=googlemybusiness&utm_audience=tofu_googlemybusiness&utm_content=brandstory_google_my_business_website_link Nashville
+         Nashville Public Square Park 36.166611 -86.778126      Union St & 3rd Ave N, Nashville, TN 37201, USA (615) 743-3090                                                                                                                                  https://www.nashvilledowntown.com/go/public-square-park Nashville
+
+### Restaurants in Nashville
+                              Name  Average Cost                                    Cuisines  Aggregate Rating      City
+                         Bangkok 1            44                               Cafe, Seafood               3.3 Nashville
+                   Bablu Fast Food            13    Desserts, Pizza, Mexican, BBQ, Fast Food               0.0 Nashville
+                        Full Dabba            77   Pizza, Mexican, Fast Food, Cafe, American               0.0 Nashville
+                            Twigly            14  Pizza, French, Fast Food, Chinese, Seafood               4.5 Nashville
+                           Veg Hut            35                       Tea, Mexican, Seafood               0.0 Nashville
+                    The Toddy Shop            92                         Desserts, Fast Food               3.4 Nashville
+                         GoGourmet            34            Tea, Cafe, Indian, Mediterranean               3.7 Nashville
+           Govinda's Confectionery            15       Tea, Bakery, Mediterranean, Fast Food               3.1 Nashville
+                      Kitchen King            13    Pizza, Italian, BBQ, Cafe, Mediterranean               0.0 Nashville
+                         Town Hall            55                                Tea, Seafood               3.8 Nashville
+                  Smoke House Deli            59                Cafe, Mediterranean, Seafood               4.0 Nashville
+            Dialogue Lounge & Caf愆            83   Tea, Indian, BBQ, Cafe, American, Seafood               3.0 Nashville
+                  Meenakshi Bhawan            24                               Tea, Desserts               3.1 Nashville
+                      Oh! Calcutta            83             Tea, Mexican, BBQ, Cafe, Indian               4.4 Nashville
+                     Chicago Pizza            20                     Tea, French, Pizza, BBQ               3.2 Nashville
+               Malhotra Restaurant            76                      Tea, Desserts, Seafood               2.9 Nashville
+                       Madras Cafe            88                    Pizza, Desserts, Seafood               0.0 Nashville
+Dakshin - Sheraton New Delhi Hotel            63                 Cafe, Pizza, Indian, Bakery               4.0 Nashville
+           1911 Bar - The Imperial            76 Desserts, Pizza, Italian, American, Seafood               3.2 Nashville
+                     Punjabi Virsa            35       Desserts, Italian, BBQ, Cafe, Seafood               0.0 Nashville
+                       Sagar Dhaba            55       Tea, Bakery, BBQ, Cafe, Mediterranean               0.0 Nashville
+                     Kettle & Kegs            60                                Tea, Seafood               0.0 Nashville
+                             Kargo            84                        Tea, Pizza, Desserts               4.4 Nashville
+
+### Accommodations in Nashville
+                                         NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number      city
+Huge 2 Bedroom, Great Location, Express Metro  745.0 Entire home/apt No smoking & No children under 10 & No pets             4.0                  4                 5.0 Nashville
+   Clean and large bedroom in a private house  474.0    Private room                                  No smoking             1.0                  1                 4.0 Nashville
+                         Brooklyn Heights gem  993.0 Entire home/apt                                     No pets             2.0                  6                 5.0 Nashville
+         Lovely room in heart of Williamsburg   61.0    Private room                                     No pets             2.0                  1                 4.0 Nashville
+   *Light & Love* vibrant, historic, sleeps 4  679.0 Entire home/apt                                     No pets             5.0                  2                 2.0 Nashville
+        FiDi Cozy room overlooking East River  870.0    Private room                                  No parties             1.0                  2                 5.0 Nashville
+       Charming 1BR with sun-nook in Brooklyn  256.0 Entire home/apt No children under 10 & No pets & No smoking             3.0                  2                 4.0 Nashville
+              Cozy bedroom close to Manhattan  576.0    Private room                        No children under 10             1.0                  1                 3.0 Nashville
+
+### Flight from Panama City to Nashville on 2022-03-23
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3985881    124   18:07   19:13  1 hours 6 minutes 2022-03-23    Panama City    Nashville     401.0
+     F3985882    126   07:24   08:51 1 hours 27 minutes 2022-03-23    Panama City    Nashville     401.0
+
+### Self-driving from Panama City to Nashville
+self-driving, from Panama City to Nashville, duration: 7 hours 25 mins, distance: 731 km, cost: 36
+
+### Taxi from Panama City to Nashville
+taxi, from Panama City to Nashville, duration: 7 hours 25 mins, distance: 731 km, cost: 731
+
+### Flight from Nashville to Panama City on 2022-03-25
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4012164    139   22:23   23:29  1 hours 6 minutes 2022-03-25      Nashville  Panama City     401.0
+     F4012165    105   07:32   08:46 1 hours 14 minutes 2022-03-25      Nashville  Panama City     401.0
+
+### Self-driving from Nashville to Panama City
+self-driving, from Nashville to Panama City, duration: 7 hours 23 mins, distance: 735 km, cost: 36
+
+### Taxi from Nashville to Panama City
+taxi, from Nashville to Panama City, duration: 7 hours 23 mins, distance: 735 km, cost: 735
+
+JSON plan:

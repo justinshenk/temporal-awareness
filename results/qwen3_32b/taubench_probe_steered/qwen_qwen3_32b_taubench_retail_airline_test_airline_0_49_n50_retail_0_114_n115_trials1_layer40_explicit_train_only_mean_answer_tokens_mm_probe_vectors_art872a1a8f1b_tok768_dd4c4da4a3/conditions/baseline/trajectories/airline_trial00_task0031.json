@@ -1,0 +1,1071 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need help with my bookings. I accidentally booked two flights on May 17th and I need to cancel one of them.",
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide me with your user ID and the reservation ID of the booking you want to cancel?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Sure, I can help with that. Could you please provide me with your user ID and the reservation ID of the booking you want to cancel?"
+      }
+    },
+    "observation": "My user ID is mohamed_hernandez_5188. Let me see... I want to cancel the flight from Atlanta to New York, the ATL to JFK one. I don't have the reservation ID handy right now though.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide me with your user ID and the reservation ID of the booking you want to cancel?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4634,
+    "output_tokens": 46,
+    "generation_seconds": 4.087463140487671,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mohamed_hernandez_5188\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "mohamed_hernandez_5188"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\"}, \"address\": {\"address1\": \"916 River Road\", \"address2\": \"Suite 153\", \"city\": \"Dallas\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"75236\"}, \"email\": \"mohamed.hernandez8983@example.com\", \"dob\": \"1996-10-16\", \"payment_methods\": {\"credit_card_5417084\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"7393\", \"id\": \"credit_card_5417084\"}, \"certificate_6623588\": {\"source\": \"certificate\", \"amount\": 250, \"id\": \"certificate_6623588\"}, \"certificate_6969088\": {\"source\": \"certificate\", \"amount\": 500, \"id\": \"certificate_6969088\"}}, \"saved_passengers\": [{\"first_name\": \"Evelyn\", \"last_name\": \"Rossi\", \"dob\": \"1972-09-13\"}, {\"first_name\": \"James\", \"last_name\": \"Sanchez\", \"dob\": \"1952-09-13\"}], \"membership\": \"silver\", \"reservations\": [\"35V5SM\", \"XXDC1M\", \"V5EMZH\", \"D1EW9B\", \"9HBUV8\", \"DGZSYX\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mohamed_hernandez_5188\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4739,
+    "output_tokens": 31,
+    "generation_seconds": 3.196655035018921,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have several reservations. Could you please confirm which reservation includes the flight from Atlanta (ATL) to New York (JFK) on May 17th?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see you have several reservations. Could you please confirm which reservation includes the flight from Atlanta (ATL) to New York (JFK) on May 17th?"
+      }
+    },
+    "observation": "Yes, that's the one on May 17th - the ATL to JFK flight. I'm pretty sure that's one of my two bookings that day. Can you help me cancel that specific one?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have several reservations. Could you please confirm which reservation includes the flight from Atlanta (ATL) to New York (JFK) on May 17th?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5138,
+    "output_tokens": 53,
+    "generation_seconds": 4.656761169433594,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"35V5SM\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "35V5SM"
+      }
+    },
+    "observation": "{\"reservation_id\": \"35V5SM\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"LAX\", \"destination\": \"SFO\", \"flight_type\": \"round_trip\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"LAX\", \"destination\": \"SFO\", \"flight_number\": \"HAT155\", \"date\": \"2024-05-24\", \"price\": 1480}, {\"origin\": \"SFO\", \"destination\": \"LAX\", \"flight_number\": \"HAT163\", \"date\": \"2024-05-29\", \"price\": 812}], \"passengers\": [{\"first_name\": \"Yusuf\", \"last_name\": \"Lee\", \"dob\": \"1951-07-12\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 2292}], \"created_at\": \"2024-05-06T17:41:02\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"35V5SM\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5242,
+    "output_tokens": 25,
+    "generation_seconds": 2.9528424739837646,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XXDC1M\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "XXDC1M"
+      }
+    },
+    "observation": "{\"reservation_id\": \"XXDC1M\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"DEN\", \"destination\": \"PHX\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"DEN\", \"destination\": \"LAS\", \"flight_number\": \"HAT084\", \"date\": \"2024-05-21\", \"price\": 76}, {\"origin\": \"LAS\", \"destination\": \"PHX\", \"flight_number\": \"HAT244\", \"date\": \"2024-05-21\", \"price\": 62}, {\"origin\": \"PHX\", \"destination\": \"LAS\", \"flight_number\": \"HAT027\", \"date\": \"2024-05-22\", \"price\": 53}, {\"origin\": \"LAS\", \"destination\": \"DEN\", \"flight_number\": \"HAT162\", \"date\": \"2024-05-22\", \"price\": 87}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}, {\"first_name\": \"Olivia\", \"last_name\": \"Smith\", \"dob\": \"1974-06-23\"}, {\"first_name\": \"Harper\", \"last_name\": \"Li\", \"dob\": \"1967-01-23\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 834}], \"created_at\": \"2024-05-04T17:06:02\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XXDC1M\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5552,
+    "output_tokens": 24,
+    "generation_seconds": 3.0239129066467285,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"V5EMZH\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "V5EMZH"
+      }
+    },
+    "observation": "{\"reservation_id\": \"V5EMZH\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"CLT\", \"destination\": \"BOS\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"CLT\", \"destination\": \"BOS\", \"flight_number\": \"HAT064\", \"date\": \"2024-05-27\", \"price\": 58}, {\"origin\": \"BOS\", \"destination\": \"CLT\", \"flight_number\": \"HAT277\", \"date\": \"2024-05-29\", \"price\": 80}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 168}], \"created_at\": \"2024-05-08T22:33:35\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"V5EMZH\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6006,
+    "output_tokens": 24,
+    "generation_seconds": 3.137324094772339,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"D1EW9B\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "D1EW9B"
+      }
+    },
+    "observation": "{\"reservation_id\": \"D1EW9B\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"ATL\", \"destination\": \"JFK\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"ATL\", \"destination\": \"JFK\", \"flight_number\": \"HAT285\", \"date\": \"2024-05-17\", \"price\": 54}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 54}], \"created_at\": \"2024-05-04T07:38:29\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"D1EW9B\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6313,
+    "output_tokens": 25,
+    "generation_seconds": 3.3373193740844727,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"9HBUV8\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "9HBUV8"
+      }
+    },
+    "observation": "{\"reservation_id\": \"9HBUV8\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"DEN\", \"destination\": \"BOS\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"DEN\", \"destination\": \"MIA\", \"flight_number\": \"HAT130\", \"date\": \"2024-05-17\", \"price\": 57}, {\"origin\": \"MIA\", \"destination\": \"BOS\", \"flight_number\": \"HAT184\", \"date\": \"2024-05-17\", \"price\": 72}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 159}], \"created_at\": \"2024-05-12T17:08:42\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"9HBUV8\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6574,
+    "output_tokens": 25,
+    "generation_seconds": 3.4482266902923584,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"DGZSYX\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "DGZSYX"
+      }
+    },
+    "observation": "{\"reservation_id\": \"DGZSYX\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"JFK\", \"destination\": \"LAS\", \"flight_type\": \"one_way\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"JFK\", \"destination\": \"MIA\", \"flight_number\": \"HAT014\", \"date\": \"2024-05-06\", \"price\": 1678}, {\"origin\": \"MIA\", \"destination\": \"LAS\", \"flight_number\": \"HAT288\", \"date\": \"2024-05-06\", \"price\": 1690}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 3368}], \"created_at\": \"2024-05-04T19:48:34\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"DGZSYX\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6881,
+    "output_tokens": 24,
+    "generation_seconds": 3.4483861923217773,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found the reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th. The reservation ID is D1EW9B. Before proceeding, I need to confirm the reason for cancellation. Is it due to a change of plans, an airline cancellation, or another reason?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found the reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th. The reservation ID is D1EW9B. Before proceeding, I need to confirm the reason for cancellation. Is it due to a change of plans, an airline cancellation, or another reason?"
+      }
+    },
+    "observation": "Oh, it's just because I'm a bit forgetful and ended up booking two flights for the same day by mistake. So I just need to cancel one of them. Can you go ahead and cancel that ATL to JFK flight for me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found the reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th. The reservation ID is D1EW9B. Before proceeding, I need to confirm the reason for cancellation. Is it due to a change of plans, an airline cancellation, or another reason?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7189,
+    "output_tokens": 83,
+    "generation_seconds": 7.238102197647095,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"D1EW9B\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "D1EW9B"
+      }
+    },
+    "observation": "{\"reservation_id\": \"D1EW9B\", \"user_id\": \"mohamed_hernandez_5188\", \"origin\": \"ATL\", \"destination\": \"JFK\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"ATL\", \"destination\": \"JFK\", \"flight_number\": \"HAT285\", \"date\": \"2024-05-17\", \"price\": 54}], \"passengers\": [{\"first_name\": \"Mohamed\", \"last_name\": \"Hernandez\", \"dob\": \"1996-10-16\"}], \"payment_history\": [{\"payment_id\": \"credit_card_5417084\", \"amount\": 54}, {\"payment_id\": \"credit_card_5417084\", \"amount\": -54}], \"created_at\": \"2024-05-04T07:38:29\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"D1EW9B\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 7330,
+    "output_tokens": 24,
+    "generation_seconds": 3.6156504154205322,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"The reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th has been successfully cancelled. The refund will be processed and returned to your original payment method within 5 to 7 business days. Let me know if there's anything else I can assist you with!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th has been successfully cancelled. The refund will be processed and returned to your original payment method within 5 to 7 business days. Let me know if there's anything else I can assist you with!"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "mohamed_hernandez_5188",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ],
+        "instruction": "Your user id is mohamed_hernandez_5188. You are a bit absent minded and ended up booking two flights on May 17. You want to cancel the one from ATL to JFK. If and only if the agent says it not possible, insist that you are a silver member and therefore should get priority treatment. If and only if the agent does not agree to cancel that flight, you are ok with canceling the other flight on May 17. Otherwise, just thank the agent and end the conversation.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.000744,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "f202a1c73cb1bcde0ff71f0998610ffafbfa16a250b170b4450417fad0a924c0"
+        },
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mohamed_hernandez_5188"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "35V5SM"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XXDC1M"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "V5EMZH"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "D1EW9B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "9HBUV8"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"The reservation for the flight from Atlanta (ATL) to New York (JFK) on May 17th has been successfully cancelled. The refund will be processed and returned to your original payment method within 5 to 7 business days. Let me know if there's anything else I can assist you with!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7619,
+    "output_tokens": 81,
+    "generation_seconds": 7.20564079284668,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

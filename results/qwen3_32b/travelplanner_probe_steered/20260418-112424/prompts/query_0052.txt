@@ -1,0 +1,253 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help create a 7-day travel plan for one person departing from Wichita to Colorado that includes visiting 3 cities? The travel dates are from March 7th to March 13th, 2022, and the travel budget is $5,900.
+
+Reference information:
+### Attractions in Alamosa
+                                               Name  Latitude   Longitude                                    Address          Phone                                                                Website    City
+                   San Luis Valley Museum | Alamosa 37.469090 -105.863986 401 Hunt Ave #2658, Alamosa, CO 81101, USA (719) 587-0667                     https://www.museumtrail.org/san-luis-valley-museum Alamosa
+                               Rio Grande Farm Park 37.473943 -105.857473         6935 CO-17, Alamosa, CO 81101, USA (719) 937-2319                                          http://riograndefarmpark.org/ Alamosa
+                                          Cole Park 37.473106 -105.863792           First St, Alamosa, CO 81101, USA (719) 589-2105                                               https://www.alamosa.org/ Alamosa
+Los Caminos Antiguos Scenic Byway: Alamosa Entrance 37.474204 -105.857387    6978-6800 CO-17, Alamosa, CO 81101, USA        Unknown https://www.codot.gov/travel/colorado-byways/south-central/los-caminos Alamosa
+                                       Carroll Park 37.483538 -105.892888         Carroll St, Alamosa, CO 81101, USA        Unknown                          https://www.alamosarec.org/Default.aspx?id=11 Alamosa
+                              Alamosa Archery Range 37.491388 -105.884906                     Alamosa, CO 81101, USA        Unknown                                                                Unknown Alamosa
+                              Alamosa Riparian Park 37.491512 -105.891433    400 Lakewood Dr, Alamosa, CO 81101, USA        Unknown               https://alamosarec.org/CourseActivities.aspx?id=51&cat=7 Alamosa
+                                        Alamosa Sub 37.464630 -105.869031         817 8th St, Alamosa, CO 81101, USA (303) 589-1320                                                                Unknown Alamosa
+                                          Boyd Park 37.460637 -105.863158        410 12th St, Alamosa, CO 81101, USA        Unknown                                             http://www.alamosarec.org/ Alamosa
+Alamosa National Wildlife Refuge and Visitor Center 37.438787 -105.803025  9383 El Rancho Ln, Alamosa, CO 81101, USA (719) 589-4021                                     https://www.fws.gov/refuge/alamosa Alamosa
+                            Toivo Malm Trail System 37.457024 -105.853609    8210 S River Rd, Alamosa, CO 81101, USA (719) 587-2524                                                 http://alamosarec.org/ Alamosa
+                    Alamosa Colorado Welcome Center 37.466735 -105.865142      610 State Ave, Alamosa, CO 81101, USA (800) 258-7597                                                http://www.alamosa.org/ Alamosa
+
+### Restaurants in Alamosa
+                                  Name  Average Cost                                             Cuisines  Aggregate Rating    City
+        Atlanta Highway Seafood Market            68                         Fast Food, Desserts, Seafood               4.9 Alamosa
+                        Riverwalk Cafe            97                                Tea, Pizza, Fast Food               3.6 Alamosa
+                        Viva Hyderabad            90                                      Pizza, Desserts               2.5 Alamosa
+  Coffee to Cocktail Bar - Hyatt Place            35                       Tea, Indian, Desserts, Italian               0.0 Alamosa
+                          Burger Singh            95                 Desserts, Tea, BBQ, Chinese, Seafood               3.4 Alamosa
+          Street Foods by Punjab Grill            55        Pizza, BBQ, Fast Food, Chinese, Mediterranean               0.0 Alamosa
+                         Cafe LazyMojo            26                      Tea, Pizza, American, Fast Food               4.3 Alamosa
+                   Urban Crave Express            38            Desserts, French, Bakery, Fast Food, Cafe               3.5 Alamosa
+                             The Arena            85                                Tea, French, Desserts               3.4 Alamosa
+                     Cafe Dalal Street            99                                   Cafe, Mexican, BBQ               3.7 Alamosa
+                                Veg Ex            33                BBQ, Fast Food, Cafe, Indian, Seafood               3.4 Alamosa
+                      The Diet Kitchen            50          Pizza, Bakery, BBQ, American, Mediterranean               3.9 Alamosa
+                      Parantha on Call            49 Desserts, Tea, Italian, Cafe, Mediterranean, Seafood               0.0 Alamosa
+                    Modi Pastry Corner            92                                         Cafe, Bakery               2.6 Alamosa
+                   The Midnight Heroes            10                      Tea, BBQ, Cafe, Indian, Seafood               3.8 Alamosa
+                     Gulnar Bar Be Que            30       Desserts, Tea, Indian, Cafe, American, Seafood               3.1 Alamosa
+                        Good Luck Cafe            10                                 Cafe, Mexican, Pizza               0.0 Alamosa
+                           Moti Sweets            14                      Pizza, American, BBQ, Fast Food               3.6 Alamosa
+                  Hamburg To Hyderabad            23                         Cafe, Mediterranean, Seafood               3.9 Alamosa
+                Shri Durga Dosa Corner            80  Pizza, Italian, BBQ, Fast Food, Cafe, Mediterranean               3.0 Alamosa
+        Lights Camera Action - Air Bar            27                  Tea, Italian, Bakery, Cafe, Seafood               4.4 Alamosa
+          Cafe Coffee Day - The Lounge            23                         Cafe, American, BBQ, Italian               2.5 Alamosa
+                    Cafe Delhi Heights            98                               Tea, Bakery, Fast Food               4.0 Alamosa
+                       Aggarwal Sweets            77                              Tea, Bakery, Pizza, BBQ               0.0 Alamosa
+                      Mehak Restaurant            50                                    Desserts, Seafood               0.0 Alamosa
+                            South Cafe            31    Chinese, Desserts, Fast Food, Cafe, Mediterranean               0.0 Alamosa
+Emperor's Lounge - The Taj Mahal Hotel            65                     Tea, Italian, BBQ, Cafe, Seafood               3.8 Alamosa
+                        Baskin Robbins            56                   Mexican, Pizza, Mediterranean, BBQ               0.0 Alamosa
+                Damascena Coffee House            23                     Tea, Cafe, BBQ, Chinese, Seafood               0.0 Alamosa
+                                Lahore            77            Mexican, Bakery, Mediterranean, Fast Food               3.7 Alamosa
+
+### Accommodations in Alamosa
+                                              NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number    city
+     Comfortable studio suite in midtown Manhattan   67.0 Entire home/apt No parties & No smoking & No visitors            30.0                  2                 3.0 Alamosa
+ Luxury drmn Bldg + Empire State Views & Roof Top!  765.0 Entire home/apt                           No visitors           365.0                  4                 5.0 Alamosa
+               Spacious Room with Private a Patio!  605.0    Private room                            No parties             2.0                  2                 1.0 Alamosa
+                       Charming Room in Greenpoint  595.0    Private room                            No parties             4.0                  1                 2.0 Alamosa
+  Modern, Comfortable and Clean Bushwick Apartment 1182.0    Private room    No visitors & No parties & No pets             2.0                  1                 4.0 Alamosa
+                       Bright Creative Environment  963.0    Private room     No children under 10 & No parties             2.0                  1                 4.0 Alamosa
+       A single room  that converts  with bathroom  773.0    Private room                            No smoking             7.0                  2                 5.0 Alamosa
+    Prime Location of Flushing Queens 豪华卧室 旅途中的家 E  264.0    Private room        No pets & No children under 10             1.0                  2                 5.0 Alamosa
+                 private room in Redhook, Brooklyn  455.0    Private room              No parties & No visitors             1.0                  1                 5.0 Alamosa
+Shared male room on Manhattan.Breathtaking view II 1099.0     Shared room                               No pets            14.0                  1                 4.0 Alamosa
+                              Sunny Chelsea Studio 1118.0 Entire home/apt                            No parties             1.0                  4                 1.0 Alamosa
+                Private & Quaint West Village Gem!  532.0 Entire home/apt                            No smoking             4.0                  5                 3.0 Alamosa
+             Ideally located cozy, quiet apartment 1043.0 Entire home/apt                               No pets             2.0                  8                 5.0 Alamosa
+ Renovated Studio Apt! Walk to the Subway & Ferry!  279.0    Private room                            No smoking             3.0                  2                 4.0 Alamosa
+Manhattan Private Room with a Garden view (Room 2) 1053.0    Private room                               No pets             3.0                  2                 3.0 Alamosa
+
+### Attractions in Grand Junction
+                                                             Name  Latitude   Longitude                                            Address          Phone                                                              Website           City
+                  Museum of the West, Museums of Western Colorado 39.065688 -108.564776         462 Ute Ave, Grand Junction, CO 81501, USA (970) 242-0971                                       https://museumofwesternco.com/ Grand Junction
+                                 Eureka! McConnell Science Museum 39.080430 -108.560690       1400 N 7th St, Grand Junction, CO 81501, USA (970) 254-1626                                  http://www.eurekasciencemuseum.org/ Grand Junction
+                                                 Bananas Fun Park 39.083549 -108.596292 2469 Riverside Pkwy, Grand Junction, CO 81505, USA (970) 241-7529                                       http://www.bananasfunpark.com/ Grand Junction
+                               Western Colorado Botanical Gardens 39.055223 -108.561205   655 Struthers Ave, Grand Junction, CO 81501, USA (970) 245-9030                                               https://wcbotanic.org/ Grand Junction
+                                                 Canyon View Park 39.110663 -108.605773           730 24 Rd, Grand Junction, CO 81505, USA (970) 254-3866                                            http://gjparksandrec.org/ Grand Junction
+                                                   Eagle Rim Park 39.052619 -108.545203                      Grand Junction, CO 81503, USA        Unknown https://www.gjcity.org/Facilities/Facility/Details/Eagle-Rim-Park-12 Grand Junction
+        Cross Orchards Historic Site, Museums of Western Colorado 39.091496 -108.483055           3073 F Rd, Grand Junction, CO 81504, USA (970) 242-0971                                       https://museumofwesternco.com/ Grand Junction
+                        James M. Robb - Colorado River State Park 39.057437 -108.460757                  361 32 Rd, Clifton, CO 81520, USA (970) 434-3388     https://cpw.state.co.us/placestogo/Parks/jamesmrobbcoloradoriver Grand Junction
+                                        Long Family Memorial Park 39.089416 -108.474468           3117 F Rd, Grand Junction, CO 81504, USA (970) 244-3230                                                              Unknown Grand Junction
+James M. Robb - Colorado River State Park Connected Lakes Section 39.082473 -108.612894             Dike Rd, Grand Junction, CO 81507, USA (970) 858-9188     https://cpw.state.co.us/placestogo/Parks/jamesmrobbcoloradoriver Grand Junction
+                                     Attractions Grand Junction!! 39.092180 -108.602825                US-6, Grand Junction, CO 81505, USA        Unknown                                                              Unknown Grand Junction
+                                                 Palisade Tourism 39.069465 -108.561561       652 White Ave, Grand Junction, CO 81501, USA (970) 242-7674                                                              Unknown Grand Junction
+                                                      Rocket Park 39.084025 -108.535000      1827 N 26th St, Grand Junction, CO 81501, USA (970) 254-3866    https://www.gjcity.org/Facilities/Facility/Details/Rocket-Park-26 Grand Junction
+                                  Welcome To Grand Junction Mural 39.067525 -108.564243         500 Main St, Grand Junction, CO 81501, USA        Unknown                                                http://gjcreates.org/ Grand Junction
+                                Walter Walker State Wildlife Area 39.106128 -108.649952   2175 Railroad Ave, Grand Junction, CO 81505, USA (970) 255-6100                                                              Unknown Grand Junction
+                                             Visit Grand Junction 39.110248 -108.539996      740 Horizon Dr, Grand Junction, CO 81506, USA (970) 256-4060                                  https://www.visitgrandjunction.com/ Grand Junction
+                                                   Hawthorne Park 39.073947 -108.565285    400 Gunnison Ave, Grand Junction, CO 81501, USA (970) 254-3866                                                              Unknown Grand Junction
+                                                   Columbine Park 39.083482 -108.527765       544 28 1/4 Rd, Grand Junction, CO 81501, USA (970) 254-3866       http://www.gjcity.org/residents/parks-recreation/parks/#footer Grand Junction
+                                              Red Canyon Overlook 39.030847 -108.686327     2198 Rimrock Dr, Grand Junction, CO 81507, USA (970) 858-3617                                                  http://nps.gov/colm Grand Junction
+                                                     Lincoln Park 39.075141 -108.545335       910 N 12th St, Grand Junction, CO 81501, USA (970) 254-3866                                            http://gjparksandrec.org/ Grand Junction
+
+### Restaurants in Grand Junction
+                                     Name  Average Cost                                                 Cuisines  Aggregate Rating           City
+              Austin's BBQ and Oyster Bar            15                  Tea, Bakery, Fast Food, Indian, Seafood               3.3 Grand Junction
+                                    2 Dog            29                 Desserts, BBQ, Fast Food, Cafe, American               4.2 Grand Junction
+                            Thakur Bakers           100                                 French, Pizza, Cafe, BBQ               3.0 Grand Junction
+Shanghai Bar & Lounge - The Bristol Hotel            31                                              Cafe, Pizza               3.0 Grand Junction
+                            Pind Balluchi            17                              Fast Food, Chinese, Seafood               2.7 Grand Junction
+                               Cocoa Tree            68                            Tea, Chinese, Cafe, Fast Food               4.3 Grand Junction
+                           Punjab Da Pind            52 Desserts, Pizza, Bakery, Chinese, Mediterranean, Seafood               3.7 Grand Junction
+               Baba Chicken Ludhiana Wale            12                            Tea, Pizza, Indian, Fast Food               0.0 Grand Junction
+                                  Cha Bar            10                               Tea, Bakery, American, BBQ               3.9 Grand Junction
+                               Penta Cafe            66                            French, Mexican, BBQ, Seafood               3.6 Grand Junction
+                       Om Ji Bhature Wale            42       Desserts, Fast Food, Cafe, American, Mediterranean               0.0 Grand Junction
+                               Food Daddy            64                                Bakery, Desserts, Seafood               0.0 Grand Junction
+               Ambarsari Kababs & Curries            55                    Pizza, BBQ, Fast Food, Cafe, American               3.0 Grand Junction
+                         Curries & Kebabs            74               Desserts, Mexican, Cafe, American, Seafood               2.7 Grand Junction
+                               Nukkadwala            82                                               Pizza, BBQ               3.7 Grand Junction
+                                Vedanta's            21                       Tea, French, Bakery, Cafe, Seafood               2.7 Grand Junction
+                        New Punjabi Khana            10                           Chinese, French, Cafe, Seafood               3.1 Grand Junction
+                              Kings Kulfi            93                  Tea, Pizza, BBQ, Mediterranean, Seafood               3.3 Grand Junction
+                        Flavors Of London            80                            BBQ, Pizza, Desserts, Seafood               0.0 Grand Junction
+                               Grill Zone            59                                  Fast Food, BBQ, Seafood               3.4 Grand Junction
+                       Facebook Fast Food            90                                         Tea, Indian, BBQ               0.0 Grand Junction
+                            Pizza Station            29                     Tea, French, BBQ, Fast Food, Seafood               0.0 Grand Junction
+                           Sinfully Yours            43                              Pizza, Bakery, BBQ, Seafood               3.3 Grand Junction
+                        Big B Pastry Shop            48                    Tea, French, Fast Food, Cafe, Seafood               0.0 Grand Junction
+          Moti Mahal Delux Tandoori Trail            85                                Mexican, Pizza, Fast Food               3.6 Grand Junction
+                           Coffee Culture            87                          French, Cafe, Desserts, Seafood               4.3 Grand Junction
+
+### Accommodations in Grand Junction
+                                            NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number           city
+                NYC Apartment near Central Park! 1118.0 Entire home/apt               No children under 10             3.0                  5                 5.0 Grand Junction
+              Lovely 1 BD on the Upper West Side  854.0 Entire home/apt               No children under 10             1.0                  3                 4.0 Grand Junction
+Private  studio 79REVIEWS-CHECK PROFILEManhattan  940.0 Entire home/apt                         No smoking             2.0                  4                 3.0 Grand Junction
+       New Renovated Studio~Prime Upper East~W/D 1174.0 Entire home/apt No pets & No visitors & No parties            30.0                 10                 4.0 Grand Junction
+                    Clean spacious 1 bedroom apt 1063.0 Entire home/apt  No children under 10 & No parties             2.0                  3                 4.0 Grand Junction
+     Cool room Manhattan - Sleeps up to 3 guests  208.0    Private room                            No pets             1.0                  2                 5.0 Grand Junction
+             Lovely 2-Bedroom Near Prospect Park  595.0 Entire home/apt                         No parties             3.0                  3                 5.0 Grand Junction
+  Designers Lovely UWS Full Floor Townhouse Apt!  978.0 Entire home/apt No pets & No smoking & No visitors             3.0                  9                 2.0 Grand Junction
+   Modern apartment in the heart of Williamsburg  561.0 Entire home/apt                            No pets             5.0                  5                 5.0 Grand Junction
+
+### Attractions in Durango
+                                     Name  Latitude   Longitude                                         Address          Phone                                                                    Website    City
+                            Animas Museum 37.299230 -107.873323          3065 W 2nd Ave, Durango, CO 81301, USA (970) 259-2402                                              https://www.animasmuseum.org/ Durango
+                           The Powerhouse 37.278287 -107.880541     1295 Camino Del Rio, Durango, CO 81301, USA (970) 259-9234                                                        https://powsci.org/ Durango
+                  Durango Wildlife Museum 37.281442 -107.875858           151 E 16th St, Durango, CO 81301, USA (970) 247-0855 https://www.durango.org/discover-durango/fish-hatchery-and-wildlife-museum Durango
+                          Whitewater Park 37.264132 -107.881276      107 Camino Del Rio, Durango, CO 81301, USA        Unknown  https://www.durangogov.org/Facilities/Facility/Details/Whitewater-Park-31 Durango
+     Durango Adventures and Zipline Tours 37.270233 -107.908568            20673 US-160, Durango, CO 81301, USA (970) 759-9880                                              http://durangoadventures.com/ Durango
+                  Oxbow Park and Preserve 37.309654 -107.854314      500 Animas View Dr, Durango, CO 81301, USA (970) 375-7321                   http://www.durangogov.org/Facilities/Facility/Details/33 Durango
+Durango & Silverton Narrow Gauge Railroad 37.269088 -107.882534            479 Main Ave, Durango, CO 81301, USA (888) 872-4607                                               http://www.durangotrain.com/ Durango
+                            Fish Hatchery 37.281395 -107.875608           151 E 16th St, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                         Animas City Park 37.301653 -107.868700               E 32nd St, Durango, CO 81301, USA (970) 375-7321  https://www.durangogov.org/facilities/facility/details/Animas-City-Park-1 Durango
+                       Durango train ride 37.275280 -107.880067                          Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                           Schneider Park 37.278186 -107.882483           950 Roosa Ave, Durango, CO 81301, USA        Unknown                       https://www.durango.org/listing/schneider-park/1843/ Durango
+                                Lions Den 37.288079 -107.861431             2401 Rim Dr, Durango, CO 81301, USA (970) 375-7321                   http://www.durangogov.org/Facilities/Facility/Details/16 Durango
+                                   Statue 37.277344 -107.882248     1129 Camino Del Rio, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                    Grizzly Brown carving 37.279920 -107.881585          1423 W 3rd Ave, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                        Durango Treasures 37.273516 -107.880371            900 Main Ave, Durango, CO 81301, USA (970) 403-5562            http://durangotreasures.com/?utm_source=gmb&utm_medium=referral Durango
+                           DurangoLiveCam 37.272949 -107.938245       529 Castle Rdg Dr, Durango, CO 81303, USA        Unknown                                                                    Unknown Durango
+                              Scenic View 37.243582 -107.869547    800 S Camino Del Rio, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                          Dallabetta Park 37.221276 -107.860924 12120-13452 La Posta Rd, Durango, CO 81303, USA        Unknown                       https://durangogov.org/Facilities/Facility/Details/6 Durango
+                    Pinkerton Hot Springs 37.451028 -107.805313            35554 US-550, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+           Discovery Museum At-Powerhouse 37.278696 -107.879968     1333 Camino Del Rio, Durango, CO 81301, USA (970) 422-2034                                                        https://powsci.org/ Durango
+
+### Restaurants in Durango
+                                Name  Average Cost                                          Cuisines  Aggregate Rating    City
+Samurai Japanese Cuisine & Sushi Bar            67                       Bakery, Desserts, Fast Food               3.6 Durango
+               Dub's High on the Hog            98               Tea, Italian, French, Cafe, Seafood               4.4 Durango
+              Standard Chicken Point            50                     Mexican, Indian, BBQ, Seafood               0.0 Durango
+            Hot & Tasty Chinese Food            17                            Tea, French, Fast Food               2.6 Durango
+                         Chickenette            31                   Tea, Pizza, Desserts, Fast Food               3.7 Durango
+                         Burger King            11         Desserts, Mexican, Bakery, BBQ, Fast Food               3.2 Durango
+                             Hot Pot            21                        Seafood, Bakery, Fast Food               0.0 Durango
+                       King Bikaneri            87                   Seafood, Indian, BBQ, Fast Food               2.9 Durango
+                   Twenty Four Seven            18                     Tea, Chinese, Pizza, Desserts               2.9 Durango
+                          Asian Haus            26                Fast Food, Seafood, Pizza, Italian               4.1 Durango
+                             Hook Up            72                            Bakery, Pizza, Italian               0.0 Durango
+               Al Forno by Aishwarya            42                                Tea, BBQ, Desserts               3.4 Durango
+                   Natural Ice Cream            24                           Mexican, BBQ, Fast Food               4.5 Durango
+                          Cake Plaza            95                           Cafe, Desserts, Italian               3.1 Durango
+                      Mohit di Hatti            74       Desserts, Italian, Bakery, Chinese, Seafood               3.8 Durango
+  Muradabadi Chicken Biryani & Dhaba            86                      Cafe, Bakery, Pizza, Seafood               0.0 Durango
+                           Pizza Hut            35                Fast Food, French, Bakery, Italian               2.8 Durango
+            Chawla's Tandoori Xpress            59        Desserts, French, Fast Food, Cafe, Seafood               2.5 Durango
+                          The Mashal            85  Italian, BBQ, Fast Food, Cafe, American, Seafood               3.5 Durango
+                             Berco's            33               Cafe, Bakery, Indian, Mediterranean               3.6 Durango
+                           Wow! Momo            12             Seafood, Mexican, Desserts, Fast Food               3.4 Durango
+                       Drool Waffles            65                 Tea, Bakery, BBQ, Indian, Seafood               4.2 Durango
+ The Claridges Garden -The Claridges            94       Tea, Pizza, Mexican, Mediterranean, Seafood               3.1 Durango
+                           Mr.Hunger            81                 Chinese, BBQ, Desserts, Fast Food               3.0 Durango
+     New Aggarwal Sweets & Fast Food            86                     Tea, BBQ, Desserts, Fast Food               0.0 Durango
+                      The China Town            55                         Cafe, Pizza, BBQ, Seafood               3.4 Durango
+                              Gopala            45   Chinese, Bakery, Fast Food, Cafe, Mediterranean               3.3 Durango
+                                Yeoh            11                                 Tea, Mexican, BBQ               0.0 Durango
+               Kansar Gujarati Thali            96                          Pizza, American, Seafood               3.9 Durango
+                        Jason Bakery            43 Desserts, Tea, Pizza, American, Fast Food, Indian               4.2 Durango
+
+### Accommodations in Durango
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number    city
+     Lux 1BR in the heart of NYC Theater district!   81.0 Entire home/apt               No children under 10            30.0                  3                 4.0 Durango
+       UES studio walking distance to central park  997.0 Entire home/apt                            No pets             7.0                  6                 4.0 Durango
+                           Luxury in Best Location   70.0 Entire home/apt No children under 10 & No visitors           198.0                  2                 5.0 Durango
+BEAUTIFUL 2 BED APARTMENT IN WILLIAMSBURG, BROOLYN 1022.0 Entire home/apt  No children under 10 & No parties             7.0                  7                 3.0 Durango
+       Private bedroom w/ roofdeck NO CLEANING FEE 1033.0    Private room                            No pets             3.0                  1                 5.0 Durango
+                    CROWN HEIGHTS GUEST HOUSE 2L2R  467.0 Entire home/apt               No children under 10             3.0                  3                 2.0 Durango
+                      Beautiful Room in Brooklyn!!  886.0    Private room               No children under 10            30.0                  1                 2.0 Durango
+                     Cherry Hill House - Blue Room 1008.0    Private room                         No smoking             1.0                  1                 1.0 Durango
+                        Northern Manhattan Getaway  663.0    Private room           No smoking & No visitors             2.0                  2                 3.0 Durango
+
+### Flight from Wichita to Alamosa on 2022-03-07
+There is no flight from Wichita to Alamosa on 2022-03-07.
+
+### Self-driving from Wichita to Alamosa
+self-driving, from Wichita to Alamosa, duration: 8 hours 27 mins, distance: 819 km, cost: 40
+
+### Taxi from Wichita to Alamosa
+taxi, from Wichita to Alamosa, duration: 8 hours 27 mins, distance: 819 km, cost: 819
+
+### Flight from Alamosa to Grand Junction on 2022-03-09
+There is no flight from Alamosa to Grand Junction on 2022-03-09.
+
+### Self-driving from Alamosa to Grand Junction
+self-driving, from Alamosa to Grand Junction, duration: 4 hours 29 mins, distance: 396 km, cost: 19
+
+### Taxi from Alamosa to Grand Junction
+taxi, from Alamosa to Grand Junction, duration: 4 hours 29 mins, distance: 396 km, cost: 396
+
+### Flight from Grand Junction to Durango on 2022-03-11
+There is no flight from Grand Junction to Durango on 2022-03-11.
+
+### Self-driving from Grand Junction to Durango
+self-driving, from Grand Junction to Durango, duration: 3 hours 33 mins, distance: 269 km, cost: 13
+
+### Taxi from Grand Junction to Durango
+taxi, from Grand Junction to Durango, duration: 3 hours 33 mins, distance: 269 km, cost: 269
+
+### Flight from Durango to Wichita on 2022-03-13
+There is no flight from Durango to Wichita on 2022-03-13.
+
+### Self-driving from Durango to Wichita
+self-driving, from Durango to Wichita, duration: 11 hours 15 mins, distance: 1,078 km, cost: 53
+
+### Taxi from Durango to Wichita
+taxi, from Durango to Wichita, duration: 11 hours 15 mins, distance: 1,078 km, cost: 1078
+
+JSON plan:

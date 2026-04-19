@@ -1,0 +1,108 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need a 3-day travel itinerary for two people, departing from Newark and visiting Savannah from March 3rd to March 5th, 2022. We have a budget of $1,400. We'll be traveling with children under 10, so accommodations must be suitable for them. Our dietary preferences include Mediterranean, Mexican, French, and Indian cuisines, and we would appreciate food recommendations that cater to these preferences. Please note that we're not planning on self-driving.
+
+Reference information:
+### Attractions in Savannah
+                                               Name  Latitude  Longitude                                                 Address                   Phone                                          Website     City
+                                       Forsyth Park 32.067536 -81.096238                                 Savannah, GA 31401, USA          (912) 351-3841 https://www.savannahga.gov/351/Parks-Playgrounds Savannah
+                       Wormsloe State Historic Site 31.980193 -81.069243               7601 Skidaway Rd, Savannah, GA 31406, USA          (912) 353-3023                https://gastateparks.org/Wormsloe Savannah
+                       Mercer-Williams House Museum 32.071362 -81.095467                    429 Bull St, Savannah, GA 31401, USA          (912) 238-0208                      http://www.mercerhouse.com/ Savannah
+                         Savannah Historic District 32.076124 -81.099076 301 Martin Luther King Jr Blvd, Savannah, GA 31401, USA          (912) 944-0455      http://www.nps.gov/nr/travel/geo-flor/1.htm Savannah
+                              Savannah's Waterfront 32.081850 -81.091849                   1 W River St, Savannah, GA 31401, USA          (912) 234-0295                 https://savannahswaterfront.com/ Savannah
+                                   Old Fort Jackson 32.081899 -81.035807              1 Fort Jackson Rd, Savannah, GA 31404, USA          (912) 232-3945                    http://www.chsgeorgia.org/OFJ Savannah
+           Davenport House Museum Entrance and Shop 32.077716 -81.087819             323 E Broughton St, Savannah, GA 31401, USA          (912) 236-8097             http://www.davenporthousemuseum.org/ Savannah
+                Owens-Thomas House & Slave Quarters 32.077384 -81.089289                124 Abercorn St, Savannah, GA 31401, USA          (912) 790-8800       http://www.telfair.org/visit/owens-thomas/ Savannah
+                        American Prohibition Museum 32.080559 -81.094623      209 W Saint Julian Street, Savannah, GA 31401, USA          (912) 220-1249       https://www.americanprohibitionmuseum.com/ Savannah
+Jepson Center & Telfair Children's Art Museum (CAM) 32.078285 -81.095152                  207 W York St, Savannah, GA 31401, USA          (912) 790-8800             http://www.telfair.org/visit/jepson/ Savannah
+                         Savannah Children's Museum 32.076023 -81.100934              655 Louisville Rd, Savannah, GA 31401, USA (912) 651-6823 ext. 203                    http://www.chsgeorgia.org/SCM Savannah
+                                 Hearse Ghost Tours 32.060185 -81.090807                1410 E Broad St, Savannah, GA 31401, USA          (912) 695-1578                https://www.hearseghosttours.com/ Savannah
+             Ralph Mark Gilbert Civil Rights Museum 32.072140 -81.099878 460 Martin Luther King Jr Blvd, Savannah, GA 31401, USA          (912) 777-6099                https://rmgcivilrightsmuseum.com/ Savannah
+                                      #1 Ghost Tour 32.063463 -81.093907                  309 E Park Ln, Savannah, GA 31401, USA          (912) 398-8632                          https://1ghosttour.com/ Savannah
+                                     Blue Orb Tours 32.075820 -81.093148                Chippewa Square, Savannah, GA 31401, USA          (912) 665-4258                        https://blueorbtours.com/ Savannah
+                                   Andrew Low House 32.073015 -81.092455                329 Abercorn St, Savannah, GA 31401, USA          (912) 233-6854                   http://www.andrewlowhouse.com/ Savannah
+                            Savannah History Museum 32.076178 -81.099073 303 Martin Luther King Jr Blvd, Savannah, GA 31401, USA          (912) 651-6840                       http://www.chsgeorgia.org/ Savannah
+                                 Tricentennial Park 32.075628 -81.099945   MLK Jr Blvd @, Louisville Rd, Savannah, GA 31401, USA          (912) 238-1453      http://www.savannah.com/tricentennial-park/ Savannah
+                           The Savannah Underground 32.073386 -81.105728              415 W Boundary St, Savannah, GA 31401, USA          (912) 214-5310           http://www.thesavannahunderground.com/ Savannah
+                          Pin Point Heritage Museum 31.952159 -81.090287             9924 Pin Point Ave, Savannah, GA 31406, USA          (912) 355-0064                                          Unknown Savannah
+
+### Restaurants in Savannah
+                            Name  Average Cost                                       Cuisines  Aggregate Rating     City
+                       Sr. Sol 1            30           Tea, French, Mediterranean, Desserts               4.6 Savannah
+              Country's Barbecue            59                                   Cafe, Bakery               4.0 Savannah
+      Bosphorous Turkish Cuisine            58                       Pizza, Indian, Fast Food               4.2 Savannah
+    Manohar Dairy And Restaurant            23                         Tea, Indian, Fast Food               4.4 Savannah
+    Aggarwal Sweets And Caterers            96 Desserts, Pizza, French, BBQ, Chinese, Seafood               0.0 Savannah
+The Mad Teapot/The Wishing Chair            23                     Mexican, Bakery, Fast Food               4.4 Savannah
+                     Biryani Art            41                     Chinese, Bakery, Fast Food               3.3 Savannah
+                         Food4U!            74                         Chinese, Bakery, Pizza               3.2 Savannah
+                     Bake Cuddle            22  French, Bakery, BBQ, Fast Food, Mediterranean               0.0 Savannah
+                      UrbanCrave            64                         Tea, Cafe, Indian, BBQ               3.9 Savannah
+                The Buffet Wagon            69                    Cafe, Desserts, Indian, BBQ               3.3 Savannah
+                Brown House Cafe            28 Tea, Pizza, Mexican, Bakery, American, Seafood               0.0 Savannah
+                 D Brown Affairs            82                  Fast Food, Cafe, Tea, Seafood               0.0 Savannah
+              Lumbini Fast Point            71              Seafood, BBQ, Desserts, Fast Food               3.0 Savannah
+                 Dhaba On Wheels            18                   Tea, Bakery, Pizza, American               2.7 Savannah
+                     Hwealthcafe            25           Tea, Bakery, Cafe, American, Seafood               3.5 Savannah
+                       Pizza Day            27                       Pizza, Desserts, Seafood               0.0 Savannah
+                           Vdesi            81                   Tea, Cafe, Desserts, Seafood               3.1 Savannah
+                        V S Cafe            97 Desserts, Tea, Pizza, Italian, Bakery, Chinese               0.0 Savannah
+         New Raj Kachori Bhandar            12                                   Tea, Seafood               3.4 Savannah
+Chutneez Restaurant Lounge & Bar            52                                  Cafe, Seafood               2.7 Savannah
+      Cooks Cafe - Jaypee Greens            74                    Cafe, Bakery, Mediterranean               3.3 Savannah
+            Federal Delicatessen            91                       Tea, Pizza, BBQ, Italian               4.6 Savannah
+
+### Accommodations in Savannah
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number     city
+                             Cosy Inwood apartment  413.0    Private room                            No children under 10             1.0                  1                 4.0 Savannah
+  Sunny room in modern building located in Bedstuy  430.0    Private room                                      No smoking             5.0                  2                 2.0 Savannah
+MIDTOWN MANHATTAN-WALKING DISTANCE TO EMPIRE STATE   72.0    Private room                            No pets & No parties             2.0                  2                 1.0 Savannah
+ Alpha-Bet City entire floor large cool 2br -L.E.S  574.0 Entire home/apt                        No visitors & No parties             2.0                  4                 2.0 Savannah
+                 Large  Secured Condominium Studio  976.0 Entire home/apt               No smoking & No children under 10             1.0                  5                 4.0 Savannah
+                     2 bedroom in the East Village  964.0 Entire home/apt                                      No parties             8.0                  4                 5.0 Savannah
+                          Family and Friendly Room  569.0    Private room                                      No smoking             1.0                  2                 5.0 Savannah
+                                 Private Oasis (A)  157.0    Private room                                      No parties             2.0                  2                 3.0 Savannah
+                    Room with the balcony, fits 3!  709.0    Private room No smoking & No visitors & No children under 10             1.0                  1                 5.0 Savannah
+                 Quiet Riverside Park 1 bdrm w gym  385.0 Entire home/apt  No smoking & No children under 10 & No parties            10.0                  3                 3.0 Savannah
+      Cute NYC studio in the heart of East Village 1004.0 Entire home/apt                  No pets & No children under 10             5.0                  2                 3.0 Savannah
+                                        Lapp House  118.0 Entire home/apt               No parties & No pets & No smoking             3.0                  3                 5.0 Savannah
+    1 bedroom in 2 bed-apt in the best of Brooklyn  650.0    Private room                            No children under 10             3.0                  2                 1.0 Savannah
+                 Cozy Room in Lower East Side- NYC   94.0    Private room              No visitors & No children under 10             3.0                  1                 5.0 Savannah
+
+### Flight from Newark to Savannah on 2022-03-03
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3933034    215   15:20   17:35 2 hours 15 minutes 2022-03-03         Newark     Savannah     708.0
+     F4070527    242   08:54   11:27 2 hours 33 minutes 2022-03-03         Newark     Savannah     708.0
+     F4070538    228   11:01   13:22 2 hours 21 minutes 2022-03-03         Newark     Savannah     708.0
+     F4070563    194   17:20   19:40 2 hours 20 minutes 2022-03-03         Newark     Savannah     708.0
+
+### Self-driving from Newark to Savannah
+self-driving, from Newark to Savannah, duration: 11 hours 52 mins, distance: 1,284 km, cost: 64
+
+### Taxi from Newark to Savannah
+taxi, from Newark to Savannah, duration: 11 hours 52 mins, distance: 1,284 km, cost: 1284
+
+### Flight from Savannah to Newark on 2022-03-05
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3903501    294   06:02   08:11 2 hours 9 minutes 2022-03-05       Savannah       Newark     708.0
+
+### Self-driving from Savannah to Newark
+self-driving, from Savannah to Newark, duration: 11 hours 47 mins, distance: 1,275 km, cost: 63
+
+### Taxi from Savannah to Newark
+taxi, from Savannah to Newark, duration: 11 hours 47 mins, distance: 1,275 km, cost: 1275
+
+JSON plan:

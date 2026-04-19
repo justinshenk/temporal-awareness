@@ -1,0 +1,290 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please assist in devising a week-long travel plan, beginning in Jacksonville and venturing through 3 distinct cities in Massachusetts from March 22nd to March 28th, 2022. The budget for this solo journey is set at $6,600.
+
+Reference information:
+### Attractions in Martha's Vineyard
+                                                         Name  Latitude  Longitude                                                Address          Phone                                                                     Website              City
+                                     Martha's Vineyard Museum 41.449299 -70.599761      151 Lagoon Pond Rd, Vineyard Haven, MA 02568, USA (508) 627-4441                                                    http://www.mvmuseum.org/ Martha's Vineyard
+                                         East Chop Lighthouse 41.470262 -70.567431           229 E Chop Dr, Vineyard Haven, MA 02568, USA (508) 627-4441                                                    http://www.mvmuseum.org/ Martha's Vineyard
+                                         Vincent House Museum 41.391169 -70.515334                   99 Main St, Edgartown, MA 02539, USA (508) 627-8017                   https://vineyardtrust.org/property/vincent-house-gardens/ Martha's Vineyard
+                                  Edgartown Harbor Lighthouse 41.390863 -70.503043               121 N Water St, Edgartown, MA 02539, USA (508) 627-4441                                       https://mvmuseum.org/visit/edgartown/ Martha's Vineyard
+                                     Aquinnah Cliffs Overlook 41.347313 -70.837017               31 Aquinnah Cir, Aquinnah, MA 02535, USA        Unknown                                                                     Unknown Martha's Vineyard
+                                               Gay Head Light 41.348345 -70.834530               15 Aquinnah Cir, Aquinnah, MA 02535, USA (508) 693-1039                                                    http://gayheadlight.org/ Martha's Vineyard
+                                                   Ocean Park 41.455619 -70.555887               2 Seaview Ave, Oak Bluffs, MA 02557, USA        Unknown                                                                     Unknown Martha's Vineyard
+                        Wasque Point Wildlife Management Area 41.362224 -70.450348                   11 Dike Rd, Edgartown, MA 02539, USA        Unknown                                                                     Unknown Martha's Vineyard
+                                                  Jaws Bridge 41.416098 -70.548744          267-125 Seaview Ave, Edgartown, MA 02539, USA        Unknown                                                                     Unknown Martha's Vineyard
+                          Pirate Adventures Martha's Vineyard 41.458117 -70.558332 12 Circuit Avenue Extension, Oak Bluffs, MA 02557, USA (508) 687-2739                                                   http://www.mvpirates.com/ Martha's Vineyard
+                   The Carnegie | Vineyard Preservation Trust 41.390419 -70.511216                58 N Water St, Edgartown, MA 02539, USA (774) 549-9107                                               http://www.vineyardtrust.org/ Martha's Vineyard
+                                    Joseph Sylvia State Beach 41.421936 -70.551541          267-125 Seaview Ave, Edgartown, MA 02539, USA (508) 627-6145                                                                     Unknown Martha's Vineyard
+Flying Horses Carousel a Vineyard Preservation Trust Property 41.457411 -70.557131                 15 Lake Ave, Oak Bluffs, MA 02557, USA (508) 693-9481                  https://vineyardtrust.org/property/flying-horses-carousel/ Martha's Vineyard
+                                        Mytoi Japanese Garden 41.375902 -70.458383                   41 Dike Rd, Edgartown, MA 02539, USA (508) 627-7689      http://www.thetrustees.org/places-to-visit/cape-cod-islands/mytoi.html Martha's Vineyard
+                                        Edgartown Fire Museum 41.387804 -70.519548        68 Peases Point Way S, Edgartown, MA 02539, USA        Unknown                            https://edgartownfiremensassociation.org/about-1 Martha's Vineyard
+                                             Lighthouse Beach 41.391331 -70.503546               230 N Water St, Edgartown, MA 02539, USA (508) 627-6145                                                                     Unknown Martha's Vineyard
+                                   Long Point Wildlife Refuge 41.367637 -70.624095         Scrubby Neck Rd, Vineyard Haven, MA 02568, USA (508) 693-7392 http://www.thetrustees.org/places-to-visit/cape-cod-islands/long-point.html Martha's Vineyard
+                 Mass Audubon's Felix Neck Wildlife Sanctuary 41.413565 -70.563565            100 Felix Neck Dr, Edgartown, MA 02539, USA (508) 627-4850                                            http://massaudubon.org/felixneck Martha's Vineyard
+                                         Edgartown Lighthouse 41.390969 -70.503069                               Edgartown, MA 02539, USA        Unknown                                                                     Unknown Martha's Vineyard
+                                     Edgartown Memorial Wharf 41.389165 -70.510043                   50 Dock St, Edgartown, MA 02539, USA        Unknown                                                                     Unknown Martha's Vineyard
+
+### Restaurants in Martha's Vineyard
+                                   Name  Average Cost                                               Cuisines  Aggregate Rating              City
+                        Yellow Dog Eats            34                        Cafe, Indian, Desserts, Seafood               4.9 Martha's Vineyard
+                     Bern's Steak House            35        Desserts, Mexican, Bakery, BBQ, Indian, Seafood               4.7 Martha's Vineyard
+                        Friends Forever            55                                Fast Food, BBQ, Seafood               3.4 Martha's Vineyard
+                          Midnight Chef            39                                         Cafe, Desserts               3.4 Martha's Vineyard
+Fortune Deli - Fortune Select Excalibur            41                            Tea, Cafe, Indian, Desserts               3.6 Martha's Vineyard
+                         Domino's Pizza            59                   Pizza, Mexican, Bakery, BBQ, Seafood               3.3 Martha's Vineyard
+                              Prankster            34                                 Bakery, BBQ, Fast Food               4.8 Martha's Vineyard
+                     The Punjab Kitchen            80                           Tea, French, Bakery, Italian               3.9 Martha's Vineyard
+                                   KYRO            95                             Seafood, Bakery, Fast Food               3.7 Martha's Vineyard
+                    Brio Cafe and Grill            56             Pizza, French, Bakery, Cafe, Mediterranean               3.6 Martha's Vineyard
+                      Adarsh Bhojnalaya            30                   Tea, Pizza, Italian, Bakery, Chinese               3.4 Martha's Vineyard
+                 Qureshi's Kabab Corner            49                   Pizza, Mexican, Bakery, BBQ, Seafood               3.4 Martha's Vineyard
+                                Pitstop            61                         Tea, French, Bakery, BBQ, Cafe               3.3 Martha's Vineyard
+                   Royal Brewery Bistro            78                         Mexican, Pizza, BBQ, Fast Food               3.5 Martha's Vineyard
+                   34, Chowringhee Lane            99                                            Bakery, BBQ               2.7 Martha's Vineyard
+                                 Karuna            52                        Tea, Cafe, French, BBQ, Chinese               3.0 Martha's Vineyard
+                          Pudding & Pie            14               Cafe, Mediterranean, Desserts, Fast Food               3.0 Martha's Vineyard
+                             Posh Spice            61                                     Tea, Cafe, Seafood               3.0 Martha's Vineyard
+                      Flavours of Tibet            89                      Tea, Cafe, BBQ, Chinese, American               3.3 Martha's Vineyard
+                          The Fatty Bao            76                                               Tea, BBQ               4.1 Martha's Vineyard
+                                 Empire           100                             Tea, Chinese, Indian, Cafe               2.9 Martha's Vineyard
+                           Costa Coffee            61                  Desserts, Tea, Pizza, Bakery, Chinese               3.1 Martha's Vineyard
+          Celebration Family Restaurant            53                               Cafe, Mexican, Fast Food               0.0 Martha's Vineyard
+                            The Kafilla            17 Pizza, Mexican, Bakery, Fast Food, Cafe, Mediterranean               3.0 Martha's Vineyard
+             Brijwasi Sweet and Namkeen            16                                    French, Pizza, Cafe               0.0 Martha's Vineyard
+                             Veg Always            78                   Tea, Bakery, Mediterranean, Desserts               2.7 Martha's Vineyard
+                       The Food Factory            74                               Bakery, Pizza, Fast Food               0.0 Martha's Vineyard
+                     Waffles and Crepes            69                                 Tea, Desserts, Italian               3.9 Martha's Vineyard
+                         Moonlight Cafe            82                                  Cafe, Mexican, Bakery               0.0 Martha's Vineyard
+          Nawabi Mughlai Zaika Food Van            16                   Italian, Bakery, BBQ, Cafe, American               0.0 Martha's Vineyard
+                            #Urban Caf愆            96                               Fast Food, Cafe, Italian               3.3 Martha's Vineyard
+                        SPL Food Corner            32                                             Tea, Pizza               0.0 Martha's Vineyard
+            Depot Eatery and Oyster Bar            75          Pizza, Cafe, American, Mediterranean, Seafood               4.8 Martha's Vineyard
+                         Winona Forever            53                                        Pizza, Desserts               4.0 Martha's Vineyard
+The French by Simon Rogan - The Midland           102                           Cafe, BBQ, Desserts, Seafood               4.3 Martha's Vineyard
+                     Gemelli Cucina Bar            42          Desserts, Tea, Cafe, French, Chinese, Seafood               4.8 Martha's Vineyard
+
+### Accommodations in Martha's Vineyard
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number              city
+           Doorman Gym 2 Beds Luxury Building!5211 1041.0    Private room                    No parties & No visitors            30.0                  2                 5.0 Martha's Vineyard
+                  One Bed Room Apt In Midtown East  450.0 Entire home/apt           No children under 10 & No smoking             2.0                  3                 2.0 Martha's Vineyard
+                   Family-friendly 3-bedroom condo  279.0 Entire home/apt No children under 10 & No pets & No smoking             4.0                  2                 3.0 Martha's Vineyard
+Private room amazing location Chelsea/Union Square  446.0    Private room                                  No smoking             3.0                  2                 4.0 Martha's Vineyard
+   Sonder | Stock Exchange | Lively 1BR + Sofa Bed  728.0 Entire home/apt                                  No parties             2.0                  5                 3.0 Martha's Vineyard
+  2 BR/2BA UWS Luxury Apartment w Private Backyard  646.0 Entire home/apt                        No pets & No smoking            30.0                  2                 4.0 Martha's Vineyard
+      Artistic apartment in the Heart of Manhattan 1169.0 Entire home/apt                                  No smoking             4.0                  4                 5.0 Martha's Vineyard
+                                     My Sweet Room  997.0 Entire home/apt           No parties & No smoking & No pets            10.0                  9                 4.0 Martha's Vineyard
+  Tranquil Oasis in the Heart of Greenwich Village  809.0 Entire home/apt              No pets & No children under 10             2.0                  6                 2.0 Martha's Vineyard
+   Hell's Kitchen Enclave: a Diamond in the Rough.  577.0 Entire home/apt                        No pets & No parties             4.0                  2                 2.0 Martha's Vineyard
+                       One bedroom in Williamsburg  878.0    Private room                                  No parties             3.0                  1                 3.0 Martha's Vineyard
+Bright and Chill Room in Bushwick for two friends!  273.0    Private room                                  No parties             1.0                  1                 2.0 Martha's Vineyard
+                             Gorgeous Astoria 1 Br  329.0    Private room                                 No visitors             1.0                  2                 3.0 Martha's Vineyard
+
+### Attractions in Hyannis
+                              Name  Latitude  Longitude                                            Address          Phone                                 Website    City
+    John F. Kennedy Hyannis Museum 41.652316 -70.284136                397 Main St, Hyannis, MA 02601, USA (508) 790-3077            http://jfkhyannismuseum.org/ Hyannis
+          Cape Cod Maritime Museum 41.651523 -70.279509               135 South St, Hyannis, MA 02601, USA (508) 775-1723   http://www.capecodmaritimemuseum.org/ Hyannis
+          John F. Kennedy Memorial 41.641862 -70.278650               480 Ocean St, Hyannis, MA 02601, USA (508) 790-6345                                 Unknown Hyannis
+            Veterans Memorial Park 41.640284 -70.278780               480 Ocean St, Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+            Cape Codder Water Park 41.673891 -70.310494 1225 Iyannough Rd Suite #4, Hyannis, MA 02601, USA (508) 568-2940    https://www.capecodderwaterpark.com/ Hyannis
+                 Kalmus Park Beach 41.634502 -70.278523               670 Ocean St, Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+                Walkway to the Sea 41.652096 -70.282718                    Main St, Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+               Korean War Memorial 41.641378 -70.278910               480 Ocean St, Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+              Pleasant Street Park 41.651536 -70.278773            115 Pleasant St, Hyannis, MA 02601, USA (508) 862-4678       http://www.town.barnstable.ma.us/ Hyannis
+               Veterans Park Beach 41.641090 -70.278546               480 Ocean St, Hyannis, MA 02601, USA (508) 790-9885       http://www.town.barnstable.ma.us/ Hyannis
+Sea Captains Row-Crowell Homestead 41.653786 -70.279273             35 Pleasant St, Hyannis, MA 02601, USA (508) 280-7290          http://www.seacaptainsrow.org/ Hyannis
+              Whydah Pirate Museum 41.650116 -70.225003            674 MA-28, West Yarmouth, MA 02673, USA (508) 534-9571         http://www.discoverpirates.com/ Hyannis
+                     Cape Cod Beer 41.678143 -70.310088           1336 Phinneys Ln, Hyannis, MA 02601, USA (508) 790-4200             http://www.capecodbeer.com/ Hyannis
+      Toad Hall Classic Car Museum 41.640980 -70.303615            288 Scudder Ave, Hyannis, MA 02601, USA (508) 778-4934 http://www.toadhallcars.com/default.asp Hyannis
+  Massachusetts Air & Space Museum 41.652246 -70.285474                438 Main St, Hyannis, MA 02601, USA (508) 827-6300                http://massairspace.org/ Hyannis
+                      Bismore Park 41.648999 -70.279710                             Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+   Zion Union Heritage Museum Inc. 41.651136 -70.292778               276 North St, Hyannis, MA 02601, USA (774) 251-9263 http://www.zionunionheritagemuseum.org/ Hyannis
+Cape Cod Museum Of Natural History 41.753737 -70.116003               869 Main St, Brewster, MA 02631, USA (508) 896-3867                   http://www.ccmnh.org/ Hyannis
+       Saint Francis Xavier Parish 41.649403 -70.286354               347 South St, Hyannis, MA 02601, USA (508) 775-0818             https://www.sfxhyannis.org/ Hyannis
+                 Hyannisport Wharf 41.634805 -70.288665                  Harbor Rd, Hyannis, MA 02601, USA        Unknown                                 Unknown Hyannis
+
+### Restaurants in Hyannis
+                                Name  Average Cost                                          Cuisines  Aggregate Rating    City
+                 Bridge Road Brewers            33                               Pizza, BBQ, Italian               4.6 Hyannis
+                        Soho Hibachi            12                    Tea, Seafood, Pizza, Fast Food               4.3 Hyannis
+              The Cheesecake Factory            96            Desserts, Tea, Pizza, Mexican, Seafood               4.6 Hyannis
+                  Kailash Restaurant            45                           Bakery, Pizza, American               3.3 Hyannis
+                        Cafe Grub Up            19                                      BBQ, Seafood               3.8 Hyannis
+                             Di Miso            71                 Tea, Pizza, Mexican, BBQ, Seafood               3.6 Hyannis
+                      Chilli Indiana            97                          Tea, Cafe, BBQ, Desserts               3.8 Hyannis
+                   Bengali By Nature            97                             Tea, Pizza, Fast Food               3.3 Hyannis
+                  Chacha's Take Away            84            Tea, BBQ, Fast Food, American, Seafood               2.8 Hyannis
+                     Chinar Junction            41                     Seafood, Bakery, BBQ, Italian               2.8 Hyannis
+                                Kuzo            89          Desserts, Tea, Pizza, Mexican, Fast Food               3.2 Hyannis
+Seasonal Tastes - The Westin Gurgaon            99                                       Bakery, BBQ               3.9 Hyannis
+                      Tandoori Kebab            43 Desserts, Tea, Pizza, French, Fast Food, American               0.0 Hyannis
+             Pandit Ji Paranthe Wale            99                 Tea, Pizza, French, Cafe, Seafood               3.7 Hyannis
+                      Ambrosia Bliss            97                     Seafood, Pizza, Cafe, Italian               4.0 Hyannis
+                             YOLO 21            50                      Mexican, Desserts, Fast Food               4.2 Hyannis
+                            Cinnabon            87                 Tea, Pizza, Cafe, Indian, Seafood               3.9 Hyannis
+                             Kabooze            67                       Cafe, Pizza, Indian, Bakery               3.3 Hyannis
+                          Wah Ji Wah            22                               Tea, BBQ, Fast Food               3.7 Hyannis
+                       Pinka's Rasoi            97                          Cafe, Pizza, Bakery, BBQ               3.1 Hyannis
+                     Shawarma King's            85                      Tea, Chinese, Pizza, Italian               3.7 Hyannis
+                       Food Junction            94         Desserts, Italian, BBQ, Bakery, Fast Food               0.0 Hyannis
+                          Mini Meals            78                       Cafe, Bakery, BBQ, Desserts               2.7 Hyannis
+     Hussain - UP Ki Mashoor Biryani            61                               Cafe, BBQ, Desserts               0.0 Hyannis
+   The Staircase Cafe by Doggy Style            66                   Cafe, Pizza, Mediterranean, BBQ               2.6 Hyannis
+                          Wah Ji Wah            34                Desserts, Tea, Pizza, BBQ, Chinese               0.0 Hyannis
+                    South Indian Hut            31                           Cafe, American, Seafood               0.0 Hyannis
+                Thirsty Scholar Cafe            25  Desserts, Tea, Pizza, Chinese, American, Seafood               3.2 Hyannis
+                      The Bento Cafe            34                    Bakery, BBQ, Desserts, Seafood               4.2 Hyannis
+                  Food Tamasha & Co.            41                 Pizza, French, BBQ, Cafe, Seafood               3.2 Hyannis
+                         Big Biryani           100             Desserts, Tea, Italian, Cafe, Seafood               0.0 Hyannis
+                     The Hunger Cure            30                  Chinese, Bakery, Cafe, Fast Food               3.0 Hyannis
+                     Punjabi Pakwaan            32                                Tea, Cafe, Mexican               3.1 Hyannis
+
+### Accommodations in Hyannis
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number    city
+   Architect's Bedroom in Large Brooklyn Apartment  112.0    Private room                                      No pets             7.0                  1                 4.0 Hyannis
+              Sunny bedroom at the heart of Harlem  518.0    Private room                                   No smoking             5.0                  1                 2.0 Hyannis
+     Luxury 1 bedroom apt. Downtown Brooklyn/Dumbo  111.0 Entire home/apt            No parties & No children under 10             5.0                  3                 5.0 Hyannis
+          Subway accessible apartment in Brooklyn!  915.0    Private room               No children under 10 & No pets             5.0                  2                 1.0 Hyannis
+    (2)Comfy Home Away From Home/Multiple Rooms!!!  247.0    Private room                                   No parties             1.0                  2                 3.0 Hyannis
+         Modern loft in the best part of Bushwick. 1020.0 Entire home/apt                                   No smoking             2.0                  2                 3.0 Hyannis
+                                Super Chill Studio  418.0 Entire home/apt                                      No pets             2.0                  3                 1.0 Hyannis
+Serenity Falls in lovely Astoria 15min to the city  778.0    Private room No children under 10 & No visitors & No pets             2.0                  1                 3.0 Hyannis
+        Sleek, modern apartment in trendy Bushwick  703.0    Private room                                      No pets             1.0                  1                 4.0 Hyannis
+Cozy private room in Midtown with private bathroom  446.0    Private room                                  No visitors             3.0                  1                 5.0 Hyannis
+                   Christmas Shopping in Manhattan  439.0    Private room                         No children under 10             4.0                  2                 4.0 Hyannis
+                 Lovely Spacious Studio in Bedstuy  202.0     Shared room No pets & No visitors & No children under 10             3.0                  1                 4.0 Hyannis
+                     Where Love and Happiness Live  223.0 Entire home/apt                     No visitors & No parties             1.0                  2                 4.0 Hyannis
+               Dream Apartment - Greenwich Village  114.0 Entire home/apt                                   No smoking            12.0                  2                 2.0 Hyannis
+                    Manhattan Club Penthouse Suite 1010.0 Entire home/apt                                   No smoking             1.0                  6                 4.0 Hyannis
+                               Brooklyn (G)reenery 1000.0    Private room                        No pets & No visitors             2.0                  1                 2.0 Hyannis
+                              Greenpoint Apartment  286.0    Private room            No pets & No smoking & No parties            10.0                  2                 2.0 Hyannis
+               5 STARS***MIDTOWN EAST-BRAND NEW!!!  100.0 Entire home/apt           No visitors & No parties & No pets            30.0                  2                 5.0 Hyannis
+
+### Attractions in Nantucket
+                                      Name  Latitude  Longitude                                        Address          Phone                                                       Website      City
+                            Whaling Museum 41.285490 -70.098776          13 Broad St, Nantucket, MA 02554, USA (508) 228-1894                                           http://www.nha.org/ Nantucket
+                    Great Point Lighthouse 41.390067 -70.048266                       Nantucket, MA 02554, USA (508) 325-5395                                                       Unknown Nantucket
+Nantucket Shipwreck and Life Saving Museum 41.291204 -70.044854        158 Polpis Rd, Nantucket, MA 02554, USA (508) 228-1885           http://eganmaritime.org/shipwreck-lifesaving-museum Nantucket
+                              Hadwen House 41.281459 -70.102275           96 Main St, Nantucket, MA 02554, USA (508) 228-1894         https://nha.org/visit/museums-and-tours/hadwen-house/ Nantucket
+                         Great Point Beach 41.366352 -70.020599       Great Point Rd, Nantucket, MA 02554, USA (508) 228-1700                                   http://www.thetrustees.org/ Nantucket
+        Museum of African American History 41.277525 -70.098112  27 & 29, 27 York St, Nantucket, MA 02554, USA (508) 228-9833                                          http://www.maah.org/ Nantucket
+  Coskata-Coatue Wildlife Refuge Gatehouse 41.328000 -69.996633      107 Wauwinet Rd, Nantucket, MA 02554, USA (508) 228-0006                                   http://www.thetrustees.org/ Nantucket
+                             Greater Light 41.281997 -70.104102          8 Howard St, Nantucket, MA 02554, USA (508) 228-1894                    http://www.nha.org/sites/greaterlight.html Nantucket
+                           Nantucket House 41.262725 -70.090917       2 Seikinnow Pl, Nantucket, MA 02554, USA        Unknown                                                       Unknown Nantucket
+                                  Old Gaol 41.280995 -70.106274        15R Vestal St, Nantucket, MA 02554, USA        Unknown                         http://www.nha.org/sites/oldgaol.html Nantucket
+        Nantucket National Wildlife Refuge 41.390087 -70.049570      147 Wauwinet Rd, Nantucket, MA 02554, USA        Unknown                          https://www.fws.gov/refuge/nantucket Nantucket
+                      Salt Marsh Way Beach 41.279443 -70.092675     92 Washington St, Nantucket, MA 02554, USA        Unknown                                                       Unknown Nantucket
+      Nantucket Downtown Historic District 41.283764 -70.098840     2 Fairgrounds Rd, Nantucket, MA 02554, USA        Unknown https://www.nantucket-ma.gov/283/Historic-District-Commission Nantucket
+                       'Sconset Bluff Walk 41.263887 -69.962908          27 Bank St, Siasconset, MA 02564, USA        Unknown  http://www.nha.org/history/hn/HN-april73-stackpole-bluff.htm Nantucket
+                             Smith's Point 41.276397 -70.216803                       Nantucket, MA 02554, USA        Unknown                                                       Unknown Nantucket
+                    Masquetuck Reservation 41.296447 -70.024749 15 Quaise Pasture Rd, Nantucket, MA 02554, USA (508) 228-2884                                                       Unknown Nantucket
+                       Jethro Coffin House 41.287972 -70.106441    16 Sunset Hill Ln, Nantucket, MA 02554, USA (508) 228-1894                     http://www.nha.org/sites/oldesthouse.html Nantucket
+                             Tupancy Links 41.290005 -70.127687         157 Cliff Rd, Nantucket, MA 02554, USA (508) 228-2884                                                       Unknown Nantucket
+                    Brant Point Lighthouse 41.289925 -70.090280            Easton St, Nantucket, MA 02554, USA        Unknown                https://www.nps.gov/nr/travel/maritime/brn.htm Nantucket
+                            Nobadeer Beach 41.244587 -70.077388         Nobadeer Ave, Nantucket, MA 02554, USA        Unknown                                                       Unknown Nantucket
+
+### Restaurants in Nantucket
+                                 Name  Average Cost                                           Cuisines  Aggregate Rating      City
+               Rhinehart's Oyster Bar            44                 Tea, Pizza, Mediterranean, Seafood               4.0 Nantucket
+                               Sakura            87                    Cafe, Indian, Desserts, Italian               3.8 Nantucket
+Chokho Jeeman Marwari Jain Bhojanalya            15                    Pizza, BBQ, Desserts, Fast Food               4.0 Nantucket
+                            Cake 24x7            85                                   Bakery, Desserts               3.3 Nantucket
+                   SBar Club & Lounge            84                    Tea, Cafe, Pizza, Mediterranean               3.1 Nantucket
+                               Uforia            11                          Tea, French, Bakery, Cafe               3.5 Nantucket
+                           Dujal Cafe            13                               Tea, Pizza, Desserts               0.0 Nantucket
+                           Desi Thaat            15                                       Cafe, Bakery               3.2 Nantucket
+                          V. K. Pasta            83                  Fast Food, Tea, Desserts, Italian               0.0 Nantucket
+                            Starbucks            28           French, Bakery, Fast Food, Cafe, Seafood               3.8 Nantucket
+                               Habibi            69                                    Cafe, Fast Food               3.1 Nantucket
+          Anupama Sweets & Restaurant            41                          Bakery, Indian, Fast Food               0.0 Nantucket
+                            Open Oven            62    Tea, French, Fast Food, Cafe, American, Seafood               3.7 Nantucket
+                      Cafe Coffee Day            78         Desserts, Pizza, Fast Food, Cafe, American               3.0 Nantucket
+                        Aap Ki Khatir            11                     French, Mexican, Pizza, Bakery               0.0 Nantucket
+                  Prince Chaat Corner            27         Pizza, French, BBQ, Mediterranean, Seafood               3.2 Nantucket
+                           52 Janpath            10               Desserts, Mexican, BBQ, Bakery, Cafe               4.2 Nantucket
+                     Heaven's Kitchen            42                Fast Food, French, Chinese, Seafood               3.3 Nantucket
+                      Prince of China            41       Desserts, Pizza, Bakery, Fast Food, American               3.1 Nantucket
+                            Chocomore            42            Desserts, Italian, BBQ, Indian, Seafood               3.7 Nantucket
+                         Masala Magic            69               Desserts, Pizza, French, BBQ, Bakery               3.0 Nantucket
+                               Subway            34                                Cafe, BBQ, Desserts               3.2 Nantucket
+                   Tsopema Restaurant            63            Pizza, BBQ, Fast Food, Chinese, Seafood               0.0 Nantucket
+                         Rajan Corner            59 Pizza, Bakery, BBQ, Indian, Mediterranean, Seafood               3.6 Nantucket
+                        Welcome Rasoi            42                     Tea, Pizza, American, Desserts               0.0 Nantucket
+              Shahi Hyderbadi Biryani           100                       Chinese, Pizza, Bakery, Cafe               0.0 Nantucket
+                              Wheelyz            23                     French, Pizza, Cafe, Fast Food               3.2 Nantucket
+                            Ane China            21                            Tea, American, Desserts               2.7 Nantucket
+     Charan Singh Kulfi & Kala Khatta            65             Desserts, Tea, Cafe, American, Seafood               3.6 Nantucket
+                         Punjab Grill            83                          Tea, Mexican, Indian, BBQ               4.3 Nantucket
+                    Twenty Four Seven            39              Chinese, Pizza, Bakery, Mediterranean               3.1 Nantucket
+                          Masti Curry            89                   BBQ, Indian, Desserts, Fast Food               2.8 Nantucket
+
+### Accommodations in Nantucket
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+                  Bohemian Studio Loft in Brooklyn  817.0 Entire home/apt                                     No visitors            30.0                  2                 2.0 Nantucket
+                        Delightful Brooklyn Studio 1077.0 Entire home/apt     No children under 10 & No smoking & No pets            31.0                  2                 1.0 Nantucket
+       Gorgeous Apartment in a Historic Brownstone  581.0 Entire home/apt No children under 10 & No parties & No visitors             3.0                  2                 2.0 Nantucket
+        Historic Serene Chelsea Brownstone 2.5 Bed  338.0 Entire home/apt     No children under 10 & No pets & No parties            30.0                  2                 5.0 Nantucket
+              Modern 1 Bedroom Condo at Midtown 45  752.0    Private room                  No pets & No children under 10             2.0                  1                 5.0 Nantucket
+                                      Private room  857.0    Private room                                         No pets            27.0                  1                 5.0 Nantucket
+Luxury Apartment in Amazing Williamsburg! Sleeps 7  175.0 Entire home/apt                        No visitors & No smoking             3.0                  3                 4.0 Nantucket
+                Deluxe Studio view Empire State #8  574.0 Entire home/apt                            No pets & No parties             1.0                  2                 3.0 Nantucket
+Serene Spacious and Sun lit Master 5 mins to metro   83.0    Private room               No children under 10 & No smoking             1.0                  2                 2.0 Nantucket
+Charming Brooklyn apartment in historic brownstone  873.0 Entire home/apt           No visitors & No smoking & No parties             2.0                  2                 1.0 Nantucket
+                         Great Spacious Appartment  339.0 Entire home/apt                                      No smoking             5.0                  2                 2.0 Nantucket
+                                  889 Bushwick Ave  248.0    Private room                                      No parties             5.0                  2                 3.0 Nantucket
+      Spacious studio apartment on ideal LES block   79.0 Entire home/apt                                      No smoking             2.0                  3                 3.0 Nantucket
+ Private bedroom w/pvt entrance near Times sq. 42D  214.0    Private room                                         No pets             7.0                  1                 2.0 Nantucket
+ Beautifull Bed Stuy 1bdrm apt with outdoor space! 1024.0 Entire home/apt                                     No visitors             2.0                  5                 3.0 Nantucket
+                    Exposed Brick Midtown East Apt  345.0    Private room                                     No visitors             4.0                  2                 3.0 Nantucket
+
+### Flight from Jacksonville to Martha's Vineyard on 2022-03-22
+There is no flight from Jacksonville to Martha's Vineyard on 2022-03-22.
+
+### Self-driving from Jacksonville to Martha's Vineyard
+self-driving, from Jacksonville to Martha's Vineyard, duration: 18 hours 51 mins, distance: 1,927 km, cost: 96
+
+### Taxi from Jacksonville to Martha's Vineyard
+taxi, from Jacksonville to Martha's Vineyard, duration: 18 hours 51 mins, distance: 1,927 km, cost: 1927
+
+### Flight from Martha's Vineyard to Hyannis on 2022-03-24
+There is no flight from Martha's Vineyard to Hyannis on 2022-03-24.
+
+### Self-driving from Martha's Vineyard to Hyannis
+self-driving, from Martha's Vineyard to Hyannis, duration: 2 hours 7 mins, distance: 49.5 km, cost: 2
+
+### Taxi from Martha's Vineyard to Hyannis
+taxi, from Martha's Vineyard to Hyannis, duration: 2 hours 7 mins, distance: 49.5 km, cost: 49
+
+### Flight from Hyannis to Nantucket on 2022-03-26
+There is no flight from Hyannis to Nantucket on 2022-03-26.
+
+### Self-driving from Hyannis to Nantucket
+self-driving, from Hyannis to Nantucket, duration: 2 hours 17 mins, distance: 47.0 km, cost: 2
+
+### Taxi from Hyannis to Nantucket
+taxi, from Hyannis to Nantucket, duration: 2 hours 17 mins, distance: 47.0 km, cost: 47
+
+### Flight from Nantucket to Jacksonville on 2022-03-28
+There is no flight from Nantucket to Jacksonville on 2022-03-28.
+
+### Self-driving from Nantucket to Jacksonville
+self-driving, from Nantucket to Jacksonville, duration: 20 hours 9 mins, distance: 1,967 km, cost: 98
+
+### Taxi from Nantucket to Jacksonville
+taxi, from Nantucket to Jacksonville, duration: 20 hours 9 mins, distance: 1,967 km, cost: 1967
+
+JSON plan:

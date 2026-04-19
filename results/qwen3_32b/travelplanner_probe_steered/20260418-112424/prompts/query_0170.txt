@@ -1,0 +1,288 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you propose a one-week travel itinerary for 4 people, leaving from Seattle and heading to Florida from March 17th to March 23rd, 2022? We plan to visit 3 different cities in Florida. Our budget is set at $14,700. We require accommodations that allow parties, and we prefer to rent entire rooms. We also would prefer to avoid driving ourselves during this trip.
+
+Reference information:
+### Attractions in Orlando
+                                              Name  Latitude  Longitude                                            Address          Phone                                                                                                                                Website    City
+                                  SeaWorld Orlando 28.411042 -81.461227          7007 Sea World Dr, Orlando, FL 32821, USA (407) 545-5550                                                                                                          https://seaworld.com/orlando/ Orlando
+                            The Wheel at ICON Park 28.443281 -81.468316                             Orlando, FL 32819, USA (407) 601-7907                                                                                     https://iconparkorlando.com/attractions/the-wheel/ Orlando
+                      Fun Spot America Theme Parks 28.465418 -81.455557          5700 Fun Spot Way, Orlando, FL 32819, USA (407) 363-3867                                                                                                               http://www.fun-spot.com/ Orlando
+                           Madame Tussauds Orlando 28.443763 -81.468606      8387 International Dr, Orlando, FL 32819, USA (855) 450-0581                                                                                                https://www.madametussauds.com/orlando/ Orlando
+                       Ripley's Believe It or Not! 28.446211 -81.470400      8201 International Dr, Orlando, FL 32819, USA (407) 345-0501                                                                                                         http://www.ripleys.com/orlando Orlando
+                          Universal Orlando Resort 28.472353 -81.469003        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                                                             https://www.universalorlando.com/web/en/us Orlando
+                               Harry P Leu Gardens 28.569760 -81.356380          1920 N Forest Ave, Orlando, FL 32803, USA (407) 246-2620                                                                                                             http://www.leugardens.org/ Orlando
+                                     Seuss Landing 28.474321 -81.467819        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                            https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure Orlando
+The Wizarding World of Harry Potter - Diagon Alley 28.479612 -81.469375        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000      https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida/the-wizarding-world-of-harry-potter-diagon-alley Orlando
+   The Wizarding World of Harry Potter - Hogsmeade 28.472746 -81.472626        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000              https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure/the-wizarding-world-of-harry-potter-hogsmeade Orlando
+                        Crayola Experience Orlando 28.444874 -81.391740  8001 S Orange Blossom Trl, Orlando, FL 32809, USA (407) 757-1700                                                                                             https://www.crayolaexperience.com/orlando/ Orlando
+                         SEA LIFE Orlando Aquarium 28.442588 -81.468568      8449 International Dr, Orlando, FL 32819, USA (855) 450-0680                                                                                                  https://www.visitsealife.com/orlando/ Orlando
+                               WonderWorks Orlando 28.433743 -81.471528      9067 International Dr, Orlando, FL 32819, USA (407) 351-8800                                                                                                     http://www.wonderworksorlando.com/ Orlando
+                         Universal Studios Florida 28.479375 -81.468542        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000 https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida?utm_source=google&utm_medium=organic&utm_campaign=GMB Orlando
+                 Magical Midway Arcade & SlingShot 28.456953 -81.470116      7001 International Dr, Orlando, FL 32819, USA (407) 370-5353                                                                                                    https://magicalmidwayslingshot.com/ Orlando
+                                 Orlando Starflyer 28.444872 -81.469969      8265 International Dr, Orlando, FL 32819, USA (407) 640-7009                                                                                                                  http://starflyer.com/ Orlando
+                            Orlando Science Center 28.572263 -81.368264         777 E Princeton St, Orlando, FL 32803, USA (407) 514-2000                                                                                                                   https://www.osc.org/ Orlando
+                                 The Simpsons Ride 28.479510 -81.467616        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                            https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/the-simpsons-ride Orlando
+            Harry Potter and the Forbidden Journey 28.472103 -81.473724                             Orlando, FL 32819, USA (407) 363-8000                       https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/harry-potter-and-the-forbidden-journey Orlando
+                                         Gatorland 28.355650 -81.402211 14501 S Orange Blossom Trl, Orlando, FL 32837, USA (407) 855-5496                                                                                                             https://www.gatorland.com/ Orlando
+
+### Restaurants in Orlando
+                             Name  Average Cost                                             Cuisines  Aggregate Rating    City
+         Fuji Japanese Steakhouse            75                                Tea, Bakery, Desserts               3.8 Orlando
+                  Turquoise Villa            55                       French, Bakery, BBQ, Fast Food               4.0 Orlando
+               The Tandoori Times            84                              Tea, Cafe, BBQ, Italian               2.7 Orlando
+                    Crust N Cakes            61                               Tea, Cafe, Indian, BBQ               3.4 Orlando
+        Indochi Cafe & Restaurant            72    Pizza, French, Bakery, Fast Food, Indian, Seafood               0.0 Orlando
+                       Bite N Sip            76                     Chinese, Bakery, Cafe, Fast Food               0.0 Orlando
+                       Pure Bliss            84                         BBQ, Bakery, Pizza, Desserts               3.0 Orlando
+                 Wai Yu Mun Ching            51                                 Tea, Pizza, Desserts               3.6 Orlando
+        Shivani Catering Services            75                           Tea, Cafe, Indian, Seafood               3.1 Orlando
+                        Veg O Non            45                        BBQ, Mexican, Pizza, Desserts               3.1 Orlando
+                    Fabulous Cake            91                                 Cafe, BBQ, Fast Food               0.0 Orlando
+               Nirula's Ice Cream            46                  Tea, American, BBQ, Indian, Seafood               0.0 Orlando
+             Hotel New Tamil Nadu            13 Desserts, Italian, Fast Food, Mediterranean, Seafood               0.0 Orlando
+                       Milan Food            25                                   Cafe, BBQ, Seafood               0.0 Orlando
+                       Dessi Food            32                              Chinese, BBQ, Fast Food               0.0 Orlando
+                          Chaayos            73                                   Tea, Cafe, Mexican               3.9 Orlando
+Ambrosia - The Golden Palms Hotel            52                               Tea, Mexican, Desserts               2.8 Orlando
+                        Pizza Hut            35                       Bakery, Pizza, Indian, Seafood               3.4 Orlando
+                        Fun Bytes            13                Desserts, Tea, French, BBQ, Fast Food               2.5 Orlando
+                        Spice Hut            25                               Chinese, Cafe, Seafood               2.9 Orlando
+                    Lounge Bakery            31                   Tea, Italian, BBQ, Fast Food, Cafe               0.0 Orlando
+                    Khana Khazana            36             Chinese, Desserts, French, Cafe, Seafood               0.0 Orlando
+                             Dips            56                           Tea, Pizza, BBQ, Fast Food               2.8 Orlando
+                 Always Eat Green            98               Tea, Italian, Fast Food, Cafe, Seafood               0.0 Orlando
+                          Vaango!            32                   Tea, Italian, Bakery, BBQ, Seafood               2.8 Orlando
+                   Domino's Pizza            12                      Tea, Pizza, French, BBQ, Bakery               2.5 Orlando
+                      Lawn Bistro           100                           Fast Food, Bakery, Italian               3.6 Orlando
+                 Reena Restaurant            98                  Fast Food, Seafood, Bakery, Italian               3.5 Orlando
+                    Fusionn Rolls            63                                        Pizza, Bakery               0.0 Orlando
+                        Dhabha 27            24     Tea, French, Mexican, Bakery, Fast Food, Seafood               3.2 Orlando
+
+### Accommodations in Orlando
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number    city
+         Private furnished bedroom in Williamsburg  179.0    Private room No parties & No smoking & No children under 10             5.0                  1                 2.0 Orlando
+      Sixth Ave Chelsea, Studio Serviced Apartment   70.0 Entire home/apt                          No visitors & No pets            30.0                  3                 2.0 Orlando
+                               Large and furnished  345.0    Private room                           No smoking & No pets             7.0                  2                 4.0 Orlando
+      Private room in Jackson Heights Apartment 2+ 1081.0    Private room                                     No parties             1.0                  1                 1.0 Orlando
+Che’ Randall Deux\nSoBro\n10 minutes to Manhattan!  854.0    Private room                           No children under 10             5.0                  2                 4.0 Orlando
+                          Room in Upper East Side!  885.0    Private room              No smoking & No pets & No parties             1.0                  2                 4.0 Orlando
+                   BKLYN Brownstone- Glam Getaway!  287.0 Entire home/apt                          No pets & No visitors             3.0                  2                 3.0 Orlando
+    Rare Find: SUNNY, LARGE DUPLEX Chelsea 2BR 2BA  188.0 Entire home/apt                                        No pets             6.0                  2                 5.0 Orlando
+                         Riverside Drive Apartment  878.0 Entire home/apt          No visitors & No parties & No smoking            31.0                  5                 5.0 Orlando
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room                                        No pets             1.0                  2                 3.0 Orlando
+
+### Attractions in Panama City
+                                       Name  Latitude  Longitude                                                        Address          Phone                                                                                         Website        City
+                   Sea Dragon Pirate Cruise 30.148011 -85.744650                   5325 N Lagoon Dr, Panama City, FL 32408, USA (850) 234-7400                                                                   https://www.piratecruise.net/ Panama City
+              Coconut Creek Family Fun Park 30.178403 -85.798689          9807 Front Beach Rd, Panama City Beach, FL 32407, USA (850) 234-2625                                                                     http://coconutcreekfun.com/ Panama City
+                   ZooWorld Zoological Park 30.182227 -85.787261          9008 Front Beach Rd, Panama City Beach, FL 32407, USA (850) 230-1243                                                                     http://www.zooworldpcb.com/ Panama City
+                Ripley's Believe It or Not! 30.178321 -85.799355          9907 Front Beach Rd, Panama City Beach, FL 32407, USA (850) 230-6113                                                          http://www.ripleys.com/panamacitybeach Panama City
+                 SkyWheel Panama City Beach 30.218174 -85.872769       15700 L C Hilton Jr Dr, Panama City Beach, FL 32413, USA (850) 888-0020                                                                         http://skywheelpcb.com/ Panama City
+                       Oaks by the Bay Park 30.166420 -85.701001                     2715 W 10th St, Panama City, FL 32401, USA (850) 872-3199                                                      https://www.pcgov.org/190/Leisure-Services Panama City
+                          Island Tiki Tours 30.189469 -85.753677             312 Bay Shore Dr, Panama City Beach, FL 32407, USA (850) 832-5958                                                                     http://islandtikitours.com/ Panama City
+                     St. Andrews State Park 30.131444 -85.736600                 4607 State Park Ln, Panama City, FL 32408, USA (850) 708-6100                                               https://www.floridastateparks.org/park/St-Andrews Panama City
+                          Rick Seltzer Park 30.159265 -85.777395               7419 Thomas Dr, Panama City Beach, FL 32408, USA (850) 233-6503     http://www.visitpanamacitybeach.com/listings/rick-seltzer-park/545/?fromMenu=778&startrow=1 Panama City
+                       Cobra Adventure Park 30.180146 -85.791747                9323 Front Beach Rd, Panama City, FL 32408, USA (850) 235-0321                          http://www.visitpanamacitybeach.com/listings/cobra-adventure-park/169/ Panama City
+                           Frank Brown Park 30.229788 -85.877123 16200 Panama City Beach Pkwy, Panama City Beach, FL 32413, USA (850) 233-5045 https://www.pcbfl.gov/departments/parks-recreation-department/parks-facilities/frank-brown-park Panama City
+Panama City Small Diamond Railroad Crossing 30.139873 -85.625437                     400 S East Ave, Panama City, FL 32401, USA        Unknown                                                                                         Unknown Panama City
+                               Escape Manor 30.155813 -85.659966                   430 Harrison Ave, Panama City, FL 32401, USA (850) 319-4343                                                       https://www.panamacityescape.com/bookings Panama City
+              WonderWorks Panama City Beach 30.178939 -85.799600          9910 Front Beach Rd, Panama City Beach, FL 32407, USA (850) 249-7000                                              http://www.wonderworksonline.com/panama-city-beach Panama City
+                      Man in the Sea Museum 30.232516 -85.893049 17314 Panama City Beach Pkwy, Panama City Beach, FL 32413, USA (850) 235-4101                                                                        https://maninthesea.org/ Panama City
+                     Gulf World Marine Park 30.210979 -85.867536         15412 Front Beach Rd, Panama City Beach, FL 32413, USA (850) 234-5271                                                             http://www.gulfworldmarinepark.com/ Panama City
+                                  Race City 30.178900 -85.794092          9523 Front Beach Rd, Panama City Beach, FL 32407, USA (850) 234-1588                                                                         http://racecitypcb.com/ Panama City
+                          Panama City Beach 30.215551 -85.877001         16201 Front Beach Rd, Panama City Beach, FL 32413, USA        Unknown                                                                                         Unknown Panama City
+                               Sea Screamer 30.145626 -85.748798               3605 Thomas Dr, Panama City Beach, FL 32408, USA (850) 235-3000                                                                     http://www.seascreamer.net/ Panama City
+     Emerald Falls Family Recreation Center 30.167495 -85.787967                     8602 Thomas Dr, Panama City, FL 32408, USA (850) 234-1049                                                           http://www.emeraldfallsamusement.com/ Panama City
+
+### Restaurants in Panama City
+                                 Name  Average Cost                                       Cuisines  Aggregate Rating        City
+                        The Chaiwalas            39        Tea, French, Bakery, Fast Food, Seafood               0.0 Panama City
+            Delicieux Ice Cream Rolls            49                             Tea, Bakery, Pizza               0.0 Panama City
+                             Grub Hub            32                            Desserts, Fast Food               0.0 Panama City
+                        Pind Balluchi            63            Desserts, Tea, Italian, BBQ, Indian               2.6 Panama City
+              The Cakelicious Factory            86                 Tea, Pizza, Mexican, BBQ, Cafe               3.6 Panama City
+            The Old School Brew House            78                       Cafe, Pizza, Indian, BBQ               3.9 Panama City
+                               Replay            62                   Tea, Cafe, Desserts, Seafood               4.3 Panama City
+                            Bawarchis            39               Tea, Pizza, Bakery, BBQ, Chinese               2.9 Panama City
+                       Sindhi Chicken            74                    Bakery, Pizza, Indian, Cafe               2.9 Panama City
+                         Urban Punjab            90                        Tea, Cafe, BBQ, Seafood               3.2 Panama City
+          Kwality Sweets & Restaurant            42                                     Tea, Pizza               2.9 Panama City
+                   Szoun Chinese Food            76         Desserts, Tea, French, Bakery, Seafood               0.0 Panama City
+                      Aggarwal Sweets            58                Tea, Mexican, Desserts, Seafood               0.0 Panama City
+                           Apni Rasoi            70                 Cafe, Pizza, Bakery, Fast Food               0.0 Panama City
+                   Delhite P恝tisserie            87     Tea, Pizza, French, Mexican, Cafe, Seafood               0.0 Panama City
+                     Green Chick Chop            43                                Pizza, Desserts               3.2 Panama City
+                      Chinese Express            14 Pizza, Fast Food, Cafe, Mediterranean, Seafood               3.1 Panama City
+                 Radha Swami Cool Hut            69                    Tea, French, Pizza, Seafood               3.1 Panama City
+                      Cafeteria & Co.            94                             Tea, Pizza, Indian               4.6 Panama City
+The Butler & The Chef - Jaypee Greens            99      Seafood, Bakery, Mediterranean, Fast Food               0.0 Panama City
+                        Biryani Blues            31              French, Cafe, Desserts, Fast Food               3.5 Panama City
+                        Bakes & Cakes            87         Cafe, Bakery, Mediterranean, Fast Food               3.0 Panama City
+                         Biryani Vice            33           Desserts, French, BBQ, Cafe, Seafood               0.0 Panama City
+                         Foodelicious            52               Bakery, Pizza, Indian, Fast Food               3.1 Panama City
+             Al-Aayat Mughlai Biryani            45                                 BBQ, Fast Food               0.0 Panama City
+                              Mithaas            68       Desserts, Tea, French, Bakery, Fast Food               2.9 Panama City
+                   Eden Kitchen & Bar            44                              Desserts, Seafood               3.1 Panama City
+                               Santos            82             Desserts, Tea, Pizza, French, Cafe               3.3 Panama City
+
+### Accommodations in Panama City
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number        city
+           Plant-filled colorful Bushwick bedroom!  638.0    Private room                        No smoking & No parties             5.0                  1                 2.0 Panama City
+                                    Place of peace 1062.0    Private room No children under 10 & No smoking & No parties             1.0                  2                 2.0 Panama City
+  renovated one bedroom in our beautiful townhouse  620.0 Entire home/apt                                    No visitors             3.0                  2                 2.0 Panama City
+                               Home away from home 1049.0    Private room                                     No parties             1.0                  1                 5.0 Panama City
+1Bdrm Deluxe WYNDHAM MIDTOWN 45*Great Location NYC  477.0    Private room                                        No pets             3.0                  1                 4.0 Panama City
+                Perfect Location 2bd w Bklyn Charm   64.0 Entire home/apt                       No visitors & No smoking             3.0                  3                 1.0 Panama City
+     • Eye Catching Views  | Luxurious 1 Bedroom • 1045.0 Entire home/apt                                    No visitors            30.0                  6                 3.0 Panama City
+                Private Room in Bed-Stuy Apartment  621.0    Private room                           No smoking & No pets             1.0                  1                 2.0 Panama City
+            Amazing New 1 Bedroom in the UES #6132 1129.0 Entire home/apt                                     No parties            30.0                  5                 2.0 Panama City
+                Cozy modern studio in heart of LES  699.0 Entire home/apt                          No visitors & No pets             2.0                  4                 5.0 Panama City
+     Brand New Studio with Balcony @ Williamsburg! 1103.0 Entire home/apt              No smoking & No children under 10             3.0                 10                 3.0 Panama City
+  Prime Doorman Elevator! Huge One bedroom UN 5239 1154.0 Entire home/apt                                    No visitors            30.0                  4                 2.0 Panama City
+   4 Bedroom Apt. Prospect Lefferts Gardens, Bklyn  333.0 Entire home/apt                                     No smoking             1.0                  3                 5.0 Panama City
+                        Bright Loft-Like Apartment  915.0 Entire home/apt                           No children under 10            15.0                  2                 4.0 Panama City
+    Cosy, friendly room in great part of Bed Stuy!  501.0    Private room   No pets & No visitors & No children under 10             2.0                  2                 2.0 Panama City
+        sunshine bedroom in old school artist loft  169.0    Private room              No parties & No children under 10             7.0                  2                 1.0 Panama City
+                Cozy apartment (East Williamsburg)  361.0 Entire home/apt                          No pets & No visitors             3.0                  2                 3.0 Panama City
+                         Williamsburg Pied-à-terre  283.0 Entire home/apt                           No parties & No pets             3.0                  3                 3.0 Panama City
+    Laundry + Free Cleaning & WiFi - 5min to Metro  787.0    Private room              No smoking & No pets & No parties            20.0                  2                 4.0 Panama City
+                        Sunny 1-Bdrm Near Shopping  172.0 Entire home/apt                                    No visitors             5.0                  2                 2.0 Panama City
+          Spacious & Charming Apartment in Bedstuy  649.0 Entire home/apt                           No children under 10             2.0                  2                 1.0 Panama City
+                         Artist's Budget Apartment  142.0    Private room                                        No pets             2.0                  2                 1.0 Panama City
+               Large one bedroom apt in Greenpoint  230.0 Entire home/apt                                    No visitors             7.0                  3                 1.0 Panama City
+               Sunny and Large Brooklyn Apartment!  866.0 Entire home/apt                                    No visitors             4.0                  2                 4.0 Panama City
+3 Bedroom Prime Park Slope 6th Ave/Barclays Center  121.0 Entire home/apt                                    No visitors             2.0                  2                 3.0 Panama City
+                    1 Bedroom Apt East Village/USQ  236.0 Entire home/apt                                    No visitors             1.0                  2                 4.0 Panama City
+
+### Attractions in Tampa
+                                 Name  Latitude  Longitude                                                   Address          Phone                                                                                                                     Website  City
+                 The Florida Aquarium 27.943972 -82.444875                  701 Channelside Dr, Tampa, FL 33602, USA (813) 273-4000                                                                                                 https://www.flaquarium.org/ Tampa
+              Busch Gardens Tampa Bay 28.037066 -82.419461                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                https://buschgardens.com/tampa?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing Tampa
+                     Adventure Island 28.041702 -82.413032                   10001 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                                                https://adventureisland.com/ Tampa
+                Henry B. Plant Museum 27.946355 -82.464040                  401 W Kennedy Blvd, Tampa, FL 33606, USA (813) 254-1891                                                                                                 http://www.plantmuseum.com/ Tampa
+         Museum of Science & Industry 28.053122 -82.404497                   4801 E Fowler Ave, Tampa, FL 33617, USA (813) 987-6000                                                                                                        http://www.mosi.org/ Tampa
+             Tampa Bay History Center 27.942365 -82.449861                        801 Water St, Tampa, FL 33602, USA (813) 228-0097                                                                                          https://tampabayhistorycenter.org/ Tampa
+             Glazer Children's Museum 27.949577 -82.461494              110 W Gasparilla Plaza, Tampa, FL 33602, USA (813) 443-3861                                                                                                http://www.glazermuseum.org/ Tampa
+               ZooTampa at Lowry Park 28.013836 -82.469967                    1101 W Sligh Ave, Tampa, FL 33604, USA (813) 935-8552                                                                                                       https://zootampa.org/ Tampa
+                  Tampa Museum of Art 27.949524 -82.462993              120 W Gasparilla Plaza, Tampa, FL 33602, USA (813) 274-8130                                                                                                    https://tampamuseum.org/ Tampa
+          Sulphur Springs Water Tower 28.021389 -82.458902                   455-479 E Bird St, Tampa, FL 33604, USA (813) 458-3605                                                                                                        http://tampagov.net/ Tampa
+                   Congo River Rapids 28.039982 -82.423873                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                    https://buschgardens.com/tampa/rides/congo-river-rapids/ Tampa
+        MacDill Park on the Riverwalk 27.945278 -82.458787                     100 N Ashley Dr, Tampa, FL 33602, USA (813) 274-8615                                                                                  https://www.tampa.gov/parks-and-recreation Tampa
+                        Falcon's Fury 28.037644 -82.422751                   3000 E Busch Blvd, Tampa, FL 33612, USA (813) 884-4386                                                                          https://buschgardens.com/tampa/rides/falcons-fury/ Tampa
+                        Tampa Theatre 27.950352 -82.458929                   711 N Franklin St, Tampa, FL 33602, USA (813) 274-8981                                                                                                http://www.tampatheatre.org/ Tampa
+          Ybor City Museum State Park 27.961964 -82.438668                      1818 E 9th Ave, Tampa, FL 33605, USA (813) 247-6323                                              https://www.floridastateparks.org/parks-and-trails/ybor-city-museum-state-park Tampa
+         Tampa History Center Dock #3 27.941923 -82.449725 PWT3 - History Center/Amalie, Arena, Tampa, FL 33602, USA        Unknown                                                                                                                     Unknown Tampa
+                USF Botanical Gardens 28.057733 -82.423799                12210 USF Pine Drive, Tampa, FL 33612, USA (813) 974-2329                                                                                                     http://gardens.usf.edu/ Tampa
+                   Ballast Point Park 27.888987 -82.481238                  5300 Interbay Blvd, Tampa, FL 33611, USA (813) 274-8615                                                     https://www.tampa.gov/parks-and-recreation/featured-parks/ballast-point Tampa
+                                Kumba 28.039500 -82.423139                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                       https://buschgardens.com/tampa/roller-coasters/kumba/ Tampa
+Busch Gardens Tampa Bay Howl-O-Scream 28.037962 -82.421152                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386 https://buschgardens.com/tampa/events/howl-o-scream/?utm_source=gbp_listing&utm_medium=organic&utm_campaign=HoS_gpb_listing Tampa
+
+### Restaurants in Tampa
+                        Name  Average Cost                                        Cuisines  Aggregate Rating  City
+        Kobe Hibachi & Sushi            63          Desserts, French, BBQ, Bakery, Seafood               4.6 Tampa
+                 The Tin Cow            67                          BBQ, Desserts, Seafood               3.7 Tampa
+              Peg Leg Pete's            91                            French, Bakery, Cafe               4.4 Tampa
+                 Butterburrs            28                                  Pizza, Seafood               3.6 Tampa
+     Lalit Kathi Rolls Momos            23                           Tea, Pizza, Fast Food               3.1 Tampa
+      Uptown Fresh Beer Cafe            61              Pizza, Mexican, BBQ, Cafe, Seafood               4.1 Tampa
+                       Aahar            52                 Tea, Pizza, Desserts, Fast Food               2.0 Tampa
+  Gallery Caf愆 - Hyatt Place            42                      Tea, French, BBQ, Desserts               3.8 Tampa
+                 The Zaffran            35       Tea, Bakery, Fast Food, American, Seafood               3.3 Tampa
+                       12212            10           Desserts, Tea, French, BBQ, Fast Food               3.5 Tampa
+              Baskin Robbins            55           Desserts, Pizza, French, BBQ, Seafood               3.3 Tampa
+                    G Lounge            33                               Tea, Cafe, Indian               3.2 Tampa
+               Ghar Ka Khana            31                               Tea, BBQ, Seafood               0.0 Tampa
+                         TAG            69                       Tea, French, Bakery, Cafe               0.0 Tampa
+                      Pema's            47                    Fast Food, Tea, BBQ, Italian               3.6 Tampa
+                       Giani            59         Pizza, French, Mexican, Bakery, Seafood               0.0 Tampa
+             Fresh Fast Food            29              Cafe, Seafood, Desserts, Fast Food               0.0 Tampa
+            Chinese Delights            33                       Cafe, Mexican, Pizza, BBQ               3.5 Tampa
+                      D.A.A.            22 Desserts, Pizza, Fast Food, Cafe, Mediterranean               0.0 Tampa
+Club India Cafe & Restaurant            98           Desserts, Tea, Bakery, Cafe, American               2.9 Tampa
+                     Giani's            19    Desserts, Fast Food, Cafe, American, Seafood               3.3 Tampa
+                      Gulati            12                          Chinese, Bakery, Pizza               4.4 Tampa
+               A Pizza House            51                         Cafe, Desserts, Italian               2.9 Tampa
+          Smokshh The Lounge            33                                      Pizza, BBQ               3.4 Tampa
+         Babu Shahi Bawarchi            62                                    Tea, Seafood               3.3 Tampa
+         Republic of Chicken            34        Desserts, Tea, Pizza, BBQ, Mediterranean               3.1 Tampa
+                  Fat Lulu's            96           Desserts, Pizza, BBQ, Indian, Seafood               3.8 Tampa
+            Alvi's Food Spot            22                Desserts, Mexican, American, BBQ               3.2 Tampa
+   New Pishori Chicken Kabab            74                 Tea, Bakery, BBQ, Mediterranean               0.0 Tampa
+                  Cafetorium            58       Desserts, Pizza, French, Mexican, Seafood               3.8 Tampa
+                       Zaika            27                             Desserts, Fast Food               2.5 Tampa
+                     Chaayos            66        Cafe, Mediterranean, Desserts, Fast Food               3.5 Tampa
+                  Brown Town            23                     Tea, Bakery, Pizza, Italian               0.0 Tampa
+               Pind Balluchi            13                                      Tea, Pizza               3.3 Tampa
+
+### Accommodations in Tampa
+                                    NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number  city
+   Lovely Guestroom in Elevator Building  359.0    Private room          No smoking & No visitors & No parties             2.0                  2                 1.0 Tampa
+      Near all shopping & transportation  854.0    Private room                 No pets & No children under 10             2.0                  2                 2.0 Tampa
+                 Bright duplex apartment  164.0 Entire home/apt                           No children under 10             2.0                  3                 1.0 Tampa
+        Financial District  Private Room 1156.0    Private room                 No children under 10 & No pets             1.0                  1                 4.0 Tampa
+                            Bushwick Den 1173.0    Private room                          No visitors & No pets             3.0                  1                 2.0 Tampa
+Perfect Two Bed Railroad Style Apartment 1093.0 Entire home/apt                           No pets & No parties             4.0                  4                 3.0 Tampa
+        East Manhattan (March 10th-18th)  310.0    Private room                                     No smoking             4.0                  1                 3.0 Tampa
+          Spacious 1+ bedroom apt in NYC  547.0 Entire home/apt No smoking & No parties & No children under 10             1.0                  2                 5.0 Tampa
+           Artist Loft East Williamsburg  979.0    Private room                        No parties & No smoking             1.0                  1                 3.0 Tampa
+      Studio in heart of LES (Manhattan)  438.0 Entire home/apt                           No pets & No parties             3.0                  2                 1.0 Tampa
+
+### Flight from Seattle to Orlando on 2022-03-17
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3508009    706   08:07   16:29 5 hours 22 minutes 2022-03-17        Seattle      Orlando    2554.0
+     F3512793   1214   21:27   06:09 5 hours 42 minutes 2022-03-17        Seattle      Orlando    2554.0
+     F3745199   1259   10:52   19:18 5 hours 26 minutes 2022-03-17        Seattle      Orlando    2554.0
+     F3745218   1087   21:38   06:54 6 hours 16 minutes 2022-03-17        Seattle      Orlando    2554.0
+     F3745332   1038   15:34   00:13 5 hours 39 minutes 2022-03-17        Seattle      Orlando    2554.0
+
+### Self-driving from Seattle to Orlando
+No valid information.
+
+### Taxi from Seattle to Orlando
+No valid information.
+
+### Flight from Orlando to Panama City on 2022-03-20
+There is no flight from Orlando to Panama City on 2022-03-20.
+
+### Self-driving from Orlando to Panama City
+self-driving, from Orlando to Panama City, duration: 5 hours 24 mins, distance: 574 km, cost: 28
+
+### Taxi from Orlando to Panama City
+taxi, from Orlando to Panama City, duration: 5 hours 24 mins, distance: 574 km, cost: 574
+
+### Flight from Panama City to Tampa on 2022-03-21
+There is no flight from Panama City to Tampa on 2022-03-21.
+
+### Self-driving from Panama City to Tampa
+self-driving, from Panama City to Tampa, duration: 5 hours 37 mins, distance: 603 km, cost: 30
+
+### Taxi from Panama City to Tampa
+taxi, from Panama City to Tampa, duration: 5 hours 37 mins, distance: 603 km, cost: 603
+
+### Flight from Tampa to Seattle on 2022-03-23
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3749393   1049   07:53   10:56  6 hours 3 minutes 2022-03-23          Tampa      Seattle    2520.0
+     F3749440    703   18:08   21:11  6 hours 3 minutes 2022-03-23          Tampa      Seattle    2520.0
+     F3782674    880   18:41   21:29 5 hours 48 minutes 2022-03-23          Tampa      Seattle    2520.0
+
+### Self-driving from Tampa to Seattle
+No valid information.
+
+### Taxi from Tampa to Seattle
+No valid information.
+
+JSON plan:

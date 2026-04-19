@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate that probes detect semantic temporal features, not keywords",
+    "timestamp": "2025-12-03T17:55:00+00:00",
+    "random_seed": 42,
+    "git_commit": "01802b8ed5bd48e0b6661ff627d7aff7c30e74dd",
+    "git_branch": "main",
+    "git_dirty": true,
+    "package_versions": {
+      "torch": "2.7.0+cu128",
+      "transformers": "4.47.1",
+      "sklearn": "1.6.0",
+      "numpy": "2.2.1"
+    },
+    "model": {
+      "name": "gpt2",
+      "source": "huggingface"
+    },
+    "compute": {
+      "platform": "GCP",
+      "instance_type": "n1-standard-4",
+      "gpu": "nvidia-tesla-t4",
+      "zone": "us-central1-b"
+    }
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope_caa.json",
+      "sha256": "8c30b3168b61cbce18623bdd6465cfe31ab7c5c54f309fa11d533678df1f986a"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope_implicit.json",
+      "sha256": "8d34212a4cb19f661bc30b1be31d5b691d72e5decbd4960c3a7d2dcdc517ef37"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "probe_type": "LogisticRegression",
+    "probe_max_iter": 1000
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "cv_mean": 0.75,
+      "cv_std": 0.13110110602126895,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 1,
+      "cv_mean": 0.725,
+      "cv_std": 0.17940875118009153,
+      "test_acc": 0.75
+    },
+    {
+      "layer": 2,
+      "cv_mean": 0.6875,
+      "cv_std": 0.16298006013006622,
+      "test_acc": 0.75
+    },
+    {
+      "layer": 3,
+      "cv_mean": 0.725,
+      "cv_std": 0.17940875118009156,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 4,
+      "cv_mean": 0.7375,
+      "cv_std": 0.1334634781503914,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 5,
+      "cv_mean": 0.775,
+      "cv_std": 0.17500000000000002,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 6,
+      "cv_mean": 0.75,
+      "cv_std": 0.15811388300841897,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 7,
+      "cv_mean": 0.775,
+      "cv_std": 0.1403121520040228,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 8,
+      "cv_mean": 0.8,
+      "cv_std": 0.1551209205748857,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 9,
+      "cv_mean": 0.8,
+      "cv_std": 0.09185586535436918,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 10,
+      "cv_mean": 0.8,
+      "cv_std": 0.12119199643540822,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 11,
+      "cv_mean": 0.7875,
+      "cv_std": 0.1159202311936963,
+      "test_acc": 0.95
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "implicit_acc": 0.66
+    },
+    {
+      "layer": 1,
+      "implicit_acc": 0.68
+    },
+    {
+      "layer": 2,
+      "implicit_acc": 0.66
+    },
+    {
+      "layer": 3,
+      "implicit_acc": 0.65
+    },
+    {
+      "layer": 4,
+      "implicit_acc": 0.64
+    },
+    {
+      "layer": 5,
+      "implicit_acc": 0.66
+    },
+    {
+      "layer": 6,
+      "implicit_acc": 0.67
+    },
+    {
+      "layer": 7,
+      "implicit_acc": 0.73
+    },
+    {
+      "layer": 8,
+      "implicit_acc": 0.77
+    },
+    {
+      "layer": 9,
+      "implicit_acc": 0.78
+    },
+    {
+      "layer": 10,
+      "implicit_acc": 0.84
+    },
+    {
+      "layer": 11,
+      "implicit_acc": 0.79
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 10,
+    "best_implicit_accuracy": 0.84,
+    "validation_passed": true
+  }
+}

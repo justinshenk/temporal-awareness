@@ -1,0 +1,1373 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to modify my upcoming flight. I have a reservation that needs to be changed.",
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help you with that. Could you please provide me with your user ID and reservation ID so I can look up your reservation details?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Sure, I can help you with that. Could you please provide me with your user ID and reservation ID so I can look up your reservation details?"
+      }
+    },
+    "observation": "Of course, my user ID is james_lee_6136 and my reservation number is XEWRD9.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help you with that. Could you please provide me with your user ID and reservation ID so I can look up your reservation details?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4625,
+    "output_tokens": 47,
+    "generation_seconds": 4.0339202880859375,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "XEWRD9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"XEWRD9\", \"user_id\": \"james_lee_6136\", \"origin\": \"LAX\", \"destination\": \"ATL\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"LAX\", \"destination\": \"ORD\", \"flight_number\": \"HAT030\", \"date\": \"2024-05-13\", \"price\": 92}, {\"origin\": \"ORD\", \"destination\": \"ATL\", \"flight_number\": \"HAT223\", \"date\": \"2024-05-14\", \"price\": 100}, {\"origin\": \"ATL\", \"destination\": \"DFW\", \"flight_number\": \"HAT252\", \"date\": \"2024-05-21\", \"price\": 75}, {\"origin\": \"DFW\", \"destination\": \"LAX\", \"flight_number\": \"HAT124\", \"date\": \"2024-05-21\", \"price\": 96}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Lee\", \"dob\": \"1995-06-11\"}, {\"first_name\": \"Mason\", \"last_name\": \"Lopez\", \"dob\": \"1966-03-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_4643416\", \"amount\": 786}], \"created_at\": \"2024-05-07T19:17:06\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4707,
+    "output_tokens": 24,
+    "generation_seconds": 2.731908082962036,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. Your reservation is for a round-trip flight from LAX to ATL with a total of 4 flights. The passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and the flights are scheduled for May 13 and May 21. You have no free checked bags and have travel insurance. What specific changes would you like to make to your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Thank you for providing the details. Your reservation is for a round-trip flight from LAX to ATL with a total of 4 flights. The passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and the flights are scheduled for May 13 and May 21. You have no free checked bags and have travel insurance. What specific changes would you like to make to your reservation?"
+      }
+    },
+    "observation": "Actually, I think there might be some confusion. My flight is from ATL to LAX, not the other way around. I'm looking to change that leg to a nonstop flight to Las Vegas instead. Can you help me with that?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. Your reservation is for a round-trip flight from LAX to ATL with a total of 4 flights. The passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and the flights are scheduled for May 13 and May 21. You have no free checked bags and have travel insurance. What specific changes would you like to make to your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5133,
+    "output_tokens": 109,
+    "generation_seconds": 7.940297603607178,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see. You want to change the return leg of your reservation from DFW to LAX to a nonstop flight to Las Vegas (LAS) instead. Let me check the available flights for you.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see. You want to change the return leg of your reservation from DFW to LAX to a nonstop flight to Las Vegas (LAS) instead. Let me check the available flights for you."
+      }
+    },
+    "observation": "No, I want to change the outbound flight - the one going from ATL to LAX. I need it to be a nonstop flight to Las Vegas instead. Can you look up what's available for that?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see. You want to change the return leg of your reservation from DFW to LAX to a nonstop flight to Las Vegas (LAS) instead. Let me check the available flights for you.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5300,
+    "output_tokens": 58,
+    "generation_seconds": 5.008914232254028,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5410,
+    "output_tokens": 42,
+    "generation_seconds": 4.097516775131226,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-14"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5465,
+    "output_tokens": 42,
+    "generation_seconds": 3.9951748847961426,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 5520,
+    "output_tokens": 44,
+    "generation_seconds": 4.150179386138916,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-14"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 5577,
+    "output_tokens": 44,
+    "generation_seconds": 4.1589391231536865,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no available flights from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14, either direct or with one stop. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are no available flights from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14, either direct or with one stop. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "What about flights on May 13 that depart within a few hours of my original departure time? I'm flexible with the exact time as long as it's around the same window. Can you check what nonstop options are available from ATL to Las Vegas around that timeframe?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no available flights from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14, either direct or with one stop. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5634,
+    "output_tokens": 75,
+    "generation_seconds": 6.036598205566406,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5773,
+    "output_tokens": 42,
+    "generation_seconds": 4.0974438190460205,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are still no available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 13. It seems there are no options available for this date. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are still no available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 13. It seems there are no options available for this date. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "Hmm, that's unfortunate. What about May 12th? Would there be any nonstop flights from ATL to Las Vegas available then? I'm willing to adjust my travel date if needed.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are still no available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 13. It seems there are no options available for this date. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5828,
+    "output_tokens": 77,
+    "generation_seconds": 6.2000298500061035,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-12\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-12"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-12\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5954,
+    "output_tokens": 43,
+    "generation_seconds": 4.22212028503418,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are also no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 12. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are also no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 12. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "This is frustrating. Let me ask - are there any nonstop flights from ATL to LAS available at all around that time period, say between May 10th and May 15th? Or should we explore other options to get me to Las Vegas?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are also no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 12. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6010,
+    "output_tokens": 78,
+    "generation_seconds": 6.34431529045105,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-10\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-10"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-10\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6150,
+    "output_tokens": 43,
+    "generation_seconds": 4.323702096939087,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-11\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-11"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-11\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6206,
+    "output_tokens": 43,
+    "generation_seconds": 4.339802026748657,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 15,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-15\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-15"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-15\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6262,
+    "output_tokens": 43,
+    "generation_seconds": 4.3431396484375,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 16,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) between May 10 and May 15. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) between May 10 and May 15. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "I understand. Since there are no nonstop flights available on those dates, what if we look at one-stop flights from ATL to LAS instead? Would there be any options available around May 13 with a connection?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no nonstop flights available from Atlanta (ATL) to Las Vegas (LAS) between May 10 and May 15. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6318,
+    "output_tokens": 82,
+    "generation_seconds": 6.6963419914245605,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 17,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}\"}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 6453,
+    "output_tokens": 45,
+    "generation_seconds": 4.522786378860474,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 18,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}\"}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-14"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-14\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 6511,
+    "output_tokens": 45,
+    "generation_seconds": 4.539775133132935,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 19,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are also no one-stop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are also no one-stop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "This isn't working out. Since there don't seem to be any flights to Las Vegas available, can we go back to my original destination of LAX but change it from a one-stop flight to a nonstop flight instead? Are there nonstop options from ATL to LAX on May 13?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are also no one-stop flights available from Atlanta (ATL) to Las Vegas (LAS) on May 13 or May 14. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6569,
+    "output_tokens": 83,
+    "generation_seconds": 6.853551626205444,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 20,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAX\", \"date\": \"2024-05-13\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAX",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAX\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6723,
+    "output_tokens": 44,
+    "generation_seconds": 4.543895244598389,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 21,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAX\", \"date\": \"2024-05-13\"}}\"}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAX",
+        "date": "2024-05-13"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAX\", \"date\": \"2024-05-13\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 6780,
+    "output_tokens": 46,
+    "generation_seconds": 4.717851400375366,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 22,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no nonstop or one-stop flights available from Atlanta (ATL) to Los Angeles (LAX) on May 13. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are no nonstop or one-stop flights available from Atlanta (ATL) to Los Angeles (LAX) on May 13. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?"
+      }
+    },
+    "observation": "That's surprising. Let me check - what flights do I currently have booked in my reservation XEWRD9? Can you walk me through the exact itinerary so I understand what I'm working with?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no nonstop or one-stop flights available from Atlanta (ATL) to Los Angeles (LAX) on May 13. It seems there are no options available for this date either. Would you like me to check for flights on a different date or look for alternative routes?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6839,
+    "output_tokens": 81,
+    "generation_seconds": 6.808234214782715,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 23,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "XEWRD9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"XEWRD9\", \"user_id\": \"james_lee_6136\", \"origin\": \"LAX\", \"destination\": \"ATL\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"LAX\", \"destination\": \"ORD\", \"flight_number\": \"HAT030\", \"date\": \"2024-05-13\", \"price\": 92}, {\"origin\": \"ORD\", \"destination\": \"ATL\", \"flight_number\": \"HAT223\", \"date\": \"2024-05-14\", \"price\": 100}, {\"origin\": \"ATL\", \"destination\": \"DFW\", \"flight_number\": \"HAT252\", \"date\": \"2024-05-21\", \"price\": 75}, {\"origin\": \"DFW\", \"destination\": \"LAX\", \"flight_number\": \"HAT124\", \"date\": \"2024-05-21\", \"price\": 96}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Lee\", \"dob\": \"1995-06-11\"}, {\"first_name\": \"Mason\", \"last_name\": \"Lopez\", \"dob\": \"1966-03-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_4643416\", \"amount\": 786}], \"created_at\": \"2024-05-07T19:17:06\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6970,
+    "output_tokens": 24,
+    "generation_seconds": 3.4398677349090576,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 24,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation XEWRD9 is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL). The itinerary includes the following flights:\n\n1. Departure: Flight HAT030 from LAX to ORD on May 13.\n2. Arrival: Flight HAT223 from ORD to ATL on May 14.\n\nFor the return trip:\n\n1. Departure: Flight HAT252 from ATL to DFW on May 21.\n2. Arrival: Flight HAT124 from DFW to LAX on May 21.\n\nThe passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and you have no free checked bags and have travel insurance. \n\nIs there anything specific you would like to change or modify in your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation XEWRD9 is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL). The itinerary includes the following flights:\n\n1. Departure: Flight HAT030 from LAX to ORD on May 13.\n2. Arrival: Flight HAT223 from ORD to ATL on May 14.\n\nFor the return trip:\n\n1. Departure: Flight HAT252 from ATL to DFW on May 21.\n2. Arrival: Flight HAT124 from DFW to LAX on May 21.\n\nThe passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and you have no free checked bags and have travel insurance. \n\nIs there anything specific you would like to change or modify in your reservation?\"}}"
+      }
+    },
+    "observation": "Wait, I need to clarify something. My original flight was supposed to be from ATL to LAX, not from LAX to ATL. But looking at this itinerary, it seems my outbound flight is actually LAX to ATL with a connection through Chicago. Let me reconsider - I want to change one of my flights to go to Las Vegas instead. Which of these flights would be the best one to modify to get me to Las Vegas?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 184 (char 183)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation XEWRD9 is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL). The itinerary includes the following flights:\n\n1. Departure: Flight HAT030 from LAX to ORD on May 13.\n2. Arrival: Flight HAT223 from ORD to ATL on May 14.\n\nFor the return trip:\n\n1. Departure: Flight HAT252 from ATL to DFW on May 21.\n2. Arrival: Flight HAT124 from DFW to LAX on May 21.\n\nThe passengers are James Lee and Mason Lopez. The reservation was made on May 7, 2024, and you have no free checked bags and have travel insurance. \n\nIs there anything specific you would like to change or modify in your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7396,
+    "output_tokens": 194,
+    "generation_seconds": 13.845246315002441,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 25,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see. Your reservation is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL) with a connection in Chicago (ORD). The return trip is from Atlanta (ATL) to Dallas (DFW) with a connection in Dallas (DFW) to Los Angeles (LAX). \n\nIf you want to change one of the flights to go to Las Vegas (LAS) instead, the best option would be to change the return leg from Atlanta (ATL) to Dallas (DFW) to a flight from Atlanta (ATL) to Las Vegas (LAS). Let me check the available flights for you.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see. Your reservation is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL) with a connection in Chicago (ORD). The return trip is from Atlanta (ATL) to Dallas (DFW) with a connection in Dallas (DFW) to Los Angeles (LAX). \n\nIf you want to change one of the flights to go to Las Vegas (LAS) instead, the best option would be to change the return leg from Atlanta (ATL) to Dallas (DFW) to a flight from Atlanta (ATL) to Las Vegas (LAS). Let me check the available flights for you.\"}}"
+      }
+    },
+    "observation": "Yes, that sounds good. Let me change my return flight on May 21 from ATL to go to Las Vegas instead of Dallas and Los Angeles. Can you check what flights are available from ATL to LAS on May 21?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 284 (char 283)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see. Your reservation is for a round-trip flight from Los Angeles (LAX) to Atlanta (ATL) with a connection in Chicago (ORD). The return trip is from Atlanta (ATL) to Dallas (DFW) with a connection in Dallas (DFW) to Los Angeles (LAX). \n\nIf you want to change one of the flights to go to Las Vegas (LAS) instead, the best option would be to change the return leg from Atlanta (ATL) to Dallas (DFW) to a flight from Atlanta (ATL) to Las Vegas (LAS). Let me check the available flights for you.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7687,
+    "output_tokens": 148,
+    "generation_seconds": 11.204346418380737,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 26,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-21\"}}\"}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "LAS",
+        "date": "2024-05-21"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT052\", \"origin\": \"ATL\", \"destination\": \"LAS\", \"scheduled_departure_time_est\": \"03:00:00\", \"scheduled_arrival_time_est\": \"07:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 1, \"economy\": 18, \"business\": 9}, \"prices\": {\"basic_economy\": 54, \"economy\": 125, \"business\": 328}}, {\"flight_number\": \"HAT102\", \"origin\": \"ATL\", \"destination\": \"LAS\", \"scheduled_departure_time_est\": \"21:00:00\", \"scheduled_arrival_time_est\": \"01:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 9, \"economy\": 8, \"business\": 7}, \"prices\": {\"basic_economy\": 81, \"economy\": 117, \"business\": 296}}, {\"flight_number\": \"HAT174\", \"origin\": \"ATL\", \"destination\": \"LAS\", \"scheduled_departure_time_est\": \"01:00:00\", \"scheduled_arrival_time_est\": \"05:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 6, \"business\": 9}, \"prices\": {\"basic_economy\": 69, \"economy\": 132, \"business\": 232}}, {\"flight_number\": \"HAT178\", \"origin\": \"ATL\", \"destination\": \"LAS\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"12:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 15, \"business\": 19}, \"prices\": {\"basic_economy\": 84, \"economy\": 150, \"business\": 373}}, {\"flight_number\": \"HAT281\", \"origin\": \"ATL\", \"destination\": \"LAS\", \"scheduled_departure_time_est\": \"22:00:00\", \"scheduled_arrival_time_est\": \"02:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 15, \"business\": 11}, \"prices\": {\"basic_economy\": 81, \"economy\": 164, \"business\": 405}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"LAS\", \"date\": \"2024-05-21\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 7892,
+    "output_tokens": 43,
+    "generation_seconds": 4.9947826862335205,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 27,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"There are several available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 21:\n\n1. **Flight HAT052** - Departs at 3:00 AM and arrives at 7:00 AM. Prices: Basic Economy $54, Economy $125, Business $328.\n2. **Flight HAT102** - Departs at 9:00 PM and arrives at 1:00 AM the next day. Prices: Basic Economy $81, Economy $117, Business $296.\n3. **Flight HAT174** - Departs at 1:00 AM and arrives at 5:00 AM. Prices: Basic Economy $69, Economy $132, Business $232.\n4. **Flight HAT178** - Departs at 8:00 AM and arrives at 12:00 PM. Prices: Basic Economy $84, Economy $150, Business $373.\n5. **Flight HAT281** - Departs at 10:00 PM and arrives at 2:00 AM the next day. Prices: Basic Economy $81, Economy $164, Business $405.\n\nPlease let me know which flight and cabin class you would like to book, and I will proceed with the modification.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"There are several available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 21:\n\n1. **Flight HAT052** - Departs at 3:00 AM and arrives at 7:00 AM. Prices: Basic Economy $54, Economy $125, Business $328.\n2. **Flight HAT102** - Departs at 9:00 PM and arrives at 1:00 AM the next day. Prices: Basic Economy $81, Economy $117, Business $296.\n3. **Flight HAT174** - Departs at 1:00 AM and arrives at 5:00 AM. Prices: Basic Economy $69, Economy $132, Business $232.\n4. **Flight HAT178** - Departs at 8:00 AM and arrives at 12:00 PM. Prices: Basic Economy $84, Economy $150, Business $373.\n5. **Flight HAT281** - Departs at 10:00 PM and arrives at 2:00 AM the next day. Prices: Basic Economy $81, Economy $164, Business $405.\n\nPlease let me know which flight and cabin class you would like to book, and I will proceed with the modification.\"}}"
+      }
+    },
+    "observation": "Great! I'd like to go with Flight HAT178 departing at 8:00 AM since that's a reasonable departure time. What's the difference in cost between my current ticket and this flight? Also, what cabin class am I currently booked in?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 139 (char 138)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"There are several available nonstop flights from Atlanta (ATL) to Las Vegas (LAS) on May 21:\n\n1. **Flight HAT052** - Departs at 3:00 AM and arrives at 7:00 AM. Prices: Basic Economy $54, Economy $125, Business $328.\n2. **Flight HAT102** - Departs at 9:00 PM and arrives at 1:00 AM the next day. Prices: Basic Economy $81, Economy $117, Business $296.\n3. **Flight HAT174** - Departs at 1:00 AM and arrives at 5:00 AM. Prices: Basic Economy $69, Economy $132, Business $232.\n4. **Flight HAT178** - Departs at 8:00 AM and arrives at 12:00 PM. Prices: Basic Economy $84, Economy $150, Business $373.\n5. **Flight HAT281** - Departs at 10:00 PM and arrives at 2:00 AM the next day. Prices: Basic Economy $81, Economy $164, Business $405.\n\nPlease let me know which flight and cabin class you would like to book, and I will proceed with the modification.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8555,
+    "output_tokens": 323,
+    "generation_seconds": 21.931323051452637,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 28,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "XEWRD9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"XEWRD9\", \"user_id\": \"james_lee_6136\", \"origin\": \"LAX\", \"destination\": \"ATL\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"LAX\", \"destination\": \"ORD\", \"flight_number\": \"HAT030\", \"date\": \"2024-05-13\", \"price\": 92}, {\"origin\": \"ORD\", \"destination\": \"ATL\", \"flight_number\": \"HAT223\", \"date\": \"2024-05-14\", \"price\": 100}, {\"origin\": \"ATL\", \"destination\": \"DFW\", \"flight_number\": \"HAT252\", \"date\": \"2024-05-21\", \"price\": 75}, {\"origin\": \"DFW\", \"destination\": \"LAX\", \"flight_number\": \"HAT124\", \"date\": \"2024-05-21\", \"price\": 96}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Lee\", \"dob\": \"1995-06-11\"}, {\"first_name\": \"Mason\", \"last_name\": \"Lopez\", \"dob\": \"1966-03-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_4643416\", \"amount\": 786}], \"created_at\": \"2024-05-07T19:17:06\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"XEWRD9\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 8942,
+    "output_tokens": 25,
+    "generation_seconds": 4.193666219711304,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 29,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You are currently booked in the basic economy cabin class. The price for Flight HAT178 from Atlanta (ATL) to Las Vegas (LAS) is $84 for basic economy, $150 for economy, and $373 for business. The difference in cost between your current ticket and this flight is $9 for basic economy, $54 for economy, and $177 for business. \n\nWould you like to proceed with the modification and select a cabin class?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You are currently booked in the basic economy cabin class. The price for Flight HAT178 from Atlanta (ATL) to Las Vegas (LAS) is $84 for basic economy, $150 for economy, and $373 for business. The difference in cost between your current ticket and this flight is $9 for basic economy, $54 for economy, and $177 for business. \n\nWould you like to proceed with the modification and select a cabin class?\"}}"
+      }
+    },
+    "observation": "I see. Since I'm willing to upgrade to economy to make this change work, I'd like to book Flight HAT178 in economy class. That would be $54 more than my current basic economy fare, which is well within my budget. Please go ahead and make that change for me.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "james_lee_6136",
+        "actions": [
+          {
+            "name": "transfer_to_human_agents",
+            "kwargs": {
+              "summary": "User wants to change my upcoming one stop flight from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). The reservation is partially used."
+            }
+          }
+        ],
+        "instruction": "Your user id is james_lee_6136. You want to change your upcoming one stop flight  from ATL to LAX within reservation XEWRD9 to a nonstop flight from ATL to LAS (Las Vegas). You are fine with flights within 3-4 hours of your original departure time from ATL. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 371 (char 370)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You are currently booked in the basic economy cabin class. The price for Flight HAT178 from Atlanta (ATL) to Las Vegas (LAS) is $84 for basic economy, $150 for economy, and $373 for business. The difference in cost between your current ticket and this flight is $9 for basic economy, $54 for economy, and $177 for business. \n\nWould you like to proceed with the modification and select a cabin class?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 9369,
+    "output_tokens": 119,
+    "generation_seconds": 9.990251779556274,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

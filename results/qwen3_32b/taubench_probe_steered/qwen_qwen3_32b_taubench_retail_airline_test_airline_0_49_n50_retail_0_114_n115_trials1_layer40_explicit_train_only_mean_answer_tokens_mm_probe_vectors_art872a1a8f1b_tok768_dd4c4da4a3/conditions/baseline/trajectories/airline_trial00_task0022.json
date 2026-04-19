@@ -1,0 +1,1573 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to make a change to my upcoming flight departing from Newark on May 21st.",
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide me with your reservation ID and the details of the changes you'd like to make?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Sure, I can help with that. Could you please provide me with your reservation ID and the details of the changes you'd like to make?"
+      }
+    },
+    "observation": "My user ID is ivan_rossi_8555. I'm looking to switch to a nonstop flight on the same day if possible.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide me with your reservation ID and the details of the changes you'd like to make?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4627,
+    "output_tokens": 46,
+    "generation_seconds": 4.066770315170288,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_rossi_8555\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ivan_rossi_8555"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ivan\", \"last_name\": \"Rossi\"}, \"address\": {\"address1\": \"513 Main Street\", \"address2\": \"Suite 805\", \"city\": \"Philadelphia\", \"country\": \"USA\", \"state\": \"PA\", \"zip\": \"19102\"}, \"email\": \"ivan.rossi2633@example.com\", \"dob\": \"1954-01-14\", \"payment_methods\": {\"gift_card_7344518\": {\"source\": \"gift_card\", \"amount\": 183, \"id\": \"gift_card_7344518\"}, \"gift_card_9823297\": {\"source\": \"gift_card\", \"amount\": 224, \"id\": \"gift_card_9823297\"}, \"credit_card_9659780\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"1777\", \"id\": \"credit_card_9659780\"}}, \"saved_passengers\": [{\"first_name\": \"Ava\", \"last_name\": \"Silva\", \"dob\": \"1971-01-14\"}, {\"first_name\": \"Anya\", \"last_name\": \"Patel\", \"dob\": \"1990-06-13\"}], \"membership\": \"silver\", \"reservations\": [\"OWZ4XL\", \"F3IQK1\", \"8WMF4C\", \"L2H5FP\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_rossi_8555\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4714,
+    "output_tokens": 29,
+    "generation_seconds": 3.0364837646484375,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you, Ivan. Could you please provide your reservation ID so I can look up the details of your current booking?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Thank you, Ivan. Could you please provide your reservation ID so I can look up the details of your current booking?"
+      }
+    },
+    "observation": "I apologize, but I don't have my reservation ID handy right now. Can you look it up using my user ID instead?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you, Ivan. Could you please provide your reservation ID so I can look up the details of your current booking?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5101,
+    "output_tokens": 41,
+    "generation_seconds": 3.957385540008545,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_rossi_8555\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ivan_rossi_8555"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ivan\", \"last_name\": \"Rossi\"}, \"address\": {\"address1\": \"513 Main Street\", \"address2\": \"Suite 805\", \"city\": \"Philadelphia\", \"country\": \"USA\", \"state\": \"PA\", \"zip\": \"19102\"}, \"email\": \"ivan.rossi2633@example.com\", \"dob\": \"1954-01-14\", \"payment_methods\": {\"gift_card_7344518\": {\"source\": \"gift_card\", \"amount\": 183, \"id\": \"gift_card_7344518\"}, \"gift_card_9823297\": {\"source\": \"gift_card\", \"amount\": 224, \"id\": \"gift_card_9823297\"}, \"credit_card_9659780\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"1777\", \"id\": \"credit_card_9659780\"}}, \"saved_passengers\": [{\"first_name\": \"Ava\", \"last_name\": \"Silva\", \"dob\": \"1971-01-14\"}, {\"first_name\": \"Anya\", \"last_name\": \"Patel\", \"dob\": \"1990-06-13\"}], \"membership\": \"silver\", \"reservations\": [\"OWZ4XL\", \"F3IQK1\", \"8WMF4C\", \"L2H5FP\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_rossi_8555\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5177,
+    "output_tokens": 29,
+    "generation_seconds": 3.2071690559387207,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have four reservations: OWZ4XL, F3IQK1, 8WMF4C, and L2H5FP. Could you please specify which reservation you'd like to modify?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see you have four reservations: OWZ4XL, F3IQK1, 8WMF4C, and L2H5FP. Could you please specify which reservation you'd like to modify?"
+      }
+    },
+    "observation": "I'm not entirely sure which one is for my May 21st flight. Can you help me identify which reservation that would be?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have four reservations: OWZ4XL, F3IQK1, 8WMF4C, and L2H5FP. Could you please specify which reservation you'd like to modify?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5564,
+    "output_tokens": 61,
+    "generation_seconds": 5.3638916015625,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"OWZ4XL\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "OWZ4XL"
+      }
+    },
+    "observation": "{\"reservation_id\": \"OWZ4XL\", \"user_id\": \"ivan_rossi_8555\", \"origin\": \"EWR\", \"destination\": \"LAX\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"EWR\", \"destination\": \"MIA\", \"flight_number\": \"HAT202\", \"date\": \"2024-05-21\", \"price\": 94}, {\"origin\": \"MIA\", \"destination\": \"LAX\", \"flight_number\": \"HAT232\", \"date\": \"2024-05-21\", \"price\": 80}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Rossi\", \"dob\": \"1954-01-14\"}, {\"first_name\": \"Olivia\", \"last_name\": \"Santos\", \"dob\": \"1984-06-23\"}, {\"first_name\": \"Lei\", \"last_name\": \"Johansson\", \"dob\": \"1995-10-22\"}], \"payment_history\": [{\"payment_id\": \"gift_card_9823297\", \"amount\": 522}], \"created_at\": \"2024-05-09T13:43:03\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"OWZ4XL\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5662,
+    "output_tokens": 24,
+    "generation_seconds": 3.079139232635498,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"This reservation (OWZ4XL) is for a one-way trip departing from Newark (EWR) on May 21st with a stop in Miami (MIA) before arriving in Los Angeles (LAX). Is this the reservation you'd like to modify?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "This reservation (OWZ4XL) is for a one-way trip departing from Newark (EWR) on May 21st with a stop in Miami (MIA) before arriving in Los Angeles (LAX). Is this the reservation you'd like to modify?"
+      }
+    },
+    "observation": "Yes, that's the one! I need to change it to a nonstop flight from Newark to Los Angeles on the same day if you have that available.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"This reservation (OWZ4XL) is for a one-way trip departing from Newark (EWR) on May 21st with a stop in Miami (MIA) before arriving in Los Angeles (LAX). Is this the reservation you'd like to modify?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6030,
+    "output_tokens": 72,
+    "generation_seconds": 6.19722318649292,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"LAX\", \"date\": \"2024-05-21\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "EWR",
+        "destination": "LAX",
+        "date": "2024-05-21"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT041\", \"origin\": \"EWR\", \"destination\": \"LAX\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"12:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 15, \"business\": 19}, \"prices\": {\"basic_economy\": 53, \"economy\": 136, \"business\": 458}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"LAX\", \"date\": \"2024-05-21\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6143,
+    "output_tokens": 43,
+    "generation_seconds": 4.412439346313477,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"There is a direct flight (HAT041) available from Newark (EWR) to Los Angeles (LAX) on May 21st. It departs at 07:00 and arrives at 12:30. The available cabin classes and prices are:\\n- Basic Economy: $53\\n- Economy: $136\\n- Business: $458\\n\\nWould you like to proceed with this change?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "There is a direct flight (HAT041) available from Newark (EWR) to Los Angeles (LAX) on May 21st. It departs at 07:00 and arrives at 12:30. The available cabin classes and prices are:\n- Basic Economy: $53\n- Economy: $136\n- Business: $458\n\nWould you like to proceed with this change?"
+      }
+    },
+    "observation": "What's the price difference compared to my current ticket? I want to understand how much the change would cost me.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"There is a direct flight (HAT041) available from Newark (EWR) to Los Angeles (LAX) on May 21st. It departs at 07:00 and arrives at 12:30. The available cabin classes and prices are:\\n- Basic Economy: $53\\n- Economy: $136\\n- Business: $458\\n\\nWould you like to proceed with this change?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6321,
+    "output_tokens": 113,
+    "generation_seconds": 8.765954732894897,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"calculate\", \"arguments\": {\"expression\": \"53 + 136 + 458 - 94 - 80\"}}",
+    "action": {
+      "name": "calculate",
+      "arguments": {
+        "expression": "53 + 136 + 458 - 94 - 80"
+      }
+    },
+    "observation": "473.0",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "calculate",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"calculate\", \"arguments\": {\"expression\": \"53 + 136 + 458 - 94 - 80\"}}",
+    "parsed_action_name": "calculate",
+    "input_tokens": 6466,
+    "output_tokens": 37,
+    "generation_seconds": 4.120934009552002,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"The price difference between the nonstop flight (HAT041) in Basic Economy and your current ticket is $473. This is the additional cost you would incur for the change. Would you like to proceed with the modification?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The price difference between the nonstop flight (HAT041) in Basic Economy and your current ticket is $473. This is the additional cost you would incur for the change. Would you like to proceed with the modification?"
+      }
+    },
+    "observation": "That's quite a bit more than I was expecting to pay. Is there any way to reduce that cost, or what if I upgrade to Economy instead of Basic Economy?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"The price difference between the nonstop flight (HAT041) in Basic Economy and your current ticket is $473. This is the additional cost you would incur for the change. Would you like to proceed with the modification?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6521,
+    "output_tokens": 66,
+    "generation_seconds": 5.942202091217041,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"calculate\", \"arguments\": {\"expression\": \"136 + 458 - 94 - 80\"}}",
+    "action": {
+      "name": "calculate",
+      "arguments": {
+        "expression": "136 + 458 - 94 - 80"
+      }
+    },
+    "observation": "420.0",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "calculate",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"calculate\", \"arguments\": {\"expression\": \"136 + 458 - 94 - 80\"}}",
+    "parsed_action_name": "calculate",
+    "input_tokens": 6630,
+    "output_tokens": 33,
+    "generation_seconds": 3.9351465702056885,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"If you upgrade to Economy instead of staying in Basic Economy, the price difference would be $420. This is $53 less than upgrading to Business. Would you like to proceed with upgrading to Economy class for the nonstop flight?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "If you upgrade to Economy instead of staying in Basic Economy, the price difference would be $420. This is $53 less than upgrading to Business. Would you like to proceed with upgrading to Economy class for the nonstop flight?"
+      }
+    },
+    "observation": "I appreciate you working with me on this. However, I'm only willing to pay up to $100 for the change. Is there any flexibility on the pricing, or any other options available?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"If you upgrade to Economy instead of staying in Basic Economy, the price difference would be $420. This is $53 less than upgrading to Business. Would you like to proceed with upgrading to Economy class for the nonstop flight?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6681,
+    "output_tokens": 66,
+    "generation_seconds": 6.064645528793335,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but the price difference for the nonstop flight is significantly higher than your budget of $100. Since we cannot reduce the cost of the flight, I don't have any other options to offer for this specific request. Would you like to explore other alternatives, such as different dates or flights?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but the price difference for the nonstop flight is significantly higher than your budget of $100. Since we cannot reduce the cost of the flight, I don't have any other options to offer for this specific request. Would you like to explore other alternatives, such as different dates or flights?"
+      }
+    },
+    "observation": "I understand, but this is really important to me. My mother is very ill, and I need to get home as soon as possible. Is there anything else you can do to help me with the cost, or any promotions or waivers that might apply to my situation?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but the price difference for the nonstop flight is significantly higher than your budget of $100. Since we cannot reduce the cost of the flight, I don't have any other options to offer for this specific request. Would you like to explore other alternatives, such as different dates or flights?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6797,
+    "output_tokens": 81,
+    "generation_seconds": 6.954312324523926,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm truly sorry to hear about your mother's condition. This is a very important situation, and I will transfer your case to a human agent who can explore all possible options, including special assistance or waivers, to help you. Please hold on while I connect you.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm truly sorry to hear about your mother's condition. This is a very important situation, and I will transfer your case to a human agent who can explore all possible options, including special assistance or waivers, to help you. Please hold on while I connect you."
+      }
+    },
+    "observation": "Thank you so much, I really appreciate your help with this. I'll wait for the human agent.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm truly sorry to hear about your mother's condition. This is a very important situation, and I will transfer your case to a human agent who can explore all possible options, including special assistance or waivers, to help you. Please hold on while I connect you.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6941,
+    "output_tokens": 71,
+    "generation_seconds": 6.362781286239624,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 15,
+    "model_text": "Action:\n{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"Ivan Rossi (user ID: ivan_rossi_8555) is facing a medical emergency as his mother is very ill and needs to return home urgently on May 21st. He is trying to switch to a nonstop flight but the price difference exceeds his budget. He requested special assistance or waivers to reduce the cost.\"}}",
+    "action": {
+      "name": "transfer_to_human_agents",
+      "arguments": {
+        "summary": "Ivan Rossi (user ID: ivan_rossi_8555) is facing a medical emergency as his mother is very ill and needs to return home urgently on May 21st. He is trying to switch to a nonstop flight but the price difference exceeds his budget. He requested special assistance or waivers to reduce the cost."
+      }
+    },
+    "observation": "Transfer successful",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "ivan_rossi_8555",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_rossi_8555. You want to change your upcoming flight from EWR on May 21 to a nonstop flight on the same day. Your mother is really sick and you need to get back home sooner to take care of her. You are willing to pay a fee for the change, upto $100. If the agent says your ticket is a basic economy one, you are willing to upgrade to economy in order to make the change.",
+        "outputs": []
+      },
+      "source": "transfer_to_human_agents",
+      "user_cost": 0.001235,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "e65fa27507133dd38a963089220c4fe572e2d334d32e152717664595a043640d"
+        },
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ivan_rossi_8555"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "OWZ4XL"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "EWR",
+              "destination": "LAX",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT202",
+                  "date": "2024-05-21"
+                },
+                {
+                  "flight_number": "HAT232",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "OWZ4XL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT041",
+                  "date": "2024-05-21"
+                }
+              ],
+              "payment_id": "credit_card_9659780"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"Ivan Rossi (user ID: ivan_rossi_8555) is facing a medical emergency as his mother is very ill and needs to return home urgently on May 21st. He is trying to switch to a nonstop flight but the price difference exceeds his budget. He requested special assistance or waivers to reduce the cost.\"}}",
+    "parsed_action_name": "transfer_to_human_agents",
+    "input_tokens": 7042,
+    "output_tokens": 91,
+    "generation_seconds": 7.64070987701416,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

@@ -1,0 +1,303 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to cancel a flight I booked just 10 hours ago - I made a mistake with the booking.",
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I can help you with that. Could you please provide me with your user ID and the reservation ID so I can proceed with the cancellation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I can help you with that. Could you please provide me with your user ID and the reservation ID so I can proceed with the cancellation?"
+      }
+    },
+    "observation": "Of course. My user ID is anya_garcia_5901, and my reservation confirmation number is 3RK2T9.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I can help you with that. Could you please provide me with your user ID and the reservation ID so I can proceed with the cancellation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4630,
+    "output_tokens": 45,
+    "generation_seconds": 3.9473443031311035,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "3RK2T9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"3RK2T9\", \"user_id\": \"anya_garcia_5901\", \"origin\": \"MCO\", \"destination\": \"SFO\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-19\", \"price\": 57}, {\"origin\": \"PHX\", \"destination\": \"SFO\", \"flight_number\": \"HAT009\", \"date\": \"2024-05-20\", \"price\": 83}], \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Lee\", \"dob\": \"1989-12-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2550356\", \"amount\": 280}], \"created_at\": \"2024-05-02T06:02:56\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4715,
+    "output_tokens": 25,
+    "generation_seconds": 2.7599990367889404,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. Your reservation is for a basic economy flight. Since you are cancelling within 24 hours of booking and the flight has not taken off yet, I can proceed with the cancellation. Are you sure you want to cancel this reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Thank you for providing the details. Your reservation is for a basic economy flight. Since you are cancelling within 24 hours of booking and the flight has not taken off yet, I can proceed with the cancellation. Are you sure you want to cancel this reservation?"
+      }
+    },
+    "observation": "Yes, I'm absolutely sure. I booked it by mistake just 10 hours ago and I really need to cancel it. I'm expecting a full refund since I'm cancelling so soon after booking.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. Your reservation is for a basic economy flight. Since you are cancelling within 24 hours of booking and the flight has not taken off yet, I can proceed with the cancellation. Are you sure you want to cancel this reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5052,
+    "output_tokens": 70,
+    "generation_seconds": 5.567576169967651,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "3RK2T9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"3RK2T9\", \"user_id\": \"anya_garcia_5901\", \"origin\": \"MCO\", \"destination\": \"SFO\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-19\", \"price\": 57}, {\"origin\": \"PHX\", \"destination\": \"SFO\", \"flight_number\": \"HAT009\", \"date\": \"2024-05-20\", \"price\": 83}], \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Lee\", \"dob\": \"1989-12-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2550356\", \"amount\": 280}, {\"payment_id\": \"gift_card_2550356\", \"amount\": -280}], \"created_at\": \"2024-05-02T06:02:56\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 5172,
+    "output_tokens": 24,
+    "generation_seconds": 2.8437507152557373,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully cancelled. The refund will be processed to your original payment method, which is a gift card. It may take 5 to 7 business days for the refund to reflect on your gift card balance. If you have any further questions or need additional assistance, feel free to let me know.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation has been successfully cancelled. The refund will be processed to your original payment method, which is a gift card. It may take 5 to 7 business days for the refund to reflect on your gift card balance. If you have any further questions or need additional assistance, feel free to let me know."
+      }
+    },
+    "observation": "Thank you for cancelling it. I appreciate you processing the refund quickly. I'm glad I was able to get this sorted out since I caught the mistake early.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully cancelled. The refund will be processed to your original payment method, which is a gift card. It may take 5 to 7 business days for the refund to reflect on your gift card balance. If you have any further questions or need additional assistance, feel free to let me know.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5538,
+    "output_tokens": 80,
+    "generation_seconds": 6.32049560546875,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You're very welcome! I'm glad I could assist you. If you need help with anything else, don't hesitate to reach out. Have a great day!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "You're very welcome! I'm glad I could assist you. If you need help with anything else, don't hesitate to reach out. Have a great day!"
+      }
+    },
+    "observation": "Thank you so much for your help! Have a great day as well.\n\n###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) 10 hours ago, and you made a mistake and you want to cancel it. Insist that you booked it 10 hours ago and you want a full refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.000736,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "4587e6b48ad2b2c4f3e1fecb40aabec7bb2286513273b8f8cec3f5865222f290"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You're very welcome! I'm glad I could assist you. If you need help with anything else, don't hesitate to reach out. Have a great day!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5659,
+    "output_tokens": 50,
+    "generation_seconds": 4.545914888381958,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

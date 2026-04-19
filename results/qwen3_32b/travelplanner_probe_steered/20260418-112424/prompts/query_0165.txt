@@ -1,0 +1,286 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you generate a 7-day travel itinerary for 2 people? We would be leaving Salt Lake City and aim to visit 3 cities in California between March 25th and March 31st, 2022. We have a new budget of $4,600. When selecting accommodations, we require private rooms and it is important that smoking is permitted. As for transportation, we do not plan on self-driving.
+
+Reference information:
+### Attractions in San Diego
+                                      Name  Latitude   Longitude                                                   Address          Phone                                                                                      Website      City
+                Cabrillo National Monument 32.672256 -117.241609       1800 Cabrillo Memorial Dr, San Diego, CA 92106, USA (619) 523-4285                                                           https://www.nps.gov/cabr/index.htm San Diego
+                      La Jolla Shores Park 32.858154 -117.256103              8300 Camino Del Oro, La Jolla, CA 92037, USA (619) 221-8899                                           https://www.sandiego.gov/lifeguards/beaches/shores San Diego
+                          California Tower 32.731609 -117.152167 California Tower, 1350 El Prado, San Diego, CA 92101, USA (619) 239-2001                                            https://museumofus.org/exhibits/california-tower/ San Diego
+                        SeaWorld San Diego 32.764296 -117.226440               500 Sea World Dr., San Diego, CA 92109, USA (619) 222-4732 https://seaworld.com/san-diego?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing San Diego
+                        Old Town San Diego 32.755827 -117.197261                    2829 Juan St, San Diego, CA 92110, USA        Unknown                                                             https://www.oldtownsandiego.org/ San Diego
+                               Balboa Park 32.734148 -117.144553                                        San Diego, CA, USA (619) 239-0512                                                                   http://www.balboapark.org/ San Diego
+                           Seaport Village 32.709064 -117.170937                 849 W Harbor Dr, San Diego, CA 92101, USA (619) 530-0704                                                                  https://seaportvillage.com/ San Diego
+               The San Diego Museum of Art 32.732158 -117.150430                   1450 El Prado, San Diego, CA 92102, USA (619) 232-7931                                                                      https://www.sdmart.org/ San Diego
+                         USS Midway Museum 32.713740 -117.175127                 910 N Harbor Dr, San Diego, CA 92101, USA (619) 544-9600                                                                      https://www.midway.org/ San Diego
+                                  Skytower 32.765423 -117.226662               500 Sea World Dr., San Diego, CA 92109, USA        Unknown                                                                                      Unknown San Diego
+                             Dolphin Point 32.765390 -117.227412               500 Sea World Dr., San Diego, CA 92109, USA (915) 525-4772                                                                                      Unknown San Diego
+                             San Diego Zoo 32.736035 -117.150985                     2920 Zoo Dr, San Diego, CA 92101, USA (619) 231-1515                                                                 https://zoo.sandiegozoo.org/ San Diego
+                          Mission Bay Park 32.764107 -117.226265                                  San Diego, CA 92109, USA (619) 525-8213                                        https://www.sandiego.gov/locations/seaworld-san-diego San Diego
+                       Whaley House Museum 32.752904 -117.194510              2476 San Diego Ave, San Diego, CA 92110, USA (619) 786-1143                                                         https://www.whaleyhousesandiego.com/ San Diego
+                Sunset Cliffs Natural Park 32.715915 -117.255168                       Ladera St, San Diego, CA 92107, USA (619) 525-8213                 https://www.sandiego.gov/park-and-recreation/parks/regional/shoreline/sunset San Diego
+             Old Town San Diego State Park 32.754906 -117.197641                 4002 Wallace St, San Diego, CA 92110, USA (619) 220-5422                                                         http://www.parks.ca.gov/?page_id=663 San Diego
+           Martin Luther King Jr Promenade 32.708357 -117.161993                 326 W Harbor Dr, San Diego, CA 92101, USA (619) 525-8213                                           https://www.sandiego.gov/park-and-recreation/parks San Diego
+                      Balboa Park Carousel 32.734576 -117.146707                     1889 Zoo Pl, San Diego, CA 92101, USA (619) 232-2282                                                               http://balboaparkcarousel.org/ San Diego
+                       San Diego Free Tour 32.707586 -117.160287                   200 Fifth Ave, San Diego, CA 92101, USA (415) 503-7199                                                                      https://freesftour.com/ San Diego
+Mission Beach Boardwalk | Ocean Front Walk 32.771432 -117.252831                W Mission Bay Dr, San Diego, CA 92109, USA (619) 232-3101                                                                    https://www.sandiego.gov/ San Diego
+
+### Restaurants in San Diego
+                          Name  Average Cost                                              Cuisines  Aggregate Rating      City
+                     Open Yard            33                        Chinese, Pizza, Cafe, Desserts               3.3 San Diego
+           Jetha Lal Ka Dhabha            22                            Tea, Cafe, Indian, Italian               3.1 San Diego
+               The Lost Mughal            74                                    Tea, Cafe, Italian               3.8 San Diego
+                   Burger King            20            Pizza, Italian, French, Fast Food, Seafood               3.8 San Diego
+                Bikaner Sweets            37                      Bakery, Pizza, Indian, Fast Food               2.8 San Diego
+      Momos Hut & Chinese Food            94                                  Tea, Cafe, Fast Food               2.4 San Diego
+            Chaudhary Di Hatti            30              Desserts, Pizza, Italian, BBQ, Fast Food               3.3 San Diego
+                        Gopala            98                Pizza, Mexican, BBQ, American, Seafood               3.3 San Diego
+           Armaan's Restaurant            29                     Fast Food, Cafe, Seafood, Italian               2.8 San Diego
+                  Bun Intended            91                        Cafe, Pizza, Desserts, Seafood               3.9 San Diego
+                     Chawlas 2            67                        Bakery, Pizza, Indian, Seafood               0.0 San Diego
+                 Duggal Snacks            82     Desserts, Pizza, Italian, Fast Food, Cafe, Indian               3.6 San Diego
+Dabas Ke Special Chole Bhature            35                          BBQ, Pizza, Bakery, Desserts               0.0 San Diego
+                Midnight Bites            63                                  Bakery, Indian, Cafe               3.1 San Diego
+                Baskin Robbins            48                 Italian, Bakery, BBQ, Fast Food, Cafe               3.5 San Diego
+                     Chawlas 2            91 Desserts, Fast Food, American, Mediterranean, Seafood               3.0 San Diego
+                      Burgrill            54              Desserts, Tea, Pizza, Fast Food, Chinese               4.4 San Diego
+            Harry's Bar + Cafe            55                      Fast Food, French, Cafe, Seafood               3.6 San Diego
+                    Dragon Way            77            Desserts, Mexican, Cafe, American, Seafood               0.0 San Diego
+               Hum Sabki Rasoi            63              Pizza, BBQ, Fast Food, American, Seafood               3.3 San Diego
+              Aamantran Bangla            33               Pizza, Italian, Bakery, Fast Food, Cafe               2.7 San Diego
+                        Meraki            51                                          Tea, Seafood               4.0 San Diego
+
+### Accommodations in San Diego
+                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number      city
+Spacious Room in Large 2 Bedroom Prewar Apartment  585.0    Private room                       No parties & No visitors             1.0                  2                 4.0 San Diego
+                 Big room near Prospect Park! NY!  752.0    Private room              No parties & No smoking & No pets             7.0                  1                 2.0 San Diego
+    Luxury 4BR Home, Spacious & Central to Trains  392.0 Entire home/apt                                     No parties             3.0                  3                 5.0 San Diego
+                 Cozy 1.5BD in Parkslope Brooklyn 1093.0 Entire home/apt                                     No parties             3.0                 10                 2.0 San Diego
+      Spacious & Homey Williamsburg 1BR Apartment 1004.0 Entire home/apt                                     No parties             5.0                  4                 3.0 San Diego
+                    Upper East Side 1 Bedroom Gem  692.0     Shared room No children under 10 & No parties & No smoking             2.0                  1                 3.0 San Diego
+                  Organic Oasis Duplex (EMF-free) 1186.0 Entire home/apt                       No visitors & No smoking            60.0                  4                 4.0 San Diego
+ Harlem Garden Oasis in  New York City Brownstone  368.0 Entire home/apt                                    No visitors            31.0                  3                 5.0 San Diego
+  Conveniently located 2 BR Time Square Apartment  502.0 Entire home/apt No parties & No smoking & No children under 10             2.0                  4                 5.0 San Diego
+  LargeBedroom gem in historic Red Hook Brooklyn!  787.0    Private room                                    No visitors             4.0                  2                 3.0 San Diego
+            The Perfect Upper East Side Apartment  847.0 Entire home/apt                                    No visitors             1.0                  2                 3.0 San Diego
+                                 CHIC EVENT SPACE 1068.0 Entire home/apt                                    No visitors             1.0                  2                 5.0 San Diego
+
+### Attractions in San Luis Obispo
+                                        Name  Latitude   Longitude                                                      Address          Phone                                                                                            Website            City
+           San Luis Obispo Children's Museum 35.278988 -120.666190               1010 Nipomo St, San Luis Obispo, CA 93401, USA (805) 544-5437                                                                              http://www.slocm.org/ San Luis Obispo
+                               Mission Plaza 35.279832 -120.664751                989 Chorro St, San Luis Obispo, CA 93401, USA (805) 781-7067                https://www.slocity.org/Home/Components/FacilityDirectory/FacilityDirectory/12/2170 San Luis Obispo
+             San Luis Obispo Railroad Museum 35.273303 -120.655673       1940 Santa Barbara Ave, San Luis Obispo, CA 93401, USA (805) 548-1894                                                                             http://www.slorrm.com/ San Luis Obispo
+                                    Fountain 35.280625 -120.663692               1023 Chorro St, San Luis Obispo, CA 93401, USA        Unknown                                                                                            Unknown San Luis Obispo
+                            The Dorn Pyramid 35.260949 -120.670612            2966 S Higuera St, San Luis Obispo, CA 93401, USA        Unknown                    https://www.atlasobscura.com/places/the-dorn-pyramid-san-luis-obispo-california San Luis Obispo
+            San Luis Obispo Botanical Garden 35.330285 -120.728879          3450 Dairy Creek Rd, San Luis Obispo, CA 93405, USA (805) 541-1400                                                                                  http://slobg.org/ San Luis Obispo
+                            Portola Fountain 35.274951 -120.669226                               San Luis Obispo, CA 93401, USA        Unknown                                                                                            Unknown San Luis Obispo
+                      The Iron Road Pioneers 35.279645 -120.659457 Railroad Avenue and, Osos St, San Luis Obispo, CA 93401, USA        Unknown                                                                                            Unknown San Luis Obispo
+               San Luis Obispo Museum of Art 35.279600 -120.665000                1010 Broad St, San Luis Obispo, CA 93401, USA (805) 543-8562                                                                                 https://sloma.org/ San Luis Obispo
+                        Jack House & Gardens 35.276984 -120.666237                 536 Marsh St, San Luis Obispo, CA 93401, USA (805) 781-7222 http://www.slocity.org/government/department-directory/parks-and-recreation/jack-house-and-gardens San Luis Obispo
+                                  Cheng Park 35.280977 -120.658750                1095 Marsh St, San Luis Obispo, CA 93401, USA (805) 781-7222                                                                                            Unknown San Luis Obispo
+                             Santa Rosa Park 35.290058 -120.664140                  1050 Oak St, San Luis Obispo, CA 93405, USA (805) 781-7222                https://www.slocity.org/Home/Components/FacilityDirectory/FacilityDirectory/16/2173 San Luis Obispo
+                          Cuesta Canyon Park 35.293712 -120.643884               2400 Loomis St, San Luis Obispo, CA 93405, USA (805) 781-5930                                              https://slocountyparks.com/day-use-parks/cuesta-park/ San Luis Obispo
+                      Leaning Pine Arboretum 35.310204 -120.662230                               San Luis Obispo, CA 93407, USA (805) 756-2888                                                    https://aeps.calpoly.edu/leaning-pine-arboretum San Luis Obispo
+                               Mitchell Park 35.278742 -120.657963                 1400 Osos St, San Luis Obispo, CA 93401, USA (805) 781-7222                https://www.slocity.org/Home/Components/FacilityDirectory/FacilityDirectory/14/2173 San Luis Obispo
+                    Dallidet Adobe & Gardens 35.280898 -120.656599              1185 Pacific St, San Luis Obispo, CA 93401, USA (805) 543-0638                                                                           http://www.dallidet.org/ San Luis Obispo
+Puzzle Effect Escape Rooms - San Luis Obispo 35.277042 -120.665388                 583 Marsh St, San Luis Obispo, CA 93401, USA (805) 250-4839                                                            https://sanluisobispo.puzzleeffect.com/ San Luis Obispo
+                              Smugglers Cave 35.174193 -120.716813         1618 Cave Landing Rd, San Luis Obispo, CA 93401, USA        Unknown                                                                                            Unknown San Luis Obispo
+      Mission San Luis Obispo de Tolosa 1772 35.280964 -120.664758                  751 Palm St, San Luis Obispo, CA 93401, USA (805) 781-8220                                                              https://www.missionsanluisobispo.org/ San Luis Obispo
+                                 Madonna Inn 35.267413 -120.674660               100 Madonna Rd, San Luis Obispo, CA 93405, USA (805) 543-3000                                                                         http://www.madonnainn.com/ San Luis Obispo
+
+### Restaurants in San Luis Obispo
+                                  Name  Average Cost                                          Cuisines  Aggregate Rating            City
+                                  Ooma            88        Desserts, Fast Food, Cafe, Indian, Seafood               4.9 San Luis Obispo
+                          Sushi Leblon            38           French, BBQ, Fast Food, Indian, Seafood               4.6 San Luis Obispo
+     El Jalisciense Mexican Restaurant            34                   Cafe, Pizza, American, Desserts               4.1 San Luis Obispo
+              Najmat Lahore Restaurant            36                   Seafood, American, BBQ, Italian               4.2 San Luis Obispo
+                         Da Pizza Zone            15                  Bakery, Pizza, Desserts, Seafood               0.0 San Luis Obispo
+                         Crust N Cakes            64                Pizza, Bakery, Desserts, Fast Food               3.2 San Luis Obispo
+                         Modern Sweets            12                                    Pizza, Seafood               0.0 San Luis Obispo
+                                Machan            45                        Tea, Pizza, BBQ, Fast Food               3.3 San Luis Obispo
+                Muskan Chicken Biryani            88                      French, Bakery, BBQ, Italian               0.0 San Luis Obispo
+                             What's Up            86              Desserts, Mexican, BBQ, Bakery, Cafe               4.0 San Luis Obispo
+                               R' ADDA            19                               Desserts, Fast Food               4.0 San Luis Obispo
+                             Bake Club            17   Pizza, American, Bakery, BBQ, Fast Food, Indian               3.2 San Luis Obispo
+                         Trending Eats            83                                        Pizza, BBQ               3.4 San Luis Obispo
+                             Cafe Blur            45                               Tea, Pizza, Italian               3.1 San Luis Obispo
+                     Pradeep Pav Bhaji            18                            Mexican, BBQ, Desserts               3.8 San Luis Obispo
+                              BarShala            76                            BBQ, Desserts, Italian               3.1 San Luis Obispo
+      Anupama Snacks and Sweets Corner            50                                    BBQ, Fast Food               0.0 San Luis Obispo
+                    Pandey Chinese Hut            26              Cafe, Bakery, Mediterranean, Italian               2.7 San Luis Obispo
+                       Cafe Coffee Day            78                     Pizza, Indian, BBQ, Fast Food               3.6 San Luis Obispo
+                       Ovenstory Pizza            95                   Tea, Seafood, Desserts, Italian               0.0 San Luis Obispo
+                        Baskin Robbins            66                          Chinese, Cafe, Fast Food               3.3 San Luis Obispo
+                                 Kings            68  Desserts, BBQ, Fast Food, Mediterranean, Seafood               3.6 San Luis Obispo
+                  34, Chowringhee Lane            34                      BBQ, Mediterranean, Desserts               3.3 San Luis Obispo
+                      Hey' Sugar Delhi            37                               Chinese, Pizza, BBQ               3.7 San Luis Obispo
+                             The Crust            52             Desserts, Pizza, Mexican, BBQ, Bakery               3.1 San Luis Obispo
+Shang Palace - Shangri-La's Eros Hotel            33              Tea, Mexican, BBQ, Fast Food, Indian               3.7 San Luis Obispo
+                           Chinese Hut            89 Desserts, Italian, BBQ, Fast Food, Cafe, American               3.6 San Luis Obispo
+                            ATM Bistro            84                      Tea, Bakery, Pizza, American               0.0 San Luis Obispo
+           Fresh and Fit Ghar Ka Khana            81                   Tea, Mexican, American, Seafood               3.1 San Luis Obispo
+                 South King Restaurant            79                            Cafe, Bakery, Desserts               2.8 San Luis Obispo
+                           Masala Zone            94                             Desserts, Indian, BBQ               4.1 San Luis Obispo
+                                Gaucho            98                     Mexican, Bakery, BBQ, Seafood               4.5 San Luis Obispo
+                    Jerry's Burger Bar            29               Pizza, BBQ, Fast Food, Cafe, Indian               4.4 San Luis Obispo
+                             The Bigos            70            Desserts, Pizza, Italian, BBQ, Seafood               3.8 San Luis Obispo
+
+### Accommodations in San Luis Obispo
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number            city
+                         Upper West Side 1 bedroom  859.0 Entire home/apt                         No smoking             1.0                  5                 3.0 San Luis Obispo
+Beautiful and comfortable Upper East Side location 1012.0 Entire home/apt               No pets & No smoking             3.0                  6                 5.0 San Luis Obispo
+Experiencing Tranquility in Private Home, Room # 1  111.0    Private room No visitors & No children under 10             2.0                  1                 2.0 San Luis Obispo
+     Sunny, Newly Renovated, Private Bushwick Room  438.0    Private room                        No visitors             1.0                  1                 2.0 San Luis Obispo
+                Bedstuy/Bushwick 3 FLOOR TOWNHOUSE  251.0 Entire home/apt               No pets & No parties             5.0                  2                 2.0 San Luis Obispo
+         Williamsburg large and sunny private room  579.0    Private room               No children under 10             7.0                  2                 3.0 San Luis Obispo
+           Gorgeous Garden Apartment in Park Slope  910.0 Entire home/apt                        No visitors             3.0                  9                 1.0 San Luis Obispo
+               LUXURY MID-CENTURY MODERN LOFT SOHO 1068.0 Entire home/apt                            No pets            14.0                  9                 2.0 San Luis Obispo
+                Designer's spacious Manhattan apt.  879.0 Entire home/apt No smoking & No visitors & No pets             3.0                  4                 4.0 San Luis Obispo
+      Lovely Room in the heart of the East Village  813.0    Private room  No parties & No children under 10             2.0                  2                 5.0 San Luis Obispo
+       Large room in sunny Prime Williamsburg pad. 1150.0    Private room     No children under 10 & No pets             1.0                  2                 3.0 San Luis Obispo
+
+### Attractions in Los Angeles
+                                        Name  Latitude   Longitude                                                  Address          Phone                                                                                            Website        City
+                           Santa Monica Pier 34.008282 -118.498758       200 Santa Monica Pier, Santa Monica, CA 90401, USA (310) 458-8900                                                                       https://santamonicapier.org/ Los Angeles
+                      Hollywood Walk of Fame 34.101634 -118.326705 Hollywood Boulevard, Vine St, Los Angeles, CA 90028, USA (323) 469-8311                                                                            https://walkoffame.com/ Los Angeles
+                              Hollywood Sign 34.134115 -118.321548                               Los Angeles, CA 90068, USA (323) 258-4338                                                                      http://www.hollywoodsign.org/ Los Angeles
+                                   The Getty 34.078036 -118.474095         1200 Getty Center Dr, Los Angeles, CA 90049, USA (310) 440-7300                                                                https://www.getty.edu/visit/center/ Los Angeles
+                 Universal Studios Hollywood 34.138117 -118.353378  100 Universal City Plaza, Universal City, CA 91608, USA (800) 864-8377   https://www.universalstudioshollywood.com/?utm_source=google&utm_medium=organic&utm_campaign=GMB Los Angeles
+                               Griffith Park 34.136554 -118.294200      4730 Crystal Springs Dr, Los Angeles, CA 90027, USA (323) 913-4688                                       https://www.laparks.org/griffithpark/griffith-park-home-page Los Angeles
+               Guinness World Records Museum 34.101402 -118.338043          6764 Hollywood Blvd, Los Angeles, CA 90028, USA (323) 463-6433 https://www.hollywoodwaxentertainment.com/hollywood-ca-attractions/guinness-worlds-records-museum/ Los Angeles
+                        Griffith Observatory 34.118434 -118.300393        2800 E Observatory Rd, Los Angeles, CA 90027, USA (213) 473-0800                                                                   https://griffithobservatory.org/ Los Angeles
+Natural History Museum of Los Angeles County 34.017145 -118.288663          900 Exposition Blvd, Los Angeles, CA 90007, USA (213) 763-3466                                                                                   https://nhm.org/ Los Angeles
+                                   The Broad 34.054502 -118.250180              221 S Grand Ave, Los Angeles, CA 90012, USA (213) 232-6200                                                                          https://www.thebroad.org/ Los Angeles
+                     Crossroads of the World 34.098191 -118.335660             6671 Sunset Blvd, Los Angeles, CA 90028, USA (323) 463-5611                                                            https://www.crossroadsoftheworldla.com/ Los Angeles
+                 La Brea Tar Pits and Museum 34.063880 -118.356445           5801 Wilshire Blvd, Los Angeles, CA 90036, USA (213) 763-3499                                                                               https://tarpits.org/ Los Angeles
+              Paramount Pictures Studio Tour 34.083794 -118.320899             5515 Melrose Ave, Los Angeles, CA 90038, USA (323) 956-1777                                                                http://www.paramountstudiotour.com/ Los Angeles
+                        Hollywood Wax Museum 34.101745 -118.338155          6767 Hollywood Blvd, Los Angeles, CA 90028, USA (323) 462-5991           https://www.hollywoodwaxentertainment.com/hollywood-ca-attractions/hollywood-wax-museum/ Los Angeles
+                      Hollywood Walk of Fame 34.101705 -118.340257          6901 Hollywood Blvd, Los Angeles, CA 90028, USA        Unknown                                                            https://walkoffame.com/william-shatner/ Los Angeles
+            Los Angeles County Museum of Art 34.063932 -118.359229           5905 Wilshire Blvd, Los Angeles, CA 90036, USA (323) 857-6000                                                                              http://www.lacma.org/ Los Angeles
+                            You Are The Star 34.101275 -118.330921              1665 Wilcox Ave, Los Angeles, CA 90028, USA        Unknown                                                                                            Unknown Los Angeles
+                         Old Los Angeles Zoo 34.133939 -118.289038        4801 Griffith Park Dr, Los Angeles, CA 90027, USA (323) 913-4688                                                                          https://laparks.org/parks Los Angeles
+                               Bronson Caves 34.121331 -118.314337               3200 Canyon Dr, Los Angeles, CA 90068, USA (818) 243-1145                                                         http://www.laparks.org/park/bronson-canyon Los Angeles
+                                        View 34.128841 -118.365114      7695-7699 Mulholland Dr, Los Angeles, CA 90046, USA        Unknown                                                                                            Unknown Los Angeles
+
+### Restaurants in Los Angeles
+                       Name  Average Cost                                            Cuisines  Aggregate Rating        City
+     Heat - Edsa Shangri-La           148                                         Bakery, BBQ               4.4 Los Angeles
+                  Palmshore            25      Desserts, Bakery, Fast Food, American, Seafood               4.3 Los Angeles
+              Punjabi Zaika            46                    Pizza, Bakery, BBQ, Cafe, Indian               3.2 Los Angeles
+        The Hangout by 1861            64                                 Tea, Pizza, Seafood               4.0 Los Angeles
+              Chicken Minar            25                                   Bakery, Fast Food               2.6 Los Angeles
+                Choco Kraft            20         French, BBQ, Fast Food, Cafe, Mediterranean               3.2 Los Angeles
+     Punjabi Tandoori Tikka            47 Pizza, Italian, Mexican, Bakery, Fast Food, Seafood               0.0 Los Angeles
+            Cafe Coffee Day            71                           Tea, Bakery, BBQ, Seafood               0.0 Los Angeles
+       GO CHATZ With Breadz            55                       Cafe, Bakery, Pizza, Desserts               0.0 Los Angeles
+              Mulligan Cafe           100                Tea, Mexican, BBQ, Fast Food, Indian               0.0 Los Angeles
+  Shree Manakamna Fast Food            21                Tea, Bakery, Mediterranean, Desserts               3.4 Los Angeles
+Village - The House of Food            87                                Chinese, Pizza, Cafe               3.7 Los Angeles
+              Saikutir Food            96   Tea, Pizza, Italian, Cafe, Mediterranean, Seafood               0.0 Los Angeles
+        Rajdhani Restaurant            30   Desserts, Tea, French, Bakery, Fast Food, Chinese               0.0 Los Angeles
+       Angels in my Kitchen            52                     Bakery, Pizza, Indian, Desserts               3.5 Los Angeles
+       Paramjeet Machi Wala            36                         Seafood, Mexican, Fast Food               3.6 Los Angeles
+    Punjabi Paratha Station            67                 Cafe, Chinese, Pizza, Mediterranean               0.0 Los Angeles
+             Domino's Pizza            80                   Tea, Mexican, BBQ, Cafe, American               2.6 Los Angeles
+           Midnight Delight            44                 Tea, Indian, Mediterranean, Seafood               2.4 Los Angeles
+             The Addictions            86                         Chinese, Pizza, Bakery, BBQ               2.6 Los Angeles
+ Niti Shake & Ice Cream Hub            32                   Tea, Cafe, Mexican, Mediterranean               0.0 Los Angeles
+           Elan - The Lodhi            61                          Seafood, Desserts, Italian               3.8 Los Angeles
+             Tandoori Theka            47                Pizza, Bakery, BBQ, Chinese, Seafood               0.0 Los Angeles
+            Soni Food Court            96                         Tea, Chinese, French, Pizza               0.0 Los Angeles
+          Tandoori Junction            75                           Tea, Pizza, BBQ, Desserts               0.0 Los Angeles
+                    Barista            29                                  Tea, Cafe, Mexican               2.9 Los Angeles
+      Maharba Chicken Point            68        Pizza, Italian, French, BBQ, Fast Food, Cafe               0.0 Los Angeles
+                Chill Grill            41                             Tea, Fast Food, Italian               0.0 Los Angeles
+                    Onokabe            13                Mexican, Bakery, Desserts, Fast Food               3.7 Los Angeles
+
+### Accommodations in Los Angeles
+                                              NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number        city
+   Midtown East 2 Bed/2 Bath Elevator Building Apt  540.0 Entire home/apt                           No pets             7.0                  4                 3.0 Los Angeles
+Sunny apartment with easy connections to anywhere.  968.0    Private room              No children under 10             3.0                  1                 4.0 Los Angeles
+                    Upper West Side, Manhattan, NY 1083.0 Entire home/apt          No parties & No visitors             6.0                 10                 1.0 Los Angeles
+                     Room in Queens, NY, near LGA.  982.0    Private room              No children under 10             1.0                  2                 2.0 Los Angeles
+                                        Best Nest.  371.0    Private room                           No pets             1.0                  2                 4.0 Los Angeles
+                                  Cozy Harlem Home  987.0    Private room           No smoking & No parties             1.0                  2                 2.0 Los Angeles
+         Enormous Private Room in Shared Apartment  198.0    Private room    No pets & No children under 10             5.0                  1                 3.0 Los Angeles
+                Cosy room in a sunny Brooklyn flat  678.0    Private room                        No smoking             3.0                  1                 3.0 Los Angeles
+    Private Room with Private Bath Upper East Side  359.0    Private room              No children under 10             1.0                  2                 4.0 Los Angeles
+               Spacious Luxury Studio-96th and WEA  820.0 Entire home/apt              No parties & No pets             4.0                  8                 2.0 Los Angeles
+                            Luxury building studio 1076.0 Entire home/apt No parties & No children under 10             2.0                  2                 1.0 Los Angeles
+                                     Lovely studio  117.0 Entire home/apt                       No visitors             1.0                  3                 4.0 Los Angeles
+
+### Flight from Salt Lake City to San Diego on 2022-03-25
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3499966    300   08:02   08:55 1 hours 53 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F3523821    171   11:36   12:19 1 hours 43 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F3539488    223   22:46   23:31 1 hours 45 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F3551191    173   15:45   16:28 1 hours 43 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F3554513    267   17:07   17:53 1 hours 46 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F3820676    233   08:30   09:34  2 hours 4 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+     F4015054    153   12:40   13:19 1 hours 39 minutes 2022-03-25 Salt Lake City    San Diego     626.0
+
+### Self-driving from Salt Lake City to San Diego
+self-driving, from Salt Lake City to San Diego, duration: 10 hours 48 mins, distance: 1,207 km, cost: 60
+
+### Taxi from Salt Lake City to San Diego
+taxi, from Salt Lake City to San Diego, duration: 10 hours 48 mins, distance: 1,207 km, cost: 1207
+
+### Flight from San Diego to San Luis Obispo on 2022-03-27
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName    DestCityName  Distance
+     F3820181     76   09:59   11:02 1 hours 3 minutes 2022-03-27      San Diego San Luis Obispo     263.0
+
+### Self-driving from San Diego to San Luis Obispo
+self-driving, from San Diego to San Luis Obispo, duration: 4 hours 59 mins, distance: 502 km, cost: 25
+
+### Taxi from San Diego to San Luis Obispo
+taxi, from San Diego to San Luis Obispo, duration: 4 hours 59 mins, distance: 502 km, cost: 502
+
+### Flight from San Luis Obispo to Los Angeles on 2022-03-29
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate  OriginCityName DestCityName  Distance
+     F3854130     53   05:53   06:55 1 hours 2 minutes 2022-03-29 San Luis Obispo  Los Angeles     156.0
+
+### Self-driving from San Luis Obispo to Los Angeles
+self-driving, from San Luis Obispo to Los Angeles, duration: 3 hours 14 mins, distance: 304 km, cost: 15
+
+### Taxi from San Luis Obispo to Los Angeles
+taxi, from San Luis Obispo to Los Angeles, duration: 3 hours 14 mins, distance: 304 km, cost: 304
+
+### Flight from Los Angeles to Salt Lake City on 2022-03-31
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName   DestCityName  Distance
+     F3528613    214   11:14   13:55 1 hours 41 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3530430    265   13:44   16:33 1 hours 49 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3530806    283   09:45   12:28 1 hours 43 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3531258    169   18:43   21:35 1 hours 52 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3533449    206   16:40   19:30 1 hours 50 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3542472    248   05:51   08:45 1 hours 54 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3543019    227   07:05   09:57 1 hours 52 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3771717    241   05:54   08:42 1 hours 48 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3799899    230   07:02   09:53 1 hours 51 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3817140    150   15:09   18:22 2 hours 13 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3823694    207   12:46   15:46  2 hours 0 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3823725    282   19:02   21:50 1 hours 48 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3834355    281   20:32   23:17 1 hours 45 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3991160    214   07:12   09:58 1 hours 46 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+     F3991161    226   14:11   16:53 1 hours 42 minutes 2022-03-31    Los Angeles Salt Lake City     590.0
+
+### Self-driving from Los Angeles to Salt Lake City
+self-driving, from Los Angeles to Salt Lake City, duration: 9 hours 53 mins, distance: 1,108 km, cost: 55
+
+### Taxi from Los Angeles to Salt Lake City
+taxi, from Los Angeles to Salt Lake City, duration: 9 hours 53 mins, distance: 1,108 km, cost: 1108
+
+JSON plan:

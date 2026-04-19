@@ -1,0 +1,419 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi there! I need to check my baggage allowance for an upcoming flight. My confirmation number is JMO1MG and I believe I'm a gold member with your airline.",
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"JMO1MG\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "JMO1MG"
+      }
+    },
+    "observation": "{\"reservation_id\": \"JMO1MG\", \"user_id\": \"anya_garcia_5901\", \"origin\": \"DEN\", \"destination\": \"MIA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"DEN\", \"destination\": \"MIA\", \"flight_number\": \"HAT255\", \"date\": \"2024-05-16\", \"price\": 149}], \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Raj\", \"last_name\": \"Jackson\", \"dob\": \"1956-03-09\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2550356\", \"amount\": 358}], \"created_at\": \"2024-05-13T23:20:29\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"JMO1MG\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4640,
+    "output_tokens": 24,
+    "generation_seconds": 2.6774582862854004,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"anya_garcia_5901\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "anya_garcia_5901"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Anya\", \"last_name\": \"Garcia\"}, \"address\": {\"address1\": \"555 Highland Drive\", \"address2\": \"Suite 243\", \"city\": \"San Antonio\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"78256\"}, \"email\": \"anya.garcia8816@example.com\", \"dob\": \"1992-11-12\", \"payment_methods\": {\"gift_card_2550356\": {\"source\": \"gift_card\", \"amount\": 149, \"id\": \"gift_card_2550356\"}, \"certificate_7583008\": {\"source\": \"certificate\", \"amount\": 150, \"id\": \"certificate_7583008\"}}, \"saved_passengers\": [{\"first_name\": \"Mei\", \"last_name\": \"Lee\", \"dob\": \"1989-12-13\"}], \"membership\": \"silver\", \"reservations\": [\"82K959\", \"790JYN\", \"BE2L57\", \"CXBB4L\", \"TAMSDK\", \"3RK2T9\", \"VAOW1B\", \"Q4MCUF\", \"JMO1MG\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"anya_garcia_5901\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4926,
+    "output_tokens": 29,
+    "generation_seconds": 3.0712344646453857,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Hello, Anya! Based on your reservation JMO1MG, you are a silver member, not a gold member. For economy class, silver members are entitled to 2 free checked bags per passenger. Since there are 2 passengers in your reservation, you have a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Hello, Anya! Based on your reservation JMO1MG, you are a silver member, not a gold member. For economy class, silver members are entitled to 2 free checked bags per passenger. Since there are 2 passengers in your reservation, you have a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "Wait, I'm pretty sure I'm a gold member, not silver. Can you double-check that for me? And I need the total number of suitcases I can take - I need it as a number, not explained in words. What's the actual number?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Hello, Anya! Based on your reservation JMO1MG, you are a silver member, not a gold member. For economy class, silver members are entitled to 2 free checked bags per passenger. Since there are 2 passengers in your reservation, you have a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5261,
+    "output_tokens": 105,
+    "generation_seconds": 7.690455675125122,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Let me double-check your membership status. One moment, please.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Let me double-check your membership status. One moment, please."
+      }
+    },
+    "observation": "Okay, thank you. I'll wait while you look into that.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Let me double-check your membership status. One moment, please.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5429,
+    "output_tokens": 30,
+    "generation_seconds": 3.2648441791534424,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"anya_garcia_5901\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "anya_garcia_5901"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Anya\", \"last_name\": \"Garcia\"}, \"address\": {\"address1\": \"555 Highland Drive\", \"address2\": \"Suite 243\", \"city\": \"San Antonio\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"78256\"}, \"email\": \"anya.garcia8816@example.com\", \"dob\": \"1992-11-12\", \"payment_methods\": {\"gift_card_2550356\": {\"source\": \"gift_card\", \"amount\": 149, \"id\": \"gift_card_2550356\"}, \"certificate_7583008\": {\"source\": \"certificate\", \"amount\": 150, \"id\": \"certificate_7583008\"}}, \"saved_passengers\": [{\"first_name\": \"Mei\", \"last_name\": \"Lee\", \"dob\": \"1989-12-13\"}], \"membership\": \"silver\", \"reservations\": [\"82K959\", \"790JYN\", \"BE2L57\", \"CXBB4L\", \"TAMSDK\", \"3RK2T9\", \"VAOW1B\", \"Q4MCUF\", \"JMO1MG\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"anya_garcia_5901\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5482,
+    "output_tokens": 29,
+    "generation_seconds": 3.2085471153259277,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"After double-checking, your membership status is indeed silver. As a silver member, you are entitled to 2 free checked bags per economy passenger. Since there are 2 passengers in your reservation, you can take a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "After double-checking, your membership status is indeed silver. As a silver member, you are entitled to 2 free checked bags per economy passenger. Since there are 2 passengers in your reservation, you can take a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "Alright, I hear you on the silver membership. But I need the total number of suitcases I can actually take on the flight - just give me the number. Can you tell me that clearly as a digit?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"After double-checking, your membership status is indeed silver. As a silver member, you are entitled to 2 free checked bags per economy passenger. Since there are 2 passengers in your reservation, you can take a total of 4 free checked bags. If you need more bags, each additional one will cost $50. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5817,
+    "output_tokens": 94,
+    "generation_seconds": 7.219561338424683,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"4\"}}\"}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "4"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 1.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). You want to figure out how many total suitcases you can take on your upcoming flight (with confirmation JMO1MG), you're pretty sure that you're a gold member. Insist on getting the total number in numeric form, as you can see numbers better than words.",
+        "outputs": [
+          "4"
+        ]
+      },
+      "source": "user",
+      "user_cost": 0.000687,
+      "reward_info": {
+        "reward": 1.0,
+        "info": {
+          "r_outputs": 1.0,
+          "outputs": {
+            "4": true
+          }
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "JMO1MG"
+            }
+          },
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "anya_garcia_5901"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"4\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5963,
+    "output_tokens": 19,
+    "generation_seconds": 2.76851224899292,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

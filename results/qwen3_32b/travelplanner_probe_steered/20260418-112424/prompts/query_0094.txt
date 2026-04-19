@@ -1,0 +1,182 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a 5-day travel plan for 2 people departing from Richmond to visit 2 cities in Texas? The trip is scheduled from March 6th to March 10th, 2022. Our budget is $6,000. We have a particular interest in Chinese and Indian cuisines for our meals.
+
+Reference information:
+### Attractions in Houston
+                                                           Name  Latitude  Longitude                                      Address          Phone                                                                                 Website    City
+                                              Downtown Aquarium 29.764270 -95.367379         410 Bagby St, Houston, TX 77002, USA (713) 223-3474                             http://www.aquariumrestaurants.com/downtownaquariumhouston/ Houston
+                                           Space Center Houston 29.551832 -95.098104     1601 E NASA Pkwy, Houston, TX 77058, USA (281) 244-2100                                                            https://www.spacecenter.org/ Houston
+                                                     Water Wall 29.735740 -95.461315   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                             https://uptown-houston.com/experience/parks/waterwall-park/ Houston
+                              Houston Museum of Natural Science 29.722062 -95.389562 5555 Hermann Park Dr, Houston, TX 77030, USA (713) 639-4629                                                                   https://www.hmns.org/ Houston
+                                                    Houston Zoo 29.715781 -95.390321 6200 Hermann Park Dr, Houston, TX 77030, USA (713) 533-6500                                                             https://www.houstonzoo.org/ Houston
+                               The Museum of Fine Arts, Houston 29.725623 -95.390533    1001 Bissonnet St, Houston, TX 77005, USA (713) 639-7300                                                                   https://www.mfah.org/ Houston
+                                                   Hermann Park 29.713528 -95.389952       6001 Fannin St, Houston, TX 77030, USA (713) 526-2183                                                            https://www.hermannpark.org/ Houston
+                              Houston Arboretum & Nature Center 29.765224 -95.452071      4501 Woodway Dr, Houston, TX 77024, USA (713) 681-8433                                                        http://www.houstonarboretum.org/ Houston
+Bayou Bend Collection and Gardens, Museum of Fine Arts, Houston 29.760659 -95.421693     6003 Memorial Dr, Houston, TX 77007, USA (713) 639-7750                            http://www.mfah.org/visit/bayou-bend-collection-and-gardens/ Houston
+                                             Market Square Park 29.762645 -95.362361         301 Milam St, Houston, TX 77002, USA (713) 650-3022                                                            http://marketsquarepark.com/ Houston
+                                                Discovery Green 29.753240 -95.359912     1500 McKinney St, Houston, TX 77010, USA (713) 400-7336                                                          http://www.discoverygreen.com/ Houston
+                                                   Smither Park 29.716761 -95.324637       2441 Munger St, Houston, TX 77023, USA (713) 926-6368                                                                  http://orangeshow.org/ Houston
+                                      Children's Museum Houston 29.722931 -95.385289         1500 Binz St, Houston, TX 77004, USA (713) 522-1138 https://www.cmhouston.org/?utm_source=google&utm_medium=organic&utm_campaign=gmbhouston Houston
+                                       Holocaust Museum Houston 29.725248 -95.385687     5401 Caroline St, Houston, TX 77004, USA (713) 942-8000                                                                        https://hmh.org/ Houston
+                                               Sam Houston Park 29.760137 -95.371640        1000 Bagby St, Houston, TX 77002, USA (832) 394-8805                              https://www.houstontx.gov/abouthouston/samhoustonpark.html Houston
+                            Houston Legendary Graffiti Building 29.747305 -95.359360      2011 Leeland St, Houston, TX 77003, USA (409) 245-3778          https://instagram.com/gofa_dagusto1k?utm_source=qr&igshid=MzNlNGNkZWQ4Mg%3D%3D Houston
+                                 Gerald D. Hines Waterwall Park 29.735948 -95.461302   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                                 http://www.uptown-houston.com/news/page/water-wall-park Houston
+                                                 Beer Can House 29.763759 -95.419103        222 Malone St, Houston, TX 77007, USA (713) 926-6368                                          https://www.full.orangeshow.org/beer-can-house Houston
+                                    American Statesmanship Park 29.771321 -95.366926        1400 Elder St, Houston, TX 77007, USA (713) 344-6568                   https://www.waymarking.com/waymarks/WMNHPK_Mount_Rush_Hour_Houston_TX Houston
+                                       Pioneer Memorial Obelisk 29.718633 -95.390929       6001 Fannin St, Houston, TX 77030, USA        Unknown                                                      http://www.hermannpark.org/poi/44/ Houston
+
+### Restaurants in Houston
+                              Name  Average Cost                                         Cuisines  Aggregate Rating    City
+                         Jalapenos            57            Desserts, Tea, Cafe, Chinese, Seafood               4.2 Houston
+                      Super Bakery            30                               Seafood, Fast Food               3.3 Houston
+                     Sheetla Dhaba            35 Desserts, Pizza, Bakery, American, Mediterranean               0.0 Houston
+                        Royal Mart            40        Tea, Bakery, Cafe, Mediterranean, Seafood               2.9 Houston
+                          Matchbox            33         Tea, Italian, Bakery, Fast Food, Seafood               4.8 Houston
+                    Earthen Spices            28             Tea, Mexican, Bakery, BBQ, Fast Food               2.7 Houston
+                         Chawla's宊            26   Chinese, Desserts, Bakery, Cafe, Mediterranean               2.2 Houston
+                     Cyber Adda 24            73                           Chinese, Pizza, Bakery               3.3 Houston
+The BrewMaster - The Mix Fine Dine            52                    French, Indian, Cafe, Seafood               3.9 Houston
+                   Vinayaka Mylari            14                 Fast Food, French, Cafe, Italian               4.2 Houston
+                Al Arabian Express            74                           BBQ, Desserts, Seafood               3.7 Houston
+                     Pebble Street            73                Tea, American, Mediterranean, BBQ               4.0 Houston
+                       Sultan Food            55                                 Bakery, Desserts               3.1 Houston
+                               KSG            73      Desserts, Tea, Fast Food, American, Seafood               0.0 Houston
+                             Zaika            18                       Tea, Cafe, Mexican, Bakery               2.7 Houston
+               34 Park Street Lane            67                            Chinese, Bakery, Cafe               0.0 Houston
+                Sunny Chicken Soup            60                      Tea, BBQ, Desserts, Seafood               3.6 Houston
+                             Giani            97                                 Cafe, Pizza, BBQ               3.5 Houston
+                       Bhola Dhaba            65       Tea, Italian, Cafe, Mediterranean, Seafood               2.8 Houston
+                    G's Patisserie            65        Desserts, Tea, Pizza, Fast Food, American               2.8 Houston
+                  Daawat E Mezbaan            63              Pizza, BBQ, Cafe, American, Seafood               3.1 Houston
+                Khanna's Hot Pizza            80        Pizza, Mediterranean, Desserts, Fast Food               0.0 Houston
+                          Taj Cafe            18                             French, BBQ, Seafood               3.1 Houston
+                         Dana Pani            91                          Bakery, Indian, Seafood               0.0 Houston
+                 Shiv Shakti Dhaba            54                             Tea, Pizza, American               0.0 Houston
+              Vrinda Vaishno Dhaba            54         French, Bakery, Fast Food, Cafe, Seafood               2.8 Houston
+                        Tasty Bite            15       Bakery, Fast Food, Cafe, American, Seafood               2.8 Houston
+               Hurry Curry Express            78                               Fast Food, Seafood               0.0 Houston
+                            Subway            51                   Tea, Bakery, Desserts, Seafood               2.3 Houston
+               Istanbul Restaurant            19                             Tea, Indian, Seafood               3.6 Houston
+                      Truth Coffee            29                         Pizza, American, Seafood               4.4 Houston
+
+### Accommodations in Houston
+                                              NAME  price       room type             house_rules  minimum nights  maximum occupancy  review rate number    city
+                     Sunny and Airy near Manhattan  499.0 Entire home/apt                 No pets             2.0                  4                 5.0 Houston
+                 Bright room in 2BR apt in Nolita! 1024.0    Private room    No children under 10             2.0                  2                 4.0 Houston
+                      Superhost 3 bedroom DISCOUNT  746.0 Entire home/apt                 No pets             1.0                  5                 4.0 Houston
+           Spacious room in front of prospect park  259.0    Private room              No smoking             1.0                  1                 5.0 Houston
+           Private bedroom in artsy NYC apartment.  488.0    Private room              No smoking             3.0                  1                 3.0 Houston
+                   Cozy Room near Casino and Metro 1092.0    Private room              No parties             1.0                  2                 4.0 Houston
+1BR in Newly Renovated Apartment - Rm C, Bushwick!  288.0    Private room              No smoking             1.0                  1                 4.0 Houston
+        Artsy, Sun-Soaked Pre-War Williamsburg Apt  872.0 Entire home/apt              No parties            10.0                  2                 4.0 Houston
+               Beautiful and Huge Room in Brooklyn  957.0    Private room    No parties & No pets            13.0                  1                 3.0 Houston
+         Backpackers Dream for 1 at The Funky Loft  244.0    Private room No parties & No smoking             3.0                  1                 4.0 Houston
+
+### Attractions in Texarkana
+                                         Name  Latitude  Longitude                                                   Address          Phone                                                                  Website      City
+                   Museum of Regional History 33.422298 -94.043327            219 N State Line Ave, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+                             Spring Lake Park 33.462309 -94.058364                  4303 N Park Rd, Texarkana, TX 75501, USA (903) 798-3978                                                                  Unknown Texarkana
+                     Texarkana Museums System 33.422303 -94.043299            219 N State Line Ave, Texarkana, TX 75501, USA (903) 793-4831                                              http://texarkanamuseum.org/ Texarkana
+                      Four States Auto Museum 33.424340 -94.038180                   217 Laurel St, Texarkana, AR 71854, USA (870) 772-2886                                     http://www.fourstatesautomuseum.org/ Texarkana
+                       Bringle Lake Park East 33.495373 -94.096710                3650 Shilling Rd, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                                     ArtSparK 33.422665 -94.045243                     317 Main St, Texarkana, TX 75501, USA (903) 792-8681                                        https://trahc.org/venue/artspark/ Texarkana
+                           Ace of Clubs House 33.424113 -94.044164                     420 Pine St, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+                        Texarkana Water Tower 33.419276 -94.055729                   1307 W 4th St, Texarkana, TX 75501, USA        Unknown                                    https://txktoday.com/news/work-painti Texarkana
+                             Fun Country Park 33.513803 -94.044929           8225 N State Line Ave, Texarkana, TX 75503, USA (903) 791-0001                                                                  Unknown Texarkana
+           Discovery Place Interactive Museum 33.421873 -94.043351                     215 Pine St, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+             Texarkana Wall Murals #FABKMURAL 33.421340 -94.043867                  116 W Broad St, Texarkana, TX 75501, USA        Unknown               https://www.visittexarkanadistrict.com/copy-of-attractions Texarkana
+                             Texas State Line 33.470337 -94.043161                N State Line Ave, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                       Bringle Lake Park West 33.495586 -94.103758             7602 University Ave, Texarkana, TX 75503, USA (903) 798-3900 http://www.ci.texarkana.tx.us/facilities/facility/details/Bringle-Lake-3 Texarkana
+                   Holiday Springs Water Park 33.475385 -94.035571            5501 Crossroads Pkwy, Texarkana, AR 71854, USA (870) 772-2200                                  http://www.holidayspringswaterpark.com/ Texarkana
+                     Welcome to Arkansas Sign 33.405887 -94.043115                  State Line Ave, Texarkana, AR 71854, USA        Unknown                                                                  Unknown Texarkana
+                        Welcome to Texas Sign 33.470459 -94.047943 570 Interstate 30 Frontage Road, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                    Texas State Line Monument 33.546666 -94.044178                N State Line Ave, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+Lindsey Railroad Museum in Downtown Texarkana 33.421876 -94.041591                  202 E Broad St, Texarkana, AR 71854, USA (903) 748-1235                                                                  Unknown Texarkana
+                        Welcome to Texas Sign 33.386034 -94.043953                     TX-151 Loop, Texarkana, TX 75501, USA        Unknown                                                                  Unknown Texarkana
+                     Welcome to Arkansas Sign 33.385658 -94.041478                          AR-151, Texarkana, AR 71854, USA        Unknown                                                                  Unknown Texarkana
+
+### Restaurants in Texarkana
+                       Name  Average Cost                                      Cuisines  Aggregate Rating      City
+        Big City Bread Cafe            61                      Cafe, Pizza, Bakery, BBQ               4.3 Texarkana
+                 Poets Cafe            88             Chinese, Bakery, Indian, Desserts               2.4 Texarkana
+        Columbia Restaurant            91         Desserts, Tea, Pizza, Indian, Seafood               4.4 Texarkana
+                  Club Mojo            49        Desserts, Italian, BBQ, Cafe, American               2.6 Texarkana
+            Bansiwala Rasoi            71                              Tea, French, BBQ               0.0 Texarkana
+                   Blackout            68                      Tea, Desserts, Fast Food               3.9 Texarkana
+         Purani Dilli Foods            62                        Indian, BBQ, Fast Food               0.0 Texarkana
+     The Beer Cafe - BIGGIE            13         Cafe, Pizza, Mediterranean, Fast Food               3.8 Texarkana
+   Polka Pastry & Snack Bar            71                       Fast Food, BBQ, Italian               3.2 Texarkana
+          Granma's Homemade            57           Tea, Mexican, Bakery, Cafe, Seafood               3.6 Texarkana
+Kolhapuri Veg Non-Veg Foods            84                       Tea, Cafe, Mexican, BBQ               3.3 Texarkana
+                 Amit Dhaba            81           Cafe, Mexican, Bakery, BBQ, Chinese               0.0 Texarkana
+            Cafe Coffee Day            28                       Tea, Cafe, BBQ, Seafood               0.0 Texarkana
+ Mughal Zaika Chicken Point            30  Tea, Pizza, French, Mexican, Fast Food, Cafe               2.9 Texarkana
+             Amritsari Naan            98           Bakery, Indian, Desserts, Fast Food               0.0 Texarkana
+             Curries N More            78                    Tea, French, Cafe, Italian               3.2 Texarkana
+       Pandey Ji Restaurant            75                        Cafe, Pizza, Fast Food               0.0 Texarkana
+                Biryani Bot            27                           French, Bakery, BBQ               0.0 Texarkana
+               Cafe Kazbaah            71                        Tea, Bakery, Fast Food               4.0 Texarkana
+           Vrindavan Sweets            80                        Cafe, Bakery, American               0.0 Texarkana
+                 Wah Ji Wah            55        Tea, Pizza, Mexican, Bakery, Fast Food               3.1 Texarkana
+      Aggarwal Kachori Wale            34            Pizza, Bakery, Desserts, Fast Food               3.0 Texarkana
+                     Teasta            94 Pizza, Italian, French, Bakery, Cafe, Seafood               4.1 Texarkana
+               Prime Bakery            94                   Cafe, Pizza, BBQ, Fast Food               3.0 Texarkana
+               TGI Friday's            27                  Tea, Bakery, Pizza, Desserts               3.5 Texarkana
+
+### Accommodations in Texarkana
+                                             NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number      city
+sunny airy bohemian rm, private bath! hip 'shwick  592.0    Private room                         No smoking             2.0                  2                 4.0 Texarkana
+                   Large 2.5 BR Apt In Park Slope  269.0 Entire home/apt           No smoking & No visitors             1.0                  3                 1.0 Texarkana
+                             MyrtleWash Townhouse  878.0 Entire home/apt No pets & No visitors & No smoking            30.0                  3                 1.0 Texarkana
+                Sleek and Modern Studio Apartment  602.0 Entire home/apt           No visitors & No parties            15.0                  2                 4.0 Texarkana
+                                PentHouse In FiDi  843.0    Private room  No children under 10 & No smoking             3.0                  2                 5.0 Texarkana
+   Cozy private room, close to the subway & beach  887.0    Private room                            No pets             1.0                  2                 1.0 Texarkana
+New to Market, Extended Stay Studio in Park Slope  355.0 Entire home/apt           No smoking & No visitors            30.0                  3                 2.0 Texarkana
+                   Park Slope Home away from Home  137.0 Entire home/apt     No children under 10 & No pets             4.0                  3                 3.0 Texarkana
+              Sunny Room w/Master Bathroom in NYC  390.0    Private room     No children under 10 & No pets             7.0                  1                 1.0 Texarkana
+               Lovely Factory Loft in Greenpoint!   77.0 Entire home/apt                         No smoking            30.0                  2                 1.0 Texarkana
+
+### Flight from Richmond to Houston on 2022-03-06
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4041372    371   08:27   10:43 3 hours 16 minutes 2022-03-06       Richmond      Houston    1157.0
+
+### Self-driving from Richmond to Houston
+self-driving, from Richmond to Houston, duration: 19 hours 11 mins, distance: 2,131 km, cost: 106
+
+### Taxi from Richmond to Houston
+taxi, from Richmond to Houston, duration: 19 hours 11 mins, distance: 2,131 km, cost: 2131
+
+### Flight from Houston to Texarkana on 2022-03-08
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3930024     63   17:56   19:00 1 hours 4 minutes 2022-03-08        Houston    Texarkana     252.0
+
+### Self-driving from Houston to Texarkana
+self-driving, from Houston to Texarkana, duration: 4 hours 44 mins, distance: 467 km, cost: 23
+
+### Taxi from Houston to Texarkana
+taxi, from Houston to Texarkana, duration: 4 hours 44 mins, distance: 467 km, cost: 467
+
+### Flight from Texarkana to Richmond on 2022-03-10
+There is no flight from Texarkana to Richmond on 2022-03-10.
+
+### Self-driving from Texarkana to Richmond
+self-driving, from Texarkana to Richmond, duration: 16 hours 8 mins, distance: 1,773 km, cost: 88
+
+### Taxi from Texarkana to Richmond
+taxi, from Texarkana to Richmond, duration: 16 hours 8 mins, distance: 1,773 km, cost: 1773
+
+JSON plan:

@@ -1,0 +1,183 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a travel plan for a party of 8 departing from Fayetteville and heading to New York for 5 days, which will cover 2 cities between March 25th and March 29th, 2022? We have a maximum budget of $6,900. We are particularly interested in experiencing American and Mexican cuisines during our stay.
+
+Reference information:
+### Attractions in White Plains
+                                    Name  Latitude  Longitude                                                                                              Address          Phone                                                                       Website         City
+          J Harvey Turnure Memorial Park 41.036283 -73.761760                                                              26 Lake St, White Plains, NY 10603, USA (914) 422-1336  http://www.cityofwhiteplains.com/Facilities/Facility/Details/Turnure-Park-36 White Plains
+                        Saxon Woods Park 40.986681 -73.745198                                                     1800 Mamaroneck Ave, White Plains, NY 10605, USA (914) 995-4480                              http://parks.westchestergov.com/saxon-woods-park White Plains
+             Battle of White Plains Park 41.030001 -73.779829                                                           76 Battle Ave, White Plains, NY 10606, USA        Unknown                           http://www.ci.white-plains.ny.us/index.aspx?nid=103 White Plains
+                    Percy Grainger House 41.027304 -73.767104                                                           7 Cromwell Pl, White Plains, NY 10601, USA (914) 281-1610                                              http://percygraingeramerica.org/ White Plains
+                       White Plains Park 41.033986 -73.762910                                                                          White Plains, NY 10604, USA (914) 494-1632                                                                       Unknown White Plains
+                              Druss Park 41.020527 -73.769336                                           S Lexington Ave & Prospect St, White Plains, NY 10601, USA (914) 422-1336 http://ny-whiteplains.civicplus.com/facilities/facility/details/druss-park-32 White Plains
+                        Battle Hill Park 41.032063 -73.782988                                                          115 Battle Ave, White Plains, NY 10606, USA (914) 422-1336                                             http://www.cityofwhiteplains.com/ White Plains
+                            Liberty Park 41.042788 -73.752485                                                                 Lake St, White Plains, NY 10604, USA (914) 422-1336  http://www.cityofwhiteplains.com/facilities/facility/details/Liberty-Park-47 White Plains
+                           Gardella Park 41.041552 -73.773857                                                          175 Ferris Ave, White Plains, NY 10601, USA (914) 422-1336                                                                       Unknown White Plains
+Garden of Remembrance Holocaust Memorial 41.030806 -73.768810                                                         119 Martine Ave, White Plains, NY 10601, USA (914) 696-0738                        https://parks.westchestergov.com/garden-of-remembrance White Plains
+                        Travis Hill Park 41.050102 -73.779042                                                                          White Plains, NY 10603, USA        Unknown                                                                       Unknown White Plains
+                Greenburgh Nature Center 41.004881 -73.808620                                                              99 Dromore Rd, Scarsdale, NY 10583, USA (914) 723-3470                                        http://www.greenburghnaturecenter.org/ White Plains
+   LEGOLAND Discovery Center Westchester 40.966855 -73.857180 Ridge Hill Mall, LEGOLAND Discovery Center Westchester, 39 Fitzgerald Street, Yonkers, NY 10710, USA (914) 775-6015                              https://westchester.legolanddiscoverycenter.com/ White Plains
+                 Neuberger Museum of Art 41.048370 -73.703091                                    Park in the W1 Lot, 735 Anderson Hill Rd, Purchase, NY 10577, USA (914) 251-6100                                                         http://neuberger.org/ White Plains
+           Westchester Children's Museum 40.964538 -73.677187                                                                100 Playland Pkwy, Rye, NY 10580, USA (914) 421-5050                                                       http://discoverwcm.org/ White Plains
+                      The Puzzle Parlour 41.029061 -73.766158                                                            131 Court St, White Plains, NY 10601, USA (914) 368-8222                                 http://www.thepuzzleparlour.com/white-plains/ White Plains
+                       Kensico Dam Plaza 41.071553 -73.767469                                                       1 Bronx River Parkway, Valhalla, NY 10595, USA (914) 231-4033                             http://parks.westchestergov.com/kensico-dam-plaza White Plains
+                            Delfino Park 41.038770 -73.755376                                                             110 Lake St, White Plains, NY 10604, USA (914) 422-1336  http://www.cityofwhiteplains.com/facilities/facility/details/Delfino-Park-37 White Plains
+                           Playland Park 40.965142 -73.675125                                                                  1 Playland Pkwy, Rye, NY 10580, USA (914) 820-3070                                                          http://playland.com/ White Plains
+                  Weinberg Nature Center 40.975655 -73.754634                                                          455 Mamaroneck Rd, Scarsdale, NY 10583, USA (914) 722-1289                                          http://www.weinbergnaturecenter.org/ White Plains
+
+### Restaurants in White Plains
+                                Name  Average Cost                                       Cuisines  Aggregate Rating         City
+                           Kinoshita            42       Tea, Pizza, Fast Food, American, Seafood               3.9 White Plains
+        El Kiosco Mexican Restaurant            65                                     Tea, Pizza               4.2 White Plains
+                          El Cazador            90                            Mexican, Pizza, BBQ               3.7 White Plains
+                               U & I            56     Desserts, Fast Food, Cafe, Indian, Seafood               0.0 White Plains
+                       Aravalli Owls            26                      Pizza, Mediterranean, BBQ               0.0 White Plains
+        Le Marche Sugar & Spice Cafe            30                      Indian, Desserts, Seafood               3.5 White Plains
+                            Hangover            88                         Cafe, Pizza, Fast Food               2.7 White Plains
+                    Six Pack Kitchen            58            Chinese, Mexican, Desserts, Seafood               3.2 White Plains
+                Chaudhary Burfi Wala            19             French, Pizza, Desserts, Fast Food               0.0 White Plains
+                  Sadhana Restaurant            84        Desserts, Tea, Italian, French, Seafood               3.9 White Plains
+               Tulsi Ram Chinese Hut            20               Chinese, Pizza, American, Bakery               0.0 White Plains
+             Shooters Lounge and Bar            15                  Chinese, BBQ, Cafe, Fast Food               2.7 White Plains
+                       Mughals Rasoi            92     Tea, Pizza, Fast Food, Cafe, Mediterranean               3.2 White Plains
+                         Sagar Ratna            60              Cafe, BBQ, Mediterranean, Seafood               2.7 White Plains
+                        Dewan Sweets            24      Seafood, Mediterranean, Desserts, Italian               3.3 White Plains
+            Mosaic - SK Premium Park            38        Pizza, Mexican, Bakery, Indian, Seafood               2.9 White Plains
+                       Sindhi Corner            53                  American, Desserts, Fast Food               4.0 White Plains
+               Chicken Chilli Corner            11    Desserts, Tea, Italian, French, BBQ, Bakery               3.1 White Plains
+                         Happy Hakka            37   Desserts, Pizza, Fast Food, Chinese, Seafood               3.7 White Plains
+                    Hunter's Kitchen            15         Desserts, BBQ, Bakery, Indian, Seafood               3.0 White Plains
+                     Mikky Peshawari            13                Cafe, Indian, Desserts, Seafood               2.8 White Plains
+            The California Boulevard            56                Cafe, Mexican, Bakery, Desserts               4.6 White Plains
+    Shama Muradabadi Chicken Biryani            34                        Bakery, Pizza, Desserts               0.0 White Plains
+         Bikaner Sweets & Restaurant            82               Tea, French, BBQ, Cafe, American               0.0 White Plains
+Pan Asian - Sheraton New Delhi Hotel            72       Mexican, Bakery, Mediterranean, Desserts               4.2 White Plains
+        Maa Vaishno Shudh Bhojnalaya            18                   Bakery, Desserts, Pizza, BBQ               3.1 White Plains
+                          Bistro 365            31                      French, Desserts, Seafood               3.7 White Plains
+                             Khidmat            90                                      Tea, Cafe               3.4 White Plains
+                      Domino's Pizza            76 Desserts, Bakery, Fast Food, Chinese, American               2.4 White Plains
+                        Costa Coffee            43                 Cafe, Pizza, American, Italian               3.5 White Plains
+                      Saffron Mantra            43      Bakery, BBQ, Cafe, Mediterranean, Seafood               4.4 White Plains
+
+### Accommodations in White Plains
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number         city
+                Private room in Historic Queens NY  865.0    Private room                         No parties & No smoking             2.0                  2                 1.0 White Plains
+ Large Opulent Studio Apartment Near Prospect Park  465.0 Entire home/apt                            No children under 10             4.0                  3                 4.0 White Plains
+Quiet East Village Studio next to snug coffee shop  708.0 Entire home/apt No visitors & No children under 10 & No smoking            10.0                  6                 3.0 White Plains
+                    Spacious Studio - Midtown East  467.0 Entire home/apt                           No visitors & No pets             2.0                  4                 1.0 White Plains
+       Loft in the heart of Bushwick (jefferson L) 1197.0 Entire home/apt                        No smoking & No visitors             2.0                 11                 1.0 White Plains
+               Private Room in Bronx NY, Manhattan  983.0    Private room                                         No pets             1.0                  1                 2.0 White Plains
+                  Private Theatre District Bedroom  149.0    Private room               No pets & No smoking & No parties             2.0                  1                 4.0 White Plains
+   PERFECT LONG TERM RENTAL~1 BR- EAST 60TH STREET  515.0 Entire home/apt                         No smoking & No parties            30.0                  2                 5.0 White Plains
+    Beautiful Private Room 15 min from JFK Airport  181.0    Private room                        No parties & No visitors             2.0                  1                 3.0 White Plains
+
+### Attractions in New York
+                        Name  Latitude  Longitude                                        Address          Phone                                                                         Website     City
+             Top of The Rock 40.759350 -73.979409  30 Rockefeller Plaza, New York, NY 10112, USA (212) 698-2000 https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/ New York
+       One World Observatory 40.713006 -74.013173           117 West St, New York, NY 10007, USA (844) 696-1776                                                https://oneworldobservatory.com/ New York
+       SUMMIT One Vanderbilt 40.752764 -73.978746          45 E 42nd St, New York, NY 10017, USA        Unknown                                                        http://www.summitov.com/ New York
+          Rockefeller Center 40.758740 -73.978674  45 Rockefeller Plaza, New York, NY 10111, USA (212) 588-8601                                              https://www.rockefellercenter.com/ New York
+           Statue of Liberty 40.689249 -74.044500                        New York, NY 10004, USA (212) 363-3200                                              https://www.nps.gov/stli/index.htm New York
+               The High Line 40.747993 -74.004765                        New York, NY 10011, USA (212) 500-6035                                                    https://www.thehighline.org/ New York
+       Empire State Building 40.748441 -73.985664         20 W 34th St., New York, NY 10001, USA (212) 736-3100                                                         https://www.esbnyc.com/ New York
+             Brooklyn Bridge 40.706086 -73.996864                        New York, NY 10038, USA        Unknown          https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml New York
+      9/11 Memorial & Museum 40.711578 -74.013336      180 Greenwich St, New York, NY 10007, USA (212) 312-8800                                                    https://www.911memorial.org/ New York
+           Flatiron Building 40.741061 -73.989699           175 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+                Times Square 40.757975 -73.985543                       Manhattan, NY 10036, USA        Unknown                                                 https://www.timessquarenyc.org/ New York
+                      RiseNY 40.757621 -73.985176         160 W 45th St, New York, NY 10036, USA (718) 701-4998                                                              https://riseny.co/ New York
+         The Channel Gardens 40.758501 -73.978087                        New York, NY 10020, USA        Unknown              https://www.rockefellercenter.com/attractions/the-channel-gardens/ New York
+                 The Battery 40.702931 -74.015360     Battery Park City, New York, NY 10004, USA (212) 344-3491                                                     https://www.thebattery.org/ New York
+                Central Park 40.782555 -73.965583                              New York, NY, USA (212) 310-6600                                                 https://www.centralparknyc.org/ New York
+             Tenement Museum 40.718818 -73.990088        103 Orchard St, New York, NY 10002, USA (877) 975-3786                                                       https://www.tenement.org/ New York
+         MUSEUM OF ICE CREAM 40.723855 -73.997917          558 Broadway, New York, NY 10012, USA        Unknown                                               https://www.museumoficecream.com/ New York
+       Radio City Music Hall 40.759976 -73.979977          1260 6th Ave, New York, NY 10020, USA (212) 465-6000                                       https://www.msg.com/radio-city-music-hall New York
+Pier 46 at Hudson River Park 40.734189 -74.011265 Hudson River Greenway, New York, NY 10014, USA (212) 627-2020                                                     http://hudsonriverpark.org/ New York
+        Tiffany Street Clock 40.741981 -73.989378           200 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+
+### Restaurants in New York
+                              Name  Average Cost                                             Cuisines  Aggregate Rating     City
+            Seasons 52 Fresh Grill            30                   Seafood, Indian, Desserts, Italian               4.4 New York
+                    Gurgaon Hights            46                    Cafe, American, Indian, Fast Food               2.5 New York
+                             G Dot            75                                   Cafe, Mexican, BBQ               2.4 New York
+                           Rambhog            95                     Tea, Seafood, Mexican, Fast Food               3.3 New York
+                  Green Chick Chop            26                           Tea, French, Cafe, Seafood               3.3 New York
+          Lord of the Drinks Forum            71                   Cafe, Bakery, BBQ, Chinese, Indian               4.2 New York
+                        Goosebumps            94                               Chinese, Pizza, Bakery               3.2 New York
+Aryan's Rajasthani Pyaz Ki Kachori            17                         Cafe, Pizza, Indian, Seafood               3.1 New York
+                   QD's Restaurant            93                           Tea, Desserts, Indian, BBQ               4.1 New York
+               Golooji's Chat Waat            53                                           Pizza, BBQ               3.3 New York
+              Sir John Bakery Cafe            78                              Pizza, Bakery, Desserts               3.4 New York
+                     Shree Rathnam            91            Tea, Bakery, Fast Food, American, Seafood               3.4 New York
+                    Domino's Pizza            86                           Tea, French, Pizza, Indian               3.3 New York
+                    Sugary Affairs            55               Desserts, Tea, Fast Food, Cafe, Indian               3.0 New York
+                        Sugar Rush            89                            Tea, Chinese, Pizza, Cafe               0.0 New York
+                            Amchur            67                                Tea, Bakery, American               2.9 New York
+                Kamal Chat Bhandar            36                                 Chinese, Bakery, BBQ               0.0 New York
+                          736 A.D.            99 Desserts, Bakery, Fast Food, American, Mediterranean               4.1 New York
+          Garam Masala Food Corner            40                              Pizza, Bakery, Desserts               3.3 New York
+                  Green Restaurant            74                          Tea, Cafe, Bakery, Desserts               0.0 New York
+                       Hungry Ullu            94                                          Tea, Bakery               3.3 New York
+                          The Best            79                                   Tea, Chinese, Cafe               3.4 New York
+                          Baltazar            46                      Tea, Fast Food, Bakery, Seafood               4.3 New York
+
+### Accommodations in New York
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number     city
+Versatile private room in Harlem/Hamilton Heights!  398.0    Private room           No pets & No visitors & No parties             4.0                  1                 5.0 New York
+Beautiful and big 1BR sublet close by Central Park  983.0    Private room            No parties & No children under 10             5.0                  2                 5.0 New York
+    A Contemporary Homelike Stay in the Best of BK  228.0 Entire home/apt No pets & No visitors & No children under 10             2.0                  2                 2.0 New York
+       Charming Bright Room in Bed Stuy Brownstone 1064.0    Private room           No visitors & No smoking & No pets            30.0                  2                 3.0 New York
+       Spacious Bedroom in Prime Brooklyn Location  782.0    Private room                         No parties & No pets             3.0                  1                 4.0 New York
+         Cool Downtown Apartment in Great Location  997.0 Entire home/apt                                      No pets             4.0                  7                 4.0 New York
+              Modern Brooklyn oasis (PRIVATE ROOM)  403.0    Private room                         No children under 10             1.0                  1                 5.0 New York
+       Magical rowhouse and garden in Williamsburg  189.0 Entire home/apt                                   No parties             4.0                  3                 1.0 New York
+                          Large Bed-Stuy Apartment  132.0 Entire home/apt                                  No visitors             6.0                  2                 4.0 New York
+IN MINT CONDITION-1BR&TERRACE-E 44TH/UNITED NATION  297.0 Entire home/apt                                      No pets            30.0                  2                 4.0 New York
+   Spacious Private Access Near Trains M - L and J  800.0    Private room                                      No pets             2.0                  1                 4.0 New York
+ Sunny + Spacious Master Bedroom with Outdoor Deck  109.0    Private room                                      No pets             3.0                  1                 5.0 New York
+ ✈ NYC/Travelers. New Private Access Room Bed Full 1158.0    Private room                                      No pets             2.0                  1                 5.0 New York
+
+### Flight from Fayetteville to White Plains on 2022-03-25
+There is no flight from Fayetteville to White Plains on 2022-03-25.
+
+### Self-driving from Fayetteville to White Plains
+self-driving, from Fayetteville to White Plains, duration: 8 hours 46 mins, distance: 923 km, cost: 46
+
+### Taxi from Fayetteville to White Plains
+taxi, from Fayetteville to White Plains, duration: 8 hours 46 mins, distance: 923 km, cost: 923
+
+### Flight from White Plains to New York on 2022-03-27
+There is no flight from White Plains to New York on 2022-03-27.
+
+### Self-driving from White Plains to New York
+self-driving, from White Plains to New York, duration: 54 mins, distance: 57.3 km, cost: 2
+
+### Taxi from White Plains to New York
+taxi, from White Plains to New York, duration: 54 mins, distance: 57.3 km, cost: 57
+
+### Flight from New York to Fayetteville on 2022-03-29
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3637630    570   12:45   15:11 3 hours 26 minutes 2022-03-29       New York Fayetteville    1147.0
+     F4058074    450   20:10   22:43 3 hours 33 minutes 2022-03-29       New York Fayetteville    1147.0
+     F4059443    525   08:40   11:16 3 hours 36 minutes 2022-03-29       New York Fayetteville    1147.0
+
+### Self-driving from New York to Fayetteville
+self-driving, from New York to Fayetteville, duration: 8 hours 21 mins, distance: 881 km, cost: 44
+
+### Taxi from New York to Fayetteville
+taxi, from New York to Fayetteville, duration: 8 hours 21 mins, distance: 881 km, cost: 881
+
+JSON plan:

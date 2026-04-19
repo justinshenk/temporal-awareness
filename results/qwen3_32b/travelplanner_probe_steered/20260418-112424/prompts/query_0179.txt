@@ -1,0 +1,342 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you generate a one-week travel itinerary for a group of 3 from Newark to Florida covering 3 cities from March 18th to March 24th, 2022? Our budget is $10,400. We require accommodations that are entire rooms. Although we won't be self-driving, we'd prefer locations that allow parties.
+
+Reference information:
+### Attractions in Miami
+                                      Name  Latitude  Longitude                                             Address          Phone                                                                                             Website  City
+                             Jungle Island 25.784981 -80.174222      1111 Parrot Jungle Trail, Miami, FL 33132, USA (305) 400-7000                                                                        http://www.jungleisland.com/ Miami
+                    Pérez Art Museum Miami 25.785931 -80.186191            1103 Biscayne Blvd, Miami, FL 33132, USA (305) 375-3000                                                                            https://www.pamm.org/en/ Miami
+                             Bayfront Park 25.775259 -80.186189             301 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                             Wynwood Walls 25.801018 -80.199384               2516 NW 2nd Ave, Miami, FL 33127, USA (305) 576-3334                                                                                             Unknown Miami
+                     Maurice A. Ferré Park 25.784358 -80.187192            1075 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                          Miami Seaquarium 25.734290 -80.164857 4400 Rickenbacker Cswy, Key Biscayne, FL 33149, USA (305) 361-5705                                                                        https://miamiseaquarium.com/ Miami
+                       Bayside Marketplace 25.778402 -80.186794             401 Biscayne Blvd, Miami, FL 33132, USA (305) 577-3344                                            https://www.baysidemarketplace.com/visit/360-virtual-map Miami
+          Skyviews Miami Observation Wheel 25.777020 -80.184519             401 Biscayne Blvd, Miami, FL 33132, USA        Unknown    https://www.skyviewsobservationwheels.com/?utm_source=google&utm_medium=organic&utm_campaign=gbp Miami
+Phillip & Patricia Frost Museum of Science 25.785262 -80.187890            1101 Biscayne Blvd, Miami, FL 33132, USA (305) 434-9600                                                                       https://www.frostscience.org/ Miami
+                   Miami Children's Museum 25.784699 -80.176521            980 MacArthur Cswy, Miami, FL 33132, USA (305) 373-5437                                                                http://www.miamichildrensmuseum.org/ Miami
+                  Vizcaya Museum & Gardens 25.744387 -80.210475              3251 S Miami Ave, Miami, FL 33129, USA (305) 250-9133                                                                                https://vizcaya.org/ Miami
+                        Miami Walk of Fame 25.778196 -80.187446             401 Biscayne Blvd, Miami, FL 33132, USA (786) 763-0831                                                                     http://www.miamiwalkoffame.com/ Miami
+                               Lummus Park 25.780955 -80.129948           1130 Ocean Dr, Miami Beach, FL 33139, USA        Unknown https://www.miamibeachfl.gov/city-hall/parks-and-recreation/parks-facilities-directory/lummus-park/ Miami
+                       Torch of Friendship 25.777607 -80.187709             301 Biscayne Blvd, Miami, FL 33132, USA (888) 311-3233                                                                       http://www.miamigov.com/home/ Miami
+            Official Art Deco Walking Tour 25.780296 -80.130341           1001 Ocean Dr, Miami Beach, FL 33139, USA (305) 672-2014                                                                             https://mdpl.org/tours/ Miami
+                             Port of Miami 25.773981 -80.166635            1922 N Cruise Blvd, Miami, FL 33132, USA        Unknown                                                                                             Unknown Miami
+                       HistoryMiami Museum 25.774663 -80.196383              101 W Flagler St, Miami, FL 33130, USA (305) 375-1492                                                                        http://www.historymiami.org/ Miami
+                               Domino Park 25.765576 -80.219340                1444 SW 8th St, Miami, FL 33135, USA (305) 859-2717                                                                            http://www.miamigov.com/ Miami
+              Little Havana Visitor Center 25.765552 -80.220678                1600 SW 8th St, Miami, FL 33135, USA        Unknown                                                                                             Unknown Miami
+                                   Miami G 25.790911 -80.140205         1111 Lincoln Rd, Miami Beach, FL 33139, USA (305) 896-9850                                                                                 http://miami-g.com/ Miami
+
+### Restaurants in Miami
+                                 Name  Average Cost                                                Cuisines  Aggregate Rating  City
+                              Clocked            49                        Tea, Italian, Mexican, BBQ, Cafe               4.2 Miami
+              Shorts Burger and Shine            81                                  Chinese, Cafe, Seafood               4.9 Miami
+Papouli's Mediterranean Cafe & Market            26                                           Tea, Desserts               4.2 Miami
+               Tako Cheena by Pom Pom            60                    Fast Food, Indian, Desserts, Italian               4.4 Miami
+              AB's Absolute Barbecues            55      Desserts, Tea, Pizza, Italian, Fast Food, American               4.8 Miami
+                              Anjlika            56 Pizza, Italian, Fast Food, Cafe, Mediterranean, Seafood               3.1 Miami
+                Spice It - Hotel IBIS            38             Pizza, Indian, Fast Food, American, Seafood               2.7 Miami
+                      Spices & Sauces            28                 Italian, Mexican, Bakery, Cafe, Seafood               3.0 Miami
+                              L'Opera            28                                       Desserts, Seafood               3.7 Miami
+                     The Diet Kitchen            85             Bakery, BBQ, Indian, Mediterranean, Seafood               3.3 Miami
+            AB's - Absolute Barbecues            39                   Tea, Cafe, Bakery, Fast Food, Chinese               4.9 Miami
+                              Cafe 17            45                              Tea, BBQ, Bakery, Desserts               4.4 Miami
+                 Shiv Misthan Bhandar            59                     Cafe, American, Desserts, Fast Food               3.8 Miami
+                  South Indian Corner            10                                     Tea, Bakery, Indian               3.3 Miami
+                    Friends Fast Food            58                      Tea, BBQ, Mediterranean, Fast Food               0.0 Miami
+                             BarShala            41         Desserts, Pizza, Bakery, Mediterranean, Seafood               3.5 Miami
+                        Qureshi Kabab            34                                      French, Pizza, BBQ               3.5 Miami
+                         Delhi 6 Cafe            29                 Pizza, Fast Food, Cafe, Indian, Seafood               0.0 Miami
+                      Cafe Coffee Day            77                        Desserts, American, BBQ, Seafood               2.8 Miami
+                              Handa's            61                       Cafe, Bakery, American, Fast Food               2.6 Miami
+                   Bhikaram Bhujawala            73                     Desserts, Tea, Pizza, BBQ, American               3.0 Miami
+                               Gopala            23                           Chinese, Pizza, American, BBQ               2.9 Miami
+       NYC - Radisson Blu Plaza Delhi            95                                                Tea, BBQ               4.4 Miami
+                        Gayway Bakery            57                       Tea, Pizza, Bakery, BBQ, American               3.6 Miami
+                      Chanky Restruoo            56                           Tea, Cafe, American, Desserts               3.0 Miami
+                            Pizza Hub            86                             Tea, Mexican, American, BBQ               0.0 Miami
+                   Swastik Restaurant            67                          Tea, Bakery, American, Seafood               2.7 Miami
+                       Baskin Robbins            18                                     Desserts, Fast Food               0.0 Miami
+               Paatra - Jaypee Greens            73                  Desserts, Tea, Bakery, Indian, Seafood               3.5 Miami
+                       Moju Juice Bar            30                         Tea, Bakery, Mediterranean, BBQ               0.0 Miami
+                                Xiian            64                                   BBQ, Indian, Desserts               3.4 Miami
+                        Biryani Mahal            71                             Tea, Mediterranean, Seafood               3.6 Miami
+                             Parrot's            22                         Chinese, French, BBQ, Fast Food               3.4 Miami
+
+### Accommodations in Miami
+                                             NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number  city
+Simple and clean bedroom with good view and light  669.0    Private room                            No children under 10             1.0                  2                 5.0 Miami
+Cozy Two-bedroom Apt in a Cute House in Brooklyn!   99.0    Private room                            No children under 10             4.0                  1                 4.0 Miami
+  "HELLO BROOKLYN" PARK SIDE VIEW NEWLY RENO APT.  789.0 Entire home/apt                        No parties & No visitors             1.0                  6                 5.0 Miami
+     King Hotel Room at Wyndham Midtown 45 Resort  264.0    Private room     No pets & No smoking & No children under 10             2.0                  2                 3.0 Miami
+                   Charming 1BD Astoria Penthouse  806.0 Entire home/apt                                      No smoking             2.0                  8                 5.0 Miami
+       Unbeatable & Massive Midtown 3 Bedroom Apt  905.0 Entire home/apt                                      No smoking             4.0                  6                 5.0 Miami
+                1 Bedroom Heart of Financial Dist  386.0    Private room No visitors & No children under 10 & No smoking             2.0                  2                 4.0 Miami
+                                Bushwick Duplex 1  283.0    Private room                                      No parties             1.0                  2                 5.0 Miami
+     Comfortable shared apartmant by Times Square  924.0     Shared room               No smoking & No children under 10             1.0                  1                 2.0 Miami
+        Modern furnished 2-Bedroom NYC Apartment!  647.0 Entire home/apt                                      No parties            30.0                  3                 1.0 Miami
+                               Williamsburg bliss 1086.0 Entire home/apt                                     No visitors             3.0                  3                 4.0 Miami
+
+### Attractions in Punta Gorda
+                                                Name  Latitude  Longitude                                                       Address          Phone                                                                                    Website        City
+                                       Laishley Park 26.938777 -82.049054                                    Punta Gorda, FL 33950, USA        Unknown                                     http://www.ci.punta-gorda.fl.us/visitors/laishley-park Punta Gorda
+                                  Ponce De Leon Park 26.909880 -82.095520           3400 Ponce de Leon Pkwy, Punta Gorda, FL 33950, USA (941) 575-5041                                http://www.ci.punta-gorda.fl.us/visitors/ponce-de-leon-park Punta Gorda
+                Charlotte Harbor Preserve State Park 26.850434 -82.023871              12301 Burnt Store Rd, Punta Gorda, FL 33955, USA (941) 575-5816    https://www.floridastateparks.org/parks-and-trails/charlotte-harbor-preserve-state-park Punta Gorda
+                         Peace River Wildlife Center 26.910993 -82.095344           3400 Ponce de Leon Pkwy, Punta Gorda, FL 33950, USA (941) 637-3830                                                                https://www.prwildlife.org/ Punta Gorda
+                             Punta Gorda Nature Park 26.909444 -82.069325                 1555 Aqui Esta Dr, Punta Gorda, FL 33950, USA        Unknown http://www.ci.punta-gorda.fl.us/Home/Components/FacilityDirectory/FacilityDirectory/50/630 Punta Gorda
+                                      Gilchrist Park 26.933508 -82.056187             400 W Retta Esplanade, Punta Gorda, FL 33950, USA (941) 575-3324                                    http://www.ci.punta-gorda.fl.us/visitors/gilchrist-park Punta Gorda
+               Charlotte Harbor Environmental Center 26.874246 -82.027254              10941 Burnt Store Rd, Punta Gorda, FL 33955, USA (941) 575-5435                                                                    http://checflorida.org/ Punta Gorda
+           Peace River Botanical & Sculpture Gardens 26.964326 -81.988630                 5827 Riverside Dr, Punta Gorda, FL 33982, USA (941) 621-8299                                                          http://www.peacerivergardens.org/ Punta Gorda
+                            Military Heritage Museum 26.929012 -82.059815                  900 W Marion Ave, Punta Gorda, FL 33950, USA (941) 575-9002                                                        https://militaryheritagemuseum.org/ Punta Gorda
+                              Blanchard House Museum 26.936148 -82.043874 406 Dr Martin Luther King Jr Blvd, Punta Gorda, FL 33950, USA (941) 575-7518                                                       http://www.blanchardhousemuseum.org/ Punta Gorda
+                             Punta Gorda Boat Center 26.891385 -82.054407                 5258 River Bay Dr, Punta Gorda, FL 33950, USA (239) 273-1272                                                                                    Unknown Punta Gorda
+                 Escape Rooms Unlocked - Punta Gorda 26.937278 -82.044708              401 E Olympia Ave #2, Punta Gorda, FL 33950, USA (941) 295-6880                                                            http://escaperoomsunlocked.com/ Punta Gorda
+                            Alligator Bay Distillers 26.943121 -82.023347                  25522 Marion Ave, Punta Gorda, FL 33950, USA (941) 347-8419                                                     http://www.alligatorbaydistillers.com/ Punta Gorda
+                                  Hector House Plaza 26.934463 -82.050571                     227 Taylor St, Punta Gorda, FL 33950, USA        Unknown                                                                                    Unknown Punta Gorda
+                           Sea Grape Artists Gallery 26.935771 -82.050196                  113 W Marion Ave, Punta Gorda, FL 33950, USA (941) 575-1718                                                                http://seagrapegallery.com/ Punta Gorda
+                                         Peace River 27.017235 -81.976254                  631 Woodstork Ln, Punta Gorda, FL 33982, USA        Unknown                                                                                    Unknown Punta Gorda
+Gasparilla Sound - Charlotte Harbor Aquatic Preserve 26.835508 -82.106068              12301 Burnt Store Rd, Punta Gorda, FL 33955, USA (941) 575-5861                                       http://www.dep.state.fl.us/coastal/sites/gasparilla/ Punta Gorda
+                          Punta Gorda History Center 26.925473 -82.040708                    512 E Grace St, Punta Gorda, FL 33950, USA (941) 916-8800                                              https://puntagordahistorycenter.blogspot.com/ Punta Gorda
+                                   King Fisher Fleet 26.928258 -82.063967       1200 W Retta Esplanade #16a, Punta Gorda, FL 33950, USA (941) 639-0969                                                            http://www.kingfisherfleet.com/ Punta Gorda
+               Charlotte Harbor Preserve Nature Walk 26.873515 -82.023933                         Co Rd 765, Punta Gorda, FL 33955, USA (941) 575-5816    https://www.floridastateparks.org/parks-and-trails/charlotte-harbor-preserve-state-park Punta Gorda
+
+### Restaurants in Punta Gorda
+                    Name  Average Cost                                                Cuisines  Aggregate Rating        City
+        D.O.C Ristorante            97                         Chinese, Bakery, American, Cafe               4.0 Punta Gorda
+           Cookie Shoppe            44                Tea, Bakery, BBQ, Mediterranean, Seafood               3.4 Punta Gorda
+                 Pho Bac            19             Fast Food, Mediterranean, Desserts, Italian               4.1 Punta Gorda
+              China Cafe            69          Desserts, Bakery, Cafe, Mediterranean, Seafood               4.0 Punta Gorda
+                  G Thal            61         Desserts, Bakery, Cafe, American, Mediterranean               3.6 Punta Gorda
+            Gelato Vinto            43                                               Cafe, BBQ               2.8 Punta Gorda
+           Urban Cuisine            84     Desserts, Tea, Mexican, Fast Food, Chinese, Seafood               3.4 Punta Gorda
+Hide Out The Street Cafe            92              Desserts, BBQ, Fast Food, Chinese, Seafood               3.8 Punta Gorda
+          Nathu's Sweets            66                         Tea, Chinese, Desserts, Italian               3.3 Punta Gorda
+               Pizza Hut            68 Desserts, Tea, Bakery, American, Mediterranean, Seafood               3.5 Punta Gorda
+      The Sweet Boutique            84                   Pizza, BBQ, Fast Food, Cafe, American               3.3 Punta Gorda
+            Railway Yard            51                                  Cafe, Pizza, Fast Food               3.8 Punta Gorda
+               Gopals 56            46                                       Cafe, Bakery, BBQ               3.2 Punta Gorda
+                Palomino            48                  Desserts, Italian, BBQ, Cafe, American               3.7 Punta Gorda
+              Sri Balaji            60                         Chinese, Bakery, Cafe, Desserts               3.5 Punta Gorda
+                    Icon            90                           Tea, Pizza, BBQ, Cafe, Indian               3.2 Punta Gorda
+      First Treat Bakers            36                           Cafe, Pizza, American, Bakery               0.0 Punta Gorda
+      Mathura Lassi Wala            25                           Tea, Mediterranean, Fast Food               0.0 Punta Gorda
+         The Urban Dhaba            87              Bakery, Fast Food, Cafe, American, Seafood               0.0 Punta Gorda
+                Victoria            36                      Pizza, Bakery, Desserts, Fast Food               3.2 Punta Gorda
+   Krishna Panjabi Rasoi            19                         Chinese, Bakery, Cafe, Desserts               0.0 Punta Gorda
+                Hang Out            40                             Tea, Bakery, Mexican, Pizza               0.0 Punta Gorda
+      KGN Chicken Corner            11                              Tea, BBQ, Bakery, Desserts               0.0 Punta Gorda
+     Bromfy Public House            76                            Mexican, Desserts, Fast Food               2.8 Punta Gorda
+             Ada'e Handi            25                                      Tea, American, BBQ               2.5 Punta Gorda
+    Cafe Cones & Curries            66                                         Bakery, Seafood               3.1 Punta Gorda
+       The Owl's Kitchen            28                                   Tea, Mexican, Seafood               3.5 Punta Gorda
+   Madan Sweets & Bakers            49                    French, Seafood, Desserts, Fast Food               0.0 Punta Gorda
+                Majeed's            26                      Tea, French, Bakery, Mediterranean               3.5 Punta Gorda
+  Kwality Wall's Swirl's            85                        Tea, Chinese, BBQ, Mediterranean               0.0 Punta Gorda
+                  Subway            76                  Tea, Pizza, French, Fast Food, Seafood               3.4 Punta Gorda
+                 Karim's            54                                  Tea, Indian, Fast Food               3.3 Punta Gorda
+                  Sbarro            68                                   Cafe, Pizza, Desserts               3.3 Punta Gorda
+      Engineers Da Dhaba            76                        French, Pizza, American, Seafood               3.6 Punta Gorda
+         Handi Mitran Di            35                 Tea, Mediterranean, Desserts, Fast Food               0.0 Punta Gorda
+               El Cartel            84                               Pizza, BBQ, Mediterranean               3.8 Punta Gorda
+
+### Accommodations in Punta Gorda
+                                           NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number        city
+   The hipster apartment in the hipster borough  320.0    Private room                                      No smoking             4.0                  2                 3.0 Punta Gorda
+Beautiful Manhattan Apt- 20 min to Times Square   79.0 Entire home/apt                            No children under 10             7.0                  3                 2.0 Punta Gorda
+                Cozy North Park Slope Apartment  728.0    Private room    No children under 10 & No visitors & No pets             2.0                  1                 3.0 Punta Gorda
+                       Kings Highway Cozy House 1143.0    Private room              No children under 10 & No visitors             1.0                  1                 4.0 Punta Gorda
+                      Cozy Cat Cave in Bushwick  661.0    Private room No visitors & No smoking & No children under 10             1.0                  1                 5.0 Punta Gorda
+  YOUR HOME AWAY FROM HOME -- NYC WELCOMES YOU! 1027.0    Private room                                         No pets             3.0                  2                 5.0 Punta Gorda
+        QUIET 1BR apartment CLOSE to EVERYTHING  498.0 Entire home/apt                         No smoking & No parties             5.0                  4                 5.0 Punta Gorda
+            Cozy Apartment off J&M Subway Lines 1056.0 Entire home/apt                                      No smoking             1.0                  8                 2.0 Punta Gorda
+                      Brooklyn Designer Home!!!  163.0 Entire home/apt                                      No smoking             4.0                  2                 4.0 Punta Gorda
+           Calm, quirky Harlem apartment Room 1  630.0    Private room                                      No parties             2.0                  1                 2.0 Punta Gorda
+    2 Bed Apt Brighton Beach, Brooklyn by Beach 1001.0 Entire home/apt                                      No smoking             1.0                  6                 3.0 Punta Gorda
+                      Country space in the city 1020.0    Private room                                      No parties             1.0                  1                 3.0 Punta Gorda
+
+### Attractions in Jacksonville
+                                           Name  Latitude  Longitude                                            Address          Phone                                                                                                                Website         City
+                   Jacksonville Zoo and Gardens 30.402224 -81.643258          370 Zoo Pkwy, Jacksonville, FL 32218, USA (904) 757-4463                                                                                        http://www.jacksonvillezoo.org/ Jacksonville
+                            Southbank Riverwalk 30.320148 -81.656499       1001 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489                                               http://downtownjacksonville.org/locations/l-100-southbank-riverwalk.aspx Jacksonville
+             MOSH (Museum Of Science & History) 30.318865 -81.659767       1025 Museum Cir, Jacksonville, FL 32207, USA (904) 396-6674                                                                                                    http://themosh.org/ Jacksonville
+                        Tree Hill Nature Center 30.333425 -81.582786     7152 Lone Star Rd, Jacksonville, FL 32211, USA (904) 724-4646                                                                                               http://www.treehill.org/ Jacksonville
+                            Kingsley Plantation 30.439890 -81.437809    11676 Palmetto Ave, Jacksonville, FL 32226, USA (904) 251-3537                                                          https://www.nps.gov/timu/learn/historyculture/kp_visiting.htm Jacksonville
+                       Kathryn Abbey Hanna Park 30.370925 -81.406772     500 Wonderwood Dr, Jacksonville, FL 32233, USA (904) 255-6767 http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/kathryn-abbey-hanna-park.aspx Jacksonville
+                       Castaway Island Preserve 30.296129 -81.437688   2885 San Pablo Rd S, Jacksonville, FL 32225, USA (904) 630-2489                                                                https://www.timucuanparks.org/castaway-island-preserve/ Jacksonville
+     Jacksonville Arboretum & Botanical Gardens 30.346136 -81.539776       1445 Millcoe Rd, Jacksonville, FL 32225, USA (904) 318-4342                                                                                  http://www.jacksonvillearboretum.org/ Jacksonville
+         Fort George Island Cultural State Park 30.423938 -81.431332  12241 Fort George Rd, Jacksonville, FL 32226, USA (904) 251-2320                              https://www.floridastateparks.org/parks-and-trails/fort-george-island-cultural-state-park Jacksonville
+                 Cummer Museum of Art & Gardens 30.315138 -81.676955     829 Riverside Ave, Jacksonville, FL 32204, USA (904) 356-6857                                                                                           http://www.cummermuseum.org/ Jacksonville
+                      James Weldon Johnson Park 30.328937 -81.659251       135 W Monroe St, Jacksonville, FL 32202, USA (904) 515-5098                                                                             https://jamesweldonjohnsonpark.org/events/ Jacksonville
+       The Catty Shack Ranch Wildlife Sanctuary 30.493178 -81.587492      1860 Starratt Rd, Jacksonville, FL 32226, USA (904) 757-3603                                                                                                https://cattyshack.org/ Jacksonville
+                    Shipwreck Island Water Park 30.287439 -81.411742 1944 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 246-4386                                https://jacksonville-beach.adventurelanding.com/attractions/shipwreck-island-waterpark/ Jacksonville
+                                 Beaches Museum 30.288558 -81.392760  381 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 241-5657                                                                                              http://beachesmuseum.org/ Jacksonville
+MOCA (Museum Of Contemporary Art), Jacksonville 30.329278 -81.658408        333 N Laura St, Jacksonville, FL 32202, USA (904) 366-6911                                                                                       http://mocajacksonville.unf.edu/ Jacksonville
+                         Huguenot Memorial Park 30.411009 -81.420488    10980 Heckscher Dr, Jacksonville, FL 32226, USA (904) 255-4255   http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/huguenot-memorial-park.aspx Jacksonville
+    Timucuan Ecological and Historical Preserve 30.454458 -81.449872  12713 Ft Caroline Rd, Jacksonville, FL 32225, USA (904) 641-7155                                                                                     https://www.nps.gov/timu/index.htm Jacksonville
+                     Walter Jones Historic Park 30.165363 -81.646456     11964 Mandarin Rd, Jacksonville, FL 32223, USA (904) 268-0784                                                       http://www.mandarinmuseum.net/visit/walter-jones-historical-park Jacksonville
+                     Museum of Southern History 30.282964 -81.713753      4304 Herschel St, Jacksonville, FL 32210, USA (904) 750-1950                                                                                 https://www.museumsouthernhistory.com/ Jacksonville
+                            Friendship Fountain 30.320018 -81.659820       1015 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489     http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/parks/friendship-fountain Jacksonville
+
+### Restaurants in Jacksonville
+                            Name  Average Cost                                                 Cuisines  Aggregate Rating         City
+                   Villa Gargano            51                                  Tea, American, Desserts               3.7 Jacksonville
+       Pirates' House Restaurant            59                                      Chinese, Pizza, BBQ               3.8 Jacksonville
+  Goose Feathers Cafe and Bakery            57                                  Tea, Fast Food, Italian               4.2 Jacksonville
+               Ashoka Restaurant            11                Desserts, Mexican, Bakery, BBQ, Fast Food               2.9 Jacksonville
+                   Sanjha Chulha            57                                         Tea, Bakery, BBQ               3.3 Jacksonville
+                  Touch of Spice            70                          French, Bakery, Indian, Seafood               0.0 Jacksonville
+                           Giani            37                             Tea, Seafood, BBQ, Fast Food               3.4 Jacksonville
+                            Tpot            84                                 Tea, Cafe, American, BBQ               3.2 Jacksonville
+                       Oh! Fudge            26                      French, Bakery, American, Fast Food               3.8 Jacksonville
+Midnight Cravings Beyond Control            73                      Tea, Bakery, Mediterranean, Seafood               3.3 Jacksonville
+                Pirates of Grill            65                                   Tea, Chinese, Desserts               4.1 Jacksonville
+                       Keventers            96                  Tea, American, Mediterranean, Fast Food               3.6 Jacksonville
+              Pizza Hut Delivery            35          Tea, Pizza, Fast Food, Chinese, Indian, Seafood               2.7 Jacksonville
+                     Sna-X Point            50                              Seafood, BBQ, Cafe, Italian               3.2 Jacksonville
+              Nehra's Food Point            24                 Seafood, Pizza, Mediterranean, Fast Food               0.0 Jacksonville
+                   Ginger Garlic            28         Desserts, Tea, Pizza, French, Fast Food, Chinese               2.8 Jacksonville
+                  The Spice Room            68                                      Cafe, American, BBQ               3.4 Jacksonville
+                  The Pastry Hut            82                        Tea, Pizza, Italian, Bakery, Cafe               2.9 Jacksonville
+                  Kathi Junction            21             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.0 Jacksonville
+                   Kobe Sizzlers            93                                 Pizza, Indian, Fast Food               3.7 Jacksonville
+                The Cake Gallery            71                            Tea, Pizza, French, BBQ, Cafe               3.3 Jacksonville
+             Nathu's Pastry Shop            59              Desserts, Pizza, Fast Food, Indian, Seafood               3.8 Jacksonville
+                     Metro Grill            83                                     Tea, Pizza, Desserts               3.4 Jacksonville
+                   Pind Balluchi            89                                     Bakery, BBQ, Seafood               3.6 Jacksonville
+                   Biryani Blues            93                                       Tea, French, Pizza               4.0 Jacksonville
+          Chicken Biryani Centre            55                          Fast Food, Cafe, Pizza, Italian               0.0 Jacksonville
+   Bravo Diet Food and Nutrition            34                 Desserts, Tea, Bakery, American, Seafood               3.0 Jacksonville
+                        Al-Malik            32                       Mediterranean, Desserts, Fast Food               3.2 Jacksonville
+          Novelty Chicken Corner            76                                  Tea, Fast Food, Italian               3.3 Jacksonville
+                   Drool Waffles            59                        Desserts, Tea, Mexican, BBQ, Cafe               3.1 Jacksonville
+   Diva - The Italian Restaurant            32                                     Bakery, BBQ, Seafood               3.8 Jacksonville
+               Chhalava - 鯻_Lava            51 Desserts, Tea, Fast Food, Indian, Mediterranean, Seafood               4.4 Jacksonville
+                      McDonald's            15                           Tea, Indian, Desserts, Italian               3.8 Jacksonville
+           Secular House Canteen            64               Desserts, BBQ, Fast Food, Chinese, Seafood               3.8 Jacksonville
+        Aggarwal Bikaneri Sweets            38                       Bakery, BBQ, Cafe, Indian, Seafood               2.9 Jacksonville
+        Al Naseem Foods Shawarma            24                                    Cafe, Pizza, American               0.0 Jacksonville
+      OCD - Online Cake Delivery            34                      Cafe, American, Desserts, Fast Food               0.0 Jacksonville
+             Puja Sandwich House            71                                   French, Cafe, Desserts               0.0 Jacksonville
+                        Oberoi's            75                                  Mexican, Pizza, Seafood               3.6 Jacksonville
+     Sha-O-Lin Chinese Fast Food            72                  Desserts, Italian, Bakery, BBQ, Seafood               0.0 Jacksonville
+                         Mr. Sub            23                            Pizza, American, BBQ, Seafood               0.0 Jacksonville
+                          Mitraz            65                                          Pizza, Desserts               3.4 Jacksonville
+        Snaxpress Tastes & Cakes            19               Bakery, Fast Food, Cafe, American, Seafood               2.9 Jacksonville
+           JMD Family Restaurant            78                     Pizza, Mexican, BBQ, Fast Food, Cafe               0.0 Jacksonville
+                Green Chick Chop            65                          Fast Food, Bakery, BBQ, Seafood               3.0 Jacksonville
+                     TLC Kitchen            91                                         Pizza, Fast Food               0.0 Jacksonville
+                     Shyam Rasoi            52           Tea, Bakery, Fast Food, Mediterranean, Seafood               0.0 Jacksonville
+                       Keventers            67                                         Pizza, Fast Food               0.0 Jacksonville
+                Zaika Restaurant            92                   Desserts, Tea, Pizza, Mexican, Seafood               0.0 Jacksonville
+                       PK Shoppe            41               Desserts, Cafe, Chinese, American, Seafood               2.7 Jacksonville
+                           Pash!            32                                Cafe, Pizza, BBQ, Seafood               3.1 Jacksonville
+              Chakhna Food Point            35                                         Bakery, Desserts               2.9 Jacksonville
+                     Food Scouts            36                Tea, Pizza, French, Bakery, BBQ, American               4.4 Jacksonville
+ India Grill - Hilton Garden Inn            89             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.6 Jacksonville
+        A-One Green Sweet Corner            30                             Cafe, Bakery, Pizza, Seafood               2.9 Jacksonville
+              Bharat Sweet House            69                Cafe, Italian, Bakery, Fast Food, Chinese               3.2 Jacksonville
+                   Dosa Junction            21               Tea, Italian, French, BBQ, Fast Food, Cafe               0.0 Jacksonville
+       Guru Kripa Chicken Corner            92                      Desserts, BBQ, Bakery, Cafe, Indian               0.0 Jacksonville
+                     Madras Cafe            81                 Bakery, Indian, Mediterranean, Fast Food               0.0 Jacksonville
+            Faeem Chicken Corner            46                                          Bakery, Seafood               0.0 Jacksonville
+                      Grill King            24                 Pizza, BBQ, Cafe, Mediterranean, Seafood               3.0 Jacksonville
+           Deez Biryani & Kebabs            99                        Chinese, French, Bakery, Desserts               3.5 Jacksonville
+                         Burnout            52                                    Tea, Bakery, Desserts               3.6 Jacksonville
+                Talaga Sampireun            19             Pizza, BBQ, Fast Food, Indian, Mediterranean               4.9 Jacksonville
+                       San Carlo            77                           French, Mexican, Bakery, Pizza               4.3 Jacksonville
+
+### Accommodations in Jacksonville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number         city
+                 Huge Loft - Heart of Williamsburg  518.0 Entire home/apt                                      No smoking             2.0                  4                 3.0 Jacksonville
+         Bright & Spacious 1br in the Heart of UWS  561.0 Entire home/apt No parties & No visitors & No children under 10             3.0                  3                 3.0 Jacksonville
+                           Modern high-end studio!  541.0 Entire home/apt                                      No parties             2.0                  3                 3.0 Jacksonville
+            NYC Sanctuary, Skyline Views & Rooftop  954.0 Entire home/apt                                      No smoking             3.0                  6                 5.0 Jacksonville
+             Sunny room in cozy Bushwick apartment  897.0    Private room                                     No visitors             3.0                  2                 4.0 Jacksonville
+                    Cute Studio near Prospect Park  256.0 Entire home/apt                                     No visitors             1.0                  2                 3.0 Jacksonville
+          G1 Newly Renovated Long Island City Room 1130.0    Private room                                      No parties             1.0                  1                 2.0 Jacksonville
+                          2BR  Apt - 20min to Soho  938.0 Entire home/apt                                         No pets             3.0                  2                 2.0 Jacksonville
+                     Private Bedroom in Greenpoint  169.0    Private room               No parties & No children under 10             2.0                  2                 4.0 Jacksonville
+  ♛ Private & Beautiful West Village Townhouse 2BR  730.0 Entire home/apt                                     No visitors             5.0                  6                 2.0 Jacksonville
+                        Lovely New York Guest Room 1138.0    Private room                                         No pets             1.0                  1                 5.0 Jacksonville
+                                A Cozy Harlem Stay  373.0    Private room                                         No pets            30.0                  2                 2.0 Jacksonville
+      Cozy, quiet and location, location, location  125.0 Entire home/apt                         No smoking & No parties             4.0                  3                 4.0 Jacksonville
+                          Beautiful Bay Ridge room  390.0    Private room                  No pets & No children under 10             6.0                  2                 1.0 Jacksonville
+      Design-Infused Two Bed Beauty in Fort Greene  942.0 Entire home/apt               No parties & No children under 10             3.0                  2                 1.0 Jacksonville
+ Charming attic Room in Home + Backyard/Near Metro  249.0    Private room                            No parties & No pets             3.0                  2                 1.0 Jacksonville
+Huge Room in Upper West close to Columbia & Subway  260.0    Private room  No parties & No children under 10 & No smoking             4.0                  1                 4.0 Jacksonville
+ Sunny, Quiet Oasis w/ Elevator - Close to Subway!  383.0    Private room                            No pets & No parties             3.0                  1                 5.0 Jacksonville
+                    Great room near Chelsea market  800.0    Private room              No visitors & No children under 10             1.0                  1                 3.0 Jacksonville
+                          Gem off of Prospect Park  534.0    Private room                                      No parties             2.0                  1                 5.0 Jacksonville
+               Large sunny room queen bed &balcony  412.0    Private room                                         No pets             1.0                  2                 2.0 Jacksonville
+                              Next to Central Park  913.0    Private room                        No visitors & No smoking             2.0                  1                 2.0 Jacksonville
+                 Gorgeous Garden Apt Steps To Park 1176.0 Entire home/apt                                      No smoking             1.0                  4                 4.0 Jacksonville
+
+### Flight from Newark to Miami on 2022-03-18
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3621615    486   06:15   09:05 2 hours 50 minutes 2022-03-18         Newark        Miami    1085.0
+     F3658447    483   07:49   10:41 2 hours 52 minutes 2022-03-18         Newark        Miami    1085.0
+     F3696281    321   19:37   23:04 3 hours 27 minutes 2022-03-18         Newark        Miami    1085.0
+     F3702793    266   06:28   09:24 2 hours 56 minutes 2022-03-18         Newark        Miami    1085.0
+     F3715702    459   13:26   16:37 3 hours 11 minutes 2022-03-18         Newark        Miami    1085.0
+     F3768128    384   08:01   11:00 2 hours 59 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908119    431   19:01   22:24 3 hours 23 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908265    286   21:22   00:34 3 hours 12 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908545    505   18:46   21:58 3 hours 12 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908675    418   07:09   09:51 2 hours 42 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908881    356   12:30   15:35  3 hours 5 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908914    484   20:38   00:26 3 hours 48 minutes 2022-03-18         Newark        Miami    1085.0
+     F3908981    451   14:57   17:59  3 hours 2 minutes 2022-03-18         Newark        Miami    1085.0
+     F3909024    512   12:06   14:54 2 hours 48 minutes 2022-03-18         Newark        Miami    1085.0
+
+### Self-driving from Newark to Miami
+self-driving, from Newark to Miami, duration: 18 hours 33 mins, distance: 2,051 km, cost: 102
+
+### Taxi from Newark to Miami
+taxi, from Newark to Miami, duration: 18 hours 33 mins, distance: 2,051 km, cost: 2051
+
+### Flight from Miami to Punta Gorda on 2022-03-20
+There is no flight from Miami to Punta Gorda on 2022-03-20.
+
+### Self-driving from Miami to Punta Gorda
+self-driving, from Miami to Punta Gorda, duration: 2 hours 41 mins, distance: 291 km, cost: 14
+
+### Taxi from Miami to Punta Gorda
+taxi, from Miami to Punta Gorda, duration: 2 hours 41 mins, distance: 291 km, cost: 291
+
+### Flight from Punta Gorda to Jacksonville on 2022-03-22
+There is no flight from Punta Gorda to Jacksonville on 2022-03-22.
+
+### Self-driving from Punta Gorda to Jacksonville
+self-driving, from Punta Gorda to Jacksonville, duration: 4 hours 26 mins, distance: 474 km, cost: 23
+
+### Taxi from Punta Gorda to Jacksonville
+taxi, from Punta Gorda to Jacksonville, duration: 4 hours 26 mins, distance: 474 km, cost: 474
+
+### Flight from Jacksonville to Newark on 2022-03-24
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3757288    383   18:11   20:56 2 hours 45 minutes 2022-03-24   Jacksonville       Newark     820.0
+     F3884857    371   20:24   22:48 2 hours 24 minutes 2022-03-24   Jacksonville       Newark     820.0
+     F4075995    306   08:22   10:15 1 hours 53 minutes 2022-03-24   Jacksonville       Newark     820.0
+     F4076023    238   11:09   13:13  2 hours 4 minutes 2022-03-24   Jacksonville       Newark     820.0
+     F4076087    288   15:55   18:30 2 hours 35 minutes 2022-03-24   Jacksonville       Newark     820.0
+     F4076133    176   22:16   00:53 2 hours 37 minutes 2022-03-24   Jacksonville       Newark     820.0
+
+### Self-driving from Jacksonville to Newark
+self-driving, from Jacksonville to Newark, duration: 13 hours 32 mins, distance: 1,487 km, cost: 74
+
+### Taxi from Jacksonville to Newark
+taxi, from Jacksonville to Newark, duration: 13 hours 32 mins, distance: 1,487 km, cost: 1487
+
+JSON plan:

@@ -1,0 +1,186 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you organize a 5-day trip for two people from Newark to Ohio, where we will visit two cities? The dates will be from March 23rd to March 27th, 2022. Our travel budget is $4,400. We anticipate hosting visitors at our accommodations, and we would like to try a variety of cuisines including French, Chinese, American, and Mexican during our trip. We prefer not to drive ourselves during this trip.
+
+Reference information:
+### Attractions in Cleveland
+                                     Name  Latitude  Longitude                                               Address          Phone                                                                                               Website      City
+                 Cleveland Metroparks Zoo 41.445947 -81.712625           3900 Wildlife Way, Cleveland, OH 44109, USA (216) 661-6500                                                               https://www.clevelandmetroparks.com/zoo Cleveland
+              The Cleveland Museum of Art 41.507926 -81.611972             11150 East Blvd, Cleveland, OH 44106, USA (216) 421-7350                                                                         https://www.clevelandart.org/ Cleveland
+               Cleveland Botanical Garden 41.511139 -81.609598             11030 East Blvd, Cleveland, OH 44106, USA (216) 721-1600                                                                                 https://holdenfg.org/ Cleveland
+               Greater Cleveland Aquarium 41.496574 -81.703834            2000 Sycamore St, Cleveland, OH 44113, USA (216) 862-8803                                                                  http://greaterclevelandaquarium.com/ Cleveland
+               Great Lakes Science Center 41.507420 -81.696598            601 Erieside Ave, Cleveland, OH 44114, USA (216) 694-2000                                                                             https://greatscience.com/ Cleveland
+                 Rock & Roll Hall of Fame 41.508541 -81.695369               1100 E 9th St, Cleveland, OH 44114, USA (216) 781-7625                                                                             https://www.rockhall.com/ Cleveland
+                           Edgewater Park 41.490290 -81.735455                              Cleveland, OH 44102, USA (216) 635-3200                https://clevelandmetroparks.com/parks/visit/parks/lakefront-reservation/edgewater-park Cleveland
+Cleveland Harbor West Pierhead Lighthouse 41.509008 -81.717699      2800 Whiskey Island Dr, Cleveland, OH 44102, USA        Unknown                                                                                               Unknown Cleveland
+                         Mill Creek Falls 41.445048 -81.625326            Mill Creek Trail, Cleveland, OH 44105, USA (216) 635-3200 https://clevelandmetroparks.com/parks/visit/parks/garfield-park-reservation/mill-creek-falls-overlook Cleveland
+                  A Christmas Story House 41.468738 -81.687382              3159 W 11th St, Cleveland, OH 44109, USA (216) 298-4919                                                                  http://www.achristmasstoryhouse.com/ Cleveland
+       The Children's Museum of Cleveland 41.504466 -81.659912             3813 Euclid Ave, Cleveland, OH 44115, USA (216) 791-7114                                                                              https://cmcleveland.org/ Cleveland
+               Cleveland Cultural Gardens 41.518994 -81.618188           10823 Magnolia Dr, Cleveland, OH 44106, USA (216) 220-3075                                                                       http://www.culturalgardens.org/ Cleveland
+                 Cleveland History Center 41.513028 -81.611624             10825 East Blvd, Cleveland, OH 44106, USA (216) 721-5722                                                                 https://www.wrhs.org/plan-your-visit/ Cleveland
+   Cleveland Script Sign - Edgewater Park 41.487580 -81.749276 Cleveland Memorial Shoreway, Cleveland, OH 44102, USA (800) 321-1001                        https://www.thisiscleveland.com/locations/cleveland-script-sign-edgewater-park Cleveland
+      Cleveland Museum of Natural History 41.511524 -81.612884              1 Wade Oval Dr, Cleveland, OH 44106, USA (216) 231-4600                                                                                 https://www.cmnh.org/ Cleveland
+     Museum of Contemporary Art Cleveland 41.508910 -81.604645            11400 Euclid Ave, Cleveland, OH 44106, USA (216) 421-8671                                                                         http://www.mocacleveland.org/ Cleveland
+          Cleveland Script Sign - Tremont 41.484672 -81.692870              1502 Abbey Ave, Cleveland, OH 44113, USA (800) 321-1001                                                                       http://www.thisiscleveland.com/ Cleveland
+ International Women’s Air & Space Museum 41.511568 -81.689978          1501 N Marginal Rd, Cleveland, OH 44114, USA (216) 623-1111                                                                                 http://www.iwasm.org/ Cleveland
+                         West Side Market 41.484708 -81.702839              1979 W 25th St, Cleveland, OH 44113, USA (216) 664-3387                                                                        http://www.westsidemarket.org/ Cleveland
+                   Washington Reservation 41.455960 -81.660307           4408 Pallister Dr, Cleveland, OH 44105, USA        Unknown                          https://www.clevelandmetroparks.com/parks/visit/parks/washington-reservation Cleveland
+
+### Restaurants in Cleveland
+                          Name  Average Cost                                        Cuisines  Aggregate Rating      City
+                   Bikanerwala            10                     Tea, Bakery, BBQ, Fast Food               3.2 Cleveland
+Makhan Fish and Chicken Corner            25      Pizza, French, Fast Food, Chinese, Seafood               3.4 Cleveland
+                 Pind Balluchi            96               Chinese, Pizza, French, BBQ, Cafe               2.7 Cleveland
+                  Costa Coffee            97                        French, Pizza, Fast Food               0.0 Cleveland
+                  Me Kong Bowl            19                              Cafe, BBQ, Seafood               4.0 Cleveland
+                    Green Leaf            73               Desserts, Tea, Cafe, BBQ, Chinese               3.0 Cleveland
+                   Big Chicken            27                    Cafe, Pizza, Bakery, Italian               3.5 Cleveland
+                      Nineties            31                           Cafe, Pizza, Desserts               3.9 Cleveland
+                 Master Bakers            80               Tea, Pizza, Italian, BBQ, Seafood               3.7 Cleveland
+                     Keventers            54            Pizza, American, Desserts, Fast Food               3.8 Cleveland
+                       Gullu's            38                 Mexican, Pizza, Indian, Seafood               3.1 Cleveland
+                   Kathi House            52                              Seafood, Fast Food               0.0 Cleveland
+                     Al Mughal            99             Desserts, Tea, French, BBQ, Seafood               0.0 Cleveland
+                     Bruncheez            36 Tea, Pizza, Bakery, Cafe, Indian, Mediterranean               0.0 Cleveland
+                   LSK Express            29             Indian, Mediterranean, BBQ, Seafood               0.0 Cleveland
+                    Bakermania            71                        Bakery, Pizza, BBQ, Cafe               0.0 Cleveland
+               Wild Chef House            93               Tea, Cafe, Mediterranean, Seafood               0.0 Cleveland
+       Southern Santushti Cafe            20                  Seafood, Pizza, BBQ, Fast Food               0.0 Cleveland
+                 Five Boroughs            97                    French, Bakery, BBQ, Seafood               4.1 Cleveland
+         Me侓hur 韄z韄elik Aspava            34          Chinese, Pizza, Mediterranean, Seafood               4.6 Cleveland
+
+### Accommodations in Cleveland
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+    Rare gem of an apartment in NYC.  So Spacious!  918.0    Private room               No parties & No children under 10             3.0                  1                 5.0 Cleveland
+           Cozy minimalist room close to train (1)  593.0    Private room                                      No parties             3.0                  2                 3.0 Cleveland
+Richmond Hill 3 Bedroom apartment in Private home!  565.0 Entire home/apt                                     No visitors             1.0                  4                 5.0 Cleveland
+                   Large bright artistic apartment  677.0 Entire home/apt                           No pets & No visitors             2.0                  4                 2.0 Cleveland
+ Private room W/ private bathroom, shower, balcony 1188.0    Private room                            No children under 10             1.0                  1                 2.0 Cleveland
+         Comfy bed in Cozy Home - GRAND ARMY PLAZA  996.0    Private room                                      No smoking             2.0                  1                 5.0 Cleveland
+                               room in a soho loft  914.0    Private room No parties & No children under 10 & No visitors             3.0                  2                 2.0 Cleveland
+   Modern Sunlit Room w/ Balcony on Famous Street!  979.0    Private room                                      No smoking             4.0                  2                 4.0 Cleveland
+Blocks to the High Line * West Village Home for 10 1031.0 Entire home/apt                                      No parties             2.0                  4                 4.0 Cleveland
+                     Spacious Studio in E Flatbush  827.0 Entire home/apt                                     No visitors             1.0                  6                 3.0 Cleveland
+         Pleasant & Low-priced place  in Manhattan  347.0    Private room                                      No parties             1.0                  1                 2.0 Cleveland
+                 Private room in Sunnyside Gardens  408.0    Private room                                      No smoking             2.0                  2                 1.0 Cleveland
+ Gorgeous 1-2 BDR apartment in the Lower East Side  107.0 Entire home/apt                  No children under 10 & No pets             1.0                  2                 4.0 Cleveland
+
+### Attractions in Columbus
+                                            Name  Latitude  Longitude                                        Address          Phone                                                                              Website     City
+           Center of Science and Industry (COSI) 39.959836 -83.007020        333 W Broad St, Columbus, OH 43215, USA (614) 228-2674                                                                    https://cosi.org/ Columbus
+Franklin Park Conservatory and Botanical Gardens 39.964569 -82.955269       1777 E Broad St, Columbus, OH 43203, USA (614) 715-8000                                                           http://fpconservatory.org/ Columbus
+                          Columbus Museum of Art 39.964207 -82.987897        480 E Broad St, Columbus, OH 43215, USA (614) 221-6801                                                       http://www.columbusmuseum.org/ Columbus
+                       Columbus Zoo and Aquarium 40.156161 -83.117961        4850 W Powell Rd, Powell, OH 43065, USA (614) 645-3400                                                         https://www.columbuszoo.org/ Columbus
+                                    Topiary Park 39.961100 -82.987574         480 E Town St, Columbus, OH 43215, USA (614) 645-0197 https://www.columbus.gov/recreationandparks/parks/Topiary-Garden-(Deaf-School-Park)/ Columbus
+              LEGOLAND Discovery Center Columbus 40.051288 -82.915845   157 Easton Town Ctr, Columbus, OH 43219, USA (614) 407-7721                                         http://columbus.legolanddiscoverycenter.com/ Columbus
+                                 Ohio Statehouse 39.961330 -82.999115          1 Capitol Sq, Columbus, OH 43215, USA (614) 752-9777                                                       http://www.ohiostatehouse.org/ Columbus
+                    Kelton House Museum & Garden 39.960818 -82.984310         586 E Town St, Columbus, OH 43215, USA (614) 464-2022                                                          http://www.keltonhouse.com/ Columbus
+                      ZipZone Outdoor Adventures 40.125462 -83.016534        7925 N High St, Columbus, OH 43235, USA (614) 847-9477                                                            https://zipzonetours.com/ Columbus
+                          Columbus Park of Roses 40.043557 -83.026748        3901 N High St, Columbus, OH 43214, USA (614) 645-3391                                                          http://www.parkofroses.org/ Columbus
+                  John F. Wolfe Columbus Commons 39.959097 -82.998810         160 S High St, Columbus, OH 43215, USA (614) 545-4701                                                          http://columbuscommons.org/ Columbus
+                                    Zoombezi Bay 40.153597 -83.119104          4850 Powell Rd, Powell, OH 43065, USA (614) 645-3400                                                          http://www.zoombezibay.com/ Columbus
+                                   Thurber House 39.965783 -82.985242      77 Jefferson Ave, Columbus, OH 43215, USA (614) 464-1032                                                        https://www.thurberhouse.org/ Columbus
+                                  Discovery Park 39.962679 -82.994077        275 E Broad St, Columbus, OH 43215, USA        Unknown                                                                              Unknown Columbus
+                             Columbus Love Mural 39.956996 -82.993787         220 E Main St, Columbus, OH 43215, USA        Unknown                                                 https://www.nkdsgn.com/cbuslovemural Columbus
+                               Bicentennial Park 39.956332 -83.004056 233 S Civic Center Dr, Columbus, OH 43215, USA (614) 645-3800                                   http://www.sciotomile.com/parks/bicentennial-park/ Columbus
+                         Gambrinus: King of Beer 39.949580 -83.000155                        Columbus, OH 43215, USA        Unknown                                                                              Unknown Columbus
+                           Scioto Mile Promenade 39.960088 -83.002855 233 S Civic Center Dr, Columbus, OH 43215, USA (614) 645-3335                                       http://www.sciotomile.com/parks/the-promenade/ Columbus
+                                    Goodale Park 39.975211 -83.006775      120 W Goodale St, Columbus, OH 43215, USA (614) 645-3300                                                              http://goodalepark.org/ Columbus
+                           Bishops Walk Fountain 39.964375 -82.995593          182 E Gay St, Columbus, OH 43215, USA        Unknown                                                                              Unknown Columbus
+
+### Restaurants in Columbus
+                    Name  Average Cost                                                Cuisines  Aggregate Rating     City
+            Desire Foods            23                  Desserts, Tea, French, Mexican, Bakery               2.9 Columbus
+             Hungry Head            43                     Pizza, French, BBQ, Fast Food, Cafe               0.0 Columbus
+           Love Is Cakes            42         Desserts, Pizza, Mexican, BBQ, Chinese, Seafood               4.1 Columbus
+             Club Prison            70                        Tea, Seafood, Fast Food, Italian               2.4 Columbus
+               KC Bakers            31                   Desserts, Tea, Pizza, Italian, Bakery               3.2 Columbus
+                  Gopala            86                                   Bakery, American, BBQ               3.4 Columbus
+         The Irish House            65 Desserts, Tea, Pizza, Mexican, Fast Food, Mediterranean               4.4 Columbus
+       Chulha Punjabi Da            55                   Desserts, Tea, Pizza, Bakery, Chinese               2.4 Columbus
+              McDonald's            75           Desserts, Pizza, French, BBQ, Indian, Seafood               3.7 Columbus
+      Prem Ji Delhi Wale            24                    Chinese, American, Desserts, Seafood               0.0 Columbus
+                 Noddy's            93                              Tea, Mexican, BBQ, Seafood               0.0 Columbus
+     The Bubble Tea Cafe            65                                  Tea, Indian, Fast Food               3.0 Columbus
+           Sanjha Chulha            79                           Chinese, Bakery, BBQ, Italian               0.0 Columbus
+                    RSVP            53                                  BBQ, Desserts, Seafood               2.7 Columbus
+         Rai Ji Caterers            96                                       Cafe, Indian, BBQ               0.0 Columbus
+              Taste Zone            32                       Seafood, Pizza, Bakery, Fast Food               0.0 Columbus
+Yadav Ji Chholey Bhature            74                    Pizza, Mexican, BBQ, Fast Food, Cafe               0.0 Columbus
+       Nazeer Delicacies            91                                 French, Pizza, Desserts               3.3 Columbus
+   Karnataka Food Centre            18             French, BBQ, Fast Food, Cafe, Mediterranean               4.1 Columbus
+       Devika Restaurant            90       Desserts, Tea, Pizza, Mexican, BBQ, Mediterranean               0.0 Columbus
+         Himalya Chinese            25                      Chinese, American, Cafe, Fast Food               0.0 Columbus
+            Cake Express            28                                         Tea, Pizza, BBQ               0.0 Columbus
+    Khan Tandoori Nights            33                                      Fast Food, Seafood               0.0 Columbus
+               Rocomamas            21                  Pizza, Bakery, Fast Food, Cafe, Indian               3.6 Columbus
+
+### Accommodations in Columbus
+                                             NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number     city
+            Cozy and Sunny Williamsburg Apartment 1100.0 Entire home/apt                                     No pets             3.0                  8                 5.0 Columbus
+ Large apartment walking distance to Williamsburg 1157.0    Private room                    No parties & No visitors             4.0                  1                 4.0 Columbus
+                          Brooklyn Backyard Oasis  867.0 Entire home/apt                                  No smoking             7.0                  4                 5.0 Columbus
+               The Art Of Living - Loft apartment  861.0 Entire home/apt                    No smoking & No visitors             2.0                  6                 4.0 Columbus
+   Large family loft in the best Chelsea location  305.0 Entire home/apt                                     No pets             5.0                  2                 3.0 Columbus
+Huge Private Room in New York 10minute to Midtown  471.0    Private room                       No pets & No visitors             1.0                  2                 5.0 Columbus
+   MASTER, NEW, PRIVATE BEDROOM, 10 MINS from JFK  769.0    Private room                                     No pets             1.0                  1                 5.0 Columbus
+                    A Small Kingdom in the Clouds  946.0 Entire home/apt                        No pets & No parties            30.0                  4                 5.0 Columbus
+              31 Dec - 1 Jan lovely Prospect room  221.0    Private room                                 No visitors             1.0                  1                 3.0 Columbus
+ Beautiful Convenient Bushwick Oasis w/Trampoline  526.0    Private room                        No children under 10             1.0                  1                 5.0 Columbus
+                               Cozy Brooklyn Stay 1152.0    Private room No children under 10 & No pets & No smoking             2.0                  2                 3.0 Columbus
+Exquisite Private room Central Park  Subway A,B,C  572.0    Private room          No visitors & No children under 10            30.0                  2                 5.0 Columbus
+              1st Floor 3 Bedroom Apt Midtown NYC   91.0 Entire home/apt                                     No pets             2.0                  2                 4.0 Columbus
+ Bright room in huge, dog-friendly apt w/ balcony   93.0    Private room                                 No visitors             2.0                  1                 2.0 Columbus
+
+### Flight from Newark to Cleveland on 2022-03-23
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3894139    181   07:28   08:53 1 hours 25 minutes 2022-03-23         Newark    Cleveland     404.0
+     F3894355    119   15:20   16:57 1 hours 37 minutes 2022-03-23         Newark    Cleveland     404.0
+     F3894511    173   22:16   23:44 1 hours 28 minutes 2022-03-23         Newark    Cleveland     404.0
+     F3894515    171   17:40   19:11 1 hours 31 minutes 2022-03-23         Newark    Cleveland     404.0
+     F3921595    159   09:38   11:21 1 hours 43 minutes 2022-03-23         Newark    Cleveland     404.0
+     F4075899    132   12:00   13:32 1 hours 32 minutes 2022-03-23         Newark    Cleveland     404.0
+     F4075983     81   19:13   20:51 1 hours 38 minutes 2022-03-23         Newark    Cleveland     404.0
+
+### Self-driving from Newark to Cleveland
+self-driving, from Newark to Cleveland, duration: 6 hours 59 mins, distance: 728 km, cost: 36
+
+### Taxi from Newark to Cleveland
+taxi, from Newark to Cleveland, duration: 6 hours 59 mins, distance: 728 km, cost: 728
+
+### Flight from Cleveland to Columbus on 2022-03-25
+There is no flight from Cleveland to Columbus on 2022-03-25.
+
+### Self-driving from Cleveland to Columbus
+self-driving, from Cleveland to Columbus, duration: 2 hours 8 mins, distance: 228 km, cost: 11
+
+### Taxi from Cleveland to Columbus
+taxi, from Cleveland to Columbus, duration: 2 hours 8 mins, distance: 228 km, cost: 228
+
+### Flight from Columbus to Newark on 2022-03-27
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4076769    145   07:09   09:01 1 hours 52 minutes 2022-03-27       Columbus       Newark     463.0
+     F4076784    223   15:30   17:33  2 hours 3 minutes 2022-03-27       Columbus       Newark     463.0
+     F4076785    110   20:49   22:51  2 hours 2 minutes 2022-03-27       Columbus       Newark     463.0
+     F4076858    161   13:32   15:23 1 hours 51 minutes 2022-03-27       Columbus       Newark     463.0
+
+### Self-driving from Columbus to Newark
+self-driving, from Columbus to Newark, duration: 8 hours 14 mins, distance: 844 km, cost: 42
+
+### Taxi from Columbus to Newark
+taxi, from Columbus to Newark, duration: 8 hours 14 mins, distance: 844 km, cost: 844
+
+JSON plan:

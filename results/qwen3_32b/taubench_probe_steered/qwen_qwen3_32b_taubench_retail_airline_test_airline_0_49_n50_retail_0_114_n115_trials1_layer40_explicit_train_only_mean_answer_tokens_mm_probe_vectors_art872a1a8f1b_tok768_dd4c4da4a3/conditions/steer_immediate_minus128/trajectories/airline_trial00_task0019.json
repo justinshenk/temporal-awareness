@@ -1,0 +1,1262 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to make some changes to my upcoming flights. I have a reservation that I'd like to modify.",
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help you with that. Could you please provide me with your user ID and the reservation ID so I can look up your reservation details?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Sure, I can help you with that. Could you please provide me with your user ID and the reservation ID so I can look up your reservation details?"
+      }
+    },
+    "observation": "My user ID is raj_brown_5782 and my reservation ID is VA5SGQ.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help you with that. Could you please provide me with your user ID and the reservation ID so I can look up your reservation details?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4629,
+    "output_tokens": 48,
+    "generation_seconds": 4.119225740432739,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"VA5SGQ\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "VA5SGQ"
+      }
+    },
+    "observation": "{\"reservation_id\": \"VA5SGQ\", \"user_id\": \"raj_brown_5782\", \"origin\": \"DTW\", \"destination\": \"LGA\", \"flight_type\": \"round_trip\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"DTW\", \"destination\": \"PHX\", \"flight_number\": \"HAT035\", \"date\": \"2024-05-17\", \"price\": 163}, {\"origin\": \"PHX\", \"destination\": \"LGA\", \"flight_number\": \"HAT066\", \"date\": \"2024-05-17\", \"price\": 184}, {\"origin\": \"LGA\", \"destination\": \"PHX\", \"flight_number\": \"HAT002\", \"date\": \"2024-05-19\", \"price\": 174}, {\"origin\": \"PHX\", \"destination\": \"DTW\", \"flight_number\": \"HAT106\", \"date\": \"2024-05-20\", \"price\": 135}], \"passengers\": [{\"first_name\": \"Raj\", \"last_name\": \"Brown\", \"dob\": \"1967-03-12\"}], \"payment_history\": [{\"payment_id\": \"credit_card_8003957\", \"amount\": 686}], \"created_at\": \"2024-05-08T18:28:13\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"VA5SGQ\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4708,
+    "output_tokens": 24,
+    "generation_seconds": 2.6862919330596924,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have retrieved your reservation details. Your reservation includes a round-trip flight from DTW to LGA with a stop in PHX, and the return flight is from LGA back to DTW with a stop in PHX. The flights are scheduled for May 17 and May 20. What changes would you like to make to your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I have retrieved your reservation details. Your reservation includes a round-trip flight from DTW to LGA with a stop in PHX, and the return flight is from LGA back to DTW with a stop in PHX. The flights are scheduled for May 17 and May 20. What changes would you like to make to your reservation?"
+      }
+    },
+    "observation": "I'd like to change both flights to nonstop options. Instead of flying to LGA, I want to go to JFK instead, and I want nonstop flights for both the outbound and return legs on those same dates.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I have retrieved your reservation details. Your reservation includes a round-trip flight from DTW to LGA with a stop in PHX, and the return flight is from LGA back to DTW with a stop in PHX. The flights are scheduled for May 17 and May 20. What changes would you like to make to your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5107,
+    "output_tokens": 90,
+    "generation_seconds": 6.807721853256226,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"DTW\", \"destination\": \"JFK\", \"date\": \"2024-05-17\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "DTW",
+        "destination": "JFK",
+        "date": "2024-05-17"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT169\", \"origin\": \"DTW\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"06:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 12, \"economy\": 12, \"business\": 19}, \"prices\": {\"basic_economy\": 64, \"economy\": 171, \"business\": 294}}, {\"flight_number\": \"HAT240\", \"origin\": \"DTW\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"16:00:00\", \"scheduled_arrival_time_est\": \"18:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 13, \"economy\": 17, \"business\": 5}, \"prices\": {\"basic_economy\": 61, \"economy\": 173, \"business\": 445}}, {\"flight_number\": \"HAT263\", \"origin\": \"DTW\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"15:00:00\", \"scheduled_arrival_time_est\": \"17:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 20, \"business\": 8}, \"prices\": {\"basic_economy\": 80, \"economy\": 109, \"business\": 230}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"DTW\", \"destination\": \"JFK\", \"date\": \"2024-05-17\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5251,
+    "output_tokens": 43,
+    "generation_seconds": 4.018260955810547,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"DTW\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "DTW",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT033\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"02:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 5, \"economy\": 16, \"business\": 7}, \"prices\": {\"basic_economy\": 95, \"economy\": 140, \"business\": 327}}, {\"flight_number\": \"HAT088\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"06:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 10, \"economy\": 0, \"business\": 11}, \"prices\": {\"basic_economy\": 61, \"economy\": 179, \"business\": 306}}, {\"flight_number\": \"HAT092\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"02:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 10, \"business\": 14}, \"prices\": {\"basic_economy\": 89, \"economy\": 173, \"business\": 493}}, {\"flight_number\": \"HAT212\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"06:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 5, \"economy\": 17, \"business\": 17}, \"prices\": {\"basic_economy\": 63, \"economy\": 154, \"business\": 365}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"DTW\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5674,
+    "output_tokens": 43,
+    "generation_seconds": 4.143684148788452,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have found some nonstop flight options for you. For the outbound leg from DTW to JFK on May 17, the available direct flights are:\n\n1. Flight HAT169: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $64, Economy $171, Business $294.\n2. Flight HAT240: Departs at 16:00 and arrives at 18:00. Prices: Basic Economy $61, Economy $173, Business $445.\n3. Flight HAT263: Departs at 15:00 and arrives at 17:00. Prices: Basic Economy $80, Economy $109, Business $230.\n\nFor the return leg from JFK to DTW on May 20, the available direct flights are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT088: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $61, Economy $179, Business $306.\n3. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n4. Flight HAT212: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $63, Economy $154, Business $365.\n\nPlease let me know which flights you would like to book.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have found some nonstop flight options for you. For the outbound leg from DTW to JFK on May 17, the available direct flights are:\n\n1. Flight HAT169: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $64, Economy $171, Business $294.\n2. Flight HAT240: Departs at 16:00 and arrives at 18:00. Prices: Basic Economy $61, Economy $173, Business $445.\n3. Flight HAT263: Departs at 15:00 and arrives at 17:00. Prices: Basic Economy $80, Economy $109, Business $230.\n\nFor the return leg from JFK to DTW on May 20, the available direct flights are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT088: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $61, Economy $179, Business $306.\n3. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n4. Flight HAT212: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $63, Economy $154, Business $365.\n\nPlease let me know which flights you would like to book.\"}}"
+      }
+    },
+    "observation": "I'd prefer morning flights that arrive before 7am at the destination. Looking at these options, for the outbound flight on May 17, I'd like Flight HAT169 since it departs early in the morning and arrives at 6am. For the return flight on May 20, I'll go with Flight HAT088 which also departs in the morning and arrives at 6am.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 178 (char 177)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I have found some nonstop flight options for you. For the outbound leg from DTW to JFK on May 17, the available direct flights are:\n\n1. Flight HAT169: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $64, Economy $171, Business $294.\n2. Flight HAT240: Departs at 16:00 and arrives at 18:00. Prices: Basic Economy $61, Economy $173, Business $445.\n3. Flight HAT263: Departs at 15:00 and arrives at 17:00. Prices: Basic Economy $80, Economy $109, Business $230.\n\nFor the return leg from JFK to DTW on May 20, the available direct flights are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT088: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $61, Economy $179, Business $306.\n3. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n4. Flight HAT212: Departs at 04:00 and arrives at 06:00. Prices: Basic Economy $63, Economy $154, Business $365.\n\nPlease let me know which flights you would like to book.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6218,
+    "output_tokens": 418,
+    "generation_seconds": 27.001156091690063,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT088\", \"date\": \"2024-05-20\"}], \"payment_id\": \"credit_card_8003957\"}}",
+    "action": {
+      "name": "update_reservation_flights",
+      "arguments": {
+        "reservation_id": "VA5SGQ",
+        "cabin": "economy",
+        "flights": [
+          {
+            "flight_number": "HAT169",
+            "date": "2024-05-17"
+          },
+          {
+            "flight_number": "HAT088",
+            "date": "2024-05-20"
+          }
+        ],
+        "payment_id": "credit_card_8003957"
+      }
+    },
+    "observation": "Error: not enough seats on flight HAT088",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "update_reservation_flights",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT088\", \"date\": \"2024-05-20\"}], \"payment_id\": \"credit_card_8003957\"}}",
+    "parsed_action_name": "update_reservation_flights",
+    "input_tokens": 6733,
+    "output_tokens": 106,
+    "generation_seconds": 8.419227600097656,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems there is an issue with the availability for Flight HAT088 on May 20, as there are not enough seats available. Let me check for any other available morning flights that arrive before 7 am.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "It seems there is an issue with the availability for Flight HAT088 on May 20, as there are not enough seats available. Let me check for any other available morning flights that arrive before 7 am."
+      }
+    },
+    "observation": "Okay, thank you for checking. What other morning options do you have available for the return flight on May 20 that arrive before 7am?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems there is an issue with the availability for Flight HAT088 on May 20, as there are not enough seats available. Let me check for any other available morning flights that arrive before 7 am.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6863,
+    "output_tokens": 63,
+    "generation_seconds": 5.715758562088013,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"DTW\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "DTW",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT033\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"02:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 5, \"economy\": 16, \"business\": 7}, \"prices\": {\"basic_economy\": 95, \"economy\": 140, \"business\": 327}}, {\"flight_number\": \"HAT088\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"06:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 10, \"economy\": 0, \"business\": 11}, \"prices\": {\"basic_economy\": 61, \"economy\": 179, \"business\": 306}}, {\"flight_number\": \"HAT092\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"00:00:00\", \"scheduled_arrival_time_est\": \"02:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 10, \"business\": 14}, \"prices\": {\"basic_economy\": 89, \"economy\": 173, \"business\": 493}}, {\"flight_number\": \"HAT212\", \"origin\": \"JFK\", \"destination\": \"DTW\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"06:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 5, \"economy\": 17, \"business\": 17}, \"prices\": {\"basic_economy\": 63, \"economy\": 154, \"business\": 365}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"DTW\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6966,
+    "output_tokens": 43,
+    "generation_seconds": 4.564850568771362,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have rechecked the available flights for the return leg on May 20 from JFK to DTW. The available morning flights that arrive before 7 am are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n\nBoth flights are available and have sufficient seats in the economy class. Would you like to proceed with one of these options?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have rechecked the available flights for the return leg on May 20 from JFK to DTW. The available morning flights that arrive before 7 am are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n\nBoth flights are available and have sufficient seats in the economy class. Would you like to proceed with one of these options?\"}}"
+      }
+    },
+    "observation": "I'd like to go with Flight HAT092 since it's the cheaper Economy option between the two at $173.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 190 (char 189)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I have rechecked the available flights for the return leg on May 20 from JFK to DTW. The available morning flights that arrive before 7 am are:\n\n1. Flight HAT033: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $95, Economy $140, Business $327.\n2. Flight HAT092: Departs at 00:00 and arrives at 02:00. Prices: Basic Economy $89, Economy $173, Business $493.\n\nBoth flights are available and have sufficient seats in the economy class. Would you like to proceed with one of these options?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7510,
+    "output_tokens": 171,
+    "generation_seconds": 12.481075286865234,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT092\", \"date\": \"2024-05-20\"}], \"payment_id\": \"credit_card_8003957\"}}}",
+    "action": {
+      "name": "update_reservation_flights",
+      "arguments": {
+        "reservation_id": "VA5SGQ",
+        "cabin": "economy",
+        "flights": [
+          {
+            "flight_number": "HAT169",
+            "date": "2024-05-17"
+          },
+          {
+            "flight_number": "HAT092",
+            "date": "2024-05-20"
+          }
+        ],
+        "payment_id": "credit_card_8003957"
+      }
+    },
+    "observation": "{\"reservation_id\": \"VA5SGQ\", \"user_id\": \"raj_brown_5782\", \"origin\": \"DTW\", \"destination\": \"LGA\", \"flight_type\": \"round_trip\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\", \"price\": 171, \"origin\": \"DTW\", \"destination\": \"JFK\"}, {\"flight_number\": \"HAT092\", \"date\": \"2024-05-20\", \"price\": 173, \"origin\": \"JFK\", \"destination\": \"DTW\"}], \"passengers\": [{\"first_name\": \"Raj\", \"last_name\": \"Brown\", \"dob\": \"1967-03-12\"}], \"payment_history\": [{\"payment_id\": \"credit_card_8003957\", \"amount\": 686}, {\"payment_id\": \"credit_card_8003957\", \"amount\": -312}], \"created_at\": \"2024-05-08T18:28:13\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "update_reservation_flights",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT092\", \"date\": \"2024-05-20\"}], \"payment_id\": \"credit_card_8003957\"}}",
+    "parsed_action_name": "update_reservation_flights",
+    "input_tokens": 7718,
+    "output_tokens": 107,
+    "generation_seconds": 8.66351842880249,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated. The outbound flight on May 17 is now Flight HAT169 from DTW to JFK, and the return flight on May 20 is Flight HAT092 from JFK to DTW. The total cost for the updated flights is $173 for the return flight. Since the previous reservation had a payment of $686, a refund of $312 will be processed to your credit card. The refund should be reflected in your account within 5 to 7 business days. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation has been successfully updated. The outbound flight on May 17 is now Flight HAT169 from DTW to JFK, and the return flight on May 20 is Flight HAT092 from JFK to DTW. The total cost for the updated flights is $173 for the return flight. Since the previous reservation had a payment of $686, a refund of $312 will be processed to your credit card. The refund should be reflected in your account within 5 to 7 business days. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "Yes, actually there are a couple more things. I took insurance for this trip, so I'd like to have the change fees waived. And I also need to add 1 checked bag to my reservation.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated. The outbound flight on May 17 is now Flight HAT169 from DTW to JFK, and the return flight on May 20 is Flight HAT092 from JFK to DTW. The total cost for the updated flights is $173 for the return flight. Since the previous reservation had a payment of $686, a refund of $312 will be processed to your credit card. The refund should be reflected in your account within 5 to 7 business days. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8129,
+    "output_tokens": 140,
+    "generation_seconds": 10.797394514083862,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I can assist you with adding a checked bag to your reservation. Since you have travel insurance, the change fees will be waived. However, adding an extra checked bag will incur an additional baggage fee of $50. Would you like to proceed with adding the checked bag and paying the $50 fee?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I can assist you with adding a checked bag to your reservation. Since you have travel insurance, the change fees will be waived. However, adding an extra checked bag will incur an additional baggage fee of $50. Would you like to proceed with adding the checked bag and paying the $50 fee?"
+      }
+    },
+    "observation": "Yes, I'll go ahead and add the checked bag. Please charge me the $50 baggage fee.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I can assist you with adding a checked bag to your reservation. Since you have travel insurance, the change fees will be waived. However, adding an extra checked bag will incur an additional baggage fee of $50. Would you like to proceed with adding the checked bag and paying the $50 fee?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8320,
+    "output_tokens": 79,
+    "generation_seconds": 7.2037270069122314,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"update_reservation_baggages\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"total_baggages\": 1, \"nonfree_baggages\": 1, \"payment_id\": \"credit_card_8003957\"}}}",
+    "action": {
+      "name": "update_reservation_baggages",
+      "arguments": {
+        "reservation_id": "VA5SGQ",
+        "total_baggages": 1,
+        "nonfree_baggages": 1,
+        "payment_id": "credit_card_8003957"
+      }
+    },
+    "observation": "{\"reservation_id\": \"VA5SGQ\", \"user_id\": \"raj_brown_5782\", \"origin\": \"DTW\", \"destination\": \"LGA\", \"flight_type\": \"round_trip\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT169\", \"date\": \"2024-05-17\", \"price\": 171, \"origin\": \"DTW\", \"destination\": \"JFK\"}, {\"flight_number\": \"HAT092\", \"date\": \"2024-05-20\", \"price\": 173, \"origin\": \"JFK\", \"destination\": \"DTW\"}], \"passengers\": [{\"first_name\": \"Raj\", \"last_name\": \"Brown\", \"dob\": \"1967-03-12\"}], \"payment_history\": [{\"payment_id\": \"credit_card_8003957\", \"amount\": 686}, {\"payment_id\": \"credit_card_8003957\", \"amount\": -312}, {\"payment_id\": \"credit_card_8003957\", \"amount\": 50}], \"created_at\": \"2024-05-08T18:28:13\", \"total_baggages\": 1, \"nonfree_baggages\": 1, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "update_reservation_baggages",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_baggages\", \"arguments\": {\"reservation_id\": \"VA5SGQ\", \"total_baggages\": 1, \"nonfree_baggages\": 1, \"payment_id\": \"credit_card_8003957\"}}",
+    "parsed_action_name": "update_reservation_baggages",
+    "input_tokens": 8430,
+    "output_tokens": 62,
+    "generation_seconds": 6.20854926109314,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"The checked bag has been successfully added to your reservation, and the $50 baggage fee has been charged to your credit card. Your reservation now includes 1 checked bag. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The checked bag has been successfully added to your reservation, and the $50 baggage fee has been charged to your credit card. Your reservation now includes 1 checked bag. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "No, that's everything I needed. Thank you for your help!",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"The checked bag has been successfully added to your reservation, and the $50 baggage fee has been charged to your credit card. Your reservation now includes 1 checked bag. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8819,
+    "output_tokens": 62,
+    "generation_seconds": 6.345165252685547,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 15,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You're welcome! I'm glad I could assist you. Have a great trip and safe travels! If you need any further assistance, feel free to reach out. Thank you for choosing our service!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "You're welcome! I'm glad I could assist you. Have a great trip and safe travels! If you need any further assistance, feel free to reach out. Thank you for choosing our service!"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "raj_brown_5782",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ],
+        "instruction": "Your user id is raj_brown_5782 and you want to change your upcoming roundtrip flights which are currently DTW to LGA and back (reservation ID is VA5SGQ). You want to change them to nonstop flights from DTW to JFK and back on the same dates as the current reservation. Since you took insurance for this trip, you want change fees waived. You also want to add 1 checked bag. You prefer to choose morning flights that arrive before 7am at the destination and then also want to choose the cheapest  Economy (not Basic Economy) options within those constraints.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.001696,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "ccdfcc6443564e2cc55dcb7972e559d7913e1d04a4129ed4b43b1b2664325a36"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "VA5SGQ"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT169",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT033",
+                  "date": "2024-05-19"
+                }
+              ],
+              "payment_id": "credit_card_8003957"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "VA5SGQ",
+              "total_baggages": 1,
+              "nonfree_baggages": 1,
+              "payment_id": "credit_card_8003957"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You're welcome! I'm glad I could assist you. Have a great trip and safe travels! If you need any further assistance, feel free to reach out. Thank you for choosing our service!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8904,
+    "output_tokens": 57,
+    "generation_seconds": 6.0895161628723145,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

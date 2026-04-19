@@ -1,0 +1,108 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please assist in crafting a 3-day travel plan for a group of 4 people. We plan to leave from Dallas and proceed to Huntsville, spanning from March 13th to March 15th, 2022. We have a budget of $2,700 for this journey. We require entire rooms for accommodations during our stay.
+
+Reference information:
+### Attractions in Huntsville
+                                                   Name  Latitude  Longitude                                                          Address          Phone                                                                                   Website       City
+                             U.S. Space & Rocket Center 34.711132 -86.653936                    1 Tranquility Base, Huntsville, AL 35805, USA (800) 637-7223                                                             https://www.rocketcenter.com/ Huntsville
+                          Big Spring International Park 34.728719 -86.587907                      200 Church St SW, Huntsville, AL 35801, USA (256) 883-3754                      http://www.huntsville.org/listing/big-spring-international-park/862/ Huntsville
+                            Huntsville Botanical Garden 34.707496 -86.634037               4747 Bob Wallace Ave SW, Huntsville, AL 35805, USA (256) 830-4447                                                                         http://hsvbg.org/ Huntsville
+                               Huntsville Museum of Art 34.727143 -86.587232                      300 Church St SW, Huntsville, AL 35801, USA (256) 535-4350                                                                     http://hsvmuseum.org/ Huntsville
+                                Burritt on the Mountain 34.715948 -86.539693                    3101 Burritt Dr SE, Huntsville, AL 35801, USA (256) 536-2882                                                      http://www.burrittonthemountain.com/ Huntsville
+                         Alabama Constitution Hall Park 34.729134 -86.584145                      109 Gates Ave SE, Huntsville, AL 35801, USA (256) 564-8100                                                                http://www.earlyworks.com/ Huntsville
+                           EarlyWorks Children's Museum 34.728056 -86.584444                     404 Madison St SE, Huntsville, AL 35801, USA (256) 564-8100                                                                http://www.earlyworks.com/ Huntsville
+                          U.S. Veterans Memorial Museum 34.692051 -86.586194                    2060 Airport Rd SW, Huntsville, AL 35801, USA (256) 883-3737                                                            http://www.memorialmuseum.org/ Huntsville
+                          North Alabama Railroad Museum 34.783580 -86.546217                       694 Chase Rd NE, Huntsville, AL 35811, USA (256) 851-6276                                                http://www.northalabamarailroadmuseum.com/ Huntsville
+                            Madison County Nature Trail 34.598093 -86.517315               5000 Nature Trail Rd SE, Huntsville, AL 35803, USA (256) 883-9501                 https://www.madisoncountyal.gov/services/green-mountain-nature-trail-1594 Huntsville
+                         Weeden House Museum and Garden 34.729700 -86.582277                      300 Gates Ave SE, Huntsville, AL 35801, USA (256) 536-7718                                                             http://weedenhousemuseum.com/ Huntsville
+                                  Purdy Butterfly House 34.710362 -86.632242               4747 Bob Wallace Ave SW, Huntsville, AL 35805, USA (256) 830-4447                                                                     http://www.hsvbg.org/ Huntsville
+                                  Monte Sano State Park 34.739942 -86.511815                     5105 Nolen Ave SE, Huntsville, AL 35801, USA (256) 534-3757                                       https://www.alapark.com/parks/monte-sano-state-park Huntsville
+                   J.D. & Annie S. Hays Nature Preserve 34.644098 -86.472912                    7161 US-431, Owens Cross Roads, AL 35763, USA (256) 427-5116 http://www.huntsvilleal.gov/environment/green-team/nature-preserves/hays-nature-preserve/ Huntsville
+                                           Natural Well 34.732764 -86.526338                                        Huntsville, AL 35801, USA        Unknown                                                                                   Unknown Huntsville
+                                         Garden Railway 34.709376 -86.634364 Unnamed Road, 4747 Bob Wallace Ave SW, Huntsville, AL 35805, USA        Unknown                                                                                   Unknown Huntsville
+                         Lowe Mill ARTS & Entertainment 34.715414 -86.597406                   2211 Seminole Dr SW, Huntsville, AL 35805, USA (256) 533-0399                                                                  http://www.lowemill.art/ Huntsville
+Land Trust of North Alabama: Monte Sano Nature Preserve 34.743571 -86.544397                 2442 Bankhead Pkwy NE, Huntsville, AL 35801, USA (256) 534-5263                                          https://www.landtrustnal.org/monte-sano-preserve Huntsville
+            Huntsville Madison County Veterans Memorial 34.734938 -86.588488                      200 Monroe St NW, Huntsville, AL 35801, USA (256) 604-3896                                                                      http://hmcvm.org/wp/ Huntsville
+                                        Maple Hill Park 34.730962 -86.565271                   1351 McClung Ave SE, Huntsville, AL 35801, USA (256) 883-3291                                                                                   Unknown Huntsville
+
+### Restaurants in Huntsville
+                         Name  Average Cost                                    Cuisines  Aggregate Rating       City
+El Vaquero Mexican Restaurant            82                           Desserts, Seafood               3.4 Huntsville
+               Downtown Grill            74                               Pizza, Bakery               4.0 Huntsville
+                 Cherry Comet            16   Desserts, Tea, Pizza, Cafe, Mediterranean               3.6 Huntsville
+      Moksh The Restro Lounge            77     Pizza, American, BBQ, Fast Food, Indian               4.0 Huntsville
+                         Ikko            14                     Tea, French, Pizza, BBQ               2.9 Huntsville
+           Lord of the Drinks            70                    French, Pizza, Fast Food               3.9 Huntsville
+      Infinity - Crowne Plaza            51                     Cafe, Desserts, Seafood               3.5 Huntsville
+                 Lots of Food            38                                   Tea, Cafe               0.0 Huntsville
+                Breakfast Hut            81             Cafe, Bakery, Desserts, Seafood               0.0 Huntsville
+                     Nikashee            85            Tea, Pizza, French, Mexican, BBQ               3.7 Huntsville
+        Nishaj Chicken Corner            49      Pizza, French, BBQ, Fast Food, Seafood               0.0 Huntsville
+           Bengali Restaurant            62   Italian, Mexican, BBQ, Fast Food, Seafood               0.0 Huntsville
+                 Dosa Village            40                       Tea, Cafe, Pizza, BBQ               3.2 Huntsville
+ Mangal Ji and Gupta Ji Dhaba            86                  Seafood, Bakery, Fast Food               0.0 Huntsville
+   Desee Dakshin Coastal Cafe            96        Desserts, Cafe, BBQ, Bakery, Chinese               4.0 Huntsville
+                     Rainbows            11                        Bakery, BBQ, Seafood               2.6 Huntsville
+                Hunger Strike            37              Cafe, Pizza, Indian, Fast Food               3.7 Huntsville
+       The Chickmunks Express            54          Fast Food, Cafe, Desserts, Seafood               3.0 Huntsville
+              Hungry Minister            36                      Tea, Desserts, Seafood               3.5 Huntsville
+                Frozen Grillz           100 Cafe, Fast Food, Chinese, American, Seafood               0.0 Huntsville
+
+### Accommodations in Huntsville
+                                                NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number       city
+          Brooklyn Charmer, Close to Everything NYC!  568.0 Entire home/apt              No children under 10 & No parties             2.0                  5                 4.0 Huntsville
+                Sonder | 116 John | Simple 1BR + Gym  290.0 Entire home/apt                           No children under 10            29.0                  3                 3.0 Huntsville
+                                 private room in LES  184.0    Private room                                        No pets             1.0                  2                 4.0 Huntsville
+                      Cozy 1 BR in hip Crown Heights  926.0    Private room                          No pets & No visitors             4.0                  1                 4.0 Huntsville
+                            Artsy Harlem Guest Space 1186.0 Entire home/apt                           No smoking & No pets             3.0                  8                 5.0 Huntsville
+          One bedroom; private house; great location  301.0    Private room          No parties & No smoking & No visitors             2.0                  2                 3.0 Huntsville
+   Spacious Room in Large 2 Bedroom Prewar Apartment  585.0    Private room                                    No visitors             1.0                  2                 4.0 Huntsville
+    Close to subway, Manhattan, & shops with kitchen  314.0 Entire home/apt                                    No visitors             5.0                  3                 5.0 Huntsville
+Comfort, light and calm just 3 minutes from mid-town 1005.0 Entire home/apt No children under 10 & No parties & No smoking             2.0                  8                 4.0 Huntsville
+   Perfect SOHO/NOLITA location, CLEAN and cozy home  173.0    Private room                                     No parties             1.0                  1                 3.0 Huntsville
+                        Sunny East Village apartment 1037.0 Entire home/apt                                     No parties             4.0                  9                 5.0 Huntsville
+                              Comfy Home ~ 1st Floor  323.0 Entire home/apt                           No smoking & No pets             3.0                  2                 2.0 Huntsville
+                        Cozy Bedroom in East Village  762.0    Private room                                     No parties             1.0                  2                 4.0 Huntsville
+   Pvt Single Room Occupancy Near JFK 6 mi/LGA 10 mi 1058.0    Private room                                    No visitors             2.0                  2                 5.0 Huntsville
+           Clinton Hill Duplex near Pratt w/Balcony!  648.0    Private room                                     No parties             3.0                  1                 4.0 Huntsville
+
+### Flight from Dallas to Huntsville on 2022-03-13
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3593917    130   20:39   22:13 1 hours 34 minutes 2022-03-13         Dallas   Huntsville     603.0
+     F3601769    129   17:14   18:57 1 hours 43 minutes 2022-03-13         Dallas   Huntsville     603.0
+     F3602997    264   10:38   12:40  2 hours 2 minutes 2022-03-13         Dallas   Huntsville     603.0
+     F3609558    169   07:03   08:51 1 hours 48 minutes 2022-03-13         Dallas   Huntsville     603.0
+
+### Self-driving from Dallas to Huntsville
+self-driving, from Dallas to Huntsville, duration: 10 hours 10 mins, distance: 1,071 km, cost: 53
+
+### Taxi from Dallas to Huntsville
+taxi, from Dallas to Huntsville, duration: 10 hours 10 mins, distance: 1,071 km, cost: 1071
+
+### Flight from Huntsville to Dallas on 2022-03-15
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3593796    147   05:24   07:19 1 hours 55 minutes 2022-03-15     Huntsville       Dallas     603.0
+     F3603024    230   12:35   14:28 1 hours 53 minutes 2022-03-15     Huntsville       Dallas     603.0
+     F3607633    145   09:26   11:26  2 hours 0 minutes 2022-03-15     Huntsville       Dallas     603.0
+
+### Self-driving from Huntsville to Dallas
+self-driving, from Huntsville to Dallas, duration: 10 hours 13 mins, distance: 1,072 km, cost: 53
+
+### Taxi from Huntsville to Dallas
+taxi, from Huntsville to Dallas, duration: 10 hours 13 mins, distance: 1,072 km, cost: 1072
+
+JSON plan:

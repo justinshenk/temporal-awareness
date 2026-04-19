@@ -1,0 +1,326 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a 7-day travel plan for a group of 8, starting from Rockford and visiting 3 cities in Florida from March 8th to March 14th, 2022? The budget allocated for this trip is $17,000. The accommodation preference is to have entire rooms for the group.
+
+Reference information:
+### Attractions in Gainesville
+                                                         Name  Latitude  Longitude                                                   Address          Phone                                                               Website        City
+                   Florida Museum of Natural History-Exhibits 29.635933 -82.369815                  3215 Hull Rd, Gainesville, FL 32611, USA (352) 846-2000                                    https://www.floridamuseum.ufl.edu/ Gainesville
+                     Devil's Millhopper Geological State Park 29.706969 -82.395205            4732 Millhopper Rd, Gainesville, FL 32653, USA (352) 955-2008              https://www.floridastateparks.org/park/Devils-Millhopper Gainesville
+                                   Kanapaha Botanical Gardens 29.612317 -82.408939 Summer House, 4700 SW 58th Dr, Gainesville, FL 32608, USA (352) 372-4981                                              http://www.kanapaha.org/ Gainesville
+                                     Sweetwater Wetlands Park 29.619721 -82.329667           325 SW Williston Rd, Gainesville, FL 32601, USA (352) 554-5871          https://www.gainesvillefl.gov/Parks/Sweetwater-Wetlands-Park Gainesville
+Butterfly Rainforest at the Florida Museum of Natural History 29.636308 -82.370330                  3215 Hull Rd, Gainesville, FL 32611, USA (352) 846-2000      https://www.floridamuseum.ufl.edu/exhibits/butterfly-rainforest/ Gainesville
+                       Cade Museum for Creativity & Invention 29.643727 -82.324814                 811 S Main St, Gainesville, FL 32601, USA (352) 371-8001                                            http://www.cademuseum.org/ Gainesville
+                                      Matheson History Museum 29.651652 -82.320297          513 E University Ave, Gainesville, FL 32601, USA (352) 378-2280                                        http://www.mathesonmuseum.org/ Gainesville
+                                    Morningside Nature Center 29.656867 -82.277522         3540 E University Ave, Gainesville, FL 32641, USA (352) 393-8240                                                               Unknown Gainesville
+                                                   Depot Park 29.644454 -82.322198                 874 SE 4th St, Gainesville, FL 32601, USA (352) 393-8510                                             http://www.depotpark.org/ Gainesville
+                                          Sweetwater Preserve 29.628977 -82.321470               309 SE 16th Ave, Gainesville, FL 32601, USA (352) 264-6800                                                               Unknown Gainesville
+                        Visit Gainesville, Alachua County, FL 29.652426 -82.324880                  33 N Main St, Gainesville, FL 32601, USA (352) 374-5260                                      http://www.visitgainesville.com/ Gainesville
+                                      Historic Matheson House 29.651046 -82.319497                528 SE 1st Ave, Gainesville, FL 32601, USA (352) 378-2280                                        http://www.mathesonmuseum.org/ Gainesville
+                                          Alfred A. Ring Park 29.673917 -82.347255             1801 NW 23rd Blvd, Gainesville, FL 32605, USA (352) 334-5067               https://www.gainesvillefl.gov/Parks/Alfred-A.-Ring-Park Gainesville
+                                     Historic Haile Homestead 29.594518 -82.435351             8500 SW Archer Rd, Gainesville, FL 32608, USA (352) 336-9096                                        http://www.hailehomestead.org/ Gainesville
+                                   Loblolly Woods Nature Park 29.654891 -82.371467               3315 NW 5th Ave, Gainesville, FL 32607, USA (352) 334-5067 http://www.cityofgainesville.org/tabid/182/Default.aspx#LoblollyWoods Gainesville
+              Carson Springs Wildlife Conservation Foundation 29.837488 -82.231159         8528 E, County Rd 225, Gainesville, FL 32609, USA (352) 468-2827                                 http://www.carsonspringswildlife.org/ Gainesville
+                                              Sweetwater Park 29.650677 -82.320210                532 SE 2nd Ave, Gainesville, FL 32601, USA        Unknown                                                               Unknown Gainesville
+                                        Boulware Springs Park 29.620997 -82.307545               3300 SE 15th St, Gainesville, FL 32641, USA (352) 334-5067      https://www.gainesvillefl.gov/Parks/Boulware-Springs-Nature-Park Gainesville
+                                                UF Bat Houses 29.644240 -82.362831                     Museum Rd, Gainesville, FL 32611, USA        Unknown                                 http://www.floridamuseum.ufl.edu/bats Gainesville
+                                                Gum Root Park 29.676419 -82.238592              7300 NE 27th Ave, Gainesville, FL 32609, USA (352) 334-5067                                                               Unknown Gainesville
+
+### Restaurants in Gainesville
+                              Name  Average Cost                                           Cuisines  Aggregate Rating        City
+       The Machine Shed Restaurant            62 Pizza, Mexican, Bakery, Fast Food, Indian, Seafood               3.8 Gainesville
+               Carnival By Tresind            67                 Tea, Chinese, Pizza, Mediterranean               4.9 Gainesville
+                          Parker's            74        Desserts, Tea, Italian, French, Bakery, BBQ               4.3 Gainesville
+             Aggarwal Sweet Corner            70                             Tea, American, Seafood               0.0 Gainesville
+                   The Food Garage            97                Desserts, Tea, Bakery, BBQ, Chinese               0.0 Gainesville
+                               CHA            84       Desserts, Pizza, Bakery, Fast Food, American               3.2 Gainesville
+            Shivalik Tiffin Corner            59            Desserts, Cafe, BBQ, Fast Food, Chinese               0.0 Gainesville
+                   Tandoori Nation            16                   Tea, Bakery, Desserts, Fast Food               3.5 Gainesville
+                        Cake Point            43                 Desserts, Tea, Bakery, BBQ, Indian               2.8 Gainesville
+         Tapri The Chai Books Cafe            62              Bakery, Mediterranean, BBQ, Fast Food               3.9 Gainesville
+       Aahar Meat and Chicken Shop            90                                  Tea, BBQ, Seafood               0.0 Gainesville
+                         Pizza Hut            42                Fast Food, Pizza, Desserts, Italian               3.1 Gainesville
+                     Al Haj Bakery            99                  Tea, Seafood, Desserts, Fast Food               3.0 Gainesville
+                     Kukkad Nukkad            63                                     Pizza, Seafood               3.0 Gainesville
+            Mother Dairy Ice Cream            31                          Fast Food, Pizza, Italian               3.5 Gainesville
+                      Dilli Grillz            41           Tea, Italian, Bakery, Fast Food, Seafood               0.0 Gainesville
+                       Garage Inc.            90                                     Tea, Fast Food               3.4 Gainesville
+                      Foodie Singh            47                Bakery, Mexican, American, Desserts               0.0 Gainesville
+                 Anwar Food Corner            49                              Tea, Bakery, Desserts               0.0 Gainesville
+Paatra - Jaypee Vasant Continental            18            Desserts, Pizza, Mexican, Cafe, Seafood               3.5 Gainesville
+              34, Chowringhee Lane            25           French, BBQ, Fast Food, Chinese, Seafood               3.2 Gainesville
+                   Cafe Coffee Day            17                       Bakery, Mexican, Indian, BBQ               2.3 Gainesville
+                           Celeste            79                 Pizza, Bakery, Desserts, Fast Food               3.5 Gainesville
+                        China Town            56        Desserts, Cafe, Fast Food, Chinese, Seafood               2.7 Gainesville
+                        China Town            55                        Tea, Mediterranean, Seafood               2.7 Gainesville
+                    Student Corner            40                              French, BBQ, Desserts               0.0 Gainesville
+         Americana Kitchen and Bar            75         Tea, Bakery, Cafe, American, Mediterranean               2.8 Gainesville
+                    Chacha Shankar            43      Tea, Pizza, French, Bakery, Fast Food, Indian               3.2 Gainesville
+                            iGNiTE            12           Tea, Pizza, French, BBQ, Indian, Seafood               3.0 Gainesville
+      Prince Chicken & Mutton Shop            47              Tea, Chinese, Mediterranean, Desserts               2.6 Gainesville
+              Riyaz Biryani Corner            69                         Chinese, Desserts, Seafood               0.0 Gainesville
+                      Dolce Gelato            58                    French, Bakery, Indian, Seafood               0.0 Gainesville
+                  Zaika Hindustani            63                    Pizza, BBQ, Desserts, Fast Food               2.7 Gainesville
+                           Eatopia            92          Desserts, Pizza, Chinese, Indian, Seafood               3.9 Gainesville
+
+### Accommodations in Gainesville
+                                              NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number        city
+               Spacious yet Cozy Room in Manhattan  566.0    Private room                           No visitors             3.0                  2                 4.0 Gainesville
+ Spacious Upper East Side 1BR apt near attractions  119.0 Entire home/apt                           No visitors            30.0                  2                 2.0 Gainesville
+   It must be your BDAY because this deal is great  173.0    Private room                  No children under 10             3.0                  1                 3.0 Gainesville
+      Private bedroom hideaway in East Village gem  118.0    Private room                  No pets & No smoking             2.0                  2                 2.0 Gainesville
+                               "Oasis on The Park" 1068.0    Private room No smoking & No parties & No visitors             1.0                  1                 3.0 Gainesville
+              Suite Nest /free street parking+wifi 1171.0 Entire home/apt               No smoking & No parties            30.0                  8                 2.0 Gainesville
+                        Cozy Cove in Crown Heights  546.0    Private room                               No pets             7.0                  1                 3.0 Gainesville
+      Bed Stuy Brownstone 50 steps to the Train :) 1055.0    Private room     No parties & No children under 10             1.0                  1                 2.0 Gainesville
+                              Mesmerized Penthouse  678.0 Entire home/apt                  No children under 10             1.0                  2                 4.0 Gainesville
+PrivateRoom1/LGA&JFK&Citi field&法拉盛/BustoManhattan  278.0    Private room    No parties & No visitors & No pets             1.0                  2                 2.0 Gainesville
+              Sunny Private Bedroom Near Manhattan 1182.0    Private room     No parties & No children under 10             1.0                  1                 2.0 Gainesville
+                     Cozy large Full 1 Bedroom Apt  168.0 Entire home/apt                  No children under 10           354.0                  2                 2.0 Gainesville
+
+### Attractions in Daytona Beach
+                                               Name  Latitude  Longitude                                                          Address          Phone                                                                                            Website          City
+                       Daytona Boardwalk Amusements 29.227451 -81.007425                    12 N Ocean Ave., Daytona Beach, FL 32118, USA (386) 252-8276                                                              http://www.daytonabeachboardwalk.com/ Daytona Beach
+                                     Daytona Lagoon 29.230110 -81.011684                        601 Earl St, Daytona Beach, FL 32118, USA (386) 254-5020                                                                      http://www.daytonalagoon.com/ Daytona Beach
+                          World's Most Famous Beach 29.222496 -81.004099                 219 S Atlantic Ave, Daytona Beach, FL 32118, USA        Unknown                                                                                            Unknown Daytona Beach
+                     Daytona Beach Main Street Pier 29.227214 -81.006435                1200 Main St Bridge, Daytona Beach, FL 32118, USA (386) 671-8000                                                                       http://www.daytonabeach.com/ Daytona Beach
+                                    Sun Splash Park 29.218465 -81.003855                 611 S Atlantic Ave, Daytona Beach, FL 32118, USA (386) 248-8072   http://www.volusia.org/services/public-works/coastal-division/coastal-parks/sun-splash-park.stml Daytona Beach
+                                     Drive On Beach 29.221966 -81.005736                                     Daytona Beach, FL 32118, USA        Unknown                                                                                            Unknown Daytona Beach
+                      Welcome to Daytona Beach Sign 29.191122 -81.072056                                     Daytona Beach, FL 32114, USA        Unknown                                                                                            Unknown Daytona Beach
+Daytona Beach Zipline Adventure By TreeTop Trekking 29.201115 -81.040262                    1000 Orange Ave, Daytona Beach, FL 32114, USA (386) 882-8016                                                                     http://www.daytonazipline.com/ Daytona Beach
+                                    Riverfront Park 29.211672 -81.018586                    60 E Orange Ave, Daytona Beach, FL 32114, USA        Unknown                                                           http://www.riverfrontshopsofdaytona.com/ Daytona Beach
+          Brownie The Town Dog's Grave and Memorial 29.208781 -81.017080                   62-94 Orange Ave, Daytona Beach, FL 32114, USA        Unknown                                                                      http://browniethetowndog.org/ Daytona Beach
+                                  Frank Rendon Park 29.179972 -80.984123                2705 S Atlantic Ave, Daytona Beach, FL 32118, USA (386) 248-8072 http://www.volusia.org/services/public-works/coastal-division/coastal-parks/frank-rendon-park.stml Daytona Beach
+                  Daytona Beach Coquina Clock Tower 29.229456 -81.008345                  62 N Atlantic Ave, Daytona Beach, FL 32118, USA        Unknown                                                                                            Unknown Daytona Beach
+                           Birthplace of Speed Park 29.292524 -81.039668                 21 Ocean Shore Blvd, Ormond Beach, FL 32176, USA (386) 676-3250                                                                                            Unknown Daytona Beach
+                           Sky Zone Trampoline Park 29.198480 -81.056360 1300 W International Speedway Blvd, Daytona Beach, FL 32114, USA (386) 682-2020                                                                    https://www.skyzone.com/daytona Daytona Beach
+                              daytona beach zipline 29.226558 -81.022117                    721 Ballough Rd, Daytona Beach, FL 32114, USA        Unknown                                                                                            Unknown Daytona Beach
+                                    Tuscawilla Park 29.199839 -81.040083                    1000 Orange Ave, Daytona Beach, FL 32114, USA (386) 671-8337                              http://www.sportsvolusia.com/facilities/daytona-beach/tuscawilla.stml Daytona Beach
+                     Daytona International Speedway 29.185169 -81.070528 1801 W International Speedway Blvd, Daytona Beach, FL 32114, USA (800) 748-7467                                                       http://www.daytonainternationalspeedway.com/ Daytona Beach
+                                        Pier 11 Aid 29.227133 -81.006460                  13 S Atlantic Ave, Daytona Beach, FL 32118, USA        Unknown                                                                                            Unknown Daytona Beach
+                              Magic Milk Island Art 29.165758 -81.083701               1425 Tomoka Farms Rd, Daytona Beach, FL 32124, USA (386) 405-6836                                                                     http://magicmilkislandart.com/ Daytona Beach
+                                   Congo River Golf 29.198642 -80.994867                2100 S Atlantic Ave, Daytona Beach, FL 32118, USA (386) 258-6808                                                                         http://www.congoriver.com/ Daytona Beach
+
+### Restaurants in Daytona Beach
+                                Name  Average Cost                                        Cuisines  Aggregate Rating          City
+                  Outback Steakhouse            58        Desserts, Pizza, Mexican, Cafe, American               4.0 Daytona Beach
+                     Bespoke Harvest            56                            Cafe, BBQ, Fast Food               3.7 Daytona Beach
+                      Beach Box Cafe            96                       Chinese, Pizza, BBQ, Cafe               3.7 Daytona Beach
+                  Rocks on the River            35                                Tea, Indian, BBQ               4.0 Daytona Beach
+      Mom & Dad's Italian Restaurant            17             Tea, Mexican, Cafe, Indian, Seafood               3.7 Daytona Beach
+                        Khaaja Chowk            61               French, Bakery, American, Seafood               3.6 Daytona Beach
+                     Jungle Jamboree            38                          Cafe, Bakery, Desserts               3.8 Daytona Beach
+                         Au Bon Pain            85                       Tea, Cafe, Pizza, Seafood               2.8 Daytona Beach
+                     Barbeque Nation            40       Tea, American, Fast Food, Indian, Seafood               4.9 Daytona Beach
+                           Pizza Hut            51                Chinese, Pizza, Bakery, Desserts               2.6 Daytona Beach
+           Punjabi By Nature Express            12              Tea, BBQ, Mediterranean, Fast Food               3.5 Daytona Beach
+                 Hotel 121 Shakahari            61                         Pizza, Indian, Desserts               0.0 Daytona Beach
+                             Embassy            94                 French, Bakery, Indian, Seafood               3.5 Daytona Beach
+                      RR China Tawun            63        Pizza, BBQ, Fast Food, American, Seafood               0.0 Daytona Beach
+                           Cocoberry            83                       Bakery, Desserts, Seafood               3.6 Daytona Beach
+                 Punjabi's Veg Grill            36                                Bakery, Desserts               0.0 Daytona Beach
+                        R1 Take Away            47                 French, Pizza, Bakery, Desserts               2.5 Daytona Beach
+         The Epicure - Fraser Suites            98                   Tea, French, Pizza, Fast Food               3.1 Daytona Beach
+          New Arjun Bombay Pav Bhaji            91           Tea, French, Mediterranean, Fast Food               3.8 Daytona Beach
+                 Chinese Food Corner            64          Desserts, Pizza, Mexican, BBQ, Seafood               2.5 Daytona Beach
+                   Heaven's Shawarma            35         French, Bakery, BBQ, Fast Food, Seafood               3.0 Daytona Beach
+Hyderabad Spl. Chicken Biryani Point            26                             Tea, Pizza, Seafood               3.0 Daytona Beach
+                        Chilli Tadka            91                Tea, BBQ, Mediterranean, Seafood               0.0 Daytona Beach
+                       Chinese Tadka            77         Desserts, Cafe, Pizza, Chinese, Seafood               0.0 Daytona Beach
+                       Chicago Pizza            62          Pizza, Italian, Bakery, BBQ, Fast Food               2.6 Daytona Beach
+                      Slice of Italy            44                 French, Bakery, Cafe, Fast Food               2.6 Daytona Beach
+                  Stuffed Kathi Roll            67   Desserts, Mexican, Bakery, Fast Food, Chinese               0.0 Daytona Beach
+   Flamess Restaurant & Cafe Village            14                         Chinese, Pizza, Seafood               3.5 Daytona Beach
+                  Cheese Bitez Pizza            95                  Tea, Seafood, Pizza, Fast Food               0.0 Daytona Beach
+                         Khan Chacha            73           Tea, Mediterranean, Desserts, Italian               0.0 Daytona Beach
+            Mezbaan Jaika Restaurant            49         French, Pizza, Mediterranean, Fast Food               2.7 Daytona Beach
+                      Speziato Foods            55                     Cafe, Pizza, BBQ, Fast Food               0.0 Daytona Beach
+                         Public Cafe            67               Chinese, Pizza, Bakery, Fast Food               2.4 Daytona Beach
+                        Sharma Hotel            47                                    Tea, Seafood               0.0 Daytona Beach
+                              Akbars            29 Desserts, Pizza, Bakery, Mediterranean, Seafood               4.2 Daytona Beach
+
+### Accommodations in Daytona Beach
+                                                           NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number          city
+                                     Private room near Columbia  420.0    Private room                        No visitors             1.0                  1                 1.0 Daytona Beach
+Homey 1BR in Fun, Central West Village w/ Doorman by Blueground  262.0 Entire home/apt                         No parties            30.0                  2                 4.0 Daytona Beach
+                                      Elegant Brownstone Duplex  217.0 Entire home/apt                         No smoking             3.0                  3                 1.0 Daytona Beach
+               Prime Williamsburg Large bedroom for 1or2 people  915.0    Private room                        No visitors             1.0                  1                 2.0 Daytona Beach
+                            Family House 7 Minutes To Manhattan  427.0 Entire home/apt                        No visitors             2.0                  4                 1.0 Daytona Beach
+                 Luxury Studio near Central Park - Times Square  155.0 Entire home/apt               No children under 10            29.0                  2                 2.0 Daytona Beach
+                                  2000 sqf  Duplex in Townhouse  885.0 Entire home/apt               No children under 10             5.0                  3                 1.0 Daytona Beach
+                                                    曼哈顿林肯中心一室一厅 1152.0    Private room                            No pets             1.0                  1                 2.0 Daytona Beach
+                                          Small Private Studio!  690.0    Private room No children under 10 & No visitors             2.0                  1                 2.0 Daytona Beach
+             Modern New York City Penthouse w/ Incredible Views  469.0 Entire home/apt                        No visitors            30.0                  2                 2.0 Daytona Beach
+               Private 4C Room in 4BR/2BA APT in Hell's Kitchen 1102.0    Private room                         No smoking             1.0                  2                 4.0 Daytona Beach
+               ✮ Gateway to the Boroughs ✮ Spacious Home Base ✮  917.0    Private room  No parties & No children under 10             1.0                  1                 5.0 Daytona Beach
+                                             Cool Brooklyn spot  983.0    Private room               No smoking & No pets             2.0                  1                 5.0 Daytona Beach
+              Private Entrance + Sunny Spacious Room in 2BR Apt  930.0    Private room           No visitors & No smoking            30.0                  2                 3.0 Daytona Beach
+                              Spacious 1 bdrm apt, East Village 1141.0 Entire home/apt                        No visitors             3.0                  5                 2.0 Daytona Beach
+
+### Attractions in Jacksonville
+                                           Name  Latitude  Longitude                                            Address          Phone                                                                                                                Website         City
+                   Jacksonville Zoo and Gardens 30.402224 -81.643258          370 Zoo Pkwy, Jacksonville, FL 32218, USA (904) 757-4463                                                                                        http://www.jacksonvillezoo.org/ Jacksonville
+                            Southbank Riverwalk 30.320148 -81.656499       1001 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489                                               http://downtownjacksonville.org/locations/l-100-southbank-riverwalk.aspx Jacksonville
+             MOSH (Museum Of Science & History) 30.318865 -81.659767       1025 Museum Cir, Jacksonville, FL 32207, USA (904) 396-6674                                                                                                    http://themosh.org/ Jacksonville
+                        Tree Hill Nature Center 30.333425 -81.582786     7152 Lone Star Rd, Jacksonville, FL 32211, USA (904) 724-4646                                                                                               http://www.treehill.org/ Jacksonville
+                            Kingsley Plantation 30.439890 -81.437809    11676 Palmetto Ave, Jacksonville, FL 32226, USA (904) 251-3537                                                          https://www.nps.gov/timu/learn/historyculture/kp_visiting.htm Jacksonville
+                       Kathryn Abbey Hanna Park 30.370925 -81.406772     500 Wonderwood Dr, Jacksonville, FL 32233, USA (904) 255-6767 http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/kathryn-abbey-hanna-park.aspx Jacksonville
+                       Castaway Island Preserve 30.296129 -81.437688   2885 San Pablo Rd S, Jacksonville, FL 32225, USA (904) 630-2489                                                                https://www.timucuanparks.org/castaway-island-preserve/ Jacksonville
+     Jacksonville Arboretum & Botanical Gardens 30.346136 -81.539776       1445 Millcoe Rd, Jacksonville, FL 32225, USA (904) 318-4342                                                                                  http://www.jacksonvillearboretum.org/ Jacksonville
+         Fort George Island Cultural State Park 30.423938 -81.431332  12241 Fort George Rd, Jacksonville, FL 32226, USA (904) 251-2320                              https://www.floridastateparks.org/parks-and-trails/fort-george-island-cultural-state-park Jacksonville
+                 Cummer Museum of Art & Gardens 30.315138 -81.676955     829 Riverside Ave, Jacksonville, FL 32204, USA (904) 356-6857                                                                                           http://www.cummermuseum.org/ Jacksonville
+                      James Weldon Johnson Park 30.328937 -81.659251       135 W Monroe St, Jacksonville, FL 32202, USA (904) 515-5098                                                                             https://jamesweldonjohnsonpark.org/events/ Jacksonville
+       The Catty Shack Ranch Wildlife Sanctuary 30.493178 -81.587492      1860 Starratt Rd, Jacksonville, FL 32226, USA (904) 757-3603                                                                                                https://cattyshack.org/ Jacksonville
+                    Shipwreck Island Water Park 30.287439 -81.411742 1944 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 246-4386                                https://jacksonville-beach.adventurelanding.com/attractions/shipwreck-island-waterpark/ Jacksonville
+                                 Beaches Museum 30.288558 -81.392760  381 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 241-5657                                                                                              http://beachesmuseum.org/ Jacksonville
+MOCA (Museum Of Contemporary Art), Jacksonville 30.329278 -81.658408        333 N Laura St, Jacksonville, FL 32202, USA (904) 366-6911                                                                                       http://mocajacksonville.unf.edu/ Jacksonville
+                         Huguenot Memorial Park 30.411009 -81.420488    10980 Heckscher Dr, Jacksonville, FL 32226, USA (904) 255-4255   http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/huguenot-memorial-park.aspx Jacksonville
+    Timucuan Ecological and Historical Preserve 30.454458 -81.449872  12713 Ft Caroline Rd, Jacksonville, FL 32225, USA (904) 641-7155                                                                                     https://www.nps.gov/timu/index.htm Jacksonville
+                     Walter Jones Historic Park 30.165363 -81.646456     11964 Mandarin Rd, Jacksonville, FL 32223, USA (904) 268-0784                                                       http://www.mandarinmuseum.net/visit/walter-jones-historical-park Jacksonville
+                     Museum of Southern History 30.282964 -81.713753      4304 Herschel St, Jacksonville, FL 32210, USA (904) 750-1950                                                                                 https://www.museumsouthernhistory.com/ Jacksonville
+                            Friendship Fountain 30.320018 -81.659820       1015 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489     http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/parks/friendship-fountain Jacksonville
+
+### Restaurants in Jacksonville
+                            Name  Average Cost                                                 Cuisines  Aggregate Rating         City
+                   Villa Gargano            51                                  Tea, American, Desserts               3.7 Jacksonville
+       Pirates' House Restaurant            59                                      Chinese, Pizza, BBQ               3.8 Jacksonville
+  Goose Feathers Cafe and Bakery            57                                  Tea, Fast Food, Italian               4.2 Jacksonville
+               Ashoka Restaurant            11                Desserts, Mexican, Bakery, BBQ, Fast Food               2.9 Jacksonville
+                   Sanjha Chulha            57                                         Tea, Bakery, BBQ               3.3 Jacksonville
+                  Touch of Spice            70                          French, Bakery, Indian, Seafood               0.0 Jacksonville
+                           Giani            37                             Tea, Seafood, BBQ, Fast Food               3.4 Jacksonville
+                            Tpot            84                                 Tea, Cafe, American, BBQ               3.2 Jacksonville
+                       Oh! Fudge            26                      French, Bakery, American, Fast Food               3.8 Jacksonville
+Midnight Cravings Beyond Control            73                      Tea, Bakery, Mediterranean, Seafood               3.3 Jacksonville
+                Pirates of Grill            65                                   Tea, Chinese, Desserts               4.1 Jacksonville
+                       Keventers            96                  Tea, American, Mediterranean, Fast Food               3.6 Jacksonville
+              Pizza Hut Delivery            35          Tea, Pizza, Fast Food, Chinese, Indian, Seafood               2.7 Jacksonville
+                     Sna-X Point            50                              Seafood, BBQ, Cafe, Italian               3.2 Jacksonville
+              Nehra's Food Point            24                 Seafood, Pizza, Mediterranean, Fast Food               0.0 Jacksonville
+                   Ginger Garlic            28         Desserts, Tea, Pizza, French, Fast Food, Chinese               2.8 Jacksonville
+                  The Spice Room            68                                      Cafe, American, BBQ               3.4 Jacksonville
+                  The Pastry Hut            82                        Tea, Pizza, Italian, Bakery, Cafe               2.9 Jacksonville
+                  Kathi Junction            21             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.0 Jacksonville
+                   Kobe Sizzlers            93                                 Pizza, Indian, Fast Food               3.7 Jacksonville
+                The Cake Gallery            71                            Tea, Pizza, French, BBQ, Cafe               3.3 Jacksonville
+             Nathu's Pastry Shop            59              Desserts, Pizza, Fast Food, Indian, Seafood               3.8 Jacksonville
+                     Metro Grill            83                                     Tea, Pizza, Desserts               3.4 Jacksonville
+                   Pind Balluchi            89                                     Bakery, BBQ, Seafood               3.6 Jacksonville
+                   Biryani Blues            93                                       Tea, French, Pizza               4.0 Jacksonville
+          Chicken Biryani Centre            55                          Fast Food, Cafe, Pizza, Italian               0.0 Jacksonville
+   Bravo Diet Food and Nutrition            34                 Desserts, Tea, Bakery, American, Seafood               3.0 Jacksonville
+                        Al-Malik            32                       Mediterranean, Desserts, Fast Food               3.2 Jacksonville
+          Novelty Chicken Corner            76                                  Tea, Fast Food, Italian               3.3 Jacksonville
+                   Drool Waffles            59                        Desserts, Tea, Mexican, BBQ, Cafe               3.1 Jacksonville
+   Diva - The Italian Restaurant            32                                     Bakery, BBQ, Seafood               3.8 Jacksonville
+               Chhalava - 鯻_Lava            51 Desserts, Tea, Fast Food, Indian, Mediterranean, Seafood               4.4 Jacksonville
+                      McDonald's            15                           Tea, Indian, Desserts, Italian               3.8 Jacksonville
+           Secular House Canteen            64               Desserts, BBQ, Fast Food, Chinese, Seafood               3.8 Jacksonville
+        Aggarwal Bikaneri Sweets            38                       Bakery, BBQ, Cafe, Indian, Seafood               2.9 Jacksonville
+        Al Naseem Foods Shawarma            24                                    Cafe, Pizza, American               0.0 Jacksonville
+      OCD - Online Cake Delivery            34                      Cafe, American, Desserts, Fast Food               0.0 Jacksonville
+             Puja Sandwich House            71                                   French, Cafe, Desserts               0.0 Jacksonville
+                        Oberoi's            75                                  Mexican, Pizza, Seafood               3.6 Jacksonville
+     Sha-O-Lin Chinese Fast Food            72                  Desserts, Italian, Bakery, BBQ, Seafood               0.0 Jacksonville
+                         Mr. Sub            23                            Pizza, American, BBQ, Seafood               0.0 Jacksonville
+                          Mitraz            65                                          Pizza, Desserts               3.4 Jacksonville
+        Snaxpress Tastes & Cakes            19               Bakery, Fast Food, Cafe, American, Seafood               2.9 Jacksonville
+           JMD Family Restaurant            78                     Pizza, Mexican, BBQ, Fast Food, Cafe               0.0 Jacksonville
+                Green Chick Chop            65                          Fast Food, Bakery, BBQ, Seafood               3.0 Jacksonville
+                     TLC Kitchen            91                                         Pizza, Fast Food               0.0 Jacksonville
+                     Shyam Rasoi            52           Tea, Bakery, Fast Food, Mediterranean, Seafood               0.0 Jacksonville
+                       Keventers            67                                         Pizza, Fast Food               0.0 Jacksonville
+                Zaika Restaurant            92                   Desserts, Tea, Pizza, Mexican, Seafood               0.0 Jacksonville
+                       PK Shoppe            41               Desserts, Cafe, Chinese, American, Seafood               2.7 Jacksonville
+                           Pash!            32                                Cafe, Pizza, BBQ, Seafood               3.1 Jacksonville
+              Chakhna Food Point            35                                         Bakery, Desserts               2.9 Jacksonville
+                     Food Scouts            36                Tea, Pizza, French, Bakery, BBQ, American               4.4 Jacksonville
+ India Grill - Hilton Garden Inn            89             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.6 Jacksonville
+        A-One Green Sweet Corner            30                             Cafe, Bakery, Pizza, Seafood               2.9 Jacksonville
+              Bharat Sweet House            69                Cafe, Italian, Bakery, Fast Food, Chinese               3.2 Jacksonville
+                   Dosa Junction            21               Tea, Italian, French, BBQ, Fast Food, Cafe               0.0 Jacksonville
+       Guru Kripa Chicken Corner            92                      Desserts, BBQ, Bakery, Cafe, Indian               0.0 Jacksonville
+                     Madras Cafe            81                 Bakery, Indian, Mediterranean, Fast Food               0.0 Jacksonville
+            Faeem Chicken Corner            46                                          Bakery, Seafood               0.0 Jacksonville
+                      Grill King            24                 Pizza, BBQ, Cafe, Mediterranean, Seafood               3.0 Jacksonville
+           Deez Biryani & Kebabs            99                        Chinese, French, Bakery, Desserts               3.5 Jacksonville
+                         Burnout            52                                    Tea, Bakery, Desserts               3.6 Jacksonville
+                Talaga Sampireun            19             Pizza, BBQ, Fast Food, Indian, Mediterranean               4.9 Jacksonville
+                       San Carlo            77                           French, Mexican, Bakery, Pizza               4.3 Jacksonville
+
+### Accommodations in Jacksonville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number         city
+                 Huge Loft - Heart of Williamsburg  518.0 Entire home/apt                                      No smoking             2.0                  4                 3.0 Jacksonville
+         Bright & Spacious 1br in the Heart of UWS  561.0 Entire home/apt No parties & No visitors & No children under 10             3.0                  3                 3.0 Jacksonville
+                           Modern high-end studio!  541.0 Entire home/apt                                      No parties             2.0                  3                 3.0 Jacksonville
+            NYC Sanctuary, Skyline Views & Rooftop  954.0 Entire home/apt                                      No smoking             3.0                  6                 5.0 Jacksonville
+             Sunny room in cozy Bushwick apartment  897.0    Private room                                     No visitors             3.0                  2                 4.0 Jacksonville
+                    Cute Studio near Prospect Park  256.0 Entire home/apt                                     No visitors             1.0                  2                 3.0 Jacksonville
+          G1 Newly Renovated Long Island City Room 1130.0    Private room                                      No parties             1.0                  1                 2.0 Jacksonville
+                          2BR  Apt - 20min to Soho  938.0 Entire home/apt                                         No pets             3.0                  2                 2.0 Jacksonville
+                     Private Bedroom in Greenpoint  169.0    Private room               No parties & No children under 10             2.0                  2                 4.0 Jacksonville
+  ♛ Private & Beautiful West Village Townhouse 2BR  730.0 Entire home/apt                                     No visitors             5.0                  6                 2.0 Jacksonville
+                        Lovely New York Guest Room 1138.0    Private room                                         No pets             1.0                  1                 5.0 Jacksonville
+                                A Cozy Harlem Stay  373.0    Private room                                         No pets            30.0                  2                 2.0 Jacksonville
+      Cozy, quiet and location, location, location  125.0 Entire home/apt                         No smoking & No parties             4.0                  3                 4.0 Jacksonville
+                          Beautiful Bay Ridge room  390.0    Private room                  No pets & No children under 10             6.0                  2                 1.0 Jacksonville
+      Design-Infused Two Bed Beauty in Fort Greene  942.0 Entire home/apt               No parties & No children under 10             3.0                  2                 1.0 Jacksonville
+ Charming attic Room in Home + Backyard/Near Metro  249.0    Private room                            No parties & No pets             3.0                  2                 1.0 Jacksonville
+Huge Room in Upper West close to Columbia & Subway  260.0    Private room  No parties & No children under 10 & No smoking             4.0                  1                 4.0 Jacksonville
+ Sunny, Quiet Oasis w/ Elevator - Close to Subway!  383.0    Private room                            No pets & No parties             3.0                  1                 5.0 Jacksonville
+                    Great room near Chelsea market  800.0    Private room              No visitors & No children under 10             1.0                  1                 3.0 Jacksonville
+                          Gem off of Prospect Park  534.0    Private room                                      No parties             2.0                  1                 5.0 Jacksonville
+               Large sunny room queen bed &balcony  412.0    Private room                                         No pets             1.0                  2                 2.0 Jacksonville
+                              Next to Central Park  913.0    Private room                        No visitors & No smoking             2.0                  1                 2.0 Jacksonville
+                 Gorgeous Garden Apt Steps To Park 1176.0 Entire home/apt                                      No smoking             1.0                  4                 4.0 Jacksonville
+
+### Flight from Rockford to Gainesville on 2022-03-08
+There is no flight from Rockford to Gainesville on 2022-03-08.
+
+### Self-driving from Rockford to Gainesville
+self-driving, from Rockford to Gainesville, duration: 16 hours 30 mins, distance: 1,822 km, cost: 91
+
+### Taxi from Rockford to Gainesville
+taxi, from Rockford to Gainesville, duration: 16 hours 30 mins, distance: 1,822 km, cost: 1822
+
+### Flight from Gainesville to Daytona Beach on 2022-03-10
+There is no flight from Gainesville to Daytona Beach on 2022-03-10.
+
+### Self-driving from Gainesville to Daytona Beach
+self-driving, from Gainesville to Daytona Beach, duration: 2 hours 2 mins, distance: 158 km, cost: 7
+
+### Taxi from Gainesville to Daytona Beach
+taxi, from Gainesville to Daytona Beach, duration: 2 hours 2 mins, distance: 158 km, cost: 158
+
+### Flight from Daytona Beach to Jacksonville on 2022-03-12
+There is no flight from Daytona Beach to Jacksonville on 2022-03-12.
+
+### Self-driving from Daytona Beach to Jacksonville
+self-driving, from Daytona Beach to Jacksonville, duration: 1 hour 28 mins, distance: 143 km, cost: 7
+
+### Taxi from Daytona Beach to Jacksonville
+taxi, from Daytona Beach to Jacksonville, duration: 1 hour 28 mins, distance: 143 km, cost: 143
+
+### Flight from Jacksonville to Rockford on 2022-03-14
+There is no flight from Jacksonville to Rockford on 2022-03-14.
+
+### Self-driving from Jacksonville to Rockford
+self-driving, from Jacksonville to Rockford, duration: 16 hours 42 mins, distance: 1,852 km, cost: 92
+
+### Taxi from Jacksonville to Rockford
+taxi, from Jacksonville to Rockford, duration: 16 hours 42 mins, distance: 1,852 km, cost: 1852
+
+JSON plan:

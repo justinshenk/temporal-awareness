@@ -1,0 +1,208 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you design a 5-day travel plan for a group of 3? We wish to start in New Orleans and visit 2 cities in Florida from March 12th to March 16th, 2022. We've set a new budget of $4,200 for the trip. For our stay, we'd prefer to have entire rooms as our accommodations.
+
+Reference information:
+### Attractions in Miami
+                                      Name  Latitude  Longitude                                             Address          Phone                                                                                             Website  City
+                             Jungle Island 25.784981 -80.174222      1111 Parrot Jungle Trail, Miami, FL 33132, USA (305) 400-7000                                                                        http://www.jungleisland.com/ Miami
+                    Pérez Art Museum Miami 25.785931 -80.186191            1103 Biscayne Blvd, Miami, FL 33132, USA (305) 375-3000                                                                            https://www.pamm.org/en/ Miami
+                             Bayfront Park 25.775259 -80.186189             301 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                             Wynwood Walls 25.801018 -80.199384               2516 NW 2nd Ave, Miami, FL 33127, USA (305) 576-3334                                                                                             Unknown Miami
+                     Maurice A. Ferré Park 25.784358 -80.187192            1075 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                          Miami Seaquarium 25.734290 -80.164857 4400 Rickenbacker Cswy, Key Biscayne, FL 33149, USA (305) 361-5705                                                                        https://miamiseaquarium.com/ Miami
+                       Bayside Marketplace 25.778402 -80.186794             401 Biscayne Blvd, Miami, FL 33132, USA (305) 577-3344                                            https://www.baysidemarketplace.com/visit/360-virtual-map Miami
+          Skyviews Miami Observation Wheel 25.777020 -80.184519             401 Biscayne Blvd, Miami, FL 33132, USA        Unknown    https://www.skyviewsobservationwheels.com/?utm_source=google&utm_medium=organic&utm_campaign=gbp Miami
+Phillip & Patricia Frost Museum of Science 25.785262 -80.187890            1101 Biscayne Blvd, Miami, FL 33132, USA (305) 434-9600                                                                       https://www.frostscience.org/ Miami
+                   Miami Children's Museum 25.784699 -80.176521            980 MacArthur Cswy, Miami, FL 33132, USA (305) 373-5437                                                                http://www.miamichildrensmuseum.org/ Miami
+                  Vizcaya Museum & Gardens 25.744387 -80.210475              3251 S Miami Ave, Miami, FL 33129, USA (305) 250-9133                                                                                https://vizcaya.org/ Miami
+                        Miami Walk of Fame 25.778196 -80.187446             401 Biscayne Blvd, Miami, FL 33132, USA (786) 763-0831                                                                     http://www.miamiwalkoffame.com/ Miami
+                               Lummus Park 25.780955 -80.129948           1130 Ocean Dr, Miami Beach, FL 33139, USA        Unknown https://www.miamibeachfl.gov/city-hall/parks-and-recreation/parks-facilities-directory/lummus-park/ Miami
+                       Torch of Friendship 25.777607 -80.187709             301 Biscayne Blvd, Miami, FL 33132, USA (888) 311-3233                                                                       http://www.miamigov.com/home/ Miami
+            Official Art Deco Walking Tour 25.780296 -80.130341           1001 Ocean Dr, Miami Beach, FL 33139, USA (305) 672-2014                                                                             https://mdpl.org/tours/ Miami
+                             Port of Miami 25.773981 -80.166635            1922 N Cruise Blvd, Miami, FL 33132, USA        Unknown                                                                                             Unknown Miami
+                       HistoryMiami Museum 25.774663 -80.196383              101 W Flagler St, Miami, FL 33130, USA (305) 375-1492                                                                        http://www.historymiami.org/ Miami
+                               Domino Park 25.765576 -80.219340                1444 SW 8th St, Miami, FL 33135, USA (305) 859-2717                                                                            http://www.miamigov.com/ Miami
+              Little Havana Visitor Center 25.765552 -80.220678                1600 SW 8th St, Miami, FL 33135, USA        Unknown                                                                                             Unknown Miami
+                                   Miami G 25.790911 -80.140205         1111 Lincoln Rd, Miami Beach, FL 33139, USA (305) 896-9850                                                                                 http://miami-g.com/ Miami
+
+### Restaurants in Miami
+                                 Name  Average Cost                                                Cuisines  Aggregate Rating  City
+                              Clocked            49                        Tea, Italian, Mexican, BBQ, Cafe               4.2 Miami
+              Shorts Burger and Shine            81                                  Chinese, Cafe, Seafood               4.9 Miami
+Papouli's Mediterranean Cafe & Market            26                                           Tea, Desserts               4.2 Miami
+               Tako Cheena by Pom Pom            60                    Fast Food, Indian, Desserts, Italian               4.4 Miami
+              AB's Absolute Barbecues            55      Desserts, Tea, Pizza, Italian, Fast Food, American               4.8 Miami
+                              Anjlika            56 Pizza, Italian, Fast Food, Cafe, Mediterranean, Seafood               3.1 Miami
+                Spice It - Hotel IBIS            38             Pizza, Indian, Fast Food, American, Seafood               2.7 Miami
+                      Spices & Sauces            28                 Italian, Mexican, Bakery, Cafe, Seafood               3.0 Miami
+                              L'Opera            28                                       Desserts, Seafood               3.7 Miami
+                     The Diet Kitchen            85             Bakery, BBQ, Indian, Mediterranean, Seafood               3.3 Miami
+            AB's - Absolute Barbecues            39                   Tea, Cafe, Bakery, Fast Food, Chinese               4.9 Miami
+                              Cafe 17            45                              Tea, BBQ, Bakery, Desserts               4.4 Miami
+                 Shiv Misthan Bhandar            59                     Cafe, American, Desserts, Fast Food               3.8 Miami
+                  South Indian Corner            10                                     Tea, Bakery, Indian               3.3 Miami
+                    Friends Fast Food            58                      Tea, BBQ, Mediterranean, Fast Food               0.0 Miami
+                             BarShala            41         Desserts, Pizza, Bakery, Mediterranean, Seafood               3.5 Miami
+                        Qureshi Kabab            34                                      French, Pizza, BBQ               3.5 Miami
+                         Delhi 6 Cafe            29                 Pizza, Fast Food, Cafe, Indian, Seafood               0.0 Miami
+                      Cafe Coffee Day            77                        Desserts, American, BBQ, Seafood               2.8 Miami
+                              Handa's            61                       Cafe, Bakery, American, Fast Food               2.6 Miami
+                   Bhikaram Bhujawala            73                     Desserts, Tea, Pizza, BBQ, American               3.0 Miami
+                               Gopala            23                           Chinese, Pizza, American, BBQ               2.9 Miami
+       NYC - Radisson Blu Plaza Delhi            95                                                Tea, BBQ               4.4 Miami
+                        Gayway Bakery            57                       Tea, Pizza, Bakery, BBQ, American               3.6 Miami
+                      Chanky Restruoo            56                           Tea, Cafe, American, Desserts               3.0 Miami
+                            Pizza Hub            86                             Tea, Mexican, American, BBQ               0.0 Miami
+                   Swastik Restaurant            67                          Tea, Bakery, American, Seafood               2.7 Miami
+                       Baskin Robbins            18                                     Desserts, Fast Food               0.0 Miami
+               Paatra - Jaypee Greens            73                  Desserts, Tea, Bakery, Indian, Seafood               3.5 Miami
+                       Moju Juice Bar            30                         Tea, Bakery, Mediterranean, BBQ               0.0 Miami
+                                Xiian            64                                   BBQ, Indian, Desserts               3.4 Miami
+                        Biryani Mahal            71                             Tea, Mediterranean, Seafood               3.6 Miami
+                             Parrot's            22                         Chinese, French, BBQ, Fast Food               3.4 Miami
+
+### Accommodations in Miami
+                                             NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number  city
+Simple and clean bedroom with good view and light  669.0    Private room                            No children under 10             1.0                  2                 5.0 Miami
+Cozy Two-bedroom Apt in a Cute House in Brooklyn!   99.0    Private room                            No children under 10             4.0                  1                 4.0 Miami
+  "HELLO BROOKLYN" PARK SIDE VIEW NEWLY RENO APT.  789.0 Entire home/apt                        No parties & No visitors             1.0                  6                 5.0 Miami
+     King Hotel Room at Wyndham Midtown 45 Resort  264.0    Private room     No pets & No smoking & No children under 10             2.0                  2                 3.0 Miami
+                   Charming 1BD Astoria Penthouse  806.0 Entire home/apt                                      No smoking             2.0                  8                 5.0 Miami
+       Unbeatable & Massive Midtown 3 Bedroom Apt  905.0 Entire home/apt                                      No smoking             4.0                  6                 5.0 Miami
+                1 Bedroom Heart of Financial Dist  386.0    Private room No visitors & No children under 10 & No smoking             2.0                  2                 4.0 Miami
+                                Bushwick Duplex 1  283.0    Private room                                      No parties             1.0                  2                 5.0 Miami
+     Comfortable shared apartmant by Times Square  924.0     Shared room               No smoking & No children under 10             1.0                  1                 2.0 Miami
+        Modern furnished 2-Bedroom NYC Apartment!  647.0 Entire home/apt                                      No parties            30.0                  3                 1.0 Miami
+                               Williamsburg bliss 1086.0 Entire home/apt                                     No visitors             3.0                  3                 4.0 Miami
+
+### Attractions in Tampa
+                                 Name  Latitude  Longitude                                                   Address          Phone                                                                                                                     Website  City
+                 The Florida Aquarium 27.943972 -82.444875                  701 Channelside Dr, Tampa, FL 33602, USA (813) 273-4000                                                                                                 https://www.flaquarium.org/ Tampa
+              Busch Gardens Tampa Bay 28.037066 -82.419461                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                https://buschgardens.com/tampa?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing Tampa
+                     Adventure Island 28.041702 -82.413032                   10001 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                                                https://adventureisland.com/ Tampa
+                Henry B. Plant Museum 27.946355 -82.464040                  401 W Kennedy Blvd, Tampa, FL 33606, USA (813) 254-1891                                                                                                 http://www.plantmuseum.com/ Tampa
+         Museum of Science & Industry 28.053122 -82.404497                   4801 E Fowler Ave, Tampa, FL 33617, USA (813) 987-6000                                                                                                        http://www.mosi.org/ Tampa
+             Tampa Bay History Center 27.942365 -82.449861                        801 Water St, Tampa, FL 33602, USA (813) 228-0097                                                                                          https://tampabayhistorycenter.org/ Tampa
+             Glazer Children's Museum 27.949577 -82.461494              110 W Gasparilla Plaza, Tampa, FL 33602, USA (813) 443-3861                                                                                                http://www.glazermuseum.org/ Tampa
+               ZooTampa at Lowry Park 28.013836 -82.469967                    1101 W Sligh Ave, Tampa, FL 33604, USA (813) 935-8552                                                                                                       https://zootampa.org/ Tampa
+                  Tampa Museum of Art 27.949524 -82.462993              120 W Gasparilla Plaza, Tampa, FL 33602, USA (813) 274-8130                                                                                                    https://tampamuseum.org/ Tampa
+          Sulphur Springs Water Tower 28.021389 -82.458902                   455-479 E Bird St, Tampa, FL 33604, USA (813) 458-3605                                                                                                        http://tampagov.net/ Tampa
+                   Congo River Rapids 28.039982 -82.423873                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                    https://buschgardens.com/tampa/rides/congo-river-rapids/ Tampa
+        MacDill Park on the Riverwalk 27.945278 -82.458787                     100 N Ashley Dr, Tampa, FL 33602, USA (813) 274-8615                                                                                  https://www.tampa.gov/parks-and-recreation Tampa
+                        Falcon's Fury 28.037644 -82.422751                   3000 E Busch Blvd, Tampa, FL 33612, USA (813) 884-4386                                                                          https://buschgardens.com/tampa/rides/falcons-fury/ Tampa
+                        Tampa Theatre 27.950352 -82.458929                   711 N Franklin St, Tampa, FL 33602, USA (813) 274-8981                                                                                                http://www.tampatheatre.org/ Tampa
+          Ybor City Museum State Park 27.961964 -82.438668                      1818 E 9th Ave, Tampa, FL 33605, USA (813) 247-6323                                              https://www.floridastateparks.org/parks-and-trails/ybor-city-museum-state-park Tampa
+         Tampa History Center Dock #3 27.941923 -82.449725 PWT3 - History Center/Amalie, Arena, Tampa, FL 33602, USA        Unknown                                                                                                                     Unknown Tampa
+                USF Botanical Gardens 28.057733 -82.423799                12210 USF Pine Drive, Tampa, FL 33612, USA (813) 974-2329                                                                                                     http://gardens.usf.edu/ Tampa
+                   Ballast Point Park 27.888987 -82.481238                  5300 Interbay Blvd, Tampa, FL 33611, USA (813) 274-8615                                                     https://www.tampa.gov/parks-and-recreation/featured-parks/ballast-point Tampa
+                                Kumba 28.039500 -82.423139                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386                                                                       https://buschgardens.com/tampa/roller-coasters/kumba/ Tampa
+Busch Gardens Tampa Bay Howl-O-Scream 28.037962 -82.421152                   10165 McKinley Dr, Tampa, FL 33612, USA (813) 884-4386 https://buschgardens.com/tampa/events/howl-o-scream/?utm_source=gbp_listing&utm_medium=organic&utm_campaign=HoS_gpb_listing Tampa
+
+### Restaurants in Tampa
+                        Name  Average Cost                                        Cuisines  Aggregate Rating  City
+        Kobe Hibachi & Sushi            63          Desserts, French, BBQ, Bakery, Seafood               4.6 Tampa
+                 The Tin Cow            67                          BBQ, Desserts, Seafood               3.7 Tampa
+              Peg Leg Pete's            91                            French, Bakery, Cafe               4.4 Tampa
+                 Butterburrs            28                                  Pizza, Seafood               3.6 Tampa
+     Lalit Kathi Rolls Momos            23                           Tea, Pizza, Fast Food               3.1 Tampa
+      Uptown Fresh Beer Cafe            61              Pizza, Mexican, BBQ, Cafe, Seafood               4.1 Tampa
+                       Aahar            52                 Tea, Pizza, Desserts, Fast Food               2.0 Tampa
+  Gallery Caf愆 - Hyatt Place            42                      Tea, French, BBQ, Desserts               3.8 Tampa
+                 The Zaffran            35       Tea, Bakery, Fast Food, American, Seafood               3.3 Tampa
+                       12212            10           Desserts, Tea, French, BBQ, Fast Food               3.5 Tampa
+              Baskin Robbins            55           Desserts, Pizza, French, BBQ, Seafood               3.3 Tampa
+                    G Lounge            33                               Tea, Cafe, Indian               3.2 Tampa
+               Ghar Ka Khana            31                               Tea, BBQ, Seafood               0.0 Tampa
+                         TAG            69                       Tea, French, Bakery, Cafe               0.0 Tampa
+                      Pema's            47                    Fast Food, Tea, BBQ, Italian               3.6 Tampa
+                       Giani            59         Pizza, French, Mexican, Bakery, Seafood               0.0 Tampa
+             Fresh Fast Food            29              Cafe, Seafood, Desserts, Fast Food               0.0 Tampa
+            Chinese Delights            33                       Cafe, Mexican, Pizza, BBQ               3.5 Tampa
+                      D.A.A.            22 Desserts, Pizza, Fast Food, Cafe, Mediterranean               0.0 Tampa
+Club India Cafe & Restaurant            98           Desserts, Tea, Bakery, Cafe, American               2.9 Tampa
+                     Giani's            19    Desserts, Fast Food, Cafe, American, Seafood               3.3 Tampa
+                      Gulati            12                          Chinese, Bakery, Pizza               4.4 Tampa
+               A Pizza House            51                         Cafe, Desserts, Italian               2.9 Tampa
+          Smokshh The Lounge            33                                      Pizza, BBQ               3.4 Tampa
+         Babu Shahi Bawarchi            62                                    Tea, Seafood               3.3 Tampa
+         Republic of Chicken            34        Desserts, Tea, Pizza, BBQ, Mediterranean               3.1 Tampa
+                  Fat Lulu's            96           Desserts, Pizza, BBQ, Indian, Seafood               3.8 Tampa
+            Alvi's Food Spot            22                Desserts, Mexican, American, BBQ               3.2 Tampa
+   New Pishori Chicken Kabab            74                 Tea, Bakery, BBQ, Mediterranean               0.0 Tampa
+                  Cafetorium            58       Desserts, Pizza, French, Mexican, Seafood               3.8 Tampa
+                       Zaika            27                             Desserts, Fast Food               2.5 Tampa
+                     Chaayos            66        Cafe, Mediterranean, Desserts, Fast Food               3.5 Tampa
+                  Brown Town            23                     Tea, Bakery, Pizza, Italian               0.0 Tampa
+               Pind Balluchi            13                                      Tea, Pizza               3.3 Tampa
+
+### Accommodations in Tampa
+                                    NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number  city
+   Lovely Guestroom in Elevator Building  359.0    Private room          No smoking & No visitors & No parties             2.0                  2                 1.0 Tampa
+      Near all shopping & transportation  854.0    Private room                 No pets & No children under 10             2.0                  2                 2.0 Tampa
+                 Bright duplex apartment  164.0 Entire home/apt                           No children under 10             2.0                  3                 1.0 Tampa
+        Financial District  Private Room 1156.0    Private room                 No children under 10 & No pets             1.0                  1                 4.0 Tampa
+                            Bushwick Den 1173.0    Private room                          No visitors & No pets             3.0                  1                 2.0 Tampa
+Perfect Two Bed Railroad Style Apartment 1093.0 Entire home/apt                           No pets & No parties             4.0                  4                 3.0 Tampa
+        East Manhattan (March 10th-18th)  310.0    Private room                                     No smoking             4.0                  1                 3.0 Tampa
+          Spacious 1+ bedroom apt in NYC  547.0 Entire home/apt No smoking & No parties & No children under 10             1.0                  2                 5.0 Tampa
+           Artist Loft East Williamsburg  979.0    Private room                        No parties & No smoking             1.0                  1                 3.0 Tampa
+      Studio in heart of LES (Manhattan)  438.0 Entire home/apt                           No pets & No parties             3.0                  2                 1.0 Tampa
+
+### Flight from New Orleans to Miami on 2022-03-12
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3605014    317   16:32   19:28 1 hours 56 minutes 2022-03-12    New Orleans        Miami     675.0
+     F3608666    222   13:31   16:16 1 hours 45 minutes 2022-03-12    New Orleans        Miami     675.0
+     F3660109    188   08:24   11:43 2 hours 19 minutes 2022-03-12    New Orleans        Miami     675.0
+     F3686109    144   18:47   21:57 2 hours 10 minutes 2022-03-12    New Orleans        Miami     675.0
+     F3688246    238   11:34   14:27 1 hours 53 minutes 2022-03-12    New Orleans        Miami     675.0
+
+### Self-driving from New Orleans to Miami
+self-driving, from New Orleans to Miami, duration: 12 hours 16 mins, distance: 1,389 km, cost: 69
+
+### Taxi from New Orleans to Miami
+taxi, from New Orleans to Miami, duration: 12 hours 16 mins, distance: 1,389 km, cost: 1389
+
+### Flight from Miami to Tampa on 2022-03-14
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3658653     88   17:44   18:47  1 hours 3 minutes 2022-03-14          Miami        Tampa     204.0
+     F3664207     93   15:01   15:57 0 hours 56 minutes 2022-03-14          Miami        Tampa     204.0
+     F3670101     56   09:44   10:38 0 hours 54 minutes 2022-03-14          Miami        Tampa     204.0
+     F3670787     61   22:53   23:53  1 hours 0 minutes 2022-03-14          Miami        Tampa     204.0
+     F3670880     84   23:30   00:35  1 hours 5 minutes 2022-03-14          Miami        Tampa     204.0
+     F3681919     53   08:44   10:01 1 hours 17 minutes 2022-03-14          Miami        Tampa     204.0
+     F3693328     91   21:31   22:54 1 hours 23 minutes 2022-03-14          Miami        Tampa     204.0
+     F3718588     90   11:30   12:36  1 hours 6 minutes 2022-03-14          Miami        Tampa     204.0
+
+### Self-driving from Miami to Tampa
+self-driving, from Miami to Tampa, duration: 4 hours 1 min, distance: 454 km, cost: 22
+
+### Taxi from Miami to Tampa
+taxi, from Miami to Tampa, duration: 4 hours 1 min, distance: 454 km, cost: 454
+
+### Flight from Tampa to New Orleans on 2022-03-16
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3616103    160   11:57   12:38 1 hours 41 minutes 2022-03-16          Tampa  New Orleans     488.0
+     F4007106    194   15:03   15:45 1 hours 42 minutes 2022-03-16          Tampa  New Orleans     488.0
+     F4007107    124   06:58   07:30 1 hours 32 minutes 2022-03-16          Tampa  New Orleans     488.0
+
+### Self-driving from Tampa to New Orleans
+self-driving, from Tampa to New Orleans, duration: 9 hours 15 mins, distance: 1,059 km, cost: 52
+
+### Taxi from Tampa to New Orleans
+taxi, from Tampa to New Orleans, duration: 9 hours 15 mins, distance: 1,059 km, cost: 1059
+
+JSON plan:

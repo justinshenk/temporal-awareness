@@ -1,0 +1,185 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you plan a 5-day travel itinerary for a group of 7? We're set to depart from Sun Valley and aim to visit 2 cities in California from March 14th to March 18th, 2022. Our budget is now set at $11,400. In terms of accommodations, it is crucial that they allow parties. We also prefer to not fly between locations. On our trip, we look forward to enjoying a variety of cuisines, including Mediterranean, American, French, and Indian.
+
+Reference information:
+### Attractions in San Diego
+                                      Name  Latitude   Longitude                                                   Address          Phone                                                                                      Website      City
+                Cabrillo National Monument 32.672256 -117.241609       1800 Cabrillo Memorial Dr, San Diego, CA 92106, USA (619) 523-4285                                                           https://www.nps.gov/cabr/index.htm San Diego
+                      La Jolla Shores Park 32.858154 -117.256103              8300 Camino Del Oro, La Jolla, CA 92037, USA (619) 221-8899                                           https://www.sandiego.gov/lifeguards/beaches/shores San Diego
+                          California Tower 32.731609 -117.152167 California Tower, 1350 El Prado, San Diego, CA 92101, USA (619) 239-2001                                            https://museumofus.org/exhibits/california-tower/ San Diego
+                        SeaWorld San Diego 32.764296 -117.226440               500 Sea World Dr., San Diego, CA 92109, USA (619) 222-4732 https://seaworld.com/san-diego?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing San Diego
+                        Old Town San Diego 32.755827 -117.197261                    2829 Juan St, San Diego, CA 92110, USA        Unknown                                                             https://www.oldtownsandiego.org/ San Diego
+                               Balboa Park 32.734148 -117.144553                                        San Diego, CA, USA (619) 239-0512                                                                   http://www.balboapark.org/ San Diego
+                           Seaport Village 32.709064 -117.170937                 849 W Harbor Dr, San Diego, CA 92101, USA (619) 530-0704                                                                  https://seaportvillage.com/ San Diego
+               The San Diego Museum of Art 32.732158 -117.150430                   1450 El Prado, San Diego, CA 92102, USA (619) 232-7931                                                                      https://www.sdmart.org/ San Diego
+                         USS Midway Museum 32.713740 -117.175127                 910 N Harbor Dr, San Diego, CA 92101, USA (619) 544-9600                                                                      https://www.midway.org/ San Diego
+                                  Skytower 32.765423 -117.226662               500 Sea World Dr., San Diego, CA 92109, USA        Unknown                                                                                      Unknown San Diego
+                             Dolphin Point 32.765390 -117.227412               500 Sea World Dr., San Diego, CA 92109, USA (915) 525-4772                                                                                      Unknown San Diego
+                             San Diego Zoo 32.736035 -117.150985                     2920 Zoo Dr, San Diego, CA 92101, USA (619) 231-1515                                                                 https://zoo.sandiegozoo.org/ San Diego
+                          Mission Bay Park 32.764107 -117.226265                                  San Diego, CA 92109, USA (619) 525-8213                                        https://www.sandiego.gov/locations/seaworld-san-diego San Diego
+                       Whaley House Museum 32.752904 -117.194510              2476 San Diego Ave, San Diego, CA 92110, USA (619) 786-1143                                                         https://www.whaleyhousesandiego.com/ San Diego
+                Sunset Cliffs Natural Park 32.715915 -117.255168                       Ladera St, San Diego, CA 92107, USA (619) 525-8213                 https://www.sandiego.gov/park-and-recreation/parks/regional/shoreline/sunset San Diego
+             Old Town San Diego State Park 32.754906 -117.197641                 4002 Wallace St, San Diego, CA 92110, USA (619) 220-5422                                                         http://www.parks.ca.gov/?page_id=663 San Diego
+           Martin Luther King Jr Promenade 32.708357 -117.161993                 326 W Harbor Dr, San Diego, CA 92101, USA (619) 525-8213                                           https://www.sandiego.gov/park-and-recreation/parks San Diego
+                      Balboa Park Carousel 32.734576 -117.146707                     1889 Zoo Pl, San Diego, CA 92101, USA (619) 232-2282                                                               http://balboaparkcarousel.org/ San Diego
+                       San Diego Free Tour 32.707586 -117.160287                   200 Fifth Ave, San Diego, CA 92101, USA (415) 503-7199                                                                      https://freesftour.com/ San Diego
+Mission Beach Boardwalk | Ocean Front Walk 32.771432 -117.252831                W Mission Bay Dr, San Diego, CA 92109, USA (619) 232-3101                                                                    https://www.sandiego.gov/ San Diego
+
+### Restaurants in San Diego
+                          Name  Average Cost                                              Cuisines  Aggregate Rating      City
+                     Open Yard            33                        Chinese, Pizza, Cafe, Desserts               3.3 San Diego
+           Jetha Lal Ka Dhabha            22                            Tea, Cafe, Indian, Italian               3.1 San Diego
+               The Lost Mughal            74                                    Tea, Cafe, Italian               3.8 San Diego
+                   Burger King            20            Pizza, Italian, French, Fast Food, Seafood               3.8 San Diego
+                Bikaner Sweets            37                      Bakery, Pizza, Indian, Fast Food               2.8 San Diego
+      Momos Hut & Chinese Food            94                                  Tea, Cafe, Fast Food               2.4 San Diego
+            Chaudhary Di Hatti            30              Desserts, Pizza, Italian, BBQ, Fast Food               3.3 San Diego
+                        Gopala            98                Pizza, Mexican, BBQ, American, Seafood               3.3 San Diego
+           Armaan's Restaurant            29                     Fast Food, Cafe, Seafood, Italian               2.8 San Diego
+                  Bun Intended            91                        Cafe, Pizza, Desserts, Seafood               3.9 San Diego
+                     Chawlas 2            67                        Bakery, Pizza, Indian, Seafood               0.0 San Diego
+                 Duggal Snacks            82     Desserts, Pizza, Italian, Fast Food, Cafe, Indian               3.6 San Diego
+Dabas Ke Special Chole Bhature            35                          BBQ, Pizza, Bakery, Desserts               0.0 San Diego
+                Midnight Bites            63                                  Bakery, Indian, Cafe               3.1 San Diego
+                Baskin Robbins            48                 Italian, Bakery, BBQ, Fast Food, Cafe               3.5 San Diego
+                     Chawlas 2            91 Desserts, Fast Food, American, Mediterranean, Seafood               3.0 San Diego
+                      Burgrill            54              Desserts, Tea, Pizza, Fast Food, Chinese               4.4 San Diego
+            Harry's Bar + Cafe            55                      Fast Food, French, Cafe, Seafood               3.6 San Diego
+                    Dragon Way            77            Desserts, Mexican, Cafe, American, Seafood               0.0 San Diego
+               Hum Sabki Rasoi            63              Pizza, BBQ, Fast Food, American, Seafood               3.3 San Diego
+              Aamantran Bangla            33               Pizza, Italian, Bakery, Fast Food, Cafe               2.7 San Diego
+                        Meraki            51                                          Tea, Seafood               4.0 San Diego
+
+### Accommodations in San Diego
+                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number      city
+Spacious Room in Large 2 Bedroom Prewar Apartment  585.0    Private room                       No parties & No visitors             1.0                  2                 4.0 San Diego
+                 Big room near Prospect Park! NY!  752.0    Private room              No parties & No smoking & No pets             7.0                  1                 2.0 San Diego
+    Luxury 4BR Home, Spacious & Central to Trains  392.0 Entire home/apt                                     No parties             3.0                  3                 5.0 San Diego
+                 Cozy 1.5BD in Parkslope Brooklyn 1093.0 Entire home/apt                                     No parties             3.0                 10                 2.0 San Diego
+      Spacious & Homey Williamsburg 1BR Apartment 1004.0 Entire home/apt                                     No parties             5.0                  4                 3.0 San Diego
+                    Upper East Side 1 Bedroom Gem  692.0     Shared room No children under 10 & No parties & No smoking             2.0                  1                 3.0 San Diego
+                  Organic Oasis Duplex (EMF-free) 1186.0 Entire home/apt                       No visitors & No smoking            60.0                  4                 4.0 San Diego
+ Harlem Garden Oasis in  New York City Brownstone  368.0 Entire home/apt                                    No visitors            31.0                  3                 5.0 San Diego
+  Conveniently located 2 BR Time Square Apartment  502.0 Entire home/apt No parties & No smoking & No children under 10             2.0                  4                 5.0 San Diego
+  LargeBedroom gem in historic Red Hook Brooklyn!  787.0    Private room                                    No visitors             4.0                  2                 3.0 San Diego
+            The Perfect Upper East Side Apartment  847.0 Entire home/apt                                    No visitors             1.0                  2                 3.0 San Diego
+                                 CHIC EVENT SPACE 1068.0 Entire home/apt                                    No visitors             1.0                  2                 5.0 San Diego
+
+### Attractions in Oakland
+                                 Name  Latitude   Longitude                                                    Address          Phone                                                                 Website    City
+                          Oakland Zoo 37.748663 -122.145417                 9777 Golf Links Rd, Oakland, CA 94605, USA (510) 632-9525                                              http://www.oaklandzoo.org/ Oakland
+        Chabot Space & Science Center 37.818747 -122.180722                 10000 Skyline Blvd, Oakland, CA 94619, USA (510) 336-7300                                             http://www.chabotspace.org/ Oakland
+                        Knowland Park 37.755954 -122.131604                 9777 Golf Links Rd, Oakland, CA 94605, USA (510) 615-5566           http://www2.oaklandnet.com/government/o/opr/s/Parks/index.htm Oakland
+      Reinhardt Redwood Regional Park 37.811506 -122.162959                    7867 Redwood Rd, Oakland, CA 94619, USA (888) 327-2757                                    http://www.ebparks.org/parks/redwood Oakland
+                 Children's Fairyland 37.808147 -122.260550                   699 Bellevue Ave, Oakland, CA 94610, USA (510) 452-2259                                               http://www.fairyland.org/ Oakland
+              Oakland Aviation Museum 37.733178 -122.212645                    8252 Earhart Rd, Oakland, CA 94621, USA (510) 638-7100                                  https://www.oaklandaviationmuseum.org/ Oakland
+          The Pergola at Lake Merritt 37.808552 -122.249744                 599 El Embarcadero, Oakland, CA 94610, USA        Unknown                                                                 Unknown Oakland
+                  Jack London's Cabin 37.793881 -122.274822          1-199 Webster Street Tube, Oakland, CA 94607, USA        Unknown                                                                 Unknown Oakland
+                     Pyramid to Moses 37.812662 -122.190687                Joaquin Miller Park, Oakland, CA 94602, USA        Unknown                                                                 Unknown Oakland
+                      Black Food Tour 37.803432 -122.271525                  Various Locations, Oakland, CA 94607, USA (510) 224-3346                                               http://blackfoodtour.com/ Oakland
+                 Rotary Nature Center 37.807164 -122.256000                   600 Bellevue Ave, Oakland, CA 94610, USA (510) 238-3739                   https://www.oaklandca.gov/topics/rotary-nature-center Oakland
+    Temescal Regional Recreation Area 37.847859 -122.233447                      6500 Broadway, Oakland, CA 94618, USA (888) 327-2757                                   http://www.ebparks.org/parks/temescal Oakland
+                            Snow Park 37.807114 -122.264290 Harrison St & 19th St, Lakeside Dr, Oakland, CA 94612, USA (510) 238-7275                                                                 Unknown Oakland
+                  Joaquin Miller Park 37.814206 -122.184538             3300 Joaquin Miller Rd, Oakland, CA 94602, USA (510) 615-5566                    https://www.oaklandca.gov/topics/joaquin-miller-park Oakland
+                   Pardee Home Museum 37.804748 -122.277892                        672 11th St, Oakland, CA 94607, USA (510) 444-2187                                              http://www.pardeehome.org/ Oakland
+     Chappell Hayes Observation Tower 37.799711 -122.326310              2777 Middle Harbor Rd, Oakland, CA 94607, USA        Unknown https://www.portofoakland.com/port/seaport/middle-harbor/park-features/ Oakland
+         Middle Harbor Shoreline Park 37.804577 -122.323296              2777 Middle Harbor Rd, Oakland, CA 94607, USA (510) 627-1634                http://www.portofoakland.com/port/seaport/middle-harbor/ Oakland
+                       Eastshore Park 37.809542 -122.248195                                     Oakland, CA 94610, USA        Unknown                                                                 Unknown Oakland
+Huckleberry Botanic Regional Preserve 37.842863 -122.194980                  7087 Skyline Blvd, Oakland, CA 94611, USA (888) 327-2757                                http://www.ebparks.org/parks/huckleberry Oakland
+      Oakland Sports Street Art Mural 37.838378 -122.269682     5319 Martin Luther King Jr Way, Oakland, CA 94609, USA        Unknown                                                                 Unknown Oakland
+
+### Restaurants in Oakland
+                            Name  Average Cost                                   Cuisines  Aggregate Rating    City
+Cho Gao - Crowne Plaza Abu Dhabi            52                          Tea, BBQ, Seafood               4.4 Oakland
+                   Pind Balluchi            61                    Tea, Cafe, BBQ, Seafood               1.8 Oakland
+               Chef Sack Kitchen            70                              Bakery, Pizza               3.1 Oakland
+                Malais By Anands            37                  Tea, Cafe, Mexican, Pizza               3.7 Oakland
+         Jammu And Kashmir House           100 Tea, BBQ, American, Mediterranean, Seafood               2.9 Oakland
+       Blue Water Grille Express            75          Tea, Seafood, Desserts, Fast Food               2.6 Oakland
+                    Chinese Food            64           Cafe, Bakery, Mediterranean, BBQ               3.1 Oakland
+                     Bikanervala            39                          Tea, Cafe, Bakery               3.5 Oakland
+             Best Biryani Centre            43              Pizza, American, BBQ, Seafood               0.0 Oakland
+                  Hot Kathi Roll            92      Desserts, Pizza, Italian, Bakery, BBQ               0.0 Oakland
+                         Maquina            24 Pizza, Italian, Bakery, Fast Food, Seafood               3.8 Oakland
+            Moonshine Cafe & Bar            18                     Cafe, Pizza, Fast Food               3.5 Oakland
+                  Punjabi Mirchi            66      Pizza, BBQ, Fast Food, Cafe, American               3.3 Oakland
+                 Cafe Coffee Day            55                   Mexican, Bakery, Seafood               3.4 Oakland
+                     Mumu Dahlin            49        Cafe, Mexican, Pizza, Mediterranean               3.8 Oakland
+                   Wok On Wheels           100          Tea, Pizza, Bakery, Mediterranean               3.8 Oakland
+                         Mr. Sub            66                   French, Pizza, Fast Food               3.2 Oakland
+                   Katyani Rasoi            34  Tea, French, Bakery, BBQ, Indian, Seafood               3.2 Oakland
+                 Aggarwal Sweets            28      Bakery, BBQ, Chinese, Indian, Seafood               0.0 Oakland
+                    Baker's Stop            95             Tea, Pizza, American, Desserts               3.7 Oakland
+                           B Two            83                         Tea, Chinese, Cafe               3.0 Oakland
+                 Star Restaurant            87          Pizza, American, Indian, Desserts               0.0 Oakland
+                Chocolate Square            81       Tea, Pizza, Mexican, Fast Food, Cafe               3.4 Oakland
+                     Chowranghee            50                           Tea, Bakery, BBQ               2.9 Oakland
+              Gupta's Restaurant            32       Tea, Bakery, American, Mediterranean               3.5 Oakland
+                 Gabbar Chowmein            92         Bakery, Indian, Mediterranean, BBQ               3.0 Oakland
+                    Simply Cakes            53             French, BBQ, Desserts, Italian               3.2 Oakland
+                 The Relax Point            67                          Tea, BBQ, Seafood               0.0 Oakland
+              221 B Baker Street            68         Fast Food, Cafe, Desserts, Seafood               3.4 Oakland
+                   Kake Da Dhaba            16       Tea, Pizza, Mexican, Indian, Seafood               0.0 Oakland
+
+### Accommodations in Oakland
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number    city
+                               Home away from home  203.0 Entire home/apt           No smoking & No children under 10             1.0                  2                 4.0 Oakland
+                      Modern luxury w/views of WTC   55.0    Private room          No visitors & No children under 10             1.0                  2                 3.0 Oakland
+                   Upper West Side Dream Apartment  478.0 Entire home/apt                                     No pets             1.0                  3                 1.0 Oakland
+      Comfy Brooklyn apt, near train and Manhattan  346.0 Entire home/apt                                 No visitors             4.0                  3                 3.0 Oakland
+                   Top floor 1 bedroom soho/nolita  218.0 Entire home/apt                     No parties & No smoking             3.0                  2                 2.0 Oakland
+              Historic Far Rockaway Beach Bungalow  222.0 Entire home/apt                                 No visitors             3.0                  2                 5.0 Oakland
+                           Lovely Brooklyn Bedroom 1058.0    Private room No smoking & No children under 10 & No pets             2.0                  2                 5.0 Oakland
+Spacious Brooklyn One Bedroom/Loft***Morgan L Stop 1164.0 Entire home/apt              No children under 10 & No pets             4.0                  6                 3.0 Oakland
+
+### Flight from Sun Valley to San Diego on 2022-03-14
+There is no flight from Sun Valley to San Diego on 2022-03-14.
+
+### Self-driving from Sun Valley to San Diego
+self-driving, from Sun Valley to San Diego, duration: 14 hours 9 mins, distance: 1,461 km, cost: 73
+
+### Taxi from Sun Valley to San Diego
+taxi, from Sun Valley to San Diego, duration: 14 hours 9 mins, distance: 1,461 km, cost: 1461
+
+### Flight from San Diego to Oakland on 2022-03-16
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4006577    135   17:06   18:47 1 hours 41 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006578    107   21:02   22:30 1 hours 28 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006579    117   14:07   15:30 1 hours 23 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006580    139   10:22   11:49 1 hours 27 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006581    221   21:51   23:17 1 hours 26 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006582    131   08:41   10:06 1 hours 25 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006583    221   17:36   18:58 1 hours 22 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006584    122   19:06   20:33 1 hours 27 minutes 2022-03-16      San Diego      Oakland     446.0
+     F4006585    101   12:29   14:05 1 hours 36 minutes 2022-03-16      San Diego      Oakland     446.0
+
+### Self-driving from San Diego to Oakland
+self-driving, from San Diego to Oakland, duration: 7 hours 38 mins, distance: 789 km, cost: 39
+
+### Taxi from San Diego to Oakland
+taxi, from San Diego to Oakland, duration: 7 hours 38 mins, distance: 789 km, cost: 789
+
+### Flight from Oakland to Sun Valley on 2022-03-18
+There is no flight from Oakland to Sun Valley on 2022-03-18.
+
+### Self-driving from Oakland to Sun Valley
+self-driving, from Oakland to Sun Valley, duration: 11 hours 36 mins, distance: 1,204 km, cost: 60
+
+### Taxi from Oakland to Sun Valley
+taxi, from Oakland to Sun Valley, duration: 11 hours 36 mins, distance: 1,204 km, cost: 1204
+
+JSON plan:

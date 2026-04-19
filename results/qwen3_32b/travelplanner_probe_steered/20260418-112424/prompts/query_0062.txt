@@ -1,0 +1,107 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please create a 3-day travel plan for two people, starting from Milwaukee and heading to New York. We are planning to visit from March 24th to March 26th, 2022. We have a budget of $1,900 and prefer to have non-shared rooms for our accommodations.
+
+Reference information:
+### Attractions in New York
+                        Name  Latitude  Longitude                                        Address          Phone                                                                         Website     City
+             Top of The Rock 40.759350 -73.979409  30 Rockefeller Plaza, New York, NY 10112, USA (212) 698-2000 https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/ New York
+       One World Observatory 40.713006 -74.013173           117 West St, New York, NY 10007, USA (844) 696-1776                                                https://oneworldobservatory.com/ New York
+       SUMMIT One Vanderbilt 40.752764 -73.978746          45 E 42nd St, New York, NY 10017, USA        Unknown                                                        http://www.summitov.com/ New York
+          Rockefeller Center 40.758740 -73.978674  45 Rockefeller Plaza, New York, NY 10111, USA (212) 588-8601                                              https://www.rockefellercenter.com/ New York
+           Statue of Liberty 40.689249 -74.044500                        New York, NY 10004, USA (212) 363-3200                                              https://www.nps.gov/stli/index.htm New York
+               The High Line 40.747993 -74.004765                        New York, NY 10011, USA (212) 500-6035                                                    https://www.thehighline.org/ New York
+       Empire State Building 40.748441 -73.985664         20 W 34th St., New York, NY 10001, USA (212) 736-3100                                                         https://www.esbnyc.com/ New York
+             Brooklyn Bridge 40.706086 -73.996864                        New York, NY 10038, USA        Unknown          https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml New York
+      9/11 Memorial & Museum 40.711578 -74.013336      180 Greenwich St, New York, NY 10007, USA (212) 312-8800                                                    https://www.911memorial.org/ New York
+           Flatiron Building 40.741061 -73.989699           175 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+                Times Square 40.757975 -73.985543                       Manhattan, NY 10036, USA        Unknown                                                 https://www.timessquarenyc.org/ New York
+                      RiseNY 40.757621 -73.985176         160 W 45th St, New York, NY 10036, USA (718) 701-4998                                                              https://riseny.co/ New York
+         The Channel Gardens 40.758501 -73.978087                        New York, NY 10020, USA        Unknown              https://www.rockefellercenter.com/attractions/the-channel-gardens/ New York
+                 The Battery 40.702931 -74.015360     Battery Park City, New York, NY 10004, USA (212) 344-3491                                                     https://www.thebattery.org/ New York
+                Central Park 40.782555 -73.965583                              New York, NY, USA (212) 310-6600                                                 https://www.centralparknyc.org/ New York
+             Tenement Museum 40.718818 -73.990088        103 Orchard St, New York, NY 10002, USA (877) 975-3786                                                       https://www.tenement.org/ New York
+         MUSEUM OF ICE CREAM 40.723855 -73.997917          558 Broadway, New York, NY 10012, USA        Unknown                                               https://www.museumoficecream.com/ New York
+       Radio City Music Hall 40.759976 -73.979977          1260 6th Ave, New York, NY 10020, USA (212) 465-6000                                       https://www.msg.com/radio-city-music-hall New York
+Pier 46 at Hudson River Park 40.734189 -74.011265 Hudson River Greenway, New York, NY 10014, USA (212) 627-2020                                                     http://hudsonriverpark.org/ New York
+        Tiffany Street Clock 40.741981 -73.989378           200 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+
+### Restaurants in New York
+                              Name  Average Cost                                             Cuisines  Aggregate Rating     City
+            Seasons 52 Fresh Grill            30                   Seafood, Indian, Desserts, Italian               4.4 New York
+                    Gurgaon Hights            46                    Cafe, American, Indian, Fast Food               2.5 New York
+                             G Dot            75                                   Cafe, Mexican, BBQ               2.4 New York
+                           Rambhog            95                     Tea, Seafood, Mexican, Fast Food               3.3 New York
+                  Green Chick Chop            26                           Tea, French, Cafe, Seafood               3.3 New York
+          Lord of the Drinks Forum            71                   Cafe, Bakery, BBQ, Chinese, Indian               4.2 New York
+                        Goosebumps            94                               Chinese, Pizza, Bakery               3.2 New York
+Aryan's Rajasthani Pyaz Ki Kachori            17                         Cafe, Pizza, Indian, Seafood               3.1 New York
+                   QD's Restaurant            93                           Tea, Desserts, Indian, BBQ               4.1 New York
+               Golooji's Chat Waat            53                                           Pizza, BBQ               3.3 New York
+              Sir John Bakery Cafe            78                              Pizza, Bakery, Desserts               3.4 New York
+                     Shree Rathnam            91            Tea, Bakery, Fast Food, American, Seafood               3.4 New York
+                    Domino's Pizza            86                           Tea, French, Pizza, Indian               3.3 New York
+                    Sugary Affairs            55               Desserts, Tea, Fast Food, Cafe, Indian               3.0 New York
+                        Sugar Rush            89                            Tea, Chinese, Pizza, Cafe               0.0 New York
+                            Amchur            67                                Tea, Bakery, American               2.9 New York
+                Kamal Chat Bhandar            36                                 Chinese, Bakery, BBQ               0.0 New York
+                          736 A.D.            99 Desserts, Bakery, Fast Food, American, Mediterranean               4.1 New York
+          Garam Masala Food Corner            40                              Pizza, Bakery, Desserts               3.3 New York
+                  Green Restaurant            74                          Tea, Cafe, Bakery, Desserts               0.0 New York
+                       Hungry Ullu            94                                          Tea, Bakery               3.3 New York
+                          The Best            79                                   Tea, Chinese, Cafe               3.4 New York
+                          Baltazar            46                      Tea, Fast Food, Bakery, Seafood               4.3 New York
+
+### Accommodations in New York
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number     city
+Versatile private room in Harlem/Hamilton Heights!  398.0    Private room           No pets & No visitors & No parties             4.0                  1                 5.0 New York
+Beautiful and big 1BR sublet close by Central Park  983.0    Private room            No parties & No children under 10             5.0                  2                 5.0 New York
+    A Contemporary Homelike Stay in the Best of BK  228.0 Entire home/apt No pets & No visitors & No children under 10             2.0                  2                 2.0 New York
+       Charming Bright Room in Bed Stuy Brownstone 1064.0    Private room           No visitors & No smoking & No pets            30.0                  2                 3.0 New York
+       Spacious Bedroom in Prime Brooklyn Location  782.0    Private room                         No parties & No pets             3.0                  1                 4.0 New York
+         Cool Downtown Apartment in Great Location  997.0 Entire home/apt                                      No pets             4.0                  7                 4.0 New York
+              Modern Brooklyn oasis (PRIVATE ROOM)  403.0    Private room                         No children under 10             1.0                  1                 5.0 New York
+       Magical rowhouse and garden in Williamsburg  189.0 Entire home/apt                                   No parties             4.0                  3                 1.0 New York
+                          Large Bed-Stuy Apartment  132.0 Entire home/apt                                  No visitors             6.0                  2                 4.0 New York
+IN MINT CONDITION-1BR&TERRACE-E 44TH/UNITED NATION  297.0 Entire home/apt                                      No pets            30.0                  2                 4.0 New York
+   Spacious Private Access Near Trains M - L and J  800.0    Private room                                      No pets             2.0                  1                 4.0 New York
+ Sunny + Spacious Master Bedroom with Outdoor Deck  109.0    Private room                                      No pets             3.0                  1                 5.0 New York
+ ✈ NYC/Travelers. New Private Access Room Bed Full 1158.0    Private room                                      No pets             2.0                  1                 5.0 New York
+
+### Flight from Milwaukee to New York on 2022-03-24
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3643145    226   18:36   21:58 2 hours 22 minutes 2022-03-24      Milwaukee     New York     738.0
+     F3647823    353   05:55   09:17 2 hours 22 minutes 2022-03-24      Milwaukee     New York     738.0
+     F3649645    180   10:50   14:22 2 hours 32 minutes 2022-03-24      Milwaukee     New York     738.0
+
+### Self-driving from Milwaukee to New York
+self-driving, from Milwaukee to New York, duration: 13 hours 29 mins, distance: 1,417 km, cost: 70
+
+### Taxi from Milwaukee to New York
+taxi, from Milwaukee to New York, duration: 13 hours 29 mins, distance: 1,417 km, cost: 1417
+
+### Flight from New York to Milwaukee on 2022-03-26
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3644990    218   15:20   16:27  2 hours 7 minutes 2022-03-26       New York    Milwaukee     738.0
+     F3649624    245   08:21   09:36 2 hours 15 minutes 2022-03-26       New York    Milwaukee     738.0
+
+### Self-driving from New York to Milwaukee
+self-driving, from New York to Milwaukee, duration: 13 hours 28 mins, distance: 1,417 km, cost: 70
+
+### Taxi from New York to Milwaukee
+taxi, from New York to Milwaukee, duration: 13 hours 28 mins, distance: 1,417 km, cost: 1417
+
+JSON plan:

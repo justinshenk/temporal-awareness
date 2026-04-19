@@ -1,0 +1,310 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need assistance in crafting a travel plan starting in Fort Lauderdale and covering 3 cities in Georgia. The trip, designed for 2 people, will span from March 24th to March 30th, 2022. Our budget is $8,000. Regarding accommodations, we require rooms that are not shared and should accommodate children under 10. As for dining options, we have diverse tastes, including Indian, American, Chinese, and Mediterranean cuisines.
+
+Reference information:
+### Attractions in Atlanta
+                                            Name  Latitude  Longitude                                                   Address          Phone                                                      Website    City
+                        Atlanta Botanical Garden 33.789957 -84.372599              1345 Piedmont Ave NE, Atlanta, GA 30309, USA (404) 876-5859                                   https://www.atlantabg.org/ Atlanta
+                              World of Coca-Cola 33.762556 -84.392436                   121 Baker St NW, Atlanta, GA 30313, USA (404) 676-5151                            https://www.worldofcoca-cola.com/ Atlanta
+                                Georgia Aquarium 33.763382 -84.395110                   225 Baker St NW, Atlanta, GA 30313, USA (404) 581-4000                             https://www.georgiaaquarium.org/ Atlanta
+Martin Luther King, Jr. National Historical Park 33.756674 -84.373180                 450 Auburn Ave NE, Atlanta, GA 30312, USA (404) 331-5190                           https://www.nps.gov/malu/index.htm Atlanta
+                                   Piedmont Park 33.787926 -84.372168                                    Atlanta, GA 30309, USA (404) 875-7275                                    https://piedmontpark.org/ Atlanta
+                              High Museum of Art 33.790063 -84.385552              1280 Peachtree St NE, Atlanta, GA 30309, USA (404) 733-4400                                        https://www.high.org/ Atlanta
+                                 SkyView Atlanta 33.758938 -84.391692                  168 Luckie St NW, Atlanta, GA 30303, USA (678) 949-9023                               http://www.skyviewatlanta.com/ Atlanta
+                         Centennial Olympic Park 33.760463 -84.393083                                    Atlanta, GA 30313, USA (404) 223-4412                https://www.gwcca.org/centennial-olympic-park Atlanta
+                                     Zoo Atlanta 33.733759 -84.371660               800 Cherokee Ave SE, Atlanta, GA 30315, USA (404) 624-5600                                      https://zooatlanta.org/ Atlanta
+                          Atlanta History Center 33.841880 -84.386253           130 W Paces Ferry Rd NW, Atlanta, GA 30305, USA (404) 814-4000                         http://www.atlantahistorycenter.com/ Atlanta
+                   LEGO Discovery Center Atlanta 33.853343 -84.363044    3500 Peachtree Rd NE Suite G-1, Atlanta, GA 30326, USA (404) 848-9252                 https://atlanta.legolanddiscoverycenter.com/ Atlanta
+                              Krog Street Tunnel 33.752995 -84.363648                      1 Krog St NE, Atlanta, GA 30307, USA (404) 492-0847 https://discoveratlanta.com/things-to-do/krog-street-tunnel/ Atlanta
+           Fernbank Museum | 3D Theater | Forest 33.773925 -84.327998                    767 Clifton Rd, Atlanta, GA 30307, USA (404) 929-6300                              https://www.fernbankmuseum.org/ Atlanta
+                                     Fox Theatre 33.772600 -84.385468               660 Peachtree St NE, Atlanta, GA 30308, USA (855) 285-8499                                   http://www.foxtheatre.org/ Atlanta
+                             Delta Flight Museum 33.656073 -84.422354                   1060 Delta Blvd, Atlanta, GA 30354, USA (404) 715-7886                                      http://deltamuseum.org/ Atlanta
+                                  Tiny Doors ATL 33.792726 -84.397871   1380 Atlantic Dr NW Suite 14100, Atlanta, GA 30363, USA (404) 528-8017                                 http://www.tinydoorsatl.com/ Atlanta
+                Original Selfie Museum | Atlanta 33.751529 -84.399449    116 Centennial Olympic Park Dr, Atlanta, GA 30313, USA (404) 566-5778                             http://originalselfiemuseum.com/ Atlanta
+                                   Folk Art Park 33.764049 -84.384035                   Courtland St NE, Atlanta, GA 30308, USA        Unknown                                                      Unknown Atlanta
+                             Underground Atlanta 33.753217 -84.390581               50 Upper Alabama St, Atlanta, GA 30303, USA        Unknown                               http://www.undergroundatl.com/ Atlanta
+                    Children's Museum of Atlanta 33.762571 -84.391733 275 Centennial Olympic Park Dr NW, Atlanta, GA 30313, USA (404) 659-5437                          https://childrensmuseumatlanta.org/ Atlanta
+
+### Restaurants in Atlanta
+                               Name  Average Cost                                         Cuisines  Aggregate Rating    City
+                            Saffron            39                    Tea, Cafe, Fast Food, Seafood               4.1 Atlanta
+                               Adda            22                             Tea, Mexican, Bakery               3.8 Atlanta
+                              Ahata            17                            Tea, Indian, Desserts               0.0 Atlanta
+                       Baba Au Rhum            27         Desserts, Pizza, Mexican, BBQ, Fast Food               4.5 Atlanta
+                       Asian Bistro            27                             Tea, Bakery, Seafood               3.8 Atlanta
+                         Chef Style            59               Pizza, American, Desserts, Seafood               3.8 Atlanta
+                      Pizza Central            75    Cafe, Bakery, BBQ, Fast Food, Chinese, Indian               4.1 Atlanta
+                   Daawat-e-Kashmir            19                   Cafe, Pizza, American, Seafood               4.2 Atlanta
+                Shri Ram Restaurant            55                  Tea, Mexican, Indian, Fast Food               3.1 Atlanta
+                    Sizzler's Ranch            36                       Tea, Cafe, Indian, Italian               3.8 Atlanta
+                Bengali Sweet House            39                   Desserts, American, BBQ, Pizza               3.6 Atlanta
+    Chaina Ram Sindhi Confectioners            34     Desserts, Pizza, BBQ, Mediterranean, Seafood               4.2 Atlanta
+                       Jagram Dhaba            69                           Cafe, Mexican, Seafood               0.0 Atlanta
+            Caboose X Cafe & Lounge            23      Bakery, Fast Food, Chinese, Indian, Seafood               3.2 Atlanta
+                        Bunty Dhaba            99                  Seafood, BBQ, Desserts, Italian               2.8 Atlanta
+                      Chawla Snacks            48                                       Tea, Pizza               2.9 Atlanta
+                 Beliram Degchiwala            14                                      Cafe, Pizza               3.5 Atlanta
+                        Radhe Shyam            32                                 Pizza, Fast Food               2.8 Atlanta
+                           The Krib            45                            Seafood, BBQ, Italian               3.2 Atlanta
+                    Taste of Vishal            13 Desserts, Tea, American, Bakery, Indian, Seafood               2.9 Atlanta
+            Deepika Khaitan's Cakes            41                  Tea, Mexican, Bakery, Fast Food               2.9 Atlanta
+                             Barkat            78          Bakery, Indian, Mediterranean, Desserts               3.4 Atlanta
+      Sethi's Restaurant & Barbeque            19   Pizza, American, Bakery, Cafe, Indian, Seafood               3.7 Atlanta
+      The Chinese & Thai Restaurant            57        Desserts, Tea, Italian, Bakery, Fast Food               0.0 Atlanta
+        Anand Ji de Choley Bhatoore            83                  Fast Food, Cafe, Pizza, Italian               2.7 Atlanta
+                        Shri Rudram            35                     Tea, Chinese, Cafe, Desserts               3.1 Atlanta
+Arriba - Mexican Grill & Tequileria            99                                   Tea, Fast Food               4.1 Atlanta
+                             Bimbos            13          Pizza, Italian, BBQ, Fast Food, Seafood               3.1 Atlanta
+          Sahib Jhatka Chicken Shop            26                 Bakery, Mexican, Indian, Seafood               0.0 Atlanta
+                  Punjab Restaurant            30   Desserts, BBQ, Chinese, Mediterranean, Seafood               3.2 Atlanta
+                         Chai Thela            82                 French, BBQ, Desserts, Fast Food               0.0 Atlanta
+                    Sam and Scrooge            95               Pizza, BBQ, Mediterranean, Italian               3.9 Atlanta
+                    Hungry Minister            97                             Bakery, BBQ, Italian               3.5 Atlanta
+                          China Hot            13                                   Tea, Cafe, BBQ               2.9 Atlanta
+                     Chocadoodledoo            24                     BBQ, Pizza, Indian, Desserts               0.0 Atlanta
+                   Shaivi's Kitchen            77                           French, Pizza, Seafood               0.0 Atlanta
+                    Saut愆ed Stories            36       Desserts, Tea, Fast Food, Chinese, Seafood               4.2 Atlanta
+                             Nawaab            24               Desserts, Tea, Pizza, French, Cafe               3.9 Atlanta
+                       El Pistolero            90                       Pizza, American, Fast Food               4.3 Atlanta
+
+### Accommodations in Atlanta
+                                             NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number    city
+                       Fantastic Room in Bushwick 1069.0    Private room                        No children under 10             2.0                  2                 3.0 Atlanta
+                 FABULOUS SUNNY BEDROOM IN HARLEM  587.0    Private room                                  No parties            20.0                  2                 3.0 Atlanta
+   Bright, Modern, Clean, Spacious, Brooklyn Home 1034.0 Entire home/apt                        No children under 10             3.0                  4                 5.0 Atlanta
+              Sunny, Friendly, Brooklyn Apartment  874.0    Private room                                     No pets             1.0                  2                 4.0 Atlanta
+      Stunning ! All new near U.N. & Central Park  675.0 Entire home/apt                                     No pets            30.0                  3                 4.0 Atlanta
+               1bd in a sunny 2 bd Ft. Greene Apt 1056.0    Private room                       No visitors & No pets             1.0                  1                 4.0 Atlanta
+                    Charming Carroll Gardens 2 BR  576.0 Entire home/apt                                  No parties             1.0                  4                 2.0 Atlanta
+                             Unique 2BR Apartment  394.0 Entire home/apt No parties & No pets & No children under 10             2.0                  3                 3.0 Atlanta
+  Bright central designer's apt - steps to train! 1019.0 Entire home/apt                    No visitors & No smoking             5.0                 10                 5.0 Atlanta
+                        THE WHITE HOUSE BEDROOM 1  654.0    Private room                        No parties & No pets             3.0                  2                 5.0 Atlanta
+Spacious private room close St. Barnabas Hospital  144.0    Private room                                  No smoking             2.0                  1                 4.0 Atlanta
+
+### Attractions in Decatur
+                          Name  Latitude  Longitude                                          Address          Phone                                                Website    City
+  DeKalb History Center Museum 33.775165 -84.296499       101 E Court Square, Decatur, GA 30030, USA (404) 373-1088                          http://www.dekalbhistory.org/ Decatur
+                      Toy Park 33.776129 -84.304726      133 Nelson Ferry Rd, Decatur, GA 30030, USA        Unknown           http://www.decaturdisciples.org/?page_id=340 Decatur
+                Decatur Square 33.774708 -84.296120       509 N McDonough St, Decatur, GA 30030, USA (404) 370-4100                              http://www.decaturga.com/ Decatur
+                 Glenlake Park 33.783812 -84.292979           1121 Church St, Decatur, GA 30030, USA (404) 377-7231  https://www.decaturga.com/parksrec/page/glenlake-park Decatur
+Clyde Shepherd Nature Preserve 33.806827 -84.283049       2580 Pine Bluff Dr, Decatur, GA 30033, USA (678) 466-0572                      http://www.cshepherdpreserve.org/ Decatur
+               What Sonia Said 33.774828 -84.296312 Recreation Center Access, Decatur, GA 30030, USA        Unknown                                                Unknown Decatur
+           Waffle House Museum 33.774555 -84.278450       2719 E College Ave, Decatur, GA 30030, USA (770) 326-7086                    https://www.wafflehouse.com/museum/ Decatur
+                    McKoy Park 33.757584 -84.298906            1000 Adams St, Decatur, GA 30030, USA (404) 377-7231                                                Unknown Decatur
+               Mason Mill Park 33.807209 -84.306290   1406-1458 McConnell Dr, Decatur, GA 30033, USA (404) 371-2000   https://www.dekalbcountyga.gov/parks/mason-mill-park Decatur
+              Woodlands Garden 33.786119 -84.303699           932 Scott Blvd, Decatur, GA 30030, USA (404) 373-2222                        http://www.woodlandsgarden.org/ Decatur
+                 Oakhurst Park 33.760628 -84.306850             307 Feld Ave, Decatur, GA 30030, USA (404) 377-0494                                                Unknown Decatur
+                   Legacy Park 33.766874 -84.281010        500 S Columbia Dr, Decatur, GA 30030, USA        Unknown                         https://decaturlegacypark.com/ Decatur
+                Lanier Gardens 33.774503 -84.279249       2699 E College Ave, Decatur, GA 30030, USA        Unknown                  https://www.dekalbcountyga.gov/parks/ Decatur
+   Glenn Creek Nature Preserve 33.781456 -84.285648          104 Fairview St, Decatur, GA 30030, USA (404) 378-7939               http://www.glenncreeknaturepreserve.org/ Decatur
+                    Scott Park 33.773031 -84.293461          231 Sycamore St, Decatur, GA 30030, USA (404) 377-0494                                                Unknown Decatur
+             Oakhurst Dog Park 33.760000 -84.309722         414 East Lake Dr, Decatur, GA 30030, USA        Unknown                           https://oakhurstdogpark.com/ Decatur
+            Shoal Creek Park I 33.738484 -84.270179         3642 Glenwood Rd, Decatur, GA 30032, USA (404) 371-2000 https://www.dekalbcountyga.gov/parks/mission-statement Decatur
+                  Medlock Park 33.803471 -84.294950        874 Gaylemont Cir, Decatur, GA 30033, USA (404) 371-2000           https://www.dekalbcountyga.gov/parks/decatur Decatur
+                 Dearborn Park 33.756157 -84.287298         1310 Deerwood Dr, Decatur, GA 30030, USA (678) 435-9991                           http://www.dearbornpark.org/ Decatur
+              Hidden Cove Park 33.783873 -84.309698                           Decatur, GA 30030, USA        Unknown                                                Unknown Decatur
+
+### Restaurants in Decatur
+                                                  Name  Average Cost                                         Cuisines  Aggregate Rating    City
+Madhuban Restaurant - Welcome Hotel Rama International            47                           Pizza, Bakery, Seafood               3.4 Decatur
+                                          Tandoori Hut            82               Pizza, American, Indian, Fast Food               0.0 Decatur
+                                        Viva Hyderabad            12        Desserts, Tea, Italian, Fast Food, Indian               2.3 Decatur
+                                       Cafe Coffee Day            46                    Tea, Cafe, BBQ, Mediterranean               3.1 Decatur
+                                          Joey's Pizza            69             Tea, Pizza, Bakery, Chinese, Seafood               4.0 Decatur
+                                        Dawat-E-Chaman            42     Chinese, BBQ, Fast Food, Cafe, Mediterranean               3.4 Decatur
+                                           Hwealthcafe            44               Pizza, Bakery, Desserts, Fast Food               4.1 Decatur
+                                          Red Chillies            13                 Desserts, Tea, BBQ, Cafe, Indian               3.3 Decatur
+                                         Carnatic Cafe            66                           Cafe, Indian, Desserts               4.4 Decatur
+                                Amul Ice-Cream Parlour            21                       Tea, Cafe, Pizza, Desserts               0.0 Decatur
+                                                Subway            40       Desserts, BBQ, Bakery, Fast Food, American               3.1 Decatur
+                               Bikaner Namkeen Bhandar            83                Fast Food, BBQ, Desserts, Italian               3.1 Decatur
+                                      De Royale Food's            95                           Cafe, Bakery, American               3.2 Decatur
+                                               Chokola            31            Desserts, Tea, Mexican, Cafe, Seafood               3.8 Decatur
+                                                Chawla            45                      Bakery, American, Fast Food               2.7 Decatur
+                                               Karim's            89                              Cafe, BBQ, Desserts               3.8 Decatur
+                                Pasta Pizza & Roll Hut            93            Desserts, Pizza, French, BBQ, Chinese               0.0 Decatur
+                                             Sardar Ji            64                      Bakery, Desserts, Fast Food               3.0 Decatur
+                                         Cafe Einstein            82                           Tea, Cafe, Bakery, BBQ               0.0 Decatur
+                                          Shake Eat Up            22 Pizza, Mexican, BBQ, Fast Food, Chinese, Seafood               3.9 Decatur
+                                    Quality Restaurant            98                  Pizza, Mediterranean, Fast Food               0.0 Decatur
+                                      Cafe Blue Tomato            36        Tea, Italian, Fast Food, Chinese, Seafood               3.2 Decatur
+                                   Anjlika Pastry Shop            10                        Tea, French, BBQ, Seafood               3.9 Decatur
+                                         Mughlai Point            23                              Tea, BBQ, Fast Food               0.0 Decatur
+                                  The Oudh - The Ashok            45                                     BBQ, Seafood               3.6 Decatur
+                          Le Cirque - The Leela Palace            30                Fast Food, Bakery, Pizza, Seafood               3.8 Decatur
+                                         Doosri Mehfil            36            Tea, Bakery, BBQ, Cafe, Mediterranean               3.8 Decatur
+                  Alam Muradabadi & Hyderabadi Biryani            41          Pizza, American, Mediterranean, Seafood               0.0 Decatur
+                                      Yamu's Panchayat            27            Cafe, BBQ, Chinese, American, Seafood               3.2 Decatur
+                                             RollsKing            53                       French, Seafood, Fast Food               3.4 Decatur
+                              Chinese Fast Food Corner            24                             Cafe, BBQ, Fast Food               0.0 Decatur
+                                           Thaal Vaadi            48                          Pizza, Bakery, Desserts               3.5 Decatur
+                                      Auroville Bakery            89                   Tea, Cafe, Desserts, Fast Food               3.8 Decatur
+                                             Starbucks            70                              Tea, Chinese, Pizza               4.9 Decatur
+
+### Accommodations in Decatur
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+                                 Cozy Private Room   69.0    Private room No children under 10 & No parties & No visitors             2.0                  2                 4.0 Decatur
+                 The Heart of the Lower East Side!  587.0 Entire home/apt                            No children under 10             2.0                  2                 4.0 Decatur
+TRAIN NEAR, 10JFK, 30LGA CuteBedr in3Bed,Manhattan  143.0    Private room              No children under 10 & No visitors             1.0                  2                 1.0 Decatur
+                    1 BR in Great NYC Neighborhood  582.0 Entire home/apt                                      No smoking             2.0                  4                 4.0 Decatur
+           Sublet - Queen size bedroom in Bushwick 1010.0    Private room                                     No visitors             5.0                  1                 3.0 Decatur
+  Cozy Garden Oasis Brooklyn Private 1 Bedroom Apt  499.0 Entire home/apt                                     No visitors             2.0                  2                 5.0 Decatur
+               Hamilton Hts Beauty, Manhattan 1 BR  486.0 Entire home/apt                                      No smoking             1.0                  4                 3.0 Decatur
+                             Mott Haven Dorm-Bed H  477.0     Shared room No visitors & No parties & No children under 10             1.0                  1                 2.0 Decatur
+                  Cheap & Comfy Huge Private Room!  371.0    Private room                            No pets & No smoking             4.0                  1                 5.0 Decatur
+        Entire floor private 1 bedroom in Bushwick 1114.0    Private room                            No children under 10             3.0                  1                 4.0 Decatur
+   Private bathroom bedroom near JFK  30min to NYC 1095.0    Private room                                      No smoking             3.0                  2                 3.0 Decatur
+                 luxury apartment near wall street 1155.0 Entire home/apt                                         No pets            15.0                  9                 3.0 Decatur
+                                      TIGER’S REST  375.0 Entire home/apt                                         No pets             2.0                  3                 5.0 Decatur
+                       Zen Apartment With Backyard  394.0 Entire home/apt                            No children under 10             1.0                  3                 4.0 Decatur
+                Private room with lots of surprise 1104.0    Private room                  No pets & No children under 10             2.0                  2                 5.0 Decatur
+ Cozy Apt steps to Park, Subway, Restaurants, Bars  623.0 Entire home/apt No children under 10 & No parties & No visitors             2.0                  2                 1.0 Decatur
+
+### Attractions in Augusta
+                                        Name  Latitude  Longitude                                              Address          Phone                                                                                                                 Website    City
+                   Phinizy Swamp Nature Park 33.384622 -81.967511         1858 Lock and Dam Rd, Augusta, GA 30906, USA (706) 828-2109                                                                                               http://phinizycenter.org/ Augusta
+                           Augusta Riverwalk 33.479696 -81.967908                      10th St, Augusta, GA 30901, USA (706) 821-1754                                                                                  http://www.augustaga.gov/292/Riverwalk Augusta
+                   Augusta Museum of History 33.474766 -81.960556              560 Reynolds St, Augusta, GA 30901, USA (706) 722-8454                                                                                           http://www.augustamuseum.org/ Augusta
+                        Morris Museum of Art 33.479416 -81.968519          1 10th St 2nd Floor, Augusta, GA 30901, USA (706) 724-7501                                                                                               http://www.themorris.org/ Augusta
+                     Lucy Craft Laney Museum 33.467115 -81.981248             1116 Phillips St, Augusta, GA 30901, USA (706) 724-3576                                                                                        http://lucycraftlaneymuseum.com/ Augusta
+                               Meadow Garden 33.473798 -81.979591         1320 Independence Dr, Augusta, GA 30901, USA (706) 724-4174                                                                                       https://historicmeadowgarden.org/ Augusta
+                         Pendleton King Park 33.458871 -82.012639               1600 Troupe St, Augusta, GA 30904, USA (706) 564-7462                                                                             http://www.augustaga.gov/index.aspx?NID=261 Augusta
+        Augusta Canal National Heritage Area 33.477885 -81.982388          1450 Greene St #400, Augusta, GA 30901, USA (706) 823-0440                                                                                            http://www.augustacanal.com/ Augusta
+The Boyhood Home of President Woodrow Wilson 33.471699 -81.965012                   419 7th St, Augusta, GA 30901, USA (706) 722-9828                                                                                       http://www.wilsonboyhoodhome.org/ Augusta
+                               Aqueduct Park 33.496507 -81.996947             Augusta Levee Rd, Augusta, GA 30904, USA        Unknown                                                                                                                 Unknown Augusta
+                     Augusta Sculpture Trail 33.475716 -81.966112                      15th St, Augusta, GA 30901, USA        Unknown                                                                                      https://augustasculpturetrail.com/ Augusta
+              Augusta Canal Discovery Center 33.478099 -81.982539                     Blome Ln, Augusta, GA 30901, USA (706) 823-0440                                                                     https://augustacanal.com/about-discovery-center.php Augusta
+               Pexcho's American Dime Museum 33.473231 -81.961707                   216 6th St, Augusta, GA 30901, USA (225) 448-1453                                                                                  http://facebook.com/americandimemuseum Augusta
+                         Living History Park 33.495967 -81.973957 299 W Spring Grove Ave, North Augusta, SC 29841, USA (803) 979-9776                                                                                            http://www.colonialtimes.us/ Augusta
+                Sacred Heart Cultural Center 33.477386 -81.976442               1301 Greene St, Augusta, GA 30901, USA (706) 826-4700                                                                                      http://www.sacredheartaugusta.org/ Augusta
+                             Brick Pond Park 33.485949 -81.972583         88 Georgia Ave, North Augusta, SC 29841, USA (803) 441-4300 https://www.northaugusta.net/government/city-departments/engineering-public-works/stormwater-management/brick-pond-park Augusta
+       Imagination Station Children's Museum 33.473566 -82.010987               965 Hickman Rd, Augusta, GA 30904, USA (706) 250-1377                                                                                              http://imagineaugusta.org/ Augusta
+                            Heroes' Overlook 33.471236 -81.961744                530 Greene St, Augusta, GA 30901, USA (706) 821-2422                                                                                                   http://augustaga.gov/ Augusta
+          New Savannah Bluff Lock & Dam Park 33.373646 -81.945980         2105 Lock and Dam Rd, Augusta, GA 30906, USA (706) 793-9403                                                         https://www.augustaga.gov/1079/New-Savannah-Bluff-Lock-Dam-Park Augusta
+                  Hunter’s Fountain of Youth 33.477730 -82.022734              2500 Walton Way, Augusta, GA 30904, USA        Unknown                                                                                                                 Unknown Augusta
+
+### Restaurants in Augusta
+                        Name  Average Cost                                                   Cuisines  Aggregate Rating    City
+                 B Merrell's            74                            Tea, Pizza, Desserts, Fast Food               3.8 Augusta
+            Vinny Vanucchi's            45              Desserts, Fast Food, Chinese, Indian, Seafood               3.4 Augusta
+  Fish Tales Lakeside Grille            37                                Tea, Cafe, Bakery, Desserts               3.8 Augusta
+        The Charcoal Chimney            86                               Tea, Fast Food, BBQ, Italian               3.4 Augusta
+           Nikhil Food Point            87                 Tea, Mexican, Fast Food, American, Seafood               2.7 Augusta
+       KB's Kulfi & Icecream            92                                     American, BBQ, Seafood               3.3 Augusta
+                Karari Kurry            29                            Bakery, Indian, Cafe, Fast Food               3.4 Augusta
+           The Golden Dragon            82 Desserts, Pizza, Fast Food, Indian, Mediterranean, Seafood               2.6 Augusta
+           Bikaner Kesarvala            77                                     Pizza, Bakery, Italian               0.0 Augusta
+Bishan Swaroop Chaat Bhandar            19                                         Tea, Bakery, Pizza               3.7 Augusta
+                  Haldiram's            41                                  Cafe, Desserts, Fast Food               3.9 Augusta
+      The Flying Saucer Cafe            19                         Desserts, Pizza, BBQ, Cafe, Indian               3.9 Augusta
+                Kallu Nihari            57                                  Tea, Pizza, Mediterranean               3.0 Augusta
+                     Nando's            28                             Tea, Pizza, BBQ, Mediterranean               0.0 Augusta
+               Andhra Bhavan            47                                 Mexican, Desserts, Seafood               4.2 Augusta
+                       Spicy            79                                      Cafe, Pizza, Desserts               2.9 Augusta
+          Unique Pastry Shop            97                                Chinese, Seafood, Fast Food               3.4 Augusta
+               Office Office            16                 Desserts, Cafe, Bakery, Fast Food, Chinese               3.9 Augusta
+              2 Nice 2 Slice            86                                     Seafood, Cafe, Italian               3.2 Augusta
+                 Just Kababs            31                         Tea, Pizza, BBQ, American, Seafood               3.4 Augusta
+             Behrouz Biryani            40                                  Mexican, Bakery, Desserts               3.6 Augusta
+         Ananda Food Express            13                                   Fast Food, Cafe, Seafood               3.2 Augusta
+              Midnight Fries            50                                        Mexican, BBQ, Pizza               2.7 Augusta
+          The Tandoori Night            30                           Tea, Italian, BBQ, Cafe, Seafood               2.8 Augusta
+                  Senorita's            50                  Italian, Mexican, BBQ, Fast Food, Seafood               3.7 Augusta
+    Vaishnav Chat & Caterers            81                          French, Bakery, BBQ, Cafe, Indian               3.3 Augusta
+             Arabian Delites            15                            Mexican, BBQ, Desserts, Italian               3.6 Augusta
+     Mama's Nu Khana Khazana            25                                          Cafe, Indian, BBQ               2.6 Augusta
+                Garam Dharam            44                              Tea, Pizza, French, BBQ, Cafe               3.7 Augusta
+                  Bamboo Hut            80                      Mexican, BBQ, Mediterranean, Desserts               3.4 Augusta
+             Sushiya Express            75                                     Tea, Mexican, Desserts               3.7 Augusta
+         Republic of Chicken            46              Desserts, Mexican, Bakery, Fast Food, Seafood               2.9 Augusta
+                     Waikiki            85                                       Tea, Pizza, Desserts               0.0 Augusta
+               The Beer Cafe            41                 Tea, French, Mexican, BBQ, Bakery, Seafood               0.0 Augusta
+
+### Accommodations in Augusta
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+    Perfect Chanukah apartment for the whole crew!  451.0 Entire home/apt                                         No pets            11.0                  3                 3.0 Augusta
+                                Planta Baja Studio  637.0 Entire home/apt                                      No smoking             1.0                  4                 5.0 Augusta
+                 Large, 2fl/2bdrm Williamsburg Apt  445.0 Entire home/apt                                     No visitors             3.0                  2                 1.0 Augusta
+           Bright and cozy bedroom in Williamsburg  499.0    Private room                                         No pets             1.0                  2                 2.0 Augusta
+ Private room in super location in lower Manhattan  621.0    Private room                  No children under 10 & No pets            14.0                  2                 5.0 Augusta
+     Elegant/Classy Artist Loft, 2 Priv bdms/CLEAN  944.0 Entire home/apt     No pets & No children under 10 & No smoking            21.0                  7                 1.0 Augusta
+                     NoLIta / Soho 1 bedroom oasis 1136.0 Entire home/apt               No children under 10 & No parties             3.0                  5                 5.0 Augusta
+   Very close to Manhattan! Muy cerca de Manhattan  256.0    Private room              No children under 10 & No visitors             2.0                  2                 5.0 Augusta
+3 Beds, Uptown , one block train A ,15 min Wall St  588.0 Entire home/apt                                      No parties            30.0                  4                 4.0 Augusta
+    Cute one bedroom apt. in Greenpoint, Brooklyn.  750.0    Private room No smoking & No children under 10 & No visitors             3.0                  1                 1.0 Augusta
+             Big and Bright Apartment with Balcony 1029.0 Entire home/apt                            No children under 10             7.0                  7                 4.0 Augusta
+                   **Cozy Space - Private Access**  954.0    Private room                                         No pets             2.0                  2                 4.0 Augusta
+                             Comfortable and Cozy! 1143.0    Private room                            No smoking & No pets             1.0                  1                 2.0 Augusta
+
+### Flight from Fort Lauderdale to Atlanta on 2022-03-24
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate  OriginCityName DestCityName  Distance
+     F3490987    278   14:31   16:17 1 hours 46 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3491270    216   06:30   08:09 1 hours 39 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3494599    143   12:55   15:18 2 hours 23 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3496265    248   07:58   09:52 1 hours 54 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3510231    125   05:24   06:56 1 hours 32 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3516088    238   15:32   17:12 1 hours 40 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3516884    249   19:13   20:57 1 hours 44 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3543994    136   09:35   11:15 1 hours 40 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3544587    191   20:29   22:12 1 hours 43 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3544729    173   14:00   16:02  2 hours 2 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3552379    138   18:37   20:23 1 hours 46 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3554580    238   10:31   12:17 1 hours 46 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3567723    178   10:50   12:42 1 hours 52 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3611934    140   09:01   10:36 1 hours 35 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3613649    167   00:31   02:22 1 hours 51 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3619585    254   19:23   21:31  2 hours 8 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3627731    250   06:16   07:58 1 hours 42 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F3762980    157   20:43   22:28 1 hours 45 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F4009555    275   05:25   07:02 1 hours 37 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F4009556    222   20:25   22:00 1 hours 35 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+     F4009557    233   14:52   16:41 1 hours 49 minutes 2022-03-24 Fort Lauderdale      Atlanta     581.0
+
+### Self-driving from Fort Lauderdale to Atlanta
+self-driving, from Fort Lauderdale to Atlanta, duration: 9 hours 5 mins, distance: 1,031 km, cost: 51
+
+### Taxi from Fort Lauderdale to Atlanta
+taxi, from Fort Lauderdale to Atlanta, duration: 9 hours 5 mins, distance: 1,031 km, cost: 1031
+
+### Flight from Atlanta to Decatur on 2022-03-26
+There is no flight from Atlanta to Decatur on 2022-03-26.
+
+### Self-driving from Atlanta to Decatur
+self-driving, from Atlanta to Decatur, duration: 18 mins, distance: 10.0 km, cost: 0
+
+### Taxi from Atlanta to Decatur
+taxi, from Atlanta to Decatur, duration: 18 mins, distance: 10.0 km, cost: 10
+
+### Flight from Decatur to Augusta on 2022-03-28
+There is no flight from Decatur to Augusta on 2022-03-28.
+
+### Self-driving from Decatur to Augusta
+self-driving, from Decatur to Augusta, duration: 2 hours 17 mins, distance: 228 km, cost: 11
+
+### Taxi from Decatur to Augusta
+taxi, from Decatur to Augusta, duration: 2 hours 17 mins, distance: 228 km, cost: 228
+
+### Flight from Augusta to Fort Lauderdale on 2022-03-30
+There is no flight from Augusta to Fort Lauderdale on 2022-03-30.
+
+### Self-driving from Augusta to Fort Lauderdale
+self-driving, from Augusta to Fort Lauderdale, duration: 8 hours 41 mins, distance: 938 km, cost: 46
+
+### Taxi from Augusta to Fort Lauderdale
+taxi, from Augusta to Fort Lauderdale, duration: 8 hours 41 mins, distance: 938 km, cost: 938
+
+JSON plan:

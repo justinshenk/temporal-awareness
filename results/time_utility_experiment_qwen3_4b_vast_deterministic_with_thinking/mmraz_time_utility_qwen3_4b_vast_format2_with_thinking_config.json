@@ -1,0 +1,42 @@
+{
+  "model_name": "Qwen/Qwen3-4B",
+  "use_chat_template": true,
+  "enable_thinking": true,
+  "disable_thinking_trace": false,
+  "thinking_mode_tag": "with_thinking",
+  "device": "cuda:0",
+  "prompt_format": "question_options_answer",
+  "prompt_template": "What would you prefer?\nOptions:\n  {x}$ now\n  {y}$ in {t}\n  Answer:\n",
+  "x_now": 100,
+  "y_values": [
+    100,
+    101,
+    110,
+    150,
+    200,
+    500,
+    1000,
+    10000
+  ],
+  "t_values": [
+    "tomorrow",
+    "week",
+    "month",
+    "year",
+    "2 years",
+    "3 years",
+    "5 years",
+    "10 years"
+  ],
+  "n_repeats": 1,
+  "generation_kwargs": {
+    "max_new_tokens": 2048,
+    "do_sample": false,
+    "pad_token_id": 151645,
+    "eos_token_id": 151645
+  },
+  "response_field_raw": "response",
+  "response_field_for_parse": "response_for_parse",
+  "choose_x_heatmap_path": "/workspace/results/time_utility_experiment_qwen3_4b_vast_deterministic_with_thinking/mmraz_time_utility_qwen3_4b_vast_format2_with_thinking_choose_x_now_heatmap.png",
+  "unparsed_heatmap_path": "/workspace/results/time_utility_experiment_qwen3_4b_vast_deterministic_with_thinking/mmraz_time_utility_qwen3_4b_vast_format2_with_thinking_unparsed_rate_heatmap.png"
+}

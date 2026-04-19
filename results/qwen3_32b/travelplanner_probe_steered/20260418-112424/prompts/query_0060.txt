@@ -1,0 +1,293 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you assist in planning a 7-day trip for one person starting from Billings and visiting 3 cities in Texas between March 25th and March 31st, 2022? The budget for this trip is set at $8,500.
+
+Reference information:
+### Attractions in Dallas
+                                     Name  Latitude  Longitude                                         Address          Phone                                                                                           Website   City
+                The Dallas World Aquarium 32.783474 -96.805358        1801 N Griffin St, Dallas, TX 75202, USA (214) 720-2224                                                                           https://www.dwazoo.com/ Dallas
+   The Sixth Floor Museum at Dealey Plaza 32.779819 -96.808484               411 Elm St, Dallas, TX 75202, USA (214) 747-6660                                                                              https://www.jfk.org/ Dallas
+                            Reunion Tower 32.775506 -96.808857       300 Reunion Blvd E, Dallas, TX 75207, USA (214) 296-9950                                                                      http://www.reuniontower.com/ Dallas
+                     Dallas Museum of Art 32.787696 -96.801044        1717 N Harwood St, Dallas, TX 75201, USA (214) 922-1200                                                                              https://www.dma.org/ Dallas
+The Dallas Arboretum and Botanical Garden 32.823618 -96.716624          8525 Garland Rd, Dallas, TX 75218, USA (214) 515-6615                                                                  https://www.dallasarboretum.org/ Dallas
+                               Dallas Zoo 32.740970 -96.815320  650 S R.L. Thornton Fwy, Dallas, TX 75203, USA (469) 554-7501                                                                        https://www.dallaszoo.com/ Dallas
+                        Klyde Warren Park 32.789364 -96.801618 2012 Woodall Rodgers Fwy, Dallas, TX 75201, USA (214) 716-4500                                                                       http://klydewarrenpark.org/ Dallas
+                            Old City Park 32.772753 -96.786544        1515 S Harwood St, Dallas, TX 75215, USA (214) 421-5141                                                                 http://www.oldcityparkdallas.org/ Dallas
+       Perot Museum of Nature and Science 32.786943 -96.806584          2201 N Field St, Dallas, TX 75201, USA (214) 428-5555                                                                      https://www.perotmuseum.org/ Dallas
+                            Pioneer Plaza 32.776632 -96.801199            1428 Young St, Dallas, TX 75202, USA        Unknown                          http://www.dallasparks.org/Facilities/Facility/Details/Pioneer-Plaza-624 Dallas
+                  Nasher Sculpture Center 32.788182 -96.800157            2001 Flora St, Dallas, TX 75201, USA (214) 242-5100                                                             http://www.nashersculpturecenter.org/ Dallas
+                            Giant Eyeball 32.781406 -96.798312             1601 Main St, Dallas, TX 75201, USA        Unknown https://artandseek.org/2021/03/18/why-is-there-a-giant-eyeball-in-downtown-dallas-we-take-a-look/ Dallas
+           John F. Kennedy Memorial Plaza 32.778725 -96.806451              646 Main St, Dallas, TX 75202, USA (214) 747-6660                                                https://www.jfk.org/john-f-kennedy-memorial-plaza/ Dallas
+                             Dealey Plaza 32.778818 -96.808299                           Dallas, TX 75202, USA (214) 670-4100                           http://www.dallasparks.org/Facilities/Facility/Details/Dealey-Plaza-462 Dallas
+        African American Museum of Dallas 32.779057 -96.764414           3536 Grand Ave, Dallas, TX 75210, USA (214) 565-9026                                                                         http://www.aamdallas.org/ Dallas
+               Frontiers of Flight Museum 32.842602 -96.835202          6911 Lemmon Ave, Dallas, TX 75209, USA (214) 350-3600                                                                      http://www.flightmuseum.com/ Dallas
+                     White Rock Lake Park 32.836514 -96.721612        8300 E Lawther Dr, Dallas, TX 75218, USA (214) 660-1100                                                                     http://www.whiterocklake.org/ Dallas
+             Leonhardt Lagoon Nature Walk 32.777830 -96.761946             1121 1st Ave, Dallas, TX 75210, USA (214) 426-3400                                  https://eventseeker.com/venue/1132302-leonhardt-lagoon-dallas-tx Dallas
+       George W. Bush Presidential Center 32.841183 -96.778198       2943 SMU Boulevard, Dallas, TX 75205, USA (214) 200-4300                                                                        http://www.bushcenter.org/ Dallas
+            Trinity Forest Adventure Park 32.689810 -96.675766      1800 Dowdy Ferry Rd, Dallas, TX 75217, USA (214) 391-1000                                                                       http://trinitytreetops.com/ Dallas
+
+### Restaurants in Dallas
+                       Name  Average Cost                                               Cuisines  Aggregate Rating   City
+         Coconuts Fish Cafe            38                    Cafe, BBQ, Mediterranean, Fast Food               4.5 Dallas
+        1918 Bistro & Grill            90                               Tea, Pizza, BBQ, Seafood               4.4 Dallas
+             Yanki Sizzlers            96                       Cafe, French, Tea, Mediterranean               4.1 Dallas
+               Aravali Owls            53                Pizza, Italian, Bakery, Fast Food, Cafe               0.0 Dallas
+               Kebab Xpress            93                      Tea, Bakery, Pizza, Mediterranean               2.7 Dallas
+                 Haldiram's            94                                             Tea, Pizza               3.6 Dallas
+                  Delhicacy            67            Desserts, Mexican, Bakery, Chinese, Seafood               3.8 Dallas
+                    L'Opera            77                French, Bakery, BBQ, Fast Food, Seafood               3.8 Dallas
+            Cafe Gatherings            17                               Bakery, Indian, Desserts               4.4 Dallas
+              Drifters Cafe            21                    Tea, French, Mexican, Cafe, Seafood               3.9 Dallas
+           Uma Foodies' Hut            49                                French, Bakery, Seafood               3.1 Dallas
+Belfrance Luxury Chocolates            96             Desserts, Pizza, Fast Food, Cafe, American               4.4 Dallas
+                Puri Bakers            33        Pizza, Mexican, Bakery, Fast Food, Cafe, Indian               3.7 Dallas
+             Bikaner Sweets            23                     Tea, French, Bakery, Cafe, Seafood               3.3 Dallas
+            Metro Fast Food            45             Tea, Pizza, Mexican, Bakery, BBQ, American               2.7 Dallas
+                    Wheelyz            60        Tea, Pizza, Bakery, BBQ, Chinese, Mediterranean               2.5 Dallas
+              R. Ahmad Food            58 Desserts, Bakery, BBQ, Chinese, Mediterranean, Seafood               3.0 Dallas
+                   Castle 9            32        Mexican, Bakery, BBQ, Fast Food, Cafe, American               3.1 Dallas
+               Cafe Hawkers            72                                    Bakery, Indian, BBQ               3.7 Dallas
+              Firefly India            87                        Cafe, Bakery, American, Italian               3.4 Dallas
+            Zaaika Junction            48                                      Desserts, Seafood               2.6 Dallas
+                  Papa Buns            75                       French, Pizza, Indian, Fast Food               0.0 Dallas
+                TiffinToons            99            Seafood, Mediterranean, Desserts, Fast Food               0.0 Dallas
+               Mamma Drools            45           BBQ, Fast Food, Cafe, Mediterranean, Seafood               0.0 Dallas
+                 McDonald's            56                                          Cafe, Seafood               3.5 Dallas
+            Cafe Coffee Day            76                           Fast Food, Desserts, Italian               2.9 Dallas
+                   Hardwari            28               Desserts, Tea, Pizza, Mexican, Fast Food               0.0 Dallas
+               Baker's Stop            69                Cafe, American, Mediterranean, Desserts               3.8 Dallas
+          Delhi Biryani Hut            90                               Pizza, American, Seafood               0.0 Dallas
+             Tikka Junction            86  Tea, Bakery, Fast Food, Cafe, American, Mediterranean               3.5 Dallas
+            Nutrition Theka            77                             Pizza, American, Fast Food               3.3 Dallas
+               Relax Xpress            53           Desserts, Pizza, Bakery, Cafe, Mediterranean               3.2 Dallas
+              Lodhi Knights            18                       Tea, Pizza, French, Bakery, Cafe               3.1 Dallas
+           Tandoori Khazana            61              Tea, Pizza, BBQ, Chinese, Indian, Seafood               0.0 Dallas
+                Madras Cafe            90                     Bakery, Pizza, American, Fast Food               0.0 Dallas
+                  Bake Club           100                       Cafe, Indian, Mediterranean, BBQ               3.1 Dallas
+                   Yo Tibet            96         Desserts, Pizza, BBQ, Chinese, Indian, Seafood               3.3 Dallas
+                 The Kahuna            23                          Bakery, Pizza, BBQ, Fast Food               3.1 Dallas
+            Cafe Hera Pheri            18                                         Cafe, Desserts               3.8 Dallas
+  Chanana Ice Cream Parlour            77                           Chinese, Pizza, BBQ, Italian               2.9 Dallas
+               Dilli Darbar            64                      Tea, Cafe, Mediterranean, Italian               3.3 Dallas
+     New Tayal's Restaurant            67                        Mexican, Bakery, BBQ, Fast Food               2.8 Dallas
+              Subs n Shakes            74                 French, Bakery, Mediterranean, Seafood               3.1 Dallas
+                 Soya Grill            84                            Cafe, Pizza, BBQ, Fast Food               3.0 Dallas
+             Bikaner Sweets            33                        Bakery, Pizza, Indian, Desserts               0.0 Dallas
+                     Scoops            76                       Tea, Chinese, Seafood, Fast Food               2.8 Dallas
+              Food N Shakes            23                  Desserts, Pizza, French, BBQ, Seafood               0.0 Dallas
+              Cake Knighter            95     Pizza, Fast Food, American, Mediterranean, Seafood               0.0 Dallas
+            Cafe Coffee Day            22                           Cafe, BBQ, Desserts, Seafood               3.0 Dallas
+            Sona Restaurant            47                            Tea, Cafe, Pizza, Fast Food               3.2 Dallas
+           Pirates of Grill            72                   Desserts, Italian, BBQ, Bakery, Cafe               3.9 Dallas
+    Aim Cafe And Restaurant            85                                       Tea, French, BBQ               3.3 Dallas
+             Wich 'N' Shake            31                  Tea, Mexican, Bakery, Fast Food, Cafe               0.0 Dallas
+      Kolkata Biryani House            11                     Tea, French, Cafe, Indian, Seafood               2.8 Dallas
+          Flames of Tandoor            57                      Tea, Chinese, Desserts, Fast Food               3.5 Dallas
+                 Shahenshah            92                       Fast Food, Seafood, BBQ, Italian               3.5 Dallas
+                   MS Foods            55                                   Cafe, Pizza, Italian               3.1 Dallas
+               Food Weavers            71             Tea, Bakery, BBQ, Fast Food, Mediterranean               0.0 Dallas
+             The Grill @ 76            51                                         BBQ, Fast Food               3.5 Dallas
+                      MONKS            24               Tea, Pizza, Cafe, Mediterranean, Seafood               4.2 Dallas
+        Salsa Mexican Grill            63                  Desserts, BBQ, Bakery, Cafe, American               4.3 Dallas
+                Dem Karak韄y            44                                       Pizza, Fast Food               4.5 Dallas
+
+### Accommodations in Dallas
+                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+                1BR, elevator, kitchen, doorman!  475.0 Entire home/apt                                      No parties             1.0                  3                 2.0 Dallas
+Luxury Williamsburg duplex, private roof terrace  241.0 Entire home/apt                                     No visitors             4.0                  3                 5.0 Dallas
+               Take it now you won't find better  609.0 Entire home/apt                                         No pets             1.0                  4                 2.0 Dallas
+              E. W'burg Private Room near subway  272.0    Private room                        No visitors & No smoking            15.0                  2                 2.0 Dallas
+  Cozy&Central:EmpireState/Highline/Times Square  628.0 Entire home/apt              No visitors & No pets & No smoking             3.0                  4                 3.0 Dallas
+                              *Fresh Budget Room  262.0    Private room                        No visitors & No smoking             2.0                  1                 4.0 Dallas
+                   Chic Union Square One Bedroom 1096.0 Entire home/apt                                     No visitors             3.0                  5                 5.0 Dallas
+    Bright and modern apartment in Williamsburg!  865.0 Entire home/apt                                      No smoking             6.0                  5                 4.0 Dallas
+              Jackson Heights 2 bedrooms housing  747.0 Entire home/apt  No parties & No children under 10 & No smoking             2.0                  2                 3.0 Dallas
+            Exclusive Modern Penthouse Apartment  483.0 Entire home/apt                           No pets & No visitors             1.0                  3                 3.0 Dallas
+  SUNNY, SAFE and FRIENDLY minutes to Manhattan!  559.0 Entire home/apt                                         No pets             2.0                  4                 2.0 Dallas
+                             Sunny Brooklyn room  227.0    Private room                                         No pets             7.0                  2                 3.0 Dallas
+                 Charming Suite in Historic Home  348.0 Entire home/apt               No parties & No children under 10             1.0                  3                 3.0 Dallas
+              2 Bedroom Apt in downtown Brooklyn 1180.0 Entire home/apt No visitors & No children under 10 & No parties             4.0                  5                 2.0 Dallas
+              Quite & Cozy High Raise Atmosphere  635.0    Private room                                      No smoking             1.0                  1                 5.0 Dallas
+                          Upper east side duplex  819.0 Entire home/apt                                         No pets             3.0                  7                 2.0 Dallas
+                Central Park west. Big Cozy Room  709.0    Private room                                         No pets             1.0                  2                 4.0 Dallas
+            Huge Private Room Near Prospect Park   73.0    Private room                            No parties & No pets             7.0                  2                 2.0 Dallas
+ Private room close to the center of Williamburg  231.0    Private room              No visitors & No children under 10             1.0                  1                 2.0 Dallas
+                         Spacious cozy apartment  314.0 Entire home/apt                            No children under 10             2.0                  3                 1.0 Dallas
+Charming Garden Apartment in Brooklyn Brownstone  434.0 Entire home/apt                                     No visitors             2.0                  2                 3.0 Dallas
+                                  Friendly hosts  806.0    Private room                                      No smoking             1.0                  2                 4.0 Dallas
+        Minutes from JFK airport and famous mall  711.0    Private room                        No visitors & No parties             2.0                  2                 3.0 Dallas
+
+### Attractions in Longview
+                                Name  Latitude  Longitude                                           Address          Phone                                                        Website     City
+           Longview World of Wonders 32.494791 -94.739556           112 E Tyler St, Longview, TX 75601, USA (903) 212-4969                                    http://www.longviewwow.org/ Longview
+      Gregg County Historical Museum 32.495308 -94.738288        214 N Fredonia St, Longview, TX 75601, USA (903) 753-5840                                    http://gregghistorical.org/ Longview
+        Longview Museum of Fine Arts 32.494674 -94.737978           215 E Tyler St, Longview, TX 75601, USA (903) 753-8103                                          https://www.lmfa.org/ Longview
+                 KidsView Playground 32.492054 -94.775115      100 H G Mosley Pkwy, Longview, TX 75604, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+                           Lear Park 32.491884 -94.777313      100 H G Mosley Pkwy, Longview, TX 75604, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+Longview Arboretum and Nature Center 32.496309 -94.757435          706 W Cotton St, Longview, TX 75604, USA (903) 212-2181                                  http://longviewarboretum.org/ Longview
+                         Teague Park 32.500976 -94.721450 415 American Legion Blvd, Longview, TX 75601, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+                        Stamper Park 32.488832 -94.749066              400 Fair St, Longview, TX 75601, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+  Lear Park - Jack M Mann Splash Pad 32.492598 -94.778171      100 H G Mosley Pkwy, Longview, TX 75604, USA (903) 237-1270                 https://www.longviewtexas.gov/3174/Splash-Pads Longview
+                         Rotary Park 32.510201 -94.743894            500 Baylor Dr, Longview, TX 75601, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+             Paul Boorman Trail Park 32.515092 -94.759535       919 W Marshall Ave, Longview, TX 75604, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+               Air U Trampoline Park 32.570952 -94.733641              4300 US-259, Longview, TX 75605, USA (903) 663-2478                                  http://www.airu-longview.com/ Longview
+                      McWhorter Park 32.521999 -94.789226            1000 Toler Rd, Longview, TX 75604, USA (903) 237-1270 https://www.longviewtexas.gov/2162/Park-and-Facility-Locations Longview
+
+### Restaurants in Longview
+                                           Name  Average Cost                                              Cuisines  Aggregate Rating     City
+                                Barbeque Nation            26                                          Cafe, Bakery               4.5 Longview
+                                Apna Restaurant            17                              American, BBQ, Fast Food               0.0 Longview
+                                     Apni Rasoi            25                Desserts, Tea, Pizza, Italian, Seafood               3.0 Longview
+                                 Monster's Cafe            94 Tea, Bakery, Fast Food, Cafe, American, Mediterranean               3.5 Longview
+                    Bikaner Sweets & Restaurant            98                                          Tea, Seafood               0.0 Longview
+                                    Sham Sweets            69                 Cafe, Bakery, BBQ, Fast Food, Chinese               2.8 Longview
+                                 Meghraj & Sons            61                             Tea, Pizza, BBQ, Desserts               0.0 Longview
+                               Assam Food Stall            31                      Bakery, Mediterranean, Fast Food               2.8 Longview
+                                       Momo Mia            19                 Desserts, Pizza, French, BBQ, Chinese               3.8 Longview
+                             Not Just Paranthas            54                        Desserts, Bakery, BBQ, Seafood               3.7 Longview
+                                  Singh Chicken            35                              Tea, Cafe, BBQ, Desserts               0.0 Longview
+                           Punjabi Chaap Corner            19                                    Tea, Cafe, Mexican               2.8 Longview
+Chandni Chowk ke Mashhoor Makkhan Wale Paranthe            66                                   Chinese, Pizza, BBQ               2.8 Longview
+                                 Domino's Pizza            48                  Tea, French, Bakery, Fast Food, Cafe               2.3 Longview
+                            Creative Food House            24                             Tea, French, BBQ, Seafood               0.0 Longview
+                                      Vaga Bond            75                            Tea, Seafood, BBQ, Italian               2.9 Longview
+                         Royal India Food Plaza            47               Desserts, Tea, Mexican, Bakery, Seafood               3.2 Longview
+                                Million Kitchen            54         Desserts, Cafe, Mexican, BBQ, Bakery, Chinese               0.0 Longview
+                               Green Chick Chop            12                                    Tea, Chinese, Cafe               3.3 Longview
+                                         Subway            82         Tea, Mexican, Bakery, BBQ, Fast Food, Chinese               3.6 Longview
+                                         Subway            22                           American, Desserts, Seafood               2.6 Longview
+                      Radha Swami Vaishno Dhaba            38                              Pizza, Bakery, Fast Food               3.0 Longview
+                             Chalte Firte Momos            87                                 Tea, Mexican, Seafood               2.6 Longview
+                               Ayush Restaurant            80                         Bakery, Indian, Cafe, Italian               3.2 Longview
+                       Latitude - Mosaic Hotels            81                        Cafe, Mexican, Indian, Seafood               3.3 Longview
+                            Chinese Dragon Cafe            74             Tea, American, Fast Food, Indian, Seafood               3.4 Longview
+
+### Accommodations in Longview
+                                           NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number     city
+Cozy, bright Bohemian pad in NYC's Epic Village  478.0 Entire home/apt                        No parties             5.0                  4                 5.0 Longview
+             Luxury STUDIO * PVT Entrance * WOW  406.0 Entire home/apt                       No visitors             1.0                  3                 4.0 Longview
+ COZY HARLEM ROOM BY THE WATER - CREATIVE SPACE  205.0    Private room          No smoking & No visitors             2.0                  1                 3.0 Longview
+    Your home away from home, private cozy room  188.0    Private room No children under 10 & No parties             1.0                  2                 4.0 Longview
+     Unique 1 bedroom apt. in Gowanus, Brooklyn  255.0 Entire home/apt                        No parties             4.0                  2                 3.0 Longview
+       Newly renovated 2 bedroom with FREE WIFI  581.0 Entire home/apt              No children under 10             1.0                  5                 5.0 Longview
+                          GREAT sunny 1 bedroom 1122.0 Entire home/apt           No parties & No smoking             5.0                  9                 3.0 Longview
+      Charming and Artistic West Village Studio 1133.0 Entire home/apt                       No visitors             2.0                  2                 4.0 Longview
+                        A cozy garden apartment  902.0 Entire home/apt              No parties & No pets             2.0                  3                 3.0 Longview
+
+### Attractions in Texarkana
+                                         Name  Latitude  Longitude                                                   Address          Phone                                                                  Website      City
+                   Museum of Regional History 33.422298 -94.043327            219 N State Line Ave, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+                             Spring Lake Park 33.462309 -94.058364                  4303 N Park Rd, Texarkana, TX 75501, USA (903) 798-3978                                                                  Unknown Texarkana
+                     Texarkana Museums System 33.422303 -94.043299            219 N State Line Ave, Texarkana, TX 75501, USA (903) 793-4831                                              http://texarkanamuseum.org/ Texarkana
+                      Four States Auto Museum 33.424340 -94.038180                   217 Laurel St, Texarkana, AR 71854, USA (870) 772-2886                                     http://www.fourstatesautomuseum.org/ Texarkana
+                       Bringle Lake Park East 33.495373 -94.096710                3650 Shilling Rd, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                                     ArtSparK 33.422665 -94.045243                     317 Main St, Texarkana, TX 75501, USA (903) 792-8681                                        https://trahc.org/venue/artspark/ Texarkana
+                           Ace of Clubs House 33.424113 -94.044164                     420 Pine St, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+                        Texarkana Water Tower 33.419276 -94.055729                   1307 W 4th St, Texarkana, TX 75501, USA        Unknown                                    https://txktoday.com/news/work-painti Texarkana
+                             Fun Country Park 33.513803 -94.044929           8225 N State Line Ave, Texarkana, TX 75503, USA (903) 791-0001                                                                  Unknown Texarkana
+           Discovery Place Interactive Museum 33.421873 -94.043351                     215 Pine St, Texarkana, TX 75501, USA (903) 793-4831                                         http://www.texarkanamuseums.org/ Texarkana
+             Texarkana Wall Murals #FABKMURAL 33.421340 -94.043867                  116 W Broad St, Texarkana, TX 75501, USA        Unknown               https://www.visittexarkanadistrict.com/copy-of-attractions Texarkana
+                             Texas State Line 33.470337 -94.043161                N State Line Ave, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                       Bringle Lake Park West 33.495586 -94.103758             7602 University Ave, Texarkana, TX 75503, USA (903) 798-3900 http://www.ci.texarkana.tx.us/facilities/facility/details/Bringle-Lake-3 Texarkana
+                   Holiday Springs Water Park 33.475385 -94.035571            5501 Crossroads Pkwy, Texarkana, AR 71854, USA (870) 772-2200                                  http://www.holidayspringswaterpark.com/ Texarkana
+                     Welcome to Arkansas Sign 33.405887 -94.043115                  State Line Ave, Texarkana, AR 71854, USA        Unknown                                                                  Unknown Texarkana
+                        Welcome to Texas Sign 33.470459 -94.047943 570 Interstate 30 Frontage Road, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+                    Texas State Line Monument 33.546666 -94.044178                N State Line Ave, Texarkana, TX 75503, USA        Unknown                                                                  Unknown Texarkana
+Lindsey Railroad Museum in Downtown Texarkana 33.421876 -94.041591                  202 E Broad St, Texarkana, AR 71854, USA (903) 748-1235                                                                  Unknown Texarkana
+                        Welcome to Texas Sign 33.386034 -94.043953                     TX-151 Loop, Texarkana, TX 75501, USA        Unknown                                                                  Unknown Texarkana
+                     Welcome to Arkansas Sign 33.385658 -94.041478                          AR-151, Texarkana, AR 71854, USA        Unknown                                                                  Unknown Texarkana
+
+### Restaurants in Texarkana
+                       Name  Average Cost                                      Cuisines  Aggregate Rating      City
+        Big City Bread Cafe            61                      Cafe, Pizza, Bakery, BBQ               4.3 Texarkana
+                 Poets Cafe            88             Chinese, Bakery, Indian, Desserts               2.4 Texarkana
+        Columbia Restaurant            91         Desserts, Tea, Pizza, Indian, Seafood               4.4 Texarkana
+                  Club Mojo            49        Desserts, Italian, BBQ, Cafe, American               2.6 Texarkana
+            Bansiwala Rasoi            71                              Tea, French, BBQ               0.0 Texarkana
+                   Blackout            68                      Tea, Desserts, Fast Food               3.9 Texarkana
+         Purani Dilli Foods            62                        Indian, BBQ, Fast Food               0.0 Texarkana
+     The Beer Cafe - BIGGIE            13         Cafe, Pizza, Mediterranean, Fast Food               3.8 Texarkana
+   Polka Pastry & Snack Bar            71                       Fast Food, BBQ, Italian               3.2 Texarkana
+          Granma's Homemade            57           Tea, Mexican, Bakery, Cafe, Seafood               3.6 Texarkana
+Kolhapuri Veg Non-Veg Foods            84                       Tea, Cafe, Mexican, BBQ               3.3 Texarkana
+                 Amit Dhaba            81           Cafe, Mexican, Bakery, BBQ, Chinese               0.0 Texarkana
+            Cafe Coffee Day            28                       Tea, Cafe, BBQ, Seafood               0.0 Texarkana
+ Mughal Zaika Chicken Point            30  Tea, Pizza, French, Mexican, Fast Food, Cafe               2.9 Texarkana
+             Amritsari Naan            98           Bakery, Indian, Desserts, Fast Food               0.0 Texarkana
+             Curries N More            78                    Tea, French, Cafe, Italian               3.2 Texarkana
+       Pandey Ji Restaurant            75                        Cafe, Pizza, Fast Food               0.0 Texarkana
+                Biryani Bot            27                           French, Bakery, BBQ               0.0 Texarkana
+               Cafe Kazbaah            71                        Tea, Bakery, Fast Food               4.0 Texarkana
+           Vrindavan Sweets            80                        Cafe, Bakery, American               0.0 Texarkana
+                 Wah Ji Wah            55        Tea, Pizza, Mexican, Bakery, Fast Food               3.1 Texarkana
+      Aggarwal Kachori Wale            34            Pizza, Bakery, Desserts, Fast Food               3.0 Texarkana
+                     Teasta            94 Pizza, Italian, French, Bakery, Cafe, Seafood               4.1 Texarkana
+               Prime Bakery            94                   Cafe, Pizza, BBQ, Fast Food               3.0 Texarkana
+               TGI Friday's            27                  Tea, Bakery, Pizza, Desserts               3.5 Texarkana
+
+### Accommodations in Texarkana
+                                             NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number      city
+sunny airy bohemian rm, private bath! hip 'shwick  592.0    Private room                         No smoking             2.0                  2                 4.0 Texarkana
+                   Large 2.5 BR Apt In Park Slope  269.0 Entire home/apt           No smoking & No visitors             1.0                  3                 1.0 Texarkana
+                             MyrtleWash Townhouse  878.0 Entire home/apt No pets & No visitors & No smoking            30.0                  3                 1.0 Texarkana
+                Sleek and Modern Studio Apartment  602.0 Entire home/apt           No visitors & No parties            15.0                  2                 4.0 Texarkana
+                                PentHouse In FiDi  843.0    Private room  No children under 10 & No smoking             3.0                  2                 5.0 Texarkana
+   Cozy private room, close to the subway & beach  887.0    Private room                            No pets             1.0                  2                 1.0 Texarkana
+New to Market, Extended Stay Studio in Park Slope  355.0 Entire home/apt           No smoking & No visitors            30.0                  3                 2.0 Texarkana
+                   Park Slope Home away from Home  137.0 Entire home/apt     No children under 10 & No pets             4.0                  3                 3.0 Texarkana
+              Sunny Room w/Master Bathroom in NYC  390.0    Private room     No children under 10 & No pets             7.0                  1                 1.0 Texarkana
+               Lovely Factory Loft in Greenpoint!   77.0 Entire home/apt                         No smoking            30.0                  2                 1.0 Texarkana
+
+### Flight from Billings to Dallas on 2022-03-25
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3606099    455   13:42   17:08 2 hours 26 minutes 2022-03-25       Billings       Dallas    1081.0
+
+### Self-driving from Billings to Dallas
+self-driving, from Billings to Dallas, duration: 19 hours 29 mins, distance: 2,137 km, cost: 106
+
+### Taxi from Billings to Dallas
+taxi, from Billings to Dallas, duration: 19 hours 29 mins, distance: 2,137 km, cost: 2137
+
+### Flight from Dallas to Longview on 2022-03-27
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3589721     69   12:29   13:21 0 hours 52 minutes 2022-03-27         Dallas     Longview     140.0
+     F3602862     39   22:34   23:19 0 hours 45 minutes 2022-03-27         Dallas     Longview     140.0
+
+### Self-driving from Dallas to Longview
+self-driving, from Dallas to Longview, duration: 1 hour 56 mins, distance: 206 km, cost: 10
+
+### Taxi from Dallas to Longview
+taxi, from Dallas to Longview, duration: 1 hour 56 mins, distance: 206 km, cost: 206
+
+### Flight from Longview to Texarkana on 2022-03-29
+There is no flight from Longview to Texarkana on 2022-03-29.
+
+### Self-driving from Longview to Texarkana
+self-driving, from Longview to Texarkana, duration: 1 hour 36 mins, distance: 141 km, cost: 7
+
+### Taxi from Longview to Texarkana
+taxi, from Longview to Texarkana, duration: 1 hour 36 mins, distance: 141 km, cost: 141
+
+### Flight from Texarkana to Billings on 2022-03-31
+There is no flight from Texarkana to Billings on 2022-03-31.
+
+### Self-driving from Texarkana to Billings
+self-driving, from Texarkana to Billings, duration: 21 hours 43 mins, distance: 2,434 km, cost: 121
+
+### Taxi from Texarkana to Billings
+taxi, from Texarkana to Billings, duration: 21 hours 43 mins, distance: 2,434 km, cost: 2434
+
+JSON plan:

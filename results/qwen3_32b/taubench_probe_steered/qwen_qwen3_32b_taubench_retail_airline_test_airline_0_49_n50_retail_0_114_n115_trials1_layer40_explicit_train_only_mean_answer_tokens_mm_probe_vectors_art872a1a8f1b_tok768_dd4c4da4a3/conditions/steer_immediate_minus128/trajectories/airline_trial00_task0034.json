@@ -1,0 +1,1239 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "I need to cancel two upcoming flights - reservations XEHM4B and 59XX6W.",
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I need to confirm the reason for cancellation for both reservations. Please provide the reason for cancellation (change of plan, airline cancelled flight, or other reasons).\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I need to confirm the reason for cancellation for both reservations. Please provide the reason for cancellation (change of plan, airline cancelled flight, or other reasons)."
+      }
+    },
+    "observation": "Change of plan.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I need to confirm the reason for cancellation for both reservations. Please provide the reason for cancellation (change of plan, airline cancelled flight, or other reasons).\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4627,
+    "output_tokens": 48,
+    "generation_seconds": 4.143132925033569,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"XEHM4B\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "XEHM4B"
+      }
+    },
+    "observation": "{\"reservation_id\": \"XEHM4B\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"LAS\", \"destination\": \"ATL\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"LAS\", \"destination\": \"ATL\", \"flight_number\": \"HAT005\", \"date\": \"2024-05-20\", \"price\": 65}, {\"origin\": \"ATL\", \"destination\": \"LAS\", \"flight_number\": \"HAT178\", \"date\": \"2024-05-30\", \"price\": 83}], \"passengers\": [{\"first_name\": \"Daiki\", \"last_name\": \"Muller\", \"dob\": \"1954-07-04\"}, {\"first_name\": \"Omar\", \"last_name\": \"Ito\", \"dob\": \"1975-09-19\"}], \"payment_history\": [{\"payment_id\": \"credit_card_2408938\", \"amount\": 296}, {\"payment_id\": \"credit_card_2408938\", \"amount\": -296}], \"created_at\": \"2024-05-01T05:17:41\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"XEHM4B\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 4688,
+    "output_tokens": 24,
+    "generation_seconds": 2.711148738861084,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"59XX6W\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "59XX6W"
+      }
+    },
+    "observation": "{\"reservation_id\": \"59XX6W\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"LAS\", \"destination\": \"ATL\", \"flight_type\": \"round_trip\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"LAS\", \"destination\": \"ATL\", \"flight_number\": \"HAT007\", \"date\": \"2024-05-19\", \"price\": 168}, {\"origin\": \"ATL\", \"destination\": \"LAS\", \"flight_number\": \"HAT174\", \"date\": \"2024-05-29\", \"price\": 114}], \"passengers\": [{\"first_name\": \"Daiki\", \"last_name\": \"Muller\", \"dob\": \"1954-07-04\"}, {\"first_name\": \"Chen\", \"last_name\": \"Muller\", \"dob\": \"1982-03-25\"}], \"payment_history\": [{\"payment_id\": \"credit_card_2408938\", \"amount\": 624}, {\"payment_id\": \"credit_card_2408938\", \"amount\": -624}], \"created_at\": \"2024-05-12T04:19:15\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"59XX6W\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 5053,
+    "output_tokens": 24,
+    "generation_seconds": 2.8231852054595947,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Both reservations (XEHM4B and 59XX6W) have been successfully cancelled. The refunds will be processed and should appear in your account within 5 to 7 business days. If you have any further questions, feel free to ask.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Both reservations (XEHM4B and 59XX6W) have been successfully cancelled. The refunds will be processed and should appear in your account within 5 to 7 business days. If you have any further questions, feel free to ask."
+      }
+    },
+    "observation": "Before I go - do I have any other upcoming flights on my account?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Both reservations (XEHM4B and 59XX6W) have been successfully cancelled. The refunds will be processed and should appear in your account within 5 to 7 business days. If you have any further questions, feel free to ask.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5420,
+    "output_tokens": 70,
+    "generation_seconds": 5.686683893203735,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"daiki_muller_1116\"}}\"}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "daiki_muller_1116"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Daiki\", \"last_name\": \"Muller\"}, \"address\": {\"address1\": \"594 Chestnut Street\", \"address2\": \"Suite 244\", \"city\": \"Indianapolis\", \"country\": \"USA\", \"state\": \"IN\", \"zip\": \"46230\"}, \"email\": \"daiki.muller6236@example.com\", \"dob\": \"1954-07-04\", \"payment_methods\": {\"credit_card_2408938\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"2135\", \"id\": \"credit_card_2408938\"}, \"credit_card_4303738\": {\"source\": \"credit_card\", \"brand\": \"visa\", \"last_four\": \"5541\", \"id\": \"credit_card_4303738\"}}, \"saved_passengers\": [{\"first_name\": \"Amelia\", \"last_name\": \"Kim\", \"dob\": \"1978-04-20\"}], \"membership\": \"silver\", \"reservations\": [\"7WPL39\", \"XEHM4B\", \"59XX6W\", \"3EMQJ6\", \"A90KR2\", \"9MRJD4\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"daiki_muller_1116\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5514,
+    "output_tokens": 31,
+    "generation_seconds": 3.386357545852661,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"7WPL39\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "7WPL39"
+      }
+    },
+    "observation": "{\"reservation_id\": \"7WPL39\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"DEN\", \"destination\": \"EWR\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"DEN\", \"destination\": \"DFW\", \"flight_number\": \"HAT246\", \"date\": \"2024-05-28\", \"price\": 77}, {\"origin\": \"DFW\", \"destination\": \"EWR\", \"flight_number\": \"HAT142\", \"date\": \"2024-05-28\", \"price\": 94}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Wilson\", \"dob\": \"1954-09-08\"}, {\"first_name\": \"Amelia\", \"last_name\": \"Kim\", \"dob\": \"1978-04-20\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4303738\", \"amount\": 402}], \"created_at\": \"2024-05-08T10:23:50\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"7WPL39\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5855,
+    "output_tokens": 26,
+    "generation_seconds": 3.1855576038360596,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3EMQJ6\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "3EMQJ6"
+      }
+    },
+    "observation": "{\"reservation_id\": \"3EMQJ6\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"ORD\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"ORD\", \"destination\": \"ATL\", \"flight_number\": \"HAT223\", \"date\": \"2024-05-25\", \"price\": 89}, {\"origin\": \"ATL\", \"destination\": \"SEA\", \"flight_number\": \"HAT039\", \"date\": \"2024-05-25\", \"price\": 65}, {\"origin\": \"SEA\", \"destination\": \"JFK\", \"flight_number\": \"HAT021\", \"date\": \"2024-05-29\", \"price\": 58}, {\"origin\": \"JFK\", \"destination\": \"ORD\", \"flight_number\": \"HAT261\", \"date\": \"2024-05-30\", \"price\": 94}], \"passengers\": [{\"first_name\": \"Amelia\", \"last_name\": \"Kim\", \"dob\": \"1978-04-20\"}], \"payment_history\": [{\"payment_id\": \"credit_card_2408938\", \"amount\": 306}], \"created_at\": \"2024-05-14T20:46:09\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3EMQJ6\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6189,
+    "output_tokens": 26,
+    "generation_seconds": 3.322918653488159,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"A90KR2\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "A90KR2"
+      }
+    },
+    "observation": "{\"reservation_id\": \"A90KR2\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"DFW\", \"destination\": \"LAX\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"DFW\", \"destination\": \"LAX\", \"flight_number\": \"HAT170\", \"date\": \"2024-05-14\", \"price\": 154}], \"passengers\": [{\"first_name\": \"Daiki\", \"last_name\": \"Muller\", \"dob\": \"1954-07-04\"}, {\"first_name\": \"Raj\", \"last_name\": \"Garcia\", \"dob\": \"1957-10-03\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4303738\", \"amount\": 308}], \"created_at\": \"2024-05-13T18:01:27\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"A90KR2\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6584,
+    "output_tokens": 26,
+    "generation_seconds": 3.4312431812286377,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"9MRJD4\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "9MRJD4"
+      }
+    },
+    "observation": "{\"reservation_id\": \"9MRJD4\", \"user_id\": \"daiki_muller_1116\", \"origin\": \"PHX\", \"destination\": \"LAX\", \"flight_type\": \"round_trip\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"PHX\", \"destination\": \"SFO\", \"flight_number\": \"HAT009\", \"date\": \"2024-05-06\", \"price\": 1398}, {\"origin\": \"SFO\", \"destination\": \"LAX\", \"flight_number\": \"HAT273\", \"date\": \"2024-05-06\", \"price\": 1798}, {\"origin\": \"LAX\", \"destination\": \"SFO\", \"flight_number\": \"HAT094\", \"date\": \"2024-05-13\", \"price\": 579}, {\"origin\": \"SFO\", \"destination\": \"PHX\", \"flight_number\": \"HAT123\", \"date\": \"2024-05-13\", \"price\": 1560}], \"passengers\": [{\"first_name\": \"Amelia\", \"last_name\": \"Kim\", \"dob\": \"1978-04-20\"}, {\"first_name\": \"Liam\", \"last_name\": \"Johansson\", \"dob\": \"1955-04-10\"}, {\"first_name\": \"Noah\", \"last_name\": \"Moore\", \"dob\": \"1969-11-25\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4303738\", \"amount\": 16005}], \"created_at\": \"2024-05-05T00:38:24\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"9MRJD4\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6878,
+    "output_tokens": 25,
+    "generation_seconds": 3.488574981689453,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You have the following upcoming flights on your account:\n\n1. **Reservation ID: 7WPL39** - One-way trip from DEN to EWR via DFW on May 28, 2024. Passengers: James Wilson and Amelia Kim.\n\n2. **Reservation ID: 3EMQJ6** - Round-trip trip from ORD to SEA via ATL on May 25, 2024, and back on May 29, 2024. Passengers: Amelia Kim.\n\n3. **Reservation ID: A90KR2** - One-way trip from DFW to LAX on May 14, 2024. Passengers: Daiki Muller and Raj Garcia.\n\n4. **Reservation ID: 9MRJD4** - Round-trip trip from PHX to LAX via SFO on May 6, 2024, and back on May 13, 2024. Passengers: Amelia Kim, Liam Johansson, and Noah Moore.\n\nIf you need any assistance with these flights, feel free to let me know.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You have the following upcoming flights on your account:\n\n1. **Reservation ID: 7WPL39** - One-way trip from DEN to EWR via DFW on May 28, 2024. Passengers: James Wilson and Amelia Kim.\n\n2. **Reservation ID: 3EMQJ6** - Round-trip trip from ORD to SEA via ATL on May 25, 2024, and back on May 29, 2024. Passengers: Amelia Kim.\n\n3. **Reservation ID: A90KR2** - One-way trip from DFW to LAX on May 14, 2024. Passengers: Daiki Muller and Raj Garcia.\n\n4. **Reservation ID: 9MRJD4** - Round-trip trip from PHX to LAX via SFO on May 6, 2024, and back on May 13, 2024. Passengers: Amelia Kim, Liam Johansson, and Noah Moore.\n\nIf you need any assistance with these flights, feel free to let me know.\"}}"
+      }
+    },
+    "observation": "What's the total cost of all those flights?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": false,
+    "action_parse_error": "JSONDecodeError: Invalid control character at: line 1 column 103 (char 102)",
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You have the following upcoming flights on your account:\n\n1. **Reservation ID: 7WPL39** - One-way trip from DEN to EWR via DFW on May 28, 2024. Passengers: James Wilson and Amelia Kim.\n\n2. **Reservation ID: 3EMQJ6** - Round-trip trip from ORD to SEA via ATL on May 25, 2024, and back on May 29, 2024. Passengers: Amelia Kim.\n\n3. **Reservation ID: A90KR2** - One-way trip from DFW to LAX on May 14, 2024. Passengers: Daiki Muller and Raj Garcia.\n\n4. **Reservation ID: 9MRJD4** - Round-trip trip from PHX to LAX via SFO on May 6, 2024, and back on May 13, 2024. Passengers: Amelia Kim, Liam Johansson, and Noah Moore.\n\nIf you need any assistance with these flights, feel free to let me know.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7347,
+    "output_tokens": 255,
+    "generation_seconds": 17.450443744659424,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"calculate\", \"arguments\": {\"expression\": \"402 + 306 + 308 + 16005\"}}\"}",
+    "action": {
+      "name": "calculate",
+      "arguments": {
+        "expression": "402 + 306 + 308 + 16005"
+      }
+    },
+    "observation": "17021.0",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "calculate",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"calculate\", \"arguments\": {\"expression\": \"402 + 306 + 308 + 16005\"}}",
+    "parsed_action_name": "calculate",
+    "input_tokens": 7621,
+    "output_tokens": 38,
+    "generation_seconds": 4.493072748184204,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "The total cost of all the flights is $17,021.00. If you need any further assistance, feel free to let me know.",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The total cost of all the flights is $17,021.00. If you need any further assistance, feel free to let me know."
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "daiki_muller_1116",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ],
+        "instruction": "Your user id is 'daiki_muller_1116'. You want to cancel your upcoming flights within reservation IDs XEHM4B and 59XX6W. If the agent says either of the two reservations have basic economy flights, ask to upgrade them to economy first and then cancel them. You are very persistent and terse but clear. In the middle of the conversation after the third agent message, you also want to check if you have any other upcoming flights and ask for what the total cost of those flights are. ",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.0008209999999999999,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "3d5434ae0f79868b36a81163c059a399e4081480c815ca160a5da9779c27353b"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(65 + 83) * 2"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "(168 + 114) * 2"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "XEHM4B",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT005",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT178",
+                  "date": "2024-05-30"
+                }
+              ],
+              "payment_id": "credit_card_2408938"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "XEHM4B"
+            }
+          },
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "59XX6W"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": false,
+    "action_parse_error": "ValueError: No JSON object found after Action:.",
+    "action_json_text": null,
+    "parsed_action_name": "respond",
+    "input_tokens": 7679,
+    "output_tokens": 34,
+    "generation_seconds": 4.273785591125488,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

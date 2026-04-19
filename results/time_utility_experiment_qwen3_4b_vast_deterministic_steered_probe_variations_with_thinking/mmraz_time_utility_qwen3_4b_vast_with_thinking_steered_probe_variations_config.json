@@ -1,0 +1,38 @@
+{
+  "artifact_path": "/workspace/workspace/results/qwen_question_options_answer_probe_variations_vast/20260405-185421/qwen3_4b_question_options_answer_probe_artifacts_20260405-185421.npz",
+  "metadata_path": "/workspace/workspace/results/qwen_question_options_answer_probe_variations_vast/20260405-185421/qwen3_4b_question_options_answer_probe_metadata_20260405-185421.json",
+  "model_name": "Qwen/Qwen3-4B",
+  "prompt_format": "question_options_answer",
+  "prompt_template": "What would you prefer?\nOptions:\n  {x}$ now\n  {y}$ in {t}\n  Answer:\n",
+  "enable_thinking": true,
+  "disable_thinking_trace": false,
+  "thinking_mode_tag": "with_thinking",
+  "train_regime": "explicit_train_only",
+  "feature_name": "mean_answer_tokens",
+  "vector_key": "mm_steering_vectors",
+  "layer": 22,
+  "vector_norm": 1.0,
+  "patch_prompt_last_only": true,
+  "patch_generation_tokens": true,
+  "normalize_steering_vectors": true,
+  "response_field_raw": "response",
+  "response_field_for_parse": "response_for_parse",
+  "conditions": [
+    {
+      "condition": "steer_long_term_plus16",
+      "signed_strength": 16.0
+    },
+    {
+      "condition": "steer_immediate_minus16",
+      "signed_strength": -16.0
+    },
+    {
+      "condition": "steer_long_term_plus32",
+      "signed_strength": 32.0
+    },
+    {
+      "condition": "steer_immediate_minus32",
+      "signed_strength": -32.0
+    }
+  ]
+}

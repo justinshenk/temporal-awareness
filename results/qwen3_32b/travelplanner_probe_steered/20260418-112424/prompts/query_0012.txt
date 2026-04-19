@@ -1,0 +1,118 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please devise a travel plan that starts from St. Petersburg and heads to Appleton, taking place across 3 days from March 19th to March 21st, 2022. This itinerary is for an individual, with a budget allocated at $1,200.
+
+Reference information:
+### Attractions in Appleton
+                                                  Name  Latitude  Longitude                                      Address          Phone                                                                                         Website     City
+                      The History Museum at the Castle 44.262144 -88.401441   330 E College Ave, Appleton, WI 54911, USA (920) 735-9370                                                                 http://www.myhistorymuseum.org/ Appleton
+                     Hearthstone Historic House Museum 44.254306 -88.415009  625 W Prospect Ave, Appleton, WI 54911, USA (920) 730-8204                                                              https://www.hearthstonemuseum.org/ Appleton
+                           Atlas Science Center Center 44.254991 -88.411417      425 W Water St, Appleton, WI 54911, USA (920) 380-7491                                                              http://www.atlassciencecenter.org/ Appleton
+                                   Trout Museum of Art 44.261658 -88.406541   111 W College Ave, Appleton, WI 54911, USA (920) 733-4089                                                                         http://troutmuseum.org/ Appleton
+                                          Plamann Park 44.326638 -88.385082  1375 E Broadway Dr, Appleton, WI 54913, USA (920) 832-4791                     https://www.outagamie.org/visitors/parks-trails-fishing-nature/plamann-park Appleton
+                                Appleton Memorial Park 44.290910 -88.379773  1620 E Witzke Blvd, Appleton, WI 54911, USA (920) 832-5905                                                              http://www.appletonparkandrec.org/ Appleton
+Appleton Historical Society Museum and Resource Center 44.262780 -88.402497     128 N Durkee St, Appleton, WI 54911, USA (920) 540-3699                                                                     http://appletonhistory.com/ Appleton
+                                     Building For Kids 44.262013 -88.407004   100 W College Ave, Appleton, WI 54911, USA (920) 734-3226                                                                 http://www.buildingforkids.org/ Appleton
+                                              Erb Park 44.278216 -88.402817  1800 N Morrison St, Appleton, WI 54911, USA (920) 832-5905              http://appletonparkandrec.org/parks,-pavilions-and-trails/community-parks/erb-park Appleton
+                                           Pierce Park 44.252469 -88.422204 1035 W Prospect Ave, Appleton, WI 54914, USA (920) 832-5905       http://www.appletonparkandrec.org/parks,-pavilions-and-trails/community-parks/pierce-park Appleton
+                         Butterfly Garden of Wisconsin 44.331363 -88.413920         N2550 WI-47, Appleton, WI 54913, USA (920) 733-2929                                                     http://www.butterflygardensofwisconsin.com/ Appleton
+                         Gordon Bubolz Nature Preserve 44.311604 -88.449619  4815 N Lynndale Dr, Appleton, WI 54913, USA (920) 731-6041                                                                  http://www.bubolzpreserve.org/ Appleton
+                                             City Park 44.264821 -88.399589   500 E Franklin St, Appleton, WI 54911, USA (920) 832-5905      http://www.appletonparkandrec.org/parks,-pavilions-and-trails/neighborhood-parks/city-park Appleton
+                                          Telulah Park 44.263819 -88.380847  1300 E Newberry St, Appleton, WI 54915, USA (920) 832-5905      http://www.appletonparkandrec.org/parks,-pavilions-and-trails/community-parks/telulah-park Appleton
+    Segway the Fox Tours-Appleton, Neenah, & Green Bay 44.265183 -88.398023   500 E Franklin St, Appleton, WI 54911, USA (920) 376-0256                                https://glidenew.com/segway-the-lake/appleton-fun-historic-tour/ Appleton
+                                             Lutz Park 44.249620 -88.421758      1320 S Lutz Dr, Appleton, WI 54914, USA (920) 832-5905      http://www.appletonparkandrec.org/parks,-pavilions-and-trails/neighborhood-parks/lutz-park Appleton
+                                          Peabody Park 44.268644 -88.388290  601 N Green Bay Rd, Appleton, WI 54911, USA (920) 832-5905   http://www.appletonparkandrec.org/parks,-pavilions-and-trails/neighborhood-parks/peabody-park Appleton
+                        Appleton Memorial Park Gardens 44.294011 -88.383593  1313 E Witzke Blvd, Appleton, WI 54911, USA (920) 832-5905                    https://appletonparkandrec.org/parks-pavilions-trails/scheig-center-gardens/ Appleton
+                                         Highview Park 44.305755 -88.404939   110 E Wayfarer Ln, Appleton, WI 54913, USA (920) 832-5905 http://www.appletonparkandrec.org/parks,-pavilions-and-trails/neighborhood-parks/highview-park- Appleton
+                                          Patriot Park 44.277110 -88.449594   2950 W Darling St, Appleton, WI 54914, USA (920) 832-1581                     https://www.grandchute.net/departments/parks-recreation/parks/patriot-park/ Appleton
+
+### Restaurants in Appleton
+                         Name  Average Cost                                               Cuisines  Aggregate Rating     City
+   Mikata Japanese Steakhouse            72                           Cafe, Pizza, Bakery, Italian               3.6 Appleton
+                     Brick 29            97      Desserts, Tea, BBQ, Cafe, American, Mediterranean               4.4 Appleton
+                       Colony           110 Pizza, BBQ, Fast Food, Chinese, Mediterranean, Seafood               3.8 Appleton
+                 Swati Snacks            84             Desserts, Bakery, BBQ, Fast Food, American               4.4 Appleton
+             Destination Live            30                                       Tea, Indian, BBQ               3.3 Appleton
+     Sardaar Ji Chaap & Rolls            39                               Bakery, Indian, Desserts               3.1 Appleton
+               Parantha Gurus            49                   Cafe, Mexican, BBQ, Chinese, Seafood               3.3 Appleton
+I-Kandy - Le Meridien Gurgaon            62                Desserts, Tea, Bakery, Chinese, Seafood               3.6 Appleton
+        Zync - Rosewood Hotel            58                              Chinese, Bakery, Desserts               3.0 Appleton
+                   Fat Lulu's            23                          Tea, Cafe, Seafood, Fast Food               3.7 Appleton
+      The Millionaire Express            56                        Chinese, French, BBQ, Fast Food               4.0 Appleton
+                       Southy           100            Tea, Pizza, Mexican, BBQ, Fast Food, Indian               2.6 Appleton
+           New Bakers Shoppee            15                                   Chinese, Pizza, Cafe               3.2 Appleton
+             A Piece of Paris            62                                    Cafe, BBQ, Desserts               3.6 Appleton
+                 Bliss Bakery            47                             Cafe, Bakery, BBQ, Seafood               3.8 Appleton
+            Hari Mirch Masala            81                             Tea, French, BBQ, Desserts               2.8 Appleton
+                     Side Wok            15                 Tea, Italian, Bakery, Chinese, Seafood               3.9 Appleton
+               Homely Delight            34    Desserts, Cafe, Mexican, Bakery, Fast Food, Chinese               3.1 Appleton
+       Shiv Shakti Restaurant            34                                     French, Pizza, BBQ               3.0 Appleton
+    Muradabadi Chicken Corner            97                           Cafe, Pizza, Bakery, Seafood               0.0 Appleton
+                       Subway            62             Desserts, Bakery, Chinese, Indian, Seafood               3.4 Appleton
+                  Asian Curry            62                        Tea, Fast Food, Bakery, Seafood               3.0 Appleton
+                Shanghai Moon            28                              Indian, Desserts, Seafood               2.6 Appleton
+              Da Pizza Bakers            58                   Tea, Italian, Bakery, Cafe, American               3.1 Appleton
+                          BTW            83                     Tea, Pizza, Italian, Mexican, Cafe               2.8 Appleton
+                   The Kathis            15              Desserts, Pizza, Mexican, Bakery, Seafood               2.4 Appleton
+                Mathew's Cafe            13                     Mexican, Bakery, BBQ, Cafe, Indian               3.7 Appleton
+                     Yaadgaar            26                                Cafe, Desserts, Italian               0.0 Appleton
+                 Gareeb Dhaba            64                          Fast Food, Cafe, BBQ, Seafood               0.0 Appleton
+                   Chawla's 2            84                            Cafe, Bakery, American, BBQ               0.0 Appleton
+                   Sadda Adda            77                                        Pizza, Desserts               3.5 Appleton
+             Green Chick Chop            60                  Tea, Italian, Bakery, Indian, Seafood               2.7 Appleton
+   Peshawari Delux Restaurant            30                                   Tea, French, Seafood               2.4 Appleton
+               Punjabi Chaska            45                                  Tea, Bakery, Desserts               3.0 Appleton
+                   Fire n Ice            22                                Mexican, BBQ, Fast Food               0.0 Appleton
+                      Valonia            73           Desserts, Fast Food, Cafe, American, Seafood               4.2 Appleton
+
+### Accommodations in Appleton
+                                                        NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number     city
+                                  Nice bedroom in Brooklyn !  932.0    Private room                                        No pets             4.0                  1                 5.0 Appleton
+               Cozy room + bright apartment + rooftop lounge  666.0    Private room                                     No smoking             1.0                  1                 4.0 Appleton
+           Large Rooms with Bar and PullOut Prime Greenpoint  174.0    Private room             No visitors & No smoking & No pets             4.0                  2                 4.0 Appleton
+                           Luxury Apartment in Williamsburg!  436.0 Entire home/apt No parties & No children under 10 & No smoking             5.0                  2                 3.0 Appleton
+Thoughtful UWS Studio w/ Gym near Central Park by Blueground 1105.0 Entire home/apt                                    No visitors            30.0                  8                 5.0 Appleton
+                      Brooklyn Duplex with Terrace near Park  156.0 Entire home/apt                                     No smoking            30.0                  2                 2.0 Appleton
+           Stylish, convenient, renovated- 2 min to subway -   64.0 Entire home/apt    No smoking & No pets & No children under 10             1.0                  2                 5.0 Appleton
+               One bedroom apartment in the heart of astoria  824.0 Entire home/apt                           No children under 10            14.0                  7                 2.0 Appleton
+                                               Cozy place II  737.0    Private room    No children under 10 & No parties & No pets             1.0                  1                 5.0 Appleton
+                               (B) Room for 2 - sharing bath  628.0    Private room                                        No pets             2.0                  1                 3.0 Appleton
+                              Bedroom in the East Village ❤️  743.0    Private room                                    No visitors             1.0                  2                 5.0 Appleton
+                 Private Room in Beautiful Williamsburg Apt.  690.0    Private room             No visitors & No children under 10             5.0                  2                 1.0 Appleton
+                                                    Cozy Inn  611.0    Private room                 No pets & No children under 10             1.0                  2                 4.0 Appleton
+              MODERN GARDEN 1BR IN NEWLY RENOVATED TOWNHOUSE  949.0 Entire home/apt                           No children under 10             2.0                  2                 5.0 Appleton
+
+### Flight from St. Petersburg to Appleton on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3574992    542   22:51   00:42 2 hours 51 minutes 2022-03-19 St. Petersburg     Appleton    1173.0
+
+### Self-driving from St. Petersburg to Appleton
+No valid information.
+
+### Taxi from St. Petersburg to Appleton
+No valid information.
+
+### Flight from Appleton to St. Petersburg on 2022-03-21
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName   DestCityName  Distance
+     F3578689    332   07:19   11:01 2 hours 42 minutes 2022-03-21       Appleton St. Petersburg    1173.0
+
+### Self-driving from Appleton to St. Petersburg
+No valid information.
+
+### Taxi from Appleton to St. Petersburg
+No valid information.
+
+JSON plan:

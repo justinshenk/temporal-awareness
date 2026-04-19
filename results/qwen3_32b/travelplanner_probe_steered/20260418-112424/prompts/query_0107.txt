@@ -1,0 +1,260 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you help me design a week-long travel itinerary for a group of 5, departing from Washington and visiting 3 different cities in Indiana? The trip should last from March 23rd to March 29th, 2022, and our budget is set at $23,800. It's important to note that our accommodations need to be suitable for children under 10 years of age.
+
+Reference information:
+### Attractions in Evansville
+                               Name  Latitude  Longitude                                         Address          Phone                                                                             Website       City
+                    Mesker Park Zoo 37.996852 -87.605901  1545 Mesker Park Dr, Evansville, IN 47720, USA (812) 435-6143                                                       http://www.meskerparkzoo.com/ Evansville
+    Children's Museum of Evansville 37.971617 -87.569264         22 SE 5th St, Evansville, IN 47708, USA (812) 643-2663                                                            http://www.cmoekids.org/ Evansville
+                      Burdette Park 37.942692 -87.640210   5301 Nurrenbern Rd, Evansville, IN 47712, USA (812) 435-5602                                                        http://www.burdettepark.org/ Evansville
+ Evansville African American Museum 37.970553 -87.556748      579 S Garvin St, Evansville, IN 47713, USA (812) 423-5188                                                             https://www.evvaam.org/ Evansville
+                        Garvin Park 37.994396 -87.563791                       Evansville, IN 47710, USA (812) 435-6141                             https://www.visitevansville.com/attractions/garvin-park Evansville
+                  Evansville Museum 37.965089 -87.572841  411 SE Riverside Dr, Evansville, IN 47713, USA (812) 425-2406                                                       https://evansvillemuseum.org/ Evansville
+                  Reitz Home Museum 37.967822 -87.571971      112 Chestnut St, Evansville, IN 47713, USA (812) 426-1871                                                           http://www.reitzhome.com/ Evansville
+                        USS LST-325 37.972960 -87.580199  610 NW Riverside Dr, Evansville, IN 47708, USA (812) 435-8678                                                         http://www.lstmemorial.org/ Evansville
+          Evansville Wartime Museum 38.041584 -87.537290   7503 Petersburg Rd, Evansville, IN 47725, USA (812) 424-7461                                                 http://evansvillewartimemuseum.org/ Evansville
+   Angel Mounds State Historic Site 37.945186 -87.451887     8215 Pollack Ave, Evansville, IN 47715, USA (812) 853-3956                      https://www.indianamuseum.org/angel-mounds-state-historic-site Evansville
+                    Howell Wetlands 37.961659 -87.618424  1400 S Tekoppel Ave, Evansville, IN 47712, USA (812) 479-0771                                           https://wesselmanwoods.org/howellwetlands Evansville
+              Mickey's Kingdom Park 37.962965 -87.572765 Downtown, Riverfront, Evansville, IN 47713, USA (812) 435-6141                                                                             Unknown Evansville
+             Four Freedoms Monument 37.967064 -87.574197  201 SE Riverside Dr, Evansville, IN 47713, USA        Unknown                                                                             Unknown Evansville
+                        Howell Park 37.964818 -87.610317    1101 S Barker Ave, Evansville, IN 47712, USA (812) 435-6141                                                                             Unknown Evansville
+                    Chandelier Tree 37.970539 -87.573610          130 Main St, Evansville, IN 47708, USA (812) 492-4536                                                      http://downtownevansville.com/ Evansville
+                    Wesselman Woods 37.982886 -87.516741       551 N Boeke Rd, Evansville, IN 47711, USA (812) 479-0771                                                      http://www.wesselmanwoods.org/ Evansville
+Self.e Alley (Evansville Mural Art) 37.971407 -87.571681          318 Main St, Evansville, IN 47708, USA        Unknown              https://self-e-alley.business.site/?utm_source=gmb&utm_medium=referral Evansville
+                Diamond Valley Park 38.004052 -87.579339     1100 Fulton Pkwy, Evansville, IN 47710, USA (812) 435-6141 http://www.vanderburghgov.org/egov/apps/locations/facilities.egov?view=detail&id=79 Evansville
+                    Game Room Alley 37.971199 -87.571453          317 Main St, Evansville, IN 47711, USA (812) 492-4536                                                                             Unknown Evansville
+                            Cascade 37.960269 -87.572599   1200 Waterworks Rd, Evansville, IN 47713, USA        Unknown                                                                             Unknown Evansville
+
+### Restaurants in Evansville
+                                             Name  Average Cost                                             Cuisines  Aggregate Rating       City
+                      Blue Orchid Thai Restaurant            86                     Tea, Mexican, American, Desserts               4.5 Evansville
+                                 J. Christopher's            39                         Tea, Cafe, Desserts, Seafood               4.3 Evansville
+                                       McDonald's            84                    Tea, Bakery, BBQ, Indian, Seafood               3.3 Evansville
+                               Punjabi Restaurant            29                    Cafe, Bakery, Desserts, Fast Food               0.0 Evansville
+                                   Twist of Italy            85     Desserts, Pizza, Mexican, Mediterranean, Seafood               3.6 Evansville
+                                         Pao King            16                Pizza, Mexican, Bakery, Cafe, Seafood               0.0 Evansville
+                                       Cake Point            49              Tea, Mediterranean, Desserts, Fast Food               3.0 Evansville
+                              Burger Bites & More            91                              Fast Food, BBQ, Italian               2.9 Evansville
+                              Goli Vada Pav No. 1            28                     Chinese, BBQ, Seafood, Fast Food               3.1 Evansville
+                      Brother's Snacks and Shakes            13                    Cafe, BBQ, Mediterranean, Italian               3.2 Evansville
+                                        The Daily            95                    Cafe, Mexican, BBQ, Mediterranean               0.0 Evansville
+                                         Cheffy's            34                                Cafe, Bakery, Seafood               0.0 Evansville
+                                              RPM            74                           Chinese, Desserts, Seafood               2.4 Evansville
+Pt.Kanhaiyalal & Durga Prasad Dixit Paranthe Wale            45                   Tea, Pizza, BBQ, Fast Food, Indian               3.6 Evansville
+                                 Dadu Cutlet Shop            74                   Tea, Cafe, BBQ, Fast Food, Chinese               3.7 Evansville
+                                 Changezi Chicken            14                       Chinese, Mexican, BBQ, Seafood               3.7 Evansville
+                                  A Lot Like Cake            39                  Bakery, Indian, Desserts, Fast Food               3.1 Evansville
+                        La Piazza - Hyatt Regency            58                               Bakery, BBQ, Fast Food               3.9 Evansville
+                                    Sanjha Chulha            66             Tea, Bakery, Fast Food, Chinese, Seafood               3.1 Evansville
+                                        Big Chill            33                                   Tea, American, BBQ               4.6 Evansville
+                                        Aalishaan            71         Tea, French, Bakery, Cafe, American, Seafood               0.0 Evansville
+                                         Al-Karim            75                          Cafe, Pizza, BBQ, Fast Food               0.0 Evansville
+                        Desi Thaat Amritsari Naan            93                              Tea, Mexican, Fast Food               0.0 Evansville
+                              VadaPav 'n' Frankie            98                 Bakery, BBQ, Fast Food, Cafe, Indian               3.0 Evansville
+                                        Om Corner            57                                Cafe, Mexican, Bakery               3.7 Evansville
+                           Katyal Pure Vegetarian            24     Desserts, Bakery, Fast Food, Cafe, Mediterranean               3.0 Evansville
+                                Twenty Four Seven            80                       Cafe, Mediterranean, Fast Food               3.2 Evansville
+                       Qubitos - The Terrace Cafe            70     Desserts, Bakery, Fast Food, Cafe, Mediterranean               4.5 Evansville
+                                Apsara Restaurant            34                     Cafe, Mexican, Indian, Fast Food               2.7 Evansville
+                Puratan - Family Restaurant & Bar            80                            Cafe, Desserts, Fast Food               3.3 Evansville
+                                    Brij Ki Rasoi            27                       Tea, Chinese, Indian, Desserts               0.0 Evansville
+                                         Thikaana            37                  Bakery, BBQ, Mediterranean, Seafood               3.6 Evansville
+                                         Alaturka            51             Tea, Italian, Bakery, Fast Food, Seafood               3.4 Evansville
+                                  Gufa Restaurant            29    Desserts, Italian, French, BBQ, Bakery, Fast Food               3.2 Evansville
+                                     Sangam Ratna            78        Tea, Pizza, Mexican, BBQ, Fast Food, American               0.0 Evansville
+                                         Street 5            16                               BBQ, Desserts, Seafood               2.8 Evansville
+                    24/7 Bar- The Lalit New Delhi            28      Desserts, Italian, French, Bakery, BBQ, Seafood               3.5 Evansville
+                                        Taco Bell            30                      Seafood, BBQ, Desserts, Italian               3.6 Evansville
+                                      Wok N Spice            84                           Tea, Mexican, BBQ, Seafood               3.1 Evansville
+                                            Noshh            20                    Tea, BBQ, Fast Food, Cafe, Indian               3.6 Evansville
+                                   Defence Bakery            26 Pizza, Mexican, Bakery, Cafe, Mediterranean, Seafood               3.4 Evansville
+                                   Baby Got Bacon            61                         French, Mexican, Bakery, BBQ               0.0 Evansville
+                               Kapil Dev's Eleven            63           Desserts, Tea, Italian, Fast Food, Seafood               3.6 Evansville
+
+### Accommodations in Evansville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+            Stylish 1 bed room in the East Village  674.0 Entire home/apt                            No children under 10             3.0                  6                 3.0 Evansville
+               *Lovely Apt In Heart Of Park Slope*   70.0 Entire home/apt                                         No pets            14.0                  3                 4.0 Evansville
+                  Gramercy/Kips Bay 1BR- the best!  524.0 Entire home/apt                                         No pets             3.0                  4                 1.0 Evansville
+  3-BDRM/2 BATH Apartment AMAZING LOCATION on UWS!   75.0 Entire home/apt                            No children under 10             3.0                  3                 4.0 Evansville
+                           Beautiful sunny studio.  971.0    Private room No parties & No visitors & No children under 10             2.0                  2                 3.0 Evansville
+                     Luxurious Manhattan 1 Bedroom  906.0 Entire home/apt                            No children under 10            30.0                  2                 1.0 Evansville
+          Sunny, couple-friendly BedStuy Apartment  701.0    Private room                                      No smoking             1.0                  2                 4.0 Evansville
+ Authentic artist loft space in Prime Williamsburg  654.0 Entire home/apt                         No smoking & No parties            30.0                  5                 4.0 Evansville
+                 Luxury NYC 2 Bedroom with Terrace  907.0 Entire home/apt                                      No smoking             7.0                  4                 5.0 Evansville
+                                       The Oasis 1  328.0    Private room                                     No visitors             3.0                  1                 2.0 Evansville
+         Renovated 1-bedroom apartment in Gramercy  833.0 Entire home/apt              No parties & No visitors & No pets             1.0                  6                 2.0 Evansville
+1BR in Newly Renovated Apartment - Rm C, Bushwick!  288.0    Private room No visitors & No children under 10 & No smoking             1.0                  2                 4.0 Evansville
+
+### Attractions in South Bend
+                                    Name  Latitude  Longitude                                              Address          Phone                                                                 Website       City
+              Studebaker National Museum 41.674802 -86.262104             201 Chapin St, South Bend, IN 46601, USA (574) 235-9714                                        http://www.studebakermuseum.org/ South Bend
+                      The History Museum 41.674913 -86.262681       808 W Washington St, South Bend, IN 46601, USA (574) 235-9664                                            https://historymuseumsb.org/ South Bend
+                South Bend Museum of Art 41.676201 -86.248398 120 Doctor M.L.K. Jr Blvd, South Bend, IN 46601, USA (574) 235-9102                                            http://www.southbendart.org/ South Bend
+                          Potawatomi Zoo 41.669340 -86.217955       500 S Greenlawn Ave, South Bend, IN 46615, USA (574) 235-9800                                              https://potawatomizoo.org/ South Bend
+                      River Lights Plaza 41.676458 -86.245751          340 E Colfax Ave, South Bend, IN 46617, USA        Unknown                                                                 Unknown South Bend
+                      The Oliver Mansion 41.675791 -86.262078       808 W Washington St, South Bend, IN 46601, USA (574) 235-9664 http://historymuseumsb.org/see-do/historic-house#The%20Oliver%20Mansion South Bend
+             Kidsfirst Children's Museum 41.674841 -86.262568       808 W Washington St, South Bend, IN 46601, USA (574) 235-9664           http://historymuseumsb.org/see-do/kidsfirst-childrens-museum/ South Bend
+                      Kennedy Water Park 41.684066 -86.289625            756 Eclipse Pl, South Bend, IN 46628, USA (574) 235-9407                                  https://sbvpa.org/places/kennedy-park/ South Bend
+               Rum Village Nature Center 41.647449 -86.271025        2626 S Gertrude St, South Bend, IN 46614, USA (574) 235-9455                               http://sbvpa.org/places/rum-village-park/ South Bend
+         Children's Museum of South Bend 41.646786 -86.249314        2632 S Michigan St, South Bend, IN 46614, USA (574) 222-2044                                  http://childrensmuseumofsouthbend.org/ South Bend
+               St. Patrick's County Park 41.755191 -86.265569           50651 Laurel Rd, South Bend, IN 46637, USA (574) 277-4828                                 http://www.sjcparks.org/592/St-Patricks South Bend
+                         Potawatomi Park 41.668408 -86.219471      2105 E Mishawaka Ave, South Bend, IN 46615, USA (574) 299-4765                                http://sbvpa.org/places/potawatomi-park/ South Bend
+                              Seitz Park 41.676010 -86.245235               S Niles Ave, South Bend, IN 46617, USA (574) 299-4765                                      http://sbvpa.org/parks/seitz-park/ South Bend
+Snite Research Center in the Visual Arts 41.699588 -86.235699      100 Moose Krause Cir, Notre Dame, IN 46556, USA (574) 631-5466                                           http://sniteartmuseum.nd.edu/ South Bend
+           Island Park at Century Center 41.676627 -86.247524        120 S St Joseph St, South Bend, IN 46601, USA (574) 235-9711                                                                 Unknown South Bend
+        Kid's Kingdom at Potawatomi Park 41.666794 -86.216877              2000 Wall St, South Bend, IN 46615, USA        Unknown                                                                 Unknown South Bend
+                         The Kizer House 41.676604 -86.261724       803 W Washington St, South Bend, IN 46601, USA (574) 232-4534                                        http://www.indianalandmarks.org/ South Bend
+                          Birthday Chair 41.686622 -86.261075           821 Portage Ave, South Bend, IN 46616, USA        Unknown                                                                 Unknown South Bend
+          Park & Party - ND Tailgate Lot 41.697762 -86.225149       54746 Twyckenham Dr, South Bend, IN 46637, USA        Unknown                                                                 Unknown South Bend
+                 South Bend Welcome Sign 41.691111 -86.250682         1140 Hillcrest Rd, South Bend, IN 46617, USA        Unknown                                                                 Unknown South Bend
+
+### Restaurants in South Bend
+                       Name  Average Cost                                         Cuisines  Aggregate Rating       City
+       Madaan Confectionery            62                          Tea, Cafe, BBQ, Seafood               0.0 South Bend
+           Krips Restaurant            59                    Tea, Mediterranean, Fast Food               3.5 South Bend
+                It潴籹 Sinful            26           Desserts, French, BBQ, Bakery, Seafood               3.5 South Bend
+                MOB Brewpub            67                     Cafe, Mexican, American, BBQ               4.7 South Bend
+             Roadhouse Cafe            24      Desserts, Pizza, Bakery, Fast Food, Chinese               4.1 South Bend
+         Stop My Starvation            56                     Tea, Mediterranean, Desserts               4.3 South Bend
+               Chocofairies            91                    Tea, Chinese, Pizza, Desserts               0.0 South Bend
+                  True Blue            53                Seafood, Mediterranean, Fast Food               3.3 South Bend
+                 Lotus Pond            83                            Tea, Seafood, Italian               4.2 South Bend
+          Cheers Lounge Bar            30              Desserts, Tea, Pizza, BBQ, American               2.8 South Bend
+           New Durga Corner            20                    BBQ, Chinese, Pizza, Desserts               3.2 South Bend
+                   Voda Bar            95                     Tea, Fast Food, BBQ, Seafood               3.2 South Bend
+            Cafe Coffee Day            81           Desserts, French, Bakery, Cafe, Indian               3.6 South Bend
+Our Story Bistro & Tea Room            10 Tea, Pizza, Italian, BBQ, Mediterranean, Seafood               3.9 South Bend
+                  Yo! China            95                          BBQ, American, Desserts               2.5 South Bend
+                      Swaad            10                           Tea, American, Seafood               2.7 South Bend
+                     Mughli            89                     Tea, Bakery, Mexican, Indian               4.5 South Bend
+
+### Accommodations in South Bend
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number       city
+                   Just Right in Lovely Greenpoint  614.0    Private room                    No smoking & No visitors             7.0                  1                 5.0 South Bend
+       Clean + Simple Chelsea 2 Bedroom (sleeps 7)  341.0 Entire home/apt          No visitors & No pets & No smoking            30.0                  3                 5.0 South Bend
+                   Clean and Cozy Harlem Apartment  601.0 Entire home/apt                                  No smoking           128.0                  4                 3.0 South Bend
+AMAZING AAA Specious  Studio South Expo  Skylight!   71.0 Entire home/apt                    No smoking & No visitors            30.0                  3                 5.0 South Bend
+                         1 Bedroom in williamsburg  864.0 Entire home/apt                        No smoking & No pets             7.0                  6                 1.0 South Bend
+                         Whole West Village Studio  324.0 Entire home/apt No pets & No smoking & No children under 10             2.0                  3                 5.0 South Bend
+          Room in lovely loft with waterfront view  234.0    Private room                                  No parties            10.0                  2                 4.0 South Bend
+Elegant 3 BR in Victorian Home by Brooklyn College  503.0 Entire home/apt          No children under 10 & No visitors             4.0                  4                 1.0 South Bend
+     Convenient 1Bdr with Outdoor Space (sleeps 4)  825.0 Entire home/apt                    No visitors & No parties             2.0                  8                 2.0 South Bend
+      Private room/bathroom on the Upper West Side  155.0    Private room                                  No parties             1.0                  2                 4.0 South Bend
+                            Classy Brooklyn Studio  921.0 Entire home/apt                                 No visitors            15.0                  3                 1.0 South Bend
+
+### Attractions in Fort Wayne
+                                                Name  Latitude  Longitude                                          Address          Phone                                                                                                          Website       City
+                            Fort Wayne Museum of Art 41.081265 -85.136055         311 E Main St, Fort Wayne, IN 46802, USA (260) 422-6467                                                                                            http://www.fwmoa.org/ Fort Wayne
+                                     Science Central 41.091844 -85.139414     1950 N Clinton St, Fort Wayne, IN 46805, USA (260) 424-2400                                                                                   http://www.sciencecentral.org/ Fort Wayne
+                                   Historic Old Fort 41.085227 -85.136248      1201 Spy Run Ave, Fort Wayne, IN 46805, USA (260) 427-6000                          http://www.fortwayneparks.org/index.php?option=com_content&view=article&id=26&Itemid=43 Fort Wayne
+          Foellinger-Freimann Botanical Conservatory 41.075819 -85.139104       1100 Calhoun St, Fort Wayne, IN 46802, USA (260) 427-6440                                                                                http://botanicalconservatory.org/ Fort Wayne
+                      Fort Wayne Firefighters Museum 41.076954 -85.141940 226 W Washington Blvd, Fort Wayne, IN 46802, USA (260) 426-0051                                                                              http://www.fortwaynefiremuseum.com/ Fort Wayne
+                                     Headwaters Park 41.084960 -85.139322      333 S Clinton St, Fort Wayne, IN 46802, USA (260) 422-7625                                       http://www.fortwayneparks.org/index.php?option=com_content&id=33&Itemid=49 Fort Wayne
+                                      Promenade Park 41.082418 -85.142602     202 W Superior St, Fort Wayne, IN 46802, USA (260) 427-6000                     http://www.fortwayneparks.org/parks/park-page-links/36-parks/legacy-parks/856-promenade-park Fort Wayne
+                         Eagle Marsh Nature Preserve 41.037965 -85.226619         6801 Engle Rd, Fort Wayne, IN 46804, USA (260) 478-2515                                                                                             http://www.lrwp.org/ Fort Wayne
+                                        Kreager Park 41.090221 -85.040234       7225 N River Rd, Fort Wayne, IN 46815, USA (260) 427-6000                                                                                   http://www.fortwayneparks.org/ Fort Wayne
+                           Fort Wayne Children's Zoo 41.105946 -85.153441     3411 Sherman Blvd, Fort Wayne, IN 46808, USA (260) 427-6800                                                                                              http://kidszoo.org/ Fort Wayne
+                                       Lakeside Park 41.089528 -85.119733         1401 Lake Ave, Fort Wayne, IN 46805, USA (260) 427-6000               https://www.fortwayneparks.org/parks/38-parks/park-page-links/176-lakeside-park-a-rose-garden.html Fort Wayne
+African / African American Historical Society Museum 41.073985 -85.132360     436 E Douglas Ave, Fort Wayne, IN 46802, USA (260) 420-0765                                                                                                          Unknown Fort Wayne
+                                         Franke Park 41.107490 -85.158623     3411 Sherman Blvd, Fort Wayne, IN 46808, USA (260) 427-6000                                                                                   http://www.fortwayneparks.org/ Fort Wayne
+                                        Buckner Park 41.091028 -85.222044          6114 Bass Rd, Fort Wayne, IN 46818, USA (260) 427-6000 http://www.fortwayneparks.org/index.php?option=com_content&view=article&id=293%3Abuckner-park&catid=38&Itemid=33 Fort Wayne
+                           Lincoln Log Cabin Replica 41.049217 -85.158524      3902 Old Mill Rd, Fort Wayne, IN 46807, USA        Unknown                                      http://www.fortwayneparks.org/38-parks/park-page-links/169-foster-park.html Fort Wayne
+                      Hugo Diamond Railroad Crossing 41.049834 -85.179626    3020 Ojibway Trail, Fort Wayne, IN 46809, USA        Unknown                                                                                                          Unknown Fort Wayne
+                      Hanson Quarry Observation Deck 41.028522 -85.197034    4529 Sand Point Rd, Fort Wayne, IN 46809, USA (260) 478-9992                                                                                                          Unknown Fort Wayne
+                                            77 Steps 41.078701 -85.140288        113 W Berry St, Fort Wayne, IN 46802, USA        Unknown                                                                https://www.artthiswayfw.com/public-art/77-steps/ Fort Wayne
+                                       Old Fort Park 41.081619 -85.134095    Clay St, E Main St, Fort Wayne, IN 46802, USA (260) 427-6000                                                                                        https://oldfortwayne.org/ Fort Wayne
+                                         Shoaff Park 41.140482 -85.093400        6401 St Joe Rd, Fort Wayne, IN 46835, USA (260) 427-6000                                     http://www.fortwayneparks.org/index.php?option=com_content&id=114&Itemid=179 Fort Wayne
+
+### Restaurants in Fort Wayne
+                                Name  Average Cost                                          Cuisines  Aggregate Rating       City
+        Shri Bikaner Misthan Bhandar            29         Pizza, French, Mexican, BBQ, Bakery, Cafe               0.0 Fort Wayne
+                           Good Food            32          Desserts, Pizza, Fast Food, Cafe, Indian               0.0 Fort Wayne
+                     Cafe Coffee Day            48                                    Tea, Fast Food               3.3 Fort Wayne
+Parikrama - The Revolving Restaurant            80         Tea, Pizza, Italian, Mexican, Bakery, BBQ               3.8 Fort Wayne
+                        Roll's World            52              Fast Food, Bakery, Desserts, Italian               0.0 Fort Wayne
+     Yellow Mirchi - Hotel City Park            35                    Chinese, French, Cafe, Seafood               3.9 Fort Wayne
+                Bukhara - ITC Maurya            39  Mexican, Bakery, BBQ, Fast Food, Indian, Seafood               4.4 Fort Wayne
+                The Barbeque Company            88            Bakery, BBQ, Fast Food, Cafe, American               4.2 Fort Wayne
+                             Khidmat            99           Desserts, Pizza, Mexican, BBQ, American               3.6 Fort Wayne
+                    Relax Restaurant            35                                Cafe, BBQ, Seafood               3.5 Fort Wayne
+                       Punjab Sweets            67               Tea, Bakery, BBQ, American, Seafood               0.0 Fort Wayne
+                Riyaz Chicken Corner            64 Tea, Pizza, BBQ, Fast Food, Indian, Mediterranean               0.0 Fort Wayne
+                         Kings Kulfi            91    Tea, BBQ, Cafe, Indian, Mediterranean, Seafood               3.7 Fort Wayne
+                            Sam's 22            71                            Tea, Bakery, Fast Food               0.0 Fort Wayne
+           Satyam Rooftop Restaurant            72                  Pizza, Indian, Desserts, Seafood               2.9 Fort Wayne
+                        Piyu Kitchen            83   Tea, Bakery, BBQ, Cafe, American, Mediterranean               3.2 Fort Wayne
+     Clemency- The Restaurant & Cafe            54                  Tea, Chinese, Mexican, Fast Food               3.8 Fort Wayne
+                             Barista            28                  Tea, Pizza, Italian, Bakery, BBQ               3.3 Fort Wayne
+                    The Artful Baker            75          Indian, Mediterranean, Desserts, Seafood               0.0 Fort Wayne
+                              Subway           100                             Cafe, Bakery, Seafood               3.1 Fort Wayne
+                    Lucknow Heritage            55         Tea, Pizza, Italian, BBQ, Indian, Seafood               0.0 Fort Wayne
+                      Cold Rock Cafe            83       Pizza, Mexican, Bakery, Fast Food, American               3.3 Fort Wayne
+                    Melting Flavours            86                                  Bakery, Desserts               3.4 Fort Wayne
+   La Quello - Mediterranean Kitchen            78                            Tea, Chinese, Desserts               4.6 Fort Wayne
+
+### Accommodations in Fort Wayne
+                                         NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+  Sunlit Brooklyn Bedroom w/ Private Entrance  856.0    Private room                                      No parties             2.0                  1                 2.0 Fort Wayne
+     Large room in new Williamsburg apartment 1104.0    Private room                                         No pets             4.0                  1                 2.0 Fort Wayne
+Inviting , Cozy and Clean and room like home.  186.0    Private room No parties & No visitors & No children under 10             3.0                  1                 5.0 Fort Wayne
+                       Wonderful Williamsburg  440.0    Private room                         No smoking & No parties             1.0                  2                 2.0 Fort Wayne
+                          Manhattan adventure  430.0    Private room                            No children under 10             4.0                  2                 5.0 Fort Wayne
+           Studio Bedroom Apt in Williamsburg  173.0 Entire home/apt                                     No visitors             3.0                  2                 3.0 Fort Wayne
+                                    Penthouse  541.0 Entire home/apt                                         No pets             4.0                  5                 3.0 Fort Wayne
+                     Private room in Brooklyn  226.0    Private room                                         No pets             1.0                  2                 3.0 Fort Wayne
+West 50th street, Lux 1bd Serviced Apartment*  407.0 Entire home/apt                        No visitors & No smoking            30.0                  3                 2.0 Fort Wayne
+              Manhattan | Luxurious 1 Bedroom  573.0 Entire home/apt                            No children under 10            30.0                  2                 2.0 Fort Wayne
+             Great! Private Room in Sunnyside  187.0    Private room                                      No parties             1.0                  1                 3.0 Fort Wayne
+
+### Flight from Washington to Evansville on 2022-03-23
+There is no flight from Washington to Evansville on 2022-03-23.
+
+### Self-driving from Washington to Evansville
+self-driving, from Washington to Evansville, duration: 10 hours 59 mins, distance: 1,168 km, cost: 58
+
+### Taxi from Washington to Evansville
+taxi, from Washington to Evansville, duration: 10 hours 59 mins, distance: 1,168 km, cost: 1168
+
+### Flight from Evansville to South Bend on 2022-03-25
+There is no flight from Evansville to South Bend on 2022-03-25.
+
+### Self-driving from Evansville to South Bend
+self-driving, from Evansville to South Bend, duration: 5 hours 1 min, distance: 512 km, cost: 25
+
+### Taxi from Evansville to South Bend
+taxi, from Evansville to South Bend, duration: 5 hours 1 min, distance: 512 km, cost: 512
+
+### Flight from South Bend to Fort Wayne on 2022-03-27
+There is no flight from South Bend to Fort Wayne on 2022-03-27.
+
+### Self-driving from South Bend to Fort Wayne
+self-driving, from South Bend to Fort Wayne, duration: 1 hour 46 mins, distance: 145 km, cost: 7
+
+### Taxi from South Bend to Fort Wayne
+taxi, from South Bend to Fort Wayne, duration: 1 hour 46 mins, distance: 145 km, cost: 145
+
+### Flight from Fort Wayne to Washington on 2022-03-29
+There is no flight from Fort Wayne to Washington on 2022-03-29.
+
+### Self-driving from Fort Wayne to Washington
+self-driving, from Fort Wayne to Washington, duration: 8 hours 52 mins, distance: 893 km, cost: 44
+
+### Taxi from Fort Wayne to Washington
+taxi, from Fort Wayne to Washington, duration: 8 hours 52 mins, distance: 893 km, cost: 893
+
+JSON plan:

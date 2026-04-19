@@ -1,0 +1,290 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you arrange a 7-day trip for 2 people departing from Washington and visiting 3 cities in New York? The trip will be from March 13th to March 19th, 2022, with a budget of $5,500. We would prefer accommodations with smoking house rules.
+
+Reference information:
+### Attractions in Buffalo
+                                               Name  Latitude  Longitude                                         Address          Phone                                                      Website    City
+                                    The Buffalo Zoo 42.937123 -78.851609        300 Parkside Ave, Buffalo, NY 14214, USA (716) 837-3900                                   http://www.buffalozoo.org/ Buffalo
+          Buffalo and Erie County Botanical Gardens 42.827864 -78.823995     2655 South Park Ave, Buffalo, NY 14218, USA (716) 827-1584                              https://www.buffalogardens.com/ Buffalo
+                             Buffalo AKG Art Museum 42.932450 -78.875618        1285 Elmwood Ave, Buffalo, NY 14222, USA (716) 882-8700                                      https://buffaloakg.org/ Buffalo
+                                          Canalside 42.876928 -78.879394             44 Prime St, Buffalo, NY 14202, USA        Unknown                            http://www.buffalowaterfront.com/ Buffalo
+Theodore Roosevelt Inaugural National Historic Site 42.901468 -78.872484        641 Delaware Ave, Buffalo, NY 14202, USA (716) 884-0095                                           http://trsite.org/ Buffalo
+                                 Buffalo Naval Park 42.877485 -78.879586  1 Naval, Marina Park S, Buffalo, NY 14202, USA (716) 847-1773                                 http://buffalonavalpark.org/ Buffalo
+                          Buffalo Museum of Science 42.906132 -78.843605      1020 Humboldt Pkwy, Buffalo, NY 14211, USA (716) 896-5200                                 https://www.sciencebuff.org/ Buffalo
+                                      Delaware Park 42.932662 -78.852729         84 Parkside Ave, Buffalo, NY 14214, USA (716) 838-1249            http://www.bfloparks.org/index.php/parks/delaware Buffalo
+                                   Lafayette Square 42.885669 -78.873848             415 Main St, Buffalo, NY 14203, USA (716) 851-5553                                                      Unknown Buffalo
+                  Frank Lloyd Wright's Martin House 42.936233 -78.847990         125 Jewett Pkwy, Buffalo, NY 14214, USA (716) 856-3858                                     https://martinhouse.org/ Buffalo
+                          Buffalo Harbor State Park 42.851046 -78.864525 1111 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 822-1207        https://parks.ny.gov/parks/buffaloharbor/details.aspx Buffalo
+                                     Buffalo Bricks 42.874193 -78.877626                 Main St, Buffalo, NY 14204, USA (716) 854-2314                           http://www.workingfordowntown.org/ Buffalo
+                          Buffalo Heritage Carousel 42.875546 -78.878373             44 Prime St, Buffalo, NY 14202, USA (716) 493-2110                     https://www.buffaloheritagecarousel.org/ Buffalo
+                   Michigan Street African American 42.886880 -78.868097            Michigan Ave, Buffalo, NY 14203, USA (716) 322-1002                        http://www.michiganstreetbuffalo.org/ Buffalo
+                              Tifft Nature Preserve 42.846168 -78.859459 1200 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 825-6397                                       https://www.tifft.org/ Buffalo
+                                 Iron Island Museum 42.890042 -78.811440        998 E Lovejoy St, Buffalo, NY 14206, USA (716) 892-3084                             http://www.ironislandmuseum.com/ Buffalo
+                                 The Electric Tower 42.888680 -78.872115       535 Washington St, Buffalo, NY 14203, USA (716) 633-2096                                http://www.electrictower.com/ Buffalo
+                                 Buffalo Main Light 42.877840 -78.889497    1 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 264-1707 https://www.facebook.com/Buffalo-Lighthouse-245535252134529/ Buffalo
+                         The Buffalo History Museum 42.935429 -78.876291             1 Museum Ct, Buffalo, NY 14216, USA (716) 873-9644                               http://www.buffalohistory.org/ Buffalo
+                                  Buffalo City Hall 42.886619 -78.879325       65 Niagara Square, Buffalo, NY 14202, USA (716) 851-4890                                    http://www.buffalony.gov/ Buffalo
+
+### Restaurants in Buffalo
+                          Name  Average Cost                                             Cuisines  Aggregate Rating    City
+                     Shokitini            41          Tea, Cafe, Pizza, Mexican, Chinese, Seafood               4.2 Buffalo
+   Tibby's New Orleans Kitchen            48                        Seafood, Indian, BBQ, Italian               4.7 Buffalo
+                Pinch Of Spice            84                              Cafe, Desserts, Seafood               4.2 Buffalo
+                Maa Kali Foods            61             Desserts, BBQ, Bakery, Fast Food, Indian               0.0 Buffalo
+                  Punjab Grill            25                       Bakery, BBQ, Desserts, Seafood               4.3 Buffalo
+                     Red Mango            18      Mexican, Bakery, BBQ, Fast Food, Cafe, American               3.6 Buffalo
+Ammu's South Indian Restaurant            80                Desserts, Pizza, French, BBQ, Chinese               2.8 Buffalo
+                HSI Food World            60                             Fast Food, Cafe, Seafood               0.0 Buffalo
+          Shama Chicken Corner            25                               Tea, Chinese, Desserts               3.6 Buffalo
+                      Nawwarah            34                                        Cafe, Seafood               3.9 Buffalo
+       The Zuree Urban Kitchen            50                          Fast Food, Seafood, Italian               4.4 Buffalo
+    Madhuvan Chinese Fast Food            77           Pizza, Italian, Bakery, Fast Food, Seafood               2.5 Buffalo
+                Bihar ki Rasoi            90                                Tea, Bakery, Desserts               3.5 Buffalo
+                  Room Service            94                         Bakery, Indian, BBQ, Italian               3.4 Buffalo
+                   Madras Cafe            31                                       Cafe, Desserts               2.5 Buffalo
+        Lutyens Cocktail House            12                               Bakery, BBQ, Fast Food               3.9 Buffalo
+       Aditya's Kulcha Express            43             Bakery, BBQ, Fast Food, Chinese, Seafood               3.3 Buffalo
+             Invitation Foodex            85 Desserts, Pizza, Italian, Bakery, BBQ, Mediterranean               3.2 Buffalo
+                    Chopsticks            14                               Cafe, Seafood, Italian               3.6 Buffalo
+                     Chily Hut            23                    Fast Food, Cafe, Mexican, Seafood               3.2 Buffalo
+        The Chimney Bar-Be-Que            71               Desserts, French, Bakery, BBQ, Seafood               3.6 Buffalo
+               Jain Restaurant            78                                French, BBQ, Desserts               3.0 Buffalo
+                      US Pizza           100                      Chinese, Pizza, Bakery, Seafood               2.2 Buffalo
+                Mainland China            60                Tea, BBQ, Fast Food, Chinese, Seafood               3.5 Buffalo
+     eastWEST - Radisson Hotel           100                               French, Pizza, Seafood               3.3 Buffalo
+               Big Fish Eatery            50                                          Bakery, BBQ               4.5 Buffalo
+                    A侓侓k Kahve            14                      Chinese, Pizza, Bakery, Seafood               4.0 Buffalo
+
+### Accommodations in Buffalo
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+                 Cozy Studio in Heart of Ft Greene  200.0 Entire home/apt                  No pets & No children under 10             4.0                  3                 5.0 Buffalo
+                              Yankee baseball stay  911.0    Private room                                     No visitors             1.0                  1                 5.0 Buffalo
+                   Williamsburg Gem: Sleep up to 5  486.0 Entire home/apt               No smoking & No children under 10             2.0                  4                 1.0 Buffalo
+         Ideal 3 Bedroom Apartment by Times Square  297.0 Entire home/apt                            No children under 10             2.0                  2                 2.0 Buffalo
+                      Artist Brooklyn Heights Home 1069.0 Entire home/apt                                         No pets             7.0                  8                 3.0 Buffalo
+                    Garden room in a private house  939.0    Private room                            No children under 10            45.0                  1                 4.0 Buffalo
+    Entire, Immaculate 1-Bedroom CHELSEA APARTMENT  309.0 Entire home/apt               No smoking & No pets & No parties             2.0                  2                 4.0 Buffalo
+                    A SUPERB One Bedroom Apartment  417.0 Entire home/apt                                      No parties             2.0                  2                 2.0 Buffalo
+Hospitality on Propsect Pk-12 yrs Hosting Legally!  556.0    Private room           No smoking & No visitors & No parties             1.0                  1                 4.0 Buffalo
+          @ Amazing Midtown Furnished  Apartment @  715.0 Entire home/apt                                      No parties            30.0                  7                 4.0 Buffalo
+Beautiful Light Filled Apartment in New York City!  299.0 Entire home/apt No visitors & No parties & No children under 10             1.0                  2                 1.0 Buffalo
+           *OH SO ZEN*~ Chill Bushwick Yoga Spot!!  948.0 Entire home/apt                                      No smoking             2.0                  9                 2.0 Buffalo
+
+### Attractions in Watertown
+                               Name  Latitude  Longitude                                                           Address          Phone                                                   Website      City
+                    Sci-Tech Museum 43.974348 -75.913119                            154 Stone St, Watertown, NY 13601, USA (315) 788-1340                             http://www.scitechcenter.org/ Watertown
+                      Public Square 43.974605 -75.909695                         1 Public Square, Watertown, NY 13601, USA (315) 785-7775                                                   Unknown Watertown
+Jefferson County Historical Society 43.973244 -75.911820                       228 Washington St, Watertown, NY 13601, USA (315) 782-3491                    http://www.jeffersoncountyhistory.org/ Watertown
+             Historic Thompson Park 43.963545 -75.887840                           Thompson Park, Watertown, NY 13601, USA (315) 785-7775                         https://historicthompsonpark.org/ Watertown
+         Roswell P. Flower Monument 43.973863 -75.910925                                          Watertown, NY 13601, USA (315) 785-7705                    https://www.flowermemoriallibrary.org/ Watertown
+                    Waterworks Park 43.977923 -75.880133                      1630 Huntington St, Watertown, NY 13601, USA (315) 785-7780     https://hmienterprises.com/nnytrails/waterworks-park/ Watertown
+        Zero Latency VR - Watertown 43.978461 -75.953285 21182 Salmon Run Mall Loop W Suite B101, Watertown, NY 13601, USA (315) 767-2286                             http://www.zerolatencyvr.com/ Watertown
+                 Marble Street Park 43.977596 -75.873685                                          Watertown, NY 13601, USA        Unknown                                                   Unknown Watertown
+        Honor the Mountain Monument 43.962083 -75.889325                        34 Thompson Park, Watertown, NY 13601, USA        Unknown                          http://www.honorthemountain.com/ Watertown
+                  Dry Hill Ski Area 43.931234 -75.901810                   18160 Alpine Ridge Rd, Watertown, NY 13601, USA (315) 782-8584                                    http://skidryhill.com/ Watertown
+               The Escape Works Inc 43.974284 -75.912320                            140 Stone St, Watertown, NY 13601, USA (315) 771-0787                           https://www.theescapeworks.com/ Watertown
+                       Zoo New York 43.961903 -75.885596                         1 Thompson Park, Watertown, NY 13601, USA (315) 782-6180                               https://www.zoonewyork.org/ Watertown
+                     Fun on the Run 43.977170 -75.953339            21182 Salmon Run Mall Loop W, Watertown, NY 13601, USA (315) 777-8003 https://www.shopsalmonrunmall.com/tenants/fun-on-the-run/ Watertown
+            Escape the Mystery Room 43.977607 -75.953467    21182 Salmon Run Mall Loop W Suite D, Watertown, NY 13601, USA (315) 965-8010        https://allinadventures.com/locations/watertown-ny Watertown
+             Black River Outfitters 43.981818 -75.914831                           531 W Main St, Watertown, NY 13601, USA (888) 960-4276                                http://www.brorafting.com/ Watertown
+
+### Restaurants in Watertown
+                               Name  Average Cost                                                Cuisines  Aggregate Rating      City
+The Catch Seafood Room & Oyster Bar            51             Tea, BBQ, Fast Food, Mediterranean, Seafood               3.8 Watertown
+       Ruth Ann's Family Restaurant            22                           Tea, Pizza, Desserts, Italian               3.7 Watertown
+                        Nik Baker's            12        Desserts, Tea, Fast Food, Chinese, Mediterranean               4.1 Watertown
+                        Chaat Chowk            86                        Tea, French, Desserts, Fast Food               3.7 Watertown
+                     Baskin Robbins            42                       Tea, Chinese, Desserts, Fast Food               0.0 Watertown
+                            Barista            14                       Fast Food, Chinese, Cafe, Seafood               3.3 Watertown
+                      Hari Om Rasoi            97                              Tea, Pizza, BBQ, Fast Food               3.2 Watertown
+             Great Desserts Company            22              Desserts, BBQ, Fast Food, Chinese, Seafood               3.3 Watertown
+                             Faasos            79                                 Fast Food, BBQ, Italian               3.2 Watertown
+     Thai Pavilion - Vivanta By Taj            33                   Desserts, Pizza, Italian, Bakery, BBQ               4.0 Watertown
+                   The Mirch Masala            52                    Desserts, Tea, Italian, Bakery, Cafe               3.0 Watertown
+                Shree Krishna Dhaba            51                     Tea, Cafe, Bakery, Chinese, Seafood               0.0 Watertown
+                         Amici Cafe            32                                  Tea, Indian, Fast Food               3.6 Watertown
+                       Central Perk            56                                     Desserts, Fast Food               3.8 Watertown
+                     Nut Khut Rasoi            74                                Fast Food, Cafe, Italian               3.4 Watertown
+                 The Tangy Tomatoes            10            Desserts, French, Fast Food, Indian, Seafood               3.7 Watertown
+              Uncultured Cafe & Bar            39                            Tea, Cafe, Desserts, Seafood               4.3 Watertown
+                      Golden Bakery            15                Desserts, Pizza, BBQ, Fast Food, Chinese               0.0 Watertown
+                             Subway            43                                 Chinese, Pizza, Seafood               3.6 Watertown
+                   Dilli Chaap Wale            39                             Bakery, Pizza, BBQ, Seafood               3.4 Watertown
+       No Name - Taste Hi Kaafi Hai            75     Tea, Bakery, BBQ, Fast Food, Chinese, Mediterranean               3.2 Watertown
+                Bajaj Vaishno Dhaba            53                             Bakery, Desserts, Fast Food               2.2 Watertown
+          Malika Bakers Pastry Shop            23                               Tea, Chinese, Pizza, Cafe               3.4 Watertown
+                       Satvik Rasoi            82                               Tea, Cafe, BBQ, Fast Food               3.8 Watertown
+                   Ram Chinese Food            46                                    Pizza, American, BBQ               3.1 Watertown
+                     Madan Da Dhaba            55          Pizza, Italian, Bakery, BBQ, American, Seafood               3.0 Watertown
+                      Kake Di Hatti            83                                      Tea, Chinese, Cafe               3.6 Watertown
+                      Grover Sweets            17                    Tea, French, Mexican, BBQ, Fast Food               3.1 Watertown
+                           Mamagoto            10 Pizza, Mexican, Fast Food, Cafe, Mediterranean, Seafood               4.3 Watertown
+ Chandni Chowk Ke Mashhoor Paranthe            11                                  Bakery, American, Cafe               2.8 Watertown
+                        New Gee Pee            42                    Cafe, Pizza, Mediterranean, Desserts               3.3 Watertown
+                     Old Town Italy            47                 Pizza, French, Mexican, Fast Food, Cafe               3.9 Watertown
+
+### Accommodations in Watertown
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+    Comfortable Room near the center of Manhattan.  980.0    Private room                            No pets & No smoking             2.0                  2                 3.0 Watertown
+                               Zen Holiday Getaway   56.0 Entire home/apt                                     No visitors             7.0                  3                 2.0 Watertown
+  Spacious & Cozy 1BR Apartment in Brownstone Bldg 1008.0 Entire home/apt                         No smoking & No parties             1.0                  4                 3.0 Watertown
+                    Beautiful brownstone apartment  638.0 Entire home/apt No parties & No visitors & No children under 10             2.0                  3                 3.0 Watertown
+     Beautiful Apartment in Center of Williamsburg  307.0 Entire home/apt              No visitors & No parties & No pets             4.0                  3                 2.0 Watertown
+                        Cozy one bedroom apartment  321.0 Entire home/apt                                      No smoking             1.0                  2                 5.0 Watertown
+                Spacious, Sunny Room in Park Slope  338.0    Private room                        No smoking & No visitors             2.0                  1                 5.0 Watertown
+           Residential Area in the heart of Queens  913.0    Private room                            No children under 10             1.0                  1                 5.0 Watertown
+                           Family Friendly Getaway  530.0 Entire home/apt    No pets & No visitors & No children under 10            28.0                  4                 1.0 Watertown
+Paris in New York Cozy private entrance&bath bkfst  238.0    Private room                                     No visitors             2.0                  2                 2.0 Watertown
+             Super clean & new 1 bedroom apartment  647.0 Entire home/apt                        No visitors & No parties             1.0                  2                 4.0 Watertown
+              Spacious living room, walk-in closet 1125.0     Shared room               No smoking & No children under 10             3.0                  1                 3.0 Watertown
+Manhattan - Upper East Side Lovely Private Bedroom   81.0    Private room                            No pets & No parties             1.0                  2                 5.0 Watertown
+
+### Attractions in New York
+                        Name  Latitude  Longitude                                        Address          Phone                                                                         Website     City
+             Top of The Rock 40.759350 -73.979409  30 Rockefeller Plaza, New York, NY 10112, USA (212) 698-2000 https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/ New York
+       One World Observatory 40.713006 -74.013173           117 West St, New York, NY 10007, USA (844) 696-1776                                                https://oneworldobservatory.com/ New York
+       SUMMIT One Vanderbilt 40.752764 -73.978746          45 E 42nd St, New York, NY 10017, USA        Unknown                                                        http://www.summitov.com/ New York
+          Rockefeller Center 40.758740 -73.978674  45 Rockefeller Plaza, New York, NY 10111, USA (212) 588-8601                                              https://www.rockefellercenter.com/ New York
+           Statue of Liberty 40.689249 -74.044500                        New York, NY 10004, USA (212) 363-3200                                              https://www.nps.gov/stli/index.htm New York
+               The High Line 40.747993 -74.004765                        New York, NY 10011, USA (212) 500-6035                                                    https://www.thehighline.org/ New York
+       Empire State Building 40.748441 -73.985664         20 W 34th St., New York, NY 10001, USA (212) 736-3100                                                         https://www.esbnyc.com/ New York
+             Brooklyn Bridge 40.706086 -73.996864                        New York, NY 10038, USA        Unknown          https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml New York
+      9/11 Memorial & Museum 40.711578 -74.013336      180 Greenwich St, New York, NY 10007, USA (212) 312-8800                                                    https://www.911memorial.org/ New York
+           Flatiron Building 40.741061 -73.989699           175 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+                Times Square 40.757975 -73.985543                       Manhattan, NY 10036, USA        Unknown                                                 https://www.timessquarenyc.org/ New York
+                      RiseNY 40.757621 -73.985176         160 W 45th St, New York, NY 10036, USA (718) 701-4998                                                              https://riseny.co/ New York
+         The Channel Gardens 40.758501 -73.978087                        New York, NY 10020, USA        Unknown              https://www.rockefellercenter.com/attractions/the-channel-gardens/ New York
+                 The Battery 40.702931 -74.015360     Battery Park City, New York, NY 10004, USA (212) 344-3491                                                     https://www.thebattery.org/ New York
+                Central Park 40.782555 -73.965583                              New York, NY, USA (212) 310-6600                                                 https://www.centralparknyc.org/ New York
+             Tenement Museum 40.718818 -73.990088        103 Orchard St, New York, NY 10002, USA (877) 975-3786                                                       https://www.tenement.org/ New York
+         MUSEUM OF ICE CREAM 40.723855 -73.997917          558 Broadway, New York, NY 10012, USA        Unknown                                               https://www.museumoficecream.com/ New York
+       Radio City Music Hall 40.759976 -73.979977          1260 6th Ave, New York, NY 10020, USA (212) 465-6000                                       https://www.msg.com/radio-city-music-hall New York
+Pier 46 at Hudson River Park 40.734189 -74.011265 Hudson River Greenway, New York, NY 10014, USA (212) 627-2020                                                     http://hudsonriverpark.org/ New York
+        Tiffany Street Clock 40.741981 -73.989378           200 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+
+### Restaurants in New York
+                              Name  Average Cost                                             Cuisines  Aggregate Rating     City
+            Seasons 52 Fresh Grill            30                   Seafood, Indian, Desserts, Italian               4.4 New York
+                    Gurgaon Hights            46                    Cafe, American, Indian, Fast Food               2.5 New York
+                             G Dot            75                                   Cafe, Mexican, BBQ               2.4 New York
+                           Rambhog            95                     Tea, Seafood, Mexican, Fast Food               3.3 New York
+                  Green Chick Chop            26                           Tea, French, Cafe, Seafood               3.3 New York
+          Lord of the Drinks Forum            71                   Cafe, Bakery, BBQ, Chinese, Indian               4.2 New York
+                        Goosebumps            94                               Chinese, Pizza, Bakery               3.2 New York
+Aryan's Rajasthani Pyaz Ki Kachori            17                         Cafe, Pizza, Indian, Seafood               3.1 New York
+                   QD's Restaurant            93                           Tea, Desserts, Indian, BBQ               4.1 New York
+               Golooji's Chat Waat            53                                           Pizza, BBQ               3.3 New York
+              Sir John Bakery Cafe            78                              Pizza, Bakery, Desserts               3.4 New York
+                     Shree Rathnam            91            Tea, Bakery, Fast Food, American, Seafood               3.4 New York
+                    Domino's Pizza            86                           Tea, French, Pizza, Indian               3.3 New York
+                    Sugary Affairs            55               Desserts, Tea, Fast Food, Cafe, Indian               3.0 New York
+                        Sugar Rush            89                            Tea, Chinese, Pizza, Cafe               0.0 New York
+                            Amchur            67                                Tea, Bakery, American               2.9 New York
+                Kamal Chat Bhandar            36                                 Chinese, Bakery, BBQ               0.0 New York
+                          736 A.D.            99 Desserts, Bakery, Fast Food, American, Mediterranean               4.1 New York
+          Garam Masala Food Corner            40                              Pizza, Bakery, Desserts               3.3 New York
+                  Green Restaurant            74                          Tea, Cafe, Bakery, Desserts               0.0 New York
+                       Hungry Ullu            94                                          Tea, Bakery               3.3 New York
+                          The Best            79                                   Tea, Chinese, Cafe               3.4 New York
+                          Baltazar            46                      Tea, Fast Food, Bakery, Seafood               4.3 New York
+
+### Accommodations in New York
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number     city
+Versatile private room in Harlem/Hamilton Heights!  398.0    Private room           No pets & No visitors & No parties             4.0                  1                 5.0 New York
+Beautiful and big 1BR sublet close by Central Park  983.0    Private room            No parties & No children under 10             5.0                  2                 5.0 New York
+    A Contemporary Homelike Stay in the Best of BK  228.0 Entire home/apt No pets & No visitors & No children under 10             2.0                  2                 2.0 New York
+       Charming Bright Room in Bed Stuy Brownstone 1064.0    Private room           No visitors & No smoking & No pets            30.0                  2                 3.0 New York
+       Spacious Bedroom in Prime Brooklyn Location  782.0    Private room                         No parties & No pets             3.0                  1                 4.0 New York
+         Cool Downtown Apartment in Great Location  997.0 Entire home/apt                                      No pets             4.0                  7                 4.0 New York
+              Modern Brooklyn oasis (PRIVATE ROOM)  403.0    Private room                         No children under 10             1.0                  1                 5.0 New York
+       Magical rowhouse and garden in Williamsburg  189.0 Entire home/apt                                   No parties             4.0                  3                 1.0 New York
+                          Large Bed-Stuy Apartment  132.0 Entire home/apt                                  No visitors             6.0                  2                 4.0 New York
+IN MINT CONDITION-1BR&TERRACE-E 44TH/UNITED NATION  297.0 Entire home/apt                                      No pets            30.0                  2                 4.0 New York
+   Spacious Private Access Near Trains M - L and J  800.0    Private room                                      No pets             2.0                  1                 4.0 New York
+ Sunny + Spacious Master Bedroom with Outdoor Deck  109.0    Private room                                      No pets             3.0                  1                 5.0 New York
+ ✈ NYC/Travelers. New Private Access Room Bed Full 1158.0    Private room                                      No pets             2.0                  1                 5.0 New York
+
+### Flight from Washington to Buffalo on 2022-03-13
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3633545    125   15:02   16:35 1 hours 33 minutes 2022-03-13     Washington      Buffalo     296.0
+     F3791084     70   10:47   11:59 1 hours 12 minutes 2022-03-13     Washington      Buffalo     296.0
+     F3791373     70   22:10   23:32 1 hours 22 minutes 2022-03-13     Washington      Buffalo     296.0
+     F3876638     61   22:36   23:51 1 hours 15 minutes 2022-03-13     Washington      Buffalo     283.0
+     F4073118    118   10:52   12:11 1 hours 19 minutes 2022-03-13     Washington      Buffalo     283.0
+
+### Self-driving from Washington to Buffalo
+self-driving, from Washington to Buffalo, duration: 6 hours 54 mins, distance: 611 km, cost: 30
+
+### Taxi from Washington to Buffalo
+taxi, from Washington to Buffalo, duration: 6 hours 54 mins, distance: 611 km, cost: 611
+
+### Flight from Buffalo to Watertown on 2022-03-15
+There is no flight from Buffalo to Watertown on 2022-03-15.
+
+### Self-driving from Buffalo to Watertown
+self-driving, from Buffalo to Watertown, duration: 3 hours 15 mins, distance: 347 km, cost: 17
+
+### Taxi from Buffalo to Watertown
+taxi, from Buffalo to Watertown, duration: 3 hours 15 mins, distance: 347 km, cost: 347
+
+### Flight from Watertown to New York on 2022-03-17
+There is no flight from Watertown to New York on 2022-03-17.
+
+### Self-driving from Watertown to New York
+self-driving, from Watertown to New York, duration: 5 hours 7 mins, distance: 510 km, cost: 25
+
+### Taxi from Watertown to New York
+taxi, from Watertown to New York, duration: 5 hours 7 mins, distance: 510 km, cost: 510
+
+### Flight from New York to Washington on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3669574     48   12:02   13:19 1 hours 17 minutes 2022-03-19       New York   Washington     214.0
+     F3672126     64   13:28   14:40 1 hours 12 minutes 2022-03-19       New York   Washington     214.0
+     F3708491    101   17:22   18:34 1 hours 12 minutes 2022-03-19       New York   Washington     214.0
+     F3709121     56   09:56   11:10 1 hours 14 minutes 2022-03-19       New York   Washington     214.0
+     F3923809     48   15:24   16:40 1 hours 16 minutes 2022-03-19       New York   Washington     229.0
+     F3923810    107   10:11   11:21 1 hours 10 minutes 2022-03-19       New York   Washington     229.0
+     F3923819     84   11:23   12:28  1 hours 5 minutes 2022-03-19       New York   Washington     229.0
+     F3923828    111   07:55   09:13 1 hours 18 minutes 2022-03-19       New York   Washington     229.0
+     F3923829    100   13:35   14:47 1 hours 12 minutes 2022-03-19       New York   Washington     229.0
+     F3923848    107   19:27   21:28  2 hours 1 minutes 2022-03-19       New York   Washington     229.0
+     F3923862     60   19:51   21:40 1 hours 49 minutes 2022-03-19       New York   Washington     229.0
+     F3923863     69   17:28   19:06 1 hours 38 minutes 2022-03-19       New York   Washington     229.0
+     F3923864     49   14:47   16:11 1 hours 24 minutes 2022-03-19       New York   Washington     229.0
+     F4052954     44   14:47   15:53  1 hours 6 minutes 2022-03-19       New York   Washington     213.0
+     F4053173     87   08:29   09:48 1 hours 19 minutes 2022-03-19       New York   Washington     213.0
+     F4055622     64   19:21   21:07 1 hours 46 minutes 2022-03-19       New York   Washington     213.0
+     F4055769     68   17:34   18:52 1 hours 18 minutes 2022-03-19       New York   Washington     213.0
+     F4055906     55   07:55   09:14 1 hours 19 minutes 2022-03-19       New York   Washington     214.0
+     F4066684     67   09:28   10:55 1 hours 27 minutes 2022-03-19       New York   Washington     214.0
+     F4066698     65   21:50   00:37 2 hours 47 minutes 2022-03-19       New York   Washington     228.0
+     F4066714    103   18:42   19:51  1 hours 9 minutes 2022-03-19       New York   Washington     213.0
+     F4066715     71   09:23   10:21 0 hours 58 minutes 2022-03-19       New York   Washington     213.0
+     F4066717     69   15:03   16:22 1 hours 19 minutes 2022-03-19       New York   Washington     228.0
+     F4066748     88   15:41   17:17 1 hours 36 minutes 2022-03-19       New York   Washington     213.0
+     F4066751     74   14:49   15:59 1 hours 10 minutes 2022-03-19       New York   Washington     214.0
+     F4066770     55   21:26   23:53 2 hours 27 minutes 2022-03-19       New York   Washington     213.0
+     F4066789     99   20:39   22:13 1 hours 34 minutes 2022-03-19       New York   Washington     214.0
+     F4066800     95   09:22   10:28  1 hours 6 minutes 2022-03-19       New York   Washington     228.0
+
+### Self-driving from New York to Washington
+self-driving, from New York to Washington, duration: 3 hours 51 mins, distance: 364 km, cost: 18
+
+### Taxi from New York to Washington
+taxi, from New York to Washington, duration: 3 hours 51 mins, distance: 364 km, cost: 364
+
+JSON plan:

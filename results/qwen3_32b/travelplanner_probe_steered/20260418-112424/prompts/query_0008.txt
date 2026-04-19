@@ -1,0 +1,119 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you arrange a 3-day travel from Boston to San Juan, Puerto Rico, for one person between March 28th and March 30th, 2022? The budget for this trip is set to $1,400.
+
+Reference information:
+### Attractions in San Juan
+                                          Name  Latitude  Longitude                                                       Address                   Phone                                                              Website     City
+                 Castillo San Felipe del Morro 18.470628 -66.123920            501 Calle Norzagaray, San Juan, 00901, Puerto Rico          (787) 729-6960                                   https://www.nps.gov/saju/index.htm San Juan
+                          Paseo de La Princesa 18.463481 -66.116440  FV7M+9CV, Paseo de la Princesa, San Juan, 00901, Puerto Rico                 Unknown                                                              Unknown San Juan
+                         Parque de las Palomas 18.463989 -66.117749             FV7J+HWR, C. Tetuán, San Juan, 00901, Puerto Rico          (787) 480-2910              http://www.conoceapuertorico.com/parque-de-las-palomas/ San Juan
+                                   Casa Blanca 18.466402 -66.120072           1 C. de San Sebastián, San Juan, 00901, Puerto Rico          (787) 725-1454    https://www.discoverpuertorico.com/profile/museo-casa-blanca/8488 San Juan
+                        Castillo San Cristóbal 18.467365 -66.111008            501 Calle Norzagaray, San Juan, 00901, Puerto Rico          (787) 449-4049      https://www.nps.gov/saju/learn/historyculture/san-cristobal.htm San Juan
+               San Juan National Historic Site 18.470482 -66.123516                        FVCG+5HX, San Juan, 00901, Puerto Rico          (787) 729-6960                                   https://www.nps.gov/saju/index.htm San Juan
+                            Puerta de San Juan 18.465134 -66.119533     FV8J+354 Caleta de San Juan, San Juan, 00901, Puerto Rico                 Unknown                                                              Unknown San Juan
+                         Museo de las Américas 18.467724 -66.120186                 C. Beneficencia, San Juan, 00901, Puerto Rico          (787) 724-5052                                     http://www.museolasamericas.org/ San Juan
+                                  La Fortaleza 18.464106 -66.119230           63 C. de la Fortaleza, San Juan, 00901, Puerto Rico          (787) 721-7000                                                              Unknown San Juan
+                     Walkway of the Presidents 18.466197 -66.105886                        FV8V+FJH, San Juan, 00901, Puerto Rico                 Unknown                                                              Unknown San Juan
+                                   Plaza Colón 18.466027 -66.112069    FV8Q+C57, C. de la Fortaleza, San Juan, 00901, Puerto Rico                 Unknown https://www.discoverpuertorico.com/profile/plaza-colon-san-juan/8039 San Juan
+                        Jerrys Adventures llc. 18.455552 -66.088223 580 Av. Manuel Fernández Juncos, San Juan, 00907, Puerto Rico          (787) 455-1245                                     http://www.jerrysadventures.com/ San Juan
+                               Paseo del Morro 18.471818 -66.124852        FVCG+P3C Paseo del Morro, San Juan, 00901, Puerto Rico                 Unknown                                                              Unknown San Juan
+                  Museo de Arte de Puerto Rico 18.448276 -66.066284       299 Avenida José de Diego, San Juan, 00909, Puerto Rico          (787) 977-6277                                                https://www.mapr.org/ San Juan
+               Paseo de la Fama de Puerto Rico 18.457818 -66.075128                1053 Ashford Ave, San Juan, 00907, Puerto Rico                 Unknown                                                              Unknown San Juan
+                                 Museo del Mar 18.466328 -66.112820         360 C. de San Francisco, San Juan, 00901, Puerto Rico          (787) 977-4461                                        http://www.museodelmarpr.org/ San Juan
+Casa Ramón Power y Giralt – Para la Naturaleza 18.464202 -66.116441                   155 C. Tetuán, San Juan, 00901, Puerto Rico (787) 722-5834 ext. 242                                     http://www.paralanaturaleza.org/ San Juan
+                        Balneario El Escambrón 18.466860 -66.089968                        FW86+P2V, San Juan, 00910, Puerto Rico                 Unknown                                                              Unknown San Juan
+                                Plaza de Armas 18.465305 -66.116648                        FV8M+48H, San Juan, 00969, Puerto Rico                 Unknown                                                              Unknown San Juan
+                                     Casa Rosa 18.466495 -66.121154                       Casa Rosa, San Juan, 00901, Puerto Rico                 Unknown                                                              Unknown San Juan
+
+### Restaurants in San Juan
+                            Name  Average Cost                                                Cuisines  Aggregate Rating     City
+     Christian and Jake's Bistro            59                  Tea, French, Bakery, Fast Food, Indian               4.4 San Juan
+Hoka-Hoka Japanese Steak & Sushi            27                             Tea, French, American, Cafe               4.4 San Juan
+                          Oh My!            18   Desserts, Tea, Cafe, American, Mediterranean, Seafood               0.0 San Juan
+               Coldpress Company            11                             Cafe, Pizza, BBQ, Fast Food               4.1 San Juan
+                      Go! Dimsum            54                               French, Bakery, Fast Food               0.0 San Juan
+                   Gulshan Dhaba            40                Desserts, French, BBQ, Bakery, Fast Food               3.4 San Juan
+                          Kofuku            59                               Fast Food, Pizza, Seafood               4.0 San Juan
+                         Pizzaon            79                             Bakery, American, Cafe, BBQ               3.0 San Juan
+               Nile Restro & Bar            45                          Tea, Pizza, American, Desserts               2.7 San Juan
+                 Cafe Coffee Day            97                              BBQ, Cafe, Pizza, Desserts               3.4 San Juan
+                Manchanda Bakery            76                       Fast Food, BBQ, Desserts, Italian               3.1 San Juan
+                       Cocoberry            41                     French, Bakery, Desserts, Fast Food               3.9 San Juan
+                      Sri Balaji            41                            French, Bakery, BBQ, Seafood               0.0 San Juan
+             Maison Des Desserts            70                           Cafe, Mexican, Pizza, Italian               3.9 San Juan
+                      Brunchilli            66                     Desserts, Tea, Italian, Bakery, BBQ               3.2 San Juan
+                 Paul's Homemade            54                                       Tea, BBQ, Seafood               3.1 San Juan
+                      Gopal's 56            10                                    French, Bakery, Cafe               3.8 San Juan
+          Amritsari Chaap Corner            97                                  Tea, Chinese, Desserts               2.9 San Juan
+                  Bhagwan Sweets            96 Desserts, Tea, Pizza, Italian, Fast Food, Mediterranean               2.8 San Juan
+            Chauhan Laxmi Sweets            63                           French, Bakery, Cafe, Seafood               3.0 San Juan
+      The Altitude Cafe and Deli           100    Tea, BBQ, Fast Food, Chinese, Mediterranean, Seafood               3.1 San Juan
+                        Frontier            16                 Desserts, Pizza, Bakery, Cafe, American               3.0 San Juan
+                   Roadside Cafe            69                               Tea, French, Indian, Cafe               2.8 San Juan
+            The Culinary Pitaara            52                         Cafe, French, Chinese, Desserts               2.8 San Juan
+                 Hyderabad House            43                  Desserts, Tea, French, Bakery, Seafood               3.5 San Juan
+               Mitthu Tikki Wala            38      Tea, Italian, Bakery, Cafe, Mediterranean, Seafood               3.4 San Juan
+                        Baadshah            85             Desserts, Pizza, Fast Food, Chinese, Indian               3.5 San Juan
+                        Mandrain            27                                            Cafe, Bakery               2.8 San Juan
+                 Shree Bhagatram            11               Desserts, Pizza, Mexican, Fast Food, Cafe               3.3 San Juan
+                            Swad            34                             Tea, French, Pizza, Seafood               2.8 San Juan
+                   Hookie Dookie            54                                         Cafe, Fast Food               0.0 San Juan
+                      Tea Trails            29                      Fast Food, Cafe, Desserts, Italian               0.0 San Juan
+               Effingut Brewerkz            56                               Cafe, Pizza, BBQ, Seafood               4.3 San Juan
+                      Chaophraya            66                                         Pizza, Desserts               4.3 San Juan
+
+### Accommodations in San Juan
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number     city
+*WINTER DISCOUNT WILLIAMSBURG CHIC W/PRIVATE PATIO  200.0 Entire home/apt                           No parties & No pets             3.0                  3                 2.0 San Juan
+                FLUSHING APT!! BEST DEAL IN NYC!!!  135.0 Entire home/apt                        No smoking & No parties             1.0                  2                 5.0 San Juan
+                    Charming 3bed/2ba Downtown/LES  832.0    Private room No children under 10 & No smoking & No parties             3.0                  1                 5.0 San Juan
+                               Home away from home  323.0 Entire home/apt                          No pets & No visitors             2.0                  3                 3.0 San Juan
+           BK's Finest SHARED ROOM 1 BED AVAILABLE   50.0     Shared room             No pets & No smoking & No visitors             1.0                  1                 1.0 San Juan
+            Spacious Brooklyn loft in Clinton Hill 1159.0    Private room                                     No smoking             2.0                  1                 5.0 San Juan
+                                  Artist Penthouse  846.0 Entire home/apt                                    No visitors             1.0                  5                 4.0 San Juan
+ Colorful 1 Bedroom in the Heart of the E. Village  337.0 Entire home/apt                                     No smoking            30.0                  2                 5.0 San Juan
+        Cozy, Private 1 Bedroom Basement Apartment  650.0 Entire home/apt                                    No visitors             2.0                  2                 5.0 San Juan
+             2BR Getaway in Modern Luxury Building  826.0 Entire home/apt                                     No parties             3.0                  5                 5.0 San Juan
+               Cozy Studio 15 minutes to Manhattan  822.0    Private room                                        No pets             1.0                  2                 3.0 San Juan
+
+### Flight from Boston to San Juan on 2022-03-28
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3619758    466   08:17   12:48 4 hours 31 minutes 2022-03-28         Boston     San Juan    1674.0
+     F3764584    366   14:04   18:16 4 hours 12 minutes 2022-03-28         Boston     San Juan    1674.0
+     F3764586    600   23:50   03:55  4 hours 5 minutes 2022-03-28         Boston     San Juan    1674.0
+     F3774524    341   09:16   14:05 4 hours 49 minutes 2022-03-28         Boston     San Juan    1674.0
+
+### Self-driving from Boston to San Juan
+No valid information.
+
+### Taxi from Boston to San Juan
+No valid information.
+
+### Flight from San Juan to Boston on 2022-03-30
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3619791    744   12:02   16:27 4 hours 25 minutes 2022-03-30       San Juan       Boston    1674.0
+     F3764590    569   18:50   23:02 4 hours 12 minutes 2022-03-30       San Juan       Boston    1674.0
+     F3764591    619   04:58   09:06  4 hours 8 minutes 2022-03-30       San Juan       Boston    1674.0
+     F3775080    756   14:03   18:17 4 hours 14 minutes 2022-03-30       San Juan       Boston    1674.0
+
+### Self-driving from San Juan to Boston
+No valid information.
+
+### Taxi from San Juan to Boston
+No valid information.
+
+JSON plan:

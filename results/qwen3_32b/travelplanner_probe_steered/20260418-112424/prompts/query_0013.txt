@@ -1,0 +1,128 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you assist with a travel plan for one person departing from Pittsburgh to Baltimore for 3 days, from March 4th to March 6th, 2022, with a maximum budget of $1,200?
+
+Reference information:
+### Attractions in Baltimore
+                                              Name  Latitude  Longitude                                             Address          Phone                                             Website      City
+                                 National Aquarium 39.285393 -76.608398            501 E Pratt St, Baltimore, MD 21202, USA (410) 576-3800                                   https://aqua.org/ Baltimore
+Fort McHenry National Monument and Historic Shrine 39.264101 -76.580641           2400 E Fort Ave, Baltimore, MD 21230, USA (410) 962-4290                  https://www.nps.gov/fomc/index.htm Baltimore
+                            The Walters Art Museum 39.296425 -76.616498                            Baltimore, MD 21201, USA (410) 547-9000                             https://thewalters.org/ Baltimore
+                      Baltimore Museum of Industry 39.273957 -76.601616              1415 Key Hwy, Baltimore, MD 21230, USA (410) 727-4808                              http://www.thebmi.org/ Baltimore
+                       Historic Ships in Baltimore 39.285605 -76.611005            301 E Pratt St, Baltimore, MD 21202, USA (410) 539-1797                           http://historicships.org/ Baltimore
+                     The Maryland Zoo in Baltimore 39.322707 -76.649810               1 Safari Pl, Baltimore, MD 21217, USA (410) 396-7102                        https://www.marylandzoo.org/ Baltimore
+                Top of the World Observation Level 39.286017 -76.609475 401 E Pratt St 27th floor, Baltimore, MD 21202, USA (410) 837-8439                       http://www.viewbaltimore.org/ Baltimore
+                     American Visionary Art Museum 39.280420 -76.606895               800 Key Hwy, Baltimore, MD 21230, USA (410) 244-1900                               https://www.avam.org/ Baltimore
+                               B&O Railroad Museum 39.285468 -76.632612            901 W Pratt St, Baltimore, MD 21223, USA (410) 752-2490                              http://www.borail.org/ Baltimore
+                           Maryland Science Center 39.281415 -76.611917              601 Light St, Baltimore, MD 21230, USA (410) 685-2370                               http://www.mdsci.org/ Baltimore
+                           Baltimore Museum of Art 39.326167 -76.619344          10 Art Museum Dr, Baltimore, MD 21218, USA (443) 573-1700                                 https://artbma.org/ Baltimore
+                                      Inner Harbor 39.283033 -76.611734              401 Light St, Baltimore, MD 21202, USA        Unknown                                             Unknown Baltimore
+                                      Fell's Point 39.282234 -76.591677            1724 Thames St, Baltimore, MD 21231, USA (410) 675-6751                           http://www.fellspoint.us/ Baltimore
+                                     Pierce's Park 39.285333 -76.605509            701 E Pratt St, Baltimore, MD 21202, USA (443) 743-3308                                             Unknown Baltimore
+                            The Baltimore Basilica 39.294408 -76.616175          409 Cathedral St, Baltimore, MD 21201, USA (410) 727-3565             https://www.americasfirstcathedral.org/ Baltimore
+                                  Baltimore Harbor 39.285723 -76.611665               Harborplace, Baltimore, MD 21230, USA        Unknown                                             Unknown Baltimore
+                  Port Discovery Children's Museum 39.289069 -76.606289              35 Market Pl, Baltimore, MD 21202, USA (410) 727-8120                       http://www.portdiscovery.org/ Baltimore
+                                 Federal Hill Park 39.279721 -76.608462            300 Warren Ave, Baltimore, MD 21230, USA        Unknown                   http://www.federalhillonline.com/ Baltimore
+                                    Patterson Park 39.289684 -76.579878       2601 E Baltimore St, Baltimore, MD 21224, USA (410) 276-3676 https://bcrp.baltimorecity.gov/parks/patterson-park Baltimore
+                       Oriole Park at Camden Yards 39.283819 -76.621678           333 W Camden St, Baltimore, MD 21201, USA (410) 685-9800                          http://www.mlb.com/orioles Baltimore
+
+### Restaurants in Baltimore
+                                      Name  Average Cost                                           Cuisines  Aggregate Rating      City
+                                Los Pablos            47               Indian, BBQ, Cafe, American, Seafood               4.1 Baltimore
+Mr. Dunderbak's Biergarten and Marketplatz            74                              Cafe, Pizza, American               4.9 Baltimore
+                             The Thai Bowl            66                      BBQ, Pizza, Desserts, Italian               3.5 Baltimore
+                                      Salt            56          Tea, Bakery, Fast Food, Chinese, American               4.2 Baltimore
+             Tresind - Nassima Royal Hotel            67                    Cafe, Pizza, American, Desserts               4.9 Baltimore
+                       Three Dots & A Dash            47              Cafe, Chinese, Mediterranean, Seafood               3.9 Baltimore
+                                Farzi Cafe            96                   Desserts, American, BBQ, Seafood               4.4 Baltimore
+                             The Retriever            12                             Seafood, Cafe, Italian               0.0 Baltimore
+                        Shiv Saras Vyanjan            65                      American, Desserts, Fast Food               2.9 Baltimore
+                     Rred Hot Asian Bistro            56                                        Tea, Bakery               3.5 Baltimore
+                                     bu愆no            93                     French, Pizza, Cafe, Fast Food               3.7 Baltimore
+                                 Mocha Bar            32                             BBQ, Desserts, Italian               4.2 Baltimore
+                 JAL - A Jungle Restaurant            46          Mexican, Bakery, Fast Food, Cafe, Seafood               4.1 Baltimore
+                                Chai Tapri            37                Fast Food, Seafood, Bakery, Italian               3.4 Baltimore
+                            The Sweeet Jar            39                   Bakery, Pizza, Desserts, Seafood               3.9 Baltimore
+                       Rajdhani Restaurant            30                 French, Pizza, Desserts, Fast Food               0.0 Baltimore
+                            28 Capri Italy            28                          Cafe, Desserts, Fast Food               3.9 Baltimore
+                                 RollsKing            20                                    Tea, Pizza, BBQ               4.1 Baltimore
+                            Tibb's Frankie            24                                     Tea, Cafe, BBQ               3.6 Baltimore
+                                    Amalfi            17                                  French, BBQ, Cafe               3.9 Baltimore
+                                New Kadimi            91           Desserts, Pizza, BBQ, Fast Food, Chinese               2.5 Baltimore
+                       The Viraj Food Zone            75                             Chinese, BBQ, Desserts               3.2 Baltimore
+                                   Chatore            59                    Bakery, Mexican, Pizza, Seafood               3.6 Baltimore
+                               Cook Du Kdu            86                 Desserts, Pizza, BBQ, Cafe, Indian               3.2 Baltimore
+                       Sunil Punjabi Dhaba            62                          Cafe, Pizza, BBQ, Seafood               0.0 Baltimore
+                                   Shaolin            64      Tea, Pizza, Indian, Bakery, American, Seafood               3.4 Baltimore
+                                  Bhukkhar            46         Desserts, Fast Food, Cafe, Indian, Seafood               3.9 Baltimore
+                                  Rajshree            13 Italian, Bakery, BBQ, Cafe, Mediterranean, Seafood               3.1 Baltimore
+                            Domino's Pizza            42                                   Tea, Indian, BBQ               3.4 Baltimore
+                                     Giani            16                   Bakery, Mediterranean, Fast Food               0.0 Baltimore
+                              King's Kabab            54         Tea, Italian, Fast Food, American, Seafood               3.2 Baltimore
+                                        G+            33          Desserts, Italian, Bakery, BBQ, Fast Food               0.0 Baltimore
+            Aggarwal Bikaner Sweets Corner            25                          Cafe, Desserts, Fast Food               0.0 Baltimore
+               Bikaner Sweets & Restaurant            74            Tea, Pizza, Mexican, BBQ, Mediterranean               0.0 Baltimore
+                       Aggarwal Restaurant            21          Desserts, Pizza, Mexican, Bakery, Seafood               3.1 Baltimore
+                           Sai Juice Point            90                                      BBQ, Desserts               3.1 Baltimore
+                 The Pirates Of China Town            31                            Chinese, Cafe, Desserts               3.2 Baltimore
+                          Green Chick Chop            15     Pizza, Mexican, Bakery, Mediterranean, Seafood               3.0 Baltimore
+                           Finest Pizzeria            72                                       Tea, Seafood               3.1 Baltimore
+                                   Berco's            21                 Fast Food, Bakery, Indian, Italian               3.7 Baltimore
+                       Shree Ganesh M Cafe            39                             Pizza, Indian, Seafood               3.1 Baltimore
+                  The Punjabiis Restro Bar            85                     French, Bakery, BBQ, Fast Food               4.0 Baltimore
+                 The Manhattan Fish Market            31                                   Tea, French, BBQ               4.0 Baltimore
+
+### Accommodations in Baltimore
+                                             NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+Beautiful Double Room - Heart of Clinton Hill, BK  658.0    Private room  No smoking & No children under 10 & No parties             1.0                  2                 3.0 Baltimore
+   Contemporary Home Away from Home, Entire house  290.0 Entire home/apt                                     No visitors             2.0                  2                 3.0 Baltimore
+ Cute Family Friendly Vintage Brownstone Living!!  920.0     Shared room               No parties & No children under 10             2.0                  1                 1.0 Baltimore
+                Cozy Bedroom in best area of FiDi  290.0    Private room                            No smoking & No pets             5.0                  1                 5.0 Baltimore
+          1 bedroom apartment on West 34th street  107.0 Entire home/apt                                     No visitors            30.0                  2                 5.0 Baltimore
+  Sun soaked private room with all the amenities!  605.0    Private room               No smoking & No children under 10             1.0                  1                 4.0 Baltimore
+                     Manhattan Sunny Private Room  650.0    Private room                                      No smoking             5.0                  1                 2.0 Baltimore
+       Bright Zen Bedroom with TV, nr JMZ Subways  726.0    Private room                                         No pets             4.0                  1                 5.0 Baltimore
+                Beautiful 2 bedroom private suite  289.0 Entire home/apt                            No children under 10            28.0                  3                 1.0 Baltimore
+                     Charming Duplex in Manhattan   72.0 Entire home/apt     No children under 10 & No pets & No smoking             3.0                  3                 1.0 Baltimore
+                Bronx Retreat in Contemporary Apt  660.0    Private room No parties & No visitors & No children under 10             2.0                  1                 4.0 Baltimore
+Historic UES Penthouse/Rooftop Terrace by the MET  933.0 Entire home/apt           No parties & No visitors & No smoking             1.0                  9                 4.0 Baltimore
+            Private Room near Columbia University  975.0    Private room                                         No pets            20.0                  1                 2.0 Baltimore
+                     Spacious Williamsburg Beauty  687.0 Entire home/apt No visitors & No smoking & No children under 10             4.0                  2                 3.0 Baltimore
+    Large Brooklyn Rm- Prospect Park & F/G Train!  718.0     Shared room              No visitors & No pets & No smoking             2.0                  1                 4.0 Baltimore
+         Luxury room w/ balcony, 5 mins to subway   84.0    Private room                         No smoking & No parties             5.0                  2                 3.0 Baltimore
+ Cozy Shared Studio 10 minutes from Times Square!  373.0     Shared room  No children under 10 & No parties & No smoking             1.0                  1                 2.0 Baltimore
+
+### Flight from Pittsburgh to Baltimore on 2022-03-04
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3969954     52   16:51   17:49 0 hours 58 minutes 2022-03-04     Pittsburgh    Baltimore     210.0
+
+### Self-driving from Pittsburgh to Baltimore
+self-driving, from Pittsburgh to Baltimore, duration: 3 hours 58 mins, distance: 400 km, cost: 20
+
+### Taxi from Pittsburgh to Baltimore
+taxi, from Pittsburgh to Baltimore, duration: 3 hours 58 mins, distance: 400 km, cost: 400
+
+### Flight from Baltimore to Pittsburgh on 2022-03-06
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3994096     85   21:45   22:44 0 hours 59 minutes 2022-03-06      Baltimore   Pittsburgh     210.0
+
+### Self-driving from Baltimore to Pittsburgh
+self-driving, from Baltimore to Pittsburgh, duration: 3 hours 58 mins, distance: 398 km, cost: 19
+
+### Taxi from Baltimore to Pittsburgh
+taxi, from Baltimore to Pittsburgh, duration: 3 hours 58 mins, distance: 398 km, cost: 398
+
+JSON plan:

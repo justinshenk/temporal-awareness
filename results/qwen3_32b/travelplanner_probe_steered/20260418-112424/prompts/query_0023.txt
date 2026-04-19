@@ -1,0 +1,270 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a 5-day travel plan for one person departing from Little Rock and visiting 2 cities in Texas from March 14th to March 18th, 2022? The budget for this trip is set at $3,900.
+
+Reference information:
+### Attractions in Houston
+                                                           Name  Latitude  Longitude                                      Address          Phone                                                                                 Website    City
+                                              Downtown Aquarium 29.764270 -95.367379         410 Bagby St, Houston, TX 77002, USA (713) 223-3474                             http://www.aquariumrestaurants.com/downtownaquariumhouston/ Houston
+                                           Space Center Houston 29.551832 -95.098104     1601 E NASA Pkwy, Houston, TX 77058, USA (281) 244-2100                                                            https://www.spacecenter.org/ Houston
+                                                     Water Wall 29.735740 -95.461315   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                             https://uptown-houston.com/experience/parks/waterwall-park/ Houston
+                              Houston Museum of Natural Science 29.722062 -95.389562 5555 Hermann Park Dr, Houston, TX 77030, USA (713) 639-4629                                                                   https://www.hmns.org/ Houston
+                                                    Houston Zoo 29.715781 -95.390321 6200 Hermann Park Dr, Houston, TX 77030, USA (713) 533-6500                                                             https://www.houstonzoo.org/ Houston
+                               The Museum of Fine Arts, Houston 29.725623 -95.390533    1001 Bissonnet St, Houston, TX 77005, USA (713) 639-7300                                                                   https://www.mfah.org/ Houston
+                                                   Hermann Park 29.713528 -95.389952       6001 Fannin St, Houston, TX 77030, USA (713) 526-2183                                                            https://www.hermannpark.org/ Houston
+                              Houston Arboretum & Nature Center 29.765224 -95.452071      4501 Woodway Dr, Houston, TX 77024, USA (713) 681-8433                                                        http://www.houstonarboretum.org/ Houston
+Bayou Bend Collection and Gardens, Museum of Fine Arts, Houston 29.760659 -95.421693     6003 Memorial Dr, Houston, TX 77007, USA (713) 639-7750                            http://www.mfah.org/visit/bayou-bend-collection-and-gardens/ Houston
+                                             Market Square Park 29.762645 -95.362361         301 Milam St, Houston, TX 77002, USA (713) 650-3022                                                            http://marketsquarepark.com/ Houston
+                                                Discovery Green 29.753240 -95.359912     1500 McKinney St, Houston, TX 77010, USA (713) 400-7336                                                          http://www.discoverygreen.com/ Houston
+                                                   Smither Park 29.716761 -95.324637       2441 Munger St, Houston, TX 77023, USA (713) 926-6368                                                                  http://orangeshow.org/ Houston
+                                      Children's Museum Houston 29.722931 -95.385289         1500 Binz St, Houston, TX 77004, USA (713) 522-1138 https://www.cmhouston.org/?utm_source=google&utm_medium=organic&utm_campaign=gmbhouston Houston
+                                       Holocaust Museum Houston 29.725248 -95.385687     5401 Caroline St, Houston, TX 77004, USA (713) 942-8000                                                                        https://hmh.org/ Houston
+                                               Sam Houston Park 29.760137 -95.371640        1000 Bagby St, Houston, TX 77002, USA (832) 394-8805                              https://www.houstontx.gov/abouthouston/samhoustonpark.html Houston
+                            Houston Legendary Graffiti Building 29.747305 -95.359360      2011 Leeland St, Houston, TX 77003, USA (409) 245-3778          https://instagram.com/gofa_dagusto1k?utm_source=qr&igshid=MzNlNGNkZWQ4Mg%3D%3D Houston
+                                 Gerald D. Hines Waterwall Park 29.735948 -95.461302   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                                 http://www.uptown-houston.com/news/page/water-wall-park Houston
+                                                 Beer Can House 29.763759 -95.419103        222 Malone St, Houston, TX 77007, USA (713) 926-6368                                          https://www.full.orangeshow.org/beer-can-house Houston
+                                    American Statesmanship Park 29.771321 -95.366926        1400 Elder St, Houston, TX 77007, USA (713) 344-6568                   https://www.waymarking.com/waymarks/WMNHPK_Mount_Rush_Hour_Houston_TX Houston
+                                       Pioneer Memorial Obelisk 29.718633 -95.390929       6001 Fannin St, Houston, TX 77030, USA        Unknown                                                      http://www.hermannpark.org/poi/44/ Houston
+
+### Restaurants in Houston
+                              Name  Average Cost                                         Cuisines  Aggregate Rating    City
+                         Jalapenos            57            Desserts, Tea, Cafe, Chinese, Seafood               4.2 Houston
+                      Super Bakery            30                               Seafood, Fast Food               3.3 Houston
+                     Sheetla Dhaba            35 Desserts, Pizza, Bakery, American, Mediterranean               0.0 Houston
+                        Royal Mart            40        Tea, Bakery, Cafe, Mediterranean, Seafood               2.9 Houston
+                          Matchbox            33         Tea, Italian, Bakery, Fast Food, Seafood               4.8 Houston
+                    Earthen Spices            28             Tea, Mexican, Bakery, BBQ, Fast Food               2.7 Houston
+                         Chawla's宊            26   Chinese, Desserts, Bakery, Cafe, Mediterranean               2.2 Houston
+                     Cyber Adda 24            73                           Chinese, Pizza, Bakery               3.3 Houston
+The BrewMaster - The Mix Fine Dine            52                    French, Indian, Cafe, Seafood               3.9 Houston
+                   Vinayaka Mylari            14                 Fast Food, French, Cafe, Italian               4.2 Houston
+                Al Arabian Express            74                           BBQ, Desserts, Seafood               3.7 Houston
+                     Pebble Street            73                Tea, American, Mediterranean, BBQ               4.0 Houston
+                       Sultan Food            55                                 Bakery, Desserts               3.1 Houston
+                               KSG            73      Desserts, Tea, Fast Food, American, Seafood               0.0 Houston
+                             Zaika            18                       Tea, Cafe, Mexican, Bakery               2.7 Houston
+               34 Park Street Lane            67                            Chinese, Bakery, Cafe               0.0 Houston
+                Sunny Chicken Soup            60                      Tea, BBQ, Desserts, Seafood               3.6 Houston
+                             Giani            97                                 Cafe, Pizza, BBQ               3.5 Houston
+                       Bhola Dhaba            65       Tea, Italian, Cafe, Mediterranean, Seafood               2.8 Houston
+                    G's Patisserie            65        Desserts, Tea, Pizza, Fast Food, American               2.8 Houston
+                  Daawat E Mezbaan            63              Pizza, BBQ, Cafe, American, Seafood               3.1 Houston
+                Khanna's Hot Pizza            80        Pizza, Mediterranean, Desserts, Fast Food               0.0 Houston
+                          Taj Cafe            18                             French, BBQ, Seafood               3.1 Houston
+                         Dana Pani            91                          Bakery, Indian, Seafood               0.0 Houston
+                 Shiv Shakti Dhaba            54                             Tea, Pizza, American               0.0 Houston
+              Vrinda Vaishno Dhaba            54         French, Bakery, Fast Food, Cafe, Seafood               2.8 Houston
+                        Tasty Bite            15       Bakery, Fast Food, Cafe, American, Seafood               2.8 Houston
+               Hurry Curry Express            78                               Fast Food, Seafood               0.0 Houston
+                            Subway            51                   Tea, Bakery, Desserts, Seafood               2.3 Houston
+               Istanbul Restaurant            19                             Tea, Indian, Seafood               3.6 Houston
+                      Truth Coffee            29                         Pizza, American, Seafood               4.4 Houston
+
+### Accommodations in Houston
+                                              NAME  price       room type             house_rules  minimum nights  maximum occupancy  review rate number    city
+                     Sunny and Airy near Manhattan  499.0 Entire home/apt                 No pets             2.0                  4                 5.0 Houston
+                 Bright room in 2BR apt in Nolita! 1024.0    Private room    No children under 10             2.0                  2                 4.0 Houston
+                      Superhost 3 bedroom DISCOUNT  746.0 Entire home/apt                 No pets             1.0                  5                 4.0 Houston
+           Spacious room in front of prospect park  259.0    Private room              No smoking             1.0                  1                 5.0 Houston
+           Private bedroom in artsy NYC apartment.  488.0    Private room              No smoking             3.0                  1                 3.0 Houston
+                   Cozy Room near Casino and Metro 1092.0    Private room              No parties             1.0                  2                 4.0 Houston
+1BR in Newly Renovated Apartment - Rm C, Bushwick!  288.0    Private room              No smoking             1.0                  1                 4.0 Houston
+        Artsy, Sun-Soaked Pre-War Williamsburg Apt  872.0 Entire home/apt              No parties            10.0                  2                 4.0 Houston
+               Beautiful and Huge Room in Brooklyn  957.0    Private room    No parties & No pets            13.0                  1                 3.0 Houston
+         Backpackers Dream for 1 at The Funky Loft  244.0    Private room No parties & No smoking             3.0                  1                 4.0 Houston
+
+### Attractions in Dallas
+                                     Name  Latitude  Longitude                                         Address          Phone                                                                                           Website   City
+                The Dallas World Aquarium 32.783474 -96.805358        1801 N Griffin St, Dallas, TX 75202, USA (214) 720-2224                                                                           https://www.dwazoo.com/ Dallas
+   The Sixth Floor Museum at Dealey Plaza 32.779819 -96.808484               411 Elm St, Dallas, TX 75202, USA (214) 747-6660                                                                              https://www.jfk.org/ Dallas
+                            Reunion Tower 32.775506 -96.808857       300 Reunion Blvd E, Dallas, TX 75207, USA (214) 296-9950                                                                      http://www.reuniontower.com/ Dallas
+                     Dallas Museum of Art 32.787696 -96.801044        1717 N Harwood St, Dallas, TX 75201, USA (214) 922-1200                                                                              https://www.dma.org/ Dallas
+The Dallas Arboretum and Botanical Garden 32.823618 -96.716624          8525 Garland Rd, Dallas, TX 75218, USA (214) 515-6615                                                                  https://www.dallasarboretum.org/ Dallas
+                               Dallas Zoo 32.740970 -96.815320  650 S R.L. Thornton Fwy, Dallas, TX 75203, USA (469) 554-7501                                                                        https://www.dallaszoo.com/ Dallas
+                        Klyde Warren Park 32.789364 -96.801618 2012 Woodall Rodgers Fwy, Dallas, TX 75201, USA (214) 716-4500                                                                       http://klydewarrenpark.org/ Dallas
+                            Old City Park 32.772753 -96.786544        1515 S Harwood St, Dallas, TX 75215, USA (214) 421-5141                                                                 http://www.oldcityparkdallas.org/ Dallas
+       Perot Museum of Nature and Science 32.786943 -96.806584          2201 N Field St, Dallas, TX 75201, USA (214) 428-5555                                                                      https://www.perotmuseum.org/ Dallas
+                            Pioneer Plaza 32.776632 -96.801199            1428 Young St, Dallas, TX 75202, USA        Unknown                          http://www.dallasparks.org/Facilities/Facility/Details/Pioneer-Plaza-624 Dallas
+                  Nasher Sculpture Center 32.788182 -96.800157            2001 Flora St, Dallas, TX 75201, USA (214) 242-5100                                                             http://www.nashersculpturecenter.org/ Dallas
+                            Giant Eyeball 32.781406 -96.798312             1601 Main St, Dallas, TX 75201, USA        Unknown https://artandseek.org/2021/03/18/why-is-there-a-giant-eyeball-in-downtown-dallas-we-take-a-look/ Dallas
+           John F. Kennedy Memorial Plaza 32.778725 -96.806451              646 Main St, Dallas, TX 75202, USA (214) 747-6660                                                https://www.jfk.org/john-f-kennedy-memorial-plaza/ Dallas
+                             Dealey Plaza 32.778818 -96.808299                           Dallas, TX 75202, USA (214) 670-4100                           http://www.dallasparks.org/Facilities/Facility/Details/Dealey-Plaza-462 Dallas
+        African American Museum of Dallas 32.779057 -96.764414           3536 Grand Ave, Dallas, TX 75210, USA (214) 565-9026                                                                         http://www.aamdallas.org/ Dallas
+               Frontiers of Flight Museum 32.842602 -96.835202          6911 Lemmon Ave, Dallas, TX 75209, USA (214) 350-3600                                                                      http://www.flightmuseum.com/ Dallas
+                     White Rock Lake Park 32.836514 -96.721612        8300 E Lawther Dr, Dallas, TX 75218, USA (214) 660-1100                                                                     http://www.whiterocklake.org/ Dallas
+             Leonhardt Lagoon Nature Walk 32.777830 -96.761946             1121 1st Ave, Dallas, TX 75210, USA (214) 426-3400                                  https://eventseeker.com/venue/1132302-leonhardt-lagoon-dallas-tx Dallas
+       George W. Bush Presidential Center 32.841183 -96.778198       2943 SMU Boulevard, Dallas, TX 75205, USA (214) 200-4300                                                                        http://www.bushcenter.org/ Dallas
+            Trinity Forest Adventure Park 32.689810 -96.675766      1800 Dowdy Ferry Rd, Dallas, TX 75217, USA (214) 391-1000                                                                       http://trinitytreetops.com/ Dallas
+
+### Restaurants in Dallas
+                       Name  Average Cost                                               Cuisines  Aggregate Rating   City
+         Coconuts Fish Cafe            38                    Cafe, BBQ, Mediterranean, Fast Food               4.5 Dallas
+        1918 Bistro & Grill            90                               Tea, Pizza, BBQ, Seafood               4.4 Dallas
+             Yanki Sizzlers            96                       Cafe, French, Tea, Mediterranean               4.1 Dallas
+               Aravali Owls            53                Pizza, Italian, Bakery, Fast Food, Cafe               0.0 Dallas
+               Kebab Xpress            93                      Tea, Bakery, Pizza, Mediterranean               2.7 Dallas
+                 Haldiram's            94                                             Tea, Pizza               3.6 Dallas
+                  Delhicacy            67            Desserts, Mexican, Bakery, Chinese, Seafood               3.8 Dallas
+                    L'Opera            77                French, Bakery, BBQ, Fast Food, Seafood               3.8 Dallas
+            Cafe Gatherings            17                               Bakery, Indian, Desserts               4.4 Dallas
+              Drifters Cafe            21                    Tea, French, Mexican, Cafe, Seafood               3.9 Dallas
+           Uma Foodies' Hut            49                                French, Bakery, Seafood               3.1 Dallas
+Belfrance Luxury Chocolates            96             Desserts, Pizza, Fast Food, Cafe, American               4.4 Dallas
+                Puri Bakers            33        Pizza, Mexican, Bakery, Fast Food, Cafe, Indian               3.7 Dallas
+             Bikaner Sweets            23                     Tea, French, Bakery, Cafe, Seafood               3.3 Dallas
+            Metro Fast Food            45             Tea, Pizza, Mexican, Bakery, BBQ, American               2.7 Dallas
+                    Wheelyz            60        Tea, Pizza, Bakery, BBQ, Chinese, Mediterranean               2.5 Dallas
+              R. Ahmad Food            58 Desserts, Bakery, BBQ, Chinese, Mediterranean, Seafood               3.0 Dallas
+                   Castle 9            32        Mexican, Bakery, BBQ, Fast Food, Cafe, American               3.1 Dallas
+               Cafe Hawkers            72                                    Bakery, Indian, BBQ               3.7 Dallas
+              Firefly India            87                        Cafe, Bakery, American, Italian               3.4 Dallas
+            Zaaika Junction            48                                      Desserts, Seafood               2.6 Dallas
+                  Papa Buns            75                       French, Pizza, Indian, Fast Food               0.0 Dallas
+                TiffinToons            99            Seafood, Mediterranean, Desserts, Fast Food               0.0 Dallas
+               Mamma Drools            45           BBQ, Fast Food, Cafe, Mediterranean, Seafood               0.0 Dallas
+                 McDonald's            56                                          Cafe, Seafood               3.5 Dallas
+            Cafe Coffee Day            76                           Fast Food, Desserts, Italian               2.9 Dallas
+                   Hardwari            28               Desserts, Tea, Pizza, Mexican, Fast Food               0.0 Dallas
+               Baker's Stop            69                Cafe, American, Mediterranean, Desserts               3.8 Dallas
+          Delhi Biryani Hut            90                               Pizza, American, Seafood               0.0 Dallas
+             Tikka Junction            86  Tea, Bakery, Fast Food, Cafe, American, Mediterranean               3.5 Dallas
+            Nutrition Theka            77                             Pizza, American, Fast Food               3.3 Dallas
+               Relax Xpress            53           Desserts, Pizza, Bakery, Cafe, Mediterranean               3.2 Dallas
+              Lodhi Knights            18                       Tea, Pizza, French, Bakery, Cafe               3.1 Dallas
+           Tandoori Khazana            61              Tea, Pizza, BBQ, Chinese, Indian, Seafood               0.0 Dallas
+                Madras Cafe            90                     Bakery, Pizza, American, Fast Food               0.0 Dallas
+                  Bake Club           100                       Cafe, Indian, Mediterranean, BBQ               3.1 Dallas
+                   Yo Tibet            96         Desserts, Pizza, BBQ, Chinese, Indian, Seafood               3.3 Dallas
+                 The Kahuna            23                          Bakery, Pizza, BBQ, Fast Food               3.1 Dallas
+            Cafe Hera Pheri            18                                         Cafe, Desserts               3.8 Dallas
+  Chanana Ice Cream Parlour            77                           Chinese, Pizza, BBQ, Italian               2.9 Dallas
+               Dilli Darbar            64                      Tea, Cafe, Mediterranean, Italian               3.3 Dallas
+     New Tayal's Restaurant            67                        Mexican, Bakery, BBQ, Fast Food               2.8 Dallas
+              Subs n Shakes            74                 French, Bakery, Mediterranean, Seafood               3.1 Dallas
+                 Soya Grill            84                            Cafe, Pizza, BBQ, Fast Food               3.0 Dallas
+             Bikaner Sweets            33                        Bakery, Pizza, Indian, Desserts               0.0 Dallas
+                     Scoops            76                       Tea, Chinese, Seafood, Fast Food               2.8 Dallas
+              Food N Shakes            23                  Desserts, Pizza, French, BBQ, Seafood               0.0 Dallas
+              Cake Knighter            95     Pizza, Fast Food, American, Mediterranean, Seafood               0.0 Dallas
+            Cafe Coffee Day            22                           Cafe, BBQ, Desserts, Seafood               3.0 Dallas
+            Sona Restaurant            47                            Tea, Cafe, Pizza, Fast Food               3.2 Dallas
+           Pirates of Grill            72                   Desserts, Italian, BBQ, Bakery, Cafe               3.9 Dallas
+    Aim Cafe And Restaurant            85                                       Tea, French, BBQ               3.3 Dallas
+             Wich 'N' Shake            31                  Tea, Mexican, Bakery, Fast Food, Cafe               0.0 Dallas
+      Kolkata Biryani House            11                     Tea, French, Cafe, Indian, Seafood               2.8 Dallas
+          Flames of Tandoor            57                      Tea, Chinese, Desserts, Fast Food               3.5 Dallas
+                 Shahenshah            92                       Fast Food, Seafood, BBQ, Italian               3.5 Dallas
+                   MS Foods            55                                   Cafe, Pizza, Italian               3.1 Dallas
+               Food Weavers            71             Tea, Bakery, BBQ, Fast Food, Mediterranean               0.0 Dallas
+             The Grill @ 76            51                                         BBQ, Fast Food               3.5 Dallas
+                      MONKS            24               Tea, Pizza, Cafe, Mediterranean, Seafood               4.2 Dallas
+        Salsa Mexican Grill            63                  Desserts, BBQ, Bakery, Cafe, American               4.3 Dallas
+                Dem Karak韄y            44                                       Pizza, Fast Food               4.5 Dallas
+
+### Accommodations in Dallas
+                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+                1BR, elevator, kitchen, doorman!  475.0 Entire home/apt                                      No parties             1.0                  3                 2.0 Dallas
+Luxury Williamsburg duplex, private roof terrace  241.0 Entire home/apt                                     No visitors             4.0                  3                 5.0 Dallas
+               Take it now you won't find better  609.0 Entire home/apt                                         No pets             1.0                  4                 2.0 Dallas
+              E. W'burg Private Room near subway  272.0    Private room                        No visitors & No smoking            15.0                  2                 2.0 Dallas
+  Cozy&Central:EmpireState/Highline/Times Square  628.0 Entire home/apt              No visitors & No pets & No smoking             3.0                  4                 3.0 Dallas
+                              *Fresh Budget Room  262.0    Private room                        No visitors & No smoking             2.0                  1                 4.0 Dallas
+                   Chic Union Square One Bedroom 1096.0 Entire home/apt                                     No visitors             3.0                  5                 5.0 Dallas
+    Bright and modern apartment in Williamsburg!  865.0 Entire home/apt                                      No smoking             6.0                  5                 4.0 Dallas
+              Jackson Heights 2 bedrooms housing  747.0 Entire home/apt  No parties & No children under 10 & No smoking             2.0                  2                 3.0 Dallas
+            Exclusive Modern Penthouse Apartment  483.0 Entire home/apt                           No pets & No visitors             1.0                  3                 3.0 Dallas
+  SUNNY, SAFE and FRIENDLY minutes to Manhattan!  559.0 Entire home/apt                                         No pets             2.0                  4                 2.0 Dallas
+                             Sunny Brooklyn room  227.0    Private room                                         No pets             7.0                  2                 3.0 Dallas
+                 Charming Suite in Historic Home  348.0 Entire home/apt               No parties & No children under 10             1.0                  3                 3.0 Dallas
+              2 Bedroom Apt in downtown Brooklyn 1180.0 Entire home/apt No visitors & No children under 10 & No parties             4.0                  5                 2.0 Dallas
+              Quite & Cozy High Raise Atmosphere  635.0    Private room                                      No smoking             1.0                  1                 5.0 Dallas
+                          Upper east side duplex  819.0 Entire home/apt                                         No pets             3.0                  7                 2.0 Dallas
+                Central Park west. Big Cozy Room  709.0    Private room                                         No pets             1.0                  2                 4.0 Dallas
+            Huge Private Room Near Prospect Park   73.0    Private room                            No parties & No pets             7.0                  2                 2.0 Dallas
+ Private room close to the center of Williamburg  231.0    Private room              No visitors & No children under 10             1.0                  1                 2.0 Dallas
+                         Spacious cozy apartment  314.0 Entire home/apt                            No children under 10             2.0                  3                 1.0 Dallas
+Charming Garden Apartment in Brooklyn Brownstone  434.0 Entire home/apt                                     No visitors             2.0                  2                 3.0 Dallas
+                                  Friendly hosts  806.0    Private room                                      No smoking             1.0                  2                 4.0 Dallas
+        Minutes from JFK airport and famous mall  711.0    Private room                        No visitors & No parties             2.0                  2                 3.0 Dallas
+
+### Flight from Little Rock to Houston on 2022-03-14
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3926600     84   17:08   19:01 1 hours 53 minutes 2022-03-14    Little Rock      Houston     374.0
+     F3926621     95   06:55   08:39 1 hours 44 minutes 2022-03-14    Little Rock      Houston     374.0
+     F3926843    177   13:49   15:33 1 hours 44 minutes 2022-03-14    Little Rock      Houston     374.0
+
+### Self-driving from Little Rock to Houston
+self-driving, from Little Rock to Houston, duration: 6 hours 47 mins, distance: 698 km, cost: 34
+
+### Taxi from Little Rock to Houston
+taxi, from Little Rock to Houston, duration: 6 hours 47 mins, distance: 698 km, cost: 698
+
+### Flight from Houston to Dallas on 2022-03-16
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3673863     57   07:53   09:14 1 hours 21 minutes 2022-03-16        Houston       Dallas     224.0
+     F3718962    102   12:06   13:19 1 hours 13 minutes 2022-03-16        Houston       Dallas     224.0
+     F3719076    110   17:54   19:01  1 hours 7 minutes 2022-03-16        Houston       Dallas     224.0
+     F3723238     74   10:40   11:44  1 hours 4 minutes 2022-03-16        Houston       Dallas     224.0
+     F3723735     58   14:23   15:37 1 hours 14 minutes 2022-03-16        Houston       Dallas     224.0
+     F3726147     86   06:04   07:29 1 hours 25 minutes 2022-03-16        Houston       Dallas     224.0
+     F3810084    110   10:06   11:24 1 hours 18 minutes 2022-03-16        Houston       Dallas     224.0
+     F3810085     50   12:14   13:31 1 hours 17 minutes 2022-03-16        Houston       Dallas     224.0
+     F3911765    100   14:17   15:27 1 hours 10 minutes 2022-03-16        Houston       Dallas     224.0
+     F3912243     59   20:13   21:23 1 hours 10 minutes 2022-03-16        Houston       Dallas     224.0
+     F3912424     50   17:35   18:41  1 hours 6 minutes 2022-03-16        Houston       Dallas     224.0
+     F4005045     49   06:57   08:05  1 hours 8 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005046     52   08:31   09:45 1 hours 14 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005047     86   10:30   11:34  1 hours 4 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005048     91   13:05   14:06  1 hours 1 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005049     77   14:35   15:32 0 hours 57 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005050     76   16:48   17:49  1 hours 1 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005051     62   19:05   20:08  1 hours 3 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005052     98   20:08   21:06 0 hours 58 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005053    101   23:09   24:00 0 hours 51 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005054     89   06:01   06:58 0 hours 57 minutes 2022-03-16        Houston       Dallas     239.0
+     F4005150     63   18:26   19:22 0 hours 56 minutes 2022-03-16        Houston       Dallas     216.0
+     F4005151     61   05:29   06:22 0 hours 53 minutes 2022-03-16        Houston       Dallas     216.0
+     F4005152     60   13:32   14:27 0 hours 55 minutes 2022-03-16        Houston       Dallas     216.0
+     F4005154     43   08:10   09:12  1 hours 2 minutes 2022-03-16        Houston       Dallas     216.0
+     F4039340     48   18:16   19:28 1 hours 12 minutes 2022-03-16        Houston       Dallas     224.0
+     F4044032    105   06:18   07:38 1 hours 20 minutes 2022-03-16        Houston       Dallas     247.0
+     F4045585    109   12:24   13:38 1 hours 14 minutes 2022-03-16        Houston       Dallas     247.0
+     F4047211     65   16:31   17:57 1 hours 26 minutes 2022-03-16        Houston       Dallas     247.0
+     F4047584     79   10:13   11:29 1 hours 16 minutes 2022-03-16        Houston       Dallas     247.0
+
+### Self-driving from Houston to Dallas
+self-driving, from Houston to Dallas, duration: 3 hours 27 mins, distance: 385 km, cost: 19
+
+### Taxi from Houston to Dallas
+taxi, from Houston to Dallas, duration: 3 hours 27 mins, distance: 385 km, cost: 385
+
+### Flight from Dallas to Little Rock on 2022-03-18
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3592818     86   10:34   11:50 1 hours 16 minutes 2022-03-18         Dallas  Little Rock     304.0
+     F3592905    118   19:10   20:27 1 hours 17 minutes 2022-03-18         Dallas  Little Rock     304.0
+     F3599246     96   08:27   09:32  1 hours 5 minutes 2022-03-18         Dallas  Little Rock     304.0
+     F3610572     61   12:43   14:02 1 hours 19 minutes 2022-03-18         Dallas  Little Rock     304.0
+     F3783573    143   22:36   23:57 1 hours 21 minutes 2022-03-18         Dallas  Little Rock     304.0
+     F4026639     68   23:08   00:14  1 hours 6 minutes 2022-03-18         Dallas  Little Rock     296.0
+     F4026640     82   12:47   13:49  1 hours 2 minutes 2022-03-18         Dallas  Little Rock     296.0
+
+### Self-driving from Dallas to Little Rock
+self-driving, from Dallas to Little Rock, duration: 4 hours 40 mins, distance: 514 km, cost: 25
+
+### Taxi from Dallas to Little Rock
+taxi, from Dallas to Little Rock, duration: 4 hours 40 mins, distance: 514 km, cost: 514
+
+JSON plan:

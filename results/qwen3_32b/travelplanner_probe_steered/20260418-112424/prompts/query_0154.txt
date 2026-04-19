@@ -1,0 +1,184 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a 5-day travel plan for a couple leaving from Baton Rouge and visiting 2 cities in Texas from March 16th to March 20th, 2022? We have allocated a budget of $2,900 for this trip. Important to note is that our travels will not involve any flights; we prefer other modes of transportation. For our lodgings, we insist on not shared rooms, and notably, we will be traveling with our pet, hence the need for pet-friendly accommodations.
+
+Reference information:
+### Attractions in Abilene
+                                                 Name  Latitude  Longitude                                                                        Address          Phone                                                      Website    City
+                                     The Grace Museum 32.449646 -99.734459                                         102 Cypress St, Abilene, TX 79601, USA (325) 673-4587                               http://www.thegracemuseum.org/ Abilene
+                                      Frontier Texas! 32.449294 -99.728288                                           625 N 1st St, Abilene, TX 79601, USA (325) 437-2800                                http://www.frontiertexas.com/ Abilene
+                           Historic Fort Phantom Hill 32.642376 -99.679019                                            10818 FM600, Abilene, TX 79601, USA (325) 677-1309                                      http://fortphantom.org/ Abilene
+                       12th Armored Division Memorial 32.450405 -99.736424                                          1289 N 2nd St, Abilene, TX 79601, USA (325) 677-6515                    http://www.12tharmoreddivisionmuseum.com/ Abilene
+National Center for Children's Illustrated Literature 32.449912 -99.735741                                           102 Cedar St, Abilene, TX 79601, USA (325) 673-4586                                            http://nccil.org/ Abilene
+                    Adamson-Spalding Storybook Garden 32.454749 -99.732980                                     1008-1098 N 6th St, Abilene, TX 79601, USA        Unknown                                                      Unknown Abilene
+                                          Abilene Zoo 32.439143 -99.690650                                            2070 Zoo Ln, Abilene, TX 79602, USA (325) 676-6085 http://www.abilenezoo.org/?utm_source=gmb&utm_medium=organic Abilene
+                                         Everman Park 32.449251 -99.733450                                     1007-1099 N 1st St, Abilene, TX 79601, USA (325) 676-6217                         http://www.abilenetx.gov/parksandrec Abilene
+                         'Good Night Dinosaur' Statue 32.454878 -99.733277                                                         Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                                    'Dino Bob' Statue 32.449982 -99.735344                                           133 Cedar St, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                                  Giant Buffalo Skull 32.449555 -99.727632                                           625 N 1st St, Abilene, TX 79601, USA (325) 437-2800                                http://www.frontiertexas.com/ Abilene
+                        'Sanderson Mansnoozie' Statue 32.450452 -99.734323                                   174 Cypress St # 101, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                           'Yertle the Turtle' Statue 32.449254 -99.733572                      Everman Park, 1007, 1099 N 1st St, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                          'E. Aster Bunnymund' Statue 32.449410 -99.735741                                          1201 N 1st St, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                                          Redbud Park 32.408373 -99.763010                                         3125 S 32nd St, Abilene, TX 79605, USA (325) 676-6217                         http://www.abilenetx.gov/parksandrec Abilene
+                               'Stuart Little' Statue 32.454949 -99.733028                                          1051 N 6th St, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+               The Discovery Center & Truth Bookstore 32.440639 -99.738419                                       810 Butternut St, Abilene, TX 79602, USA (325) 673-5050                                    http://www.evidences.org/ Abilene
+                                   'Toothiana' Statue 32.450649 -99.734061                                                         Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                                   'The Lorax' Statue 32.449263 -99.734546                                          1101 N 1st St, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+                       'The Three Little Pigs' Statue 32.454825 -99.732872 Adamson-Spalding Storybook Garden, 1098 N 6th St #1008, Abilene, TX 79601, USA        Unknown  https://storybookcapitalofamerica.com/storybook-sculptures/ Abilene
+
+### Restaurants in Abilene
+                                       Name  Average Cost                                           Cuisines  Aggregate Rating    City
+                                Thai Garden            13                           Cafe, American, Desserts               4.2 Abilene
+                               Crispy Crust            54          Desserts, Bakery, Cafe, American, Seafood               3.4 Abilene
+                             Finger Licious            35                      Fast Food, Cafe, BBQ, Seafood               0.0 Abilene
+                                    Mx Corn            62                                 Tea, Cafe, Italian               3.1 Abilene
+                             LPK Waterfront            61            Pizza, Italian, BBQ, Fast Food, Seafood               3.7 Abilene
+                               Cakes Degree            18                       Cafe, Mexican, BBQ, Desserts               3.4 Abilene
+                             Chateau Garlic            42                 Pizza, Bakery, Desserts, Fast Food               3.0 Abilene
+                             Mediumwelldone            91                    Tea, French, BBQ, Cafe, Seafood               3.5 Abilene
+                            Biryani Express            11              Tea, Pizza, French, Bakery, Fast Food               0.0 Abilene
+                                     Subway            57                    Fast Food, Tea, Bakery, Italian               3.3 Abilene
+                       The Grand Trunk Road            80    Tea, Pizza, Bakery, BBQ, Chinese, Mediterranean               3.9 Abilene
+                                Bhikharam's            89                            Bakery, Pizza, Desserts               3.0 Abilene
+                                Pawan Foods            74                      Tea, Cafe, American, Desserts               0.0 Abilene
+                               Dilli Darbar            40                        Pizza, Bakery, BBQ, Seafood               2.3 Abilene
+                             Piyu Fast Food            88                   Mexican, Indian, Desserts, Pizza               0.0 Abilene
+                                Madras Cafe            54        Tea, Pizza, American, Cafe, Indian, Seafood               0.0 Abilene
+                                       Druk            79                       Cafe, Bakery, Pizza, Seafood               4.1 Abilene
+                                    Barista            88                  Fast Food, Mexican, Bakery, Pizza               3.3 Abilene
+                                   Mamagoto            93 Desserts, Tea, Bakery, Cafe, Indian, Mediterranean               4.1 Abilene
+                               Sindhi Kulfi            37                Pizza, French, BBQ, Fast Food, Cafe               3.0 Abilene
+                    Aggarwal Sweet & Bakers            79                          Pizza, Mediterranean, BBQ               2.9 Abilene
+                              Lotus Kitchen            15                                French, Bakery, BBQ               0.0 Abilene
+                            Inam Muradabadi            35             Tea, Seafood, Mediterranean, Fast Food               0.0 Abilene
+                             Domino's Pizza            89                   Bakery, Pizza, American, Seafood               0.0 Abilene
+                         Linx - Premier Inn            44                                 Tea, Bakery, Pizza               3.0 Abilene
+                              Scrummy Bites            69                          Indian, Desserts, Seafood               3.1 Abilene
+Vanshika Indian, Chinese, & Parantha Corner            60                                   Pizza, Fast Food               3.1 Abilene
+                               Otik Hotshop            82              Desserts, Tea, BBQ, Fast Food, Indian               3.1 Abilene
+                               Gelato Vinto            12                Seafood, Mexican, Indian, Fast Food               3.1 Abilene
+                                   Tomato's            21                             Tea, Cafe, Bakery, BBQ               4.1 Abilene
+
+### Accommodations in Abilene
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+                 Joyce and Donovan's, Room for One   83.0    Private room                                      No parties            25.0                  2                 2.0 Abilene
+                  Apartment minutes from manhattan  295.0 Entire home/apt                           No pets & No visitors             2.0                  2                 2.0 Abilene
+Private 1BR with Private Bathroom feet from subway  668.0 Entire home/apt No children under 10 & No visitors & No smoking             1.0                  2                 4.0 Abilene
+     Fresh, bright modern studio w/ Garage Parking  488.0 Entire home/apt                                      No parties             3.0                  3                 1.0 Abilene
+                     Midtown East penthouse studio 1147.0 Entire home/apt               No smoking & No pets & No parties            10.0                  4                 2.0 Abilene
+       Entire Home / Apt in Williamsburg + Rooftop  191.0 Entire home/apt                                         No pets             3.0                  3                 5.0 Abilene
+ NYC Studio near Central Park and the Hudson River  304.0 Entire home/apt                                         No pets             2.0                  2                 3.0 Abilene
+                   Super suite to stay in New York 1049.0 Entire home/apt              No children under 10 & No visitors             7.0                  5                 2.0 Abilene
+          Cozy Artists Apartment in Central Harlem  284.0    Private room                                     No visitors             1.0                  1                 2.0 Abilene
+
+### Attractions in Amarillo
+                                        Name  Latitude   Longitude                                         Address          Phone                                                                     Website     City
+                              Cadillac Ranch 35.187237 -101.987049 13651 I-40 Frontage Rd, Amarillo, TX 79124, USA (833) 330-2650                                 https://www.facebook.com/1974cadillacranch/ Amarillo
+                  Amarillo Botanical Gardens 35.197691 -101.915258         1400 Streit Dr, Amarillo, TX 79106, USA (806) 352-6513                                    http://www.amarillobotanicalgardens.org/ Amarillo
+                                Amarillo Zoo 35.239497 -101.835262   700 Comanchero Trail, Amarillo, TX 79107, USA (806) 381-7911                                                   https://zoo.amarillo.gov/ Amarillo
+             Don Harrington Discovery Center 35.200038 -101.913275         1200 Streit Dr, Amarillo, TX 79106, USA (806) 355-9547                                        https://discoverycenteramarillo.org/ Amarillo
+                    Texas Air & Space Museum 35.213416 -101.714002      10001 American Dr, Amarillo, TX 79111, USA (806) 335-9159                                      http://www.texasairandspacemuseum.org/ Amarillo
+                      Amarillo Museum of Art 35.188536 -101.845117    2200 S Van Buren St, Amarillo, TX 79109, USA (806) 371-5050                                                        http://www.amoa.org/ Amarillo
+                        2nd Amendment Cowboy 35.186496 -101.974137           2601 Hope Rd, Amarillo, TX 79124, USA (806) 355-7121                                   https://m.facebook.com/cadillacranchshop/ Amarillo
+American Quarter Horse Hall of Fame & Museum 35.194239 -101.807985   2601 E Interstate Dr, Amarillo, TX 79104, USA (806) 376-5181                                                  http://aqha.com/foundation Amarillo
+                 Wildcat Bluff Nature Center 35.235115 -101.939887        2301 N Soncy Rd, Amarillo, TX 79124, USA (806) 352-6007                                                    http://wildcatbluff.org/ Amarillo
+                Helium Time Columns Monument 35.199549 -101.913328    1200-1348 Streit Dr, Amarillo, TX 79106, USA        Unknown             http://www.atlasobscura.com/places/helium-time-columns-monument Amarillo
+                   Wonderland Amusement Park 35.242550 -101.832307          2601 Dumas Dr, Amarillo, TX 79107, USA (806) 383-3344                                              http://www.wonderlandpark.com/ Amarillo
+                  Amarillo Historical Museum 35.195302 -101.832055      1612 S Johnson St, Amarillo, TX 79102, USA (806) 206-3926                       http://amarillohistorical.wixsite.com/amarillohistory Amarillo
+              Amarillo Railroad Museum, Inc. 35.244394 -101.674078             3160 I Ave, Amarillo, TX 79111, USA (806) 335-3333                                          http://www.amarillorailmuseum.com/ Amarillo
+                                 Madam Queen 35.211049 -101.830228         500 SE 2nd Ave, Amarillo, TX 79101, USA        Unknown          https://www.waymarking.com/waymarks/WMA1AN_Madam_Queen_Amarillo_TX Amarillo
+       Kwahadi Museum of the American Indian 35.193780 -101.734019              9151 I-40, Amarillo, TX 79118, USA (806) 335-3175                                                     http://www.kwahadi.com/ Amarillo
+                                   Free Wall 35.198636 -101.847723        716 SW 16th Ave, Amarillo, TX 79101, USA        Unknown                                                                     Unknown Amarillo
+              Harrington House Historic Home 35.197134 -101.839542         1600 S Polk St, Amarillo, TX 79102, USA (806) 374-5490                                https://www.harringtonhousehistorichome.org/ Amarillo
+                           Yellow Girl Mural 35.207549 -101.839954      616 S Harrison St, Amarillo, TX 79101, USA        Unknown                                                                     Unknown Amarillo
+                            Amarillo Route66 35.211061 -101.876196        3511 SW 6th Ave, Amarillo, TX 79106, USA (806) 373-1427                                                   http://www.amarillo66.com Amarillo
+                      Thompson Memorial Park 35.237713 -101.835060          2401 Dumas Dr, Amarillo, TX 79107, USA (806) 378-3036 https://www.amarilloparks.org/parks-facilities/parks/thompson-memorial-park Amarillo
+
+### Restaurants in Amarillo
+                           Name  Average Cost                                         Cuisines  Aggregate Rating     City
+           The Cinnamon Kitchen            69           Desserts, Tea, Pizza, Chinese, Seafood               3.4 Amarillo
+                        Komachi            71 Desserts, Tea, Fast Food, Chinese, Mediterranean               3.2 Amarillo
+Kanha North & South Indian Veg.            34                        Tea, Cafe, BBQ, Fast Food               0.0 Amarillo
+            Sigree Global Grill            35                     Chinese, BBQ, Cafe, Desserts               4.1 Amarillo
+               Anand Restaurant            53            Fast Food, Seafood, Desserts, Italian               3.6 Amarillo
+                  Wood Box Cafe            11      Desserts, French, Fast Food, Cafe, American               3.8 Amarillo
+           Punjabi Chaap Corner            62      Desserts, Pizza, Italian, Bakery, Fast Food               3.5 Amarillo
+                         Subway            92  Desserts, BBQ, Fast Food, Indian, Mediterranean               2.8 Amarillo
+                      Thalaivar            27                Tea, Fast Food, American, Seafood               3.8 Amarillo
+                 Shaan e Punjab            86                     Cafe, BBQ, Desserts, Italian               3.1 Amarillo
+      Foresto Lawn & Restaurant            80           Pizza, Bakery, Mediterranean, Desserts               0.0 Amarillo
+        Ankur Family Restaurant            58                    French, Pizza, Cafe, Desserts               2.9 Amarillo
+                         U Like            44                                   Tea, Fast Food               3.0 Amarillo
+             Biryani Sons & Co.            14                          Tea, Pizza, Bakery, BBQ               3.8 Amarillo
+                  Guru Om Vanna            43           Desserts, Tea, Bakery, Indian, Seafood               0.0 Amarillo
+              Shahi Food Corner            90             French, Pizza, Bakery, Mediterranean               3.0 Amarillo
+                      ADM Foodi            96                                     Tea, Seafood               0.0 Amarillo
+            Mehfil Tawa Tandoor            48                  Cafe, Indian, Desserts, Seafood               3.1 Amarillo
+                Cafe Coffee Day            15                            Tea, Bakery, American               3.4 Amarillo
+                ATM Food Corner            40                            Chinese, Bakery, Cafe               3.0 Amarillo
+                   Burger Point            15                     BBQ, Pizza, Indian, Desserts               3.8 Amarillo
+                  Taneja Bakery            80                              Tea, Bakery, Indian               3.2 Amarillo
+           Zareen's Dastarkhwan            21                    Tea, Cafe, American, Desserts               0.0 Amarillo
+                     Delish BBQ            92               Mexican, Bakery, Desserts, Seafood               3.9 Amarillo
+         Matrix - Jaypee Greens            61                       Cafe, Indian, BBQ, Seafood               3.2 Amarillo
+               Mishti's Kitchen            79                        French, Bakery, Fast Food               3.6 Amarillo
+             Sugar Daddy Bakers            14                     Tea, Cafe, Mexican, Desserts               2.7 Amarillo
+     Lucknow Wale Kwality Kabab            20                    Tea, Chinese, Pizza, American               0.0 Amarillo
+                  Kabir Kitchen            54                Fast Food, Pizza, Bakery, Seafood               3.8 Amarillo
+                    The Whippet            58             French, Bakery, BBQ, Fast Food, Cafe               4.3 Amarillo
+
+### Accommodations in Amarillo
+                                              NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number     city
+      Gramercy Park restful, cozy, sun-filled home  968.0 Entire home/apt                        No parties             2.0                  8                 2.0 Amarillo
+ Harlem Humble Abode - 1 bedroom - Cute and Quaint  409.0 Entire home/apt                           No pets             5.0                  3                 5.0 Amarillo
+      SUNNY 2 BEDS - NEAR 3 METROS IN WILLIAMSBURG  445.0    Private room              No children under 10             2.0                  2                 3.0 Amarillo
+      Trendy Brooklyn Room - 20mins from Manhattan  267.0    Private room No children under 10 & No parties             1.0                  2                 4.0 Amarillo
+                   1BR Doorman Bldg Boerum Hill BK  510.0 Entire home/apt             No visitors & No pets             2.0                  5                 3.0 Amarillo
+Private Master Bedroom w/Garden 14 min to Union Sq  869.0    Private room                        No smoking             1.0                  1                 5.0 Amarillo
+ STUNNING, HUGE 1 bed apartment, steps from train!  900.0 Entire home/apt           No parties & No smoking             4.0                  9                 3.0 Amarillo
+                                  Spacious retreat  528.0 Entire home/apt                        No smoking             2.0                  5                 4.0 Amarillo
+ Great location, private bedroom with two windows.  883.0    Private room                           No pets             2.0                  1                 3.0 Amarillo
+          Relax in SoHo with private outdoor space 1063.0 Entire home/apt                       No visitors             2.0                  4                 5.0 Amarillo
+                    Lovely Park Slope Pied a Terre 1086.0 Entire home/apt              No parties & No pets             5.0                 10                 2.0 Amarillo
+
+### Flight from Baton Rouge to Abilene on 2022-03-16
+There is no flight from Baton Rouge to Abilene on 2022-03-16.
+
+### Self-driving from Baton Rouge to Abilene
+self-driving, from Baton Rouge to Abilene, duration: 8 hours 50 mins, distance: 976 km, cost: 48
+
+### Taxi from Baton Rouge to Abilene
+taxi, from Baton Rouge to Abilene, duration: 8 hours 50 mins, distance: 976 km, cost: 976
+
+### Flight from Abilene to Amarillo on 2022-03-18
+There is no flight from Abilene to Amarillo on 2022-03-18.
+
+### Self-driving from Abilene to Amarillo
+self-driving, from Abilene to Amarillo, duration: 4 hours 10 mins, distance: 446 km, cost: 22
+
+### Taxi from Abilene to Amarillo
+taxi, from Abilene to Amarillo, duration: 4 hours 10 mins, distance: 446 km, cost: 446
+
+### Flight from Amarillo to Baton Rouge on 2022-03-20
+There is no flight from Amarillo to Baton Rouge on 2022-03-20.
+
+### Self-driving from Amarillo to Baton Rouge
+self-driving, from Amarillo to Baton Rouge, duration: 11 hours 42 mins, distance: 1,270 km, cost: 63
+
+### Taxi from Amarillo to Baton Rouge
+taxi, from Amarillo to Baton Rouge, duration: 11 hours 42 mins, distance: 1,270 km, cost: 1270
+
+JSON plan:

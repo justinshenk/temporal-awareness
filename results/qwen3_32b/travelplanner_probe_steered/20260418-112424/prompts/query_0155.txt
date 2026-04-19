@@ -1,0 +1,244 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you plan a 5-day travel itinerary from Boston to New York for two people, visiting 2 different cities between March 7th and March 11th, 2022? Our budget is now set at $2,700 for this trip. Please note that we require accommodations that allow parties, and we would like rooms that are not shared. Lastly, for our travel, we'd prefer not to fly.
+
+Reference information:
+### Attractions in Syracuse
+                           Name  Latitude  Longitude                                       Address          Phone                                                Website     City
+              Erie Canal Museum 43.050679 -76.148829      318 Erie Blvd E, Syracuse, NY 13202, USA (315) 471-0593                           https://eriecanalmuseum.org/ Syracuse
+           Rosamond Gifford Zoo 43.043324 -76.181074    1 Conservation Pl, Syracuse, NY 13204, USA (315) 435-8511                     http://www.rosamondgiffordzoo.org/ Syracuse
+ Museum of Science & Technology 43.047098 -76.155591    500 S Franklin St, Syracuse, NY 13202, USA (315) 425-9068                                   http://www.most.org/ Syracuse
+          Everson Museum of Art 43.044723 -76.146742      401 Harrison St, Syracuse, NY 13202, USA (315) 474-6064                                http://www.everson.org/ Syracuse
+Onondaga Historical Association 43.047883 -76.149205    321 Montgomery St, Syracuse, NY 13202, USA (315) 428-1864                             http://www.cnyhistory.org/ Syracuse
+             Museum Of Intrigue 43.067310 -76.171001  9658 Destiny USA Dr, Syracuse, NY 13204, USA (855) 653-7227                      https://www.museumofintrigue.com/ Syracuse
+            WonderWorks Destiny 43.067390 -76.172567  9090 Destiny USA Dr, Syracuse, NY 13204, USA (315) 466-7700              http://www.wonderworksonline.com/destiny/ Syracuse
+                  Thornden Park 43.042096 -76.126668     Thornden Park Dr, Syracuse, NY 13210, USA (315) 473-4330                            http://www.syrgov.net/parks Syracuse
+                5 Wits Syracuse 43.068467 -76.171663 10351 Destiny USA Dr, Syracuse, NY 13204, USA (315) 988-4001                                 http://www.5-wits.com/ Syracuse
+         E.M. Mills Rose Garden 43.039023 -76.127891     Thornden Park Dr, Syracuse, NY 13210, USA (315) 473-4330                        http://syracuserosesociety.org/ Syracuse
+                  Onondaga Park 43.028545 -76.162713     655 Onondaga Ave, Syracuse, NY 13207, USA (315) 469-3464                                                Unknown Syracuse
+                   Elmwood Park 43.018720 -76.166893     919 Glenwood Ave, Syracuse, NY 13207, USA (315) 473-4330           http://www.syrgov.net/parks/elmwoodPark.html Syracuse
+                    Burnet Park 43.042277 -76.183934                       Syracuse, NY 13204, USA (315) 473-4330                                                Unknown Syracuse
+                 Clinton Square 43.051078 -76.152929       161 Genesee St, Syracuse, NY 13202, USA (315) 423-0129                                                Unknown Syracuse
+              Taste of Syracuse 43.050861 -76.152883    1000 S Clinton St, Syracuse, NY 13202, USA        Unknown                                                Unknown Syracuse
+                     Barry Park 43.029120 -76.117136       Meadowbrook Dr, Syracuse, NY 13210, USA (315) 473-4330 https://syracuseparksconservancy.org/parks/barry-park/ Syracuse
+            Upper Onondaga Park 43.026974 -76.165197     655 Onondaga Ave, Syracuse, NY 13207, USA (315) 473-4330     http://www.syrgov.net/parks/onondagaParkUpper.html Syracuse
+                    Salt Museum 43.099756 -76.206820         106 Lake Dr, Liverpool, NY 13088, USA (315) 453-6712        http://www.onondagacountyparks.com/salt-museum/ Syracuse
+           Franklin Square Park 43.056939 -76.157124         101 Solar St, Syracuse, NY 13204, USA (315) 473-4330                                                Unknown Syracuse
+      Community Folk Art Center 43.047247 -76.139081     805 E Genesee St, Syracuse, NY 13210, USA (315) 442-2230                    https://communityfolkartcenter.org/ Syracuse
+
+### Restaurants in Syracuse
+                            Name  Average Cost                                Cuisines  Aggregate Rating     City
+                Silantro Fil-Mex            29  Chinese, BBQ, Mediterranean, Fast Food               4.9 Syracuse
+                Taqueria Del Sol            61 Pizza, BBQ, Fast Food, Chinese, Seafood               4.1 Syracuse
+                         Tucanos            36                    Pizza, BBQ, Desserts               4.0 Syracuse
+                         Mx Corn            80              Tea, Mexican, BBQ, Seafood               0.0 Syracuse
+                       Taco Bell            40         Bakery, American, Cafe, Seafood               3.8 Syracuse
+   Darjeeling Kanchanjanga Momos           100      Tea, Italian, BBQ, Indian, Seafood               2.9 Syracuse
+                  Raj Restaurant            61             French, Bakery, Indian, BBQ               3.1 Syracuse
+                    Food Ka Adda            78        Tea, Indian, American, Fast Food               0.0 Syracuse
+                       Mezzaluna            41      Pizza, Indian, Desserts, Fast Food               3.8 Syracuse
+                       Checker's            90   Tea, Italian, French, Fast Food, Cafe               4.0 Syracuse
+                   Bikaner Rasoi            43  Desserts, Pizza, Cafe, Indian, Seafood               0.0 Syracuse
+                 Cafe Coffee Day            16                          Tea, Cafe, BBQ               3.1 Syracuse
+                 Barbeque Nation            85             Tea, Chinese, American, BBQ               4.0 Syracuse
+                        Raahgiri            95 Desserts, Tea, Mexican, Bakery, Seafood               3.2 Syracuse
+                  Himalaya Dhaba            77         Mexican, Bakery, BBQ, Fast Food               2.6 Syracuse
+KG Confectionery and Pastry Shop            21            Tea, Cafe, Desserts, Seafood               0.0 Syracuse
+                       The Pindi            81                 Pizza, Indian, Desserts               3.5 Syracuse
+                      Haldiram's            43                  Tea, French, BBQ, Cafe               3.8 Syracuse
+      Muradabadi Chicken Biryani            10               Cafe, American, Fast Food               3.3 Syracuse
+                 Mughlaai Daawat            96              Tea, Mexican, BBQ, Italian               2.9 Syracuse
+                         Just In            94          Desserts, Indian, BBQ, Italian               0.0 Syracuse
+                 Bhardwaj Bakery            21                  Tea, Cafe, Bakery, BBQ               0.0 Syracuse
+           Shree Balaji Caterers            46              Chinese, Desserts, Seafood               0.0 Syracuse
+                    Food Factory            13                     Tea, Pizza, Seafood               3.0 Syracuse
+                    Baker's Byte            82                 Cafe, Desserts, Seafood               3.3 Syracuse
+             Mummy's Food Corner            30                          Pizza, Seafood               0.0 Syracuse
+                         Foodies            45                        Pizza, Fast Food               0.0 Syracuse
+              Foodland by Orchid            95             Tea, Indian, BBQ, Fast Food               2.9 Syracuse
+                     Chanda Food            82    Fast Food, Bakery, Desserts, Italian               3.6 Syracuse
+                  Domino's Pizza            36   Mexican, Bakery, BBQ, Fast Food, Cafe               2.3 Syracuse
+
+### Accommodations in Syracuse
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number     city
+                                 The Gramercy East 1031.0 Entire home/apt                           No parties & No pets             2.0                  3                 4.0 Syracuse
+                                         Nice Room  564.0    Private room                                     No smoking             2.0                  2                 3.0 Syracuse
+               *Lovely Apt in Heart of Park Slope* 1138.0 Entire home/apt                 No pets & No children under 10            30.0                  3                 4.0 Syracuse
+              Harlem "Hostel" for Single Travelers 1199.0     Shared room                        No parties & No smoking             2.0                  1                 4.0 Syracuse
+      Sixth Ave Chelsea, Studio Serviced Apartment  589.0 Entire home/apt                                        No pets            30.0                  5                 2.0 Syracuse
+           Chic Apartment for rent in East Village  430.0 Entire home/apt                                        No pets             2.0                  2                 2.0 Syracuse
+   Lrg 2 BR Duplex Top 2 Flrs Terrace West Village  733.0 Entire home/apt                           No children under 10             3.0                  3                 3.0 Syracuse
+         Cozy studio basement in heart of Brooklyn  489.0    Private room    No pets & No smoking & No children under 10             2.0                  1                 4.0 Syracuse
+              Chill Vibes in Beautiful Fort Greene  518.0    Private room                                    No visitors             2.0                  2                 4.0 Syracuse
+                        Sunny 2 bedroom apartment!  201.0 Entire home/apt                           No pets & No smoking             1.0                  3                 2.0 Syracuse
+      Magnificent NYC 1 Bedroom Apt on the River!!  445.0 Entire home/apt                                        No pets            30.0                  2                 3.0 Syracuse
+                       Brooklyn Studio with a View 1168.0 Entire home/apt                                     No parties             2.0                  5                 3.0 Syracuse
+                                   Boutique Studio  162.0 Entire home/apt                                        No pets             5.0                  2                 5.0 Syracuse
+                      Bed Stuy Home Away From Home  735.0 Entire home/apt                                     No parties             1.0                  6                 2.0 Syracuse
+                   10 mins from JFK. Smoking okay.  692.0    Private room              No smoking & No children under 10             1.0                  2                 4.0 Syracuse
+                Spacious & Artsy Astoria Apartment  647.0 Entire home/apt              No parties & No children under 10             3.0                  5                 4.0 Syracuse
+                           Privet outdoor space!!!  173.0 Entire home/apt No smoking & No children under 10 & No parties            30.0                  2                 1.0 Syracuse
+1 Bedroom Condo/Kitchen Wyndham Midtown 45 Resort*  488.0    Private room                                     No parties             3.0                  1                 2.0 Syracuse
+                          Sunny, Cozy, and a View! 1137.0 Entire home/apt                                     No smoking             2.0                  9                 4.0 Syracuse
+    SHOOTS ONLY - Huge Artist loft in Williamsburg  526.0 Entire home/apt                                        No pets             1.0                  2                 4.0 Syracuse
+                           A Crown Heights Holiday  828.0    Private room                                        No pets             1.0                  2                 3.0 Syracuse
+
+### Attractions in New York
+                        Name  Latitude  Longitude                                        Address          Phone                                                                         Website     City
+             Top of The Rock 40.759350 -73.979409  30 Rockefeller Plaza, New York, NY 10112, USA (212) 698-2000 https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/ New York
+       One World Observatory 40.713006 -74.013173           117 West St, New York, NY 10007, USA (844) 696-1776                                                https://oneworldobservatory.com/ New York
+       SUMMIT One Vanderbilt 40.752764 -73.978746          45 E 42nd St, New York, NY 10017, USA        Unknown                                                        http://www.summitov.com/ New York
+          Rockefeller Center 40.758740 -73.978674  45 Rockefeller Plaza, New York, NY 10111, USA (212) 588-8601                                              https://www.rockefellercenter.com/ New York
+           Statue of Liberty 40.689249 -74.044500                        New York, NY 10004, USA (212) 363-3200                                              https://www.nps.gov/stli/index.htm New York
+               The High Line 40.747993 -74.004765                        New York, NY 10011, USA (212) 500-6035                                                    https://www.thehighline.org/ New York
+       Empire State Building 40.748441 -73.985664         20 W 34th St., New York, NY 10001, USA (212) 736-3100                                                         https://www.esbnyc.com/ New York
+             Brooklyn Bridge 40.706086 -73.996864                        New York, NY 10038, USA        Unknown          https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml New York
+      9/11 Memorial & Museum 40.711578 -74.013336      180 Greenwich St, New York, NY 10007, USA (212) 312-8800                                                    https://www.911memorial.org/ New York
+           Flatiron Building 40.741061 -73.989699           175 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+                Times Square 40.757975 -73.985543                       Manhattan, NY 10036, USA        Unknown                                                 https://www.timessquarenyc.org/ New York
+                      RiseNY 40.757621 -73.985176         160 W 45th St, New York, NY 10036, USA (718) 701-4998                                                              https://riseny.co/ New York
+         The Channel Gardens 40.758501 -73.978087                        New York, NY 10020, USA        Unknown              https://www.rockefellercenter.com/attractions/the-channel-gardens/ New York
+                 The Battery 40.702931 -74.015360     Battery Park City, New York, NY 10004, USA (212) 344-3491                                                     https://www.thebattery.org/ New York
+                Central Park 40.782555 -73.965583                              New York, NY, USA (212) 310-6600                                                 https://www.centralparknyc.org/ New York
+             Tenement Museum 40.718818 -73.990088        103 Orchard St, New York, NY 10002, USA (877) 975-3786                                                       https://www.tenement.org/ New York
+         MUSEUM OF ICE CREAM 40.723855 -73.997917          558 Broadway, New York, NY 10012, USA        Unknown                                               https://www.museumoficecream.com/ New York
+       Radio City Music Hall 40.759976 -73.979977          1260 6th Ave, New York, NY 10020, USA (212) 465-6000                                       https://www.msg.com/radio-city-music-hall New York
+Pier 46 at Hudson River Park 40.734189 -74.011265 Hudson River Greenway, New York, NY 10014, USA (212) 627-2020                                                     http://hudsonriverpark.org/ New York
+        Tiffany Street Clock 40.741981 -73.989378           200 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+
+### Restaurants in New York
+                              Name  Average Cost                                             Cuisines  Aggregate Rating     City
+            Seasons 52 Fresh Grill            30                   Seafood, Indian, Desserts, Italian               4.4 New York
+                    Gurgaon Hights            46                    Cafe, American, Indian, Fast Food               2.5 New York
+                             G Dot            75                                   Cafe, Mexican, BBQ               2.4 New York
+                           Rambhog            95                     Tea, Seafood, Mexican, Fast Food               3.3 New York
+                  Green Chick Chop            26                           Tea, French, Cafe, Seafood               3.3 New York
+          Lord of the Drinks Forum            71                   Cafe, Bakery, BBQ, Chinese, Indian               4.2 New York
+                        Goosebumps            94                               Chinese, Pizza, Bakery               3.2 New York
+Aryan's Rajasthani Pyaz Ki Kachori            17                         Cafe, Pizza, Indian, Seafood               3.1 New York
+                   QD's Restaurant            93                           Tea, Desserts, Indian, BBQ               4.1 New York
+               Golooji's Chat Waat            53                                           Pizza, BBQ               3.3 New York
+              Sir John Bakery Cafe            78                              Pizza, Bakery, Desserts               3.4 New York
+                     Shree Rathnam            91            Tea, Bakery, Fast Food, American, Seafood               3.4 New York
+                    Domino's Pizza            86                           Tea, French, Pizza, Indian               3.3 New York
+                    Sugary Affairs            55               Desserts, Tea, Fast Food, Cafe, Indian               3.0 New York
+                        Sugar Rush            89                            Tea, Chinese, Pizza, Cafe               0.0 New York
+                            Amchur            67                                Tea, Bakery, American               2.9 New York
+                Kamal Chat Bhandar            36                                 Chinese, Bakery, BBQ               0.0 New York
+                          736 A.D.            99 Desserts, Bakery, Fast Food, American, Mediterranean               4.1 New York
+          Garam Masala Food Corner            40                              Pizza, Bakery, Desserts               3.3 New York
+                  Green Restaurant            74                          Tea, Cafe, Bakery, Desserts               0.0 New York
+                       Hungry Ullu            94                                          Tea, Bakery               3.3 New York
+                          The Best            79                                   Tea, Chinese, Cafe               3.4 New York
+                          Baltazar            46                      Tea, Fast Food, Bakery, Seafood               4.3 New York
+
+### Accommodations in New York
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number     city
+Versatile private room in Harlem/Hamilton Heights!  398.0    Private room           No pets & No visitors & No parties             4.0                  1                 5.0 New York
+Beautiful and big 1BR sublet close by Central Park  983.0    Private room            No parties & No children under 10             5.0                  2                 5.0 New York
+    A Contemporary Homelike Stay in the Best of BK  228.0 Entire home/apt No pets & No visitors & No children under 10             2.0                  2                 2.0 New York
+       Charming Bright Room in Bed Stuy Brownstone 1064.0    Private room           No visitors & No smoking & No pets            30.0                  2                 3.0 New York
+       Spacious Bedroom in Prime Brooklyn Location  782.0    Private room                         No parties & No pets             3.0                  1                 4.0 New York
+         Cool Downtown Apartment in Great Location  997.0 Entire home/apt                                      No pets             4.0                  7                 4.0 New York
+              Modern Brooklyn oasis (PRIVATE ROOM)  403.0    Private room                         No children under 10             1.0                  1                 5.0 New York
+       Magical rowhouse and garden in Williamsburg  189.0 Entire home/apt                                   No parties             4.0                  3                 1.0 New York
+                          Large Bed-Stuy Apartment  132.0 Entire home/apt                                  No visitors             6.0                  2                 4.0 New York
+IN MINT CONDITION-1BR&TERRACE-E 44TH/UNITED NATION  297.0 Entire home/apt                                      No pets            30.0                  2                 4.0 New York
+   Spacious Private Access Near Trains M - L and J  800.0    Private room                                      No pets             2.0                  1                 4.0 New York
+ Sunny + Spacious Master Bedroom with Outdoor Deck  109.0    Private room                                      No pets             3.0                  1                 5.0 New York
+ ✈ NYC/Travelers. New Private Access Room Bed Full 1158.0    Private room                                      No pets             2.0                  1                 5.0 New York
+
+### Flight from Boston to Syracuse on 2022-03-07
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3731480    100   17:08   18:25 1 hours 17 minutes 2022-03-07         Boston     Syracuse     265.0
+     F3761403     92   23:17   00:39 1 hours 22 minutes 2022-03-07         Boston     Syracuse     265.0
+
+### Self-driving from Boston to Syracuse
+self-driving, from Boston to Syracuse, duration: 4 hours 43 mins, distance: 502 km, cost: 25
+
+### Taxi from Boston to Syracuse
+taxi, from Boston to Syracuse, duration: 4 hours 43 mins, distance: 502 km, cost: 502
+
+### Flight from Syracuse to New York on 2022-03-09
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3638375     83   17:45   19:16 1 hours 31 minutes 2022-03-09       Syracuse     New York     209.0
+     F3646524     94   05:51   07:00  1 hours 9 minutes 2022-03-09       Syracuse     New York     198.0
+     F3654707     98   14:32   16:20 1 hours 48 minutes 2022-03-09       Syracuse     New York     209.0
+     F3760992     92   11:48   13:09 1 hours 21 minutes 2022-03-09       Syracuse     New York     209.0
+
+### Self-driving from Syracuse to New York
+self-driving, from Syracuse to New York, duration: 4 hours 4 mins, distance: 397 km, cost: 19
+
+### Taxi from Syracuse to New York
+taxi, from Syracuse to New York, duration: 4 hours 4 mins, distance: 397 km, cost: 397
+
+### Flight from New York to Boston on 2022-03-11
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3507469     84   14:47   15:44 0 hours 57 minutes 2022-03-11       New York       Boston     187.0
+     F3519727     60   16:10   17:24 1 hours 14 minutes 2022-03-11       New York       Boston     184.0
+     F3543899     79   17:54   18:56  1 hours 2 minutes 2022-03-11       New York       Boston     187.0
+     F3552825     55   22:14   23:12 0 hours 58 minutes 2022-03-11       New York       Boston     184.0
+     F3661491     37   15:26   16:35  1 hours 9 minutes 2022-03-11       New York       Boston     187.0
+     F3667118     38   22:26   23:36 1 hours 10 minutes 2022-03-11       New York       Boston     187.0
+     F3668204     75   12:24   13:34 1 hours 10 minutes 2022-03-11       New York       Boston     187.0
+     F3710540     78   08:27   09:47 1 hours 20 minutes 2022-03-11       New York       Boston     187.0
+     F3757228     72   19:10   20:13  1 hours 3 minutes 2022-03-11       New York       Boston     184.0
+     F3757229     48   14:58   16:11 1 hours 13 minutes 2022-03-11       New York       Boston     187.0
+     F3757517     57   13:56   14:59  1 hours 3 minutes 2022-03-11       New York       Boston     187.0
+     F3757790     79   07:57   08:55 0 hours 58 minutes 2022-03-11       New York       Boston     184.0
+     F3758243     81   22:43   23:54 1 hours 11 minutes 2022-03-11       New York       Boston     187.0
+     F3759198     50   06:14   07:27 1 hours 13 minutes 2022-03-11       New York       Boston     184.0
+     F3759481     55   20:37   21:38  1 hours 1 minutes 2022-03-11       New York       Boston     184.0
+     F3759629     40   13:46   14:35 0 hours 49 minutes 2022-03-11       New York       Boston     184.0
+     F3759631     37   08:46   09:48  1 hours 2 minutes 2022-03-11       New York       Boston     184.0
+     F3760695     87   11:40   12:41  1 hours 1 minutes 2022-03-11       New York       Boston     187.0
+     F3761152     73   13:32   14:30 0 hours 58 minutes 2022-03-11       New York       Boston     187.0
+     F3761288     80   17:03   19:31 2 hours 28 minutes 2022-03-11       New York       Boston     184.0
+     F3761418     81   09:59   11:02  1 hours 3 minutes 2022-03-11       New York       Boston     184.0
+     F3761419     64   19:39   21:02 1 hours 23 minutes 2022-03-11       New York       Boston     187.0
+     F3761686     84   10:55   11:55  1 hours 0 minutes 2022-03-11       New York       Boston     184.0
+     F3761689     48   16:02   17:09  1 hours 7 minutes 2022-03-11       New York       Boston     184.0
+     F3762485     82   11:48   12:46 0 hours 58 minutes 2022-03-11       New York       Boston     184.0
+     F3762490     71   21:48   22:48  1 hours 0 minutes 2022-03-11       New York       Boston     187.0
+     F3762777     50   06:43   07:52  1 hours 9 minutes 2022-03-11       New York       Boston     187.0
+     F3764492     66   14:20   15:26  1 hours 6 minutes 2022-03-11       New York       Boston     187.0
+     F4059036     47   17:36   18:36  1 hours 0 minutes 2022-03-11       New York       Boston     187.0
+     F4064790     81   09:27   10:41 1 hours 14 minutes 2022-03-11       New York       Boston     187.0
+     F4064796     62   18:57   20:04  1 hours 7 minutes 2022-03-11       New York       Boston     184.0
+     F4064798     59   06:21   07:27  1 hours 6 minutes 2022-03-11       New York       Boston     184.0
+     F4064800     82   12:17   13:14 0 hours 57 minutes 2022-03-11       New York       Boston     184.0
+     F4064831     83   08:42   10:08 1 hours 26 minutes 2022-03-11       New York       Boston     184.0
+     F4064835     83   09:56   11:06 1 hours 10 minutes 2022-03-11       New York       Boston     184.0
+     F4064844     46   14:15   15:20  1 hours 5 minutes 2022-03-11       New York       Boston     184.0
+     F4064853     38   20:30   21:51 1 hours 21 minutes 2022-03-11       New York       Boston     184.0
+     F4064898     72   17:57   19:31 1 hours 34 minutes 2022-03-11       New York       Boston     184.0
+     F4064910     37   13:33   14:29 0 hours 56 minutes 2022-03-11       New York       Boston     187.0
+     F4064930     43   07:34   08:50 1 hours 16 minutes 2022-03-11       New York       Boston     184.0
+     F4064933     68   17:12   18:22 1 hours 10 minutes 2022-03-11       New York       Boston     184.0
+     F4064936     90   07:28   08:42 1 hours 14 minutes 2022-03-11       New York       Boston     187.0
+     F4064959     78   14:59   16:01  1 hours 2 minutes 2022-03-11       New York       Boston     184.0
+     F4064975     69   08:56   10:09 1 hours 13 minutes 2022-03-11       New York       Boston     184.0
+     F4064995     53   12:24   13:29  1 hours 5 minutes 2022-03-11       New York       Boston     184.0
+     F4065013     89   22:55   00:08 1 hours 13 minutes 2022-03-11       New York       Boston     187.0
+     F4065019     90   12:56   14:01  1 hours 5 minutes 2022-03-11       New York       Boston     184.0
+
+### Self-driving from New York to Boston
+self-driving, from New York to Boston, duration: 3 hours 41 mins, distance: 346 km, cost: 17
+
+### Taxi from New York to Boston
+taxi, from New York to Boston, duration: 3 hours 41 mins, distance: 346 km, cost: 346
+
+JSON plan:

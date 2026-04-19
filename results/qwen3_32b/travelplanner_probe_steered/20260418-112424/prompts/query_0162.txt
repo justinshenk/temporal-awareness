@@ -1,0 +1,279 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you design a one-week travel itinerary for two, departing from Houston and touring three cities in Tennessee from March 21st to March 27th, 2022? Our budget is now $8,200. We require accommodations that allow smoking and should ideally be private rooms. As for transportation, we would prefer not to self-drive.
+
+Reference information:
+### Attractions in Nashville
+                                 Name  Latitude  Longitude                                             Address          Phone                                                                                                                                                                                  Website      City
+Country Music Hall of Fame and Museum 36.158263 -86.776126 222 Rep. John Lewis Way S, Nashville, TN 37203, USA (615) 416-2001                                                                                                                                                      https://countrymusichalloffame.org/ Nashville
+           Nashville Zoo at Grassmere 36.089705 -86.742096       3777 Nolensville Pk, Nashville, TN 37211, USA (615) 833-1534                                                                                                                                                             http://www.nashvillezoo.org/ Nashville
+   Belle Meade Historic Site & Winery 36.104916 -86.864695         5025 Harding Pike, Nashville, TN 37205, USA (615) 356-0501                                                                                                                                                             https://visitbellemeade.com/ Nashville
+                   Johnny Cash Museum 36.160939 -86.775757             119 3rd Ave S, Nashville, TN 37201, USA (615) 256-1777                                                                                                                                                         http://www.johnnycashmuseum.com/ Nashville
+                      Centennial Park 36.148946 -86.812750         2500 West End Ave, Nashville, TN 37203, USA (615) 862-8400                                                                                                                https://www.nashville.gov/Parks-and-Recreation/Parks/Centennial-Park.aspx Nashville
+                       Grand Ole Opry 36.206857 -86.692108         600 Opry Mills Dr, Nashville, TN 37214, USA (615) 871-6779   https://www.opry.com/?utm_campaign=opry&utm_medium=organicsearch&utm_source=googlemybusiness&utm_audience=tofu_googlemybusiness&utm_content=brandstory_google_my_business_website_link Nashville
+                     Frist Art Museum 36.157897 -86.783853              919 Broadway, Nashville, TN 37203, USA (615) 244-3340                                                                                                                                                              https://fristartmuseum.org/ Nashville
+                        The Parthenon 36.149674 -86.813347         2500 West End Ave, Nashville, TN 37203, USA (615) 862-8431                                                                                                                                                      https://www.nashvilleparthenon.com/ Nashville
+                     Nashville Shores 36.158209 -86.604915              4001 Bell Rd, Hermitage, TN 37076, USA (615) 889-7050                                                                                                                                                   http://www.nashvilleshores.com/lodging Nashville
+    Musicians Hall of Fame and Museum 36.167668 -86.782399                401 Gay St, Nashville, TN 37219, USA (615) 244-3263                                                                                                                                                     https://www.musicianshalloffame.com/ Nashville
+ Bicentennial Capitol Mall State Park 36.170887 -86.787589  600 James Robertson Pkwy, Nashville, TN 37243, USA (888) 867-2757                                                                                                                                         https://tnstateparks.com/parks/bicentennial-mall Nashville
+                    Lane Motor Museum 36.140197 -86.734580     702 Murfreesboro Pike, Nashville, TN 37210, USA (615) 742-7445                                                                                                                                                          http://www.lanemotormuseum.org/ Nashville
+                   Honky Tonk Highway 36.160393 -86.778432              501 Broadway, Nashville, TN 37203, USA (800) 657-6910                                                                                                                                 https://www.visitmusiccity.com/visitors/honkytonkhighway Nashville
+             Adventure Science Center 36.146614 -86.775481      800 Fort Negley Blvd, Nashville, TN 37203, USA (615) 862-5160                                                                                                                                                             http://www.adventuresci.org/ Nashville
+                   Patsy Cline Museum 36.160904 -86.776030             119 3rd Ave S, Nashville, TN 37201, USA (615) 454-4722                                                                                                                                                             https://www.patsymuseum.com/ Nashville
+           Andrew Jackson’s Hermitage 36.213757 -86.615310           4580 Rachels Ln, Hermitage, TN 37076, USA (615) 889-2941                                                                                                                                                             http://www.thehermitage.com/ Nashville
+                      NashTrash Tours 36.169474 -86.788254     900 Rosa L Parks Blvd, Nashville, TN 37208, USA (615) 226-7300                                                                                                                                                                http://www.nashtrash.com/ Nashville
+                     Fort Nashborough 36.164268 -86.775430             170 1st Ave N, Nashville, TN 37201, USA (615) 862-8400                                                                                                      https://www.nashville.gov/Parks-and-Recreation/Historic-Sites/Fort-Nashborough.aspx Nashville
+                     Ryman Auditorium 36.161248 -86.778471             116 5th Ave N, Nashville, TN 37219, USA (615) 889-3060 https://www.ryman.com/?utm_campaign=ryman&utm_medium=organicsearch&utm_source=googlemybusiness&utm_audience=tofu_googlemybusiness&utm_content=brandstory_google_my_business_website_link Nashville
+         Nashville Public Square Park 36.166611 -86.778126      Union St & 3rd Ave N, Nashville, TN 37201, USA (615) 743-3090                                                                                                                                  https://www.nashvilledowntown.com/go/public-square-park Nashville
+
+### Restaurants in Nashville
+                              Name  Average Cost                                    Cuisines  Aggregate Rating      City
+                         Bangkok 1            44                               Cafe, Seafood               3.3 Nashville
+                   Bablu Fast Food            13    Desserts, Pizza, Mexican, BBQ, Fast Food               0.0 Nashville
+                        Full Dabba            77   Pizza, Mexican, Fast Food, Cafe, American               0.0 Nashville
+                            Twigly            14  Pizza, French, Fast Food, Chinese, Seafood               4.5 Nashville
+                           Veg Hut            35                       Tea, Mexican, Seafood               0.0 Nashville
+                    The Toddy Shop            92                         Desserts, Fast Food               3.4 Nashville
+                         GoGourmet            34            Tea, Cafe, Indian, Mediterranean               3.7 Nashville
+           Govinda's Confectionery            15       Tea, Bakery, Mediterranean, Fast Food               3.1 Nashville
+                      Kitchen King            13    Pizza, Italian, BBQ, Cafe, Mediterranean               0.0 Nashville
+                         Town Hall            55                                Tea, Seafood               3.8 Nashville
+                  Smoke House Deli            59                Cafe, Mediterranean, Seafood               4.0 Nashville
+            Dialogue Lounge & Caf愆            83   Tea, Indian, BBQ, Cafe, American, Seafood               3.0 Nashville
+                  Meenakshi Bhawan            24                               Tea, Desserts               3.1 Nashville
+                      Oh! Calcutta            83             Tea, Mexican, BBQ, Cafe, Indian               4.4 Nashville
+                     Chicago Pizza            20                     Tea, French, Pizza, BBQ               3.2 Nashville
+               Malhotra Restaurant            76                      Tea, Desserts, Seafood               2.9 Nashville
+                       Madras Cafe            88                    Pizza, Desserts, Seafood               0.0 Nashville
+Dakshin - Sheraton New Delhi Hotel            63                 Cafe, Pizza, Indian, Bakery               4.0 Nashville
+           1911 Bar - The Imperial            76 Desserts, Pizza, Italian, American, Seafood               3.2 Nashville
+                     Punjabi Virsa            35       Desserts, Italian, BBQ, Cafe, Seafood               0.0 Nashville
+                       Sagar Dhaba            55       Tea, Bakery, BBQ, Cafe, Mediterranean               0.0 Nashville
+                     Kettle & Kegs            60                                Tea, Seafood               0.0 Nashville
+                             Kargo            84                        Tea, Pizza, Desserts               4.4 Nashville
+
+### Accommodations in Nashville
+                                         NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number      city
+Huge 2 Bedroom, Great Location, Express Metro  745.0 Entire home/apt No smoking & No children under 10 & No pets             4.0                  4                 5.0 Nashville
+   Clean and large bedroom in a private house  474.0    Private room                                  No smoking             1.0                  1                 4.0 Nashville
+                         Brooklyn Heights gem  993.0 Entire home/apt                                     No pets             2.0                  6                 5.0 Nashville
+         Lovely room in heart of Williamsburg   61.0    Private room                                     No pets             2.0                  1                 4.0 Nashville
+   *Light & Love* vibrant, historic, sleeps 4  679.0 Entire home/apt                                     No pets             5.0                  2                 2.0 Nashville
+        FiDi Cozy room overlooking East River  870.0    Private room                                  No parties             1.0                  2                 5.0 Nashville
+       Charming 1BR with sun-nook in Brooklyn  256.0 Entire home/apt No children under 10 & No pets & No smoking             3.0                  2                 4.0 Nashville
+              Cozy bedroom close to Manhattan  576.0    Private room                        No children under 10             1.0                  1                 3.0 Nashville
+
+### Attractions in Knoxville
+                                        Name  Latitude  Longitude                                                Address          Phone                                                                                                Website      City
+                           World's Fair Park 35.962577 -83.924192                525 Henley St, Knoxville, TN 37902, USA (865) 215-1158                                                                             http://worldsfairpark.org/ Knoxville
+                     Knoxville Museum of Art 35.962426 -83.925229     1050 Worlds Fair Park Dr, Knoxville, TN 37916, USA (865) 525-6101                                                                                http://www.knoxart.org/ Knoxville
+                                   Sunsphere 35.961707 -83.923353               810 Clinch Ave, Knoxville, TN 37902, USA (865) 314-0660                                                                       http://www.sunspheretickets.com/ Knoxville
+                         Ijams Nature Center 35.956454 -83.866775         2915 Island Home Ave, Knoxville, TN 37920, USA (865) 577-4717                                                                                  http://www.ijams.org/ Knoxville
+                     Knoxville Walking Tours 35.966448 -83.919167                 301 S Gay St, Knoxville, TN 37902, USA (865) 309-4522                                                                      http://knoxvillewalkingtours.com/ Knoxville
+                              Muse Knoxville 35.997617 -83.885467              516 N Beaman St, Knoxville, TN 37914, USA (865) 594-1494                                                                       http://www.themuseknoxville.org/ Knoxville
+    Knoxville Botanical Garden and Arboretum 35.982160 -83.881077             2743 Wimpole Ave, Knoxville, TN 37914, USA (865) 862-8717                                                                             http://www.knoxgarden.org/ Knoxville
+               Haunted Knoxville Ghost Tours 35.965963 -83.919553       36 Market Square #1404, Knoxville, TN 37902, USA (865) 377-9677                                                                       http://www.hauntedknoxville.net/ Knoxville
+                        Three Rivers Rambler 35.952810 -83.940376  2560 University Commons Way, Knoxville, TN 37919, USA (865) 524-9411                                                                     http://www.threeriversrambler.com/ Knoxville
+                         Charles Krutch Park 35.964414 -83.918695                504 Market St, Knoxville, TN 37902, USA (865) 215-4248 https://www.knoxvilletn.gov/government/city_departments_offices/parks_and_recreation/parks/krutch_park Knoxville
+ McClung Museum of Natural History & Culture 35.952005 -83.927209             1327 Cir Park Dr, Knoxville, TN 37996, USA (865) 974-2144                                                                          http://mcclungmuseum.utk.edu/ Knoxville
+                       Knoxville Sightseeing 35.992790 -83.904128             2519 Mitchell St, Knoxville, TN 37917, USA (865) 566-0634                                                                                                Unknown Knoxville
+          Chilhowee Park & Exposition Center 35.996296 -83.884032          3301 E Magnolia Ave, Knoxville, TN 37914, USA (865) 215-1450                                                                             https://chilhoweepark.com/ Knoxville
+                              Augusta Quarry 35.944772 -83.911886    3000 Fort Dickerson Rd SW, Knoxville, TN 37920, USA        Unknown                                                                                                Unknown Knoxville
+                               Zoo Knoxville 35.999812 -83.888250        3500 Knoxville Zoo Dr, Knoxville, TN 37914, USA (865) 637-5331                                                                          https://www.zooknoxville.org/ Knoxville
+          Outdoor Knoxville Adventure Center 35.961902 -83.912663     900 Volunteer Landing Ln, Knoxville, TN 37915, USA (865) 228-8424                                                                        http://www.outdoorknoxville.com Knoxville
+                James White Fort Association 35.962962 -83.912169               205 E Hill Ave, Knoxville, TN 37915, USA (865) 525-6514                                                                            http://jameswhitesfort.org/ Knoxville
+          Rowing Man Statue in Knoxville, TN 35.963611 -83.917519 W. Church Avenue &, S Gay St, Knoxville, TN 37902, USA        Unknown                                                                                                Unknown Knoxville
+                        UT Gardens Knoxville 35.944000 -83.938260                2518 Jacob Dr, Knoxville, TN 37996, USA (865) 974-7324                                                     http://utgardens.tennessee.edu/locations/knoxville Knoxville
+East Tennessee Historical Society and Museum 35.964117 -83.917794                 601 S Gay St, Knoxville, TN 37902, USA (865) 215-8830                                                                          http://www.easttnhistory.org/ Knoxville
+
+### Restaurants in Knoxville
+                    Name  Average Cost                                        Cuisines  Aggregate Rating      City
+           Cafe Arabelle            29                  French, BBQ, Desserts, Seafood               3.6 Knoxville
+         Les 3 Brasseurs            24          Desserts, Pizza, Italian, Cafe, Indian               4.6 Knoxville
+               Sky On 57           150              Tea, Cafe, Pizza, Chinese, Seafood               3.4 Knoxville
+           Cafe El Chico            67                    Tea, French, Indian, Seafood               3.6 Knoxville
+                   TcozY            85            Tea, Pizza, Mexican, Fast Food, Cafe               0.0 Knoxville
+Rama Vaishnav Bhojnalaya            46                      Tea, Cafe, Pizza, Desserts               3.0 Knoxville
+           Burger Planet            45                     Tea, Bakery, American, Cafe               3.2 Knoxville
+         Cafe Coffee Day            82               Fast Food, American, BBQ, Italian               2.8 Knoxville
+                Mamagoto            14        Indian, Mediterranean, Desserts, Seafood               4.1 Knoxville
+    Ali Baba & 41 Dishes            70                      Pizza, Desserts, Fast Food               3.5 Knoxville
+         Punjabi Flavour            41              Tea, Bakery, Cafe, Indian, Seafood               0.0 Knoxville
+          Tandoori Tadka            23             Chinese, Pizza, Desserts, Fast Food               0.0 Knoxville
+          Coalition Cafe            35         Desserts, Tea, BBQ, Cafe, Mediterranean               3.4 Knoxville
+            Chaat Corner            67                                     Cafe, Pizza               3.2 Knoxville
+                El Posto            63                           Tea, Cafe, Pizza, BBQ               3.5 Knoxville
+               La-Nawaab            17                   French, Bakery, Cafe, Seafood               3.0 Knoxville
+         Peppers & Pipes            86                   Chinese, Pizza, Cafe, Italian               3.1 Knoxville
+               Chit Chat            15                                Pizza, Fast Food               3.1 Knoxville
+            Anand Sweets            45               Fast Food, Pizza, Indian, Seafood               0.0 Knoxville
+            Open Kitchen            13 Pizza, Bakery, BBQ, Cafe, Indian, Mediterranean               3.0 Knoxville
+         Biryani By Kilo            17                       Chinese, Pizza, Fast Food               4.1 Knoxville
+     Chinese Food Corner            30                     Indian, Desserts, Fast Food               0.0 Knoxville
+The Indian Kaffe Express            71                                   Tea, Desserts               3.8 Knoxville
+
+### Accommodations in Knoxville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+   Cozy Private Room in Chinatown/ Lower East Side  132.0    Private room                           No pets & No visitors             7.0                  2                 4.0 Knoxville
+                                  The Diamond Room 1008.0    Private room                        No parties & No visitors             1.0                  1                 5.0 Knoxville
+                Light-filled Room in Renovated Apt  310.0    Private room                                         No pets             2.0                  2                 2.0 Knoxville
+                                      Private Room  922.0    Private room                                     No visitors             1.0                  1                 4.0 Knoxville
+                Beautiful & Private Manhattan Room  721.0    Private room                         No parties & No smoking             1.0                  1                 2.0 Knoxville
+               Lg Quiet Artist Home -Ditmas Park -  561.0 Entire home/apt              No visitors & No pets & No smoking            24.0                  4                 2.0 Knoxville
+ Beautiful 1- bdrm apt in tranquil Inwood building 1091.0 Entire home/apt                            No smoking & No pets             2.0                  4                 4.0 Knoxville
+ 1,600sq ft modern duplex in new harlem brownstone 1159.0 Entire home/apt     No smoking & No children under 10 & No pets             2.0                  5                 2.0 Knoxville
+               Brooklyn Sunny room 5 min to subway  793.0    Private room              No visitors & No children under 10             2.0                  2                 5.0 Knoxville
+   Amazing Large Sunny Studio in Greenwich Village  144.0 Entire home/apt                         No parties & No smoking            30.0                  3                 4.0 Knoxville
+       Private 1 Bdrm Suite in Historic Brownstone  479.0    Private room                                     No visitors             2.0                  2                 2.0 Knoxville
+  Charming bedroom with huge terrace in Greenpoint  712.0    Private room No parties & No children under 10 & No visitors             2.0                  1                 3.0 Knoxville
+                           Huge quiet modern oasis 1165.0 Entire home/apt                         No smoking & No parties             2.0                  8                 2.0 Knoxville
+Private large room near LGA airport with queen bed  552.0    Private room                                         No pets             1.0                  1                 2.0 Knoxville
+       12 east 86th Steet Upper East Side Building  632.0 Entire home/apt                                      No smoking            30.0                  3                 2.0 Knoxville
+     Spacious Garden Apt in Clinton Hill/Ft Greene 1006.0 Entire home/apt No children under 10 & No visitors & No smoking             3.0                  3                 3.0 Knoxville
+                                     LES Penthouse  993.0 Entire home/apt               No children under 10 & No parties             2.0                  8                 4.0 Knoxville
+
+### Attractions in Chattanooga
+                                                                Name  Latitude  Longitude                                                 Address          Phone                                                                                                                 Website        City
+                                  The Chattanooga Zoo at Warner Park 35.042632 -85.282099         301 N Holtzclaw Ave, Chattanooga, TN 37404, USA (423) 697-1322                                                                                                http://www.chattzoo.org/ Chattanooga
+                                                   Rock City Gardens 34.973392 -85.350177         1400 Patten Rd, Lookout Mountain, GA 30750, USA (706) 820-2531                                                               http://seerockcity.com/?utm_source=gmb&utm_medium=organic Chattanooga
+                                                  Tennessee Aquarium 35.055823 -85.311065                  1 Broad St, Chattanooga, TN 37402, USA (423) 265-0695                                                                                                  http://www.tnaqua.org/ Chattanooga
+                                    Lookout Mountain Incline Railway 35.009546 -85.328564            3917 St Elmo Ave, Chattanooga, TN 37409, USA (423) 821-4224                                                                                          http://www.ridetheincline.com/ Chattanooga
+                                                       Coolidge Park 35.060506 -85.306857                150 River St, Chattanooga, TN 37405, USA (423) 643-6311                                              http://www.chattanooga.gov/public-works/parks/directory-of-park-facilities Chattanooga
+                                           Creative Discovery Museum 35.052700 -85.312280             321 Chestnut St, Chattanooga, TN 37402, USA (423) 756-2738                                                                                                  http://www.cdmfun.org/ Chattanooga
+                                         Chattanooga Ghost Tours Inc 35.051231 -85.309057                 57 E 5th St, Chattanooga, TN 37402, USA (423) 800-5998                                                                                      https://chattanoogaghosttours.com/ Chattanooga
+                                                      Ross's Landing 35.056741 -85.310302         201 Riverfront Pkwy, Chattanooga, TN 37402, USA (423) 643-6311                                              http://www.chattanooga.gov/public-works/parks/directory-of-park-facilities Chattanooga
+                                       Hunter Museum of American Art 35.055894 -85.306405           10 Bluff View Ave, Chattanooga, TN 37403, USA (423) 267-0968                                                                                            http://www.huntermuseum.org/ Chattanooga
+                                                Walnut Street Bridge 35.058330 -85.307296                 1 Walnut St, Chattanooga, TN 37403, USA (423) 643-6096                                              http://www.chattanooga.gov/public-works/parks/directory-of-park-facilities Chattanooga
+                                                 Tennessee Riverpark 35.095938 -85.245311           4301 Amnicola Hwy, Chattanooga, TN 37402, USA (423) 209-5370                                                                                            http://parks.hamiltontn.gov/ Chattanooga
+                       Moccasin Bend National Archeological District 35.053024 -85.328656        301 Manufacturers Rd, Chattanooga, TN 37405, USA (423) 648-5623                         https://www.nps.gov/chch/learn/historyculture/moccasin-bend-national-archeological-district.htm Chattanooga
+                                                          Ruby Falls 35.019084 -85.339355             1720 Scenic Hwy, Chattanooga, TN 37409, USA (423) 821-2544                                                                                               http://www.rubyfalls.com/ Chattanooga
+                                                       Cravens House 35.013782 -85.341495 Point Park Visitor Ctr, Lookout Mountain, TN 37350, USA (423) 821-7786                                                                          https://www.nps.gov/places/cravenshouselom.htm Chattanooga
+                                                  Williams Echo Dome 35.054215 -85.304836                430 E 2nd St, Chattanooga, TN 37403, USA        Unknown                                                                                                                 Unknown Chattanooga
+                         Reflection Riding Arboretum & Nature Center 35.010130 -85.364585               400 Garden Rd, Chattanooga, TN 37419, USA (423) 821-1160                                                                                       https://www.reflectionriding.org/ Chattanooga
+                                                       Audubon Acres 34.999350 -85.180340          900 N Sanctuary Rd, Chattanooga, TN 37421, USA (423) 892-1499                                                                                      http://www.chattanoogaaudubon.org/ Chattanooga
+                                   Sculpture Fields at Montague Park 35.026175 -85.293624                1800 Polk St, Chattanooga, TN 37408, USA (423) 266-7288                                                                                         http://www.sculpturefields.org/ Chattanooga
+Bessie Smith Cultural Center and Chattanooga African American Museum 35.044634 -85.306467         200 E M L King Blvd, Chattanooga, TN 37403, USA (423) 266-8658 http://www.bessiesmithcc.org/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=3948799342172393035 Chattanooga
+                                                        Wooden Horse 35.055836 -85.306713           10 Bluff View Ave, Chattanooga, TN 37403, USA        Unknown                                                                                                                 Unknown Chattanooga
+
+### Restaurants in Chattanooga
+                        Name  Average Cost                                               Cuisines  Aggregate Rating        City
+                P.F. Chang's            33                             Cafe, Bakery, BBQ, Seafood               4.2 Chattanooga
+                  L'amandier            28                      Cafe, BBQ, Mediterranean, Seafood               4.3 Chattanooga
+                Anupam Sweet            82                                Desserts, American, BBQ               3.4 Chattanooga
+                    Nirula's            64                              French, Desserts, Seafood               2.6 Chattanooga
+  Anupam Sweets & Restaurant            62                           Tea, Cafe, Desserts, Seafood               3.0 Chattanooga
+               Bisque Bakery            90                              French, Desserts, Seafood               3.9 Chattanooga
+                       Nooba            93                          Tea, Mexican, Bakery, Seafood               3.8 Chattanooga
+                   The Royal            39                       French, Pizza, Bakery, Fast Food               3.3 Chattanooga
+              Curry n Phulka            40                                Tea, Chinese, Fast Food               2.8 Chattanooga
+   DCK- Dana Choga's Kitchen            67                             Cafe, Pizza, Mediterranean               3.5 Chattanooga
+                     Chaayos            54                  Desserts, Cafe, BBQ, Chinese, Seafood               3.3 Chattanooga
+                    Truffles            53        Cafe, Bakery, BBQ, Fast Food, Chinese, American               3.2 Chattanooga
+                      Liquid            15             Tea, Pizza, Bakery, Mediterranean, Seafood               4.0 Chattanooga
+                        Tpot            14            Desserts, Tea, Pizza, Mexican, Cafe, Indian               0.0 Chattanooga
+     Sardar A Pure Meat Shop            24                                Bakery, Pizza, American               3.4 Chattanooga
+              Warehouse Cafe            90                              Fast Food, Pizza, Seafood               3.7 Chattanooga
+               The Beer Cafe            62                                  Tea, Pizza, Fast Food               3.8 Chattanooga
+                      Subway            66                            Tea, Cafe, Bakery, Desserts               2.4 Chattanooga
+                    Indi-QUE            57                     Tea, Italian, BBQ, Fast Food, Cafe               3.3 Chattanooga
+Essex Collections Patisserie            48                                Chinese, BBQ, Fast Food               3.4 Chattanooga
+                   Food Adda           100     Desserts, Pizza, Fast Food, Mediterranean, Seafood               0.0 Chattanooga
+                 Bikanervala            65                                           Cafe, Bakery               3.2 Chattanooga
+            Havmor Ice Cream            75             Pizza, Bakery, Fast Food, Chinese, Seafood               3.6 Chattanooga
+            Moti Mahal Delux            52                   Tea, Pizza, BBQ, Cafe, Mediterranean               2.7 Chattanooga
+        Aggarwal Sweet India            30                                          Tea, Desserts               2.8 Chattanooga
+              Jack Po!tato's            63                    Tea, Bakery, Mediterranean, Seafood               3.3 Chattanooga
+                  Muradabadi            16                               Cafe, Pizza, Bakery, BBQ               3.0 Chattanooga
+           Vishal Restaurant            27                               Tea, Pizza, BBQ, Seafood               3.1 Chattanooga
+                  Raj Sweets            69                Desserts, Tea, BBQ, Cafe, Mediterranean               2.8 Chattanooga
+           Punjabee's Darbar            41                Tea, French, Bakery, Fast Food, Chinese               3.0 Chattanooga
+                  Basil Tree            20                     Bakery, Indian, American, Desserts               2.4 Chattanooga
+              Domino's Pizza            77                           Bakery, Pizza, American, BBQ               2.8 Chattanooga
+          Pizza Hut Delivery            25                            Tea, Cafe, American, Indian               3.9 Chattanooga
+                     Ichiban            87                              Mexican, Bakery, Desserts               3.9 Chattanooga
+                      Habibi            95                                     Cafe, BBQ, Seafood               3.7 Chattanooga
+                 Cook Du Kdu            69 Pizza, Fast Food, Cafe, Indian, Mediterranean, Seafood               3.1 Chattanooga
+                    Go Krazy            64                                 French, BBQ, Fast Food               3.5 Chattanooga
+                     Bentoya            41                        Tea, Fast Food, Bakery, Seafood               3.8 Chattanooga
+               Burger's King            16                                  Tea, Bakery, Desserts               4.1 Chattanooga
+
+### Accommodations in Chattanooga
+                                             NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number        city
+     Affordable Private Spacious Room in Brooklyn  790.0    Private room                                  No parties             2.0                  2                 3.0 Chattanooga
+                                Sunny One Bedroom  722.0 Entire home/apt              No pets & No children under 10             1.0                  5                 3.0 Chattanooga
+Upper West / Morningside Heights Apt, Near Subway  290.0 Entire home/apt                                 No visitors             3.0                  3                 3.0 Chattanooga
+              Sunny room+Pvte office in huge loft  728.0    Private room                                  No parties             4.0                  2                 5.0 Chattanooga
+        Extra Cozy Room in Center of Williamsburg 1033.0    Private room                                     No pets             1.0                  1                 1.0 Chattanooga
+    Luxury & Charm.  Steps from Christopher Park!  301.0 Entire home/apt          No pets & No visitors & No parties             5.0                  2                 4.0 Chattanooga
+                                 Fort Greene Room  722.0    Private room          No visitors & No children under 10             2.0                  1                 2.0 Chattanooga
+                                       紐約哥大週邊優質短租  973.0 Entire home/apt                                     No pets            10.0                  6                 4.0 Chattanooga
+       4 bdrm/2 bath apt. Central Pk, Columbia U.  564.0 Entire home/apt                       No visitors & No pets            30.0                  4                 3.0 Chattanooga
+        Cozy room in Bushwick- 15 min to the city  933.0    Private room                        No parties & No pets             1.0                  2                 2.0 Chattanooga
+                Modern apartment w/ gorgeous view  921.0    Private room                                     No pets             3.0                  2                 1.0 Chattanooga
+       Artsy Private BR in Fort Greene Cumberland  727.0    Private room                                 No visitors            30.0                  1                 3.0 Chattanooga
+             Studio Deluxe 1 - Wyndham Midtown 45  848.0    Private room No pets & No smoking & No children under 10             3.0                  1                 2.0 Chattanooga
+        Trendy and Stylish Downtown apartment !!!  110.0 Entire home/apt                                     No pets             3.0                  2                 2.0 Chattanooga
+     Sonder | 180 Water | Luxurious 1BR + Rooftop  676.0 Entire home/apt                        No pets & No smoking            29.0                  5                 3.0 Chattanooga
+
+### Flight from Houston to Nashville on 2022-03-21
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3827247    241   14:22   16:10 1 hours 48 minutes 2022-03-21        Houston    Nashville     657.0
+     F3827724    147   18:35   20:33 1 hours 58 minutes 2022-03-21        Houston    Nashville     657.0
+     F3827820    157   12:07   14:02 1 hours 55 minutes 2022-03-21        Houston    Nashville     657.0
+     F3827930    305   07:36   09:41  2 hours 5 minutes 2022-03-21        Houston    Nashville     657.0
+     F3956407    264   11:38   13:15 1 hours 37 minutes 2022-03-21        Houston    Nashville     670.0
+     F3956408    246   08:08   09:47 1 hours 39 minutes 2022-03-21        Houston    Nashville     670.0
+     F3956409    145   17:36   19:12 1 hours 36 minutes 2022-03-21        Houston    Nashville     670.0
+     F3956532    225   07:14   08:52 1 hours 38 minutes 2022-03-21        Houston    Nashville     657.0
+     F3956533    292   11:42   13:19 1 hours 37 minutes 2022-03-21        Houston    Nashville     657.0
+     F3956534    248   18:20   20:06 1 hours 46 minutes 2022-03-21        Houston    Nashville     657.0
+     F4038756    272   10:11   11:52 1 hours 41 minutes 2022-03-21        Houston    Nashville     657.0
+     F4038966    149   16:33   18:13 1 hours 40 minutes 2022-03-21        Houston    Nashville     657.0
+
+### Self-driving from Houston to Nashville
+self-driving, from Houston to Nashville, duration: 11 hours 50 mins, distance: 1,253 km, cost: 62
+
+### Taxi from Houston to Nashville
+taxi, from Houston to Nashville, duration: 11 hours 50 mins, distance: 1,253 km, cost: 1253
+
+### Flight from Nashville to Knoxville on 2022-03-23
+There is no flight from Nashville to Knoxville on 2022-03-23.
+
+### Self-driving from Nashville to Knoxville
+self-driving, from Nashville to Knoxville, duration: 2 hours 42 mins, distance: 290 km, cost: 14
+
+### Taxi from Nashville to Knoxville
+taxi, from Nashville to Knoxville, duration: 2 hours 42 mins, distance: 290 km, cost: 290
+
+### Flight from Knoxville to Chattanooga on 2022-03-25
+There is no flight from Knoxville to Chattanooga on 2022-03-25.
+
+### Self-driving from Knoxville to Chattanooga
+self-driving, from Knoxville to Chattanooga, duration: 1 hour 41 mins, distance: 180 km, cost: 9
+
+### Taxi from Knoxville to Chattanooga
+taxi, from Knoxville to Chattanooga, duration: 1 hour 41 mins, distance: 180 km, cost: 180
+
+### Flight from Chattanooga to Houston on 2022-03-27
+There is no flight from Chattanooga to Houston on 2022-03-27.
+
+### Self-driving from Chattanooga to Houston
+self-driving, from Chattanooga to Houston, duration: 11 hours 47 mins, distance: 1,309 km, cost: 65
+
+### Taxi from Chattanooga to Houston
+taxi, from Chattanooga to Houston, duration: 11 hours 47 mins, distance: 1,309 km, cost: 1309
+
+JSON plan:

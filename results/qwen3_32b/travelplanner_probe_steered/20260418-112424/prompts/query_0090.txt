@@ -1,0 +1,183 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please create a 5-day travel plan for a group of 3 people, departing from Austin and touring 2 cities in Michigan from March 27th to March 31st, 2022. Our budget is set at $5,900, and we would like to have private rooms for our accommodations.
+
+Reference information:
+### Attractions in Detroit
+                                                Name  Latitude  Longitude                                                                   Address          Phone                                                                                                                        Website    City
+                           Detroit Institute of Arts 42.359379 -83.064501                                 5200 Woodward Ave, Detroit, MI 48202, USA (313) 833-7900                                                                                                               https://dia.org/ Detroit
+                           Detroit Historical Museum 42.359791 -83.067139                                 5401 Woodward Ave, Detroit, MI 48202, USA (313) 833-1805                                     http://detroithistorical.org/detroit-historical-museum/plan-your-visit/general-information Detroit
+                                 Campus Martius Park 42.331915 -83.046587                                  800 Woodward Ave, Detroit, MI 48226, USA (313) 566-8250                                                                         https://downtowndetroitparks.com/parks/campus-martius/ Detroit
+                                       Motown Museum 42.364108 -83.088401 2648 Berry Gordy Jr. Boulevard, 2648 W Grand Blvd, Detroit, MI 48208, USA (313) 875-2264                                                                                                   http://www.motownmuseum.org/ Detroit
+                                         Detroit Zoo 42.476836 -83.149044                               8450 W 10 Mile Rd, Royal Oak, MI 48067, USA (248) 541-5717                                                                                                         http://detroitzoo.org/ Detroit
+                             Michigan Science Center 42.358451 -83.062397                                    5020 John R St, Detroit, MI 48202, USA (313) 577-8400                                                                                                         http://www.mi-sci.org/ Detroit
+Charles H. Wright Museum of African American History 42.358777 -83.060952                                  315 E Warren Ave, Detroit, MI 48201, USA (313) 494-5800                                                                                                          http://thewright.org/ Detroit
+                                 Belle Isle Aquarium 42.336593 -82.985275                                   3 Inselruhe Ave, Detroit, MI 48207, USA (313) 331-7760                                                                                           http://www.belleisleconservancy.org/ Detroit
+                                       Comerica Park 42.338998 -83.048520                                 2100 Woodward Ave, Detroit, MI 48201, USA (313) 962-4000                                                                           http://detroit.tigers.mlb.com/det/ballpark/index.jsp Detroit
+                  Museum of Contemporary Art Detroit 42.353587 -83.061850                                 4454 Woodward Ave, Detroit, MI 48201, USA (313) 832-6622                                                                                                        http://mocadetroit.org/ Detroit
+                        Detroit Segway Tours & Rides 42.349182 -83.041969       in the Shipping Container!, 2934 Russell St, Detroit, MI 48207, USA (855) 873-4929                                                                                                      http://detroitsegway.com/ Detroit
+                                            GMRenCen 42.329328 -83.039763                            400 Renaissance Center, Detroit, MI 48243, USA (313) 567-3126                                                                                                          https://gmrencen.com/ Detroit
+                      Detroit Riverfront Conservancy 42.330357 -83.037862                      600 Renaissance Center #1720, Detroit, MI 48243, USA (313) 566-8200                                                                                              http://www.detroitriverfront.org/ Detroit
+                                   Detroit Riverwalk 42.330376 -83.031854                                   1340 Atwater St, Detroit, MI 48207, USA (313) 566-8200                                                                                            http://www.detroitmi.gov/recreation Detroit
+                             Spirit of Detroit Plaza 42.329134 -83.044935                                    2 Woodward Ave, Detroit, MI 48226, USA        Unknown                                       https://detroitmi.gov/news/spirit-plaza-official-season-opening-weekend-downtown-detroit Detroit
+                                 Historic Fort Wayne 42.300202 -83.097970                              6325 W Jefferson Ave, Detroit, MI 48209, USA (313) 628-0796                                                                                     http://www.historicfortwaynecoalition.com/ Detroit
+                   Ford Piquette Avenue Plant Museum 42.368633 -83.065138                                  461 Piquette Ave, Detroit, MI 48202, USA (313) 872-8759                                                                                              http://www.fordpiquetteplant.org/ Detroit
+                                   Grand Circus Park 42.336477 -83.050838                              101-157 Witherell St, Detroit, MI 48226, USA (313) 566-8250                                                                                               http://downtowndetroitparks.com/ Detroit
+                                         Beacon Park 42.334525 -83.055307                              1901 Grand River Ave, Detroit, MI 48226, USA (313) 566-8250                                                                                    https://empoweringmichigan.com/beacon-park/ Detroit
+            Henry Ford Museum of American Innovation 42.303451 -83.234206                               20900 Oakwood Blvd, Dearborn, MI 48124, USA (313) 982-6001 https://www.thehenryford.org/visit/henry-ford-museum/?utm_source=google&utm_medium=organic&utm_campaign=gmb&utm_content=museum Detroit
+
+### Restaurants in Detroit
+                         Name  Average Cost                                              Cuisines  Aggregate Rating    City
+        Southern Bliss Bakery            28                           Tea, BBQ, Desserts, Seafood               3.7 Detroit
+            A Dong Restaurant            40                                      Tea, Cafe, Pizza               4.4 Detroit
+      Chye Seng Huat Hardware            94                                 Tea, Mexican, Seafood               3.7 Detroit
+         BMG - All Day Dining            15                Desserts, Bakery, BBQ, Indian, Seafood               4.3 Detroit
+                Cafe And More            41                                  Tea, Bakery, Italian               2.9 Detroit
+              Mitalis Kitchen            28           Pizza, BBQ, Chinese, Mediterranean, Seafood               0.0 Detroit
+                The Dosa King            69               BBQ, Mediterranean, Desserts, Fast Food               3.2 Detroit
+         Vapour Pub & Brewery            80                 French, BBQ, Fast Food, Cafe, Seafood               3.7 Detroit
+                  Sagar Ratna            55                             Tea, Indian, BBQ, Italian               2.7 Detroit
+           Bistro Flamme Bois           100                                  Chinese, Bakery, BBQ               4.1 Detroit
+                       Taksim            65                       Cafe, Bakery, Indian, Fast Food               3.9 Detroit
+          Rehmatullah's Hotel            28          Desserts, Tea, Pizza, Italian, Mediterranean               3.0 Detroit
+               Old Kheer Shop            54                  Mexican, Indian, Desserts, Fast Food               0.0 Detroit
+     Zabardast Indian Kitchen            76                             Bakery, Desserts, Seafood               4.7 Detroit
+                       Cafe 6            27                                  BBQ, Pizza, Desserts               3.9 Detroit
+                Dilli Darbaar            60                   Desserts, French, BBQ, Bakery, Cafe               3.1 Detroit
+                  Aapki Rasoi            21                      Mediterranean, Desserts, Seafood               3.0 Detroit
+          N. Iqbal Restaurant            11                           Tea, Cafe, Bakery, Desserts               3.2 Detroit
+           Flavours of Punjab            28              Desserts, Tea, Fast Food, Cafe, American               2.5 Detroit
+          Nidhi's Cake Lounge            73           Desserts, Pizza, Bakery, BBQ, Mediterranean               0.0 Detroit
+                 Urban Punjab            40                                  Tea, Cafe, Fast Food               3.6 Detroit
+               Knights Chaska            29                                  Tea, Mexican, Bakery               2.9 Detroit
+         DV's Chinese Kitchen            91 Desserts, Pizza, Italian, Bakery, Cafe, Mediterranean               2.8 Detroit
+              52 Food Express            20            Desserts, Tea, Italian, Fast Food, Seafood               0.0 Detroit
+               Frequent Bakes            50                            Cafe, Pizza, BBQ, Desserts               2.5 Detroit
+                   Desi Spice            16                        Tea, Pizza, American, Desserts               3.0 Detroit
+  Turquoise Turkish Ice-cream            79                     Fast Food, Tea, Desserts, Italian               3.4 Detroit
+Mandap - Hotel Express Towers            37                                      Pizza, Fast Food               4.0 Detroit
+
+### Accommodations in Detroit
+                                            NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number    city
+                 Comfy King Bed Feet from Subway  568.0    Private room                            No parties             3.0                  1                 5.0 Detroit
+      Cozy 1 bedroom in the heart of Fort Greene  751.0 Entire home/apt                  No pets & No parties             3.0                  6                 5.0 Detroit
+  Romantic Top Floor Brownstone in Crown Heights 1077.0 Entire home/apt                  No pets & No smoking             1.0                  6                 4.0 Detroit
+ Beautiful Private Room near Highline, and Train 1044.0    Private room                  No parties & No pets            30.0                  2                 2.0 Detroit
+      Fashion Designer Studio - Entire Apartment  934.0 Entire home/apt No smoking & No visitors & No parties            30.0                  7                 1.0 Detroit
+             Brooklyn Brownstone, 3-Bdr & Garden  400.0 Entire home/apt                  No children under 10             3.0                  2                 3.0 Detroit
+Lovely, charming and clean bedroom in Manhattan.   69.0    Private room                            No smoking             1.0                  2                 2.0 Detroit
+                            The Ultimate Luxury! 1017.0 Entire home/apt                            No smoking             6.0                  8                 2.0 Detroit
+                   NEW Brooklyn studio get away!  803.0 Entire home/apt                  No children under 10             2.0                  7                 2.0 Detroit
+                          Nice Room in Manhattan  300.0    Private room                           No visitors             1.0                  1                 1.0 Detroit
+           Modern Luxury Loft  3bd  Williamsburg  980.0 Entire home/apt                  No pets & No parties             3.0                  5                 5.0 Detroit
+
+### Attractions in Alpena
+                                 Name  Latitude  Longitude                                                  Address          Phone                                                                          Website   City
+ Great Lakes Maritime Heritage Center 45.068573 -83.434641                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200      https://thunderbay.noaa.gov/visit/great-lakes-maritime-heritage-center.html Alpena
+ Besser Museum for Northeast Michigan 45.080674 -83.448453                    491 Johnson St, Alpena, MI 49707, USA (989) 356-2202                                                     http://www.bessermuseum.org/ Alpena
+                   Mich-e-ke-wis Park 45.045014 -83.447579                  1302 S State Ave, Alpena, MI 49707, USA (989) 354-1720             https://www.alpena.mi.us/residents/city_parks/mich-e-ke-wis_park.php Alpena
+                        Bay View Park 45.058282 -83.432146                     208 N 1st Ave, Alpena, MI 49707, USA (989) 354-1780                  https://www.alpena.mi.us/residents/city_parks/bay_view_park.php Alpena
+                          Island Park 45.075870 -83.452625                          River St, Alpena, MI 49707, USA (989) 354-1700                    https://www.alpena.mi.us/residents/city_parks/island_park.php Alpena
+            Alpena Wildlife Sanctuary 45.070862 -83.457441                                    Alpena, MI 49707, USA        Unknown                                                        https://www.alpena.mi.us/ Alpena
+                           McRae Park 45.071621 -83.419532                    1301 N 2nd Ave, Alpena, MI 49707, USA (989) 354-1720                     https://www.alpena.mi.us/residents/city_parks/mcrae_park.php Alpena
+             Thunder Bay River Center 45.078451 -83.453908                                    Alpena, MI 49707, USA        Unknown                                            http://www.thunderbayrivercenter.org/ Alpena
+                  Arzo Amusement Park 45.134461 -83.440932                    6051 U.S. 23 N, Alpena, MI 49707, USA (989) 358-1111                                                         http://www.arzopark.com/ Alpena
+Thunder Bay National Marine Sanctuary 45.068847 -83.434676                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200                                          http://thunderbay.noaa.gov/welcome.html Alpena
+            Downtown Alpena, Michigan 45.062081 -83.433422                                    Alpena, MI 49707, USA (989) 356-6422                                                 http://www.downtownalpenami.com/ Alpena
+       Rockport State Recreation Area 45.202077 -83.384279                                    Alpena, MI 49707, USA (989) 734-2543          http://www.michigandnr.com/parksandtrails/Details.aspx?type=SPRK&id=729 Alpena
+              Maritime Heritage Trail 45.064914 -83.430356          Maritime Heritage Trail,, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+             Paul bunyan of car parts 45.081788 -83.446556                    666 Johnson St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+        Arthur E. Sytek Roadside Park 45.066698 -83.470817                                    Alpena, MI 49707, USA (989) 354-1700                     https://www.alpena.mi.us/residents/city_parks/sytek_park.php Alpena
+              Rotary Island Mill Park 45.067815 -83.436417 Rotary Island Mill Park, River St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+                       Culligan Plaza 45.061991 -83.433420                                    Alpena, MI 49707, USA (989) 354-1700                 https://www.alpena.mi.us/residents/city_parks/culligan_plaza.php Alpena
+               Washington Avenue Park 45.060580 -83.459097                       Lake Besser, Alpena, MI 49707, USA        Unknown         https://www.alpena.mi.us/residents/city_parks/washington_avenue_park.php Alpena
+ Alpena: Sanctuary of the Great Lakes 45.064752 -83.428735                     420 N 2nd Ave, Alpena, MI 49707, USA (989) 340-2288                                                      http://www.visitalpena.com/ Alpena
+                       Long Lake Park 45.194360 -83.448222               10002 Hinks Park Rd, Alpena, MI 49707, USA (989) 595-2401 https://www.visitalpena.com/member-detail/long-lake-campgrounds-and-county-park/ Alpena
+
+### Restaurants in Alpena
+                       Name  Average Cost                                          Cuisines  Aggregate Rating   City
+      A & A Pagliai's Pizza            72                          Tea, American, Fast Food               4.3 Alpena
+                     @Mango            38                     BBQ, Cafe, American, Desserts               4.1 Alpena
+           Shudh Restaurant            56                              Cafe, BBQ, Fast Food               3.4 Alpena
+                     Maplai            63          Tea, Indian, Bakery, Fast Food, American               4.2 Alpena
+Zaffran - The Bristol Hotel            33                          Pizza, Desserts, Seafood               3.2 Alpena
+              Kylin Express            30                     Chinese, Bakery, BBQ, Seafood               2.6 Alpena
+           Jain Chawal Wale            20           Desserts, Pizza, Italian, Mexican, Cafe               3.8 Alpena
+          Sahni Fish Corner            11        Desserts, Pizza, Bakery, Fast Food, Indian               3.5 Alpena
+           Big Fat Sandwich            51             Tea, Bakery, BBQ, Cafe, Mediterranean               2.9 Alpena
+    Handi Masala Restaurant            57 French, Bakery, BBQ, Fast Food, American, Seafood               2.6 Alpena
+              Punjabi Tadka            63                                      Tea, Seafood               3.1 Alpena
+            Cafe Coffee Day            22      Desserts, Tea, French, BBQ, Bakery, American               3.1 Alpena
+      Al Meraj Chicken Shop            77           French, BBQ, Fast Food, Indian, Seafood               0.0 Alpena
+           The Food Express            86 Desserts, Pizza, Bakery, Fast Food, Mediterranean               0.0 Alpena
+         Shashi's China Wok            29                        Tea, Bakery, BBQ, Desserts               0.0 Alpena
+       Chennai Dosa Express            20        Tea, Pizza, Mexican, BBQ, Bakery, American               0.0 Alpena
+                     Wrapss            79            Chinese, French, Bakery, Cafe, Seafood               3.1 Alpena
+       Young Wild Free Cafe            45                   Bakery, Mexican, BBQ, Fast Food               4.1 Alpena
+                 Annapoorna            49                       Cafe, Pizza, BBQ, Fast Food               3.1 Alpena
+               Burger House            39                                         Tea, Cafe               2.8 Alpena
+               Meatwale.com            55                                    Tea, Fast Food               0.0 Alpena
+                  Pizza Hut            93     Pizza, Italian, Mexican, Bakery, BBQ, Seafood               2.6 Alpena
+                   Breaktym            67                                          Tea, BBQ               2.6 Alpena
+                   DudeFood            87  Tea, Mexican, Fast Food, Cafe, American, Seafood               0.0 Alpena
+              My Restaurant            63                         Tea, Pizza, American, BBQ               3.5 Alpena
+
+### Accommodations in Alpena
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+Ultimate 50th Floor Downtown Penthouse  - 4000SqFt 1043.0 Entire home/apt No smoking & No visitors & No children under 10             2.0                  9                 4.0 Alpena
+ CHEERFUL RM IN BROOKLYN! EASY ACCESS TO TRAIN! R3  927.0    Private room                                         No pets            15.0                  2                 5.0 Alpena
+   SINGLE ROOM AVAILABLE IN JAMAICA NEAR JFK & LGA   88.0    Private room                                     No visitors             1.0                  2                 3.0 Alpena
+                                            #NAME?  839.0    Private room                                      No parties             2.0                  2                 3.0 Alpena
+            Loft in Times Square with Roof Balcony  104.0 Entire home/apt                        No parties & No visitors           180.0                  2                 2.0 Alpena
+  Bed-Stuy top floor room w/ extreme natural light 1184.0    Private room               No children under 10 & No parties             4.0                  1                 2.0 Alpena
+          Huge Bedroom w/direct access to backyard  635.0    Private room                                      No parties             2.0                  1                 2.0 Alpena
+ Beautiful Park Slope apartment in great location!   67.0 Entire home/apt                            No children under 10            31.0                  2                 5.0 Alpena
+                        Wonderlust in WIlliamsburg   65.0 Entire home/apt                                         No pets             2.0                  2                 5.0 Alpena
+                                 The Real B&B Home  971.0 Entire home/apt                                     No visitors             7.0                  5                 3.0 Alpena
+
+### Flight from Austin to Detroit on 2022-03-27
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3518857    419   05:36   09:33 2 hours 57 minutes 2022-03-27         Austin      Detroit    1149.0
+     F3537034    240   15:53   19:38 2 hours 45 minutes 2022-03-27         Austin      Detroit    1149.0
+     F3537671    330   11:24   15:17 2 hours 53 minutes 2022-03-27         Austin      Detroit    1149.0
+     F3545340    406   20:13   00:07 2 hours 54 minutes 2022-03-27         Austin      Detroit    1149.0
+
+### Self-driving from Austin to Detroit
+self-driving, from Austin to Detroit, duration: 20 hours 9 mins, distance: 2,221 km, cost: 111
+
+### Taxi from Austin to Detroit
+taxi, from Austin to Detroit, duration: 20 hours 9 mins, distance: 2,221 km, cost: 2221
+
+### Flight from Detroit to Alpena on 2022-03-29
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3852119     78   14:15   15:20 1 hours 5 minutes 2022-03-29        Detroit       Alpena     198.0
+
+### Self-driving from Detroit to Alpena
+self-driving, from Detroit to Alpena, duration: 3 hours 52 mins, distance: 400 km, cost: 20
+
+### Taxi from Detroit to Alpena
+taxi, from Detroit to Alpena, duration: 3 hours 52 mins, distance: 400 km, cost: 400
+
+### Flight from Alpena to Austin on 2022-03-31
+There is no flight from Alpena to Austin on 2022-03-31.
+
+### Self-driving from Alpena to Austin
+self-driving, from Alpena to Austin, duration: 22 hours 42 mins, distance: 2,467 km, cost: 123
+
+### Taxi from Alpena to Austin
+taxi, from Alpena to Austin, duration: 22 hours 42 mins, distance: 2,467 km, cost: 2467
+
+JSON plan:

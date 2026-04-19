@@ -1,0 +1,114 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you create a travel plan for a group of 5 departing from Charlotte heading to Hilton Head, to be carried out over 3 days, from March 26th to March 28th, 2022? The budget for this trip is capped at $7,000. We have a preference for Italian and French cuisines during our trip.
+
+Reference information:
+### Attractions in Hilton Head
+                                 Name  Latitude  Longitude                                                      Address          Phone                                                                                                                                                                                                            Website        City
+             Coastal Discovery Museum 32.211485 -80.744025          70 Honey Horn Dr, Hilton Head Island, SC 29926, USA (843) 689-6767                                                                                                                                                                                   http://www.coastaldiscovery.org/ Hilton Head
+              Harbour Town Lighthouse 32.138620 -80.812637         149 Lighthouse Rd, Hilton Head Island, SC 29928, USA (866) 305-9814                                                                                                                                                                              http://www.harbourtownlighthouse.com/ Hilton Head
+                   Coligny Beach Park 32.141562 -80.751062          1 Coligny Circle, Hilton Head Island, SC 29928, USA (843) 342-4580                                                                                                                                                                     https://www.hiltonhead.com/coligny-beach-park/ Hilton Head
+               Folly Field Beach Park 32.201649 -80.689193            55 Starfish Dr, Hilton Head Island, SC 29928, USA (843) 341-4600                                                                                                                                                              https://hiltonheadislandsc.gov/parks/FollyFieldBeach/ Hilton Head
+                  Driessen Beach Park 32.198988 -80.694297       64 Bradley Beach Rd, Hilton Head Island, SC 29928, USA (843) 842-5698                                                                                                                             http://www.hiltonheadislandsc.gov/ourisland/Parks/parksandfacdetails.cfm?FacilityID=29 Hilton Head
+   Historic Mitchelville Freedom Park 32.237005 -80.687263         229 Beach City Rd, Hilton Head Island, SC 29926, USA (843) 255-7301                                                                                                                                                                                                            Unknown Hilton Head
+            Sea Pines Forest Preserve 32.146610 -80.781983                            Hilton Head Island, SC 29928, USA (843) 842-1979                                                                                                                                                                                                            Unknown Hilton Head
+                 Fish Haul Beach Park 32.242154 -80.686552       120 Mitchelville Rd, Hilton Head Island, SC 29926, USA (843) 341-4600                                                                                                                                                            https://www.hiltonheadislandsc.gov/parks/FishHaulBeach/ Hilton Head
+               Pirates of Hilton Head 32.138871 -80.813662         149 Lighthouse Rd, Hilton Head Island, SC 29928, USA (843) 363-7000                                                                                                                                                                                    http://piratesofhiltonhead.com/ Hilton Head
+          Shelter Cove Community Park 32.186283 -80.721583        39 Shelter Cove Ln, Hilton Head Island, SC 29928, USA (843) 341-4600                                                                                                                                                              https://www.hiltonheadislandsc.gov/parks/ShelterCove/ Hilton Head
+                 King Neptune Sundial 32.180720 -80.728015         13 Harbourside Ln, Hilton Head Island, SC 29928, USA        Unknown https://www.sheltercovehiltonhead.com/post/celebrating-palmetto-dunes-resort-s-50th-anniversary-a-history-of-neptune-statue?utm_campaign=GoogleBusiness&utm_medium=local&utm_source=Google&utm_content=KingNeptune Hilton Head
+      swallowtail, hilton head island 32.144202 -80.760442           35 Deallyon Ave, Hilton Head Island, SC 29928, USA        Unknown                                                                                                                                                                                                            Unknown Hilton Head
+        The Sandbox Children's Museum 32.144395 -80.754851              80 Nassau St, Hilton Head Island, SC 29928, USA (843) 842-7645                                                                                                                                                                                         http://www.thesandbox.org/ Hilton Head
+Gregg Russell Harbour Town Playground 32.139169 -80.810534         140 Lighthouse Rd, Hilton Head Island, SC 29928, USA (843) 785-3333                                                                                                                                            https://www.seapines.com/resort_activities/harbour_town/playground.aspx Hilton Head
+                 Stoney Baynard Ruins 32.129137 -80.813273             Plantation Dr, Hilton Head Island, SC 29928, USA        Unknown                                                                                                                             https://heritagelib.org/the-stoneys-the-baynards-and-their-mansion?rq=Stoney%20baynard Hilton Head
+  Gullah Museum of Hilton Head Island 32.226391 -80.741341          12 Georgianna Dr, Hilton Head Island, SC 29926, USA (843) 681-3254                                                                                                                                                                                    http://www.gullahmuseumhhi.org/ Hilton Head
+                          Pirates HHI 32.177173 -80.771920           86 Helmsman Way, Hilton Head Island, SC 29928, USA (843) 415-8400                                                                                                                                                                                         http://www.pirateshhi.com/ Hilton Head
+                 Atlantic Ocean beach 32.181454 -80.733503         2 Shelter Cove Ln, Hilton Head Island, SC 29928, USA        Unknown                                                                                                                                                                                                            Unknown Hilton Head
+          Lowcountry Celebration Park 32.143504 -80.753927               94 Pope Ave, Hilton Head Island, SC 29928, USA (843) 341-4600                                                                                                                                                https://hiltonheadislandsc.gov/parks/LowcountryCelebration/home.cfm Hilton Head
+                Adventure Hilton Head 32.186580 -80.758864 33 Broad Creek Marina Way, Hilton Head Island, SC 29926, USA (843) 682-6000                                                                                                                                                                                 https://myadventurehiltonhead.com/ Hilton Head
+
+### Restaurants in Hilton Head
+                             Name  Average Cost                                    Cuisines  Aggregate Rating        City
+                   Taste Of China            91             Tea, Seafood, Bakery, Fast Food               4.0 Hilton Head
+                         K Raga's            71           Tea, BBQ, Mediterranean, Desserts               2.9 Hilton Head
+New Town Pastry Shop - Park Plaza            51                       Tea, Cafe, Pizza, BBQ               3.2 Hilton Head
+                 Sikkim Fast Food            90           French, Bakery, Desserts, Seafood               2.7 Hilton Head
+                      XLNC Bakers            56                Tea, Bakery, Pizza, Desserts               2.9 Hilton Head
+                            Tadka            44            Pizza, Bakery, Desserts, Seafood               3.8 Hilton Head
+                  Cafe Coffee Day            65                        Bakery, BBQ, Italian               3.2 Hilton Head
+                         Ashirbad            50       Pizza, Bakery, Mediterranean, Seafood               3.6 Hilton Head
+              Anand Ji Restaurant            20                                 Bakery, BBQ               3.1 Hilton Head
+           Old Delhi Food Factory            57                Chinese, Desserts, Fast Food               0.0 Hilton Head
+                       Tikka Town            72                        Cafe, Pizza, Seafood               3.2 Hilton Head
+                  Jain Restaurant            41           Seafood, Mexican, Cafe, Fast Food               0.0 Hilton Head
+                Bittoo Murge Wala            19               Pizza, BBQ, Desserts, Seafood               0.0 Hilton Head
+                Dhaba Ambarsariya            47         French, BBQ, Mediterranean, Seafood               3.3 Hilton Head
+                      Connoisseur            61       Desserts, Tea, Italian, Cafe, Seafood               0.0 Hilton Head
+              ANF Kitchen Express            38     Mexican, Bakery, Mediterranean, Seafood               3.5 Hilton Head
+   MR.D - Deliciousness Delivered            18             Tea, French, Mexican, Fast Food               3.5 Hilton Head
+                   The Salad Bowl            70                          Cafe, Mexican, BBQ               3.5 Hilton Head
+                    Satnaam Foods            53              Cafe, Mexican, Indian, Seafood               0.0 Hilton Head
+                     Royal Bakery            18            Tea, Pizza, BBQ, Indian, Seafood               0.0 Hilton Head
+          Annapurna Sweets Palace            83                 Tea, Mediterranean, Seafood               0.0 Hilton Head
+                     Lazeez Rasoi            95                 Fast Food, Mexican, Seafood               0.0 Hilton Head
+     ITO Ke Mashoor Chole Bhature            39                          Tea, Cafe, Mexican               0.0 Hilton Head
+                        Mr. Brown            23     Desserts, Italian, BBQ, Fast Food, Cafe               3.7 Hilton Head
+                   Pappu Ka Dhaba            67        Desserts, Tea, Pizza, Cafe, American               3.1 Hilton Head
+                      Moni Bakers            42              Bakery, Mediterranean, Seafood               0.0 Hilton Head
+                Twenty Four Seven            51                     Cafe, Indian, Fast Food               3.1 Hilton Head
+                             Tpot            29                      Cafe, Pizza, Fast Food               0.0 Hilton Head
+                         Wrapster            18          French, Seafood, Desserts, Italian               3.2 Hilton Head
+                     Hunger's Hub            97              Tea, Bakery, Desserts, Seafood               3.1 Hilton Head
+              Salato Salad Studio           100 Tea, Pizza, Mexican, Bakery, Cafe, American               4.1 Hilton Head
+
+### Accommodations in Hilton Head
+                                             NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number        city
+                Williamsburg Home Away From Home!  164.0 Entire home/apt                           No pets             4.0                  3                 3.0 Hilton Head
+   COZY Room @Williamsburg (10 mins to Manhattan)  605.0    Private room                       No visitors             2.0                  1                 4.0 Hilton Head
+      Rustic room in renovated Bushwick apartment  309.0    Private room                        No smoking             1.0                  1                 2.0 Hilton Head
+      Sonder | Upper East Side | Lovely 1BR + Gym  130.0 Entire home/apt              No children under 10            29.0                  2                 2.0 Hilton Head
+NYC Midtown West  2-BR Apt near Theater District!  488.0 Entire home/apt No parties & No children under 10            30.0                  2                 5.0 Hilton Head
+  Hip, Vibrant, COLORFUL Downtown Manhattan 1 Bed  763.0 Entire home/apt                       No visitors             2.0                  7                 1.0 Hilton Head
+                 Charming Greenwich Village Oasis 1086.0 Entire home/apt    No children under 10 & No pets             4.0                  8                 1.0 Hilton Head
+               WILLIAMSBURG AUTHENTIC ARTIST LOFT  802.0    Private room              No smoking & No pets             1.0                  2                 1.0 Hilton Head
+  Private, Spacious Bedroom in Harlem, single bed  668.0    Private room                        No smoking             4.0                  1                 4.0 Hilton Head
+           Your cozy and comfy space near 7 train  814.0    Private room                       No visitors             1.0                  1                 1.0 Hilton Head
+Spacious Bright Top Floor Apt w/ Balcony in LIC 1  246.0    Private room No children under 10 & No parties             2.0                  2                 4.0 Hilton Head
+ Modern luxury apartment 15 mins to central park!  719.0 Entire home/apt              No pets & No parties             2.0                  2                 4.0 Hilton Head
+  2. Private 1BR Suite in Shared Marine Park Apt.  222.0    Private room                           No pets             2.0                  1                 1.0 Hilton Head
+
+### Flight from Charlotte to Hilton Head on 2022-03-26
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4055090     92   18:07   19:27 1 hours 20 minutes 2022-03-26      Charlotte  Hilton Head     207.0
+     F4059890     95   13:01   14:22 1 hours 21 minutes 2022-03-26      Charlotte  Hilton Head     207.0
+
+### Self-driving from Charlotte to Hilton Head
+self-driving, from Charlotte to Hilton Head, duration: 3 hours 49 mins, distance: 398 km, cost: 19
+
+### Taxi from Charlotte to Hilton Head
+taxi, from Charlotte to Hilton Head, duration: 3 hours 49 mins, distance: 398 km, cost: 398
+
+### Flight from Hilton Head to Charlotte on 2022-03-28
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4056985     46   20:07   21:31 1 hours 24 minutes 2022-03-28    Hilton Head    Charlotte     207.0
+     F4059921     45   14:52   16:04 1 hours 12 minutes 2022-03-28    Hilton Head    Charlotte     207.0
+
+### Self-driving from Hilton Head to Charlotte
+self-driving, from Hilton Head to Charlotte, duration: 3 hours 49 mins, distance: 397 km, cost: 19
+
+### Taxi from Hilton Head to Charlotte
+taxi, from Hilton Head to Charlotte, duration: 3 hours 49 mins, distance: 397 km, cost: 397
+
+JSON plan:

@@ -1,0 +1,186 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you assist with a 5-day travel plan for two people, going from Greer to New York, covering 2 cities in the state from March 10th to March 14th, 2022? Our budget is set at $3,400. We require accommodations that could be private rooms.
+
+Reference information:
+### Attractions in Buffalo
+                                               Name  Latitude  Longitude                                         Address          Phone                                                      Website    City
+                                    The Buffalo Zoo 42.937123 -78.851609        300 Parkside Ave, Buffalo, NY 14214, USA (716) 837-3900                                   http://www.buffalozoo.org/ Buffalo
+          Buffalo and Erie County Botanical Gardens 42.827864 -78.823995     2655 South Park Ave, Buffalo, NY 14218, USA (716) 827-1584                              https://www.buffalogardens.com/ Buffalo
+                             Buffalo AKG Art Museum 42.932450 -78.875618        1285 Elmwood Ave, Buffalo, NY 14222, USA (716) 882-8700                                      https://buffaloakg.org/ Buffalo
+                                          Canalside 42.876928 -78.879394             44 Prime St, Buffalo, NY 14202, USA        Unknown                            http://www.buffalowaterfront.com/ Buffalo
+Theodore Roosevelt Inaugural National Historic Site 42.901468 -78.872484        641 Delaware Ave, Buffalo, NY 14202, USA (716) 884-0095                                           http://trsite.org/ Buffalo
+                                 Buffalo Naval Park 42.877485 -78.879586  1 Naval, Marina Park S, Buffalo, NY 14202, USA (716) 847-1773                                 http://buffalonavalpark.org/ Buffalo
+                          Buffalo Museum of Science 42.906132 -78.843605      1020 Humboldt Pkwy, Buffalo, NY 14211, USA (716) 896-5200                                 https://www.sciencebuff.org/ Buffalo
+                                      Delaware Park 42.932662 -78.852729         84 Parkside Ave, Buffalo, NY 14214, USA (716) 838-1249            http://www.bfloparks.org/index.php/parks/delaware Buffalo
+                                   Lafayette Square 42.885669 -78.873848             415 Main St, Buffalo, NY 14203, USA (716) 851-5553                                                      Unknown Buffalo
+                  Frank Lloyd Wright's Martin House 42.936233 -78.847990         125 Jewett Pkwy, Buffalo, NY 14214, USA (716) 856-3858                                     https://martinhouse.org/ Buffalo
+                          Buffalo Harbor State Park 42.851046 -78.864525 1111 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 822-1207        https://parks.ny.gov/parks/buffaloharbor/details.aspx Buffalo
+                                     Buffalo Bricks 42.874193 -78.877626                 Main St, Buffalo, NY 14204, USA (716) 854-2314                           http://www.workingfordowntown.org/ Buffalo
+                          Buffalo Heritage Carousel 42.875546 -78.878373             44 Prime St, Buffalo, NY 14202, USA (716) 493-2110                     https://www.buffaloheritagecarousel.org/ Buffalo
+                   Michigan Street African American 42.886880 -78.868097            Michigan Ave, Buffalo, NY 14203, USA (716) 322-1002                        http://www.michiganstreetbuffalo.org/ Buffalo
+                              Tifft Nature Preserve 42.846168 -78.859459 1200 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 825-6397                                       https://www.tifft.org/ Buffalo
+                                 Iron Island Museum 42.890042 -78.811440        998 E Lovejoy St, Buffalo, NY 14206, USA (716) 892-3084                             http://www.ironislandmuseum.com/ Buffalo
+                                 The Electric Tower 42.888680 -78.872115       535 Washington St, Buffalo, NY 14203, USA (716) 633-2096                                http://www.electrictower.com/ Buffalo
+                                 Buffalo Main Light 42.877840 -78.889497    1 Fuhrmann Boulevard, Buffalo, NY 14203, USA (716) 264-1707 https://www.facebook.com/Buffalo-Lighthouse-245535252134529/ Buffalo
+                         The Buffalo History Museum 42.935429 -78.876291             1 Museum Ct, Buffalo, NY 14216, USA (716) 873-9644                               http://www.buffalohistory.org/ Buffalo
+                                  Buffalo City Hall 42.886619 -78.879325       65 Niagara Square, Buffalo, NY 14202, USA (716) 851-4890                                    http://www.buffalony.gov/ Buffalo
+
+### Restaurants in Buffalo
+                          Name  Average Cost                                             Cuisines  Aggregate Rating    City
+                     Shokitini            41          Tea, Cafe, Pizza, Mexican, Chinese, Seafood               4.2 Buffalo
+   Tibby's New Orleans Kitchen            48                        Seafood, Indian, BBQ, Italian               4.7 Buffalo
+                Pinch Of Spice            84                              Cafe, Desserts, Seafood               4.2 Buffalo
+                Maa Kali Foods            61             Desserts, BBQ, Bakery, Fast Food, Indian               0.0 Buffalo
+                  Punjab Grill            25                       Bakery, BBQ, Desserts, Seafood               4.3 Buffalo
+                     Red Mango            18      Mexican, Bakery, BBQ, Fast Food, Cafe, American               3.6 Buffalo
+Ammu's South Indian Restaurant            80                Desserts, Pizza, French, BBQ, Chinese               2.8 Buffalo
+                HSI Food World            60                             Fast Food, Cafe, Seafood               0.0 Buffalo
+          Shama Chicken Corner            25                               Tea, Chinese, Desserts               3.6 Buffalo
+                      Nawwarah            34                                        Cafe, Seafood               3.9 Buffalo
+       The Zuree Urban Kitchen            50                          Fast Food, Seafood, Italian               4.4 Buffalo
+    Madhuvan Chinese Fast Food            77           Pizza, Italian, Bakery, Fast Food, Seafood               2.5 Buffalo
+                Bihar ki Rasoi            90                                Tea, Bakery, Desserts               3.5 Buffalo
+                  Room Service            94                         Bakery, Indian, BBQ, Italian               3.4 Buffalo
+                   Madras Cafe            31                                       Cafe, Desserts               2.5 Buffalo
+        Lutyens Cocktail House            12                               Bakery, BBQ, Fast Food               3.9 Buffalo
+       Aditya's Kulcha Express            43             Bakery, BBQ, Fast Food, Chinese, Seafood               3.3 Buffalo
+             Invitation Foodex            85 Desserts, Pizza, Italian, Bakery, BBQ, Mediterranean               3.2 Buffalo
+                    Chopsticks            14                               Cafe, Seafood, Italian               3.6 Buffalo
+                     Chily Hut            23                    Fast Food, Cafe, Mexican, Seafood               3.2 Buffalo
+        The Chimney Bar-Be-Que            71               Desserts, French, Bakery, BBQ, Seafood               3.6 Buffalo
+               Jain Restaurant            78                                French, BBQ, Desserts               3.0 Buffalo
+                      US Pizza           100                      Chinese, Pizza, Bakery, Seafood               2.2 Buffalo
+                Mainland China            60                Tea, BBQ, Fast Food, Chinese, Seafood               3.5 Buffalo
+     eastWEST - Radisson Hotel           100                               French, Pizza, Seafood               3.3 Buffalo
+               Big Fish Eatery            50                                          Bakery, BBQ               4.5 Buffalo
+                    A侓侓k Kahve            14                      Chinese, Pizza, Bakery, Seafood               4.0 Buffalo
+
+### Accommodations in Buffalo
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+                 Cozy Studio in Heart of Ft Greene  200.0 Entire home/apt                  No pets & No children under 10             4.0                  3                 5.0 Buffalo
+                              Yankee baseball stay  911.0    Private room                                     No visitors             1.0                  1                 5.0 Buffalo
+                   Williamsburg Gem: Sleep up to 5  486.0 Entire home/apt               No smoking & No children under 10             2.0                  4                 1.0 Buffalo
+         Ideal 3 Bedroom Apartment by Times Square  297.0 Entire home/apt                            No children under 10             2.0                  2                 2.0 Buffalo
+                      Artist Brooklyn Heights Home 1069.0 Entire home/apt                                         No pets             7.0                  8                 3.0 Buffalo
+                    Garden room in a private house  939.0    Private room                            No children under 10            45.0                  1                 4.0 Buffalo
+    Entire, Immaculate 1-Bedroom CHELSEA APARTMENT  309.0 Entire home/apt               No smoking & No pets & No parties             2.0                  2                 4.0 Buffalo
+                    A SUPERB One Bedroom Apartment  417.0 Entire home/apt                                      No parties             2.0                  2                 2.0 Buffalo
+Hospitality on Propsect Pk-12 yrs Hosting Legally!  556.0    Private room           No smoking & No visitors & No parties             1.0                  1                 4.0 Buffalo
+          @ Amazing Midtown Furnished  Apartment @  715.0 Entire home/apt                                      No parties            30.0                  7                 4.0 Buffalo
+Beautiful Light Filled Apartment in New York City!  299.0 Entire home/apt No visitors & No parties & No children under 10             1.0                  2                 1.0 Buffalo
+           *OH SO ZEN*~ Chill Bushwick Yoga Spot!!  948.0 Entire home/apt                                      No smoking             2.0                  9                 2.0 Buffalo
+
+### Attractions in Niagara Falls
+                           Name  Latitude  Longitude                                                          Address          Phone                                                                       Website          City
+       Journey Behind the Falls 43.079196 -79.078496       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (877) 642-7275      https://www.niagaraparks.com/visit/attractions/journey-behind-the-falls/ Niagara Falls
+               Niagara SkyWheel 43.090929 -79.075510             4960 Clifton Hill, Niagara Falls, ON L2G 3N4, Canada (905) 358-4793                       http://www.cliftonhill.com/attractions/niagara-skywheel Niagara Falls
+              Cave of the Winds 43.082294 -79.071347                     Goat Island Rd, Niagara Falls, NY 14303, USA (716) 285-0705 https://www.niagarafallsstatepark.com/attractions-and-tours/cave-of-the-winds Niagara Falls
+               White Water Walk 43.110955 -79.060455                 4330 River Rd, Niagara Falls, ON L2G 6T2, Canada (877) 642-7275              https://www.niagaraparks.com/visit/attractions/white-water-walk/ Niagara Falls
+            Queen Victoria Park 43.086626 -79.077083       6345 Niagara River Pkwy, Niagara Falls, ON L2E 6X8, Canada (905) 358-1814         https://www.niagaraparks.com/visit/nature-garden/queen-victoria-park/ Niagara Falls
+      Horseshoe Falls of Canada 43.077162 -79.075732       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (905) 356-2241                                                 https://www.niagaraparks.com/ Niagara Falls
+                   Bird Kingdom 43.092628 -79.068701                 5651 River Rd, Niagara Falls, ON L2E 7M7, Canada (905) 356-8888                                                    http://www.birdkingdom.ca/ Niagara Falls
+Niagara Falls Observation Tower 43.086908 -79.068792                    332 Prospect St, Niagara Falls, NY 14303, USA (716) 278-1794 https://www.niagarafallsstatepark.com/attractions-and-tours/observation-tower Niagara Falls
+                   Skylon Tower 43.085093 -79.079562              5200 Robinson St, Niagara Falls, ON L2G 2A2, Canada (905) 356-2651   https://www.skylon.com/?utm_source=GMB&utm_medium=Organic&utm_campaign=Yrly Niagara Falls
+     Niagara Glen Nature Centre 43.129167 -79.060000           3050 Niagara River Pkwy, Niagara Falls, ON L2E, Canada (905) 354-6678     https://www.niagaraparks.com/visit/attractions/niagara-glen-nature-centre Niagara Falls
+         Fallsview Tourist Area 43.082635 -79.083226                5305 Murray St, Niagara Falls, ON L2G 3W6, Canada (514) 446-6789                                                                       Unknown Niagara Falls
+         Butterfly Conservatory 43.137022 -79.055590 2565 Niagara River Pkwy, Niagara-on-the-Lake, ON L0S 1J0, Canada (905) 358-0025        https://www.niagaraparks.com/visit/attractions/butterfly-conservatory/ Niagara Falls
+          Great Canadian Midway 43.091105 -79.074608             4848 Clifton Hill, Niagara Falls, ON L2G 3N4, Canada (905) 358-3676                 https://www.cliftonhill.com/attractions/great-canadian-midway Niagara Falls
+            Aquarium of Niagara 43.094344 -79.059896                   701 Whirlpool St, Niagara Falls, NY 14301, USA (716) 285-3575                                             http://www.aquariumofniagara.org/ Niagara Falls
+           Niagara Falls Canada 43.091429 -79.070940                5704 Falls Ave, Niagara Falls, ON L2G 3K7, Canada (289) 800-2800                                               http://www.canadianshuttle.com/ Niagara Falls
+      Table Rock Welcome Centre 43.079167 -79.078831       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (905) 358-3268          http://www.niagaraparks.com/visit/welcome-centres/table-rock-centre/ Niagara Falls
+                 Niagara's Fury 43.079258 -79.078805       6650 Niagara River Pkwy, Niagara Falls, ON L2G 0L0, Canada (905) 358-3268                 https://www.niagaraparks.com/visit/attractions/niagaras-fury/ Niagara Falls
+        Niagara Falls Fireworks 43.084132 -79.076440       6660 Niagara River Pkwy, Niagara Falls, ON L2G 3N4, Canada (905) 356-6061                                https://www.niagarafallstourism.com/fireworks/ Niagara Falls
+     Fallsview Indoor Waterpark 43.092463 -79.071758                5685 Falls Ave, Niagara Falls, ON L2E 6W7, Canada (905) 374-4444                                           https://www.fallsviewwaterpark.com/ Niagara Falls
+             Whirlpool Aero Car 43.118031 -79.068789       3850 Niagara River Pkwy, Niagara Falls, ON L2E 3E8, Canada (877) 642-7275            https://www.niagaraparks.com/visit/attractions/whirlpool-aero-car/ Niagara Falls
+
+### Restaurants in Niagara Falls
+                             Name  Average Cost                                                   Cuisines  Aggregate Rating          City
+                 Izakaya Kikufuji            66 Desserts, Pizza, French, Fast Food, Mediterranean, Seafood               4.5 Niagara Falls
+                      Tony Roma's            47      Desserts, Tea, French, Fast Food, Cafe, Mediterranean               3.3 Niagara Falls
+                          Pier 70            60                        Tea, Bakery, Mediterranean, Seafood               2.6 Niagara Falls
+                          Scratch            19                                     Tea, American, Seafood               3.7 Niagara Falls
+                       Raju Dhaba            67                                American, Desserts, Seafood               2.9 Niagara Falls
+  Sri Meenakshi South Indian Food            77                              Tea, Seafood, Bakery, Italian               0.0 Niagara Falls
+                     Burger Point            59                                         Tea, American, BBQ               3.6 Niagara Falls
+            Barista Creme Lavazza            51                   Tea, Pizza, Mexican, Fast Food, American               3.2 Niagara Falls
+                         Hot Fork            14                                 Fast Food, Bakery, Seafood               0.0 Niagara Falls
+                     Divine Bites            11          Desserts, Tea, French, Bakery, Fast Food, Chinese               0.0 Niagara Falls
+                      Dilli Light            71                               BBQ, Mediterranean, Desserts               2.6 Niagara Falls
+          Natraj Dahi Bhalle Wala            88                               Tea, Cafe, Indian, Fast Food               3.9 Niagara Falls
+                Lala Chaap Corner            31                   Tea, Pizza, Cafe, Mediterranean, Seafood               0.0 Niagara Falls
+                         Rollplay            83                                  Tea, Bakery, BBQ, Seafood               2.9 Niagara Falls
+                           Tamura            11                                Chinese, Pizza, Indian, BBQ               3.5 Niagara Falls
+                            Singz            40                              Tea, Mexican, Bakery, Italian               2.9 Niagara Falls
+                   Meenu Caterers            25                                  Tea, Cafe, BBQ, Fast Food               2.7 Niagara Falls
+                          Giani's            74                                     Pizza, Indian, Seafood               3.5 Niagara Falls
+                      Khana Vaana            80                                Bakery, BBQ, Cafe, Desserts               3.4 Niagara Falls
+                Jeeta Kulfi Walle            51                              Cafe, Mediterranean, Desserts               3.3 Niagara Falls
+                  Buddy 's. Pizza            50                                                   Tea, BBQ               0.0 Niagara Falls
+                          Giani's            44                       Seafood, Bakery, Desserts, Fast Food               3.7 Niagara Falls
+                  KT's Shik-Shack            25                                             BBQ, Fast Food               0.0 Niagara Falls
+                  Biryani Express            28                                        Tea, Pizza, Seafood               0.0 Niagara Falls
+                             Hype            88                           Bakery, Pizza, Desserts, Seafood               3.7 Niagara Falls
+                    Pudding & Pie            61                                      Pizza, BBQ, Fast Food               2.7 Niagara Falls
+         361 Restaurant & Banquet            86                                   Tea, Cafe, Pizza, Bakery               3.4 Niagara Falls
+                   Baskin Robbins            39                 Desserts, Tea, Bakery, Fast Food, American               0.0 Niagara Falls
+Everest Momos & Chinese Fast Food            23                                                Cafe, Pizza               3.2 Niagara Falls
+         Polka Pastry & Snack Bar            62                                  Tea, Bakery, BBQ, Seafood               3.4 Niagara Falls
+                    Capital Grill            74                                         French, Pizza, BBQ               3.8 Niagara Falls
+                    Little Punjab            13         Italian, Mexican, Bakery, Fast Food, Cafe, Seafood               3.7 Niagara Falls
+                   Meghraj Sweets            63                Desserts, Pizza, Mexican, Bakery, Fast Food               3.2 Niagara Falls
+    DIOS The Neighbourhood Bistro            62                                Tea, BBQ, Desserts, Italian               4.2 Niagara Falls
+                            Giapo            37                                             Pizza, Seafood               4.7 Niagara Falls
+            Cafe Del Sol Botanico            78             Tea, Cafe, Italian, Bakery, Fast Food, Chinese               4.4 Niagara Falls
+
+### Accommodations in Niagara Falls
+                                          NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number          city
+        Sunny Bedroom In The Heart of Bushwick  893.0    Private room                  No pets & No parties             3.0                  2                 1.0 Niagara Falls
+             Sunny Spacious South Slope Studio  337.0 Entire home/apt               No parties & No smoking             2.0                  3                 4.0 Niagara Falls
+           Apartment in the Heart of Manhattan  694.0 Entire home/apt                            No smoking            14.0                  3                 3.0 Niagara Falls
+                                  Harlem Oasis  244.0    Private room No visitors & No smoking & No parties             1.0                  2                 2.0 Niagara Falls
+        HUGE, SUNNY room in Financial District   59.0    Private room                 No visitors & No pets             4.0                  2                 5.0 Niagara Falls
+Private Guestroom in Landmark Bklyn Brownstone 1005.0 Entire home/apt                            No parties             1.0                  5                 2.0 Niagara Falls
+Central Park South Luxury 2 Bedroom 2 Bathroom  371.0 Entire home/apt                            No parties            29.0                  2                 5.0 Niagara Falls
+
+### Flight from Greer to Buffalo on 2022-03-10
+There is no flight from Greer to Buffalo on 2022-03-10.
+
+### Self-driving from Greer to Buffalo
+self-driving, from Greer to Buffalo, duration: 11 hours 19 mins, distance: 1,200 km, cost: 60
+
+### Taxi from Greer to Buffalo
+taxi, from Greer to Buffalo, duration: 11 hours 19 mins, distance: 1,200 km, cost: 1200
+
+### Flight from Buffalo to Niagara Falls on 2022-03-12
+There is no flight from Buffalo to Niagara Falls on 2022-03-12.
+
+### Self-driving from Buffalo to Niagara Falls
+self-driving, from Buffalo to Niagara Falls, duration: 26 mins, distance: 31.9 km, cost: 1
+
+### Taxi from Buffalo to Niagara Falls
+taxi, from Buffalo to Niagara Falls, duration: 26 mins, distance: 31.9 km, cost: 31
+
+### Flight from Niagara Falls to Greer on 2022-03-14
+There is no flight from Niagara Falls to Greer on 2022-03-14.
+
+### Self-driving from Niagara Falls to Greer
+self-driving, from Niagara Falls to Greer, duration: 11 hours 41 mins, distance: 1,228 km, cost: 61
+
+### Taxi from Niagara Falls to Greer
+taxi, from Niagara Falls to Greer, duration: 11 hours 41 mins, distance: 1,228 km, cost: 1228
+
+JSON plan:

@@ -1,0 +1,114 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please arrange a 3-day trip for me departing from St. Louis and visiting Las Vegas from March 29th to March 31st, 2022. My budget for this journey is $1,300.
+
+Reference information:
+### Attractions in Las Vegas
+                               Name  Latitude   Longitude                                                   Address          Phone                                                                                                                                                                                                                   Website      City
+                            SkyJump 36.147613 -115.156396           2000 Las Vegas Blvd S, Las Vegas, NV 89104, USA (702) 380-7777                                                                                                                                               https://www.thestrat.com/attractions/skyjump?utm_source=gmb&utm_medium=yext Las Vegas
+          Madame Tussauds Las Vegas 36.121230 -115.171442 3377 S Las Vegas Blvd Ste. 2001, Las Vegas, NV 89109, USA (702) 862-7800                                                                                                                                                                                   http://www.madametussauds.com/lasvegas/ Las Vegas
+      Gondola Rides at the Venetian 36.122513 -115.170597           3355 S Las Vegas Blvd, Las Vegas, NV 89109, USA (702) 414-4300                                                                                                                                                               http://www.venetian.com/Las-Vegas-Activities/Gondola-Rides/ Las Vegas
+                     The Mob Museum 36.172820 -115.141239                 300 Stewart Ave, Las Vegas, NV 89101, USA (702) 229-2734                                                                                                                                                                                                 https://themobmuseum.org/ Las Vegas
+          Eiffel Tower Viewing Deck 36.112483 -115.172510           3655 Las Vegas Blvd S, Las Vegas, NV 89109, USA (888) 727-4758   https://www.caesars.com/paris-las-vegas/things-to-do/eiffel-tower?utm_campaign=google&utm_source=google&utm_medium=local&utm_term=PLV15&utm_content=attractions&y_source=1_NDM2Njg4OC03MTUtbG9jYXRpb24ud2Vic2l0ZQ%3D%3D Las Vegas
+                           Big Shot 36.147853 -115.155513           2000 S Las Vegas Blvd, Las Vegas, NV 89104, USA (702) 383-5210                                                                                                                                                                    https://thestrat.com/attractions/thrill-rides/big-shot Las Vegas
+          Fremont Street Experience 36.170727 -115.143823                    E Fremont St, Las Vegas, NV 89101, USA (702) 678-5600                                                                                                                                        https://vegasexperience.com/?utm_source=google&utm_medium=organic&utm_campaign=GMB Las Vegas
+                        High Roller 36.117632 -115.168294           3545 S Las Vegas Blvd, Las Vegas, NV 89109, USA (855) 234-7469     https://www.caesars.com/linq/things-to-do/attractions/high-roller?utm_campaign=GMB&utm_source=google&utm_medium=local&utm_term=HighRoller&utm_content=attractions&y_source=1_NDM2Njg1NS03MTUtbG9jYXRpb24ud2Vic2l0ZQ== Las Vegas
+          The Neon Museum Las Vegas 36.176988 -115.135337            770 Las Vegas Blvd N, Las Vegas, NV 89101, USA (702) 387-6366                                                                                                                                                                                               https://www.neonmuseum.org/ Las Vegas
+   Las Vegas Natural History Museum 36.179871 -115.133864            900 Las Vegas Blvd N, Las Vegas, NV 89101, USA (702) 384-3466                                                                                                                                                                                                     http://www.lvnhm.org/ Las Vegas
+                   Observation Deck 36.147662 -115.155611           2000 Las Vegas Blvd S, Las Vegas, NV 89104, USA (702) 380-7777                                                                                                                                                https://www.thestrat.com/attractions/skypod?utm_source=gmb&utm_medium=yext Las Vegas
+ Las Vegas Boulevard Gateway Arches 36.146560 -115.155511           1998 S Las Vegas Blvd, Las Vegas, NV 89104, USA        Unknown                                                                                                                                                https://www.lasvegasnevada.gov/News/Blog/Detail/las-vegas-boulevard-arches Las Vegas
+                     Lake of Dreams 36.126304 -115.167056           3131 Las Vegas Blvd S, Las Vegas, NV 89109, USA (702) 770-7000                                                                                                                                                                 https://www.wynnlasvegas.com/entertainment/lake-of-dreams Las Vegas
+Shark Reef Aquarium at Mandalay Bay 36.088773 -115.176471           3950 S Las Vegas Blvd, Las Vegas, NV 89119, USA (702) 632-4555                                                                                                                                              https://mandalaybay.mgmresorts.com/en/entertainment/shark-reef-aquarium.html Las Vegas
+                             AREA15 36.131758 -115.181549                3215 S Rancho Dr, Las Vegas, NV 89102, USA        Unknown                                                                                                                                                                                                   https://www.area15.com/ Las Vegas
+        SlotZilla Zipline Las Vegas 36.169487 -115.141272             425 Fremont St #160, Las Vegas, NV 89101, USA (702) 678-5780                                                                                                                                                         https://vegasexperience.com/slotzilla-zip-line/?utm_campaign=yext Las Vegas
+                   Springs Preserve 36.169361 -115.190691          333 S Valley View Blvd, Las Vegas, NV 89107, USA (702) 822-7700                                                                                                                                                                                           http://www.springspreserve.org/ Las Vegas
+Vegas Vic - Famous Neon Cowboy Sign 36.171124 -115.145350                   25 Fremont St, Las Vegas, NV 89101, USA        Unknown http://www.lasvegasnevada.gov/portal/faces/home?_afrLoop=938201264872392&_afrWindowMode=0&_afrWindowId=null#%40%3F_afrWindowId%3Dnull%26_afrLoop%3D938201264872392%26_afrWindowMode%3D0%26_adf.ctrl-state%3D172clwwgtk_29 Las Vegas
+     Zak Bagans' The Haunted Museum 36.158384 -115.145701           600 E Charleston Blvd, Las Vegas, NV 89104, USA (702) 444-0744                                                                                                                                                                                             https://thehauntedmuseum.com/ Las Vegas
+ Welcome to Fabulous Las Vegas Sign 36.082073 -115.172779           5100 Las Vegas Blvd S, Las Vegas, NV 89119, USA (702) 533-9112                                                                                                                                                                                                                   Unknown Las Vegas
+
+### Restaurants in Las Vegas
+                              Name  Average Cost                                               Cuisines  Aggregate Rating      City
+               Chili's Grill & Bar            71                Pizza, Mexican, Bakery, Fast Food, Cafe               3.8 Las Vegas
+               Ethos Vegan Kitchen            42         Desserts, Bakery, Cafe, Mediterranean, Seafood               4.4 Las Vegas
+           Portneuf Valley Brewing            58 Pizza, Mexican, Bakery, Fast Food, Cafe, Mediterranean               3.7 Las Vegas
+                       Big Brewsky            23                                 Tea, Bakery, Fast Food               4.5 Las Vegas
+                 Cakes At Bhawanas            87       Desserts, Tea, American, Bakery, Indian, Seafood               3.5 Las Vegas
+                  Bake Your Dreamz            44                Tea, French, Bakery, Fast Food, Seafood               0.0 Las Vegas
+                   Behrouz Biryani            97                   Pizza, Italian, BBQ, Bakery, Seafood               3.4 Las Vegas
+                   Cakes & Muffins            99                                  Cafe, Mexican, Bakery               3.3 Las Vegas
+                      Costa Coffee            84                        Tea, Chinese, American, Seafood               0.0 Las Vegas
+                   Barbeque Nation            88   Desserts, Tea, Italian, Fast Food, American, Seafood               4.0 Las Vegas
+                         Letz Roll            35                         French, Indian, BBQ, Fast Food               3.6 Las Vegas
+                    Johnny Rockets            44                                   Bakery, BBQ, Seafood               4.0 Las Vegas
+          New York Slice - Express            48        Pizza, French, BBQ, Fast Food, Chinese, Seafood               3.6 Las Vegas
+                  Green Chick Chop            82                       Cafe, Bakery, Seafood, Fast Food               3.1 Las Vegas
+         Elements - Mapple Express            64                       Tea, BBQ, Mediterranean, Seafood               0.0 Las Vegas
+                         Keventers            66                  Italian, French, Bakery, BBQ, Seafood               3.2 Las Vegas
+                        Papa Pizza            38                                       Cafe, Pizza, BBQ               3.5 Las Vegas
+                      Sunita Dhaba            51                           Cafe, Bakery, BBQ, Fast Food               0.0 Las Vegas
+The Garden Terrace - Maidens Hotel            78                     Desserts, Tea, Bakery, BBQ, Indian               3.3 Las Vegas
+                         Saara Veg            51              Italian, Bakery, BBQ, Fast Food, American               3.0 Las Vegas
+                   Gulati Ki Rasoi            21          Tea, Bakery, Fast Food, Indian, Mediterranean               0.0 Las Vegas
+              Hawalat Lounge & Bar            49                             Cafe, Mexican, Indian, BBQ               4.0 Las Vegas
+                      Sindh Snacks            37                             Cafe, Mexican, BBQ, Bakery               0.0 Las Vegas
+         Rajender Di Punjabi Rasoi            94                   Chinese, Bakery, Desserts, Fast Food               0.0 Las Vegas
+                   Agni - The Park            61                                 Mexican, BBQ, Desserts               3.3 Las Vegas
+                            Subway            48                                    Desserts, Fast Food               2.4 Las Vegas
+          Moti Mahal Deluxe Advant            64                                Cafe, American, Seafood               2.8 Las Vegas
+
+### Accommodations in Las Vegas
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+Steps away from the Heart of the Theater District!  389.0    Private room                            No children under 10             1.0                  2                 5.0 Las Vegas
+               Two real bedrooms near Central Park  731.0 Entire home/apt               No smoking & No parties & No pets             1.0                  5                 3.0 Las Vegas
+                                    Redford Room 1 1018.0    Private room                        No parties & No visitors             1.0                  1                 1.0 Las Vegas
+        Bedroom in Beautiful Park Slope Brownstone 1165.0    Private room                                      No smoking             2.0                  1                 4.0 Las Vegas
+                           Estudio 1 Brooklyn, NY. 1106.0 Entire home/apt No visitors & No smoking & No children under 10             2.0                  8                 3.0 Las Vegas
+                                  Cozy modern stay  100.0 Entire home/apt                            No children under 10             2.0                  2                 1.0 Las Vegas
+                BEAUTIFUL 2 BED/ BRICK WALLS/ 52ST  731.0 Entire home/apt                                      No smoking            30.0                  7                 3.0 Las Vegas
+Cozy Studio Apt-One block away from Prospect Park!  108.0 Entire home/apt               No children under 10 & No smoking             1.0                  3                 5.0 Las Vegas
+       Sophisticated 1BR in Midtown East by Sonder  372.0 Entire home/apt                                      No smoking            29.0                  2                 2.0 Las Vegas
+ JFK Queens/House of Suedajoy#5(dis by flexibility 1003.0    Private room                            No smoking & No pets             1.0                  2                 5.0 Las Vegas
+
+### Flight from St. Louis to Las Vegas on 2022-03-29
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3569952    470   18:09   19:44 3 hours 35 minutes 2022-03-29      St. Louis    Las Vegas    1371.0
+     F3612533    330   20:20   21:52 3 hours 32 minutes 2022-03-29      St. Louis    Las Vegas    1371.0
+     F3963080    389   14:46   16:09 3 hours 23 minutes 2022-03-29      St. Louis    Las Vegas    1371.0
+     F3963081    607   22:04   23:45 3 hours 41 minutes 2022-03-29      St. Louis    Las Vegas    1371.0
+     F3963082    594   08:34   10:03 3 hours 29 minutes 2022-03-29      St. Louis    Las Vegas    1371.0
+
+### Self-driving from St. Louis to Las Vegas
+self-driving, from St. Louis to Las Vegas, duration: 22 hours 55 mins, distance: 2,570 km, cost: 128
+
+### Taxi from St. Louis to Las Vegas
+taxi, from St. Louis to Las Vegas, duration: 22 hours 55 mins, distance: 2,570 km, cost: 2570
+
+### Flight from Las Vegas to St. Louis on 2022-03-31
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3570705    331   00:43   05:50  3 hours 7 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+     F3612477    466   13:34   18:44 3 hours 10 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+     F3991093    575   19:04   00:06  3 hours 2 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+     F3991094    374   20:37   01:37  3 hours 0 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+     F3991095    681   07:26   12:21 2 hours 55 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+     F3991096    531   14:33   19:30 2 hours 57 minutes 2022-03-31      Las Vegas    St. Louis    1371.0
+
+### Self-driving from Las Vegas to St. Louis
+self-driving, from Las Vegas to St. Louis, duration: 22 hours 50 mins, distance: 2,568 km, cost: 128
+
+### Taxi from Las Vegas to St. Louis
+taxi, from Las Vegas to St. Louis, duration: 22 hours 50 mins, distance: 2,568 km, cost: 2568
+
+JSON plan:

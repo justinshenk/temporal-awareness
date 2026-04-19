@@ -1,0 +1,129 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help me create a travel plan for 3 days that starts from Houston to Wichita from March 19th to March 21st, 2022? We're a group of 3 people with a budget of $2,700. Smoking is a necessity for us, so accommodating this into our hotel arrangements would be beneficial.
+
+Reference information:
+### Attractions in Wichita
+                                      Name  Latitude  Longitude                                                             Address          Phone                                        Website    City
+                        Old Cowtown Museum 37.693457 -97.359507                            1865 Museum Blvd, Wichita, KS 67203, USA (316) 350-3323  https://www.oldcowtown.org/Pages/default.aspx Wichita
+                         Exploration Place 37.689467 -97.347961                           300 N McLean Blvd, Wichita, KS 67203, USA (316) 660-0600                    http://www.exploration.org/ Wichita
+                 Museum of World Treasures 37.687089 -97.327885                              835 E 1st St N, Wichita, KS 67202, USA (316) 263-1311                 http://www.worldtreasures.org/ Wichita
+                  The Keeper of the Plains 37.691354 -97.349716                           339 Veterans Pkwy, Wichita, KS 67203, USA (316) 268-4497 https://www.wichita.gov/Arts/Pages/Keeper.aspx Wichita
+                        Wichita Art Museum 37.694920 -97.355969                            1400 Museum Blvd, Wichita, KS 67203, USA (316) 268-4921                                http://wam.org/ Wichita
+                    Kansas Aviation Museum 37.632177 -97.273699                 3350 George Washington Blvd, Wichita, KS 67210, USA (316) 683-9242           http://www.kansasaviationmuseum.org/ Wichita
+                       Sedgwick County Zoo 37.717034 -97.408561                             5555 W Zoo Blvd, Wichita, KS 67212, USA (316) 660-9453                               https://scz.org/ Wichita
+                Great Plains Nature Center 37.738919 -97.264038                   6232 East 29th St N #2200, Wichita, KS 67220, USA (316) 683-5499                               http://gpnc.org/ Wichita
+ Wichita-Sedgwick County Historical Museum 37.684730 -97.337870                               204 S Main St, Wichita, KS 67202, USA (316) 265-9314                 http://www.wichitahistory.org/ Wichita
+             Botanica, The Wichita Gardens 37.696448 -97.363427                               701 Amidon St, Wichita, KS 67203, USA (316) 264-0448                       http://www.botanica.org/ Wichita
+          Frank Lloyd Wright's Allen House 37.689789 -97.292408                          255 N Roosevelt St, Wichita, KS 67208, USA (316) 687-1027                    http://flwrightwichita.org/ Wichita
+        Great Plains Transportation Museum 37.686218 -97.329706                           700 E Douglas Ave, Wichita, KS 67202, USA (316) 263-0944                            http://www.gptm.us/ Wichita
+             Mid-America All-Indian Museum 37.692169 -97.351870                             650 N Seneca St, Wichita, KS 67203, USA (316) 350-3340               https://www.theindianmuseum.org/ Wichita
+                      Ulrich Museum of Art 37.717036 -97.296467 Wichita State University, 1845 Fairmount St, Wichita, KS 67260, USA (316) 978-3664                    https://ulrich.wichita.edu/ Wichita
+The Kansas African American Museum (TKAAM) 37.694961 -97.339767                              601 N Water St, Wichita, KS 67203, USA (316) 262-7651                    https://www.tkaamuseum.org/ Wichita
+                       All Star Adventures 37.699837 -97.223852                              1010 N Webb Rd, Wichita, KS 67206, USA (316) 682-3700      http://www.allstarwichita.com/adventures/ Wichita
+                Kansas Firefighters Museum 37.669702 -97.335240                          1300 S Broadway St, Wichita, KS 67211, USA (316) 264-5990          https://kansasfirefightersmuseum.com/ Wichita
+           Wichita Toy Train Club & Museum 37.685168 -97.323379                             130 S Laura Ave, Wichita, KS 67211, USA (316) 633-1179          http://www.wichitatoytrainmuseum.org/ Wichita
+                    Veterans Memorial Park 37.690604 -97.344973                           339 Veterans Pkwy, Wichita, KS 67203, USA (316) 219-9777       https://wichitaveteransmemorialpark.com/ Wichita
+                         Steampunk Village 37.715822 -97.388401                            3831 W 17th St N, Wichita, KS 67203, USA        Unknown                                        Unknown Wichita
+
+### Restaurants in Wichita
+                         Name  Average Cost                                    Cuisines  Aggregate Rating    City
+                   Jahanpanah            18                 Indian, Desserts, Fast Food               3.9 Wichita
+           Koramangala Social            38    Tea, Bakery, Cafe, Indian, Mediterranean               4.5 Wichita
+                 Kulcha Paaji            86             Chinese, Bakery, Pizza, Seafood               3.1 Wichita
+       Chimney - The Takeaway            19 Pizza, Bakery, Cafe, Mediterranean, Seafood               0.0 Wichita
+               Rumi's Kitchen            34    Bakery, Fast Food, Cafe, Indian, Seafood               3.4 Wichita
+                Bhai Ji Foods            98 Pizza, Mexican, Bakery, BBQ, Cafe, American               3.3 Wichita
+   Gardenia - Hotel Grenville            95                      Tea, Desserts, Seafood               2.8 Wichita
+              Cafe Cornucopia            76                           Tea, Cafe, Bakery               3.6 Wichita
+                  The B.A.W.A            23                    Tea, Chinese, Pizza, BBQ               4.2 Wichita
+             The Cake Affairs            15                                Tea, Seafood               0.0 Wichita
+                   China Town            33               Tea, Cafe, Mexican, Fast Food               2.9 Wichita
+        Soul Curry - Bellagio            31    Desserts, Tea, Italian, Mexican, Seafood               3.6 Wichita
+                  Urban Kabab            74  Pizza, Mexican, Bakery, Fast Food, Seafood               3.1 Wichita
+       The Flying Saucer Cafe            41                       Tea, Cafe, Pizza, BBQ               4.3 Wichita
+               The Health Box            46                     Tea, Cafe, BBQ, Italian               3.5 Wichita
+  Singh Mutton & Chicken Shop            58              BBQ, Pizza, American, Desserts               3.0 Wichita
+         Shama Chicken Corner            91        Pizza, French, Mexican, BBQ, Seafood               0.0 Wichita
+          Veer Jee Restaurant            33      Desserts, Tea, Italian, BBQ, Fast Food               3.1 Wichita
+         Nine 75 Lounge & Bar            84                      Tea, American, Seafood               3.2 Wichita
+          Sweet Life By Henna            68          Tea, Bakery, Indian, Mediterranean               3.5 Wichita
+   Chawla's Tandoori Junction            57                    Pizza, American, Seafood               3.5 Wichita
+        New Angaar Hyderabadi            32                    BBQ, Desserts, Fast Food               3.1 Wichita
+                      Govinda            43             Chinese, Pizza, Bakery, Italian               0.0 Wichita
+           Yummy Chinese Food            25                     Tea, BBQ, Mediterranean               0.0 Wichita
+            Flavors Of London            57        Desserts, Italian, Bakery, BBQ, Cafe               3.0 Wichita
+       Ankit Fast Food Corner            32                         Cafe, BBQ, Desserts               2.9 Wichita
+      Dinesh Ka Mithila Dhaba            12                  Tea, Bakery, Mediterranean               0.0 Wichita
+               Domino's Pizza            65               Tea, Chinese, Cafe, Fast Food               3.2 Wichita
+               The Grill Cafe            66                    Tea, Cafe, BBQ, Desserts               3.4 Wichita
+      Kehar Cafe & Restaurant            33                  Tea, Cafe, Bakery, Italian               2.8 Wichita
+              Cafe Coffee Day            99            French, American, BBQ, Fast Food               3.3 Wichita
+                     Cafe Red            55         Tea, Mexican, BBQ, Chinese, Seafood               3.6 Wichita
+                    Pasta Hub            63             Tea, Cafe, Bakery, BBQ, Chinese               3.0 Wichita
+                       Subway           100                      French, BBQ, Fast Food               0.0 Wichita
+                  Swag & Swad            67      Italian, BBQ, Fast Food, Cafe, Seafood               3.4 Wichita
+                Kanak Kitchen            83        Fast Food, French, Desserts, Italian               0.0 Wichita
+  New Shahi Chinese Fast Food            34                        Tea, Pizza, American               0.0 Wichita
+       I:ba Cafe & Restaurant            26          Cafe, BBQ, Mediterranean, Desserts               3.5 Wichita
+Coral - InterContinental Doha            67                           Tea, BBQ, Seafood               3.7 Wichita
+                Carbon Bistro            19                  Seafood, Desserts, Italian               4.1 Wichita
+
+### Accommodations in Wichita
+                                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+                   Secret Garden Apartment in Bed Stuy, Brooklyn  214.0 Entire home/apt               No smoking & No children under 10             2.0                  3                 4.0 Wichita
+                                  2 Bedroom Loft in Clinton Hill  740.0 Entire home/apt    No pets & No children under 10 & No visitors             2.0                  6                 2.0 Wichita
+                                Verona TwentyOne - Kendal Garden  350.0 Entire home/apt                  No pets & No children under 10             2.0                  3                 2.0 Wichita
+                                                  Park Slope Gem  642.0 Entire home/apt               No parties & No children under 10             3.0                  3                 3.0 Wichita
+              Stunning duplex. EXCELLENT location. Fort Greene!!  160.0 Entire home/apt                            No smoking & No pets             2.0                  2                 5.0 Wichita
+                  Clean and bright with a comfortable atmosphere  546.0    Private room                            No pets & No parties             4.0                  1                 3.0 Wichita
+                                                             LL2   61.0    Private room               No parties & No pets & No smoking             2.0                  2                 5.0 Wichita
+              3 BEDROOMS/2 BATHS ENTIRE APARTMENT 10 MINS to JFK 1195.0 Entire home/apt No smoking & No children under 10 & No visitors             1.0                  7                 2.0 Wichita
+                            Cute, clean studio in Central Harlem  518.0 Entire home/apt                                      No parties             1.0                  3                 5.0 Wichita
+                           Private Bedroom in Artist's Apartment  106.0    Private room                                         No pets             2.0                  1                 2.0 Wichita
+               Williamsburg Brooklyn 2BR  Apt. / 5min to L Train  516.0 Entire home/apt                                     No visitors             7.0                  4                 5.0 Wichita
+                                             LG Bright Apartment  129.0    Private room                        No smoking & No visitors            21.0                  2                 4.0 Wichita
+                                   Luxury Apartment/ Wall Street 1115.0 Entire home/apt                                      No smoking             1.0                  6                 5.0 Wichita
+Bright + Airy Theater District 1BR w/ Gym, Doorman by Blueground  673.0 Entire home/apt                            No pets & No parties            30.0                  2                 4.0 Wichita
+                    Evergreen Cozy Bed for Female Travelers 紐約民宿  734.0     Shared room              No parties & No pets & No visitors             1.0                  1                 4.0 Wichita
+                           Newly Renovated Studio Near Manhattan 1099.0 Entire home/apt               No parties & No children under 10             2.0                  9                 3.0 Wichita
+                    A Garden Grows in Greenpoint / Craft Chateau 1078.0    Private room                                      No smoking             2.0                  1                 4.0 Wichita
+
+### Flight from Houston to Wichita on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3811146    168   14:17   16:13 1 hours 56 minutes 2022-03-19        Houston      Wichita     542.0
+     F3923931    167   20:24   22:04 1 hours 40 minutes 2022-03-19        Houston      Wichita     542.0
+     F3923935    192   09:32   11:24 1 hours 52 minutes 2022-03-19        Houston      Wichita     542.0
+
+### Self-driving from Houston to Wichita
+self-driving, from Houston to Wichita, duration: 8 hours 42 mins, distance: 969 km, cost: 48
+
+### Taxi from Houston to Wichita
+taxi, from Houston to Wichita, duration: 8 hours 42 mins, distance: 969 km, cost: 969
+
+### Flight from Wichita to Houston on 2022-03-21
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3827300    152   12:10   14:38 2 hours 28 minutes 2022-03-21        Wichita      Houston     542.0
+     F3827493    147   17:52   20:18 2 hours 26 minutes 2022-03-21        Wichita      Houston     542.0
+     F3922844    269   06:23   08:19 1 hours 56 minutes 2022-03-21        Wichita      Houston     542.0
+
+### Self-driving from Wichita to Houston
+self-driving, from Wichita to Houston, duration: 8 hours 42 mins, distance: 969 km, cost: 48
+
+### Taxi from Wichita to Houston
+taxi, from Wichita to Houston, duration: 8 hours 42 mins, distance: 969 km, cost: 969
+
+JSON plan:

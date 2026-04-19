@@ -1,0 +1,200 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you tailor a 5-day travel plan for two people, departing from Knoxville and visiting 2 cities in Florida from March 20 to March 24, 2022? Our budget is set at $3,900. We'd love to explore local Chinese and Mediterranean cuisines during our stay.
+
+Reference information:
+### Attractions in Orlando
+                                              Name  Latitude  Longitude                                            Address          Phone                                                                                                                                Website    City
+                                  SeaWorld Orlando 28.411042 -81.461227          7007 Sea World Dr, Orlando, FL 32821, USA (407) 545-5550                                                                                                          https://seaworld.com/orlando/ Orlando
+                            The Wheel at ICON Park 28.443281 -81.468316                             Orlando, FL 32819, USA (407) 601-7907                                                                                     https://iconparkorlando.com/attractions/the-wheel/ Orlando
+                      Fun Spot America Theme Parks 28.465418 -81.455557          5700 Fun Spot Way, Orlando, FL 32819, USA (407) 363-3867                                                                                                               http://www.fun-spot.com/ Orlando
+                           Madame Tussauds Orlando 28.443763 -81.468606      8387 International Dr, Orlando, FL 32819, USA (855) 450-0581                                                                                                https://www.madametussauds.com/orlando/ Orlando
+                       Ripley's Believe It or Not! 28.446211 -81.470400      8201 International Dr, Orlando, FL 32819, USA (407) 345-0501                                                                                                         http://www.ripleys.com/orlando Orlando
+                          Universal Orlando Resort 28.472353 -81.469003        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                                                             https://www.universalorlando.com/web/en/us Orlando
+                               Harry P Leu Gardens 28.569760 -81.356380          1920 N Forest Ave, Orlando, FL 32803, USA (407) 246-2620                                                                                                             http://www.leugardens.org/ Orlando
+                                     Seuss Landing 28.474321 -81.467819        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                            https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure Orlando
+The Wizarding World of Harry Potter - Diagon Alley 28.479612 -81.469375        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000      https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida/the-wizarding-world-of-harry-potter-diagon-alley Orlando
+   The Wizarding World of Harry Potter - Hogsmeade 28.472746 -81.472626        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000              https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure/the-wizarding-world-of-harry-potter-hogsmeade Orlando
+                        Crayola Experience Orlando 28.444874 -81.391740  8001 S Orange Blossom Trl, Orlando, FL 32809, USA (407) 757-1700                                                                                             https://www.crayolaexperience.com/orlando/ Orlando
+                         SEA LIFE Orlando Aquarium 28.442588 -81.468568      8449 International Dr, Orlando, FL 32819, USA (855) 450-0680                                                                                                  https://www.visitsealife.com/orlando/ Orlando
+                               WonderWorks Orlando 28.433743 -81.471528      9067 International Dr, Orlando, FL 32819, USA (407) 351-8800                                                                                                     http://www.wonderworksorlando.com/ Orlando
+                         Universal Studios Florida 28.479375 -81.468542        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000 https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida?utm_source=google&utm_medium=organic&utm_campaign=GMB Orlando
+                 Magical Midway Arcade & SlingShot 28.456953 -81.470116      7001 International Dr, Orlando, FL 32819, USA (407) 370-5353                                                                                                    https://magicalmidwayslingshot.com/ Orlando
+                                 Orlando Starflyer 28.444872 -81.469969      8265 International Dr, Orlando, FL 32819, USA (407) 640-7009                                                                                                                  http://starflyer.com/ Orlando
+                            Orlando Science Center 28.572263 -81.368264         777 E Princeton St, Orlando, FL 32803, USA (407) 514-2000                                                                                                                   https://www.osc.org/ Orlando
+                                 The Simpsons Ride 28.479510 -81.467616        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                            https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/the-simpsons-ride Orlando
+            Harry Potter and the Forbidden Journey 28.472103 -81.473724                             Orlando, FL 32819, USA (407) 363-8000                       https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/harry-potter-and-the-forbidden-journey Orlando
+                                         Gatorland 28.355650 -81.402211 14501 S Orange Blossom Trl, Orlando, FL 32837, USA (407) 855-5496                                                                                                             https://www.gatorland.com/ Orlando
+
+### Restaurants in Orlando
+                             Name  Average Cost                                             Cuisines  Aggregate Rating    City
+         Fuji Japanese Steakhouse            75                                Tea, Bakery, Desserts               3.8 Orlando
+                  Turquoise Villa            55                       French, Bakery, BBQ, Fast Food               4.0 Orlando
+               The Tandoori Times            84                              Tea, Cafe, BBQ, Italian               2.7 Orlando
+                    Crust N Cakes            61                               Tea, Cafe, Indian, BBQ               3.4 Orlando
+        Indochi Cafe & Restaurant            72    Pizza, French, Bakery, Fast Food, Indian, Seafood               0.0 Orlando
+                       Bite N Sip            76                     Chinese, Bakery, Cafe, Fast Food               0.0 Orlando
+                       Pure Bliss            84                         BBQ, Bakery, Pizza, Desserts               3.0 Orlando
+                 Wai Yu Mun Ching            51                                 Tea, Pizza, Desserts               3.6 Orlando
+        Shivani Catering Services            75                           Tea, Cafe, Indian, Seafood               3.1 Orlando
+                        Veg O Non            45                        BBQ, Mexican, Pizza, Desserts               3.1 Orlando
+                    Fabulous Cake            91                                 Cafe, BBQ, Fast Food               0.0 Orlando
+               Nirula's Ice Cream            46                  Tea, American, BBQ, Indian, Seafood               0.0 Orlando
+             Hotel New Tamil Nadu            13 Desserts, Italian, Fast Food, Mediterranean, Seafood               0.0 Orlando
+                       Milan Food            25                                   Cafe, BBQ, Seafood               0.0 Orlando
+                       Dessi Food            32                              Chinese, BBQ, Fast Food               0.0 Orlando
+                          Chaayos            73                                   Tea, Cafe, Mexican               3.9 Orlando
+Ambrosia - The Golden Palms Hotel            52                               Tea, Mexican, Desserts               2.8 Orlando
+                        Pizza Hut            35                       Bakery, Pizza, Indian, Seafood               3.4 Orlando
+                        Fun Bytes            13                Desserts, Tea, French, BBQ, Fast Food               2.5 Orlando
+                        Spice Hut            25                               Chinese, Cafe, Seafood               2.9 Orlando
+                    Lounge Bakery            31                   Tea, Italian, BBQ, Fast Food, Cafe               0.0 Orlando
+                    Khana Khazana            36             Chinese, Desserts, French, Cafe, Seafood               0.0 Orlando
+                             Dips            56                           Tea, Pizza, BBQ, Fast Food               2.8 Orlando
+                 Always Eat Green            98               Tea, Italian, Fast Food, Cafe, Seafood               0.0 Orlando
+                          Vaango!            32                   Tea, Italian, Bakery, BBQ, Seafood               2.8 Orlando
+                   Domino's Pizza            12                      Tea, Pizza, French, BBQ, Bakery               2.5 Orlando
+                      Lawn Bistro           100                           Fast Food, Bakery, Italian               3.6 Orlando
+                 Reena Restaurant            98                  Fast Food, Seafood, Bakery, Italian               3.5 Orlando
+                    Fusionn Rolls            63                                        Pizza, Bakery               0.0 Orlando
+                        Dhabha 27            24     Tea, French, Mexican, Bakery, Fast Food, Seafood               3.2 Orlando
+
+### Accommodations in Orlando
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number    city
+         Private furnished bedroom in Williamsburg  179.0    Private room No parties & No smoking & No children under 10             5.0                  1                 2.0 Orlando
+      Sixth Ave Chelsea, Studio Serviced Apartment   70.0 Entire home/apt                          No visitors & No pets            30.0                  3                 2.0 Orlando
+                               Large and furnished  345.0    Private room                           No smoking & No pets             7.0                  2                 4.0 Orlando
+      Private room in Jackson Heights Apartment 2+ 1081.0    Private room                                     No parties             1.0                  1                 1.0 Orlando
+Che’ Randall Deux\nSoBro\n10 minutes to Manhattan!  854.0    Private room                           No children under 10             5.0                  2                 4.0 Orlando
+                          Room in Upper East Side!  885.0    Private room              No smoking & No pets & No parties             1.0                  2                 4.0 Orlando
+                   BKLYN Brownstone- Glam Getaway!  287.0 Entire home/apt                          No pets & No visitors             3.0                  2                 3.0 Orlando
+    Rare Find: SUNNY, LARGE DUPLEX Chelsea 2BR 2BA  188.0 Entire home/apt                                        No pets             6.0                  2                 5.0 Orlando
+                         Riverside Drive Apartment  878.0 Entire home/apt          No visitors & No parties & No smoking            31.0                  5                 5.0 Orlando
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room                                        No pets             1.0                  2                 3.0 Orlando
+
+### Attractions in Miami
+                                      Name  Latitude  Longitude                                             Address          Phone                                                                                             Website  City
+                             Jungle Island 25.784981 -80.174222      1111 Parrot Jungle Trail, Miami, FL 33132, USA (305) 400-7000                                                                        http://www.jungleisland.com/ Miami
+                    Pérez Art Museum Miami 25.785931 -80.186191            1103 Biscayne Blvd, Miami, FL 33132, USA (305) 375-3000                                                                            https://www.pamm.org/en/ Miami
+                             Bayfront Park 25.775259 -80.186189             301 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                             Wynwood Walls 25.801018 -80.199384               2516 NW 2nd Ave, Miami, FL 33127, USA (305) 576-3334                                                                                             Unknown Miami
+                     Maurice A. Ferré Park 25.784358 -80.187192            1075 Biscayne Blvd, Miami, FL 33132, USA (305) 358-7550                                                                   http://www.bayfrontparkmiami.com/ Miami
+                          Miami Seaquarium 25.734290 -80.164857 4400 Rickenbacker Cswy, Key Biscayne, FL 33149, USA (305) 361-5705                                                                        https://miamiseaquarium.com/ Miami
+                       Bayside Marketplace 25.778402 -80.186794             401 Biscayne Blvd, Miami, FL 33132, USA (305) 577-3344                                            https://www.baysidemarketplace.com/visit/360-virtual-map Miami
+          Skyviews Miami Observation Wheel 25.777020 -80.184519             401 Biscayne Blvd, Miami, FL 33132, USA        Unknown    https://www.skyviewsobservationwheels.com/?utm_source=google&utm_medium=organic&utm_campaign=gbp Miami
+Phillip & Patricia Frost Museum of Science 25.785262 -80.187890            1101 Biscayne Blvd, Miami, FL 33132, USA (305) 434-9600                                                                       https://www.frostscience.org/ Miami
+                   Miami Children's Museum 25.784699 -80.176521            980 MacArthur Cswy, Miami, FL 33132, USA (305) 373-5437                                                                http://www.miamichildrensmuseum.org/ Miami
+                  Vizcaya Museum & Gardens 25.744387 -80.210475              3251 S Miami Ave, Miami, FL 33129, USA (305) 250-9133                                                                                https://vizcaya.org/ Miami
+                        Miami Walk of Fame 25.778196 -80.187446             401 Biscayne Blvd, Miami, FL 33132, USA (786) 763-0831                                                                     http://www.miamiwalkoffame.com/ Miami
+                               Lummus Park 25.780955 -80.129948           1130 Ocean Dr, Miami Beach, FL 33139, USA        Unknown https://www.miamibeachfl.gov/city-hall/parks-and-recreation/parks-facilities-directory/lummus-park/ Miami
+                       Torch of Friendship 25.777607 -80.187709             301 Biscayne Blvd, Miami, FL 33132, USA (888) 311-3233                                                                       http://www.miamigov.com/home/ Miami
+            Official Art Deco Walking Tour 25.780296 -80.130341           1001 Ocean Dr, Miami Beach, FL 33139, USA (305) 672-2014                                                                             https://mdpl.org/tours/ Miami
+                             Port of Miami 25.773981 -80.166635            1922 N Cruise Blvd, Miami, FL 33132, USA        Unknown                                                                                             Unknown Miami
+                       HistoryMiami Museum 25.774663 -80.196383              101 W Flagler St, Miami, FL 33130, USA (305) 375-1492                                                                        http://www.historymiami.org/ Miami
+                               Domino Park 25.765576 -80.219340                1444 SW 8th St, Miami, FL 33135, USA (305) 859-2717                                                                            http://www.miamigov.com/ Miami
+              Little Havana Visitor Center 25.765552 -80.220678                1600 SW 8th St, Miami, FL 33135, USA        Unknown                                                                                             Unknown Miami
+                                   Miami G 25.790911 -80.140205         1111 Lincoln Rd, Miami Beach, FL 33139, USA (305) 896-9850                                                                                 http://miami-g.com/ Miami
+
+### Restaurants in Miami
+                                 Name  Average Cost                                                Cuisines  Aggregate Rating  City
+                              Clocked            49                        Tea, Italian, Mexican, BBQ, Cafe               4.2 Miami
+              Shorts Burger and Shine            81                                  Chinese, Cafe, Seafood               4.9 Miami
+Papouli's Mediterranean Cafe & Market            26                                           Tea, Desserts               4.2 Miami
+               Tako Cheena by Pom Pom            60                    Fast Food, Indian, Desserts, Italian               4.4 Miami
+              AB's Absolute Barbecues            55      Desserts, Tea, Pizza, Italian, Fast Food, American               4.8 Miami
+                              Anjlika            56 Pizza, Italian, Fast Food, Cafe, Mediterranean, Seafood               3.1 Miami
+                Spice It - Hotel IBIS            38             Pizza, Indian, Fast Food, American, Seafood               2.7 Miami
+                      Spices & Sauces            28                 Italian, Mexican, Bakery, Cafe, Seafood               3.0 Miami
+                              L'Opera            28                                       Desserts, Seafood               3.7 Miami
+                     The Diet Kitchen            85             Bakery, BBQ, Indian, Mediterranean, Seafood               3.3 Miami
+            AB's - Absolute Barbecues            39                   Tea, Cafe, Bakery, Fast Food, Chinese               4.9 Miami
+                              Cafe 17            45                              Tea, BBQ, Bakery, Desserts               4.4 Miami
+                 Shiv Misthan Bhandar            59                     Cafe, American, Desserts, Fast Food               3.8 Miami
+                  South Indian Corner            10                                     Tea, Bakery, Indian               3.3 Miami
+                    Friends Fast Food            58                      Tea, BBQ, Mediterranean, Fast Food               0.0 Miami
+                             BarShala            41         Desserts, Pizza, Bakery, Mediterranean, Seafood               3.5 Miami
+                        Qureshi Kabab            34                                      French, Pizza, BBQ               3.5 Miami
+                         Delhi 6 Cafe            29                 Pizza, Fast Food, Cafe, Indian, Seafood               0.0 Miami
+                      Cafe Coffee Day            77                        Desserts, American, BBQ, Seafood               2.8 Miami
+                              Handa's            61                       Cafe, Bakery, American, Fast Food               2.6 Miami
+                   Bhikaram Bhujawala            73                     Desserts, Tea, Pizza, BBQ, American               3.0 Miami
+                               Gopala            23                           Chinese, Pizza, American, BBQ               2.9 Miami
+       NYC - Radisson Blu Plaza Delhi            95                                                Tea, BBQ               4.4 Miami
+                        Gayway Bakery            57                       Tea, Pizza, Bakery, BBQ, American               3.6 Miami
+                      Chanky Restruoo            56                           Tea, Cafe, American, Desserts               3.0 Miami
+                            Pizza Hub            86                             Tea, Mexican, American, BBQ               0.0 Miami
+                   Swastik Restaurant            67                          Tea, Bakery, American, Seafood               2.7 Miami
+                       Baskin Robbins            18                                     Desserts, Fast Food               0.0 Miami
+               Paatra - Jaypee Greens            73                  Desserts, Tea, Bakery, Indian, Seafood               3.5 Miami
+                       Moju Juice Bar            30                         Tea, Bakery, Mediterranean, BBQ               0.0 Miami
+                                Xiian            64                                   BBQ, Indian, Desserts               3.4 Miami
+                        Biryani Mahal            71                             Tea, Mediterranean, Seafood               3.6 Miami
+                             Parrot's            22                         Chinese, French, BBQ, Fast Food               3.4 Miami
+
+### Accommodations in Miami
+                                             NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number  city
+Simple and clean bedroom with good view and light  669.0    Private room                            No children under 10             1.0                  2                 5.0 Miami
+Cozy Two-bedroom Apt in a Cute House in Brooklyn!   99.0    Private room                            No children under 10             4.0                  1                 4.0 Miami
+  "HELLO BROOKLYN" PARK SIDE VIEW NEWLY RENO APT.  789.0 Entire home/apt                        No parties & No visitors             1.0                  6                 5.0 Miami
+     King Hotel Room at Wyndham Midtown 45 Resort  264.0    Private room     No pets & No smoking & No children under 10             2.0                  2                 3.0 Miami
+                   Charming 1BD Astoria Penthouse  806.0 Entire home/apt                                      No smoking             2.0                  8                 5.0 Miami
+       Unbeatable & Massive Midtown 3 Bedroom Apt  905.0 Entire home/apt                                      No smoking             4.0                  6                 5.0 Miami
+                1 Bedroom Heart of Financial Dist  386.0    Private room No visitors & No children under 10 & No smoking             2.0                  2                 4.0 Miami
+                                Bushwick Duplex 1  283.0    Private room                                      No parties             1.0                  2                 5.0 Miami
+     Comfortable shared apartmant by Times Square  924.0     Shared room               No smoking & No children under 10             1.0                  1                 2.0 Miami
+        Modern furnished 2-Bedroom NYC Apartment!  647.0 Entire home/apt                                      No parties            30.0                  3                 1.0 Miami
+                               Williamsburg bliss 1086.0 Entire home/apt                                     No visitors             3.0                  3                 4.0 Miami
+
+### Flight from Knoxville to Orlando on 2022-03-20
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3566154    235   09:17   11:08 1 hours 51 minutes 2022-03-20      Knoxville      Orlando     532.0
+
+### Self-driving from Knoxville to Orlando
+self-driving, from Knoxville to Orlando, duration: 9 hours 21 mins, distance: 1,049 km, cost: 52
+
+### Taxi from Knoxville to Orlando
+taxi, from Knoxville to Orlando, duration: 9 hours 21 mins, distance: 1,049 km, cost: 1049
+
+### Flight from Orlando to Miami on 2022-03-22
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3566852     64   20:39   22:10 1 hours 31 minutes 2022-03-22        Orlando        Miami     192.0
+     F3621654     58   01:02   01:58 0 hours 56 minutes 2022-03-22        Orlando        Miami     192.0
+     F3670400     58   17:47   18:51  1 hours 4 minutes 2022-03-22        Orlando        Miami     192.0
+     F3679569     63   06:03   07:03  1 hours 0 minutes 2022-03-22        Orlando        Miami     192.0
+     F3682996     54   16:40   17:54 1 hours 14 minutes 2022-03-22        Orlando        Miami     192.0
+     F3686735     83   19:14   20:11 0 hours 57 minutes 2022-03-22        Orlando        Miami     192.0
+     F3710899     85   09:12   10:14  1 hours 2 minutes 2022-03-22        Orlando        Miami     192.0
+     F3714260     89   20:49   21:52  1 hours 3 minutes 2022-03-22        Orlando        Miami     192.0
+     F3718025     56   20:00   20:59 0 hours 59 minutes 2022-03-22        Orlando        Miami     192.0
+     F3721995     68   07:06   08:18 1 hours 12 minutes 2022-03-22        Orlando        Miami     192.0
+
+### Self-driving from Orlando to Miami
+self-driving, from Orlando to Miami, duration: 3 hours 26 mins, distance: 378 km, cost: 18
+
+### Taxi from Orlando to Miami
+taxi, from Orlando to Miami, duration: 3 hours 26 mins, distance: 378 km, cost: 378
+
+### Flight from Miami to Knoxville on 2022-03-24
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3601007    217   21:30   23:58 2 hours 28 minutes 2022-03-24          Miami    Knoxville     724.0
+
+### Self-driving from Miami to Knoxville
+self-driving, from Miami to Knoxville, duration: 12 hours 28 mins, distance: 1,411 km, cost: 70
+
+### Taxi from Miami to Knoxville
+taxi, from Miami to Knoxville, duration: 12 hours 28 mins, distance: 1,411 km, cost: 1411
+
+JSON plan:

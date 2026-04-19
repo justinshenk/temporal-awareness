@@ -1,0 +1,116 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you help draft a 3-day travel plan, starting on March 1st, 2022 and ending on March 3rd, 2022, for one person departing from St. Louis and heading to Washington with a budget of $1,500?
+
+Reference information:
+### Attractions in Washington
+                                  Name  Latitude   Longitude                                          Address          Phone                                                                           Website       City
+                      Seattle Aquarium 47.607400 -122.342956 1483 Alaskan Way Pier 59, Seattle, WA 98101, USA (206) 386-4300                                                  https://www.seattleaquarium.org/ Washington
+                   Beneath the Streets 47.602850 -122.334093            102 Cherry St, Seattle, WA 98104, USA (206) 624-1237                                               http://www.beneath-the-streets.com/ Washington
+                          The Gum Wall 47.608361 -122.340338          1428 Post Alley, Seattle, WA 98101, USA (206) 587-2414                                        https://unexpectedproductions.org/gumwall/ Washington
+                 Wings Over Washington 47.606208 -122.342064          1301 Alaskan Wy, Seattle, WA 98101, USA (206) 602-1808                                                       http://www.wingsoverwa.com/ Washington
+                        Discovery Park 47.661320 -122.417141                           Seattle, WA 98199, USA (206) 386-4236                             https://www.seattle.gov/parks/allparks/discovery-park Washington
+             Washington Park Arboretum 47.636416 -122.295815      2300 Arboretum Dr E, Seattle, WA 98112, USA (206) 543-8800                          https://botanicgardens.uw.edu/washington-park-arboretum/ Washington
+                International Fountain 47.622523 -122.352032          305 Harrison St, Seattle, WA 98109, USA (206) 684-7200          https://www.seattlecenter.com/explore/attractions/international-fountain Washington
+                               Pier 55 47.604747 -122.339716          1101 Alaskan Wy, Seattle, WA 98101, USA (206) 623-1445                                 https://www.argosycruises.com/parking-directions/ Washington
+               The Seattle Great Wheel 47.606134 -122.342525          1301 Alaskan Wy, Seattle, WA 98101, USA (206) 623-8607                                                     http://seattlegreatwheel.com/ Washington
+                Olympic Sculpture Park 47.616603 -122.355317         2901 Western Ave, Seattle, WA 98121, USA (206) 654-3100                    https://www.seattleartmuseum.org/visit/olympic-sculpture-park/ Washington
+                               Pier 56 47.605443 -122.340245          1201 Alaskan Wy, Seattle, WA 98101, USA (206) 623-4340                                              https://www.elliottsoysterhouse.com/ Washington
+                            Kerry Park 47.629469 -122.359922        211 W Highland Dr, Seattle, WA 98119, USA (206) 684-4075                                http://www.seattle.gov/parks/find/parks/kerry-park Washington
+           Mount Rainier National Park 46.879966 -121.726909                                  Washington, USA (360) 569-2211                                                https://www.nps.gov/mora/index.htm Washington
+                          Space Needle 47.620506 -122.349277             400 Broad St, Seattle, WA 98109, USA (206) 905-2100                                                      https://www.spaceneedle.com/ Washington
+                 Olympic National Park 47.802107 -123.604352  3002 Mt Angeles Rd, Port Angeles, WA 98362, USA (360) 565-3130                                                 http://www.nps.gov/olym/index.htm Washington
+Sky View Observatory - Columbia Center 47.604364 -122.331011              700 4th Ave, Seattle, WA 98104, USA (206) 386-5564                                                    http://skyviewobservatory.com/ Washington
+                           Smith Tower 47.601853 -122.331858              506 2nd Ave, Seattle, WA 98104, USA (206) 624-0414                                                        http://www.smithtower.com/ Washington
+              Chihuly Garden and Glass 47.620560 -122.350448          305 Harrison St, Seattle, WA 98109, USA (206) 753-4940                                            https://www.chihulygardenandglass.com/ Washington
+                Chief Seattle Fountain 47.602017 -122.333867            100 Yesler Wy, Seattle, WA 98104, USA (206) 684-0464 http://www.waymarking.com/waymarks/WM34K4_Chief_Seattle_Pioneer_Square_Seattle_WA Washington
+      Original Selfie Museum | Seattle 47.607803 -122.339772              92 Union St, Seattle, WA 98101, USA (206) 487-4500                                                 https://originalselfiemuseum.com/ Washington
+
+### Restaurants in Washington
+                       Name  Average Cost                                         Cuisines  Aggregate Rating       City
+                Los Aztecas            46                     Cafe, Bakery, BBQ, Fast Food               3.5 Washington
+      Manna Java World Cafe            59                                    Cafe, Seafood               3.5 Washington
+   Hemingway's Island Grill            57           Mexican, BBQ, Fast Food, Cafe, Seafood               3.5 Washington
+                 Thaaliwala            88                   Tea, Pizza, Italian, BBQ, Cafe               4.1 Washington
+        Republic of Chicken            91                  Tea, Bakery, American, Desserts               3.1 Washington
+                 Good Foods            65                           BBQ, Desserts, Seafood               3.3 Washington
+             Domino's Pizza            94                                  Bakery, Seafood               2.5 Washington
+                 Shiv Dhaba            61                  Bakery, American, Cafe, Seafood               3.1 Washington
+               Amaze Dining            92                 Cafe, Pizza, American, Fast Food               3.1 Washington
+         Moradabadi Biryani            12                         Cafe, Mexican, Fast Food               3.1 Washington
+            Cafe Coffee Day            53 Tea, Mexican, Fast Food, Cafe, American, Seafood               2.3 Washington
+        Bikaner Sweet House            61                                    BBQ, Desserts               3.2 Washington
+              Biryani Point            46             Desserts, Tea, Pizza, Cafe, American               0.0 Washington
+Chidya Ghar - Roseate House            70                        Tea, Bakery, BBQ, Seafood               2.9 Washington
+               Hearken Caf愆            30                          Cafe, Desserts, Italian               4.0 Washington
+             Baskin Robbins            87         Tea, Mexican, Bakery, Fast Food, Seafood               3.5 Washington
+                  Keventers            46              Tea, Pizza, French, Bakery, Seafood               3.5 Washington
+                 The Hangar            74                Tea, Fast Food, Desserts, Seafood               4.6 Washington
+
+### Accommodations in Washington
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number       city
+ Beautifully Renovated 3BD/2BA ☆ 1 Block to Subway 1170.0 Entire home/apt                        No children under 10             2.0                  8                 3.0 Washington
+    Stunning 2Bed/2BA + 300sqft deck by the river!  209.0 Entire home/apt                                 No visitors             1.0                  3                 2.0 Washington
+         Serene bedroom in the heart of Fort Green 1114.0    Private room No pets & No smoking & No children under 10             2.0                  2                 4.0 Washington
+                         Private room in Manhattan  218.0    Private room                                 No visitors             2.0                  2                 2.0 Washington
+               Comfortable & Cozy Times Square Apt  499.0 Entire home/apt           No parties & No children under 10             2.0                  3                 3.0 Washington
+         Large one bedroom on the Upper East Side.  799.0 Entire home/apt          No pets & No visitors & No parties             2.0                  4                 4.0 Washington
+Comfortable bed, lighting, fresh linens, workspace  518.0    Private room No children under 10 & No parties & No pets             1.0                  1                 3.0 Washington
+     Huge 2 Bedroom, Great Location, Express Metro  745.0 Entire home/apt          No children under 10 & No visitors             4.0                  4                 5.0 Washington
+             Cozy studio in the heart of Manhattan  826.0 Entire home/apt                                  No parties             5.0                  3                 5.0 Washington
+                        Chelsea's best kept secret  802.0 Entire home/apt                    No visitors & No smoking             3.0                  2                 4.0 Washington
+     Massive Master Bedroom in Manhattan Apartment  411.0    Private room                                  No smoking             1.0                  1                 4.0 Washington
+Private Apt Near NYC Airport & Northshore Hospital  592.0 Entire home/apt           No smoking & No children under 10             1.0                  3                 1.0 Washington
+     Cozy LIC Loft-Style Apt- Minutes to Manhattan 1063.0 Entire home/apt                        No smoking & No pets            20.0                  6                 2.0 Washington
+             Cozy One Bedroom Near Fort Tryon Park  988.0 Entire home/apt                        No children under 10             2.0                  5                 3.0 Washington
+
+### Flight from St. Louis to Washington on 2022-03-01
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3787470    324   10:49   13:46 1 hours 57 minutes 2022-03-01      St. Louis   Washington     719.0
+     F3789735    256   18:11   21:09 1 hours 58 minutes 2022-03-01      St. Louis   Washington     719.0
+     F3797371    300   14:44   17:50  2 hours 6 minutes 2022-03-01      St. Louis   Washington     719.0
+     F3934238    206   06:40   09:42  2 hours 2 minutes 2022-03-01      St. Louis   Washington     696.0
+     F3934368    162   12:42   15:38 1 hours 56 minutes 2022-03-01      St. Louis   Washington     696.0
+     F3937819    244   13:42   16:31 1 hours 49 minutes 2022-03-01      St. Louis   Washington     719.0
+     F3937820    160   08:21   11:08 1 hours 47 minutes 2022-03-01      St. Louis   Washington     719.0
+     F3937821    283   16:20   19:05 1 hours 45 minutes 2022-03-01      St. Louis   Washington     719.0
+     F4057337    237   05:59   08:55 1 hours 56 minutes 2022-03-01      St. Louis   Washington     719.0
+
+### Self-driving from St. Louis to Washington
+self-driving, from St. Louis to Washington, duration: 12 hours 44 mins, distance: 1,310 km, cost: 65
+
+### Taxi from St. Louis to Washington
+taxi, from St. Louis to Washington, duration: 12 hours 44 mins, distance: 1,310 km, cost: 1310
+
+### Flight from Washington to St. Louis on 2022-03-03
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3785455    261   14:49   16:09 2 hours 20 minutes 2022-03-03     Washington    St. Louis     719.0
+     F3787445    328   08:44   10:20 2 hours 36 minutes 2022-03-03     Washington    St. Louis     719.0
+     F3788616    146   16:09   17:42 2 hours 33 minutes 2022-03-03     Washington    St. Louis     719.0
+     F3932933    257   17:22   18:49 2 hours 27 minutes 2022-03-03     Washington    St. Louis     696.0
+     F3933137    179   10:37   11:56 2 hours 19 minutes 2022-03-03     Washington    St. Louis     696.0
+     F3942133    286   12:50   13:59  2 hours 9 minutes 2022-03-03     Washington    St. Louis     719.0
+     F3942134    229   08:23   09:42 2 hours 19 minutes 2022-03-03     Washington    St. Louis     719.0
+     F3942135    188   19:08   20:31 2 hours 23 minutes 2022-03-03     Washington    St. Louis     719.0
+     F4054886    207   22:13   23:29 2 hours 16 minutes 2022-03-03     Washington    St. Louis     719.0
+
+### Self-driving from Washington to St. Louis
+self-driving, from Washington to St. Louis, duration: 12 hours 31 mins, distance: 1,311 km, cost: 65
+
+### Taxi from Washington to St. Louis
+taxi, from Washington to St. Louis, duration: 12 hours 31 mins, distance: 1,311 km, cost: 1311
+
+JSON plan:

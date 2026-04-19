@@ -1,0 +1,199 @@
+{
+  "condition": "steer_immediate_minus128",
+  "signed_strength": -128.0,
+  "steering_applied": true,
+  "steering_layer": 40,
+  "env": "airline",
+  "task_split": "test",
+  "task_id": 9,
+  "trial": 0,
+  "task_user_id": "mohamed_silva_9265",
+  "task_instruction_sha256": "f2816ca2a47b8c1c07f71e1a80758cf0c42f68084a7b7e2df9685d335c004f22",
+  "n_reference_actions": 4,
+  "n_expected_outputs": 3,
+  "reward": 0.0,
+  "success": false,
+  "done": false,
+  "steps": 30,
+  "tool_action_count": 19,
+  "respond_action_count": 11,
+  "parse_error_count": 0,
+  "unknown_action_count": 0,
+  "tool_error_count": 0,
+  "transferred_to_human": false,
+  "stopped_by_user": false,
+  "user_cost": null,
+  "agent_input_tokens": 318762,
+  "agent_output_tokens": 1557,
+  "agent_generation_seconds": 193.62657284736633,
+  "final_info": {
+    "task": {
+      "user_id": "mohamed_silva_9265",
+      "actions": [
+        {
+          "name": "cancel_reservation",
+          "kwargs": {
+            "reservation_id": "K1NW8N"
+          }
+        },
+        {
+          "name": "book_reservation",
+          "kwargs": {
+            "user_id": "mohamed_silva_9265",
+            "origin": "JFK",
+            "destination": "SFO",
+            "flight_type": "round_trip",
+            "cabin": "business",
+            "flights": [
+              {
+                "flight_number": "HAT023",
+                "date": "2024-05-26"
+              },
+              {
+                "flight_number": "HAT204",
+                "date": "2024-05-28"
+              },
+              {
+                "flight_number": "HAT100",
+                "date": "2024-05-28"
+              }
+            ],
+            "passengers": [
+              {
+                "first_name": "Mohamed",
+                "last_name": "Silva",
+                "dob": "1960-11-26"
+              }
+            ],
+            "payment_methods": [
+              {
+                "payment_id": "certificate_3765853",
+                "amount": 500
+              },
+              {
+                "payment_id": "gift_card_8020792",
+                "amount": 198
+              },
+              {
+                "payment_id": "gift_card_6136092",
+                "amount": 129
+              },
+              {
+                "payment_id": "credit_card_2198526",
+                "amount": 44
+              }
+            ],
+            "total_baggages": 0,
+            "nonfree_baggages": 0,
+            "insurance": "no"
+          }
+        },
+        {
+          "name": "book_reservation",
+          "kwargs": {
+            "user_id": "mohamed_silva_9265",
+            "origin": "JFK",
+            "destination": "SFO",
+            "flight_type": "round_trip",
+            "cabin": "business",
+            "flights": [
+              {
+                "flight_number": "HAT023",
+                "date": "2024-05-26"
+              },
+              {
+                "flight_number": "HAT204",
+                "date": "2024-05-28"
+              },
+              {
+                "flight_number": "HAT100",
+                "date": "2024-05-28"
+              }
+            ],
+            "passengers": [
+              {
+                "first_name": "Aarav",
+                "last_name": "Sanchez",
+                "dob": "1986-09-12"
+              }
+            ],
+            "payment_methods": [
+              {
+                "payment_id": "certificate_9984806",
+                "amount": 250
+              },
+              {
+                "payment_id": "credit_card_2198526",
+                "amount": 621
+              }
+            ],
+            "total_baggages": 0,
+            "nonfree_baggages": 0,
+            "insurance": "no"
+          }
+        },
+        {
+          "name": "book_reservation",
+          "kwargs": {
+            "user_id": "mohamed_silva_9265",
+            "origin": "JFK",
+            "destination": "SFO",
+            "flight_type": "round_trip",
+            "cabin": "business",
+            "flights": [
+              {
+                "flight_number": "HAT023",
+                "date": "2024-05-26"
+              },
+              {
+                "flight_number": "HAT204",
+                "date": "2024-05-28"
+              },
+              {
+                "flight_number": "HAT100",
+                "date": "2024-05-28"
+              }
+            ],
+            "passengers": [
+              {
+                "first_name": "Evelyn",
+                "last_name": "Wilson",
+                "dob": "1980-03-27"
+              }
+            ],
+            "payment_methods": [
+              {
+                "payment_id": "certificate_2765295",
+                "amount": 250
+              },
+              {
+                "payment_id": "credit_card_2198526",
+                "amount": 621
+              }
+            ],
+            "total_baggages": 0,
+            "nonfree_baggages": 0,
+            "insurance": "no"
+          }
+        }
+      ],
+      "instruction": "Your user id is mohamed_silva_9265. You want to know the sum of gift card balances. You also want to know the sum of certificate balances. Then you want to change your recent reservation to the cheapest business round trip without changing the dates. You don't care about direct flight or stop over. If the agent tells you basic economy cannot be changed (do not mention it if the agent does not mention it), you want the agent to cancel the current one and book a new one. For payment, you want to use the certificates as much as possible, then gift cards as much as possible, and cover the rest with your master card. But you want to know how much your master card will be charged. You do not need baggage or insurance. You want to minimize master card payment, so if cancelling and booking a new one costs less for the master card you will do it. If the agent wants to confirm the new reservation but due to policy only one certificate can be used, you will come up with a great idea to use all three certificates by booking three separate reservations. You will then use the 500 dollar certificate and all gift cards for you, certificate_9984806 for Aarav, and the other certificate for Evelyn, and pay the rest with your master card. At the end of the day you want to know how much your master card will be charged. You are calm.",
+      "outputs": [
+        "327",
+        "1000",
+        "1286"
+      ]
+    },
+    "source": "search_onestop_flight",
+    "user_cost": null,
+    "reward_info": null
+  },
+  "reward_info_type": null,
+  "r_actions": null,
+  "r_outputs": null,
+  "outputs_all_pass": null,
+  "gt_data_hash": null,
+  "record_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_immediate_minus128/records/airline_trial00_task0009.json",
+  "trajectory_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_immediate_minus128/trajectories/airline_trial00_task0009.json",
+  "messages_path": "/workspace/results/qwen3_32b/taubench_probe_steered/qwen_qwen3_32b_taubench_retail_airline_test_airline_0_49_n50_retail_0_114_n115_trials1_layer40_explicit_train_only_mean_answer_tokens_mm_probe_vectors_art872a1a8f1b_tok768_dd4c4da4a3/conditions/steer_immediate_minus128/messages/airline_trial00_task0009.json"
+}

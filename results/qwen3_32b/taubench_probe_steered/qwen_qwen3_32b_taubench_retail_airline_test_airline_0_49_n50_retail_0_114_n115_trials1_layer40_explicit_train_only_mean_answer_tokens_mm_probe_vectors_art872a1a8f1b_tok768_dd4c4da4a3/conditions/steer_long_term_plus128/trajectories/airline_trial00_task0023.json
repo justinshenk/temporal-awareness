@@ -1,0 +1,1173 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi! I'd like to modify my upcoming flight reservation HXDUBJ. I need to make a few changes to my booking.",
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide your user ID and the reservation ID for the reservation HXDUBJ?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Sure, I can help with that. Could you please provide your user ID and the reservation ID for the reservation HXDUBJ?"
+      }
+    },
+    "observation": "My user ID is yara_garcia_1905 and the reservation ID is HXDUBJ.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Sure, I can help with that. Could you please provide your user ID and the reservation ID for the reservation HXDUBJ?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4632,
+    "output_tokens": 44,
+    "generation_seconds": 3.8861606121063232,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HXDUBJ\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "HXDUBJ"
+      }
+    },
+    "observation": "{\"reservation_id\": \"HXDUBJ\", \"user_id\": \"yara_garcia_1905\", \"origin\": \"IAH\", \"destination\": \"SFO\", \"flight_type\": \"round_trip\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"IAH\", \"destination\": \"JFK\", \"flight_number\": \"HAT085\", \"date\": \"2024-05-18\", \"price\": 177}, {\"origin\": \"JFK\", \"destination\": \"SFO\", \"flight_number\": \"HAT023\", \"date\": \"2024-05-18\", \"price\": 146}, {\"origin\": \"SFO\", \"destination\": \"IAH\", \"flight_number\": \"HAT278\", \"date\": \"2024-05-22\", \"price\": 180}], \"passengers\": [{\"first_name\": \"Yara\", \"last_name\": \"Garcia\", \"dob\": \"1974-08-15\"}], \"payment_history\": [{\"payment_id\": \"gift_card_6941833\", \"amount\": 533}], \"created_at\": \"2024-05-04T06:04:48\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HXDUBJ\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4709,
+    "output_tokens": 24,
+    "generation_seconds": 2.6894760131835938,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. I see that your reservation HXDUBJ includes a round-trip journey from IAH to SFO with economy class. Could you clarify the specific changes you'd like to make to your booking? For instance, do you wish to modify the flight dates, cabin class, or other aspects of your journey?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Thank you for providing the details. I see that your reservation HXDUBJ includes a round-trip journey from IAH to SFO with economy class. Could you clarify the specific changes you'd like to make to your booking? For instance, do you wish to modify the flight dates, cabin class, or other aspects of your journey?"
+      }
+    },
+    "observation": "Yes, I'd like to make several changes. First, I want to push my outgoing flight to the next day and make sure it's a nonstop flight. I also want to move my return flight back by one day as well.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Thank you for providing the details. I see that your reservation HXDUBJ includes a round-trip journey from IAH to SFO with economy class. Could you clarify the specific changes you'd like to make to your booking? For instance, do you wish to modify the flight dates, cabin class, or other aspects of your journey?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5064,
+    "output_tokens": 86,
+    "generation_seconds": 6.483109951019287,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"SFO\", \"date\": \"2024-05-19\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "IAH",
+        "destination": "SFO",
+        "date": "2024-05-19"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT072\", \"origin\": \"IAH\", \"destination\": \"SFO\", \"scheduled_departure_time_est\": \"09:00:00\", \"scheduled_arrival_time_est\": \"13:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 9, \"business\": 9}, \"prices\": {\"basic_economy\": 68, \"economy\": 130, \"business\": 282}}, {\"flight_number\": \"HAT180\", \"origin\": \"IAH\", \"destination\": \"SFO\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"11:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 4, \"economy\": 17, \"business\": 15}, \"prices\": {\"basic_economy\": 65, \"economy\": 130, \"business\": 346}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"SFO\", \"date\": \"2024-05-19\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5207,
+    "output_tokens": 43,
+    "generation_seconds": 3.9534947872161865,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"IAH\", \"date\": \"2024-05-23\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "SFO",
+        "destination": "IAH",
+        "date": "2024-05-23"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT082\", \"origin\": \"SFO\", \"destination\": \"IAH\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 9, \"business\": 2}, \"prices\": {\"basic_economy\": 92, \"economy\": 164, \"business\": 323}}, {\"flight_number\": \"HAT278\", \"origin\": \"SFO\", \"destination\": \"IAH\", \"scheduled_departure_time_est\": \"16:00:00\", \"scheduled_arrival_time_est\": \"20:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 13, \"economy\": 5, \"business\": 3}, \"prices\": {\"basic_economy\": 67, \"economy\": 187, \"business\": 443}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"IAH\", \"date\": \"2024-05-23\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5506,
+    "output_tokens": 43,
+    "generation_seconds": 4.078362703323364,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found direct flight options for your modified dates. For your outgoing journey on 2024-05-19, you can choose from flights like HAT072 or HAT180. For your return journey on 2024-05-23, options such as HAT082 or HAT278 are available. Each of these flights offers distinct experiences, with varying amenities and comfort levels. Would you like to explore these options further, or are there specific preferences you'd like to consider in your travel journey?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found direct flight options for your modified dates. For your outgoing journey on 2024-05-19, you can choose from flights like HAT072 or HAT180. For your return journey on 2024-05-23, options such as HAT082 or HAT278 are available. Each of these flights offers distinct experiences, with varying amenities and comfort levels. Would you like to explore these options further, or are there specific preferences you'd like to consider in your travel journey?"
+      }
+    },
+    "observation": "I'd prefer flights that depart after 8am and before 9pm. Which of those options meet that timing preference?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found direct flight options for your modified dates. For your outgoing journey on 2024-05-19, you can choose from flights like HAT072 or HAT180. For your return journey on 2024-05-23, options such as HAT082 or HAT278 are available. Each of these flights offers distinct experiences, with varying amenities and comfort levels. Would you like to explore these options further, or are there specific preferences you'd like to consider in your travel journey?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5806,
+    "output_tokens": 135,
+    "generation_seconds": 9.603734970092773,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"For your outgoing journey on 2024-05-19, the flight HAT072 departs at 9:00 AM, which is after 8 AM. For your return journey on 2024-05-23, the flight HAT278 departs at 4:00 PM, which is before 9 PM. These options align with your timing preferences. Would you like to proceed with these flights, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "For your outgoing journey on 2024-05-19, the flight HAT072 departs at 9:00 AM, which is after 8 AM. For your return journey on 2024-05-23, the flight HAT278 departs at 4:00 PM, which is before 9 PM. These options align with your timing preferences. Would you like to proceed with these flights, or are there other aspects of your journey you'd like to explore further?"
+      }
+    },
+    "observation": "Those times work great for me. I'd also like to upgrade to business class and add 2 checked bags to my reservation. What would the additional costs be for these changes?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"For your outgoing journey on 2024-05-19, the flight HAT072 departs at 9:00 AM, which is after 8 AM. For your return journey on 2024-05-23, the flight HAT278 departs at 4:00 PM, which is before 9 PM. These options align with your timing preferences. Would you like to proceed with these flights, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5975,
+    "output_tokens": 131,
+    "generation_seconds": 9.393662214279175,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"think\", \"arguments\": {\"thought\": \"To calculate the additional costs, I need to determine the price difference between economy and business class for the flights and the cost of the checked bags.\"}}",
+    "action": {
+      "name": "think",
+      "arguments": {
+        "thought": "To calculate the additional costs, I need to determine the price difference between economy and business class for the flights and the cost of the checked bags."
+      }
+    },
+    "observation": "",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "think",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"think\", \"arguments\": {\"thought\": \"To calculate the additional costs, I need to determine the price difference between economy and business class for the flights and the cost of the checked bags.\"}}",
+    "parsed_action_name": "think",
+    "input_tokens": 6151,
+    "output_tokens": 46,
+    "generation_seconds": 4.482118129730225,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"calculate\", \"arguments\": {\"expression\": \"((282 - 130) + (187 - 130)) + (2 * 50)\"}}",
+    "action": {
+      "name": "calculate",
+      "arguments": {
+        "expression": "((282 - 130) + (187 - 130)) + (2 * 50)"
+      }
+    },
+    "observation": "309.0",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "calculate",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"calculate\", \"arguments\": {\"expression\": \"((282 - 130) + (187 - 130)) + (2 * 50)\"}}",
+    "parsed_action_name": "calculate",
+    "input_tokens": 6210,
+    "output_tokens": 46,
+    "generation_seconds": 4.614840507507324,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"The additional costs for upgrading to business class and adding two checked bags would amount to $309.00. Would you like to proceed with these changes, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The additional costs for upgrading to business class and adding two checked bags would amount to $309.00. Would you like to proceed with these changes, or are there other aspects of your journey you'd like to explore further?"
+      }
+    },
+    "observation": "I need to mention that I have travel insurance that should cover these fees according to the policy I read on your website. Can you please waive the charges for me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"The additional costs for upgrading to business class and adding two checked bags would amount to $309.00. Would you like to proceed with these changes, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6274,
+    "output_tokens": 65,
+    "generation_seconds": 5.814322233200073,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but according to our policy, travel insurance typically covers unforeseen circumstances and does not apply to optional upgrades or additional services like checked bags. These upgrades and services are considered personal choices and are not typically covered by insurance. I recommend reviewing the specific terms of your insurance policy for clarity. Would you like to proceed with the upgrade and the checked bags at the additional cost, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but according to our policy, travel insurance typically covers unforeseen circumstances and does not apply to optional upgrades or additional services like checked bags. These upgrades and services are considered personal choices and are not typically covered by insurance. I recommend reviewing the specific terms of your insurance policy for clarity. Would you like to proceed with the upgrade and the checked bags at the additional cost, or are there other aspects of your journey you'd like to explore further?"
+      }
+    },
+    "observation": "I specifically read on your website that fees for changes should be waived if you have insurance. I'd like you to honor that policy. Can you please check again or escalate this to a supervisor who can verify this for me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but according to our policy, travel insurance typically covers unforeseen circumstances and does not apply to optional upgrades or additional services like checked bags. These upgrades and services are considered personal choices and are not typically covered by insurance. I recommend reviewing the specific terms of your insurance policy for clarity. Would you like to proceed with the upgrade and the checked bags at the additional cost, or are there other aspects of your journey you'd like to explore further?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6381,
+    "output_tokens": 107,
+    "generation_seconds": 8.642778396606445,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"The user is requesting a waiver of fees for changes to their reservation, citing travel insurance and a specific policy mentioned on the airline's website. They are seeking clarification and want the agent to honor the stated policy. The user is also requesting escalation to a supervisor for verification and resolution.\"}}",
+    "action": {
+      "name": "transfer_to_human_agents",
+      "arguments": {
+        "summary": "The user is requesting a waiver of fees for changes to their reservation, citing travel insurance and a specific policy mentioned on the airline's website. They are seeking clarification and want the agent to honor the stated policy. The user is also requesting escalation to a supervisor for verification and resolution."
+      }
+    },
+    "observation": "Transfer successful",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "yara_garcia_1905",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ],
+        "instruction": "Your user id is yara_garcia_1905 and you want to change your upcoming outgoing flight in reservation HXDUBJ to a nonstop flight on the next day (i.e. delay by one day). You also want to move back your return from SFO by one day. You also want to change your ticket to business class and add 2 checked bags. You prefer flights departing after 8am and before 9pm. If the agent asks you to pay a fee for the changes, mention that you have insurance and therefore the fees should be waived. You have read that on the website and want the agent to honor the policy. Be persistent. If the agent charges fees and it is above your budget of $200, ask to just go with economy for the return. If and only if that is not possible, you are ok with economy for both legs. You are ok with paying for it using the original form of payment.",
+        "outputs": []
+      },
+      "source": "transfer_to_human_agents",
+      "user_cost": 0.001348,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "ab332f06c7b21fd0a3bbae13bdab8223108b5045b59b6dc877e1dedf1a3cef17"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "HXDUBJ"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "IAH",
+              "destination": "SFO",
+              "date": "2024-05-19"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "SFO",
+              "destination": "IAH",
+              "date": "2024-05-21"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT072",
+                  "date": "2024-05-19"
+                },
+                {
+                  "flight_number": "HAT278",
+                  "date": "2024-05-23"
+                }
+              ],
+              "payment_id": "gift_card_6941833"
+            }
+          },
+          {
+            "name": "update_reservation_baggages",
+            "kwargs": {
+              "reservation_id": "HXDUBJ",
+              "total_baggages": 2,
+              "nonfree_baggages": 2,
+              "payment_id": "gift_card_6941833"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"The user is requesting a waiver of fees for changes to their reservation, citing travel insurance and a specific policy mentioned on the airline's website. They are seeking clarification and want the agent to honor the stated policy. The user is also requesting escalation to a supervisor for verification and resolution.\"}}",
+    "parsed_action_name": "transfer_to_human_agents",
+    "input_tokens": 6542,
+    "output_tokens": 76,
+    "generation_seconds": 6.5281126499176025,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

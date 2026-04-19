@@ -1,0 +1,241 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you assist in devising a 7-day trip for one person, commencing in Medford and involving visits to 3 distinct cities in Colorado from March 23rd to March 29th, 2022? The budget for this trip is set at $2,400.
+
+Reference information:
+### Attractions in Grand Junction
+                                                             Name  Latitude   Longitude                                            Address          Phone                                                              Website           City
+                  Museum of the West, Museums of Western Colorado 39.065688 -108.564776         462 Ute Ave, Grand Junction, CO 81501, USA (970) 242-0971                                       https://museumofwesternco.com/ Grand Junction
+                                 Eureka! McConnell Science Museum 39.080430 -108.560690       1400 N 7th St, Grand Junction, CO 81501, USA (970) 254-1626                                  http://www.eurekasciencemuseum.org/ Grand Junction
+                                                 Bananas Fun Park 39.083549 -108.596292 2469 Riverside Pkwy, Grand Junction, CO 81505, USA (970) 241-7529                                       http://www.bananasfunpark.com/ Grand Junction
+                               Western Colorado Botanical Gardens 39.055223 -108.561205   655 Struthers Ave, Grand Junction, CO 81501, USA (970) 245-9030                                               https://wcbotanic.org/ Grand Junction
+                                                 Canyon View Park 39.110663 -108.605773           730 24 Rd, Grand Junction, CO 81505, USA (970) 254-3866                                            http://gjparksandrec.org/ Grand Junction
+                                                   Eagle Rim Park 39.052619 -108.545203                      Grand Junction, CO 81503, USA        Unknown https://www.gjcity.org/Facilities/Facility/Details/Eagle-Rim-Park-12 Grand Junction
+        Cross Orchards Historic Site, Museums of Western Colorado 39.091496 -108.483055           3073 F Rd, Grand Junction, CO 81504, USA (970) 242-0971                                       https://museumofwesternco.com/ Grand Junction
+                        James M. Robb - Colorado River State Park 39.057437 -108.460757                  361 32 Rd, Clifton, CO 81520, USA (970) 434-3388     https://cpw.state.co.us/placestogo/Parks/jamesmrobbcoloradoriver Grand Junction
+                                        Long Family Memorial Park 39.089416 -108.474468           3117 F Rd, Grand Junction, CO 81504, USA (970) 244-3230                                                              Unknown Grand Junction
+James M. Robb - Colorado River State Park Connected Lakes Section 39.082473 -108.612894             Dike Rd, Grand Junction, CO 81507, USA (970) 858-9188     https://cpw.state.co.us/placestogo/Parks/jamesmrobbcoloradoriver Grand Junction
+                                     Attractions Grand Junction!! 39.092180 -108.602825                US-6, Grand Junction, CO 81505, USA        Unknown                                                              Unknown Grand Junction
+                                                 Palisade Tourism 39.069465 -108.561561       652 White Ave, Grand Junction, CO 81501, USA (970) 242-7674                                                              Unknown Grand Junction
+                                                      Rocket Park 39.084025 -108.535000      1827 N 26th St, Grand Junction, CO 81501, USA (970) 254-3866    https://www.gjcity.org/Facilities/Facility/Details/Rocket-Park-26 Grand Junction
+                                  Welcome To Grand Junction Mural 39.067525 -108.564243         500 Main St, Grand Junction, CO 81501, USA        Unknown                                                http://gjcreates.org/ Grand Junction
+                                Walter Walker State Wildlife Area 39.106128 -108.649952   2175 Railroad Ave, Grand Junction, CO 81505, USA (970) 255-6100                                                              Unknown Grand Junction
+                                             Visit Grand Junction 39.110248 -108.539996      740 Horizon Dr, Grand Junction, CO 81506, USA (970) 256-4060                                  https://www.visitgrandjunction.com/ Grand Junction
+                                                   Hawthorne Park 39.073947 -108.565285    400 Gunnison Ave, Grand Junction, CO 81501, USA (970) 254-3866                                                              Unknown Grand Junction
+                                                   Columbine Park 39.083482 -108.527765       544 28 1/4 Rd, Grand Junction, CO 81501, USA (970) 254-3866       http://www.gjcity.org/residents/parks-recreation/parks/#footer Grand Junction
+                                              Red Canyon Overlook 39.030847 -108.686327     2198 Rimrock Dr, Grand Junction, CO 81507, USA (970) 858-3617                                                  http://nps.gov/colm Grand Junction
+                                                     Lincoln Park 39.075141 -108.545335       910 N 12th St, Grand Junction, CO 81501, USA (970) 254-3866                                            http://gjparksandrec.org/ Grand Junction
+
+### Restaurants in Grand Junction
+                                     Name  Average Cost                                                 Cuisines  Aggregate Rating           City
+              Austin's BBQ and Oyster Bar            15                  Tea, Bakery, Fast Food, Indian, Seafood               3.3 Grand Junction
+                                    2 Dog            29                 Desserts, BBQ, Fast Food, Cafe, American               4.2 Grand Junction
+                            Thakur Bakers           100                                 French, Pizza, Cafe, BBQ               3.0 Grand Junction
+Shanghai Bar & Lounge - The Bristol Hotel            31                                              Cafe, Pizza               3.0 Grand Junction
+                            Pind Balluchi            17                              Fast Food, Chinese, Seafood               2.7 Grand Junction
+                               Cocoa Tree            68                            Tea, Chinese, Cafe, Fast Food               4.3 Grand Junction
+                           Punjab Da Pind            52 Desserts, Pizza, Bakery, Chinese, Mediterranean, Seafood               3.7 Grand Junction
+               Baba Chicken Ludhiana Wale            12                            Tea, Pizza, Indian, Fast Food               0.0 Grand Junction
+                                  Cha Bar            10                               Tea, Bakery, American, BBQ               3.9 Grand Junction
+                               Penta Cafe            66                            French, Mexican, BBQ, Seafood               3.6 Grand Junction
+                       Om Ji Bhature Wale            42       Desserts, Fast Food, Cafe, American, Mediterranean               0.0 Grand Junction
+                               Food Daddy            64                                Bakery, Desserts, Seafood               0.0 Grand Junction
+               Ambarsari Kababs & Curries            55                    Pizza, BBQ, Fast Food, Cafe, American               3.0 Grand Junction
+                         Curries & Kebabs            74               Desserts, Mexican, Cafe, American, Seafood               2.7 Grand Junction
+                               Nukkadwala            82                                               Pizza, BBQ               3.7 Grand Junction
+                                Vedanta's            21                       Tea, French, Bakery, Cafe, Seafood               2.7 Grand Junction
+                        New Punjabi Khana            10                           Chinese, French, Cafe, Seafood               3.1 Grand Junction
+                              Kings Kulfi            93                  Tea, Pizza, BBQ, Mediterranean, Seafood               3.3 Grand Junction
+                        Flavors Of London            80                            BBQ, Pizza, Desserts, Seafood               0.0 Grand Junction
+                               Grill Zone            59                                  Fast Food, BBQ, Seafood               3.4 Grand Junction
+                       Facebook Fast Food            90                                         Tea, Indian, BBQ               0.0 Grand Junction
+                            Pizza Station            29                     Tea, French, BBQ, Fast Food, Seafood               0.0 Grand Junction
+                           Sinfully Yours            43                              Pizza, Bakery, BBQ, Seafood               3.3 Grand Junction
+                        Big B Pastry Shop            48                    Tea, French, Fast Food, Cafe, Seafood               0.0 Grand Junction
+          Moti Mahal Delux Tandoori Trail            85                                Mexican, Pizza, Fast Food               3.6 Grand Junction
+                           Coffee Culture            87                          French, Cafe, Desserts, Seafood               4.3 Grand Junction
+
+### Accommodations in Grand Junction
+                                            NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number           city
+                NYC Apartment near Central Park! 1118.0 Entire home/apt               No children under 10             3.0                  5                 5.0 Grand Junction
+              Lovely 1 BD on the Upper West Side  854.0 Entire home/apt               No children under 10             1.0                  3                 4.0 Grand Junction
+Private  studio 79REVIEWS-CHECK PROFILEManhattan  940.0 Entire home/apt                         No smoking             2.0                  4                 3.0 Grand Junction
+       New Renovated Studio~Prime Upper East~W/D 1174.0 Entire home/apt No pets & No visitors & No parties            30.0                 10                 4.0 Grand Junction
+                    Clean spacious 1 bedroom apt 1063.0 Entire home/apt  No children under 10 & No parties             2.0                  3                 4.0 Grand Junction
+     Cool room Manhattan - Sleeps up to 3 guests  208.0    Private room                            No pets             1.0                  2                 5.0 Grand Junction
+             Lovely 2-Bedroom Near Prospect Park  595.0 Entire home/apt                         No parties             3.0                  3                 5.0 Grand Junction
+  Designers Lovely UWS Full Floor Townhouse Apt!  978.0 Entire home/apt No pets & No smoking & No visitors             3.0                  9                 2.0 Grand Junction
+   Modern apartment in the heart of Williamsburg  561.0 Entire home/apt                            No pets             5.0                  5                 5.0 Grand Junction
+
+### Attractions in Durango
+                                     Name  Latitude   Longitude                                         Address          Phone                                                                    Website    City
+                            Animas Museum 37.299230 -107.873323          3065 W 2nd Ave, Durango, CO 81301, USA (970) 259-2402                                              https://www.animasmuseum.org/ Durango
+                           The Powerhouse 37.278287 -107.880541     1295 Camino Del Rio, Durango, CO 81301, USA (970) 259-9234                                                        https://powsci.org/ Durango
+                  Durango Wildlife Museum 37.281442 -107.875858           151 E 16th St, Durango, CO 81301, USA (970) 247-0855 https://www.durango.org/discover-durango/fish-hatchery-and-wildlife-museum Durango
+                          Whitewater Park 37.264132 -107.881276      107 Camino Del Rio, Durango, CO 81301, USA        Unknown  https://www.durangogov.org/Facilities/Facility/Details/Whitewater-Park-31 Durango
+     Durango Adventures and Zipline Tours 37.270233 -107.908568            20673 US-160, Durango, CO 81301, USA (970) 759-9880                                              http://durangoadventures.com/ Durango
+                  Oxbow Park and Preserve 37.309654 -107.854314      500 Animas View Dr, Durango, CO 81301, USA (970) 375-7321                   http://www.durangogov.org/Facilities/Facility/Details/33 Durango
+Durango & Silverton Narrow Gauge Railroad 37.269088 -107.882534            479 Main Ave, Durango, CO 81301, USA (888) 872-4607                                               http://www.durangotrain.com/ Durango
+                            Fish Hatchery 37.281395 -107.875608           151 E 16th St, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                         Animas City Park 37.301653 -107.868700               E 32nd St, Durango, CO 81301, USA (970) 375-7321  https://www.durangogov.org/facilities/facility/details/Animas-City-Park-1 Durango
+                       Durango train ride 37.275280 -107.880067                          Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                           Schneider Park 37.278186 -107.882483           950 Roosa Ave, Durango, CO 81301, USA        Unknown                       https://www.durango.org/listing/schneider-park/1843/ Durango
+                                Lions Den 37.288079 -107.861431             2401 Rim Dr, Durango, CO 81301, USA (970) 375-7321                   http://www.durangogov.org/Facilities/Facility/Details/16 Durango
+                                   Statue 37.277344 -107.882248     1129 Camino Del Rio, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                    Grizzly Brown carving 37.279920 -107.881585          1423 W 3rd Ave, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                        Durango Treasures 37.273516 -107.880371            900 Main Ave, Durango, CO 81301, USA (970) 403-5562            http://durangotreasures.com/?utm_source=gmb&utm_medium=referral Durango
+                           DurangoLiveCam 37.272949 -107.938245       529 Castle Rdg Dr, Durango, CO 81303, USA        Unknown                                                                    Unknown Durango
+                              Scenic View 37.243582 -107.869547    800 S Camino Del Rio, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+                          Dallabetta Park 37.221276 -107.860924 12120-13452 La Posta Rd, Durango, CO 81303, USA        Unknown                       https://durangogov.org/Facilities/Facility/Details/6 Durango
+                    Pinkerton Hot Springs 37.451028 -107.805313            35554 US-550, Durango, CO 81301, USA        Unknown                                                                    Unknown Durango
+           Discovery Museum At-Powerhouse 37.278696 -107.879968     1333 Camino Del Rio, Durango, CO 81301, USA (970) 422-2034                                                        https://powsci.org/ Durango
+
+### Restaurants in Durango
+                                Name  Average Cost                                          Cuisines  Aggregate Rating    City
+Samurai Japanese Cuisine & Sushi Bar            67                       Bakery, Desserts, Fast Food               3.6 Durango
+               Dub's High on the Hog            98               Tea, Italian, French, Cafe, Seafood               4.4 Durango
+              Standard Chicken Point            50                     Mexican, Indian, BBQ, Seafood               0.0 Durango
+            Hot & Tasty Chinese Food            17                            Tea, French, Fast Food               2.6 Durango
+                         Chickenette            31                   Tea, Pizza, Desserts, Fast Food               3.7 Durango
+                         Burger King            11         Desserts, Mexican, Bakery, BBQ, Fast Food               3.2 Durango
+                             Hot Pot            21                        Seafood, Bakery, Fast Food               0.0 Durango
+                       King Bikaneri            87                   Seafood, Indian, BBQ, Fast Food               2.9 Durango
+                   Twenty Four Seven            18                     Tea, Chinese, Pizza, Desserts               2.9 Durango
+                          Asian Haus            26                Fast Food, Seafood, Pizza, Italian               4.1 Durango
+                             Hook Up            72                            Bakery, Pizza, Italian               0.0 Durango
+               Al Forno by Aishwarya            42                                Tea, BBQ, Desserts               3.4 Durango
+                   Natural Ice Cream            24                           Mexican, BBQ, Fast Food               4.5 Durango
+                          Cake Plaza            95                           Cafe, Desserts, Italian               3.1 Durango
+                      Mohit di Hatti            74       Desserts, Italian, Bakery, Chinese, Seafood               3.8 Durango
+  Muradabadi Chicken Biryani & Dhaba            86                      Cafe, Bakery, Pizza, Seafood               0.0 Durango
+                           Pizza Hut            35                Fast Food, French, Bakery, Italian               2.8 Durango
+            Chawla's Tandoori Xpress            59        Desserts, French, Fast Food, Cafe, Seafood               2.5 Durango
+                          The Mashal            85  Italian, BBQ, Fast Food, Cafe, American, Seafood               3.5 Durango
+                             Berco's            33               Cafe, Bakery, Indian, Mediterranean               3.6 Durango
+                           Wow! Momo            12             Seafood, Mexican, Desserts, Fast Food               3.4 Durango
+                       Drool Waffles            65                 Tea, Bakery, BBQ, Indian, Seafood               4.2 Durango
+ The Claridges Garden -The Claridges            94       Tea, Pizza, Mexican, Mediterranean, Seafood               3.1 Durango
+                           Mr.Hunger            81                 Chinese, BBQ, Desserts, Fast Food               3.0 Durango
+     New Aggarwal Sweets & Fast Food            86                     Tea, BBQ, Desserts, Fast Food               0.0 Durango
+                      The China Town            55                         Cafe, Pizza, BBQ, Seafood               3.4 Durango
+                              Gopala            45   Chinese, Bakery, Fast Food, Cafe, Mediterranean               3.3 Durango
+                                Yeoh            11                                 Tea, Mexican, BBQ               0.0 Durango
+               Kansar Gujarati Thali            96                          Pizza, American, Seafood               3.9 Durango
+                        Jason Bakery            43 Desserts, Tea, Pizza, American, Fast Food, Indian               4.2 Durango
+
+### Accommodations in Durango
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number    city
+     Lux 1BR in the heart of NYC Theater district!   81.0 Entire home/apt               No children under 10            30.0                  3                 4.0 Durango
+       UES studio walking distance to central park  997.0 Entire home/apt                            No pets             7.0                  6                 4.0 Durango
+                           Luxury in Best Location   70.0 Entire home/apt No children under 10 & No visitors           198.0                  2                 5.0 Durango
+BEAUTIFUL 2 BED APARTMENT IN WILLIAMSBURG, BROOLYN 1022.0 Entire home/apt  No children under 10 & No parties             7.0                  7                 3.0 Durango
+       Private bedroom w/ roofdeck NO CLEANING FEE 1033.0    Private room                            No pets             3.0                  1                 5.0 Durango
+                    CROWN HEIGHTS GUEST HOUSE 2L2R  467.0 Entire home/apt               No children under 10             3.0                  3                 2.0 Durango
+                      Beautiful Room in Brooklyn!!  886.0    Private room               No children under 10            30.0                  1                 2.0 Durango
+                     Cherry Hill House - Blue Room 1008.0    Private room                         No smoking             1.0                  1                 1.0 Durango
+                        Northern Manhattan Getaway  663.0    Private room           No smoking & No visitors             2.0                  2                 3.0 Durango
+
+### Attractions in Gunnison
+                                      Name  Latitude   Longitude                                     Address          Phone                                                                                                                                                                                                            Website     City
+                             I.O.O.F. Park 38.545670 -106.926598 124 E Virginia Ave, Gunnison, CO 81230, USA (970) 641-8060                                                                                                                                                                                                            Unknown Gunnison
+                            Jorgensen Park 38.542449 -106.920367                     Gunnison, CO 81230, USA (970) 641-8061                                                                                                                                                                https://www.gunnisonco.gov/jorgensen_park/index.php Gunnison
+                   Gunnison Pioneer Museum 38.543948 -106.917676  803 E Tomichi Ave, Gunnison, CO 81230, USA (970) 641-4530                                                                                                                                                                              http://www.gunnisonpioneermuseum.com/ Gunnison
+               Gunnison Valley Observatory 38.509656 -106.940230      2804 Co Rd 38, Gunnison, CO 81230, USA (970) 642-1111                                                                                                                                                                              http://gunnisonvalleyobservatory.com/ Gunnison
+                             Hartman Rocks 38.500540 -106.950145                     Gunnison, CO 81230, USA (970) 642-4940                                                                                                                                                        https://www.blm.gov/mountainbike/colorado/hartmanrocks.html Gunnison
+Black Canyon of the Gunnison National Park 38.575394 -107.741596                               Colorado, USA (970) 641-2337                                                                                                                                                                                  http://www.nps.gov/blca/index.htm Gunnison
+                   West Tomichi River Park 38.545976 -106.950588     113 Emerald Ln, Gunnison, CO 81230, USA        Unknown                                                                                                                                                                                                            Unknown Gunnison
+              Gunnison State Wildlife Area 38.504863 -107.031891          Co Rd 726, Gunnison, CO 81230, USA        Unknown https://www.google.com/url?sa=t&source=web&rct=j&url=https://cpw.state.co.us/learn/Maps/GunnisonSWA_geo.pdf&ved=2ahUKEwi4sd7MmrrlAhVDPq0KHSbDDVAQFjAAegQIBhAC&usg=AOvVaw1mc-ZP_ixOLootqVBJzbBK&cshid=1572104029582 Gunnison
+
+### Restaurants in Gunnison
+                                         Name  Average Cost                                           Cuisines  Aggregate Rating     City
+                Happy Joe's Pizza & Ice Cream            74         Desserts, Italian, Bakery, Indian, Seafood               3.5 Gunnison
+                                         SALT            44                                  Tea, Chinese, BBQ               4.3 Gunnison
+                                        Mocha            30                              Tea, Cafe, Pizza, BBQ               4.0 Gunnison
+                                 Paradise Inn            99                              BBQ, Bakery, Desserts               2.7 Gunnison
+                                      Tughlaq            18                           French, Pizza, Fast Food               3.5 Gunnison
+                             Cyber Hub Social            95                                     Tea, Fast Food               4.3 Gunnison
+                Shree Bikaner Misthan Bhandar            15                                Tea, Pizza, Seafood               3.1 Gunnison
+                                     Sasuraal            61                                Cafe, BBQ, Desserts               3.3 Gunnison
+Game of Legends - Sports Bar, Grill, & Lounge            65                               Tea, Pizza, Desserts               3.5 Gunnison
+                             Green Chick Chop            71                         Pizza, Desserts, Fast Food               3.3 Gunnison
+                        Shree Meenakshi Dosai            12                                Tea, Pizza, Italian               2.9 Gunnison
+                                       Meenas            88                     Tea, Bakery, Indian, Fast Food               2.9 Gunnison
+                           Nirula's Ice Cream            16                                   Tea, Bakery, BBQ               3.2 Gunnison
+                                    Momoholic            75                    Cafe, Pizza, American, Desserts               3.3 Gunnison
+                         Shri Rama Restaurant            13                    Bakery, Mediterranean, Desserts               3.5 Gunnison
+                              Titu Restaurant            44     Pizza, French, Mexican, BBQ, Bakery, Fast Food               2.9 Gunnison
+                                     Haqeem's            85                       Cafe, Mediterranean, Seafood               2.7 Gunnison
+                                    Bake Bank            93                Tea, French, Bakery, BBQ, Fast Food               0.0 Gunnison
+                        Saraswati Food Corner            50                                        Bakery, BBQ               0.0 Gunnison
+                                  Soya Bite's            61  Desserts, Fast Food, Cafe, Mediterranean, Seafood               0.0 Gunnison
+ Organic German Bakeshop - Brown Bread Bakery            19                 Desserts, Pizza, BBQ, Cafe, Indian               3.2 Gunnison
+                               The Cake Bucks            31       Tea, Pizza, French, Bakery, Chinese, Seafood               3.3 Gunnison
+                             Murliwala Bakers            56                           French, Pizza, Fast Food               0.0 Gunnison
+                                   The Sunset            59               Pizza, French, Mexican, BBQ, Seafood               2.6 Gunnison
+                              The Burger Club            85 Desserts, Tea, Pizza, Italian, Cafe, Mediterranean               3.9 Gunnison
+                                     Caf愆 101            72                      Pizza, Bakery, BBQ, Fast Food               3.6 Gunnison
+                                Basil & Thyme            22                 Desserts, Tea, Pizza, BBQ, Chinese               3.6 Gunnison
+                  Larry's China - Taj Vivanta            33                      Cafe, Bakery, Indian, Italian               3.7 Gunnison
+                                  Time To Tea            53        French, Mexican, BBQ, Bakery, Cafe, Seafood               2.8 Gunnison
+                                Cup and Cones            51                          Tea, Bakery, BBQ, Seafood               3.1 Gunnison
+                                    Raj Rasoi            41                               Pizza, American, BBQ               3.3 Gunnison
+                               Social on Main           100           Tea, Pizza, Fast Food, American, Seafood               4.0 Gunnison
+                                  Timboo Cafe            24                    Fast Food, Cafe, Pizza, Seafood               4.2 Gunnison
+
+### Accommodations in Gunnison
+                                          NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number     city
+            Full-size loft bed in East Village  104.0    Private room No visitors & No pets & No parties             1.0                  1                 4.0 Gunnison
+            Clean and convenient 2BR apartment  405.0    Private room No visitors & No children under 10             7.0                  2                 3.0 Gunnison
+         Spacious Bed and Bathroom in Brooklyn  406.0    Private room           No visitors & No smoking             1.0                  1                 2.0 Gunnison
+SoHo LOFT #2  Broadway Av. - Amazing Location!  762.0 Entire home/apt  No parties & No smoking & No pets             4.0                  4                 3.0 Gunnison
+
+### Flight from Medford to Grand Junction on 2022-03-23
+There is no flight from Medford to Grand Junction on 2022-03-23.
+
+### Self-driving from Medford to Grand Junction
+self-driving, from Medford to Grand Junction, duration: 15 hours 49 mins, distance: 1,640 km, cost: 82
+
+### Taxi from Medford to Grand Junction
+taxi, from Medford to Grand Junction, duration: 15 hours 49 mins, distance: 1,640 km, cost: 1640
+
+### Flight from Grand Junction to Durango on 2022-03-25
+There is no flight from Grand Junction to Durango on 2022-03-25.
+
+### Self-driving from Grand Junction to Durango
+self-driving, from Grand Junction to Durango, duration: 3 hours 33 mins, distance: 269 km, cost: 13
+
+### Taxi from Grand Junction to Durango
+taxi, from Grand Junction to Durango, duration: 3 hours 33 mins, distance: 269 km, cost: 269
+
+### Flight from Durango to Gunnison on 2022-03-27
+There is no flight from Durango to Gunnison on 2022-03-27.
+
+### Self-driving from Durango to Gunnison
+self-driving, from Durango to Gunnison, duration: 3 hours 47 mins, distance: 275 km, cost: 13
+
+### Taxi from Durango to Gunnison
+taxi, from Durango to Gunnison, duration: 3 hours 47 mins, distance: 275 km, cost: 275
+
+### Flight from Gunnison to Medford on 2022-03-29
+There is no flight from Gunnison to Medford on 2022-03-29.
+
+### Self-driving from Gunnison to Medford
+self-driving, from Gunnison to Medford, duration: 18 hours 4 mins, distance: 1,832 km, cost: 91
+
+### Taxi from Gunnison to Medford
+taxi, from Gunnison to Medford, duration: 18 hours 4 mins, distance: 1,832 km, cost: 1832
+
+JSON plan:

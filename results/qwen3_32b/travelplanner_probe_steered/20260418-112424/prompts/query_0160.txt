@@ -1,0 +1,180 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help me organize a 5-day trip for 2 people starting from Islip to Pennsylvania, covering 2 cities between March 19th and March 23rd, 2022? Our budget is set at $2,700. We require accommodations that allow children under 10 and prefer to rent entire rooms. For our transportation, we prefer not to take any flights.
+
+Reference information:
+### Attractions in State College
+                                   Name  Latitude  Longitude                                                       Address          Phone                                                                                   Website          City
+Discovery Space of Central Pennsylvania 40.802238 -77.882193              1224 N Atherton St, State College, PA 16803, USA (814) 234-0200                                                               https://discoveryspace.org/ State College
+            The Arboretum at Penn State 40.813234 -77.877334         E Park Ave &, Bigler Rd, State College, PA 16803, USA (814) 865-9118                                                                 http://arboretum.psu.edu/ State College
+       Centre County Historical Society 40.806558 -77.842670              1001 E College Ave, State College, PA 16801, USA (814) 234-4779                                                            https://www.centrehistory.org/ State College
+                Tom Tudek Memorial Park 40.801465 -77.892461                   400 Herman Dr, State College, PA 16803, USA (814) 231-3071      https://www.twp.ferguson.pa.us/ferguson-township-parks/pages/tom-tudek-memorial-park State College
+          Millbrook Marsh Nature Center 40.813439 -77.834374               548 Puddintown Rd, State College, PA 16801, USA (814) 235-7819                                         http://www.crpr.org/millbrook-marsh-nature-center State College
+           Penn State All-Sports Museum 40.810952 -77.855736              1 Beaver Stadium, University Park, PA 16802, USA (814) 865-0044 https://gopsusports.com/sports/2018/8/8/all-sports-museum-psu-all-sports-museum-html.aspx State College
+          Matson Museum of Anthropology 40.797166 -77.869562 208 Carpenter Bldg, Curtin Rd, University Park, PA 16802, USA (814) 865-3853                                                                   https://matson.psu.edu/ State College
+                   Palmer Museum of Art 40.806878 -77.868202                     Bigler Rd, University Park, PA 16802, USA (814) 865-7673                                                             https://palmermuseum.psu.edu/ State College
+            Penn's Cave & Wildlife Park 40.882550 -77.611657                 222 Penns Cave Rd, Centre Hall, PA 16828, USA (814) 364-1664                                                                 http://www.pennscave.com/ State College
+                The Nittany Lion Shrine 40.796826 -77.869031    Curtin Road and, Burrowes Rd, State College, PA 16801, USA (717) 948-6009                               https://www.psu.edu/this-is-penn-state/nittany-lion-shrine/ State College
+                           Lederer Park 40.796541 -77.840302              1101 University Dr, State College, PA 16801, USA        Unknown                                                       https://www.crpr.org/find-your-park State College
+                Sidney Friedman Parklet 40.791710 -77.859827                 241 S Fraser St, State College, PA 16801, USA (814) 234-7109   https://statecollegehighlands.org/sidney-friedman-park-a-small-park-with-a-big-history/ State College
+                               Old Main 40.796481 -77.862841                    Pollock Rd, University Park, PA 16802, USA (814) 865-4700                                                                                   Unknown State College
+                     Holmes-Foster Park 40.782383 -77.866120               901 Westerly Pkwy, State College, PA 16801, USA (814) 231-3071                                                                     https://www.crpr.org/ State College
+       Happy Valley Vineyard and Winery 40.768254 -77.901385              576 S Foxpointe Dr, State College, PA 16801, USA (814) 308-8756                                                      http://www.thehappyvalleywinery.com/ State College
+             Frost Entomological Museum 40.802950 -77.862347                   160 Curtin Rd, State College, PA 16802, USA (814) 865-1895                                               https://ento.psu.edu/about/facilities/frost State College
+                           Dalevue Park 40.797714 -77.825212                413 Goldfinch Dr, State College, PA 16801, USA (814) 231-3071                                                                      http://www.crpr.org/ State College
+                    Walnut Springs Park 40.802626 -77.838872            843 Walnut Spring Ln, State College, PA 16801, USA        Unknown                                                                                   Unknown State College
+                  Joel N. Myers Sundial 40.805673 -77.868839                                  State College, PA 16803, USA        Unknown                                                                                   Unknown State College
+                          Suburban Park 40.810639 -77.887817                101 Suburban Ave, State College, PA 16803, USA        Unknown                https://www.twp.ferguson.pa.us/ferguson-township-parks/pages/suburban-park State College
+
+### Restaurants in State College
+                      Name  Average Cost                                             Cuisines  Aggregate Rating          City
+                Kawa Sushi            82                 French, Mexican, Desserts, Fast Food               3.5 State College
+                Los Agaves            39                                    French, BBQ, Cafe               4.1 State College
+Salsa's Mexican Restaurant            52                                  Tea, BBQ, Fast Food               3.4 State College
+        Fusion Food Corner            46                        Bakery, Mexican, BBQ, Italian               0.0 State College
+               Hotel Ekant            16                            Fast Food, Pizza, Italian               2.7 State College
+                Amici Cafe            96                 Pizza, Bakery, BBQ, Chinese, Seafood               3.7 State College
+            Best Pizza Hut            44               Desserts, French, Bakery, Cafe, Indian               0.0 State College
+              Royal Sweets            70           Desserts, Tea, BBQ, Mediterranean, Seafood               0.0 State College
+    Qureshi's Kabab Corner            60           Desserts, Tea, Italian, BBQ, Mediterranean               4.0 State College
+      The Chocolate Heaven            45                                           Pizza, BBQ               4.1 State College
+             Kettle & Kegs            80                                    Bakery, BBQ, Cafe               0.0 State College
+                    Fitoor            48                 French, Bakery, BBQ, Indian, Seafood               3.5 State College
+             The Tuck Shop            20                           Bakery, BBQ, Mediterranean               3.3 State College
+                Nutri Cafe            85               Desserts, Tea, Pizza, French, American               3.7 State College
+            Veggie-Licious            70                        Tea, BBQ, Desserts, Fast Food               3.6 State College
+            Cake And Bakes            24                                     Tea, Cafe, Pizza               0.0 State College
+      The Riding Guns Cafe            51               Desserts, Pizza, Cafe, Indian, Seafood               3.6 State College
+         South Indian Cafe            90       Desserts, Mexican, Bakery, Fast Food, American               2.7 State College
+        Maharaja Food Club            14                                Desserts, Indian, BBQ               0.0 State College
+      Aggarwal Jalebi Wale            77                Tea, Pizza, Bakery, American, Seafood               0.0 State College
+             Da Pizza Zone            15         Tea, Mexican, Bakery, Mediterranean, Seafood               0.0 State College
+       Hyderabad's Delight            12                               BBQ, Desserts, Seafood               0.0 State College
+                De' Bistro            17                           Tea, French, Pizza, Bakery               3.3 State College
+    Kumar Pav Bhaji Corner            72                      Cafe, Mexican, Pizza, Fast Food               3.2 State College
+              Super Snacks            72 Desserts, Pizza, French, Bakery, Fast Food, American               0.0 State College
+                     Theos            94                                    French, BBQ, Cafe               3.5 State College
+            Snacks Parties            26                            Seafood, Pizza, Fast Food               0.0 State College
+             Rolling Beans            11                 French, Chinese, Desserts, Fast Food               2.8 State College
+                    Gopala            32                                 Tea, Mexican, Bakery               3.4 State College
+              Nukkad Bites            62                Pizza, Mexican, Bakery, Cafe, Seafood               0.0 State College
+         El Amigos Kitchen            45                    Bakery, Pizza, American, Desserts               3.5 State College
+
+### Accommodations in State College
+                                              NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number          city
+    ☆  HUGE, SUNLIT Room - 3 min walk from Train !  412.0    Private room          No smoking & No visitors            29.0                  1                 3.0 State College
+                     Charming 1BR in UES Townhouse 1134.0 Entire home/apt                        No smoking            30.0                  4                 2.0 State College
+   NiceRoomNiceNeighborhoodCloseMaimonidesHospital  845.0    Private room                           No pets             1.0                  1                 5.0 State College
+ Beautiful, Newly Furnished, Luxury, Grand Central  210.0 Entire home/apt                        No parties            30.0                  2                 4.0 State College
+               Private Room in large 2 bedroom apt 1006.0    Private room No children under 10 & No smoking             3.0                  2                 1.0 State College
+   Modern, big and comfy space in the heart of NYC  306.0 Entire home/apt              No children under 10             2.0                  2                 2.0 State College
+                    Charming Bohemian Bushwick Apt  301.0    Private room                       No visitors             4.0                  2                 4.0 State College
+            Small and Cozy room on Upper West Side  269.0    Private room                        No parties             1.0                  1                 3.0 State College
+Exclusive 2 bedrooms in lovely apartment in Nolita 1167.0    Private room             No pets & No visitors             6.0                  1                 2.0 State College
+                      Tribeca Apt w/ Rooftop Views 1040.0    Private room              No pets & No parties             4.0                  2                 2.0 State College
+ LUXURY HUGE 2BR DUPLEX NEAR TRAIN - PATIO OASIS!!  356.0 Entire home/apt                           No pets             1.0                  3                 3.0 State College
+
+### Attractions in Johnstown
+                                      Name  Latitude  Longitude                                     Address                   Phone                                               Website      City
+                    Johnstown Flood Museum 40.327936 -78.920490 304 Washington St, Johnstown, PA 15901, USA          (814) 539-1889                                  http://www.jaha.org/ Johnstown
+                 Heritage Discovery Center 40.340145 -78.930824          Broad St, Johnstown, PA 15906, USA          (814) 539-1889                                  http://www.jaha.org/ Johnstown
+                           Greenhouse Park 40.276869 -78.922065    Green House Rd, Johnstown, PA 15905, USA          (814) 288-1400             http://thestonycreek.com/greenhouse.shtml Johnstown
+                           Stackhouse Park 40.326739 -78.937370    998 Luzerne St, Johnstown, PA 15905, USA          (814) 536-1674                        http://www.stackhousepark.com/ Johnstown
+Sandyvale Memorial Gardens and Conservancy 40.312134 -78.914532     80 Hickory St, Johnstown, PA 15902, USA          (814) 266-7891              http://www.sandyvalememorialgardens.org/ Johnstown
+                    I Love Johnstown Mural 40.321666 -78.922944    123 Coconut Pl, Johnstown, PA 15901, USA                 Unknown                                               Unknown Johnstown
+                              Central Park 40.325723 -78.918231       507 Main St, Johnstown, PA 15901, USA                 Unknown                                               Unknown Johnstown
+                                Point Park 40.330070 -78.924669 100 Washington St, Johnstown, PA 15901, USA                 Unknown                                               Unknown Johnstown
+                    Hinckston RD Waterfall 40.371015 -78.890851    Hinckston Run,, Johnstown, PA 15906, USA                 Unknown                                               Unknown Johnstown
+              Steve Ditko Spider-Man Mural 40.326674 -78.917154   104 Franklin St, Johnstown, PA 15901, USA                 Unknown                                               Unknown Johnstown
+         Johnstown Flood National Memorial 40.349809 -78.771199      733 Lake Rd, South Fork, PA 15956, USA          (814) 886-6171                               http://www.nps.gov/jofl Johnstown
+             Conemaugh Gap Scenic Overlook 40.366364 -78.959084         Haws Pike, Johnstown, PA 15906, USA                 Unknown                                               Unknown Johnstown
+                       Wagner-Ritter House 40.339805 -78.928756      418 Broad St, Johnstown, PA 15906, USA (814) 539-1889 ext. 311 https://www.jaha.org/attractions/wagner-ritter-house/ Johnstown
+                       Visit Johnstown, PA 40.325612 -78.919368  416 Main St #100, Johnstown, PA 15901, USA          (814) 536-7993                      http://www.visitjohnstownpa.com/ Johnstown
+                               Chapin Arch 40.313374 -78.916579  841 Menoher Blvd, Johnstown, PA 15905, USA                 Unknown                                               Unknown Johnstown
+                   Healing Garden Art Park 40.320097 -78.919581   514 Napoleon St, Johnstown, PA 15901, USA          (814) 262-5978                      http://healinggardenartpark.org/ Johnstown
+                             Wedding venue 40.385825 -78.886768 1315 Waterfall Dr, Johnstown, PA 15906, USA          (814) 659-0381                                               Unknown Johnstown
+              The Johnstown Inclined Plane 40.325504 -78.928696   711 Edgehill Dr, Johnstown, PA 15905, USA                 Unknown                         http://www.inclinedplane.org/ Johnstown
+
+### Restaurants in Johnstown
+                          Name  Average Cost                                            Cuisines  Aggregate Rating      City
+                  The National            47                         Chinese, BBQ, Cafe, Seafood               4.1 Johnstown
+                     Palmshore            61                    Bakery, American, BBQ, Fast Food               4.4 Johnstown
+  Chicken Inn Family Meat Shop            79 Desserts, Bakery, Fast Food, Mediterranean, Seafood               0.0 Johnstown
+                    Souza Lobo            92                  Tea, Mexican, Bakery, Cafe, Indian               4.3 Johnstown
+                      Pita Pan            40                   Mexican, Pizza, Indian, Fast Food               3.1 Johnstown
+                    Wah Ji Wah            35                      Tea, French, American, Seafood               2.2 Johnstown
+                   Dastarkhwan           100                                 Tea, Mexican, Pizza               4.4 Johnstown
+    Mumbai Central Street Food            90             Tea, Bakery, BBQ, Indian, Mediterranean               3.1 Johnstown
+               Burger Dominion            83             Tea, Pizza, French, Cafe, Mediterranean               3.6 Johnstown
+                    Desi Vibes            18                                 Mexican, BBQ, Pizza               4.0 Johnstown
+              Hotel Tamil Nadu            87                             French, Pizza, Desserts               3.1 Johnstown
+               The Chinese Hut            67                               Tea, French, Desserts               2.8 Johnstown
+                Daawat-e-Mehak            51                                  Tea, French, Pizza               0.0 Johnstown
+       Burger Head Quarter BHQ            60                 Desserts, Tea, BBQ, Indian, Seafood               0.0 Johnstown
+                        Kunafa            68                                BBQ, Pizza, Desserts               3.9 Johnstown
+                  36 lebzelter            86                               Chinese, Bakery, Cafe               3.7 Johnstown
+      The Regal Chicken Corner            57              Pizza, BBQ, Fast Food, Indian, Seafood               0.0 Johnstown
+                   Happy Hours            23                                       Bakery, Pizza               0.0 Johnstown
+              The Pizza Corner            80                        Tea, Cafe, Indian, Fast Food               2.1 Johnstown
+           Sugarama Patisserie            42                French, Mexican, Desserts, Fast Food               4.2 Johnstown
+             Ashoka's Ice Zone            11                             Tea, Fast Food, Seafood               0.0 Johnstown
+Bikaner Sweets & Pastry Corner            86               Chinese, Bakery, Pizza, Mediterranean               0.0 Johnstown
+          Lajawab Chinese Food            12                                       Tea, Desserts               3.0 Johnstown
+                 Punjabi Tadka            93                                        Tea, Seafood               2.7 Johnstown
+                   Second Home            57                                           Tea, Cafe               0.0 Johnstown
+               Cafe Coffee Day            30                      French, Bakery, Cafe, Desserts               0.0 Johnstown
+                  Dolce Gelato            65                      Bakery, Pizza, Indian, Seafood               3.0 Johnstown
+                The Paddington            44                     Fast Food, Indian, BBQ, Italian               3.6 Johnstown
+
+### Accommodations in Johnstown
+                                             NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+            Sunny, 1 Bedroom in Bedstuy, Brooklyn  160.0 Entire home/apt            No children under 10 & No parties             7.0                  3                 4.0 Johnstown
+2 Bedroom Apartment East Village Amazing Location   51.0 Entire home/apt                                      No pets             2.0                  3                 3.0 Johnstown
+                  2 BDRM apt in elevator building  403.0 Entire home/apt            No children under 10 & No smoking             1.0                  4                 3.0 Johnstown
+Tranquility in a Sunny  Duplex w/Private Bathroom  158.0    Private room No pets & No children under 10 & No visitors             1.0                  2                 1.0 Johnstown
+         Modern duplex 30 minutes to Times Square  334.0 Entire home/apt                                   No smoking             4.0                  2                 4.0 Johnstown
+  Sunny, Spacious Apartment in Prime Williamsburg  301.0 Entire home/apt                        No pets & No visitors             2.0                  3                 1.0 Johnstown
+  Lovely Bed-Stuy Brownstone Parlor Apartment 1BR  845.0 Entire home/apt           No visitors & No smoking & No pets             5.0                  2                 3.0 Johnstown
+  Bright Williamsburg room, 1-stop from Manhattan  958.0    Private room                                   No smoking             4.0                  1                 3.0 Johnstown
+
+### Flight from Islip to State College on 2022-03-19
+There is no flight from Islip to State College on 2022-03-19.
+
+### Self-driving from Islip to State College
+self-driving, from Islip to State College, duration: 4 hours 52 mins, distance: 464 km, cost: 23
+
+### Taxi from Islip to State College
+taxi, from Islip to State College, duration: 4 hours 52 mins, distance: 464 km, cost: 464
+
+### Flight from State College to Johnstown on 2022-03-21
+There is no flight from State College to Johnstown on 2022-03-21.
+
+### Self-driving from State College to Johnstown
+self-driving, from State College to Johnstown, duration: 1 hour 29 mins, distance: 137 km, cost: 6
+
+### Taxi from State College to Johnstown
+taxi, from State College to Johnstown, duration: 1 hour 29 mins, distance: 137 km, cost: 137
+
+### Flight from Johnstown to Islip on 2022-03-23
+There is no flight from Johnstown to Islip on 2022-03-23.
+
+### Self-driving from Johnstown to Islip
+self-driving, from Johnstown to Islip, duration: 5 hours 57 mins, distance: 590 km, cost: 29
+
+### Taxi from Johnstown to Islip
+taxi, from Johnstown to Islip, duration: 5 hours 57 mins, distance: 590 km, cost: 590
+
+JSON plan:

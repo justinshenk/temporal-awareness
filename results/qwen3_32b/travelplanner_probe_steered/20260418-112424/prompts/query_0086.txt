@@ -1,0 +1,195 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you create a 5-day travel plan for two people, beginning in Newark and visiting 2 cities in Wisconsin from March 13th to March 17th, 2022? Our budget is set at $2,700 and we prefer to stay in shared rooms.
+
+Reference information:
+### Attractions in Madison
+                                     Name  Latitude  Longitude                                                                         Address          Phone                                                          Website    City
+                Madison Children's Museum 43.076940 -89.384395                                       100 N Hamilton St, Madison, WI 53703, USA (608) 256-6445                               http://madisonchildrensmuseum.org/ Madison
+                     Chazen Museum of Art 43.073832 -89.399319                                      800 University Ave, Madison, WI 53706, USA (608) 263-2246                                      http://www.chazen.wisc.edu/ Madison
+                Olbrich Botanical Gardens 43.092637 -89.334603                                         3330 Atwood Ave, Madison, WI 53704, USA (608) 246-4550                                          http://www.olbrich.org/ Madison
+       Madison Museum of Contemporary Art 43.074455 -89.389268                                            227 State St, Madison, WI 53703, USA (608) 257-0158                                           https://www.mmoca.org/ Madison
+                Wisconsin Veterans Museum 43.075034 -89.386455                                         30 W Mifflin St, Madison, WI 53703, USA (608) 267-1799                                    http://www.wisvetsmuseum.com/ Madison
+                  Wisconsin State Capitol 43.074701 -89.384149                                             2 E Main St, Madison, WI 53703, USA (608) 266-0382                        https://www.wisconsin.gov/Pages/home.aspx Madison
+                             Olbrich Park 43.088091 -89.330082                                         3527 Atwood Ave, Madison, WI 53714, USA (608) 266-4711 https://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1315 Madison
+                           Physics Museum 43.073680 -89.405212                                     1150 University Ave, Madison, WI 53706, USA (608) 262-3898                    https://www.physics.wisc.edu/ingersollmuseum/ Madison
+                       James Madison Park 43.081393 -89.382884                                         614 E Gorham St, Madison, WI 53703, USA (608) 266-4711  http://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1241 Madison
+                       Vilas (Henry) Park 43.060580 -89.409957                                       702 S Randall Ave, Madison, WI 53715, USA (608) 266-4711  http://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1365 Madison
+                           Geology Museum 43.070576 -89.406261                                        1215 W Dayton St, Madison, WI 53706, USA (608) 262-1412                              https://museum.geoscience.wisc.edu/ Madison
+                       Period Garden Park 43.078658 -89.386602                                         110 E Gorham St, Madison, WI 53703, USA (608) 283-0517                                 http://www.periodgardenpark.org/ Madison
+                              Warner Park 43.127881 -89.370410                                      2930 N Sherman Ave, Madison, WI 53704, USA (608) 266-4711  http://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1368 Madison
+                            Downtown Area 43.074913 -89.386999                                            100 State St, Madison, WI 53703, USA        Unknown                                                          Unknown Madison
+                             Picnic Point 43.089677 -89.415477 University of Wisconsin-Madison, 2000 University Bay Dr, Madison, WI 53705, USA        Unknown    https://lakeshorepreserve.wisc.edu/visit/places/picnic-point/ Madison
+                 Wisconsin Science Museum 43.041202 -89.395289                                          2300 S Park St, Madison, WI 53713, USA (608) 720-1010                                         https://wiscimuseum.org/ Madison
+University of Wisconsin–Madison Arboretum 43.042871 -89.424320                                       1207 Seminole Hwy, Madison, WI 53711, USA (608) 263-7888                                       http://arboretum.wisc.edu/ Madison
+                        Yahara Place Park 43.085643 -89.353804                                          2025 Yahara Pl, Madison, WI 53704, USA (608) 266-4711 https://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1397 Madison
+         Turville Point Conservation Park 43.050630 -89.372400                                   1202 Olin-Turville Ct, Madison, WI 53715, USA (608) 266-4711 https://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1317 Madison
+                   Owen Conservation Park 43.074335 -89.484585                                        6021 Old Sauk Rd, Madison, WI 53705, USA (608) 266-4711  http://www.cityofmadison.com/parks/find-a-park/park.cfm?id=1305 Madison
+
+### Restaurants in Madison
+                                            Name  Average Cost                                            Cuisines  Aggregate Rating    City
+                             99 North Restaurant            62                   Fast Food, Mexican, Indian, Pizza               3.6 Madison
+                                 Unique Food Hut            38          Desserts, Italian, BBQ, Fast Food, Seafood               0.0 Madison
+                                      Chini Bowl            26                                       Cafe, Seafood               2.8 Madison
+                                  Tibb's Frankie            75                  Fast Food, Cafe, Desserts, Italian               3.4 Madison
+                              Daawat-e! Amritsar            53                      Cafe, Mexican, Pizza, Desserts               2.9 Madison
+                                 Barbeque Nation            38                    Tea, Pizza, French, Bakery, Cafe               4.9 Madison
+                       Grandson of Tunday Kababi            36                Fast Food, Bakery, American, Seafood               4.9 Madison
+                                       Food Cafe            85            Tea, Pizza, Fast Food, American, Seafood               0.0 Madison
+                                      The Kathis            67                     BBQ, Pizza, Desserts, Fast Food               2.8 Madison
+                                         Comesum            77                Pizza, French, Mexican, BBQ, Seafood               2.5 Madison
+                  Balluchi's - The Royal Cuisine            87                    BBQ, Indian, Desserts, Fast Food               3.0 Madison
+                                         Privee'            30 Desserts, French, Mexican, Fast Food, Cafe, Seafood               3.6 Madison
+                                  The Vault Cafe            30                      Cafe, Mexican, Pizza, Desserts               3.9 Madison
+                                 Moet's Sizzlers            10                French, Bakery, Pizza, Mediterranean               3.0 Madison
+                                    De Cafepedia            33               Pizza, BBQ, Fast Food, Cafe, American               3.5 Madison
+                        Shanta Fresh Fish Corner            16                             Tea, Mexican, Fast Food               3.1 Madison
+                                    Pind Punjabi            42                           Bakery, Indian, Fast Food               3.0 Madison
+                                   Tongue Thai'd            78                  Bakery, Pizza, American, Fast Food               3.7 Madison
+                                       Dezertfox            19                                  Tea, BBQ, Desserts               3.7 Madison
+                                     Bikanervala            76                     Chinese, Pizza, Bakery, Seafood               3.4 Madison
+                                     Food Scouts            17                   Tea, Cafe, Pizza, Bakery, Chinese               4.6 Madison
+                                  Otik Cake Shop            24             Desserts, Pizza, BBQ, American, Seafood               3.8 Madison
+                            The Post Office Cafe            84                             Tea, Cafe, BBQ, Seafood               3.6 Madison
+                                   Nik's Kitchen            10           Tea, Italian, BBQ, Mediterranean, Seafood               3.8 Madison
+                                  Chawla Chicken            40                               Tea, Bakery, American               3.5 Madison
+Cherry Bar - The Leela Ambience Convention Hotel            28                     Tea, BBQ, Cafe, Indian, Seafood               3.6 Madison
+                            Buta Singh Da Dhabba            22                 Tea, Bakery, Mediterranean, Italian               2.8 Madison
+                            SodaBottleOpenerWala            92                  Desserts, Tea, Pizza, Cafe, Indian               4.0 Madison
+                              Hyderabad Delights            82                               Tea, Cafe, Pizza, BBQ               3.3 Madison
+                                      Hot & Sour            28                                         Tea, Bakery               3.2 Madison
+                                          Shri G            87           Desserts, Tea, French, Mexican, Fast Food               0.0 Madison
+                                       Civerinos            22                        Chinese, Pizza, BBQ, Seafood               3.7 Madison
+
+### Accommodations in Madison
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number    city
+               Oversized bedroom with living space  908.0    Private room                        No visitors            20.0                  1                 3.0 Madison
+               Lifestlye Stay In Downtown Brooklyn  332.0 Entire home/apt               No children under 10            10.0                  2                 2.0 Madison
+                 Perfectly Located UpperWest Futon  164.0     Shared room     No pets & No children under 10             2.0                  1                 1.0 Madison
+                     Room in two bedroom apartment  159.0    Private room               No smoking & No pets             1.0                  2                 2.0 Madison
+    Zen 1 bedroom near Central Park+MET+Guggenheim  517.0 Entire home/apt                            No pets            14.0                  3                 3.0 Madison
+ Nice bedroom at Manhattan -Upper East Side/Harlem 1048.0    Private room                         No smoking             3.0                  2                 3.0 Madison
+         Cute private space in an Awesome Location  662.0 Entire home/apt                         No smoking             1.0                  4                 5.0 Madison
+                             Central Park Treasure  464.0 Entire home/apt No visitors & No pets & No smoking            20.0                  4                 5.0 Madison
+                   Spacious 1BD Red Hook Apartment 1145.0 Entire home/apt               No pets & No smoking            43.0                  8                 4.0 Madison
+Sunny two bedroom-two bath in doorman building UWS  765.0 Entire home/apt               No children under 10             7.0                  4                 5.0 Madison
+
+### Attractions in Mosinee
+                                   Name  Latitude  Longitude                                           Address          Phone                                                                                                 Website    City
+                       Walter Zych Park 44.796338 -89.723992           1801 Jackson St, Mosinee, WI 54455, USA        Unknown                                                    http://www.mosinee.wi.us/parks/walter_zych_park.html Mosinee
+                             River Park 44.796795 -89.707264       1098-1070 Armory Rd, Mosinee, WI 54455, USA        Unknown                                                          http://www.mosinee.wi.us/parks/river_park.html Mosinee
+                          Edgewood Park 44.783264 -89.720092     1100-1132 Edgewood Dr, Mosinee, WI 54455, USA        Unknown                                                       http://www.mosinee.wi.us/parks/edgewood_park.html Mosinee
+             Big Eau Pleine County Park 44.771435 -89.868268 135695 Eau Pleine Park Rd, Mosinee, WI 54455, USA (715) 261-1550 https://www.co.marathon.wi.us/Departments/ParksRecreationForestry/Parks/ListofParks.aspx#Big_Eau_Pleine Mosinee
+                        The Sand Cliffs 44.759492 -89.713468                            Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+                       City Square Park 44.792597 -89.702977               322 Main St, Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+Big Eau Pleine Woods State Natural Area 44.736706 -89.842818 135695 Eau Pleine Park Rd, Mosinee, WI 54455, USA (888) 936-7463                                                                                                 Unknown Mosinee
+                            Creske Park 44.789960 -89.726244                            Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+             Maguire Field Dessert Park 44.788542 -89.708306                            Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+                          Hunter M Park 44.796389 -89.717676               607 13th St, Mosinee, WI 54455, USA (715) 693-2125                                                                                                 Unknown Mosinee
+                          MAAC Pavilion 44.796250 -89.707571                 Armory Rd, Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+                        Annie's Sandbar 44.762749 -89.719848                            Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+               Lake Du Bay Boat Landing 44.702467 -89.687318           202235 Dubay Dr, Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+               Skeeter's Bucket Sandbar 44.750121 -89.713781                            Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+                Rib Mountain State Park 44.921581 -89.688221       149801 State Park Rd, Wausau, WI 54401, USA (715) 842-2522                                                             https://dnr.wisconsin.gov/topic/parks/ribmt Mosinee
+         Mosinee Athletic Complex – MAC 44.785503 -89.727842          401 Rangeline Rd, Mosinee, WI 54455, USA        Unknown                                                                                                 Unknown Mosinee
+                  Granite Peak Ski Area 44.929236 -89.683162        227200 Snowbird Ave, Wausau, WI 54401, USA (715) 845-2846                                                                          http://www.skigranitepeak.com/ Mosinee
+                  Lake DuBay Lions Club 44.716054 -89.679836      203701 County Hwy DB, Mosinee, WI 54455, USA (715) 693-1121                                                                              http://www.dubaylions.org/ Mosinee
+        Leigh Yawkey Woodson Art Museum 44.962796 -89.613429              700 N 12th St, Wausau, WI 54403, USA (715) 845-7010                                                                                  https://www.lywam.org/ Mosinee
+         Dewey Marsh State Natural Area 44.659774 -89.537969            N Haymeadow Dr, Mosinee, WI 54455, USA (888) 936-7463                                                                                                 Unknown Mosinee
+
+### Restaurants in Mosinee
+                               Name  Average Cost                                           Cuisines  Aggregate Rating    City
+       House of China Restaurant II            96                  Tea, Pizza, French, Cafe, Seafood               3.8 Mosinee
+                               Grit            28                               Bakery, BBQ, Seafood               4.2 Mosinee
+                       Bake N Shake            41                               Pizza, American, BBQ               4.1 Mosinee
+                         Yummy Cake            98              French, BBQ, Fast Food, Cafe, Seafood               3.0 Mosinee
+Delifrance - The France Cafe Bakery            44      Cafe, French, BBQ, Bakery, Fast Food, Chinese               4.0 Mosinee
+                  MyLoveBiryani.Com            17                              Tea, Bakery, Desserts               3.2 Mosinee
+                         Cafe Sante            49 Pizza, BBQ, Cafe, American, Mediterranean, Seafood               4.3 Mosinee
+                    Cafe Coffee Day            40            Pizza, Mexican, Bakery, Fast Food, Cafe               2.9 Mosinee
+                             LaDiDa            72                Fast Food, French, Seafood, Italian               3.2 Mosinee
+                            Chungwa            96                                  Bakery, Fast Food               3.3 Mosinee
+                          Starbucks            47                Tea, Cafe, Bakery, Chinese, Seafood               3.5 Mosinee
+                              Wimpy            35                                       Cafe, Bakery               2.6 Mosinee
+              Deez Biryani & Kebabs            75     Pizza, French, BBQ, Bakery, Fast Food, Chinese               3.7 Mosinee
+            Vadapav Junction & More            50        Tea, Pizza, Bakery, American, Mediterranean               3.3 Mosinee
+                Republic of Chicken            71                 Mediterranean, Desserts, Fast Food               2.8 Mosinee
+                         Senorita's            94                  Fast Food, Chinese, Cafe, Seafood               0.0 Mosinee
+                    Kitchen Namaste            53                       French, Indian, BBQ, Seafood               0.0 Mosinee
+                 Mezbaan Restaurant            50         Chinese, Seafood, Mediterranean, Fast Food               3.4 Mosinee
+                       Yadav Sweets            52                  Seafood, Pizza, Bakery, Fast Food               0.0 Mosinee
+                Classic Chef Corner            61                   French, Pizza, Chinese, Desserts               0.0 Mosinee
+                 Naturals Ice Cream            79                 Italian, Bakery, BBQ, Cafe, Indian               4.7 Mosinee
+                         Wah Ji Wah            72          Desserts, Cafe, Mexican, Chinese, Seafood               2.1 Mosinee
+                         Ichak Dana            67                       Tea, Cafe, Bakery, Fast Food               0.0 Mosinee
+                          Chocolics            81                              Bakery, American, BBQ               0.0 Mosinee
+                          Amul Cafe            24                              Tea, Indian, Desserts               3.3 Mosinee
+                      Shan E Punjab            66                      Chinese, Pizza, BBQ, Desserts               3.4 Mosinee
+                     Savoury Street            40                        French, Pizza, BBQ, Seafood               0.0 Mosinee
+                   Green Chick Chop            20                              Pizza, BBQ, Fast Food               2.9 Mosinee
+                      Olive Kitchen            38                      Tea, Pizza, Desserts, Seafood               2.6 Mosinee
+                          Desi Swag            63                             Pizza, Bakery, Seafood               4.3 Mosinee
+                    Shanghai Dreams            37                                 Tea, Cafe, Mexican               3.0 Mosinee
+             Dev's Restaurant & Bar            89                   Tea, Bakery, American, Fast Food               3.1 Mosinee
+                          Pizza Hut            51                Tea, French, Bakery, BBQ, Fast Food               3.1 Mosinee
+                      The Chaiwalas            12                              Tea, Indian, Desserts               2.9 Mosinee
+
+### Accommodations in Mosinee
+                                          NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number    city
+              Luxury Brownstone in Boerum Hill  744.0 Entire home/apt                                     No smoking             3.0                  7                 2.0 Mosinee
+                  West Village apt - 2 Bedroom  843.0 Entire home/apt    No pets & No smoking & No children under 10             5.0                  3                 5.0 Mosinee
+    Modern, Sunny Duplex PENTHOUSE  w/ BALCONY 1059.0 Entire home/apt                                     No smoking             3.0                  2                 5.0 Mosinee
+  Private room near LGA Airport with queen bed  890.0    Private room                           No children under 10             1.0                  2                 5.0 Mosinee
+            Full Apartment in Upper West Side.  286.0 Entire home/apt                           No children under 10             2.0                  2                 2.0 Mosinee
+               Awesome East Village Apartment!  333.0 Entire home/apt              No children under 10 & No parties             7.0                  2                 1.0 Mosinee
+                Madison Square - Double Double  297.0    Private room No parties & No smoking & No children under 10             1.0                  1                 5.0 Mosinee
+High-end bright 1 bedroom apt. in Midtown West  445.0 Entire home/apt             No smoking & No pets & No visitors            30.0                  2                 1.0 Mosinee
+                  Where Dreams are made of NYC  212.0     Shared room              No smoking & No children under 10             1.0                  1                 3.0 Mosinee
+           Huge NYC 4BR Condo ByD'subwaySlp 12  331.0 Entire home/apt                                    No visitors             4.0                  3                 3.0 Mosinee
+              Beautiful East Village Apartment  928.0 Entire home/apt                                     No smoking             5.0                  5                 4.0 Mosinee
+                 Enormous bedroom in UWS 2-bed 1002.0    Private room                           No pets & No parties             3.0                  2                 4.0 Mosinee
+  478 BROOKLYN  2 bedrooms/2 bathrooms (974sf)  693.0 Entire home/apt                        No smoking & No parties            30.0                  2                 3.0 Mosinee
+                       Studio-like July sublet  293.0    Private room                                     No parties            31.0                  2                 5.0 Mosinee
+
+### Flight from Newark to Madison on 2022-03-13
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4073170    355   18:26   19:56 2 hours 30 minutes 2022-03-13         Newark      Madison     799.0
+
+### Self-driving from Newark to Madison
+self-driving, from Newark to Madison, duration: 14 hours 3 mins, distance: 1,490 km, cost: 74
+
+### Taxi from Newark to Madison
+taxi, from Newark to Madison, duration: 14 hours 3 mins, distance: 1,490 km, cost: 1490
+
+### Flight from Madison to Mosinee on 2022-03-15
+There is no flight from Madison to Mosinee on 2022-03-15.
+
+### Self-driving from Madison to Mosinee
+self-driving, from Madison to Mosinee, duration: 2 hours 3 mins, distance: 209 km, cost: 10
+
+### Taxi from Madison to Mosinee
+taxi, from Madison to Mosinee, duration: 2 hours 3 mins, distance: 209 km, cost: 209
+
+### Flight from Mosinee to Newark on 2022-03-17
+There is no flight from Mosinee to Newark on 2022-03-17.
+
+### Self-driving from Mosinee to Newark
+self-driving, from Mosinee to Newark, duration: 15 hours 32 mins, distance: 1,695 km, cost: 84
+
+### Taxi from Mosinee to Newark
+taxi, from Mosinee to Newark, duration: 15 hours 32 mins, distance: 1,695 km, cost: 1695
+
+JSON plan:

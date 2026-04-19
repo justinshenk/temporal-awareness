@@ -1,0 +1,33 @@
+{
+  "artifact_path": "/content/drive/MyDrive/spar-ai-temporal-activations-experiments-results/qwen_question_options_answer_probe_variations_colab/20260405-185421/qwen3_4b_question_options_answer_probe_artifacts_20260405-185421.npz",
+  "metadata_path": "/content/drive/MyDrive/spar-ai-temporal-activations-experiments-results/qwen_question_options_answer_probe_variations_colab/20260405-185421/qwen3_4b_question_options_answer_probe_metadata_20260405-185421.json",
+  "model_name": "Qwen/Qwen3-4B",
+  "prompt_format": "direct_time_utility_question",
+  "prompt_template": "What would you prefer {x}$ now or {y}$ in {t}? Answer in just a few words.",
+  "train_regime": "explicit_train_only",
+  "feature_name": "mean_answer_tokens",
+  "vector_key": "mm_steering_vectors",
+  "layer": 22,
+  "vector_norm": 1.0,
+  "patch_prompt_last_only": true,
+  "patch_generation_tokens": true,
+  "normalize_steering_vectors": true,
+  "conditions": [
+    {
+      "condition": "steer_long_term_plus32",
+      "signed_strength": 32.0
+    },
+    {
+      "condition": "steer_immediate_minus32",
+      "signed_strength": -32.0
+    },
+    {
+      "condition": "steer_long_term_plus64",
+      "signed_strength": 64.0
+    },
+    {
+      "condition": "steer_immediate_minus64",
+      "signed_strength": -64.0
+    }
+  ]
+}

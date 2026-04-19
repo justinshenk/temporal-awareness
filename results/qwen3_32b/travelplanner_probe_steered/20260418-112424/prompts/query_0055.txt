@@ -1,0 +1,285 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help me create a 7-day travel plan starting on March 18th, 2022, and ending on March 24th, 2022? The trip will start in Washington and I would like to visit 3 cities in Minnesota. This trip is for one person with a budget of $7,200.
+
+Reference information:
+### Attractions in Bemidji
+                                  Name  Latitude  Longitude                                         Address          Phone                                                               Website    City
+Paul Bunyan & Babe the Blue Ox Statues 47.470400 -94.878959       300 Bemidji Ave N, Bemidji, MN 56601, USA (800) 458-2223                                               http://www.bemidji.org/ Bemidji
+             Headwaters Science Center 47.472245 -94.881675     413 Beltrami Ave NW, Bemidji, MN 56601, USA (218) 444-4472                                            http://www.hscbemidji.org/ Bemidji
+                    Diamond Point Park 47.485767 -94.872622    1710 Birchmont Dr NE, Bemidji, MN 56601, USA (218) 333-1859                                          http://www.ci.bemidji.mn.us/ Bemidji
+        Beltrami County History Center 47.467612 -94.882451    130 Minnesota Ave SW, Bemidji, MN 56601, USA (218) 444-3376                                       http://www.beltramihistory.org/ Bemidji
+                  Chief Bemidji Statue 47.471968 -94.879349  426 Bemidji Ave N #1st, Bemidji, MN 56601, USA        Unknown                                                               Unknown Bemidji
+                          Cameron Park 47.493858 -94.874527    2609 Birchmont Dr NE, Bemidji, MN 56601, USA (218) 333-1859                        https://findbemidji.com/listings/cameron-park/ Bemidji
+               Paul Bunyan Animal Land 47.419170 -94.816544  3857 Animal Land Dr SE, Bemidji, MN 56601, USA        Unknown                                                               Unknown Bemidji
+                     Bemidji City Park 47.488708 -94.898811         1330 23rd St NW, Bemidji, MN 56601, USA (218) 333-1859                              https://www.ci.bemidji.mn.us/parksandrec Bemidji
+                 Shaynowishkung Statue 47.471960 -94.879359 Paul Bunyan State Trail, Bemidji, MN 56601, USA        Unknown                                                               Unknown Bemidji
+   Mississippi Headwaters State Forest 47.434066 -95.097955                          Bemidji, MN 56601, USA (651) 296-6157          http://www.dnr.state.mn.us/state_forests/sft00034/index.html Bemidji
+              Buena Vista State Forest 47.568603 -94.712461                          Bemidji, MN 56601, USA (651) 296-6157          http://www.dnr.state.mn.us/state_forests/sft00010/index.html Bemidji
+               Lake Bemidji State Park 47.535161 -94.826815   3401 State Park Rd NE, Bemidji, MN 56601, USA (218) 308-2300        http://www.dnr.state.mn.us/state_parks/lake_bemidji/index.html Bemidji
+                      South Shore Park 47.463653 -94.860828    527 Lake Shore Dr NE, Bemidji, MN 56601, USA        Unknown https://bemidjimn.recdesk.com/Community/Facility/Detail?facilityId=15 Bemidji
+                         Visit Bemidji 47.470740 -94.878850       300 Bemidji Ave N, Bemidji, MN 56601, USA (218) 444-6081                                          http://www.visitbemidji.com/ Bemidji
+
+### Restaurants in Bemidji
+                                                Name  Average Cost                                               Cuisines  Aggregate Rating    City
+                                     Pig and Whistle            39                    Fast Food, Mexican, Bakery, Seafood               4.1 Bemidji
+                                        Flying Cakes            43                                           Tea, Seafood               2.2 Bemidji
+                 Outback Bar and Grill - Leisure Inn            59                            Indian, Desserts, Fast Food               3.0 Bemidji
+Chao Chinese Bistro - Holiday Inn Jaipur City Centre            22                                     Fast Food, Seafood               4.3 Bemidji
+                                              Southy            60                                            Cafe, Pizza               2.4 Bemidji
+                                      Bhaja Govindam            33                    Fast Food, Pizza, Desserts, Seafood               3.8 Bemidji
+                                   Shree Banke Foods            22                                Tea, Seafood, Fast Food               0.0 Bemidji
+                                 The Chocolate Haven            23        Desserts, Tea, Italian, BBQ, Fast Food, Chinese               3.6 Bemidji
+                          Gastronomica Kitchen & Bar            84                           Chinese, BBQ, Cafe, Desserts               4.1 Bemidji
+                     The Walled City - Caf愆 & Lounge            69         Desserts, Pizza, BBQ, Fast Food, Mediterranean               3.8 Bemidji
+                                              Tamura            85                                    Cafe, American, BBQ               3.3 Bemidji
+                                         Om Di Hatti            95                       Indian, American, BBQ, Fast Food               3.7 Bemidji
+                        Lodi - The Garden Restaurant            71                          American, Desserts, Fast Food               4.2 Bemidji
+                          Manami Japanese Restaurant            82                                  Cafe, Bakery, Seafood               0.0 Bemidji
+                                     Barbeque Nation            45                                          Tea, Desserts               4.1 Bemidji
+                                        Shri Gupta'z            57         Pizza, BBQ, Bakery, Chinese, American, Seafood               3.2 Bemidji
+                               Sandy's Punjabi Rasoi            55                                    Pizza, BBQ, Seafood               3.2 Bemidji
+                                     Cafe Coffee Day            36                                Tea, Chinese, Fast Food               2.9 Bemidji
+                          Hyderabadi Biryani Parlour            93                                     Fast Food, Seafood               2.9 Bemidji
+                            Chawla Family Restaurant            88                        Chinese, Bakery, American, Cafe               2.9 Bemidji
+                                  IKKA - The Ace Bar            17                                  French, BBQ, Desserts               3.6 Bemidji
+                                               Kev's            49 Tea, Pizza, Mexican, Fast Food, Mediterranean, Seafood               3.9 Bemidji
+                                   The Coffee Garage            96            Desserts, Tea, Pizza, French, Mexican, Cafe               3.4 Bemidji
+           Delhi Pavilion - Sheraton New Delhi Hotel            70                         Tea, Chinese, Pizza, Fast Food               4.0 Bemidji
+                                      Slice of Italy            99                      Cafe, Pizza, BBQ, Chinese, Indian               2.8 Bemidji
+                                              Subway            63                 Desserts, BBQ, Cafe, American, Seafood               2.6 Bemidji
+                                         Hari Sweets            51                                     Tea, Cafe, Seafood               3.1 Bemidji
+                                        Biryani Vice            41               Mexican, Bakery, BBQ, Fast Food, Seafood               3.6 Bemidji
+                                     Right for Night            10                Desserts, Pizza, BBQ, American, Seafood               0.0 Bemidji
+                                     The Bakery Mart            81               Desserts, Tea, Pizza, Mexican, Fast Food               0.0 Bemidji
+                          Sea Inn - Raju Gaari Dhaba            83                                    Pizza, BBQ, Italian               4.0 Bemidji
+                                    Draft Gastro Pub            59            Desserts, Pizza, Bakery, Fast Food, Chinese               4.9 Bemidji
+
+### Accommodations in Bemidji
+                                              NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number    city
+                   Sunny bedroom off Prospect Park  627.0    Private room                           No visitors             3.0                  1                 2.0 Bemidji
+Söderläge - Spacious Queen bedroom in Williamsburg  668.0    Private room                            No parties             1.0                  2                 4.0 Bemidji
+Walk everywhere, See everything!\n2BR Midtown West 1016.0    Private room                            No parties             1.0                  1                 4.0 Bemidji
+  MASTER PRIVATE BATHROOM - 2 BEDS - NEXT TO METRO  543.0    Private room                               No pets            30.0                  1                 2.0 Bemidji
+Private Bedroom B in Bushwick Minutes from Subways  531.0    Private room                            No smoking             2.0                  1                 5.0 Bemidji
+             Gowanus-Park Slope- Queen Studio Room  769.0    Private room                            No parties             1.0                  2                 3.0 Bemidji
+        Warm Artistic Wburg Loft Off 4 Train Lines  831.0 Entire home/apt                               No pets             5.0                  2                 4.0 Bemidji
+    Cozy Harlem room w/ a view! Near Central Park!  554.0    Private room                           No visitors            30.0                  2                 4.0 Bemidji
+                  A small bedroom, Lower East Side  142.0    Private room                           No visitors             3.0                  2                 1.0 Bemidji
+                                   Bed Stuy Modern  267.0    Private room                               No pets             2.0                  2                 2.0 Bemidji
+                  A beautiful Cozy 1 BR Apartment.  198.0 Entire home/apt                  No children under 10             2.0                  2                 5.0 Bemidji
+                Sunny Studio, Amazing Neighborhood  254.0 Entire home/apt No visitors & No smoking & No parties             7.0                  2                 4.0 Bemidji
+  Entire floor in Brooklyn Townhouse w/large patio  308.0 Entire home/apt                            No smoking             3.0                  2                 2.0 Bemidji
+
+### Attractions in Minneapolis
+                                        Name  Latitude  Longitude                                                                                               Address          Phone                                                                                                         Website        City
+                Minneapolis Sculpture Garden 44.969548 -93.289780                                                           725 Vineland Pl, Minneapolis, MN 55403, USA (612) 375-7600                                                                               https://www.walkerart.org/garden/ Minneapolis
+                Minneapolis Institute of Art 44.958500 -93.273218                                                            2400 3rd Ave S, Minneapolis, MN 55404, USA (888) 642-2787                                                                                        https://new.artsmia.org/ Minneapolis
+                            Mill City Museum 44.978783 -93.257271                                                              704 S 2nd St, Minneapolis, MN 55401, USA (612) 341-7555                                                                                   https://www.mnhs.org/millcity Minneapolis
+                             Mill Ruins Park 44.979804 -93.256390                                                        102 Portland Ave S, Minneapolis, MN 55401, USA (612) 313-7793                              https://www.minneapolisparks.org/parks__destinations/parks__lakes/mill_ruins_park/ Minneapolis
+                          Weisman Art Museum 44.973110 -93.236935                                                          333 E River Pkwy, Minneapolis, MN 55455, USA (612) 625-9494                                                                                            https://wam.umn.edu/ Minneapolis
+                             Gold Medal Park 44.977622 -93.253251                                       Second Street and 11th Avenue South, Minneapolis, MN 55415, USA (612) 904-5607                                                                                   http://www.goldmedalpark.org/ Minneapolis
+          Foshay Museum and Observation Deck 44.974790 -93.271986                                            821 S Marquette Ave 30th floor, Minneapolis, MN 55402, USA (612) 215-3700                                                                                        http://wminneapolis.com/ Minneapolis
+                             Minnehaha Falls 44.915356 -93.211078                                                       4801 S Minnehaha Dr, Minneapolis, MN 55417, USA (612) 230-6400                      https://www.minneapolisparks.org/parks__destinations/parks__lakes/minnehaha_regional_park/ Minneapolis
+                   Prospect Park Water Tower 44.968677 -93.212658                                                         55 Malcolm Ave SE, Minneapolis, MN 55414, USA (612) 767-6531                                                                               https://www.prospectparkmpls.org/ Minneapolis
+            St. Anthony Falls Visitor Center 44.981110 -93.258236                                                            1 Portland Ave, Minneapolis, MN 55401, USA (651) 293-0200                                                             https://www.nps.gov/miss/planyourvisit/stanfall.htm Minneapolis
+                            Mall of America® 44.854865 -93.242215                                                             60 E Broadway, Bloomington, MN 55425, USA (952) 883-8800                                                                                      https://mallofamerica.com/ Minneapolis
+                           Walker Art Center 44.968144 -93.288649                                                           725 Vineland Pl, Minneapolis, MN 55403, USA (612) 375-7600                                                                                          https://walkerart.org/ Minneapolis
+Central Mississippi Riverfront Regional Park 44.979517 -93.256592 East and West banks of the Mississippi River between & 35W bridges, Ave N, Minneapolis, MN 55401, USA        Unknown https://www.minneapolisparks.org/parks__destinations/parks__lakes/central_mississippi_riverfront_regional_park/ Minneapolis
+                         Minneapolis Lookout 45.003445 -93.218298                                                    3045-3109 Ridgway Pkwy, Minneapolis, MN 55413, USA        Unknown                                                                                                         Unknown Minneapolis
+                            Water Power Park 44.982972 -93.256595                                                            204 SE Main St, Minneapolis, MN 55414, USA (612) 230-6400                                                           https://www.nps.gov/miss/planyourvisit/waterpower.htm Minneapolis
+                     Minnehaha Regional Park 44.916739 -93.210107                                                       4801 S Minnehaha Dr, Minneapolis, MN 55417, USA (612) 230-6400                      https://www.minneapolisparks.org/parks__destinations/parks__lakes/minnehaha_regional_park/ Minneapolis
+                               Stepped Tower 44.973393 -93.242394                                                              Unnamed Road, Minneapolis, MN 55454, USA        Unknown                                                                                                         Unknown Minneapolis
+                  American Swedish Institute 44.954597 -93.265860                                                             2600 Park Ave, Minneapolis, MN 55407, USA (612) 871-4907                                                                                           http://www.asimn.org/ Minneapolis
+                      Boom Island Lighthouse 44.993135 -93.271789                                                      3-29 Plymouth Ave NE, Minneapolis, MN 55413, USA        Unknown                             https://www.minneapolisparks.org/parks__destinations/parks__lakes/boom_island_park/ Minneapolis
+                            Boom Island Park 44.992037 -93.268655                                                          724 Sibley St NE, Minneapolis, MN 55413, USA (612) 230-6400                                                                               https://www.minneapolisparks.org/ Minneapolis
+
+### Restaurants in Minneapolis
+                               Name  Average Cost                                                    Cuisines  Aggregate Rating        City
+                           The Cafe            14                    Indian, Mediterranean, Desserts, Seafood               4.9 Minneapolis
+                               Malo            80                                  Tea, Chinese, Indian, Cafe               3.2 Minneapolis
+       Court Avenue Brewing Company            31                         Pizza, French, Bakery, BBQ, Seafood               4.2 Minneapolis
+                       Troll Tavern            71                                     Tea, BBQ, Mediterranean               2.2 Minneapolis
+                    Texas Roadhouse            22                                  Cafe, Pizza, BBQ, Desserts               3.5 Minneapolis
+      Monkeypod Kitchen by Merriman            50   Desserts, Pizza, Bakery, Fast Food, Indian, Mediterranean               4.2 Minneapolis
+            Balbeer's Kitchen & Bar            81                                        Tea, Chinese, Bakery               3.3 Minneapolis
+                      Oregano India            91                               BBQ, French, Bakery, Desserts               3.1 Minneapolis
+                    Lavi Foji Dhaba            62 Desserts, Pizza, Mexican, Fast Food, Mediterranean, Seafood               0.0 Minneapolis
+                             Fomads            73                                      Cafe, Pizza, Fast Food               3.6 Minneapolis
+                         Nukkadwala            90                        Desserts, Tea, Italian, Bakery, Cafe               3.4 Minneapolis
+Purani Dilli's Al Karam Kebab House            97                                    Pizza, Desserts, Italian               3.4 Minneapolis
+                       Playboy Cafe            60                                       Cafe, Mexican, Bakery               3.7 Minneapolis
+                      Al Saad Foods            44                                 BBQ, Mediterranean, Seafood               3.2 Minneapolis
+                          FreshMenu            88                                Seafood, Desserts, Fast Food               3.6 Minneapolis
+                              Giani            17                             Cafe, Mexican, Bakery, Desserts               2.7 Minneapolis
+                 Wok  In The Clouds            52                                              Pizza, Seafood               3.8 Minneapolis
+                       Bawa Chicken            47                                    Cafe, Seafood, Fast Food               3.5 Minneapolis
+                   Bobby Tikki Wala            62                              Bakery, BBQ, Desserts, Seafood               3.0 Minneapolis
+         Lajawab Chicken & Fish Fry            42              Desserts, Pizza, Mexican, BBQ, Indian, Seafood               0.0 Minneapolis
+                         Raja Rasoi            85                                 Tea, French, Cafe, Desserts               0.0 Minneapolis
+                    Cheffron Bakery            31               Desserts, Bakery, BBQ, Mediterranean, Seafood               0.0 Minneapolis
+          Surprise - Bakers & Bites            22                                 Tea, Chinese, BBQ, Desserts               0.0 Minneapolis
+                Sahni Veg & Non Veg            97                           Chinese, BBQ, Desserts, Fast Food               3.1 Minneapolis
+                        Puri Bakers            85                                      Pizza, Bakery, Italian               3.9 Minneapolis
+                         Jeet Pizza            68                                               Tea, Desserts               0.0 Minneapolis
+                     Bablu Chic-Inn            95                          Tea, Pizza, BBQ, American, Seafood               2.6 Minneapolis
+                        Soni Bakers            42                                      Pizza, Bakery, Seafood               3.4 Minneapolis
+                  Rosart愆 Chocolate            45                        Desserts, Tea, Italian, BBQ, Seafood               3.4 Minneapolis
+                          Haveliram            19                  Pizza, Italian, Bakery, BBQ, Mediterranean               2.9 Minneapolis
+                             Tony's            27            Pizza, French, Fast Food, Mediterranean, Seafood               4.4 Minneapolis
+                Goli Vada Pav No. 1            41                                         Pizza, BBQ, Italian               3.6 Minneapolis
+              Uncle's Punjabi Rasoi            40                               Cafe, BBQ, Seafood, Fast Food               2.9 Minneapolis
+                     Southern Treat            52                                       French, Pizza, Bakery               2.8 Minneapolis
+                        Big Biryani            52                        Tea, Pizza, French, Chinese, Seafood               0.0 Minneapolis
+                   Agent Jack's Bar            93                     Desserts, Tea, Bakery, Chinese, Seafood               4.2 Minneapolis
+            Elite Indian Restaurant            89                   Desserts, Tea, Italian, American, Seafood               2.4 Minneapolis
+
+### Accommodations in Minneapolis
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number        city
+                Convent Ave & 127st Col Univ  RM 2  949.0    Private room                         No children under 10             2.0                  2                 1.0 Minneapolis
+    Balcony Duplex and Loft, Steps from the Subway 1056.0    Private room            No parties & No children under 10            21.0                  1                 3.0 Minneapolis
+Light-filled Apartment in great area, close 2 all!  343.0 Entire home/apt                                  No visitors             1.0                  2                 5.0 Minneapolis
+                                         ROOM  TWO  112.0    Private room                         No children under 10             3.0                  2                 5.0 Minneapolis
+  #1 Rated 3br Park Slope Apt (1700sqf+Renovated!)  169.0 Entire home/apt                         No parties & No pets             3.0                  2                 5.0 Minneapolis
+CHIC STUDIOS ON E 54TH~PRIME LOCATION~SUTTON PLACE  180.0 Entire home/apt                         No children under 10            30.0                  2                 3.0 Minneapolis
+                    Spacious artsy private bedroom  793.0    Private room                                   No smoking             1.0                  1                 2.0 Minneapolis
+           Elegant Stu Suite in  Midtown East  -21  981.0 Entire home/apt                     No visitors & No parties            30.0                  7                 2.0 Minneapolis
+                Nurturing room in a 3 bedroom apt. 1168.0    Private room                         No children under 10             3.0                  1                 1.0 Minneapolis
+                Small Sunny 1BR Apt Bradhurst Park  869.0 Entire home/apt            No parties & No children under 10             2.0                  5                 1.0 Minneapolis
+   Entire 1 Bedroom Apartment in Midtown Manhattan  107.0 Entire home/apt                                  No visitors             4.0                  3                 3.0 Minneapolis
+ENTIRE PLACE! near Columbia-sleeps up to 8 guests!  663.0 Entire home/apt                                  No visitors             1.0                  6                 5.0 Minneapolis
+                  20min To Times Square, 10min LGA  315.0    Private room                     No parties & No visitors             1.0                  2                 2.0 Minneapolis
+                     Beautiful room in West Harlem  944.0    Private room No visitors & No pets & No children under 10            30.0                  2                 5.0 Minneapolis
+                   Modern Condo in Heart of Harlem  191.0 Entire home/apt                                   No smoking             3.0                  3                 3.0 Minneapolis
+ Lovely & bright apartment in center of Park Slope 1013.0 Entire home/apt                                   No smoking            30.0                  9                 4.0 Minneapolis
+  Cozy UWS Only two blocks away from Central Park!  552.0    Private room                                   No smoking             2.0                  1                 3.0 Minneapolis
+
+### Attractions in Duluth
+                                 Name  Latitude  Longitude                                                   Address          Phone                                                                       Website   City
+                    Glensheen Mansion 46.815161 -92.051791                     3300 London Rd, Duluth, MN 55804, USA (888) 454-4536                                                         http://glensheen.org/ Duluth
+                    Leif Erikson Park 46.796017 -92.082967                     1301 London Rd, Duluth, MN 55805, USA (218) 730-4300                http://www.duluthmn.gov/parks/parks-listing/leif-erikson-park/ Duluth
+        Lake Superior Railroad Museum 46.781064 -92.104161                  506 W Michigan St, Duluth, MN 55802, USA (218) 727-8025                                                          http://www.lsrm.org/ Duluth
+Lake Superior Maritime Visitor Center 46.779847 -92.092464                  600 Canal Park Dr, Duluth, MN 55802, USA (218) 788-6430 https://www.lsmma.com/content.aspx?page_id=22&club_id=605134&module_id=308439 Duluth
+                           Enger Park 46.775789 -92.124171                1601 Enger Tower Dr, Duluth, MN 55806, USA (405) 314-5693                       http://www.duluthmn.gov/parks/parks-listing/enger-park/ Duluth
+           The St. Louis County Depot 46.781100 -92.103953                  506 W Michigan St, Duluth, MN 55802, USA (218) 733-7571                                            http://www.experiencethedepot.org/ Duluth
+                    Gichi-ode' Akiing 46.789012 -92.093799 N 2nd Ave E & East Michigan Street, Duluth, MN 55802, USA (218) 730-4300                  http://www.duluthmn.gov/parks/parks-listing/lake-place-park/ Duluth
+                Hartley Nature Center 46.838530 -92.082944                  3001 Woodland Ave, Duluth, MN 55803, USA (218) 724-6735                                                     http://hartleynature.org/ Duluth
+ The CRIBS (Uncle Harvey's Mausoleum) 46.784568 -92.092059                      The Lake Walk, Duluth, MN 55802, USA        Unknown                   https://www.atlasobscura.com/places/uncle-harveys-mausoleum Duluth
+               Bayfront Festival Park 46.777335 -92.102159                      350 Harbor Dr, Duluth, MN 55802, USA (218) 722-5573                                              http://bayfrontfestivalpark.com/ Duluth
+                    Kitchi Gammi Park 46.842482 -91.994386                  7030 Congdon Blvd, Duluth, MN 55804, USA (218) 730-4305    https://duluthmn.gov/parks/parks-listing/brighton-beach-park-kitchi-gammi/ Duluth
+                  The Duluth Lakewalk 46.780221 -92.091488                       The Lakewalk, Duluth, MN 55802, USA        Unknown                                         https://www.friendsofthelakewalk.org/ Duluth
+             Duluth Children's Museum 46.766373 -92.125540                 2125 W Superior St, Duluth, MN 55806, USA (218) 733-7543                                                    http://www.playduluth.org/ Duluth
+                    Lake Superior Zoo 46.725798 -92.190494                    7210 Fremont St, Duluth, MN 55807, USA (218) 730-4500                                                       http://lszooduluth.org/ Duluth
+     Duluth Diamond Railroad Crossing 46.770001 -92.114414                       Rice's Point, Duluth, MN 55802, USA        Unknown                                                                       Unknown Duluth
+                 Great Lakes Aquarium 46.778996 -92.100021                      353 Harbor Dr, Duluth, MN 55802, USA (218) 740-3474                                                    http://www.glaquarium.org/ Duluth
+      Spirit Mountain Recreation Area 46.718268 -92.216736            9500 Spirit Mountain Pl, Duluth, MN 55810, USA (218) 628-2891                                                      http://www.spiritmt.com/ Duluth
+                   Aerial Lift Bridge 46.779011 -92.092920                     601 S Lake Ave, Duluth, MN 55802, USA        Unknown                        https://www.dot.state.mn.us/historicbridges/L6116.html Duluth
+                   Duluth Rose Garden 46.798203 -92.080761                    15 S 13th Ave E, Duluth, MN 55802, USA (218) 730-4300                      http://www.duluthmn.gov/parks/parks-listing/rose-garden/ Duluth
+          North Shore Scenic Railroad 46.781856 -92.103695                  506 W Michigan St, Duluth, MN 55802, USA (218) 722-1273                                                  http://www.duluthtrains.com/ Duluth
+
+### Restaurants in Duluth
+                                  Name  Average Cost                                            Cuisines  Aggregate Rating   City
+               Sodam Korean Restaurant            25              Desserts, Tea, French, Fast Food, Cafe               4.3 Duluth
+                   Skye - Hotel Unique            31                        French, Mexican, Bakery, BBQ               4.8 Duluth
+                  Chandlers Steakhouse            98 Desserts, Tea, Italian, Bakery, Fast Food, American               3.9 Duluth
+                  Lulu's Chocolate Bar            97                                     Pizza, Desserts               4.3 Duluth
+                        Bitters & Love            33                       Bakery, Pizza, BBQ, Fast Food               3.9 Duluth
+            Tokyo Japanese Steak House            80                Chinese, American, Desserts, Seafood               3.9 Duluth
+Blue -  Rooftop Cafe Restaurant Bistro            36                    Cafe, French, Seafood, Fast Food               3.8 Duluth
+                         China Hot Pot            42                       Cafe, Pizza, American, Bakery               2.5 Duluth
+                     Shree Shyam Rasoi            33                       Tea, Seafood, Bakery, Italian               3.1 Duluth
+                         Liquid Lounge            50                        Cafe, Mediterranean, Seafood               3.8 Duluth
+                            Apni Rasoi            51       Desserts, Tea, Mexican, BBQ, Bakery, American               3.0 Duluth
+                         Brijwasi Bhoj            61    Pizza, French, Fast Food, Mediterranean, Seafood               3.1 Duluth
+                            Akash Deep            39                         Chinese, Pizza, BBQ, Bakery               2.8 Duluth
+                            China Fort            40                               BBQ, Indian, Desserts               3.5 Duluth
+                       Barbeque Nation            89           Tea, Pizza, Mexican, BBQ, Bakery, Chinese               4.0 Duluth
+                                 Gulab            59                        Cafe, American, BBQ, Italian               3.3 Duluth
+                          Pizza Corner            68               Pizza, Indian, BBQ, American, Seafood               0.0 Duluth
+                       Chinese K. Food            29         Pizza, Bakery, Cafe, Mediterranean, Seafood               2.9 Duluth
+                       Massi's Kitchen            25                        Fast Food, Desserts, Seafood               0.0 Duluth
+                        PVR Bhojanalay            33                    Fast Food, Chinese, Tea, Italian               2.7 Duluth
+         Laziz Fast Food & Laziz Khana            59                                Chinese, Bakery, BBQ               2.8 Duluth
+                            Urban Gala            63               Cafe, Mexican, Mediterranean, Seafood               2.8 Duluth
+               The Second Wife Kitchen            90            Desserts, BBQ, Fast Food, Cafe, American               0.0 Duluth
+             Shree Ram Sweets & Bakers            72                              American, BBQ, Seafood               3.0 Duluth
+                          Food Factory            11                         Fast Food, Chinese, Seafood               0.0 Duluth
+                Rupa Ice Cream Parlour            69                    Seafood, Indian, Cafe, Fast Food               0.0 Duluth
+                  Kanha Cake O' Pastry            42           Desserts, Pizza, French, Bakery, American               0.0 Duluth
+                           Cha Cha Cha            22                   Fast Food, Tea, American, Seafood               0.0 Duluth
+                      The Gaming Vegas            41             Desserts, Tea, French, Chinese, Seafood               0.0 Duluth
+                              Bawarchi            52                               Cafe, Pizza, Desserts               2.9 Duluth
+               Uncle's JVCC Restaurant            12                                         Cafe, Pizza               3.0 Duluth
+                           Sadda Taste            90           Pizza, Bakery, Fast Food, Indian, Seafood               3.1 Duluth
+                             Swaaddesh            58                         Chinese, Seafood, Fast Food               3.5 Duluth
+                       Yellow Sapphire            83         Pizza, Bakery, Fast Food, American, Seafood               3.7 Duluth
+             Aroma - The Royal Retreat            87             Desserts, Tea, BBQ, Fast Food, American               3.5 Duluth
+
+### Accommodations in Duluth
+                                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number   city
+                               Beautiful 1 bedroom in city center 1154.0 Entire home/apt No parties & No smoking & No children under 10             2.0                  3                 2.0 Duluth
+               BEAUTIFUL ONE BEDROOM, PRIVATE BACKYARD. Manhattan  179.0 Entire home/apt                                        No pets             2.0                  2                 5.0 Duluth
+                                      Studio Apt -Upper East Side  559.0 Entire home/apt                                     No smoking             2.0                  4                 2.0 Duluth
+                                   Cozy room with queen bed in 4b   52.0    Private room                                        No pets             3.0                  2                 2.0 Duluth
+Midtown West, very cozy place with your own room, prime location.  757.0    Private room                       No visitors & No smoking             3.0                  1                 4.0 Duluth
+                      Renovated 1BR Penthouse Oasis In Brownstone 1172.0 Entire home/apt                       No visitors & No parties             3.0                  2                 3.0 Duluth
+                                   Light-filled South Slope Nest!  790.0 Entire home/apt                           No children under 10             2.0                  7                 2.0 Duluth
+                                   Modern loft in Cobble Hill, BK  186.0    Private room                 No pets & No children under 10             1.0                  2                 4.0 Duluth
+                        Stylish Large 2 Bedroom, Perfect Location   57.0 Entire home/apt              No parties & No smoking & No pets             2.0                  2                 3.0 Duluth
+
+### Flight from Washington to Bemidji on 2022-03-18
+There is no flight from Washington to Bemidji on 2022-03-18.
+
+### Self-driving from Washington to Bemidji
+self-driving, from Washington to Bemidji, duration: 20 hours 8 mins, distance: 2,120 km, cost: 106
+
+### Taxi from Washington to Bemidji
+taxi, from Washington to Bemidji, duration: 20 hours 8 mins, distance: 2,120 km, cost: 2120
+
+### Flight from Bemidji to Minneapolis on 2022-03-20
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3847877     63   08:06   10:37 2 hours 31 minutes 2022-03-20        Bemidji  Minneapolis     199.0
+     F3847879     43   17:56   18:41 0 hours 45 minutes 2022-03-20        Bemidji  Minneapolis     199.0
+
+### Self-driving from Bemidji to Minneapolis
+self-driving, from Bemidji to Minneapolis, duration: 3 hours 34 mins, distance: 347 km, cost: 17
+
+### Taxi from Bemidji to Minneapolis
+taxi, from Bemidji to Minneapolis, duration: 3 hours 34 mins, distance: 347 km, cost: 347
+
+### Flight from Minneapolis to Duluth on 2022-03-22
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3640437     52   08:54   10:05 1 hours 11 minutes 2022-03-22    Minneapolis       Duluth     144.0
+     F3656284     47   10:26   11:16 0 hours 50 minutes 2022-03-22    Minneapolis       Duluth     144.0
+     F3805786     34   20:22   21:04 0 hours 42 minutes 2022-03-22    Minneapolis       Duluth     144.0
+     F3805876     42   15:38   16:32 0 hours 54 minutes 2022-03-22    Minneapolis       Duluth     144.0
+
+### Self-driving from Minneapolis to Duluth
+self-driving, from Minneapolis to Duluth, duration: 2 hours 16 mins, distance: 248 km, cost: 12
+
+### Taxi from Minneapolis to Duluth
+taxi, from Minneapolis to Duluth, duration: 2 hours 16 mins, distance: 248 km, cost: 248
+
+### Flight from Duluth to Washington on 2022-03-24
+There is no flight from Duluth to Washington on 2022-03-24.
+
+### Self-driving from Duluth to Washington
+self-driving, from Duluth to Washington, duration: 17 hours 50 mins, distance: 1,881 km, cost: 94
+
+### Taxi from Duluth to Washington
+taxi, from Duluth to Washington, duration: 17 hours 50 mins, distance: 1,881 km, cost: 1881
+
+JSON plan:

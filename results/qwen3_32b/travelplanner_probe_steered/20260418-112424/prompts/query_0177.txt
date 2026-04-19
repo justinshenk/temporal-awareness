@@ -1,0 +1,278 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you help devise a 7-day travel itinerary for 2 people, beginning in Salt Lake City and includes visiting 3 unique cities in Montana from March 16th to 22nd, 2022? We have a planned budget of $7,200. In terms of accommodations, we would like places where parties are permitted. Throughout our stay, we'd wish to enjoy various cuisines, including American, Mediterranean, Indian, and Chinese. Lastly, we prefer not to drive ourselves throughout this journey.
+
+Reference information:
+### Attractions in Billings
+                                     Name  Latitude   Longitude                                                    Address          Phone                                        Website     City
+                  Western Heritage Center 45.780570 -108.505793                  2822 Montana Ave, Billings, MT 59101, USA (406) 256-6809                           http://www.ywhc.org/ Billings
+               Pictograph Cave State Park 45.737818 -108.431110                    3401 Coburn Rd, Billings, MT 59101, USA (406) 254-7342      http://stateparks.mt.gov/pictograph-cave/ Billings
+                      Moss Mansion Museum 45.779650 -108.516024                   914 Division St, Billings, MT 59101, USA (406) 256-5100                    http://www.mossmansion.com/ Billings
+                   Yellowstone Art Museum 45.785840 -108.507133                   401 N 27th St A, Billings, MT 59101, USA (406) 256-6804                      http://www.artmuseum.org/ Billings
+                Yellowstone County Museum 45.802401 -108.537672                 1950 Terminal Cir, Billings, MT 59105, USA (406) 670-0888                     http://www.ycmhistory.org/ Billings
+                               ZooMontana 45.732266 -108.620657                    2100 Shiloh Rd, Billings, MT 59106, USA (406) 652-8100                         http://zoomontana.org/ Billings
+                          Riverfront Park 45.741654 -108.533992 7277-7337 State Secondary Hwy 416, Billings, MT 59101, USA (406) 657-8371  http://www.billingsparks.org/park/riverfront/ Billings
+                     Lake Elmo State Park 45.845151 -108.481330              219 Rolling Hills Dr, Billings, MT 59105, USA (406) 247-2940            http://stateparks.mt.gov/lake-elmo/ Billings
+                            Two Moon Park 45.809124 -108.461807              850 Two Moon Park Rd, Billings, MT 59105, USA (406) 248-1400       http://www.yrpa.org/parks/two-moon-park/ Billings
+Wise Wonders Science and Discovery Museum 45.781042 -108.509619                    3024 2nd Ave N, Billings, MT 59101, USA (406) 702-1280                    http://www.wisewonders.org/ Billings
+                             Pioneer Park 45.788382 -108.525320                   301 Parkhill Dr, Billings, MT 59101, USA (406) 657-8371     http://www.billingsparks.org/park/pioneer/ Billings
+                         Castle Rock Park 45.827016 -108.500389          W Wicks Ln & Nutter Blvd, Billings, MT 59105, USA (406) 657-8371  http://www.billingsparks.org/park/castlerock/ Billings
+                             Coulson Park 45.787485 -108.478526                       Charlene St, Billings, MT 59101, USA (406) 657-8371     http://www.billingsparks.org/park/coulson/ Billings
+              Four Dances Recreation Area 45.777191 -108.472980                 03092721101010000, Billings, MT 59101, USA        Unknown                                        Unknown Billings
+                           Zimmerman Park 45.805146 -108.603589                         3314 MT-3, Billings, MT 59106, USA (406) 657-8371      http://www.billingsparks.org/park-finder/ Billings
+                              Swords Park 45.799231 -108.507429                    Swords Park Dr, Billings, MT 59105, USA (406) 657-8371                      http://billingsparks.org/ Billings
+                              Phipps Park 45.815928 -108.688052                      6790 Molt Rd, Billings, MT 59106, USA (406) 657-8371 https://www.billingsparks.org/location/phipps/ Billings
+                                    Oasis 45.807848 -108.493093                   543 Aronson Ave, Billings, MT 59105, USA (406) 969-3131                      http://billingsoasis.com/ Billings
+                 Shiloh Conservation Area 45.749572 -108.623535                    1132 Shiloh Rd, Billings, MT 59102, USA        Unknown                                        Unknown Billings
+                     Rimrock View Pullout 45.804058 -108.564472                   1701-2029, MT-3, Billings, MT 59106, USA        Unknown                                        Unknown Billings
+
+### Restaurants in Billings
+                      Name  Average Cost                                          Cuisines  Aggregate Rating     City
+                Holy Smoke            38                Tea, Bakery, Cafe, Indian, Seafood               3.6 Billings
+                  L'Angoor            19                    Cafe, Pizza, Indian, Fast Food               3.5 Billings
+           Shree Annapurna            96                              French, Bakery, Cafe               0.0 Billings
+                 Govardhan            59                             BBQ, Bakery, Desserts               3.4 Billings
+             Chakhnaa Wala            58     Desserts, Tea, Bakery, Mediterranean, Seafood               3.5 Billings
+         Hong Kong Express            43                       BBQ, Mediterranean, Seafood               3.8 Billings
+                 Tsui Wong            40                                 Desserts, Seafood               3.8 Billings
+         New Bengal Sweets            91                     Tea, Pizza, BBQ, Cafe, Indian               3.1 Billings
+                   Elation            87                        Fast Food, Bakery, Seafood               3.8 Billings
+       Uncle's Kabab Point            77                          Bakery, Pizza, Fast Food               3.4 Billings
+                    Teflas            80                        Cafe, Bakery, BBQ, Italian               3.4 Billings
+                  Bakeyard            74            Tea, BBQ, Cafe, Mediterranean, Seafood               3.0 Billings
+             Sab Ki Khatir            98                                  Pizza, Fast Food               3.7 Billings
+   Kullu Manali Restaurant            48                French, Bakery, Seafood, Fast Food               0.0 Billings
+           Choudhary Dhaba            15           Pizza, Bakery, Mediterranean, Fast Food               0.0 Billings
+       Hostess Tasty Bites            60    Desserts, Tea, French, BBQ, Fast Food, Chinese               3.1 Billings
+             Just Vada Pav            15         Tea, Pizza, French, Mexican, BBQ, Seafood               0.0 Billings
+            Golden Tandoor            35            Tea, French, BBQ, Bakery, Cafe, Indian               3.2 Billings
+                Apni Rasoi            52 Desserts, Tea, Pizza, French, Cafe, Mediterranean               0.0 Billings
+                Puppychino            66    Desserts, Tea, Mexican, Bakery, Cafe, American               4.4 Billings
+          Brothers' Bakery            45   Italian, Bakery, Fast Food, Cafe, Mediterranean               2.9 Billings
+    Aggarwal Confectionary            12                            Bakery, American, Cafe               2.8 Billings
+  Viddya Chinese Fast Food            53                       Tea, Pizza, Indian, Seafood               0.0 Billings
+               The Kitchen            13                      Cafe, American, BBQ, Seafood               2.7 Billings
+The Coffee Bean & Tea Leaf            34            Mexican, BBQ, Mediterranean, Fast Food               2.6 Billings
+               Love Crumbs            53       Tea, Pizza, French, Mexican, BBQ, Fast Food               4.1 Billings
+
+### Accommodations in Billings
+                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number     city
+                                          和缘浪漫民宿  897.0    Private room No children under 10 & No parties & No visitors             1.0                  1                 3.0 Billings
+Great Room! Great Price! \nCan wait to see you ! 1152.0    Private room               No children under 10 & No parties             2.0                  2                 5.0 Billings
+  Sunny 2 bd + Private rooftop on best GP street  293.0 Entire home/apt                        No visitors & No parties             3.0                  3                 3.0 Billings
+                Large Sofa in Artist's Apartment  944.0     Shared room                                      No parties             1.0                  1                 2.0 Billings
+                 HARLEM, NEW YORK WELCOMES YOU!!  990.0    Private room                                         No pets             2.0                  2                 2.0 Billings
+             Private room with Central Park view  318.0    Private room     No pets & No smoking & No children under 10            10.0                  2                 4.0 Billings
+            One Bedroom Apt next to Empire State  339.0 Entire home/apt                                      No smoking             7.0                  2                 2.0 Billings
+   Home 4 Medical Professionals - The "Crepitus"  293.0    Private room                                     No visitors            30.0                  2                 2.0 Billings
+
+### Attractions in Great Falls
+                                   Name  Latitude   Longitude                                           Address          Phone                                                                                                                         Website        City
+                   C. M. Russell Museum 47.510188 -111.286246         400 13th St N, Great Falls, MT 59401, USA (406) 727-8787                                                                                                          https://cmrussell.org/ Great Falls
+The Lewis and Clark Interpretive Center 47.529442 -111.235598 4201 Giant Springs Rd, Great Falls, MT 59405, USA (406) 453-6248                                                                      https://www.fs.usda.gov/recarea/hlcnf/recarea/?recid=61458 Great Falls
+           Children's Museum of Montana 47.506251 -111.307541    22 Railroad Square, Great Falls, MT 59401, USA (406) 452-6661 http://childrensmuseumofmontana.org/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=11119304774603334464 Great Falls
+               Electric City Water Park 47.503972 -111.309761        100 River Dr S, Great Falls, MT 59405, USA (406) 454-9008                                                                 http://www.greatfallsmt.net/recreation/electric-city-water-park Great Falls
+      Paris Gibson Square Museum of Art 47.505601 -111.282535        1400 1st Ave N, Great Falls, MT 59401, USA (406) 727-8255                                                                                                      http://www.the-square.org/ Great Falls
+                     The History Museum 47.499817 -111.304880          422 2nd St S, Great Falls, MT 59405, USA (406) 452-3462                                                                                             http://greatfallshistorymuseum.org/ Great Falls
+               Giant Springs State Park 47.534446 -111.228842 4803 Giant Springs Rd, Great Falls, MT 59405, USA (406) 727-1212                                                                                         http://stateparks.mt.gov/giant-springs/ Great Falls
+                         West Bank Park 47.512926 -111.312406        1600 4th St NE, Great Falls, MT 59404, USA (406) 771-1265                                                                              https://greatfallsmt.net/recreation/west-bank-park Great Falls
+                            Gibson Park 47.510290 -111.304544   River, s Edge Trail, Great Falls, MT 59401, USA (406) 771-1265                                                                               https://greatfallsmt.net/recreation/gibson-park-0 Great Falls
+          Malmstrom Museum and Air Park 47.506257 -111.200377     90 Whitehall Dr, Malmstrom AFB, MT 59402, USA (406) 731-2705                                                                          https://www.malmstrom.af.mil/About-Us/Malmstrom-Museum Great Falls
+Lewis & Clark Trail Heritage Foundation 47.529419 -111.235612 4201 Giant Springs Rd, Great Falls, MT 59405, USA (406) 454-1234                                                                                                  https://www.lewisandclark.org/ Great Falls
+                   Great Falls Dam View 47.519613 -111.257601       5435 River Dr N, Great Falls, MT 59405, USA        Unknown                                                                                                                         Unknown Great Falls
+                  Wooden Turtle Carving 47.512523 -111.302269         420 Park Dr N, Great Falls, MT 59401, USA        Unknown                                                                                                                         Unknown Great Falls
+              Statue of Liberty Replica 47.507490 -111.306258     Gibson Park Trail, Great Falls, MT 59401, USA (406) 771-1265                                                                                                       https://greatfallsmt.net/ Great Falls
+                         Wadsworth Park 47.513808 -111.386722     4620 Wilkinson Ln, Great Falls, MT 59404, USA (406) 771-1265                                                                              https://greatfallsmt.net/recreation/wadsworth-park Great Falls
+                              Tool Tree 47.507724 -111.313963         119 1st Ave N, Great Falls, MT 59401, USA        Unknown                                                                                                                         Unknown Great Falls
+                            Rainbow Dam 47.534630 -111.204900    River's Edge Trail, Great Falls, MT 59404, USA        Unknown                                                                                                                         Unknown Great Falls
+                    St. Ann's Cathedral 47.508805 -111.295000         715 3rd Ave N, Great Falls, MT 59401, USA (406) 761-5456                                                                                                 http://www.stannscathedral.org/ Great Falls
+            Black Eagle Memorial Island 47.520898 -111.258714    River's Edge Trail, Great Falls, MT 59405, USA        Unknown                                                                                                                         Unknown Great Falls
+           Great Falls Parks Recreation 47.518491 -111.277655 1700 River Dr N #1327, Great Falls, MT 59401, USA (406) 771-1265                                                                                             https://greatfallsmt.net/recreation Great Falls
+
+### Restaurants in Great Falls
+                          Name  Average Cost                                                     Cuisines  Aggregate Rating        City
+           Flying Pie Pizzaria            78     Desserts, Bakery, Fast Food, Cafe, Indian, Mediterranean               4.1 Great Falls
+                    Hula Grill            76                                          Pizza, BBQ, Seafood               4.3 Great Falls
+                     SpiceKlub            76                Tea, Pizza, Indian, Fast Food, Cafe, American               4.4 Great Falls
+           Tirupati Restaurant            67              Desserts, BBQ, American, Mediterranean, Seafood               3.8 Great Falls
+               Barbeque Nation            46                                          Tea, BBQ, Fast Food               4.4 Great Falls
+                        Silver            83                                 Cafe, American, BBQ, Seafood               0.0 Great Falls
+                 Magical Momos            25                                           Cafe, BBQ, Seafood               0.0 Great Falls
+               Fork with Stick            98                                      Cafe, Bakery, Fast Food               4.0 Great Falls
+               The Oven Artist            66                                  Tea, Cafe, Mexican, Seafood               3.5 Great Falls
+                Domino's Pizza            96                                     Tea, Desserts, Fast Food               2.3 Great Falls
+        KB's Icecream & Kulfis            42 Desserts, Italian, Bakery, Fast Food, Mediterranean, Seafood               2.3 Great Falls
+               Behrouz Biryani            24                                            Desserts, Seafood               3.7 Great Falls
+               Taruveda Bistro            27                                 Chinese, Pizza, BBQ, Seafood               4.2 Great Falls
+Wimpy Sweets And Confectioners            46                                      French, Cafe, Fast Food               0.0 Great Falls
+                     Chao Cart            69                                              Pizza, Desserts               3.3 Great Falls
+                Finger Licious            32                      Pizza, Mexican, Bakery, Fast Food, Cafe               3.2 Great Falls
+                 Punjabi Joint            26                                          Tea, Cafe, Desserts               2.8 Great Falls
+         Syall Kotian Da Dhaba            40                        Tea, Bakery, Mediterranean, Fast Food               3.0 Great Falls
+               F 2 Pastry Shop            49                                 Tea, Pizza, Indian, Desserts               3.3 Great Falls
+    Nirvana The Divine Kitchen            90   Desserts, Mexican, Fast Food, Cafe, Mediterranean, Seafood               0.0 Great Falls
+       Evergreen Sweets Corner            53                             Seafood, American, Cafe, Italian               3.0 Great Falls
+                       Hub Tub            56                                                   Tea, Pizza               3.0 Great Falls
+                  Mahara Hotel            27                        Tea, French, Fast Food, Cafe, Seafood               2.9 Great Falls
+                Chinese Corner            66                             Bakery, Pizza, Indian, Fast Food               0.0 Great Falls
+                 Sharma Sweets            45                                      Chinese, Pizza, Seafood               0.0 Great Falls
+                  Paras Corner            32                              French, Pizza, Seafood, Italian               0.0 Great Falls
+                        BonJuz            14                                 Tea, Bakery, Pizza, Desserts               3.1 Great Falls
+             Healthy Nutrienty            86                                                BBQ, Desserts               0.0 Great Falls
+                Grillz & Gravy            85                                                 Cafe, Bakery               3.3 Great Falls
+                 The Flashback            55                                          Chinese, Pizza, BBQ               3.7 Great Falls
+             Raju Chinese Food            90                                   Mexican, Bakery, Fast Food               3.2 Great Falls
+           Shanghai Restaurant            92            French, BBQ, Bakery, Fast Food, American, Seafood               2.5 Great Falls
+                  Smile Bakers            55                      Desserts, Pizza, Italian, Cafe, Seafood               3.1 Great Falls
+                        Subway            18                                                 BBQ, Seafood               2.5 Great Falls
+                       Red Hot            24                              Seafood, Bakery, Pizza, Italian               3.3 Great Falls
+                           KFC            40                                       French, Pizza, Seafood               2.5 Great Falls
+                  Paddy's Cafe            16                                   Chinese, Desserts, Seafood               3.7 Great Falls
+               Super Cake Shop            51                                       Cafe, Pizza, Fast Food               2.5 Great Falls
+         Himalaya Momos & Roll            91                                        Cafe, Bakery, Italian               2.7 Great Falls
+                   Time to Tea            42                                                  Tea, Bakery               3.4 Great Falls
+             Chauhan Fast Food            46               Desserts, Bakery, Cafe, Mediterranean, Seafood               0.0 Great Falls
+Kaveri Restaurant And Caterers            41                    Desserts, Bakery, BBQ, Fast Food, Chinese               4.0 Great Falls
+                 The Big Mouth            93                                        Mexican, BBQ, Seafood               4.3 Great Falls
+
+### Accommodations in Great Falls
+                                             NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number        city
+  SUNNY ROOM IN WILLIAMSBURG - 1 BLOCK TO METRO!!  880.0    Private room                                     No pets             2.0                  1                 2.0 Great Falls
+                      Comfy & Sunny Studio Rental  413.0 Entire home/apt                                  No parties             2.0                  3                 5.0 Great Falls
+                                 Unique Penthouse  713.0 Entire home/apt No smoking & No pets & No children under 10             1.0                  4                 3.0 Great Falls
+    3rd FL, Private Suite w Own Bath & Study Area  913.0 Entire home/apt                        No children under 10             3.0                  7                 1.0 Great Falls
+                           Jazz it Up in Brooklyn  226.0    Private room                                  No parties             2.0                  2                 2.0 Great Falls
+            Spacious new and luxurious apartment!  951.0 Entire home/apt          No children under 10 & No visitors             2.0                  3                 3.0 Great Falls
+                 Designers brownstone in Bed-Stuy  784.0 Entire home/apt                    No smoking & No visitors             2.0                  2                 2.0 Great Falls
+                   Cozy 1 bedroom in Murray Hill. 1093.0 Entire home/apt                       No pets & No visitors             1.0                 10                 3.0 Great Falls
+               Amazing Luxury 1 Bedroom Apartment  878.0 Entire home/apt                        No children under 10            30.0                  8                 1.0 Great Falls
+                         Highclass clean and calm  732.0    Private room                                 No visitors             1.0                  1                 3.0 Great Falls
+East Village Studio Apt w/private Courtyard Oasis  309.0 Entire home/apt                     No parties & No smoking             6.0                  3                 5.0 Great Falls
+                  Water View near Flushing近法拉盛海景房  687.0 Entire home/apt                                 No visitors             7.0                  4                 2.0 Great Falls
+
+### Attractions in Bozeman
+                               Name  Latitude   Longitude                                      Address          Phone                                                                                              Website    City
+              Museum of the Rockies 45.658624 -111.045121      600 W Kagy Blvd, Bozeman, MT 59717, USA (406) 994-2251                                                                   http://www.museumoftherockies.org/ Bozeman
+            Gallatin History Museum 45.679657 -111.042195        317 W Main St, Bozeman, MT 59715, USA (406) 522-8122                                                                    http://gallatinhistorymuseum.org/ Bozeman
+American Computer & Robotics Museum 45.659281 -111.054964  2023 Stadium Dr #1a, Bozeman, MT 59715, USA (406) 582-1288                                                                            http://www.acrmuseum.org/ Bozeman
+             Bozeman Sculpture Park 45.676759 -111.027430        626 E Main St, Bozeman, MT 59715, USA        Unknown                                                                  http://www.gallatinartcrossing.org/ Bozeman
+   The Story Mansion and Story Park 45.670741 -111.039512    811 S Willson Ave, Bozeman, MT 59715, USA (406) 582-2290                                                                     http://www.friendsofthestory.org Bozeman
+             Montana Science Center 45.672181 -111.074406       2744 W Main St, Bozeman, MT 59718, USA (406) 522-9087                                                                    https://montanasciencecenter.org/ Bozeman
+              Peets Hill/Burke Park 45.673900 -111.029331       429 E Story St, Bozeman, MT 59715, USA (406) 587-8404                                              https://gvlt.org/featured-trails/peets-hill-burke-park/ Bozeman
+              Glen Lake Rotary Park 45.704505 -111.038820                       Bozeman, MT 59715, USA        Unknown            https://www.bozemansunriserotary.org/sitepage/glen-lake-rotary-park/glen-lake-rotary-park Bozeman
+                      Dinosaur Park 45.695488 -111.084781    1707 Vaquero Pkwy, Bozeman, MT 59718, USA (406) 582-3178                                                                                              Unknown Bozeman
+                        College 'M' 45.714692 -110.973499         Trail to 'M', Bozeman, MT 59715, USA        Unknown                                                                                              Unknown Bozeman
+                Lindley Park Center 45.677720 -111.024715                       Bozeman, MT 59715, USA (406) 582-2290                     https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/232/ Bozeman
+                       Bozeman Pond 45.673851 -111.081741     700 S Fowler Ave, Bozeman, MT 59718, USA (406) 444-2535                                                                              http://www.bozeman.net/ Bozeman
+      Gallatin County Regional Park 45.695075 -111.088943     5000 Tschache Ln, Bozeman, MT 59718, USA (406) 582-3178                                             https://gvlt.org/featured-trails/gallatin-regional-park/ Bozeman
+          Montana Grizzly Encounter 45.663931 -110.834042 80 W Bozeman Hill Rd, Bozeman, MT 59715, USA (406) 586-8893                                                                     http://www.grizzlyencounter.org/ Bozeman
+     Yellowstone Glacier Adventures 45.729051 -111.097913  65 Hidden Valley Rd, Bozeman, MT 59718, USA (406) 585-9041                                                                 http://www.yellowstoneyearround.com/ Bozeman
+               Bozeman Welcome Sign 45.677628 -111.015692                       Bozeman, MT 59715, USA        Unknown                                                                                              Unknown Bozeman
+                        Bogert Park 45.675793 -111.031227     325 S Church Ave, Bozeman, MT 59715, USA (406) 582-2290 https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/190/1863?selamenityid=11 Bozeman
+                        Cooper Park 45.674768 -111.046618    Cooper Park Trail, Bozeman, MT 59715, USA (406) 582-2290                 https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/219/1863 Bozeman
+           Snowfill Recreation Area 45.721413 -111.036662                       Bozeman, MT 59715, USA (406) 587-8404                                            http://gvlt.org/featured-trails/snowfill-recreation-area/ Bozeman
+        The Extreme History Project 45.680212 -111.033302  234 E Mendenhall St, Bozeman, MT 59715, USA (406) 220-2678                                                                http://www.extremehistoryproject.org/ Bozeman
+
+### Restaurants in Bozeman
+                          Name  Average Cost                                          Cuisines  Aggregate Rating    City
+                     Jiquitaia            36                              Tea, Pizza, American               4.1 Bozeman
+ McGuire's Irish Pub & Brewery            72                      Fast Food, Desserts, Italian               4.9 Bozeman
+                        Zaroob            67        Desserts, Tea, French, BBQ, Bakery, Indian               3.9 Bozeman
+                  Indo Chinese            66 Italian, BBQ, Bakery, Fast Food, Chinese, Seafood               3.2 Bozeman
+           Shri Bhujia Bhandar            87                   Tea, Chinese, Desserts, Italian               0.0 Bozeman
+               Saravana Bhavan            38                           Tea, American, Desserts               4.3 Bozeman
+                      Side Wok            14                                Tea, Pizza, Indian               3.8 Bozeman
+           Adyar Ananda Bhavan            22                              Tea, Chinese, Bakery               3.5 Bozeman
+          Aazad Chicken Corner            77                     Tea, BBQ, Desserts, Fast Food               0.0 Bozeman
+   Mukesh Chic-Inn Hot & Spice            71 Desserts, Tea, Pizza, Mexican, BBQ, Mediterranean               3.0 Bozeman
+                   Bunty Dhaba            55                       Indian, Desserts, Fast Food               2.5 Bozeman
+               Kukkuu Da Dhaba            58                    Tea, Bakery, BBQ, Cafe, Indian               0.0 Bozeman
+                Pepper Kitchen            75                               Pizza, BBQ, Seafood               4.0 Bozeman
+                Snack Junction            98                  Cafe, Pizza, American, Fast Food               3.2 Bozeman
+     Hinglish - Cafe Beach Bar            75       Tea, Pizza, Bakery, American, Mediterranean               3.7 Bozeman
+Shree Bhog Pure Veg Restaurant            79                            Indian, BBQ, Fast Food               3.0 Bozeman
+                 Shalimar Food            81                                 Cafe, Indian, BBQ               0.0 Bozeman
+                 Cakes & Bakes            71                           Seafood, BBQ, Fast Food               3.2 Bozeman
+                   Today Pizza            27      French, Bakery, BBQ, Fast Food, Cafe, Indian               0.0 Bozeman
+                     Keventers            39           Desserts, Pizza, BBQ, Fast Food, Indian               3.1 Bozeman
+               Behrouz Biryani            27                         Bakery, American, Seafood               3.5 Bozeman
+                      Chocopur            78              Desserts, Tea, Bakery, BBQ, American               3.0 Bozeman
+              Sweta Restaurant            48        Desserts, Mexican, Bakery, Fast Food, Cafe               3.2 Bozeman
+                    Dietwholic            12     Pizza, Mexican, Bakery, BBQ, Chinese, Seafood               3.7 Bozeman
+     Green Vally Chiiness Food            74                           Mexican, Pizza, Seafood               0.0 Bozeman
+                       Oh Buoy            79                                     Cafe, Seafood               3.3 Bozeman
+                       Italize            24  Italian, French, Bakery, BBQ, Fast Food, Seafood               3.6 Bozeman
+     The Manhattan FISH MARKET            41                   Bakery, Indian, Cafe, Fast Food               4.0 Bozeman
+
+### Accommodations in Bozeman
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+   18th Floor Bright Bedroom with Private Bathroom  874.0    Private room               No children under 10 & No parties             8.0                  1                 3.0 Bozeman
+SPACIOUS STUDIO APT 3 IN PROSPECT LEFFERTS GARDENS 1060.0 Entire home/apt               No children under 10 & No parties             5.0                  6                 4.0 Bozeman
+                  Two Bedrooms with Dedicated Bath  615.0    Private room     No pets & No smoking & No children under 10             3.0                  2                 4.0 Bozeman
+  Swimming Pool/Gym/ Doorman 2 bed 2 bath W&D 5192 1184.0 Entire home/apt    No children under 10 & No visitors & No pets            30.0                 10                 3.0 Bozeman
+         Convenient / Spacious 1BR in Union Square  801.0 Entire home/apt                            No children under 10             2.0                  8                 1.0 Bozeman
+     Private Guest Loft in a Sunny Etsy-Lovers Apt  481.0    Private room                                      No smoking             2.0                  2                 2.0 Bozeman
+    Greenpoint, BK 1 Bedroom, Couple/Solo Traveler  574.0 Entire home/apt No parties & No visitors & No children under 10             3.0                  2                 5.0 Bozeman
+       Sun-Filled Artist Loft in Private Townhouse  214.0 Entire home/apt                                      No parties             2.0                  2                 2.0 Bozeman
+Lovely 3 bedroom Townhouse in BK Historic District  350.0 Entire home/apt                            No children under 10             3.0                  3                 5.0 Bozeman
+ Decatur street Limestone an Urban Zen  experience  466.0 Entire home/apt                            No children under 10             3.0                  3                 2.0 Bozeman
+      Amazing 1 Bedroom | 1 Bedroom | Skyline View  220.0 Entire home/apt     No pets & No children under 10 & No parties            30.0                  2                 2.0 Bozeman
+  Beautiful Private Bedroom in North Brooklyn! 2-2  716.0    Private room              No pets & No smoking & No visitors            30.0                  2                 2.0 Bozeman
+
+### Flight from Salt Lake City to Billings on 2022-03-16
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3536653    187   22:36   23:41  1 hours 5 minutes 2022-03-16 Salt Lake City     Billings     387.0
+     F3806189    157   16:32   17:53 1 hours 21 minutes 2022-03-16 Salt Lake City     Billings     387.0
+     F3829434     92   09:43   10:59 1 hours 16 minutes 2022-03-16 Salt Lake City     Billings     387.0
+
+### Self-driving from Salt Lake City to Billings
+self-driving, from Salt Lake City to Billings, duration: 8 hours 20 mins, distance: 883 km, cost: 44
+
+### Taxi from Salt Lake City to Billings
+taxi, from Salt Lake City to Billings, duration: 8 hours 20 mins, distance: 883 km, cost: 883
+
+### Flight from Billings to Great Falls on 2022-03-18
+There is no flight from Billings to Great Falls on 2022-03-18.
+
+### Self-driving from Billings to Great Falls
+self-driving, from Billings to Great Falls, duration: 3 hours 35 mins, distance: 352 km, cost: 17
+
+### Taxi from Billings to Great Falls
+taxi, from Billings to Great Falls, duration: 3 hours 35 mins, distance: 352 km, cost: 352
+
+### Flight from Great Falls to Bozeman on 2022-03-20
+There is no flight from Great Falls to Bozeman on 2022-03-20.
+
+### Self-driving from Great Falls to Bozeman
+self-driving, from Great Falls to Bozeman, duration: 2 hours 55 mins, distance: 299 km, cost: 14
+
+### Taxi from Great Falls to Bozeman
+taxi, from Great Falls to Bozeman, duration: 2 hours 55 mins, distance: 299 km, cost: 299
+
+### Flight from Bozeman to Salt Lake City on 2022-03-22
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName   DestCityName  Distance
+     F3500804     71   05:57   07:03  1 hours 6 minutes 2022-03-22        Bozeman Salt Lake City     347.0
+     F3513324    121   13:08   14:24 1 hours 16 minutes 2022-03-22        Bozeman Salt Lake City     347.0
+     F3805464    130   18:32   19:54 1 hours 22 minutes 2022-03-22        Bozeman Salt Lake City     347.0
+     F3805591    169   11:37   12:48 1 hours 11 minutes 2022-03-22        Bozeman Salt Lake City     347.0
+
+### Self-driving from Bozeman to Salt Lake City
+self-driving, from Bozeman to Salt Lake City, duration: 6 hours 20 mins, distance: 660 km, cost: 33
+
+### Taxi from Bozeman to Salt Lake City
+taxi, from Bozeman to Salt Lake City, duration: 6 hours 20 mins, distance: 660 km, cost: 660
+
+JSON plan:

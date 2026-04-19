@@ -1,0 +1,107 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please draw up a 3-day travel itinerary for one person, beginning in Oakland and heading to Tucson from March 15th to March 17th, 2022, with a budget of $1,400.
+
+Reference information:
+### Attractions in Tucson
+                                      Name  Latitude   Longitude                                                Address          Phone                                                                        Website   City
+                   Pima Air & Space Museum 32.139959 -110.864970              6000 E Valencia Rd, Tucson, AZ 85756, USA (520) 574-0462                                                       https://www.pimaair.org/ Tucson
+                             Reid Park Zoo 32.209855 -110.920744                   3400 E Zoo Ct, Tucson, AZ 85716, USA (520) 791-3204 https://reidparkzoo.org/?utm_source=google&utm_medium=organic&utm_campaign=GMB Tucson
+The Mini Time Machine Museum of Miniatures 32.265461 -110.895641           4455 E Camp Lowell Dr, Tucson, AZ 85712, USA (520) 881-0606                                                https://theminitimemachine.org/ Tucson
+                  Tucson Botanical Gardens 32.248523 -110.908785             2150 N Alvernon Way, Tucson, AZ 85712, USA (520) 326-9686                                                http://www.tucsonbotanical.org/ Tucson
+                                Old Tucson 32.218314 -111.128928                   201 Kinney Rd, Tucson, AZ 85735, USA (520) 883-0100                                                          http://oldtucson.com/ Tucson
+                San Xavier del Bac Mission 32.106964 -111.008780            1950 W San Xavier Rd, Tucson, AZ 85746, USA (520) 294-2624                                               http://www.sanxaviermission.org/ Tucson
+                           Trail Dust Town 32.247434 -110.852929          6541 E Tanque Verde Rd, Tucson, AZ 85715, USA (520) 296-4551                                                  http://www.traildusttown.com/ Tucson
+              Arizona-Sonora Desert Museum 32.244013 -111.168174                2021 N Kinney Rd, Tucson, AZ 85743, USA (520) 883-1380                                                  https://www.desertmuseum.org/ Tucson
+                  Children's Museum Tucson 32.219192 -110.969338                   200 S 6th Ave, Tucson, AZ 85701, USA (520) 792-9985                                         https://www.childrensmuseumtucson.org/ Tucson
+    Presidio San Agustín del Tucson Museum 32.224195 -110.973774                 196 N Court Ave, Tucson, AZ 85701, USA (520) 622-0594                                                 http://www.tucsonpresidio.com/ Tucson
+             International Wildlife Museum 32.234636 -111.067056 4800 West Gates Pass, Boulevard, Tucson, AZ 85745, USA (520) 629-0100                                              http://www.thewildlifemuseum.org/ Tucson
+                        Fort Lowell Museum 32.259687 -110.874732             2900 N Craycroft Rd, Tucson, AZ 85712, USA (520) 885-3832                                                                        Unknown Tucson
+                              Tumamoc Hill 32.225462 -111.001621                 Tumamoc Hill Rd, Tucson, AZ 85745, USA        Unknown                                                    http://tumamoc.arizona.edu/ Tucson
+                      Tucson Museum Of Art 32.223449 -110.975441                  140 N Main Ave, Tucson, AZ 85701, USA (520) 624-2333                                              http://www.tucsonmuseumofart.org/ Tucson
+            Rincon Mountain Visitor Center 32.180219 -110.736296        3693 S Old Spanish Trail, Tucson, AZ 85730, USA (520) 733-5153                                              http://www.nps.gov/sagu/index.htm Tucson
+   Flandrau Science Center and Planetarium 32.232338 -110.947870          1601 E University Blvd, Tucson, AZ 85721, USA (520) 621-4516                                                          https://flandrau.org/ Tucson
+                      Arizona State Museum 32.232551 -110.955744          1013 E University Blvd, Tucson, AZ 85721, USA (520) 621-6302                                          https://statemuseum.arizona.edu/visit Tucson
+                Tucson Rodeo Parade Museum 32.164315 -110.967814                  4823 S 6th Ave, Tucson, AZ 85714, USA (520) 294-3636                                  https://www.tucsonrodeoparade.com/the-museum/ Tucson
+                        Valley of the Moon 32.275029 -110.933962                 2544 E Allen Rd, Tucson, AZ 85716, USA (520) 323-1331                                          http://www.tucsonvalleyofthemoon.com/ Tucson
+             Sabino Canyon Recreation Area 32.322364 -110.809863         5700 N Sabino Canyon Rd, Tucson, AZ 85750, USA (520) 749-8700                  https://www.fs.usda.gov/recarea/coronado/recarea/?recid=75425 Tucson
+
+### Restaurants in Tucson
+                            Name  Average Cost                                              Cuisines  Aggregate Rating   City
+                    Villa Tevere            37           Mexican, Mediterranean, Desserts, Fast Food               4.1 Tucson
+              Consort Restaurant            54                       Bakery, Pizza, Indian, Desserts               3.0 Tucson
+                 Magic Spice Wok            31                   Cafe, Bakery, BBQ, Chinese, Seafood               0.0 Tucson
+                    Pizza Street            22                            Fast Food, Bakery, Seafood               2.6 Tucson
+                        La Plage            93                    Seafood, Bakery, Desserts, Italian               4.6 Tucson
+                        iKitchen            69                               Seafood, Pizza, Italian               0.0 Tucson
+                      Chai Point            62                        Tea, Bakery, Mexican, American               2.4 Tucson
+                     Bakers Oven            71                            Bakery, American, Desserts               3.6 Tucson
+                           Mocha            53                                       Cafe, Fast Food               4.6 Tucson
+      Selfie Lounge Restro & Bar            32                                    Seafood, Fast Food               3.2 Tucson
+                       Bhagat Ji            51                         Tea, Chinese, Bakery, Seafood               0.0 Tucson
+                  Domino's Pizza            84                                          Cafe, Bakery               3.3 Tucson
+                      Ooh Lala !            70                                 Chinese, Bakery, Cafe               4.0 Tucson
+Chutneez Restaurant Lounge & Bar            86                           Fast Food, Seafood, Italian               2.4 Tucson
+  Uttaranchal Dhaba & Restaurant            39                             French, Bakery, Fast Food               2.9 Tucson
+                         Giani's            63 Desserts, Tea, Cafe, American, Mediterranean, Seafood               3.1 Tucson
+                   Punjabi Zaika            34                        Tea, Bakery, Mexican, American               3.3 Tucson
+                Pirates of Grill            52               French, Bakery, BBQ, Fast Food, Chinese               4.1 Tucson
+              Canteen Till I Die            24                             Tea, BBQ, Pizza, Desserts               3.9 Tucson
+                   Ramu Ka Dhaba            90                    Tea, Mexican, BBQ, Fast Food, Cafe               0.0 Tucson
+          Channi Pishori Chicken            55                       Tea, Mexican, Desserts, Italian               3.3 Tucson
+                   Sai Ann Kutir            80                 Pizza, Mexican, Bakery, Cafe, Seafood               2.8 Tucson
+                           Uraki            12                               Cafe, Bakery, Fast Food               2.7 Tucson
+                     Delhi Foods            25              Desserts, Tea, Mexican, Bakery, American               0.0 Tucson
+                    Eating Point           100                            Tea, Bakery, Mediterranean               0.0 Tucson
+                     Mood 4 Food            20                    Pizza, Bakery, Desserts, Fast Food               3.1 Tucson
+     Culture Club - Bar De Tapas            92                              American, BBQ, Fast Food               4.5 Tucson
+
+### Accommodations in Tucson
+                                           NAME  price       room type                       house_rules  minimum nights  maximum occupancy  review rate number   city
+ Cozy place to stay 7 minutes from Manhattan...  912.0    Private room                           No pets             3.0                  2                 3.0 Tucson
+                  Room for rent shared bathroom  557.0    Private room                        No smoking             1.0                  2                 5.0 Tucson
+          Huge, New and Green Oasis in Brooklyn  318.0 Entire home/apt              No children under 10             2.0                  2                 3.0 Tucson
+             Private room with private bathroom   58.0    Private room                        No smoking             2.0                  2                 3.0 Tucson
+Sunny, Quiet top-floor 2 bedroom in Cobble Hill  707.0 Entire home/apt                        No smoking             1.0                  3                 2.0 Tucson
+ Private and Quiet Room in the Perfect Location  431.0    Private room           No smoking & No parties             1.0                  2                 5.0 Tucson
+               Bright Apartment in Clinton Hill 1144.0 Entire home/apt                           No pets             5.0                  4                 3.0 Tucson
+                 Furnished Room in Williamsburg  331.0    Private room                        No parties             1.0                  2                 1.0 Tucson
+                     HARLEM CLEAN & COMFY SPACE  373.0    Private room No pets & No smoking & No parties             1.0                  2                 5.0 Tucson
+              Smart Home in the Heart of Harlem  499.0 Entire home/apt No children under 10 & No smoking             2.0                  3                 2.0 Tucson
+                      Studio in Sunny Sanctuary  691.0    Private room                           No pets             2.0                  1                 1.0 Tucson
+          Bright, spacious room in Williamsburg  415.0    Private room                        No smoking             2.0                  2                 2.0 Tucson
+    Large 7 Bed minutes from Midtown Manhattan! 1030.0 Entire home/apt              No parties & No pets             2.0                  2                 2.0 Tucson
+
+### Flight from Oakland to Tucson on 2022-03-15
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F4002752    190   15:07   17:00 1 hours 53 minutes 2022-03-15        Oakland       Tucson     747.0
+
+### Self-driving from Oakland to Tucson
+self-driving, from Oakland to Tucson, duration: 12 hours 40 mins, distance: 1,372 km, cost: 68
+
+### Taxi from Oakland to Tucson
+taxi, from Oakland to Tucson, duration: 12 hours 40 mins, distance: 1,372 km, cost: 1372
+
+### Flight from Tucson to Oakland on 2022-03-17
+There is no flight from Tucson to Oakland on 2022-03-17.
+
+### Self-driving from Tucson to Oakland
+self-driving, from Tucson to Oakland, duration: 12 hours 42 mins, distance: 1,373 km, cost: 68
+
+### Taxi from Tucson to Oakland
+taxi, from Tucson to Oakland, duration: 12 hours 42 mins, distance: 1,373 km, cost: 1373
+
+JSON plan:

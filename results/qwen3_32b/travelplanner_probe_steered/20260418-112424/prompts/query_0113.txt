@@ -1,0 +1,276 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please assist in devising a week-long travel plan for a party of 5. We will depart from Marquette with the aim of visiting 3 cities in Michigan between March 6th and March 12th, 2022. Our budget is now set at $14,600. We should emphasize that our accommodations must be suitable for children under 10.
+
+Reference information:
+### Attractions in Escanaba
+                                        Name  Latitude  Longitude                                           Address          Phone                                                                  Website     City
+                              Ludington Park 45.740015 -87.053196            Lake Shore Dr, Escanaba, MI 49829, USA (906) 789-7862                                                                  Unknown Escanaba
+                             Walk of Planets 45.745839 -87.053179     400-498 Ludington St, Escanaba, MI 49829, USA        Unknown                                                                  Unknown Escanaba
+             Delta County Historical Society 45.744630 -87.043489        16 Water Plant Rd, Escanaba, MI 49829, USA (906) 789-6790                                              http://deltahistorical.org/ Escanaba
+                     UPutt Family Fun Center 45.781750 -87.084007        2805 N Lincoln Rd, Escanaba, MI 49829, USA (906) 233-7733                                        https://uputtfamilyfuncenter.com/ Escanaba
+                             Antique Village 45.757371 -87.079170           2401 9th Ave N, Escanaba, MI 49829, USA        Unknown                    https://www.upsteamandgasengine.org/heritage-village/ Escanaba
+            William Bonifas Fine Arts Center 45.744953 -87.057107            700 1st Ave S, Escanaba, MI 49829, USA (906) 786-3833                                             https://www.bonifasarts.org/ Escanaba
+                          John D. Besse Park 45.735718 -87.089416 PWP6+788, 1110 30th St S, Escanaba, MI 49829, USA (906) 786-9402                                                 http://www.escanaba.org/ Escanaba
+                       Leigh’s Garden Winery 45.745887 -87.060090         904 Ludington St, Escanaba, MI 49829, USA (906) 553-7799                                            https://www.leighsgarden.com/ Escanaba
+                 Escanaba Parks & Recreation 45.747634 -87.077858            225 N 21st St, Escanaba, MI 49829, USA (906) 786-4141                                        https://www.escanaba.org/parksrec Escanaba
+                 Upper Peninsula Pocket Park 45.761238 -87.080643          2401 12th Ave N, Escanaba, MI 49829, USA (906) 786-2351                   https://goexploremichigan.com/explore/dnr-pocket-park/ Escanaba
+                    Escanaba Municipal Beach 45.738950 -87.046898            Bath House Rd, Escanaba, MI 49829, USA (906) 786-8709 https://visitescanaba.com/things-to-see-and-do/experience-nature/beaches Escanaba
+Webster Marble Inventing the Outdoors Museum 45.757969 -87.077477        1001 N Lincoln Rd, Escanaba, MI 49829, USA        Unknown                                                      http://deltami.org/ Escanaba
+                              Aronson Island 45.740586 -87.044909            Bath House Rd, Escanaba, MI 49829, USA        Unknown                                                                  Unknown Escanaba
+                       Escanaba Welcome Sign 45.773196 -87.082883                           Escanaba, MI 49829, USA        Unknown                                                                  Unknown Escanaba
+
+### Restaurants in Escanaba
+                                      Name  Average Cost                                             Cuisines  Aggregate Rating     City
+                   Machine Shed Restaurant            82                                 Tea, Bakery, Seafood               4.1 Escanaba
+                            Bonefish Grill            65                                 Tea, Pizza, Desserts               4.1 Escanaba
+                          The Grand Marlin            20               Cafe, Mediterranean, Desserts, Italian               4.3 Escanaba
+                           SOHO South Cafe            53                    Seafood, American, BBQ, Fast Food               4.3 Escanaba
+                            Butter & Grace            95                     Fast Food, Tea, Mexican, Italian               3.1 Escanaba
+                           Makhmali Kebabs            64                                    Desserts, Seafood               3.2 Escanaba
+                              Tasty Tweets            48        Pizza, BBQ, Fast Food, Mediterranean, Seafood               3.9 Escanaba
+                   Pant  Ice Cream Parlour            65                     Chinese, Pizza, Bakery, Desserts               3.3 Escanaba
+                                  Frontier            86          Tea, BBQ, Fast Food, Mediterranean, Seafood               3.0 Escanaba
+                               Matthi Wala            16              Pizza, Mediterranean, Desserts, Seafood               0.0 Escanaba
+                    Sachdeva Confectioners            29                   Seafood, Bakery, Desserts, Italian               3.1 Escanaba
+                              Costa Coffee            53                             Cafe, Pizza, Bakery, BBQ               3.0 Escanaba
+                             Pizza Station            46             Tea, Mexican, Bakery, Fast Food, Seafood               3.0 Escanaba
+                         Hot N Fresh Pizza            93                                    Tea, Cafe, Bakery               0.0 Escanaba
+                              Cafe Culture            67                                   Cafe, Mexican, BBQ               3.8 Escanaba
+                       Caf愆 Healthilicious            51             Tea, French, Bakery, Fast Food, American               3.5 Escanaba
+                   Chocolateria San Churro            21                               Bakery, Pizza, Seafood               3.8 Escanaba
+                           Zaika Amritsari            61                                        Tea, Desserts               3.0 Escanaba
+                  Cravings By Arshi Dhupia            48                            Fast Food, Pizza, Italian               3.6 Escanaba
+                                     Rasoi            65                                          Cafe, Pizza               0.0 Escanaba
+                                   Madaari            72                   Tea, Cafe, Pizza, Chinese, Seafood               4.3 Escanaba
+                                 Panj Tara            48               Seafood, BBQ, Mediterranean, Fast Food               0.0 Escanaba
+                         Chills 'n' Grills            48                               Mexican, BBQ, Desserts               3.6 Escanaba
+                               Kunal Dhaba            86      Cafe, Pizza, French, Bakery, Fast Food, Chinese               3.2 Escanaba
+                              Mughal Mahal            14                                    Desserts, Seafood               3.2 Escanaba
+                  Ram Singh Chaat Bhandaar            53                                     Bakery, Desserts               3.1 Escanaba
+                            Prakash Sweets            11                                 Chinese, Bakery, BBQ               0.0 Escanaba
+Nostalgia at 1911 Brasserie - The Imperial            58                                       Tea, Fast Food               3.2 Escanaba
+                                     AOWLS            57 Tea, Italian, BBQ, Fast Food, Mediterranean, Seafood               3.5 Escanaba
+            Mohanty Bakery & Confectionery            18                          Chinese, Bakery, Pizza, BBQ               0.0 Escanaba
+                        221 B Baker Street            26              Desserts, Mexican, BBQ, Bakery, Seafood               3.5 Escanaba
+                                  Top Food            83                                 Tea, French, Seafood               0.0 Escanaba
+                              Hungry's Hut            82                       Chinese, Pizza, Cafe, Desserts               3.1 Escanaba
+                             Emirgan S韄ti侓            22                             Tea, French, Pizza, Cafe               4.2 Escanaba
+
+### Accommodations in Escanaba
+                                            NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number     city
+                        Brooklyn Vibes Apartment  978.0    Private room                                     No visitors             4.0                  2                 2.0 Escanaba
+Budget Room in large apartment (Solo Travelers+) 1132.0    Private room                                      No parties            21.0                  2                 1.0 Escanaba
+    LRG PRVT ROOM IN NYC NEAR METRO & ACTIVITIES  716.0    Private room                        No visitors & No parties             2.0                  1                 4.0 Escanaba
+             Soaring Space in Laid-back Brooklyn  568.0    Private room                                         No pets             1.0                  1                 3.0 Escanaba
+                         California Vibes in NYC  206.0 Entire home/apt                                      No parties             3.0                  2                 3.0 Escanaba
+             Big bed, cosy room, groovy LES apt!  487.0    Private room                        No smoking & No visitors             2.0                  2                 2.0 Escanaba
+                                        The Spot  594.0 Entire home/apt                                      No smoking             1.0                  2                 3.0 Escanaba
+Beautiful  Cozy  room in NYC  nearby Time square  688.0    Private room     No parties & No pets & No children under 10             3.0                  1                 5.0 Escanaba
+                               Flatbush Fabulous  868.0 Entire home/apt                            No children under 10             2.0                  8                 2.0 Escanaba
+                Shared 1br in Flushing for cheap 1067.0    Private room                                      No smoking             1.0                  2                 5.0 Escanaba
+        Sunny and spacious apartment in Brooklyn  666.0    Private room                         No smoking & No parties             4.0                  2                 1.0 Escanaba
+Sunny Apartment Close to NYC's Major Attractions  847.0 Entire home/apt No children under 10 & No visitors & No parties             2.0                  7                 3.0 Escanaba
+              Spacious&Pretty, heart of Brooklyn  345.0 Entire home/apt                                     No visitors            10.0                  2                 1.0 Escanaba
+  LUX 2 Bedroom Sleep 6 City Center Private Deck  546.0 Entire home/apt               No smoking & No parties & No pets             3.0                  3                 5.0 Escanaba
+               Prime apt in the heart of the LES  200.0 Entire home/apt                                      No parties             5.0                  2                 4.0 Escanaba
+                                177st. Manhattan 1080.0    Private room                                      No parties             3.0                  2                 3.0 Escanaba
+
+### Attractions in Pellston
+                                 Name  Latitude  Longitude                                              Address          Phone                                                                   Website     City
+                Pellston Pioneer Park 45.549403 -84.788085 H627+88X, 100 Bud Carter Tr, Pellston, MI 49769, USA (231) 539-2616                                                http://www.pellstonmi.com/ Pellston
+   Pellston Historical Society Museum 45.552733 -84.784719  Petoskey to Mackinaw Trail, Pellston, MI 49769, USA        Unknown                                   https://www.facebook.com/pellstondepot/ Pellston
+      Philip J. Braun Nature Preserve 45.550682 -84.797974                     Mill St, Pellston, MI 49769, USA (231) 347-0991       https://landtrust.org/explore/philip-j-braun-nature-preserve-north/ Pellston
+                  Petoskey State Park 45.406717 -84.908516                  2475 M-119, Petoskey, MI 49770, USA (231) 347-2311   http://www.dnr.state.mi.us/parksandtrails/Details.aspx?id=483&type=SPRK Pellston
+Headlands International Dark Sky Park 45.775470 -84.781172     15675 Headlands Rd, Mackinaw City, MI 49701, USA (231) 427-1001                                             http://www.midarkskypark.org/ Pellston
+                Wilderness State Park 45.739095 -84.922077     903 Wilderness Park Dr, Carp Lake, MI 49718, USA (231) 436-5381 https://www2.dnr.state.mi.us/parksandtrails/Details.aspx?id=509&type=SPRK Pellston
+             Colonial Michilimackinac 45.786608 -84.732058        800 N Huron Ave, Mackinaw City, MI 49701, USA (231) 436-4100                    http://www.mackinacparks.com/colonial-michilimackinac/ Pellston
+               Conkling Heritage Park 45.778525 -84.725323        335 S Huron Ave, Mackinaw City, MI 49701, USA (888) 455-8100                                              http://www.mackinawcity.com/ Pellston
+    Bear River Valley Recreation Area 45.370465 -84.962901                 302 Ione St, Petoskey, MI 49770, USA (231) 347-2500                                                                   Unknown Pellston
+                    Mineral Well Park 45.374881 -84.960352           136-158 E Lake St, Petoskey, MI 49770, USA (231) 347-2500                                                   http://www.petoskey.us/ Pellston
+                     Aloha State Park 45.524797 -84.465454                4347 3rd St, Cheboygan, MI 49721, USA (231) 625-2522   http://www.michigandnr.com/parksandtrails/details.aspx?id=434&type=SPRK Pellston
+            McGulpin Point Lighthouse 45.787106 -84.772950       500 Headlands Rd, Mackinaw City, MI 49701, USA (231) 436-5860                                            https://www.mcgulpinpoint.org/ Pellston
+                          Castle Rock 45.910597 -84.741581       N2690 Castle Rock Rd, St Ignace, MI 49781, USA (906) 643-8268                                    http://www.castlerockmi.com/#!the-rock Pellston
+          Oden Island Nature Preserve 45.414935 -84.816050             3160 Leeward Dr, Petoskey, MI 49770, USA (231) 347-0991                                                     http://landtrust.org/ Pellston
+                 Burt Lake State Park 45.402049 -84.621736      6635 State Park Dr, Indian River, MI 49749, USA (231) 238-9392  https://www.dnr.state.mi.us/parksandtrails/Details.aspx?id=439&type=SPRK Pellston
+            Andrew J Blackbird Museum 45.430423 -84.984753         368 E Main St, Harbor Springs, MI 49740, USA (231) 526-9771                                                                   Unknown Pellston
+                   Douglas Lake trail 45.555750 -84.687014      8100-8998 County Rd 64, Pellston, MI 49769, USA        Unknown                                                                   Unknown Pellston
+                    Mystery Town, USA 45.779481 -84.732827       200 S Nicolet St, Mackinaw City, MI 49701, USA (231) 427-7030                                            http://www.mysterytownusa.com/ Pellston
+                            BlissFest 45.621938 -84.988102      3695 Division Rd, Harbor Springs, MI 49740, USA        Unknown                                                    https://blissfest.org/ Pellston
+                          Sunset Park 45.379440 -84.952072               101 E Lake St, Petoskey, MI 49770, USA (231) 347-2500                                                    http://www.petoskey.us Pellston
+
+### Restaurants in Pellston
+                                    Name  Average Cost                                             Cuisines  Aggregate Rating     City
+                            Johnnie Mars            33                                       Tea, Fast Food               3.9 Pellston
+                          Aroos Damascus            44               Desserts, Tea, Italian, Cafe, American               4.2 Pellston
+                   Sagar Gaire Fast Food            64    Desserts, Tea, Pizza, Italian, BBQ, Mediterranean               4.9 Pellston
+    The Great Kabab Factory - Park Plaza            84               Desserts, Pizza, Mexican, BBQ, Seafood               3.7 Pellston
+                     The Plaza Solitaire            72          Desserts, Tea, BBQ, American, Mediterranean               3.3 Pellston
+                            Premier Bite            53                                 Tea, Bakery, Seafood               0.0 Pellston
+                               Sky Beach            37                               Bakery, Pizza, Seafood               2.6 Pellston
+                           Flame & Grill            23                                          Bakery, BBQ               3.9 Pellston
+                         Standard Sweets            56            Desserts, French, Mexican, BBQ, Fast Food               3.6 Pellston
+                   Royal Kolkata Biryani            87                     Tea, BBQ, Mediterranean, Seafood               2.7 Pellston
+                           Tasty Tonight            97                                          Tea, Bakery               3.1 Pellston
+                            Kolkata Roll            67                                       Pizza, Seafood               2.8 Pellston
+                           Spezia Bistro            84                      Tea, Mexican, BBQ, Bakery, Cafe               4.6 Pellston
+                  K.K. Fast Food Service            71                              Chinese, Cafe, Desserts               0.0 Pellston
+                         The Square Meal            25 Desserts, Tea, BBQ, American, Mediterranean, Seafood               0.0 Pellston
+                 SGF - Spice Grill Flame            29                       American, Indian, BBQ, Seafood               2.9 Pellston
+                         Noor Restaurant            97                  Cafe, Chinese, Pizza, Mediterranean               3.4 Pellston
+                             Chowringhee            44                       Tea, Bakery, Desserts, Seafood               3.6 Pellston
+                         Behrouz Biryani            77                Fast Food, Mexican, Desserts, Seafood               3.0 Pellston
+       Little Pleasure Restaurant & Cafe            90             Cafe, Pizza, Fast Food, Chinese, Seafood               2.9 Pellston
+              Colonel's Kebabs & Curries            54                                   Cafe, BBQ, Seafood               0.0 Pellston
+                            Snacks Point            78   Tea, BBQ, Bakery, American, Mediterranean, Seafood               0.0 Pellston
+                         TCW Chaat Point            78            Pizza, French, Bakery, Fast Food, Chinese               0.0 Pellston
+                                  Yo Wok            27                               Bakery, Mexican, Pizza               2.8 Pellston
+                        Monis Kada Hotel            51                                Pizza, BBQ, Fast Food               0.0 Pellston
+                                 Cholkat            12                           Fast Food, French, Seafood               3.0 Pellston
+          Aqua Grill - Pride Plaza Hotel            44                          American, Desserts, Seafood               0.0 Pellston
+                         Ravi Ke Parathe            65                     Tea, American, Indian, Fast Food               0.0 Pellston
+                         New Madras Cafe            69                 French, Seafood, Desserts, Fast Food               0.0 Pellston
+                    Sikandrabadi Biryani            79                  French, Bakery, American, Fast Food               3.4 Pellston
+                       Punjabi By Nature            26                        Tea, Bakery, Pizza, Fast Food               3.7 Pellston
+                    Mudrika Food Factory            10               Tea, Pizza, French, Fast Food, Seafood               2.5 Pellston
+                              Le Plaisir            69                      BBQ, Bakery, American, Desserts               4.8 Pellston
+                             Wok On Fire            19                               Bakery, BBQ, Fast Food               3.9 Pellston
+The Great Kabab Factory - Radisson Hotel            85                               Bakery, BBQ, Fast Food               3.3 Pellston
+                      Grand Caf愆 & Beach            73                                       BBQ, Fast Food               3.8 Pellston
+                                  Perron            74                    Cafe, Bakery, Desserts, Fast Food               4.2 Pellston
+
+### Accommodations in Pellston
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number     city
+      Beautiful apartment ~25min from Times Square  571.0 Entire home/apt                        No smoking & No visitors             5.0                  5                 5.0 Pellston
+         Large Room with Pull-out Sofa and Balcony  443.0    Private room     No parties & No pets & No children under 10             1.0                  1                 3.0 Pellston
+One Bedroom Apartment in Brownstone in Harlem, NYC 1068.0 Entire home/apt                                      No parties             3.0                  3                 1.0 Pellston
+     Spacious 1 BR W/ adjustable Queen bed. Comfy!  581.0 Entire home/apt                           No pets & No visitors             2.0                  4                 2.0 Pellston
+ Designer's Beautiful 2BR Apartment in NOLITA/SOHO 1120.0 Entire home/apt               No smoking & No children under 10             2.0                  6                 5.0 Pellston
+               Airy and bright room. Prospect Park  214.0     Shared room              No smoking & No pets & No visitors             1.0                  1                 1.0 Pellston
+   Entire private # in a privately own  brownstone  833.0    Private room                                      No parties            10.0                  1                 2.0 Pellston
+Heart of NYC! - Large, Spacious, Bright 1 Bedroom!  583.0 Entire home/apt                            No smoking & No pets            30.0                  4                 4.0 Pellston
+                City Living with a Home Town Feel.  895.0    Private room No visitors & No parties & No children under 10             1.0                  2                 3.0 Pellston
+     Home For Medical Professionals - "The Macula"  710.0    Private room                                         No pets            19.0                  2                 2.0 Pellston
+
+### Attractions in Detroit
+                                                Name  Latitude  Longitude                                                                   Address          Phone                                                                                                                        Website    City
+                           Detroit Institute of Arts 42.359379 -83.064501                                 5200 Woodward Ave, Detroit, MI 48202, USA (313) 833-7900                                                                                                               https://dia.org/ Detroit
+                           Detroit Historical Museum 42.359791 -83.067139                                 5401 Woodward Ave, Detroit, MI 48202, USA (313) 833-1805                                     http://detroithistorical.org/detroit-historical-museum/plan-your-visit/general-information Detroit
+                                 Campus Martius Park 42.331915 -83.046587                                  800 Woodward Ave, Detroit, MI 48226, USA (313) 566-8250                                                                         https://downtowndetroitparks.com/parks/campus-martius/ Detroit
+                                       Motown Museum 42.364108 -83.088401 2648 Berry Gordy Jr. Boulevard, 2648 W Grand Blvd, Detroit, MI 48208, USA (313) 875-2264                                                                                                   http://www.motownmuseum.org/ Detroit
+                                         Detroit Zoo 42.476836 -83.149044                               8450 W 10 Mile Rd, Royal Oak, MI 48067, USA (248) 541-5717                                                                                                         http://detroitzoo.org/ Detroit
+                             Michigan Science Center 42.358451 -83.062397                                    5020 John R St, Detroit, MI 48202, USA (313) 577-8400                                                                                                         http://www.mi-sci.org/ Detroit
+Charles H. Wright Museum of African American History 42.358777 -83.060952                                  315 E Warren Ave, Detroit, MI 48201, USA (313) 494-5800                                                                                                          http://thewright.org/ Detroit
+                                 Belle Isle Aquarium 42.336593 -82.985275                                   3 Inselruhe Ave, Detroit, MI 48207, USA (313) 331-7760                                                                                           http://www.belleisleconservancy.org/ Detroit
+                                       Comerica Park 42.338998 -83.048520                                 2100 Woodward Ave, Detroit, MI 48201, USA (313) 962-4000                                                                           http://detroit.tigers.mlb.com/det/ballpark/index.jsp Detroit
+                  Museum of Contemporary Art Detroit 42.353587 -83.061850                                 4454 Woodward Ave, Detroit, MI 48201, USA (313) 832-6622                                                                                                        http://mocadetroit.org/ Detroit
+                        Detroit Segway Tours & Rides 42.349182 -83.041969       in the Shipping Container!, 2934 Russell St, Detroit, MI 48207, USA (855) 873-4929                                                                                                      http://detroitsegway.com/ Detroit
+                                            GMRenCen 42.329328 -83.039763                            400 Renaissance Center, Detroit, MI 48243, USA (313) 567-3126                                                                                                          https://gmrencen.com/ Detroit
+                      Detroit Riverfront Conservancy 42.330357 -83.037862                      600 Renaissance Center #1720, Detroit, MI 48243, USA (313) 566-8200                                                                                              http://www.detroitriverfront.org/ Detroit
+                                   Detroit Riverwalk 42.330376 -83.031854                                   1340 Atwater St, Detroit, MI 48207, USA (313) 566-8200                                                                                            http://www.detroitmi.gov/recreation Detroit
+                             Spirit of Detroit Plaza 42.329134 -83.044935                                    2 Woodward Ave, Detroit, MI 48226, USA        Unknown                                       https://detroitmi.gov/news/spirit-plaza-official-season-opening-weekend-downtown-detroit Detroit
+                                 Historic Fort Wayne 42.300202 -83.097970                              6325 W Jefferson Ave, Detroit, MI 48209, USA (313) 628-0796                                                                                     http://www.historicfortwaynecoalition.com/ Detroit
+                   Ford Piquette Avenue Plant Museum 42.368633 -83.065138                                  461 Piquette Ave, Detroit, MI 48202, USA (313) 872-8759                                                                                              http://www.fordpiquetteplant.org/ Detroit
+                                   Grand Circus Park 42.336477 -83.050838                              101-157 Witherell St, Detroit, MI 48226, USA (313) 566-8250                                                                                               http://downtowndetroitparks.com/ Detroit
+                                         Beacon Park 42.334525 -83.055307                              1901 Grand River Ave, Detroit, MI 48226, USA (313) 566-8250                                                                                    https://empoweringmichigan.com/beacon-park/ Detroit
+            Henry Ford Museum of American Innovation 42.303451 -83.234206                               20900 Oakwood Blvd, Dearborn, MI 48124, USA (313) 982-6001 https://www.thehenryford.org/visit/henry-ford-museum/?utm_source=google&utm_medium=organic&utm_campaign=gmb&utm_content=museum Detroit
+
+### Restaurants in Detroit
+                         Name  Average Cost                                              Cuisines  Aggregate Rating    City
+        Southern Bliss Bakery            28                           Tea, BBQ, Desserts, Seafood               3.7 Detroit
+            A Dong Restaurant            40                                      Tea, Cafe, Pizza               4.4 Detroit
+      Chye Seng Huat Hardware            94                                 Tea, Mexican, Seafood               3.7 Detroit
+         BMG - All Day Dining            15                Desserts, Bakery, BBQ, Indian, Seafood               4.3 Detroit
+                Cafe And More            41                                  Tea, Bakery, Italian               2.9 Detroit
+              Mitalis Kitchen            28           Pizza, BBQ, Chinese, Mediterranean, Seafood               0.0 Detroit
+                The Dosa King            69               BBQ, Mediterranean, Desserts, Fast Food               3.2 Detroit
+         Vapour Pub & Brewery            80                 French, BBQ, Fast Food, Cafe, Seafood               3.7 Detroit
+                  Sagar Ratna            55                             Tea, Indian, BBQ, Italian               2.7 Detroit
+           Bistro Flamme Bois           100                                  Chinese, Bakery, BBQ               4.1 Detroit
+                       Taksim            65                       Cafe, Bakery, Indian, Fast Food               3.9 Detroit
+          Rehmatullah's Hotel            28          Desserts, Tea, Pizza, Italian, Mediterranean               3.0 Detroit
+               Old Kheer Shop            54                  Mexican, Indian, Desserts, Fast Food               0.0 Detroit
+     Zabardast Indian Kitchen            76                             Bakery, Desserts, Seafood               4.7 Detroit
+                       Cafe 6            27                                  BBQ, Pizza, Desserts               3.9 Detroit
+                Dilli Darbaar            60                   Desserts, French, BBQ, Bakery, Cafe               3.1 Detroit
+                  Aapki Rasoi            21                      Mediterranean, Desserts, Seafood               3.0 Detroit
+          N. Iqbal Restaurant            11                           Tea, Cafe, Bakery, Desserts               3.2 Detroit
+           Flavours of Punjab            28              Desserts, Tea, Fast Food, Cafe, American               2.5 Detroit
+          Nidhi's Cake Lounge            73           Desserts, Pizza, Bakery, BBQ, Mediterranean               0.0 Detroit
+                 Urban Punjab            40                                  Tea, Cafe, Fast Food               3.6 Detroit
+               Knights Chaska            29                                  Tea, Mexican, Bakery               2.9 Detroit
+         DV's Chinese Kitchen            91 Desserts, Pizza, Italian, Bakery, Cafe, Mediterranean               2.8 Detroit
+              52 Food Express            20            Desserts, Tea, Italian, Fast Food, Seafood               0.0 Detroit
+               Frequent Bakes            50                            Cafe, Pizza, BBQ, Desserts               2.5 Detroit
+                   Desi Spice            16                        Tea, Pizza, American, Desserts               3.0 Detroit
+  Turquoise Turkish Ice-cream            79                     Fast Food, Tea, Desserts, Italian               3.4 Detroit
+Mandap - Hotel Express Towers            37                                      Pizza, Fast Food               4.0 Detroit
+
+### Accommodations in Detroit
+                                            NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number    city
+                 Comfy King Bed Feet from Subway  568.0    Private room                            No parties             3.0                  1                 5.0 Detroit
+      Cozy 1 bedroom in the heart of Fort Greene  751.0 Entire home/apt                  No pets & No parties             3.0                  6                 5.0 Detroit
+  Romantic Top Floor Brownstone in Crown Heights 1077.0 Entire home/apt                  No pets & No smoking             1.0                  6                 4.0 Detroit
+ Beautiful Private Room near Highline, and Train 1044.0    Private room                  No parties & No pets            30.0                  2                 2.0 Detroit
+      Fashion Designer Studio - Entire Apartment  934.0 Entire home/apt No smoking & No visitors & No parties            30.0                  7                 1.0 Detroit
+             Brooklyn Brownstone, 3-Bdr & Garden  400.0 Entire home/apt                  No children under 10             3.0                  2                 3.0 Detroit
+Lovely, charming and clean bedroom in Manhattan.   69.0    Private room                            No smoking             1.0                  2                 2.0 Detroit
+                            The Ultimate Luxury! 1017.0 Entire home/apt                            No smoking             6.0                  8                 2.0 Detroit
+                   NEW Brooklyn studio get away!  803.0 Entire home/apt                  No children under 10             2.0                  7                 2.0 Detroit
+                          Nice Room in Manhattan  300.0    Private room                           No visitors             1.0                  1                 1.0 Detroit
+           Modern Luxury Loft  3bd  Williamsburg  980.0 Entire home/apt                  No pets & No parties             3.0                  5                 5.0 Detroit
+
+### Flight from Marquette to Escanaba on 2022-03-06
+There is no flight from Marquette to Escanaba on 2022-03-06.
+
+### Self-driving from Marquette to Escanaba
+self-driving, from Marquette to Escanaba, duration: 3 hours 34 mins, distance: 362 km, cost: 18
+
+### Taxi from Marquette to Escanaba
+taxi, from Marquette to Escanaba, duration: 3 hours 34 mins, distance: 362 km, cost: 362
+
+### Flight from Escanaba to Pellston on 2022-03-08
+There is no flight from Escanaba to Pellston on 2022-03-08.
+
+### Self-driving from Escanaba to Pellston
+self-driving, from Escanaba to Pellston, duration: 2 hours 43 mins, distance: 262 km, cost: 13
+
+### Taxi from Escanaba to Pellston
+taxi, from Escanaba to Pellston, duration: 2 hours 43 mins, distance: 262 km, cost: 262
+
+### Flight from Pellston to Detroit on 2022-03-10
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3832610    121   14:06   15:03 0 hours 57 minutes 2022-03-10       Pellston      Detroit     243.0
+     F3832618     75   06:14   07:18  1 hours 4 minutes 2022-03-10       Pellston      Detroit     243.0
+
+### Self-driving from Pellston to Detroit
+self-driving, from Pellston to Detroit, duration: 3 hours 55 mins, distance: 452 km, cost: 22
+
+### Taxi from Pellston to Detroit
+taxi, from Pellston to Detroit, duration: 3 hours 55 mins, distance: 452 km, cost: 452
+
+### Flight from Detroit to Marquette on 2022-03-12
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3846022    118   13:35   14:51 1 hours 16 minutes 2022-03-12        Detroit    Marquette     349.0
+     F3846033    121   21:40   23:15 1 hours 35 minutes 2022-03-12        Detroit    Marquette     349.0
+
+### Self-driving from Detroit to Marquette
+self-driving, from Detroit to Marquette, duration: 5 hours 40 mins, distance: 602 km, cost: 30
+
+### Taxi from Detroit to Marquette
+taxi, from Detroit to Marquette, duration: 5 hours 40 mins, distance: 602 km, cost: 602
+
+JSON plan:

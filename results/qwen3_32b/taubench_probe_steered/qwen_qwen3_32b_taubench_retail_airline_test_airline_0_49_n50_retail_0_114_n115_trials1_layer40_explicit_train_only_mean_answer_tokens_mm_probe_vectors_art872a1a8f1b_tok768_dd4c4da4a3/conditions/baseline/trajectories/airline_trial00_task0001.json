@@ -1,0 +1,851 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need help changing my return flight from Texas back to Newark today - my current flight leaves at 3pm but I'd like to take a later one if possible.",
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Could you please provide your user ID and reservation ID so I can look up your booking details?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Could you please provide your user ID and reservation ID so I can look up your booking details?"
+      }
+    },
+    "observation": "My user ID is olivia_gonzalez_2305, but I'm not sure about my reservation ID - I don't have it with me right now.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Could you please provide your user ID and reservation ID so I can look up your booking details?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4641,
+    "output_tokens": 36,
+    "generation_seconds": 3.465590476989746,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"olivia_gonzalez_2305\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "olivia_gonzalez_2305"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Olivia\", \"last_name\": \"Gonzalez\"}, \"address\": {\"address1\": \"334 Laurel Lane\", \"address2\": \"Suite 970\", \"city\": \"Los Angeles\", \"country\": \"USA\", \"state\": \"CA\", \"zip\": \"90504\"}, \"email\": \"olivia.gonzalez4421@example.com\", \"dob\": \"1988-06-13\", \"payment_methods\": {\"gift_card_2200803\": {\"source\": \"gift_card\", \"amount\": 123, \"id\": \"gift_card_2200803\"}, \"credit_card_9969263\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"9475\", \"id\": \"credit_card_9969263\"}}, \"saved_passengers\": [{\"first_name\": \"Mei\", \"last_name\": \"Johansson\", \"dob\": \"1981-09-25\"}, {\"first_name\": \"Yara\", \"last_name\": \"Lopez\", \"dob\": \"1975-09-15\"}], \"membership\": \"regular\", \"reservations\": [\"Z7GOZK\", \"K67C4W\", \"THY2DG\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"olivia_gonzalez_2305\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4721,
+    "output_tokens": 30,
+    "generation_seconds": 3.0945584774017334,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have three reservations. Could you please confirm which one is for your trip from Texas to Newark?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see you have three reservations. Could you please confirm which one is for your trip from Texas to Newark?"
+      }
+    },
+    "observation": "Can you tell me the dates and destinations for those reservations so I can figure out which one is mine?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see you have three reservations. Could you please confirm which one is for your trip from Texas to Newark?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5066,
+    "output_tokens": 39,
+    "generation_seconds": 3.7743048667907715,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"Z7GOZK\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "Z7GOZK"
+      }
+    },
+    "observation": "{\"reservation_id\": \"Z7GOZK\", \"user_id\": \"olivia_gonzalez_2305\", \"origin\": \"EWR\", \"destination\": \"EWR\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"EWR\", \"destination\": \"IAH\", \"flight_number\": \"HAT188\", \"date\": \"2024-05-28\", \"price\": 52}, {\"origin\": \"IAH\", \"destination\": \"EWR\", \"flight_number\": \"HAT207\", \"date\": \"2024-05-28\", \"price\": 87}], \"passengers\": [{\"first_name\": \"Olivia\", \"last_name\": \"Gonzalez\", \"dob\": \"1988-06-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2200803\", \"amount\": 169}], \"created_at\": \"2024-05-13T19:41:32\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"Z7GOZK\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5135,
+    "output_tokens": 25,
+    "generation_seconds": 2.9344961643218994,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"K67C4W\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "K67C4W"
+      }
+    },
+    "observation": "{\"reservation_id\": \"K67C4W\", \"user_id\": \"olivia_gonzalez_2305\", \"origin\": \"LAS\", \"destination\": \"MCO\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"LAS\", \"destination\": \"MCO\", \"flight_number\": \"HAT137\", \"date\": \"2024-05-17\", \"price\": 114}], \"passengers\": [{\"first_name\": \"Olivia\", \"last_name\": \"Gonzalez\", \"dob\": \"1988-06-13\"}, {\"first_name\": \"Mei\", \"last_name\": \"Johansson\", \"dob\": \"1981-09-25\"}, {\"first_name\": \"Yara\", \"last_name\": \"Lopez\", \"dob\": \"1975-09-15\"}], \"payment_history\": [{\"payment_id\": \"credit_card_9969263\", \"amount\": 342}], \"created_at\": \"2024-05-11T06:28:05\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"K67C4W\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5443,
+    "output_tokens": 26,
+    "generation_seconds": 3.103318214416504,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"THY2DG\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "THY2DG"
+      }
+    },
+    "observation": "{\"reservation_id\": \"THY2DG\", \"user_id\": \"olivia_gonzalez_2305\", \"origin\": \"MSP\", \"destination\": \"ORD\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"MSP\", \"destination\": \"DTW\", \"flight_number\": \"HAT248\", \"date\": \"2024-05-26\", \"price\": 160}, {\"origin\": \"DTW\", \"destination\": \"ORD\", \"flight_number\": \"HAT119\", \"date\": \"2024-05-26\", \"price\": 178}], \"passengers\": [{\"first_name\": \"Yara\", \"last_name\": \"Martin\", \"dob\": \"1950-01-15\"}], \"payment_history\": [{\"payment_id\": \"credit_card_9969263\", \"amount\": 338}], \"created_at\": \"2024-05-03T23:15:42\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"THY2DG\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5767,
+    "output_tokens": 24,
+    "generation_seconds": 3.079308032989502,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the details of your reservations:\\n\\n1. Reservation ID: Z7GOZK\\n   - Origin: EWR (Newark) to IAH (Houston) and back to EWR\\n   - Dates: 2024-05-28\\n\\n2. Reservation ID: K67C4W\\n   - Origin: LAS (Las Vegas) to MCO (Orlando)\\n   - Date: 2024-05-17\\n\\n3. Reservation ID: THY2DG\\n   - Origin: MSP (Minneapolis) to DTW (Detroit) and back to ORD (Chicago)\\n   - Date: 2024-05-26\\n\\nCould you confirm which reservation is for your trip from Texas to Newark?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Here are the details of your reservations:\n\n1. Reservation ID: Z7GOZK\n   - Origin: EWR (Newark) to IAH (Houston) and back to EWR\n   - Dates: 2024-05-28\n\n2. Reservation ID: K67C4W\n   - Origin: LAS (Las Vegas) to MCO (Orlando)\n   - Date: 2024-05-17\n\n3. Reservation ID: THY2DG\n   - Origin: MSP (Minneapolis) to DTW (Detroit) and back to ORD (Chicago)\n   - Date: 2024-05-26\n\nCould you confirm which reservation is for your trip from Texas to Newark?"
+      }
+    },
+    "observation": "It's the first one - Z7GOZK. That's the Newark to Houston and back to Newark trip.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the details of your reservations:\\n\\n1. Reservation ID: Z7GOZK\\n   - Origin: EWR (Newark) to IAH (Houston) and back to EWR\\n   - Dates: 2024-05-28\\n\\n2. Reservation ID: K67C4W\\n   - Origin: LAS (Las Vegas) to MCO (Orlando)\\n   - Date: 2024-05-17\\n\\n3. Reservation ID: THY2DG\\n   - Origin: MSP (Minneapolis) to DTW (Detroit) and back to ORD (Chicago)\\n   - Date: 2024-05-26\\n\\nCould you confirm which reservation is for your trip from Texas to Newark?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6070,
+    "output_tokens": 187,
+    "generation_seconds": 13.116594314575195,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"Z7GOZK\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "Z7GOZK"
+      }
+    },
+    "observation": "{\"reservation_id\": \"Z7GOZK\", \"user_id\": \"olivia_gonzalez_2305\", \"origin\": \"EWR\", \"destination\": \"EWR\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"EWR\", \"destination\": \"IAH\", \"flight_number\": \"HAT188\", \"date\": \"2024-05-28\", \"price\": 52}, {\"origin\": \"IAH\", \"destination\": \"EWR\", \"flight_number\": \"HAT207\", \"date\": \"2024-05-28\", \"price\": 87}], \"passengers\": [{\"first_name\": \"Olivia\", \"last_name\": \"Gonzalez\", \"dob\": \"1988-06-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2200803\", \"amount\": 169}], \"created_at\": \"2024-05-13T19:41:32\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"Z7GOZK\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6290,
+    "output_tokens": 25,
+    "generation_seconds": 3.3426859378814697,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-28\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "IAH",
+        "destination": "EWR",
+        "date": "2024-05-28"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT149\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"11:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 12, \"economy\": 4, \"business\": 12}, \"prices\": {\"basic_economy\": 55, \"economy\": 158, \"business\": 264}}, {\"flight_number\": \"HAT195\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"17:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 1, \"economy\": 2, \"business\": 12}, \"prices\": {\"basic_economy\": 92, \"economy\": 158, \"business\": 266}}, {\"flight_number\": \"HAT207\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"15:00:00\", \"scheduled_arrival_time_est\": \"18:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 10, \"business\": 11}, \"prices\": {\"basic_economy\": 65, \"economy\": 200, \"business\": 355}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-28\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6598,
+    "output_tokens": 43,
+    "generation_seconds": 4.5292346477508545,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-28:\\n\\n1. Flight HAT149\\n   - Departure: 08:00 AM\\n   - Arrival: 11:00 AM\\n   - Available Seats: 12 (Basic Economy), 4 (Economy), 12 (Business)\\n   - Prices: $55 (Basic Economy), $158 (Economy), $264 (Business)\\n\\n2. Flight HAT195\\n   - Departure: 02:00 PM\\n   - Arrival: 05:00 PM\\n   - Available Seats: 1 (Basic Economy), 2 (Economy), 12 (Business)\\n   - Prices: $92 (Basic Economy), $158 (Economy), $266 (Business)\\n\\n3. Flight HAT207\\n   - Departure: 03:00 PM\\n   - Arrival: 06:00 PM\\n   - Available Seats: 16 (Basic Economy), 10 (Economy), 11 (Business)\\n   - Prices: $65 (Basic Economy), $200 (Economy), $355 (Business)\\n\\nYour current flight is HAT207 at 03:00 PM. Would you like to change to a different flight?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-28:\n\n1. Flight HAT149\n   - Departure: 08:00 AM\n   - Arrival: 11:00 AM\n   - Available Seats: 12 (Basic Economy), 4 (Economy), 12 (Business)\n   - Prices: $55 (Basic Economy), $158 (Economy), $264 (Business)\n\n2. Flight HAT195\n   - Departure: 02:00 PM\n   - Arrival: 05:00 PM\n   - Available Seats: 1 (Basic Economy), 2 (Economy), 12 (Business)\n   - Prices: $92 (Basic Economy), $158 (Economy), $266 (Business)\n\n3. Flight HAT207\n   - Departure: 03:00 PM\n   - Arrival: 06:00 PM\n   - Available Seats: 16 (Basic Economy), 10 (Economy), 11 (Business)\n   - Prices: $65 (Basic Economy), $200 (Economy), $355 (Business)\n\nYour current flight is HAT207 at 03:00 PM. Would you like to change to a different flight?"
+      }
+    },
+    "observation": "Wait, my current flight is the 3pm one? I need a later flight than that. Do you have anything departing after 3pm today?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-28:\\n\\n1. Flight HAT149\\n   - Departure: 08:00 AM\\n   - Arrival: 11:00 AM\\n   - Available Seats: 12 (Basic Economy), 4 (Economy), 12 (Business)\\n   - Prices: $55 (Basic Economy), $158 (Economy), $264 (Business)\\n\\n2. Flight HAT195\\n   - Departure: 02:00 PM\\n   - Arrival: 05:00 PM\\n   - Available Seats: 1 (Basic Economy), 2 (Economy), 12 (Business)\\n   - Prices: $92 (Basic Economy), $158 (Economy), $266 (Business)\\n\\n3. Flight HAT207\\n   - Departure: 03:00 PM\\n   - Arrival: 06:00 PM\\n   - Available Seats: 16 (Basic Economy), 10 (Economy), 11 (Business)\\n   - Prices: $65 (Basic Economy), $200 (Economy), $355 (Business)\\n\\nYour current flight is HAT207 at 03:00 PM. Would you like to change to a different flight?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7020,
+    "output_tokens": 339,
+    "generation_seconds": 22.608446836471558,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-15\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "IAH",
+        "destination": "EWR",
+        "date": "2024-05-15"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-15\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 7399,
+    "output_tokens": 43,
+    "generation_seconds": 4.783071994781494,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-15\"}}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "IAH",
+        "destination": "EWR",
+        "date": "2024-05-15"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-15\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 7455,
+    "output_tokens": 45,
+    "generation_seconds": 4.987333297729492,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no available flights departing from Houston (IAH) to Newark (EWR) after 3:00 PM today, May 15, 2024, including both direct and one-stop flights. Would you like to consider an earlier flight or a different date?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are no available flights departing from Houston (IAH) to Newark (EWR) after 3:00 PM today, May 15, 2024, including both direct and one-stop flights. Would you like to consider an earlier flight or a different date?"
+      }
+    },
+    "observation": "Okay, so if there's nothing later today, what about the earliest flight tomorrow morning to Newark?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no available flights departing from Houston (IAH) to Newark (EWR) after 3:00 PM today, May 15, 2024, including both direct and one-stop flights. Would you like to consider an earlier flight or a different date?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7513,
+    "output_tokens": 81,
+    "generation_seconds": 7.165719032287598,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-16\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "IAH",
+        "destination": "EWR",
+        "date": "2024-05-16"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT149\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"11:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 11, \"business\": 14}, \"prices\": {\"basic_economy\": 53, \"economy\": 139, \"business\": 291}}, {\"flight_number\": \"HAT195\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"17:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 15, \"business\": 12}, \"prices\": {\"basic_economy\": 66, \"economy\": 103, \"business\": 200}}, {\"flight_number\": \"HAT207\", \"origin\": \"IAH\", \"destination\": \"EWR\", \"scheduled_departure_time_est\": \"15:00:00\", \"scheduled_arrival_time_est\": \"18:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 18, \"business\": 0}, \"prices\": {\"basic_economy\": 81, \"economy\": 153, \"business\": 266}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"IAH\", \"destination\": \"EWR\", \"date\": \"2024-05-16\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 7623,
+    "output_tokens": 43,
+    "generation_seconds": 4.857449531555176,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-16:\\n\\n1. Flight HAT149\\n   - Departure: 08:00 AM\\n   - Arrival: 11:00 AM\\n   - Available Seats: 11 (Basic Economy), 11 (Economy), 14 (Business)\\n   - Prices: $53 (Basic Economy), $139 (Economy), $291 (Business)\\n\\n2. Flight HAT195\\n   - Departure: 02:00 PM\\n   - Arrival: 05:00 PM\\n   - Available Seats: 20 (Basic Economy), 15 (Economy), 12 (Business)\\n   - Prices: $66 (Basic Economy), $103 (Economy), $200 (Business)\\n\\n3. Flight HAT207\\n   - Departure: 03:00 PM\\n   - Arrival: 06:00 PM\\n   - Available Seats: 18 (Basic Economy), 18 (Economy), 0 (Business)\\n   - Prices: $81 (Basic Economy), $153 (Economy), $266 (Business)\\n\\nThe earliest flight tomorrow is HAT149 at 08:00 AM. Would you like to proceed with this flight or another option?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-16:\n\n1. Flight HAT149\n   - Departure: 08:00 AM\n   - Arrival: 11:00 AM\n   - Available Seats: 11 (Basic Economy), 11 (Economy), 14 (Business)\n   - Prices: $53 (Basic Economy), $139 (Economy), $291 (Business)\n\n2. Flight HAT195\n   - Departure: 02:00 PM\n   - Arrival: 05:00 PM\n   - Available Seats: 20 (Basic Economy), 15 (Economy), 12 (Business)\n   - Prices: $66 (Basic Economy), $103 (Economy), $200 (Business)\n\n3. Flight HAT207\n   - Departure: 03:00 PM\n   - Arrival: 06:00 PM\n   - Available Seats: 18 (Basic Economy), 18 (Economy), 0 (Business)\n   - Prices: $81 (Basic Economy), $153 (Economy), $266 (Business)\n\nThe earliest flight tomorrow is HAT149 at 08:00 AM. Would you like to proceed with this flight or another option?"
+      }
+    },
+    "observation": "Yes, I'd like to change to that 8am flight tomorrow. Can you help me with that?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Here are the available direct flights from Houston (IAH) to Newark (EWR) on 2024-05-16:\\n\\n1. Flight HAT149\\n   - Departure: 08:00 AM\\n   - Arrival: 11:00 AM\\n   - Available Seats: 11 (Basic Economy), 11 (Economy), 14 (Business)\\n   - Prices: $53 (Basic Economy), $139 (Economy), $291 (Business)\\n\\n2. Flight HAT195\\n   - Departure: 02:00 PM\\n   - Arrival: 05:00 PM\\n   - Available Seats: 20 (Basic Economy), 15 (Economy), 12 (Business)\\n   - Prices: $66 (Basic Economy), $103 (Economy), $200 (Business)\\n\\n3. Flight HAT207\\n   - Departure: 03:00 PM\\n   - Arrival: 06:00 PM\\n   - Available Seats: 18 (Basic Economy), 18 (Economy), 0 (Business)\\n   - Prices: $81 (Basic Economy), $153 (Economy), $266 (Business)\\n\\nThe earliest flight tomorrow is HAT149 at 08:00 AM. Would you like to proceed with this flight or another option?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8047,
+    "output_tokens": 344,
+    "generation_seconds": 23.32552409172058,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 15,
+    "model_text": "Action:\n{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"Z7GOZK\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT188\", \"date\": \"2024-05-28\"}, {\"flight_number\": \"HAT149\", \"date\": \"2024-05-16\"}], \"payment_id\": \"credit_card_9969263\"}}",
+    "action": {
+      "name": "update_reservation_flights",
+      "arguments": {
+        "reservation_id": "Z7GOZK",
+        "cabin": "basic_economy",
+        "flights": [
+          {
+            "flight_number": "HAT188",
+            "date": "2024-05-28"
+          },
+          {
+            "flight_number": "HAT149",
+            "date": "2024-05-16"
+          }
+        ],
+        "payment_id": "credit_card_9969263"
+      }
+    },
+    "observation": "{\"reservation_id\": \"Z7GOZK\", \"user_id\": \"olivia_gonzalez_2305\", \"origin\": \"EWR\", \"destination\": \"EWR\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT188\", \"date\": \"2024-05-28\", \"price\": 52, \"origin\": \"EWR\", \"destination\": \"IAH\"}, {\"flight_number\": \"HAT149\", \"date\": \"2024-05-16\", \"price\": 53, \"origin\": \"IAH\", \"destination\": \"EWR\"}], \"passengers\": [{\"first_name\": \"Olivia\", \"last_name\": \"Gonzalez\", \"dob\": \"1988-06-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2200803\", \"amount\": 169}, {\"payment_id\": \"credit_card_9969263\", \"amount\": -34}], \"created_at\": \"2024-05-13T19:41:32\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "update_reservation_flights",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"Z7GOZK\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT188\", \"date\": \"2024-05-28\"}, {\"flight_number\": \"HAT149\", \"date\": \"2024-05-16\"}], \"payment_id\": \"credit_card_9969263\"}}",
+    "parsed_action_name": "update_reservation_flights",
+    "input_tokens": 8422,
+    "output_tokens": 108,
+    "generation_seconds": 9.077418327331543,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 16,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated. You are now booked on the following flights:\\n\\n1. Flight HAT188 from Newark (EWR) to Houston (IAH) on 2024-05-28.\\n2. Flight HAT149 from Houston (IAH) to Newark (EWR) on 2024-05-16 at 08:00 AM.\\n\\nThe payment has been adjusted accordingly. If you need any further assistance, feel free to ask!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation has been successfully updated. You are now booked on the following flights:\n\n1. Flight HAT188 from Newark (EWR) to Houston (IAH) on 2024-05-28.\n2. Flight HAT149 from Houston (IAH) to Newark (EWR) on 2024-05-16 at 08:00 AM.\n\nThe payment has been adjusted accordingly. If you need any further assistance, feel free to ask!"
+      }
+    },
+    "observation": "Thank you for helping me with that!",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated. You are now booked on the following flights:\\n\\n1. Flight HAT188 from Newark (EWR) to Houston (IAH) on 2024-05-28.\\n2. Flight HAT149 from Houston (IAH) to Newark (EWR) on 2024-05-16 at 08:00 AM.\\n\\nThe payment has been adjusted accordingly. If you need any further assistance, feel free to ask!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8837,
+    "output_tokens": 131,
+    "generation_seconds": 10.657928228378296,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 17,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You're welcome! If you need any more assistance, don't hesitate to reach out. Safe travels and enjoy your trip!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "You're welcome! If you need any more assistance, don't hesitate to reach out. Safe travels and enjoy your trip!"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "olivia_gonzalez_2305",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ],
+        "instruction": "Your user id is olivia_gonzalez_2305, you currently reside in Newark, and you will have a crazy half-day trip to Texas. It is in your reservations but you don't remember the reservation id. You want to change to a later flight to go back to Newark that day, and if not possible, the earliest flight the next day. Your current return flight departs 3pm. You do not accept JFK, only EWR. You are reactive to the agent and will not say anything that is not asked. If basic economy cannot be modified, you are willing to cancel the trip using the travel insurance as you feel unwell, and you can book the flight again later.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.001639,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "a9810f488716b2601f8bb10a5f4c55ede595a33ccef1d826c45957fdcfb73653"
+        },
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "Z7GOZK"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You're welcome! If you need any more assistance, don't hesitate to reach out. Safe travels and enjoy your trip!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8985,
+    "output_tokens": 42,
+    "generation_seconds": 5.286570310592651,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

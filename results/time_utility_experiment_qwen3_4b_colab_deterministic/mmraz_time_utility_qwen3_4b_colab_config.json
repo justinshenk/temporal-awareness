@@ -1,0 +1,38 @@
+{
+  "model_name": "Qwen/Qwen3-4B",
+  "use_chat_template": true,
+  "disable_thinking_trace": true,
+  "device": "cuda:0",
+  "prompt_format": "direct_time_utility_question",
+  "prompt_template": "What would you prefer {x}$ now or {y}$ in {t}? Answer in just a few words.",
+  "x_now": 100,
+  "y_values": [
+    100,
+    101,
+    110,
+    150,
+    200,
+    500,
+    1000,
+    10000
+  ],
+  "t_values": [
+    "tomorrow",
+    "week",
+    "month",
+    "year",
+    "2 years",
+    "3 years",
+    "5 years",
+    "10 years"
+  ],
+  "n_repeats": 1,
+  "generation_kwargs": {
+    "max_new_tokens": 128,
+    "do_sample": false,
+    "pad_token_id": 151645,
+    "eos_token_id": 151645
+  },
+  "choose_x_heatmap_path": "/content/drive/MyDrive/spar-ai-temporal-activations-experiments-results/time_utility_experiment_qwen3_4b_colab_deterministic/mmraz_time_utility_qwen3_4b_colab_choose_x_now_heatmap.png",
+  "unparsed_heatmap_path": "/content/drive/MyDrive/spar-ai-temporal-activations-experiments-results/time_utility_experiment_qwen3_4b_colab_deterministic/mmraz_time_utility_qwen3_4b_colab_unparsed_rate_heatmap.png"
+}

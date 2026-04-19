@@ -1,0 +1,282 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I am interested in a 7-day travel plan for two people, starting from Fort Lauderdale and covering three cities in Louisiana from March 8th to March 14th, 2022. We have a budget of $4,400. We'd like accommodations that house children under 10 and we'd prefer to have entire rooms to ourselves. Also, we'd like to avoid flights as a mode of transportation for this journey.
+
+Reference information:
+### Attractions in New Orleans
+                               Name  Latitude  Longitude                                                 Address          Phone                                                           Website        City
+              New Orleans City Park 30.003399 -90.092429                                    New Orleans, LA, USA (504) 482-4888                                   https://neworleanscitypark.org/ New Orleans
+                   Audubon Aquarium 29.950454 -90.062921                  1 Canal St, New Orleans, LA 70130, USA (504) 565-3033                       https://audubonnatureinstitute.org/aquarium New Orleans
+                   Mardi Gras World 29.935032 -90.061477 1380 Port of New Orleans Pl, New Orleans, LA 70130, USA (504) 361-7821                                    http://www.mardigrasworld.com/ New Orleans
+          New Orleans Museum of Art 29.986472 -90.093450        1 Collins Diboll Cir, New Orleans, LA 70124, USA (504) 658-4100                                                 https://noma.org/ New Orleans
+                     Jackson Square 29.957402 -90.062950                              New Orleans, LA 70116, USA (504) 658-3200 https://nola.gov/parks-and-parkways/parks-squares/jackson-square/ New Orleans
+           The National WWII Museum 29.943071 -90.070532             945 Magazine St, New Orleans, LA 70130, USA (504) 528-1944                                https://www.nationalww2museum.org/ New Orleans
+                        Audubon Zoo 29.923733 -90.131407            6500 Magazine St, New Orleans, LA 70118, USA (504) 861-2537                               https://audubonnatureinstitute.org/ New Orleans
+                        The Cabildo 29.957504 -90.063904             701 Chartres St, New Orleans, LA 70130, USA (504) 568-8975                   https://louisianastatemuseum.org/museum/cabildo New Orleans
+                  Visit New Orleans 29.955270 -90.062725             400 Toulouse St, New Orleans, LA 70130, USA (504) 569-1401                                   http://www.visitneworleans.com/ New Orleans
+                St. Louis Cathedral 29.957974 -90.063728      615 Pere Antoine Alley, New Orleans, LA 70116, USA (504) 525-9585                                  http://www.stlouiscathedral.org/ New Orleans
+                            JAMNOLA 29.963943 -90.049076               2832 Royal St, New Orleans, LA 70117, USA (504) 233-9152                                           http://www.jamnola.com/ New Orleans
+                        Vue Orleans 29.948952 -90.063531                  2 Canal St, New Orleans, LA 70130, USA (504) 285-3600                                           https://vueorleans.com/ New Orleans
+                          Storyland 29.986985 -90.098045               5 Victory Ave, New Orleans, LA 70124, USA (504) 483-9402               http://neworleanscitypark.com/in-the-park/Storyland New Orleans
+The Historic New Orleans Collection 29.956857 -90.065675                520 Royal St, New Orleans, LA 70130, USA (504) 523-4662                                             https://www.hnoc.org/ New Orleans
+                    The Singing Oak 29.985877 -90.090215                              New Orleans, LA 70124, USA (707) 689-2985                                                           Unknown New Orleans
+                     The Presbytère 29.958127 -90.063304             751 Chartres St, New Orleans, LA 70116, USA (504) 568-6968                https://louisianastatemuseum.org/museum/presbytere New Orleans
+ New Orleans Historic Voodoo Museum 29.959904 -90.063851              724 Dumaine St, New Orleans, LA 70116, USA (504) 680-0128                                          http://voodoomuseum.com/ New Orleans
+         Longue Vue House & Gardens 29.977113 -90.122776                 7 Bamboo Rd, New Orleans, LA 70124, USA (504) 488-5488                                         http://www.longuevue.com/ New Orleans
+  Steamboat NATCHEZ - Official Site 29.955270 -90.062725             400 Toulouse St, New Orleans, LA 70130, USA (504) 569-1401                                 https://www.steamboatnatchez.com/ New Orleans
+                 The Skeleton House 29.930791 -90.118471         6000 St Charles Ave, New Orleans, LA 70118, USA        Unknown                                                           Unknown New Orleans
+
+### Restaurants in New Orleans
+                           Name  Average Cost                                            Cuisines  Aggregate Rating        City
+          Jimmy's Pancake House            50                             Pizza, Indian, Desserts               4.0 New Orleans
+         Shenanigan's Irish Pub            43                      Tea, Chinese, Bakery, Desserts               4.1 New Orleans
+                 The Fish House            20           Desserts, Tea, BBQ, Bakery, Mediterranean               4.0 New Orleans
+          Town Table Restaurant           100                         Tea, Cafe, Indian, American               3.9 New Orleans
+                       Momo-Cha            80                   Chinese, Bakery, Indian, Desserts               2.7 New Orleans
+                          Gupha            11                Tea, Cafe, Bakery, Chinese, American               2.9 New Orleans
+                           Sage            87                    Mediterranean, Desserts, Seafood               3.5 New Orleans
+          Uttarakhand Fast Food            57                  Chinese, Bakery, Desserts, Seafood               2.9 New Orleans
+            Chinese Hot Express            94                                      Pizza, Seafood               0.0 New Orleans
+                 New Sukh Sagar            31                 Tea, Bakery, BBQ, American, Seafood               3.2 New Orleans
+                           PKay            22                              Tea, Bakery, Fast Food               3.7 New Orleans
+            Amici Gourmet Pizza            83                               BBQ, Indian, Desserts               3.1 New Orleans
+                 Def Col Social            52               Tea, Italian, Bakery, Indian, Seafood               3.9 New Orleans
+                  The Night Owl            22                              Tea, Cafe, Bakery, BBQ               2.8 New Orleans
+              Twenty Four Seven            18                       Pizza, BBQ, Desserts, Italian               3.0 New Orleans
+                Cakes and Bakes            17                   Chinese, Seafood, Cafe, Fast Food               3.2 New Orleans
+   Yeti - The Himalayan Kitchen            95                         Tea, Mediterranean, Seafood               3.7 New Orleans
+Shama Muradabadi Chicken Corner            35                          Bakery, American, Desserts               0.0 New Orleans
+                       Mr. Momo            86           Desserts, Tea, Pizza, Cafe, Mediterranean               0.0 New Orleans
+                Bhashi Caterers            16                                            Tea, BBQ               0.0 New Orleans
+   Subhash Punjabi Family Dhaba            28                                     Pizza, Desserts               0.0 New Orleans
+                Cafe Coffee Day            96               Pizza, Bakery, Mediterranean, Italian               2.5 New Orleans
+               Green Chick Chop            66         Pizza, French, Bakery, BBQ, Indian, Seafood               0.0 New Orleans
+        Aggarwal Bikaner Sweets            20   Desserts, Bakery, Chinese, Mediterranean, Seafood               0.0 New Orleans
+                   Buena Tierra            94         Desserts, Tea, Cafe, Mediterranean, Seafood               0.0 New Orleans
+                    Kulcha King            68 Pizza, French, Bakery, Fast Food, American, Seafood               3.8 New Orleans
+                  Royale Bakers            22             Pizza, Mexican, BBQ, Fast Food, Seafood               2.8 New Orleans
+                       The Chef            42                               Bakery, Pizza, Indian               2.7 New Orleans
+      Chef's Basket Pop Up Caf愆            37                     French, Bakery, Cafe, Fast Food               0.0 New Orleans
+              Mineority By Saby            62                      Seafood, Pizza, BBQ, Fast Food               4.2 New Orleans
+
+### Accommodations in New Orleans
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number        city
+      Nice Clean Official Cozy Suite 2 In Brooklyn  413.0    Private room                                     No pets             3.0                  2                 4.0 New Orleans
+  Lovely One bedroom apartment 20 min to Manhattan  186.0 Entire home/apt                                  No parties             4.0                  2                 3.0 New Orleans
+                                      Harlem Deco,  650.0    Private room                                 No visitors             1.0                  2                 2.0 New Orleans
+                               Cozy in Cobble Hill  205.0 Entire home/apt                    No visitors & No smoking             2.0                  2                 2.0 New Orleans
+                        Best Location on the UWS!!  692.0    Private room                                  No parties             2.0                  1                 3.0 New Orleans
+     Conveniently located private room in Brooklyn  172.0    Private room                                 No visitors             1.0                  1                 1.0 New Orleans
+           Gorgeous exposed-brick 2 BR Apt in LES! 1187.0 Entire home/apt          No visitors & No children under 10             2.0                  8                 4.0 New Orleans
+ Entire apt NYC, Queens. 15 min from Times Square.  692.0 Entire home/apt                                     No pets            10.0                  3                 5.0 New Orleans
+            Cute private room in the heart of Soho 1084.0    Private room                        No children under 10             5.0                  2                 4.0 New Orleans
+    Sonder | Upper East Side | Chic 1BR + Sofa Bed  389.0 Entire home/apt                                 No visitors            29.0                  2                 2.0 New Orleans
+Cozy Renovated 2 Bedroom Apartment Heart of Brklyn  890.0 Entire home/apt                    No parties & No visitors            30.0                  4                 5.0 New Orleans
+    Cute bedroom available near subway in Astoria! 1189.0    Private room                                 No visitors             2.0                  1                 5.0 New Orleans
+                            Harlem Short Term Stay  318.0 Entire home/apt                        No pets & No smoking             4.0                  2                 5.0 New Orleans
+                  Luxury apartment in Williamsburg  961.0 Entire home/apt                     No parties & No smoking             1.0                  4                 1.0 New Orleans
+                           A great place to crash.  819.0    Private room                                  No parties             2.0                  2                 2.0 New Orleans
+                U.E.S 1 Bedroom Spacious Apartment  147.0 Entire home/apt                                 No visitors             4.0                  2                 1.0 New Orleans
+                                  Happy big family  889.0    Private room                       No pets & No visitors             1.0                  2                 3.0 New Orleans
+                   NICE 2 BED APT NEAR TIME SQUARE 1070.0 Entire home/apt No pets & No smoking & No children under 10            30.0                  7                 4.0 New Orleans
+
+### Attractions in Baton Rouge
+                                        Name  Latitude  Longitude                                                     Address          Phone                                                                Website        City
+               Louisiana's Old State Capitol 30.446593 -91.189044                  100 North Blvd, Baton Rouge, LA 70801, USA (225) 342-0500                               http://www.louisianaoldstatecapitol.org/ Baton Rouge
+                      BREC's Baton Rouge Zoo 30.562359 -91.159829                  3601 Thomas Rd, Baton Rouge, LA 70811, USA (225) 775-3877                                                  http://www.brzoo.org/ Baton Rouge
+                    USS KIDD Veterans Museum 30.443599 -91.190161                  305 S River Rd, Baton Rouge, LA 70802, USA (225) 342-1942                                                http://www.usskidd.com/ Baton Rouge
+                         Capitol Park Museum 30.454028 -91.186506                    660 N 4th St, Baton Rouge, LA 70802, USA (225) 342-5428                                   http://www.louisianastatemuseum.org/ Baton Rouge
+              Louisiana Art & Science Museum 30.446227 -91.190323                  100 S River Rd, Baton Rouge, LA 70801, USA (225) 344-5272                                                   http://www.lasm.org/ Baton Rouge
+Louisiana State University Rural Life Museum 30.411637 -91.115508                   4560 Essen Ln, Baton Rouge, LA 70803, USA (225) 765-2437                                          http://www.lsu.edu/rurallife/ Baton Rouge
+                     Veteran's Memorial Park 30.457413 -91.184805       599 State Capitol Dr #523, Baton Rouge, LA 70802, USA        Unknown                                                                Unknown Baton Rouge
+       BREC's Bluebonnet Swamp Nature Center 30.369999 -91.104557          10503 N Oak Hills Pkwy, Baton Rouge, LA 70810, USA (225) 757-8905                                                  http://brec.org/swamp Baton Rouge
+                              Liberty Lagoon 30.449214 -91.111324                 111 Lobdell Ave, Baton Rouge, LA 70806, USA (225) 923-3202                                              http://libertylagoon.com/ Baton Rouge
+                           LSU Museum of Art 30.447653 -91.189061                100 Lafayette St, Baton Rouge, LA 70801, USA (225) 389-7200                                                     http://lsumoa.org/ Baton Rouge
+                   Magnolia Mound Plantation 30.426238 -91.187203               2161 Nicholson Dr, Baton Rouge, LA 70802, USA (225) 343-4955                            https://www.brec.org/facility/MagnoliaMound Baton Rouge
+                Riverfront Plaza & City Dock 30.445301 -91.190681                  300 S River Rd, Baton Rouge, LA 70802, USA        Unknown                                                                Unknown Baton Rouge
+                     Burden Museum & Gardens 30.408891 -91.105846                   4560 Essen Ln, Baton Rouge, LA 70809, USA (225) 763-3990                            https://www.lsuagcenter.com/portals/burden/ Baton Rouge
+                       Blue Bayou Water Park 30.345084 -91.026095              18142 Perkins Rd E, Baton Rouge, LA 70810, USA (225) 753-3333                                              http://www.bluebayou.com/ Baton Rouge
+                    Mike the Tiger's Habitat 30.413406 -91.185035                 16 N Stadium Dr, Baton Rouge, LA 70802, USA (225) 578-4823                                           http://www.mikethetiger.com/ Baton Rouge
+                    Sing the River Sculpture 30.449251 -91.190657          Florida St &, River Rd, Baton Rouge, LA 70801, USA        Unknown https://www.visitbatonrouge.com/listing/sing-the-river-sculpture/2839/ Baton Rouge
+               Knock Knock Children's Museum 30.430174 -91.170001               1900 Dalrymple Dr, Baton Rouge, LA 70808, USA (225) 388-3090                                       http://www.knockknockmuseum.org/ Baton Rouge
+                           Hilltop Arboretum 30.356157 -91.094990 Enter off of, 11855 Highland Rd, Baton Rouge, LA 70810, USA (225) 767-6916                                                http://hilltop.lsu.edu/ Baton Rouge
+                      Mississippi River Park 30.449228 -91.190540                    299 River Rd, Baton Rouge, LA 70801, USA        Unknown                                                                Unknown Baton Rouge
+                           Spanish Town Park 30.454429 -91.176342            1300 Spanish Town Rd, Baton Rouge, LA 70802, USA (225) 272-9200                         http://www.brec.org/index.cfm/park/SpanishTown Baton Rouge
+
+### Restaurants in Baton Rouge
+                                 Name  Average Cost                                              Cuisines  Aggregate Rating        City
+                       Taste of India            28                 Tea, Bakery, Chinese, Indian, Seafood               4.2 Baton Rouge
+                       Bluebird Diner            13                    Cafe, Mexican, Desserts, Fast Food               3.6 Baton Rouge
+               Jimmy Jack's Rib Shack            12                         Tea, American, BBQ, Fast Food               4.2 Baton Rouge
+                         Hunter's Pub            47                                      Tea, Bakery, BBQ               4.4 Baton Rouge
+                   Tursi's Latin King            35                                    Tea, BBQ, Desserts               4.1 Baton Rouge
+Zen Japanese Steakhouse and Sushi Bar            20                           Tea, BBQ, Desserts, Seafood               4.1 Baton Rouge
+                 Fifth Street Bagelry            10                        Cafe, Mexican, Pizza, Desserts               3.8 Baton Rouge
+                       Pizza Di Rocco            61                                       Bakery, Seafood               4.4 Baton Rouge
+                       Mogli's Coffee            67               Cafe, Mexican, Mediterranean, Fast Food               3.8 Baton Rouge
+                               Subway            52                          Cafe, Mexican, Indian, Pizza               3.3 Baton Rouge
+                            Chop Shop            27                                   French, Pizza, Cafe               0.0 Baton Rouge
+                            The Blaze            73                            Tea, Indian, American, BBQ               2.9 Baton Rouge
+                         Roti Te Boti            78                                Cafe, Pizza, Fast Food               2.8 Baton Rouge
+           Sahib潴籹 Barbeque by Ohri潴籹            11                           Chinese, Pizza, Bakery, BBQ               4.1 Baton Rouge
+                             Aka Saka            46               Tea, Cafe, Bakery, BBQ, Chinese, Indian               3.3 Baton Rouge
+            The Hub -  ibis New Delhi            94           Desserts, Bakery, Fast Food, Cafe, American               3.1 Baton Rouge
+         New Hyderabadi Biryani House            81 Desserts, Mexican, Bakery, Fast Food, Indian, Seafood               2.5 Baton Rouge
+                        Sandwich King            26                  Tea, Pizza, Mediterranean, Fast Food               3.8 Baton Rouge
+                  Frontier Restaurant            80                 Desserts, Tea, Pizza, French, Seafood               2.5 Baton Rouge
+                      Tandoori Planet            81                         Pizza, BBQ, Desserts, Italian               3.4 Baton Rouge
+                           Food Plaza            12                  Tea, American, Cafe, Indian, Seafood               3.2 Baton Rouge
+               Gupta Sweets & Namkeen            68                                 French, BBQ, Desserts               3.5 Baton Rouge
+                          Al Changezi            47                           Bakery, American, Fast Food               0.0 Baton Rouge
+                                Giani            75          Desserts, Cafe, Fast Food, Chinese, American               0.0 Baton Rouge
+                      Phonebooth Caf愆            25 Desserts, Pizza, French, Fast Food, American, Seafood               4.1 Baton Rouge
+                      Chennai Express            68                                          Tea, Seafood               0.0 Baton Rouge
+                      Mera Vala Dabba            31                            Mexican, Bakery, Fast Food               3.6 Baton Rouge
+                     The Black Bamboo            69                                          Tea, Seafood               4.4 Baton Rouge
+
+### Accommodations in Baton Rouge
+                                            NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number        city
+ HUGE QUEEN ROOM IN 1500 SQFT WBURG BALLROOM APT  478.0    Private room                                   No parties             4.0                  1                 5.0 Baton Rouge
+                   Artist Loft East Williamsburg  979.0    Private room No children under 10 & No visitors & No pets             1.0                  1                 3.0 Baton Rouge
+                     4 Bed 3.5 Bath in Manhattan  889.0 Entire home/apt                                      No pets            30.0                  3                 4.0 Baton Rouge
+       Spacious 1 Bedroom in Historic Brownstone  670.0 Entire home/apt                                   No smoking             7.0                  2                 3.0 Baton Rouge
+Lovely West Village 1 BR - Quiet and Comfortable  260.0 Entire home/apt                                  No visitors             2.0                  2                 4.0 Baton Rouge
+Spectacular apartment in Astoria near everywhere  110.0    Private room                                  No visitors             2.0                  1                 3.0 Baton Rouge
+                    East Village Pad with a View  639.0 Entire home/apt                                  No visitors             7.0                  5                 2.0 Baton Rouge
+Light filled studio apt with expansive city view  376.0 Entire home/apt                                   No smoking             2.0                  3                 2.0 Baton Rouge
+                               West Side Retreat  856.0    Private room                                  No visitors             4.0                  1                 3.0 Baton Rouge
+        Spacious private room in luxury building  375.0    Private room                                   No parties             7.0                  1                 3.0 Baton Rouge
+      Huge private room in a Brooklyn Brownstone  308.0    Private room                         No children under 10             7.0                  1                 5.0 Baton Rouge
+
+### Attractions in Shreveport
+                                                Name  Latitude  Longitude                                                 Address          Phone                                                                                               Website       City
+                           Sci-Port Discovery Center 32.513428 -93.741899          820 Clyde Fant Pkwy, Shreveport, LA 71101, USA (318) 424-3466                            https://sci-port.org/?utm_source=googl&utm_medium=organic&utm_campaign=gbp Shreveport
+                                 Shreveport Aquarium 32.515931 -93.743334          601 Clyde Fant Pkwy, Shreveport, LA 71101, USA (318) 383-0601                                                                    http://www.shreveportaquarium.com/ Shreveport
+                      Louisiana State Exhibit Museum 32.480254 -93.785310            3015 Greenwood Rd, Shreveport, LA 71109, USA (318) 632-2020 http://www.sos.la.gov/HistoricalResources/VisitMuseums/LouisianaStateExhibitMuseum/Pages/default.aspx Shreveport
+                       Shreveport Water Works Museum 32.517548 -93.757491              142 N Common St, Shreveport, LA 71101, USA (318) 221-3388                                                                      http://shreveportwaterworks.org/ Shreveport
+                                  Red River District 32.515992 -93.744905          500 Clyde Fant Pkwy, Shreveport, LA 71101, USA (318) 673-5100                                      http://downtownshreveport.com/business-blank/red-river-district/ Shreveport
+                             R.W. Norton Art Gallery 32.458821 -93.740980            4747 Creswell Ave, Shreveport, LA 71106, USA (318) 865-4201                                                                                 http://www.rwnaf.org/ Shreveport
+                     Spring Street Historical Museum 32.514522 -93.746022              525 N Spring St, Shreveport, LA 71101, USA (318) 562-3128                                                                       https://springstreetmuseum.org/ Shreveport
+                      Southern University Museum-Art 32.512249 -93.751501                 610 Texas St, Shreveport, LA 71101, USA (318) 670-6631                                                          https://www.susla.edu/page/university-museum Shreveport
+                                 Betty Virginia Park 32.468644 -93.748561           3901 Fairfield Ave, Shreveport, LA 71106, USA (318) 673-7727                                                              http://www.myspar.org/329/Betty-Virginia Shreveport
+                                   The Logan Mansion 32.506683 -93.753879                725 Austen Pl, Shreveport, LA 71101, USA (318) 210-1007                                                                                               Unknown Shreveport
+                           Shreveport Riverview Park 32.515938 -93.743390          601 Clyde Fant Pkwy, Shreveport, LA 71101, USA (318) 673-7727                                                             https://www.myspar.org/340/Riverview-Park Shreveport
+                                Elvis Presley Statue 32.507923 -93.752967                705 Grand Ave, Shreveport, LA 71101, USA (318) 841-4000                                                         http://www.shreveportmunicipalauditorium.com/ Shreveport
+                                   Marlene Yu Museum 32.512243 -93.752795                710 Travis St, Shreveport, LA 71101, USA (318) 717-9111                                                                           http://marleneyumuseum.org/ Shreveport
+                               Meadows Museum Of Art 32.483384 -93.733501          2911 Centenary Blvd, Shreveport, LA 71104, USA (318) 869-5169                                                                      http://www.centenary.edu/meadows Shreveport
+                                     A C Steere Park 32.465163 -93.720980               4009 Youree Dr, Shreveport, LA 71105, USA (318) 673-7727                                                       http://www.myspar.org/328/AC-Steere-Purple-Park Shreveport
+J. Bennett Johnston Waterway Regional Visitor Center 32.514358 -93.743073 700 Clyde Fant Memorial Pkwy, Shreveport, LA 71101, USA (318) 677-2673                  http://www.mvk.usace.army.mil/Missions/Recreation/J-Bennett-Johnston-Visitor-Center/ Shreveport
+                                  Stage-Stars Museum 32.507923 -93.752967                705 Grand Ave, Shreveport, LA 71101, USA        Unknown                                                                                               Unknown Shreveport
+                                American Rose Center 32.459843 -93.949406      8877 Jefferson Paige Rd, Shreveport, LA 71119, USA (318) 938-5402                                                                                 https://www.rose.org/ Shreveport
+                Walter B Jacobs Memorial Nature Park 32.566696 -93.932862                8012 Par Rd 4, Shreveport, LA 71107, USA (318) 929-2806                                                                            http://www.caddoparks.org/ Shreveport
+                                Splash Kingdom Oasis 32.443445 -93.920591               7670 W 70th St, Shreveport, LA 71129, USA (318) 938-5475                                              https://www.splashkingdomwaterpark.com/shreveport-oasis/ Shreveport
+
+### Restaurants in Shreveport
+                                  Name  Average Cost                                         Cuisines  Aggregate Rating       City
+                       Longstreet Cafe            63         Desserts, BBQ, Fast Food, Cafe, American               4.3 Shreveport
+                       The Coffee Club            36        Tea, Bakery, Fast Food, American, Seafood               4.5 Shreveport
+                                 Giani            39                            French, BBQ, Desserts               3.6 Shreveport
+                              Hungrill            14              Cafe, American, Desserts, Fast Food               3.0 Shreveport
+                       Punjabi Culture            25 Desserts, BBQ, Fast Food, Chinese, Mediterranean               2.9 Shreveport
+                           BBQ Factory            36                      Bakery, Pizza, Indian, Cafe               3.9 Shreveport
+                               Barista            81           Pizza, Italian, BBQ, American, Seafood               3.2 Shreveport
+                  Backyard Underground            86                          Fast Food, BBQ, Seafood               3.5 Shreveport
+                                Subway            68                             Tea, Mexican, Bakery               2.9 Shreveport
+                             Town Hall            75                Seafood, Pizza, American, Italian               3.5 Shreveport
+                    Sartaj Food Corner            79                                Tea, BBQ, Seafood               2.8 Shreveport
+                        Dunkin' Donuts            94                      Tea, Bakery, BBQ, Fast Food               3.9 Shreveport
+                        Tibb's Frankie            87 Desserts, BBQ, Fast Food, Mediterranean, Seafood               3.2 Shreveport
+                                Subway            92                   Mexican, Pizza, BBQ, Fast Food               3.6 Shreveport
+                      Korea Restaurant            97                          Tea, Mexican, Fast Food               3.0 Shreveport
+                            Wah Ji Wah            73                    Cafe, Mexican, Indian, Bakery               2.9 Shreveport
+                     Urban Patty House            93                       Mexican, Bakery, Fast Food               0.0 Shreveport
+                      Changezi Chicken            96                           Tea, Chinese, Desserts               3.1 Shreveport
+                                Sandoz            21            Cafe, Indian, Mediterranean, Desserts               2.7 Shreveport
+                        Above & Beyond            86                         Pizza, Desserts, Seafood               3.5 Shreveport
+                      Raja Chat Corner            82          Cafe, American, Mediterranean, Desserts               3.3 Shreveport
+                         Punjabi Jaika            13                  Mexican, BBQ, Desserts, Seafood               3.3 Shreveport
+                Qureshi Chicken Corner            52           Seafood, Pizza, Mediterranean, Italian               3.0 Shreveport
+     Spl. Flavour Sodas & Fruit shakes            98                 French, Bakery, Chinese, Seafood               0.0 Shreveport
+                          Green Chilli            55                          Bakery, Pizza, Desserts               2.8 Shreveport
+Hyderabadi & Muradabadi Chicken Corner            94                          French, Pizza, Desserts               0.0 Shreveport
+                        Hill Chillz 26            79                           Tea, American, Seafood               3.1 Shreveport
+                        Cake-O-Licious            61                                 Tea, Indian, BBQ               3.3 Shreveport
+                 Sharma Ji Spring Roll            78                      BBQ, Mediterranean, Seafood               0.0 Shreveport
+                          Vijay Corner            19                 Tea, Pizza, Bakery, Cafe, Indian               3.0 Shreveport
+                           Cafe Huddle            69                                Tea, Cafe, Bakery               0.0 Shreveport
+                        Baskin Robbins            64                       Tea, Cafe, Bakery, Seafood               0.0 Shreveport
+                     Shankar Fast Food            51         Cafe, Mediterranean, Desserts, Fast Food               2.7 Shreveport
+                     Mr. Biryani Walia            47                     Tea, Mexican, Pizza, Italian               0.0 Shreveport
+                           Mysore Cafe            90              Desserts, Tea, BBQ, Indian, Seafood               4.0 Shreveport
+                    Sri Sairam Parlour            98              Cafe, American, Desserts, Fast Food               4.2 Shreveport
+                   Remo's Maximilliano            62           Pizza, BBQ, Fast Food, Indian, Seafood               3.8 Shreveport
+
+### Accommodations in Shreveport
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+                      Classic Brownstone Apartment 1103.0 Entire home/apt No visitors & No children under 10 & No parties             2.0                  7                 2.0 Shreveport
+                 Quiet & Clean Retreat in the City  111.0 Entire home/apt               No children under 10 & No smoking             3.0                  2                 3.0 Shreveport
+   Private hotel room in the heart of Times Square  539.0    Private room    No visitors & No children under 10 & No pets             1.0                  2                 3.0 Shreveport
+     Charming Bright Astoria Room, close to Ditmar  884.0    Private room                                         No pets             1.0                  1                 5.0 Shreveport
+  Gorgeous 2 bedroom apt in Ditmas Park\n1300 ft.²  713.0 Entire home/apt                                      No parties             2.0                  5                 4.0 Shreveport
+   Swimming Pool! 2 Bed 2 bath Amazing Layout!5143  462.0 Entire home/apt                                     No visitors            30.0                  2                 1.0 Shreveport
+                     East Village Studio Apartment  599.0 Entire home/apt                            No pets & No parties             2.0                  2                 2.0 Shreveport
+ Private Bedroom w/ Queen Size bed in Williamsburg 1158.0    Private room                        No parties & No visitors             2.0                  1                 3.0 Shreveport
+                 Flatbush Apartment near 2,5 train  501.0 Entire home/apt                        No visitors & No parties             1.0                  4                 2.0 Shreveport
+☀️Private, cozy & quiet room in Inwood Manhattan☀️ 1183.0    Private room                                      No parties             4.0                  2                 2.0 Shreveport
+      Small & comfy Bedroom near Brooklyn college.  293.0    Private room                                         No pets             1.0                  1                 5.0 Shreveport
+                    Spacious 1+ bedroom apt in NYC  547.0 Entire home/apt                                     No visitors             1.0                  5                 5.0 Shreveport
+                 Spacious Private Room in Brooklyn 1167.0    Private room                                         No pets            20.0                  2                 4.0 Shreveport
+               Large, Sunny 25 min to Central Park  691.0    Private room                                         No pets             4.0                  1                 2.0 Shreveport
+
+### Flight from Fort Lauderdale to New Orleans on 2022-03-08
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate  OriginCityName DestCityName  Distance
+     F3626764    255   07:59   08:59  2 hours 0 minutes 2022-03-08 Fort Lauderdale  New Orleans     674.0
+     F4016172    213   10:39   11:33 1 hours 54 minutes 2022-03-08 Fort Lauderdale  New Orleans     674.0
+
+### Self-driving from Fort Lauderdale to New Orleans
+self-driving, from Fort Lauderdale to New Orleans, duration: 11 hours 54 mins, distance: 1,356 km, cost: 67
+
+### Taxi from Fort Lauderdale to New Orleans
+taxi, from Fort Lauderdale to New Orleans, duration: 11 hours 54 mins, distance: 1,356 km, cost: 1356
+
+### Flight from New Orleans to Baton Rouge on 2022-03-10
+There is no flight from New Orleans to Baton Rouge on 2022-03-10.
+
+### Self-driving from New Orleans to Baton Rouge
+self-driving, from New Orleans to Baton Rouge, duration: 1 hour 17 mins, distance: 131 km, cost: 6
+
+### Taxi from New Orleans to Baton Rouge
+taxi, from New Orleans to Baton Rouge, duration: 1 hour 17 mins, distance: 131 km, cost: 131
+
+### Flight from Baton Rouge to Shreveport on 2022-03-12
+There is no flight from Baton Rouge to Shreveport on 2022-03-12.
+
+### Self-driving from Baton Rouge to Shreveport
+self-driving, from Baton Rouge to Shreveport, duration: 3 hours 42 mins, distance: 397 km, cost: 19
+
+### Taxi from Baton Rouge to Shreveport
+taxi, from Baton Rouge to Shreveport, duration: 3 hours 42 mins, distance: 397 km, cost: 397
+
+### Flight from Shreveport to Fort Lauderdale on 2022-03-14
+There is no flight from Shreveport to Fort Lauderdale on 2022-03-14.
+
+### Self-driving from Shreveport to Fort Lauderdale
+self-driving, from Shreveport to Fort Lauderdale, duration: 16 hours 3 mins, distance: 1,772 km, cost: 88
+
+### Taxi from Shreveport to Fort Lauderdale
+taxi, from Shreveport to Fort Lauderdale, duration: 16 hours 3 mins, distance: 1,772 km, cost: 1772
+
+JSON plan:

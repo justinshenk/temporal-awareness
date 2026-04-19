@@ -1,0 +1,142 @@
+{
+  "model_name": "Qwen/Qwen3-4B-Instruct-2507",
+  "model_slug": "qwen3_4b_instruct_2507",
+  "use_chat_template": true,
+  "enable_thinking": false,
+  "disable_thinking_trace": true,
+  "thinking_mode_tag": "without_thinking",
+  "user_pov": true,
+  "prompt_variant_tag": "user_pov_day_counts",
+  "prompt_format": "user_pov_time_utility_question",
+  "time_delay_format": "day_counts",
+  "default_time_delay_values": [
+    "tomorrow",
+    "week",
+    "month",
+    "year",
+    "2 years",
+    "3 years",
+    "5 years",
+    "10 years"
+  ],
+  "day_count_time_delay_values": [
+    "1 day",
+    "7 days",
+    "30 days",
+    "365 days",
+    "730 days",
+    "1095 days",
+    "1825 days",
+    "3650 days"
+  ],
+  "day_count_time_delay_mapping": {
+    "tomorrow": "1 day",
+    "week": "7 days",
+    "month": "30 days",
+    "year": "365 days",
+    "2 years": "730 days",
+    "3 years": "1095 days",
+    "5 years": "1825 days",
+    "10 years": "3650 days"
+  },
+  "device": "cuda:0",
+  "prompt_template": "I have an offer to take {x}$ now or {y}$ in {t}. What should I choose? Answer in just a few words.",
+  "prompt_template_default": "I have an offer to take {x}$ now or {y}$ in {t}. What should I choose? Answer in just a few words.",
+  "prompt_template_tomorrow": "I have an offer to take {x}$ now or {y}$ tomorrow. What should I choose? Answer in just a few words.",
+  "special_case_without_in": null,
+  "special_case_indefinite_article_delays": [],
+  "user_pov_delay_phrasing": {
+    "1 day": "in 1 day",
+    "7 days": "in 7 days",
+    "30 days": "in 30 days",
+    "365 days": "in 365 days",
+    "730 days": "in 730 days",
+    "1095 days": "in 1095 days",
+    "1825 days": "in 1825 days",
+    "3650 days": "in 3650 days"
+  },
+  "parser_variant": "comma_normalized_direct_choice_with_it_depends_delay_aliases_v3",
+  "parser_time_delay_aliases": {
+    "1 day": [
+      "1 day",
+      "next day",
+      "one day",
+      "tomorrow"
+    ],
+    "7 days": [
+      "7 days",
+      "a week",
+      "one week",
+      "seven days",
+      "week"
+    ],
+    "30 days": [
+      "30 days",
+      "a month",
+      "month",
+      "one month",
+      "thirty days"
+    ],
+    "365 days": [
+      "365 days",
+      "a year",
+      "one year",
+      "year"
+    ],
+    "730 days": [
+      "2 years",
+      "730 days",
+      "two years"
+    ],
+    "1095 days": [
+      "1095 days",
+      "3 years",
+      "three years"
+    ],
+    "1825 days": [
+      "1825 days",
+      "5 years",
+      "five years"
+    ],
+    "3650 days": [
+      "10 years",
+      "3650 days",
+      "ten years"
+    ]
+  },
+  "it_depends_choice_value": "it depends",
+  "it_depends_heatmap_value": 0.5,
+  "x_now": 100,
+  "y_values": [
+    100,
+    101,
+    110,
+    150,
+    200,
+    500,
+    1000,
+    10000
+  ],
+  "t_values": [
+    "1 day",
+    "7 days",
+    "30 days",
+    "365 days",
+    "730 days",
+    "1095 days",
+    "1825 days",
+    "3650 days"
+  ],
+  "n_repeats": 1,
+  "generation_kwargs": {
+    "max_new_tokens": 128,
+    "do_sample": false
+  },
+  "response_field_raw": "response",
+  "response_field_for_parse": "response_for_parse",
+  "choose_x_heatmap_path": "/workspace/results/time_utility_experiment_qwen3_4b_instruct_2507_vast_deterministic_without_thinking_user_pov_day_counts/mmraz_time_utility_qwen3_4b_instruct_2507_vast_without_thinking_user_pov_day_counts_choose_x_now_heatmap.png",
+  "unparsed_heatmap_path": "/workspace/results/time_utility_experiment_qwen3_4b_instruct_2507_vast_deterministic_without_thinking_user_pov_day_counts/mmraz_time_utility_qwen3_4b_instruct_2507_vast_without_thinking_user_pov_day_counts_unparsed_rate_heatmap.png",
+  "generated_fresh": true,
+  "n_reparsed_choice_updates": 0,
+  "overall_it_depends_rate": 0.0
+}

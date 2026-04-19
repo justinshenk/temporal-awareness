@@ -1,0 +1,273 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you formulate a travel itinerary for me? I'm planning a solo trip from Dallas to Nebraska for 7 days, from March 7th to March 13th, 2022. During this trip, I wish to visit 3 different cities within Nebraska. My budget for this trip is $5,600.
+
+Reference information:
+### Attractions in Grand Island
+                                 Name  Latitude  Longitude                                             Address          Phone                                                                                                       Website         City
+                         Stuhr Museum 40.883763 -98.373365             3133 US-34, Grand Island, NE 68801, USA (308) 385-5316                                                                                       http://stuhrmuseum.org/ Grand Island
+                    Hear Grand Island 40.925916 -98.342513   278 W South Front St, Grand Island, NE 68801, USA        Unknown                                                                                   http://heargrandisland.com/ Grand Island
+                 Fred's Flying Circus 40.930184 -98.337122           503 E 4th St, Grand Island, NE 68801, USA        Unknown                                                                                                       Unknown Grand Island
+                         Stolley Park 40.901109 -98.360992 2103 W Stolley Park Rd, Grand Island, NE 68801, USA (308) 385-5444 http://www.grand-island.com/Home/Components/FacilityDirectory/FacilityDirectory/36/2181?sortn=FCPhone&npage=2 Grand Island
+                 Railroad Town, Nebr. 40.881877 -98.369964             College St, Grand Island, NE 68801, USA        Unknown                                                                                                       Unknown Grand Island
+              Island Oasis Water Park 40.908534 -98.336236   321 E Fonner Park Rd, Grand Island, NE 68801, USA (308) 385-5381                                                                                                       Unknown Grand Island
+               Grand Island Arboretum 40.910049 -98.353481                         Grand Island, NE 68803, USA        Unknown                                                                                                       Unknown Grand Island
+                            Pier Park 40.917325 -98.335539           500 S Oak St, Grand Island, NE 68801, USA (308) 385-5426                                                                                                       Unknown Grand Island
+                     Hall County Park 40.873610 -98.375005     2447 W Schimmer Dr, Grand Island, NE 68801, USA (308) 385-5087                                                          https://www.hallcountyne.gov/content.lasso?page=6133 Grand Island
+                          Splash park 40.955095 -98.363068   2820 N Broadwell Ave, Grand Island, NE 68803, USA        Unknown                                                                                                       Unknown Grand Island
+Grand Island Tourism & Visitor Center 40.925250 -98.341093           201 W 3rd St, Grand Island, NE 68801, USA (308) 382-4400                                                                                  http://visitgrandisland.com/ Grand Island
+   Imagination City Children's Museum 40.933373 -98.380719   3404 W 13th St #124b, Grand Island, NE 68803, USA (308) 385-8377                                                                                                       Unknown Grand Island
+
+### Restaurants in Grand Island
+                           Name  Average Cost                                                  Cuisines  Aggregate Rating         City
+              Locos Grill & Pub            29                                    Tea, Chinese, Desserts               3.5 Grand Island
+                    Thai Pepper            28                                    Bakery, Mexican, Pizza               4.0 Grand Island
+                  Chicken Bytes            38                                  Cafe, Mexican, Fast Food               2.1 Grand Island
+       Madurai Meenakshi Bhawan            69                       Desserts, Tea, Cafe, Pizza, Chinese               3.4 Grand Island
+                      FatPlates            95                               Tea, Pizza, Indian, Seafood               3.0 Grand Island
+                        Chaayos            62                                 Tea, Cafe, BBQ, Fast Food               3.8 Grand Island
+               The Mirch Masala            93                       French, Indian, Desserts, Fast Food               3.2 Grand Island
+             VC's Food Paradise            52 Desserts, Fast Food, Cafe, Indian, Mediterranean, Seafood               3.5 Grand Island
+                    Nikku Hotel            10                       Desserts, BBQ, Bakery, Cafe, Indian               2.6 Grand Island
+             Quality Food Point            41                     Cafe, Bakery, BBQ, Fast Food, Chinese               3.0 Grand Island
+                     Apni Rasoi            93                   Desserts, Pizza, BBQ, Fast Food, Indian               2.9 Grand Island
+           New Royal Blue Dhaba            35               French, Mexican, Bakery, Fast Food, Seafood               0.0 Grand Island
+          Hans Fast Food Center            45                                              Cafe, Bakery               0.0 Grand Island
+           Kith N Kin Cafeteria            34                                        Tea, French, Pizza               0.0 Grand Island
+                       Alkakori            62                                 Tea, French, Indian, Cafe               3.6 Grand Island
+               Vadapav Junction            88                                Tea, Chinese, French, Cafe               3.7 Grand Island
+                     Dosa Plaza            83                                         Tea, Chinese, BBQ               0.0 Grand Island
+                Hira Lal Sweets            61                                Seafood, Bakery, Fast Food               0.0 Grand Island
+                         Freezy            31                        Desserts, Tea, Pizza, Cafe, Indian               0.0 Grand Island
+        Aggarwal Sweet & Bakers            41                                       Tea, Pizza, Seafood               0.0 Grand Island
+                 Chilli Chinese            28                                   Tea, Mexican, Fast Food               0.0 Grand Island
+                     Chai Garam            83                       Fast Food, Seafood, Bakery, Italian               0.0 Grand Island
+Moti Mahal Delux Tandoori Trail            69                Pizza, Bakery, Fast Food, Chinese, Seafood               2.0 Grand Island
+
+### Accommodations in Grand Island
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number         city
+              Two Bedrooms in Bright Brooklyn Home  302.0    Private room                                      No pets             3.0                  1                 5.0 Grand Island
+ Sunny room in Williamsburg with view of Manhattan  836.0    Private room            No children under 10 & No parties             2.0                  1                 5.0 Grand Island
+                   Chic Eclectic Midtown Apartment  884.0    Private room                         No children under 10             3.0                  1                 2.0 Grand Island
+                     Sunny room in PRIME Brooklyn!  139.0    Private room                                  No visitors             4.0                  1                 1.0 Grand Island
+                      2 Bedrooms and One Bath Room   93.0 Entire home/apt                                   No smoking             5.0                  3                 5.0 Grand Island
+                Greenwich Village w Private Garden  310.0    Private room                                      No pets             2.0                  1                 2.0 Grand Island
+               Big apartment, comfy - calm bedroom   69.0    Private room        No visitors & No parties & No smoking             1.0                  1                 4.0 Grand Island
+      Private room near LGA Airport with queen bed  890.0    Private room           No parties & No visitors & No pets             1.0                  1                 5.0 Grand Island
+        Pretty, 775 sq ft, 1.75 BR, Manhattan Apt. 1178.0 Entire home/apt                                   No smoking             2.0                  8                 2.0 Grand Island
+Cozy Studio Apartment in the Heart of Williamsburg  492.0 Entire home/apt                                   No parties             2.0                  3                 4.0 Grand Island
+                     Room in two bedroom apartment  159.0    Private room                                  No visitors             1.0                  1                 2.0 Grand Island
+              Studio Apartment with Gorgeous View!  861.0 Entire home/apt                                   No parties             1.0                  6                 5.0 Grand Island
+                     YANKEE STADIUM DOWNTOWN BRONX 1194.0    Private room No pets & No children under 10 & No visitors             1.0                  2                 5.0 Grand Island
+
+### Attractions in North Platte
+                                           Name  Latitude   Longitude                                                Address          Phone                                                                      Website         City
+Buffalo Bill Ranch State Historical Park Museum 41.163146 -100.796216 2921 Scouts Rest Ranch Rd, North Platte, NE 69101, USA (308) 535-8035                                 http://outdoornebraska.gov/buffalobillranch/ North Platte
+                             Golden Spike Tower 41.144225 -100.829387       1249 N Homestead Rd, North Platte, NE 69101, USA (308) 532-9920                                                https://goldenspiketower.com/ North Platte
+                      Cody Park Railroad Museum 41.147590 -100.752868         1400 N Jeffers St, North Platte, NE 69101, USA (308) 535-6719      https://www.visitnorthplatte.com/listing/cody-park-railroad-museum/145/ North Platte
+            North Platte Area Children's Museum 41.136185 -100.763657          314 N Jeffers St, North Platte, NE 69101, USA (308) 532-3512                                            http://www.npchildrensmuseum.com/ North Platte
+                                      Cody Park 41.149827 -100.757225         1601 N Jeffers St, North Platte, NE 69101, USA (308) 535-6700                            http://www.ci.north-platte.ne.us/parks/cody-park/ North Platte
+       Buffalo Bill Ranch State Historical Park 41.162769 -100.795603 2921 Scouts Rest Ranch Rd, North Platte, NE 69101, USA (308) 535-8035                                 http://outdoornebraska.gov/buffalobillranch/ North Platte
+                 20th Century Veterans Memorial 41.107894 -100.762932         2811 S Jeffers St, North Platte, NE 69103, USA (308) 532-6579 https://visitnorthplatte.com/directory-posts/20th-century-veterans-memorial/ North Platte
+               Lincoln County Historical Museum 41.160247 -100.790714   2403 N Buffalo Bill Ave, North Platte, NE 69101, USA (308) 534-5640                                             https://lincolncountymuseum.org/ North Platte
+                          Alpha Omega Labyrinth 41.128461 -100.784114         651 S Sherman Ave, North Platte, NE 69101, USA (308) 532-1478                                                                      Unknown North Platte
+           N. Platte-S. Platte River Confluence 41.115075 -100.682536              Unnamed Road, North Platte, NE 69101, USA        Unknown                                                                      Unknown North Platte
+                                  Cody Go Karts 41.111339 -100.755020           805 Halligan Dr, North Platte, NE 69101, USA (308) 534-8277                                                  http://www.codygokarts.com/ North Platte
+                         Fort Cody Trading Post 41.113552 -100.762663           221 Halligan Dr, North Platte, NE 69101, USA (308) 532-8081                                                     http://www.fortcody.com/ North Platte
+                                Iron Horse Park 41.107604 -100.762421         2901 S Jeffers St, North Platte, NE 69101, USA        Unknown                                                                      Unknown North Platte
+     Crystal Cave and Falls Adventure Mini Golf 41.111802 -100.754918           805 Halligan Dr, North Platte, NE 69101, USA        Unknown                                                                      Unknown North Platte
+                        Feather River Vineyards 41.073246 -100.690109     5700 SE State Farm Rd, North Platte, NE 69101, USA (308) 696-0078                                                http://www.feather-river.com/ North Platte
+                       Memorial Park Splash Pad 41.134278 -100.750835             1200 E 4th St, North Platte, NE 69101, USA (308) 532-4729                                                                      Unknown North Platte
+                    North Platte Visitor Center 41.116415 -100.762764           101 Halligan Dr, North Platte, NE 69101, USA (308) 532-4729                                             http://www.visitnorthplatte.com/ North Platte
+
+### Restaurants in North Platte
+                        Name  Average Cost                                         Cuisines  Aggregate Rating         City
+             Whitebull Hotel            89                             Bakery, BBQ, Italian               3.5 North Platte
+                 Violet Hour            13                                     BBQ, Seafood               3.8 North Platte
+             Surprise O Meal            53                                   BBQ, Fast Food               3.4 North Platte
+        Maa Bhagwati Tiffins            75          Fast Food, Cafe, Mediterranean, Seafood               3.0 North Platte
+   AB's - Absolute Barbecues            40           Pizza, Mexican, Bakery, BBQ, Fast Food               4.9 North Platte
+              Smelling Salts            38                  Tea, Seafood, Bakery, Fast Food               3.3 North Platte
+                   The Treat            42 Pizza, French, BBQ, Cafe, Mediterranean, Seafood               2.1 North Platte
+               Wenger's Deli            78                                     Tea, Seafood               4.3 North Platte
+               Kaushal Dhaba            69                Tea, Pizza, French, Mexican, Cafe               0.0 North Platte
+            Green Chick Chop            88           Desserts, Pizza, Mexican, BBQ, Chinese               2.7 North Platte
+               The Baithak's            90                            Tea, Bakery, Desserts               3.2 North Platte
+                     Foodies            62                        Tea, Cafe, BBQ, Fast Food               0.0 North Platte
+                    Chatkara            53                    Tea, Mexican, Bakery, Italian               0.0 North Platte
+   Lord of the Drinks Meadow            61            Pizza, French, Bakery, BBQ, Fast Food               4.2 North Platte
+                Shan E Dilli            54          Seafood, Bakery, Mediterranean, Italian               3.0 North Platte
+   Paatra - Jaypee Siddharth            35                                 Tea, Bakery, BBQ               3.4 North Platte
+               Silver Spoons            47                  Bakery, Mexican, Pizza, Italian               2.7 North Platte
+                   Bake Bite            84                    Cafe, Mexican, Pizza, Seafood               0.0 North Platte
+                         BTW            77                                        Cafe, BBQ               3.2 North Platte
+                  Turtle Bay            44                       Tea, Bakery, Mediterranean               3.4 North Platte
+                    Soi Thai            72             Desserts, Pizza, French, BBQ, Bakery               3.6 North Platte
+             The Deshi Bites            16                     French, Indian, BBQ, Seafood               0.0 North Platte
+        Aces - The Card Room            81                     Tea, Mediterranean, Desserts               0.0 North Platte
+                  Desi Dhaba            66               Tea, Cafe, Pizza, Chinese, Seafood               0.0 North Platte
+              The Bunk House            45                                       Tea, Pizza               3.9 North Platte
+                    Mr. Momo            13              Bakery, American, Desserts, Seafood               2.7 North Platte
+      Punjabi Chaska & Rasoi            90            Desserts, Pizza, Italian, BBQ, Bakery               0.0 North Platte
+           Mitthu Tikki Wala            44                    Tea, Mediterranean, Fast Food               3.2 North Platte
+ Raja Chinese Foods & Snacks            65                              Pizza, BBQ, Italian               0.0 North Platte
+Sushil Punjabi Vaishno Dhaba            67             Desserts, French, BBQ, Cafe, Seafood               0.0 North Platte
+               Crazy Noodles            57              Tea, Pizza, French, Indian, Seafood               3.6 North Platte
+    Restaurant Gordon Ramsay           147                                      Tea, Bakery               4.7 North Platte
+
+### Accommodations in North Platte
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number         city
+ Luminous Modern Apt Share for Young Professionals 1170.0    Private room                         No children under 10            30.0                  2                 4.0 North Platte
+       Comfortable, eclectic and private apartment  557.0 Entire home/apt            No smoking & No pets & No parties             2.0                  2                 5.0 North Platte
+                apartment in heart of East Village  603.0 Entire home/apt                                   No smoking            29.0                  3                 2.0 North Platte
+                Light and Airy top floor apartment  759.0 Entire home/apt                     No visitors & No parties             8.0                  3                 5.0 North Platte
+             Private Room close to JFK & Manhattan  517.0    Private room                         No smoking & No pets             3.0                  2                 1.0 North Platte
+       Spacious and Sunny Private Bedroom in Dumbo 1102.0    Private room                                  No visitors             1.0                  2                 2.0 North Platte
+          A Clean, Quite, Great room for NY visit.  293.0    Private room                                  No visitors             3.0                  1                 2.0 North Platte
+LARGE ROOM ‘N CLINTON HILL, Brooklyn, w / LAUNDRY!  164.0    Private room                        No visitors & No pets            25.0                  2                 4.0 North Platte
+        Spacious Private Room in Greenwich Village  916.0    Private room           No visitors & No children under 10             1.0                  1                 2.0 North Platte
+     Santuary from the City - Sunny Greenpoint Apt  714.0 Entire home/apt No pets & No children under 10 & No visitors            14.0                  5                 2.0 North Platte
+                       Large Sunny 1BD in Chelsea!  641.0 Entire home/apt                                   No smoking             4.0                  2                 1.0 North Platte
+                Brand New, Beautiful LES Apartment  925.0    Private room        No smoking & No visitors & No parties            30.0                  2                 4.0 North Platte
+ Cozy Private Rm #2C Two Beds Near JFK and J Train 1041.0    Private room                         No pets & No smoking             1.0                  2                 4.0 North Platte
+
+### Attractions in Omaha
+                                       Name  Latitude  Longitude                                 Address          Phone                                                      Website  City
+      Omaha's Henry Doorly Zoo and Aquarium 41.225865 -95.927109    3701 S 10th St, Omaha, NE 68107, USA (402) 733-8400                                    https://www.omahazoo.com/ Omaha
+                          The Durham Museum 41.251469 -95.928965     801 S 10th St, Omaha, NE 68108, USA (402) 444-5071                                    https://durhammuseum.org/ Omaha
+                    Omaha Children's Museum 41.255125 -95.942916     500 S 20th St, Omaha, NE 68102, USA (402) 342-6164                                         https://www.ocm.org/ Omaha
+            Lauritzen Gardens/Kenefick Park 41.234169 -95.916512   100 Bancroft St, Omaha, NE 68108, USA (402) 346-4002                            https://www.lauritzengardens.org/ Omaha
+                                Desert Dome 41.225669 -95.927733    3701 S 10th St, Omaha, NE 68108, USA (402) 733-8401                     http://omahazoo.com/exhibits/desert-dome Omaha
+Heartland of America Park at The RiverFront 41.256681 -95.924842    800 Douglas St, Omaha, NE 68102, USA (402) 599-6565                           http://www.theriverfrontomaha.com/ Omaha
+              Bob Kerrey Pedestrian Bridge. 41.265633 -95.922313 705 Riverfront Dr, Omaha, NE 68102, USA (402) 444-5900         http://omaha.net/places/bob-kerrey-pedestrian-bridge Omaha
+                             Stingray Beach 41.226612 -95.923983    3701 S 10th St, Omaha, NE 68107, USA (402) 733-8401                      https://www.omahazoo.com/stingray-beach Omaha
+                 Fun-Plex Waterpark & Rides 41.203969 -96.019854         7003 Q St, Omaha, NE 68117, USA (402) 331-8436                                         http://fun-plex.com/ Omaha
+                             OPPD Arboretum 41.278650 -96.078336                    Omaha, NE 68164, USA (402) 536-4131 http://www.oppd.com/residential/trees-power-lines/arboretum/ Omaha
+                    Joslyn Castle & Gardens 41.261607 -95.971888 3902 Davenport St, Omaha, NE 68131, USA (402) 595-2199                                http://joslyncastle.com/tours Omaha
+    Lewis & Clark Landing at The RiverFront 41.261774 -95.924442 345 Riverfront Dr, Omaha, NE 68102, USA (402) 599-6565                           http://www.theriverfrontomaha.com/ Omaha
+          Gene Leahy Mall at The RiverFront 41.258020 -95.931216   1001 Douglas St, Omaha, NE 68102, USA (402) 599-6565                          https://www.theriverfrontomaha.com/ Omaha
+                                Turner Park 41.258743 -95.959085    3110 Farnam St, Omaha, NE 68131, USA (402) 444-5930            http://parks.cityofomaha.org/park-details?pid=189 Omaha
+                 General Crook House Museum 41.310216 -95.960418    5730 N 30th St, Omaha, NE 68111, USA (402) 455-9990                             http://www.douglascohistory.org/ Omaha
+                          Joslyn Art Museum 41.260395 -95.946052     2200 Dodge St, Omaha, NE 68102, USA (402) 342-3300                                       http://www.joslyn.org/ Omaha
+                       Pioneer Courage Park 41.261041 -95.935589  1450 Capitol Ave, Omaha, NE 68179, USA (402) 602-3930                                                      Unknown Omaha
+                       Chef Boyardee Statue 41.254161 -95.924992    707 Conagra Dr, Omaha, NE 68102, USA        Unknown                                                      Unknown Omaha
+         The West Maple Rock: World famous. 41.290589 -96.159008  15600 W Maple Rd, Omaha, NE 68116, USA        Unknown               https://m.facebook.com/groups/2486192221476339 Omaha
+                               Stinson Park 41.237924 -96.015597    2285 S 67th St, Omaha, NE 68106, USA (402) 496-1616                              http://www.aksarbenvillage.com/ Omaha
+
+### Restaurants in Omaha
+                             Name  Average Cost                                            Cuisines  Aggregate Rating  City
+                Last Resort Grill            81                           Cafe, American, Fast Food               4.5 Omaha
+                           Gazebo            63           Desserts, Bakery, Cafe, American, Seafood               4.4 Omaha
+     Hong Kong Chinese Restaurant            83            Desserts, Italian, Bakery, Cafe, Seafood               3.8 Omaha
+                   Crafted Blends            77                                           Cafe, BBQ               4.2 Omaha
+                          CakeBee            32                     Tea, French, Seafood, Fast Food               4.9 Omaha
+                      Aapki Rasoi            43                               Tea, Cafe, Pizza, BBQ               0.0 Omaha
+                      Little Cafe            26                  Mediterranean, Desserts, Fast Food               0.0 Omaha
+Muradabadi Chicken Biryani Corner            31          Bakery, Mediterranean, Desserts, Fast Food               0.0 Omaha
+           Sardarji Chicken Point            90                  Mediterranean, Desserts, Fast Food               0.0 Omaha
+                       Eggzellent            52                             Pizza, Indian, Desserts               0.0 Omaha
+                           Pakwan            67   Pizza, Mexican, Bakery, Fast Food, Cafe, American               3.4 Omaha
+                 Molecule Air Bar            26     Desserts, Cafe, Pizza, Mexican, Bakery, Chinese               4.2 Omaha
+               The Pebbles Bistro            13                  Fast Food, Mexican, Pizza, Seafood               4.1 Omaha
+       Delhi-6 The Chicken Planet            54                            Tea, Cafe, Pizza, Indian               0.0 Omaha
+                  Bhoj Restaurant            40                            Pizza, Indian, Fast Food               2.8 Omaha
+                The Junkyard Cafe            42      Desserts, Tea, Italian, BBQ, Fast Food, Indian               3.9 Omaha
+                   Firangi Mithai            79                                   Bakery, Fast Food               0.0 Omaha
+               Gupta's Food Point            21          Desserts, Italian, BBQ, Fast Food, Seafood               0.0 Omaha
+                        Movenpick            45                                           Tea, Cafe               3.9 Omaha
+                       Cake Me Up            31                         Tea, Cafe, Pizza, Fast Food               3.1 Omaha
+                    Hide Out Cafe            90               Tea, Cafe, Bakery, Fast Food, Chinese               0.0 Omaha
+                      Sant Sweets            25                                 Chinese, Pizza, BBQ               3.5 Omaha
+              Adyar Ananda Bhavan            59                                           Cafe, BBQ               2.8 Omaha
+                  M J Dosa Corner            69                        Tea, French, Bakery, Italian               2.9 Omaha
+                   Oberoi Biryani           100                             Tea, BBQ, Mediterranean               2.9 Omaha
+        Sugar & Spice - Le Marche            55                                           Tea, Cafe               3.3 Omaha
+                 Murliwala Bakers            27                   Desserts, Tea, Italian, BBQ, Cafe               0.0 Omaha
+                           Southy            59               Tea, Fast Food, Cafe, Indian, Seafood               2.5 Omaha
+     Cafe Coffee Day - The Lounge            21    Tea, Pizza, Mexican, Bakery, Fast Food, American               2.6 Omaha
+             Aggarwal Sweet India            11                        Chinese, Pizza, BBQ, Italian               0.0 Omaha
+                 Vikram Ji Snacks            71                                 Cafe, American, BBQ               0.0 Omaha
+                           Garage            67                             Fast Food, BBQ, Italian               3.0 Omaha
+                        DELI2NITE            29                              American, BBQ, Seafood               2.6 Omaha
+         Sardar Ji Chicken Corner            37                           Tea, Bakery, BBQ, Seafood               0.0 Omaha
+             Angels in my Kitchen            32 Desserts, Mexican, Bakery, BBQ, Fast Food, American               3.2 Omaha
+             Anchor Bar & Kitchen            74                           Cafe, Desserts, Fast Food               2.5 Omaha
+               Sultanate of Spice            95      Chinese, Desserts, Italian, BBQ, Cafe, Seafood               2.9 Omaha
+                         Lazzez's            51                Tea, Cafe, Pizza, Fast Food, Chinese               2.9 Omaha
+               221 B Baker Street            35         Tea, BBQ, Fast Food, Mediterranean, Seafood               3.2 Omaha
+                       Doon Dhaba            23                         Tea, French, BBQ, Fast Food               0.0 Omaha
+                 Tiffin Man House            68                Tea, Pizza, Italian, Bakery, Seafood               0.0 Omaha
+                       Shahenshah            45            Desserts, Pizza, French, Fast Food, Cafe               3.0 Omaha
+          German Bakery Wunderbar            10                                       Bakery, Pizza               4.0 Omaha
+
+### Accommodations in Omaha
+                                            NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number  city
+NYC HUB GuestRoom: Train @ 900ft; midtown 30min!  216.0    Private room                         No parties             2.0                  2                 4.0 Omaha
+                   Greenwich Village Luxury Loft  326.0 Entire home/apt               No children under 10             2.0                  3                 4.0 Omaha
+       Sunlit Room in Prospect Heights, Brooklyn  673.0    Private room No visitors & No children under 10             7.0                  2                 4.0 Omaha
+     Big Bright Alcove Studio in Upper East Side 1033.0 Entire home/apt No visitors & No children under 10             4.0                  6                 2.0 Omaha
+                     NYC Private Room w/Backyard 1086.0    Private room                        No visitors             2.0                  2                 3.0 Omaha
+                     Spacious basement apartment  932.0    Private room                         No parties             2.0                  2                 4.0 Omaha
+                  One Bedroom Beauty in Bushwick  742.0 Entire home/apt                         No smoking             2.0                  7                 1.0 Omaha
+Suite Dante-15 min Central Park+free street park 1103.0 Entire home/apt No children under 10 & No visitors            30.0                  9                 5.0 Omaha
+     Spacious Room in Bushwick with a back yard.  174.0    Private room               No children under 10             1.0                  2                 3.0 Omaha
+                Sunny Apt.  near Columbus circle  745.0 Entire home/apt            No smoking & No parties             3.0                  6                 5.0 Omaha
+              Sunny apartment close to manhattan  136.0 Entire home/apt               No pets & No smoking             7.0                  3                 5.0 Omaha
+
+### Flight from Dallas to Grand Island on 2022-03-07
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3597258    133   12:52   14:25 1 hours 33 minutes 2022-03-07         Dallas Grand Island     561.0
+     F3606949    233   20:43   22:23 1 hours 40 minutes 2022-03-07         Dallas Grand Island     561.0
+
+### Self-driving from Dallas to Grand Island
+self-driving, from Dallas to Grand Island, duration: 9 hours 18 mins, distance: 1,023 km, cost: 51
+
+### Taxi from Dallas to Grand Island
+taxi, from Dallas to Grand Island, duration: 9 hours 18 mins, distance: 1,023 km, cost: 1023
+
+### Flight from Grand Island to North Platte on 2022-03-09
+There is no flight from Grand Island to North Platte on 2022-03-09.
+
+### Self-driving from Grand Island to North Platte
+self-driving, from Grand Island to North Platte, duration: 2 hours 14 mins, distance: 235 km, cost: 11
+
+### Taxi from Grand Island to North Platte
+taxi, from Grand Island to North Platte, duration: 2 hours 14 mins, distance: 235 km, cost: 235
+
+### Flight from North Platte to Omaha on 2022-03-11
+There is no flight from North Platte to Omaha on 2022-03-11.
+
+### Self-driving from North Platte to Omaha
+self-driving, from North Platte to Omaha, duration: 4 hours 3 mins, distance: 451 km, cost: 22
+
+### Taxi from North Platte to Omaha
+taxi, from North Platte to Omaha, duration: 4 hours 3 mins, distance: 451 km, cost: 451
+
+### Flight from Omaha to Dallas on 2022-03-13
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3603815    265   09:35   11:28 1 hours 53 minutes 2022-03-13          Omaha       Dallas     583.0
+     F3603871    281   19:12   20:59 1 hours 47 minutes 2022-03-13          Omaha       Dallas     583.0
+     F3689620    183   15:15   16:55 1 hours 40 minutes 2022-03-13          Omaha       Dallas     583.0
+     F3725956    233   06:54   09:08 2 hours 14 minutes 2022-03-13          Omaha       Dallas     583.0
+     F3975621    252   16:16   17:57 1 hours 41 minutes 2022-03-13          Omaha       Dallas     586.0
+
+### Self-driving from Omaha to Dallas
+self-driving, from Omaha to Dallas, duration: 9 hours 46 mins, distance: 1,059 km, cost: 52
+
+### Taxi from Omaha to Dallas
+taxi, from Omaha to Dallas, duration: 9 hours 46 mins, distance: 1,059 km, cost: 1059
+
+JSON plan:

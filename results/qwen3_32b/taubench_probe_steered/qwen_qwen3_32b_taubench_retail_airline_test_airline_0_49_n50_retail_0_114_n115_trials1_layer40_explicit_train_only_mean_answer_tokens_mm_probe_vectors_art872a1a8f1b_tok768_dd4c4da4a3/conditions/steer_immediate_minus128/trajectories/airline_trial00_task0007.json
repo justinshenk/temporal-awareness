@@ -1,0 +1,639 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to modify my upcoming flight reservation from Atlanta to Philadelphia.",
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"atlanta_to_philadelphia_user_123\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "atlanta_to_philadelphia_user_123"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"atlanta_to_philadelphia_user_123\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4620,
+    "output_tokens": 31,
+    "generation_seconds": 3.0888304710388184,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I couldn't find your user profile. Could you please provide your user ID so I can assist you with modifying your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I couldn't find your user profile. Could you please provide your user ID so I can assist you with modifying your reservation?"
+      }
+    },
+    "observation": "Sure, my user ID is aarav_garcia_1177.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I couldn't find your user profile. Could you please provide your user ID so I can assist you with modifying your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4668,
+    "output_tokens": 42,
+    "generation_seconds": 3.7526583671569824,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"aarav_garcia_1177\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "aarav_garcia_1177"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Aarav\", \"last_name\": \"Garcia\"}, \"address\": {\"address1\": \"833 Highland Drive\", \"address2\": \"Suite 740\", \"city\": \"Denver\", \"country\": \"USA\", \"state\": \"CO\", \"zip\": \"80211\"}, \"email\": \"aarav.garcia6639@example.com\", \"dob\": \"1992-09-13\", \"payment_methods\": {\"certificate_7473723\": {\"source\": \"certificate\", \"amount\": 150, \"id\": \"certificate_7473723\"}, \"gift_card_8887175\": {\"source\": \"gift_card\", \"amount\": 35, \"id\": \"gift_card_8887175\"}}, \"saved_passengers\": [{\"first_name\": \"Lei\", \"last_name\": \"Ito\", \"dob\": \"1990-12-07\"}], \"membership\": \"gold\", \"reservations\": [\"M05KNL\", \"UHDAHF\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"aarav_garcia_1177\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4737,
+    "output_tokens": 30,
+    "generation_seconds": 3.0663020610809326,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"M05KNL\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "M05KNL"
+      }
+    },
+    "observation": "{\"reservation_id\": \"M05KNL\", \"user_id\": \"aarav_garcia_1177\", \"origin\": \"ATL\", \"destination\": \"PHL\", \"flight_type\": \"one_way\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"ATL\", \"destination\": \"ORD\", \"flight_number\": \"HAT227\", \"date\": \"2024-05-23\", \"price\": 1936}, {\"origin\": \"ORD\", \"destination\": \"PHL\", \"flight_number\": \"HAT139\", \"date\": \"2024-05-23\", \"price\": 851}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Garcia\", \"dob\": \"1992-09-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_8887175\", \"amount\": 2787}], \"created_at\": \"2024-05-14T06:33:04\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"M05KNL\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5029,
+    "output_tokens": 25,
+    "generation_seconds": 2.863393545150757,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found your reservation for a one-way flight from Atlanta to Philadelphia with a stop in Chicago. The flights are scheduled for May 23rd. What changes would you like to make to your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found your reservation for a one-way flight from Atlanta to Philadelphia with a stop in Chicago. The flights are scheduled for May 23rd. What changes would you like to make to your reservation?"
+      }
+    },
+    "observation": "I'd like to reschedule this flight to the day after, May 24th instead. And I'm looking for the cheapest economy option available on that date.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found your reservation for a one-way flight from Atlanta to Philadelphia with a stop in Chicago. The flights are scheduled for May 23rd. What changes would you like to make to your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5338,
+    "output_tokens": 58,
+    "generation_seconds": 5.092490911483765,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"PHL\", \"date\": \"2024-05-24\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "PHL",
+        "date": "2024-05-24"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"PHL\", \"date\": \"2024-05-24\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5439,
+    "output_tokens": 43,
+    "generation_seconds": 4.054920673370361,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"PHL\", \"date\": \"2024-05-24\"}}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "ATL",
+        "destination": "PHL",
+        "date": "2024-05-24"
+      }
+    },
+    "observation": "[[{\"flight_number\": \"HAT110\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"16:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 9, \"business\": 16}, \"prices\": {\"basic_economy\": 62, \"economy\": 105, \"business\": 496}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT132\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"17:00:00\", \"scheduled_arrival_time_est\": \"18:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 8, \"business\": 10}, \"prices\": {\"basic_economy\": 61, \"economy\": 190, \"business\": 287}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT110\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"16:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 9, \"business\": 16}, \"prices\": {\"basic_economy\": 62, \"economy\": 105, \"business\": 496}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT172\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 2, \"business\": 15}, \"prices\": {\"basic_economy\": 79, \"economy\": 102, \"business\": 360}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT110\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"16:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 9, \"business\": 16}, \"prices\": {\"basic_economy\": 62, \"economy\": 105, \"business\": 496}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT206\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"18:00:00\", \"scheduled_arrival_time_est\": \"19:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 19, \"business\": 2}, \"prices\": {\"basic_economy\": 98, \"economy\": 145, \"business\": 465}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT110\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"16:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 9, \"business\": 16}, \"prices\": {\"basic_economy\": 62, \"economy\": 105, \"business\": 496}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT264\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 17, \"business\": 18}, \"prices\": {\"basic_economy\": 62, \"economy\": 156, \"business\": 201}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT164\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 0, \"economy\": 15, \"business\": 11}, \"prices\": {\"basic_economy\": 65, \"economy\": 145, \"business\": 224}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT132\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"17:00:00\", \"scheduled_arrival_time_est\": \"18:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 8, \"business\": 10}, \"prices\": {\"basic_economy\": 61, \"economy\": 190, \"business\": 287}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT164\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 0, \"economy\": 15, \"business\": 11}, \"prices\": {\"basic_economy\": 65, \"economy\": 145, \"business\": 224}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT172\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 2, \"business\": 15}, \"prices\": {\"basic_economy\": 79, \"economy\": 102, \"business\": 360}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT164\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 0, \"economy\": 15, \"business\": 11}, \"prices\": {\"basic_economy\": 65, \"economy\": 145, \"business\": 224}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT206\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"18:00:00\", \"scheduled_arrival_time_est\": \"19:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 19, \"business\": 2}, \"prices\": {\"basic_economy\": 98, \"economy\": 145, \"business\": 465}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT164\", \"origin\": \"ATL\", \"destination\": \"LGA\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 0, \"economy\": 15, \"business\": 11}, \"prices\": {\"basic_economy\": 65, \"economy\": 145, \"business\": 224}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT264\", \"origin\": \"LGA\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 17, \"business\": 18}, \"prices\": {\"basic_economy\": 62, \"economy\": 156, \"business\": 201}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT227\", \"origin\": \"ATL\", \"destination\": \"ORD\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 14, \"economy\": 5, \"business\": 6}, \"prices\": {\"basic_economy\": 69, \"economy\": 112, \"business\": 365}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT139\", \"origin\": \"ORD\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"17:00:00\", \"scheduled_arrival_time_est\": \"19:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 19, \"economy\": 10, \"business\": 20}, \"prices\": {\"basic_economy\": 71, \"economy\": 104, \"business\": 267}, \"date\": \"2024-05-24\"}], [{\"flight_number\": \"HAT227\", \"origin\": \"ATL\", \"destination\": \"ORD\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"13:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 14, \"economy\": 5, \"business\": 6}, \"prices\": {\"basic_economy\": 69, \"economy\": 112, \"business\": 365}, \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT271\", \"origin\": \"ORD\", \"destination\": \"PHL\", \"scheduled_departure_time_est\": \"19:00:00\", \"scheduled_arrival_time_est\": \"21:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 10, \"economy\": 14, \"business\": 1}, \"prices\": {\"basic_economy\": 75, \"economy\": 138, \"business\": 292}, \"date\": \"2024-05-24\"}]]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"ATL\", \"destination\": \"PHL\", \"date\": \"2024-05-24\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 5495,
+    "output_tokens": 45,
+    "generation_seconds": 4.2133684158325195,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found several one-stop economy flights from Atlanta to Philadelphia on May 24th. The cheapest option is flight HAT227 followed by HAT139, with a total price of $183 (112 + 71). The flights depart from Atlanta at 11:00 AM and arrive in Philadelphia at 7:00 PM. Would you like to proceed with this option?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found several one-stop economy flights from Atlanta to Philadelphia on May 24th. The cheapest option is flight HAT227 followed by HAT139, with a total price of $183 (112 + 71). The flights depart from Atlanta at 11:00 AM and arrive in Philadelphia at 7:00 PM. Would you like to proceed with this option?"
+      }
+    },
+    "observation": "Yes, that works for me. Just to confirm, I'm happy to use my original payment as a refund for this change.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found several one-stop economy flights from Atlanta to Philadelphia on May 24th. The cheapest option is flight HAT227 followed by HAT139, with a total price of $183 (112 + 71). The flights depart from Atlanta at 11:00 AM and arrive in Philadelphia at 7:00 PM. Would you like to proceed with this option?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8300,
+    "output_tokens": 105,
+    "generation_seconds": 8.754787921905518,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"M05KNL\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT227\", \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT139\", \"date\": \"2024-05-24\"}], \"payment_id\": \"gift_card_8887175\"}}",
+    "action": {
+      "name": "update_reservation_flights",
+      "arguments": {
+        "reservation_id": "M05KNL",
+        "cabin": "economy",
+        "flights": [
+          {
+            "flight_number": "HAT227",
+            "date": "2024-05-24"
+          },
+          {
+            "flight_number": "HAT139",
+            "date": "2024-05-24"
+          }
+        ],
+        "payment_id": "gift_card_8887175"
+      }
+    },
+    "observation": "{\"reservation_id\": \"M05KNL\", \"user_id\": \"aarav_garcia_1177\", \"origin\": \"ATL\", \"destination\": \"PHL\", \"flight_type\": \"one_way\", \"cabin\": \"business\", \"flights\": [{\"flight_number\": \"HAT227\", \"date\": \"2024-05-24\", \"price\": 112, \"origin\": \"ATL\", \"destination\": \"ORD\"}, {\"flight_number\": \"HAT139\", \"date\": \"2024-05-24\", \"price\": 104, \"origin\": \"ORD\", \"destination\": \"PHL\"}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Garcia\", \"dob\": \"1992-09-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_8887175\", \"amount\": 2787}, {\"payment_id\": \"gift_card_8887175\", \"amount\": -2571}], \"created_at\": \"2024-05-14T06:33:04\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "update_reservation_flights",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"M05KNL\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT227\", \"date\": \"2024-05-24\"}, {\"flight_number\": \"HAT139\", \"date\": \"2024-05-24\"}], \"payment_id\": \"gift_card_8887175\"}}",
+    "parsed_action_name": "update_reservation_flights",
+    "input_tokens": 8440,
+    "output_tokens": 107,
+    "generation_seconds": 8.916035175323486,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated to the economy class flights on May 24th. The refund for the previous booking has been processed to your gift card. If you need any further assistance, feel free to ask!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation has been successfully updated to the economy class flights on May 24th. The refund for the previous booking has been processed to your gift card. If you need any further assistance, feel free to ask!"
+      }
+    },
+    "observation": "Perfect, thank you for your help! That's all I needed.\n\n###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "aarav_garcia_1177",
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_garcia_1177. For your upcoming trip from ATL to PHL, you want to change for the cheapest economy flight and for the day after the original reservation. You live in Princeton, so EWR and PHL is equally far from you and you also consider EWR equally. You are happy with original payment for refund.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.0007019999999999999,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "8a4a0713cf1e4c10fb11c801f60e733c6f39388e045c663418d874f9680bfe24"
+        },
+        "actions": [
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M05KNL",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT110",
+                  "date": "2024-05-24"
+                },
+                {
+                  "flight_number": "HAT172",
+                  "date": "2024-05-24"
+                }
+              ],
+              "payment_id": "gift_card_8887175"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation has been successfully updated to the economy class flights on May 24th. The refund for the previous booking has been processed to your gift card. If you need any further assistance, feel free to ask!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8856,
+    "output_tokens": 61,
+    "generation_seconds": 6.30885124206543,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

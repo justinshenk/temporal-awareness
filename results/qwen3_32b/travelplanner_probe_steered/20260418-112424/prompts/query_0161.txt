@@ -1,0 +1,277 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+We're planning a week-long trip for two from Pittsburgh to New York with a budget of $5,300. We're set to travel from March 13th to March 19th, 2022, and plan to visit three different cities in New York. Please keep in mind that our lodgings must allow visitors. As for meals, we'd love to sample French, Italian, Chinese, and American cuisines. Also, note that we're planning to travel without taking any flights.
+
+Reference information:
+### Attractions in Rochester
+                                    Name  Latitude  Longitude                                         Address          Phone                                                                               Website      City
+      The Strong National Museum of Play 43.152548 -77.601629 1 Manhattan Square Dr, Rochester, NY 14607, USA (585) 263-2700                                                          http://www.museumofplay.org/ Rochester
+                   George Eastman Museum 43.152812 -77.580252          900 East Ave, Rochester, NY 14607, USA (585) 327-4800                                                                   http://eastman.org/ Rochester
+RMSC (Rochester Museum & Science Center) 43.152469 -77.587450          657 East Ave, Rochester, NY 14607, USA (585) 271-4320                                                                  http://www.rmsc.org/ Rochester
+         Susan B. Anthony Museum & House 43.153192 -77.627963         17 Madison St, Rochester, NY 14608, USA (585) 235-6124                                                                http://www.susanb.org/ Rochester
+                    Memorial Art Gallery 43.157611 -77.588179    500 University Ave, Rochester, NY 14607, USA (585) 276-8900                                                             http://mag.rochester.edu/ Rochester
+                              High Falls 43.161327 -77.613569       4 Commercial St, Rochester, NY 14614, USA        Unknown                                                       http://www.cityofrochester.gov/ Rochester
+                         Seneca Park Zoo 43.204884 -77.623844       2222 St Paul St, Rochester, NY 14621, USA (585) 336-7200 https://senecaparkzoo.org/?utm_source=gmb&utm_medium=organic&utm_campaign=GMB_listing Rochester
+                           Highland Park 43.130276 -77.604644     180 Reservoir Ave, Rochester, NY 14620, USA (585) 753-7270                                           https://www.monroecounty.gov/parks-highland Rochester
+           RMSC Strasenburgh Planetarium 43.152319 -77.586856          663 East Ave, Rochester, NY 14607, USA (585) 697-1945                                          http://www.rmsc.org/StrasenburghPlanetarium/ Rochester
+            Charlotte Genesee Lighthouse 43.252773 -77.610754      70 Lighthouse St, Rochester, NY 14612, USA (585) 621-6179                                                     http://www.geneseelighthouse.org/ Rochester
+                           Warner Castle 43.132334 -77.611800         5 Castle Park, Rochester, NY 14620, USA (585) 473-5130                                 https://www.highlandparkconservancy.org/warner-estate Rochester
+                      Ontario Beach Park 43.259493 -77.606947          50 Beach Ave, Rochester, NY 14612, USA (585) 753-7275                                     https://www.cityofrochester.gov/ontariobeachpark/ Rochester
+                           Sunken Garden 43.132459 -77.611058         5 Castle Park, Rochester, NY 14620, USA (585) 753-7275                                                                               Unknown Rochester
+                Seabreeze Amusement Park 43.231976 -77.542400        4600 Culver Rd, Rochester, NY 14622, USA (585) 323-1900                                                             http://www.seabreeze.com/ Rochester
+                          Charlotte Pier 43.258737 -77.603680           1 Beach Ave, Rochester, NY 14612, USA        Unknown                                     https://www.cityofrochester.gov/ontariobeachpark/ Rochester
+                  Lamberton Conservatory 43.132264 -77.607911     180 Reservoir Ave, Rochester, NY 14620, USA (585) 753-7270             https://www.highlandparkconservancy.org/lamberton-conservatory-botanicals Rochester
+                        Cobb's Hill Park 43.142335 -77.572639          80 Culver Rd, Rochester, NY 14610, USA (585) 428-6770                             http://www.cityofrochester.gov/article.aspx?id=8589935129 Rochester
+                        Washington Grove 43.139657 -77.563893                        Rochester, NY 14610, USA (585) 428-7581                                             http://www.cityofrochester.gov/cobbshill/ Rochester
+                        Lower Falls Park 43.178663 -77.628509        50 Hastings St, Rochester, NY 14613, USA (585) 428-6690                            https://www.cityofrochester.gov/article.aspx?id=8589954483 Rochester
+                     Durand Eastman Park 43.239327 -77.569001      1200 Kings Hwy N, Rochester, NY 14617, USA (585) 753-7275                                                    http://www2.monroecounty.gov/parks Rochester
+
+### Restaurants in Rochester
+                               Name  Average Cost                                              Cuisines  Aggregate Rating      City
+                  Atlas World Grill            54                           Tea, Bakery, Mexican, Pizza               4.3 Rochester
+                            Zunzi's            18                                              Tea, BBQ               4.5 Rochester
+          Hotel Ravisha Continental            43                     Cafe, Bakery, Desserts, Fast Food               3.4 Rochester
+                    Sree Annapoorna            52                                    Tea, Cafe, Mexican               4.3 Rochester
+                      Mister Mughal            19         Pizza, Bakery, Fast Food, Cafe, Mediterranean               3.5 Rochester
+              The Fisherman's Wharf            14                 Tea, American, Mediterranean, Seafood               4.6 Rochester
+                             Circus            81                             Pizza, American, Desserts               3.9 Rochester
+                       Grill & Cafe            88                               Cafe, Mexican, Desserts               0.0 Rochester
+              Mughal Chicken Corner            38                                   Desserts, Fast Food               0.0 Rochester
+                 Tandoori KnockOuts            63        Bakery, BBQ, Fast Food, Mediterranean, Seafood               4.2 Rochester
+                        Sagar Ratna            88                                  Cafe, Bakery, Indian               3.7 Rochester
+          Jung Bahadur Kachori Wala            15           Desserts, Pizza, Bakery, Fast Food, Chinese               4.1 Rochester
+                             Sbarro            60               Desserts, Italian, Mexican, Bakery, BBQ               3.5 Rochester
+                           Wenger's            78                 Cafe, Bakery, American, Mediterranean               4.3 Rochester
+                      Kake Di Hatti            16                       Tea, Seafood, Bakery, Fast Food               3.5 Rochester
+                                UFO            36                              Pizza, Desserts, Italian               0.0 Rochester
+                            Food 24            48                       Fast Food, Tea, Bakery, Seafood               0.0 Rochester
+                          Ved Dhaba            57                                      Cafe, Pizza, BBQ               3.5 Rochester
+                Punjab Sweet Corner            40                      Bakery, Pizza, Desserts, Italian               3.3 Rochester
+              Malabar Style Kitchen            34                   Chinese, Pizza, Desserts, Fast Food               0.0 Rochester
+                           Sky Hawk            36 Pizza, French, Bakery, Fast Food, Cafe, Mediterranean               0.0 Rochester
+                         Dhaba NH10            36                                          Tea, Seafood               0.0 Rochester
+               Kay's Chicken Corner            54           Desserts, Tea, Fast Food, American, Seafood               3.6 Rochester
+                The Midnight Heroes            43                    Tea, Pizza, Mediterranean, Seafood               3.6 Rochester
+                       Home Kitchen            86                               Cafe, Desserts, Italian               0.0 Rochester
+                       Seth Baker's            58           Chinese, Desserts, Pizza, French, BBQ, Cafe               0.0 Rochester
+               Aura - The Claridges            77              Desserts, Cafe, Bakery, Chinese, Seafood               3.5 Rochester
+                         Pauls Food            84                                        BBQ, Fast Food               2.9 Rochester
+  Earthen Oven - Fortune Inn Grazia            54              Bakery, Indian, Mediterranean, Fast Food               3.4 Rochester
+                          Cocoberry            36                                              Tea, BBQ               3.4 Rochester
+                         Bhojanam4u            59     Tea, Pizza, BBQ, Fast Food, Indian, Mediterranean               0.0 Rochester
+                      Sandwich King            46                  Pizza, Italian, Bakery, BBQ, Seafood               3.5 Rochester
+Tikka Express meets Chennai Express            52                           Bakery, American, Fast Food               0.0 Rochester
+                        Wok On Fire            27          Pizza, Bakery, BBQ, Fast Food, Mediterranean               3.8 Rochester
+                            Fidel's            44                 Tea, Mexican, Cafe, American, Seafood               4.4 Rochester
+                             Marble            25                                       Cafe, Fast Food               4.5 Rochester
+
+### Accommodations in Rochester
+                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number      city
+  Artsy Bushwick NY 2 Beds with laundry & balcony 1128.0 Entire home/apt                                        No pets             2.0                  8                 5.0 Rochester
+      Luxe Penthouse with Terrace/Upper West Side  967.0 Entire home/apt                                     No smoking             3.0                  3                 1.0 Rochester
+Room in Upper West Side Apartment - close to park  623.0    Private room                 No pets & No children under 10             3.0                  2                 3.0 Rochester
+         Super Cute Studio in Heart of Greenpoint  818.0 Entire home/apt                                        No pets             1.0                  4                 3.0 Rochester
+ Sun Filled 18ft Ceiling Duplex Noho/East Village  558.0 Entire home/apt No children under 10 & No parties & No smoking             2.0                  5                 4.0 Rochester
+              Romantic 1 bedroom Part2 Harlem USA   70.0 Entire home/apt             No visitors & No children under 10             3.0                  3                 5.0 Rochester
+  Park Slope 2 bedroom - Amazing Access to All!!! 1034.0 Entire home/apt                           No smoking & No pets             2.0                  8                 3.0 Rochester
+
+### Attractions in Niagara Falls
+                           Name  Latitude  Longitude                                                          Address          Phone                                                                       Website          City
+       Journey Behind the Falls 43.079196 -79.078496       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (877) 642-7275      https://www.niagaraparks.com/visit/attractions/journey-behind-the-falls/ Niagara Falls
+               Niagara SkyWheel 43.090929 -79.075510             4960 Clifton Hill, Niagara Falls, ON L2G 3N4, Canada (905) 358-4793                       http://www.cliftonhill.com/attractions/niagara-skywheel Niagara Falls
+              Cave of the Winds 43.082294 -79.071347                     Goat Island Rd, Niagara Falls, NY 14303, USA (716) 285-0705 https://www.niagarafallsstatepark.com/attractions-and-tours/cave-of-the-winds Niagara Falls
+               White Water Walk 43.110955 -79.060455                 4330 River Rd, Niagara Falls, ON L2G 6T2, Canada (877) 642-7275              https://www.niagaraparks.com/visit/attractions/white-water-walk/ Niagara Falls
+            Queen Victoria Park 43.086626 -79.077083       6345 Niagara River Pkwy, Niagara Falls, ON L2E 6X8, Canada (905) 358-1814         https://www.niagaraparks.com/visit/nature-garden/queen-victoria-park/ Niagara Falls
+      Horseshoe Falls of Canada 43.077162 -79.075732       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (905) 356-2241                                                 https://www.niagaraparks.com/ Niagara Falls
+                   Bird Kingdom 43.092628 -79.068701                 5651 River Rd, Niagara Falls, ON L2E 7M7, Canada (905) 356-8888                                                    http://www.birdkingdom.ca/ Niagara Falls
+Niagara Falls Observation Tower 43.086908 -79.068792                    332 Prospect St, Niagara Falls, NY 14303, USA (716) 278-1794 https://www.niagarafallsstatepark.com/attractions-and-tours/observation-tower Niagara Falls
+                   Skylon Tower 43.085093 -79.079562              5200 Robinson St, Niagara Falls, ON L2G 2A2, Canada (905) 356-2651   https://www.skylon.com/?utm_source=GMB&utm_medium=Organic&utm_campaign=Yrly Niagara Falls
+     Niagara Glen Nature Centre 43.129167 -79.060000           3050 Niagara River Pkwy, Niagara Falls, ON L2E, Canada (905) 354-6678     https://www.niagaraparks.com/visit/attractions/niagara-glen-nature-centre Niagara Falls
+         Fallsview Tourist Area 43.082635 -79.083226                5305 Murray St, Niagara Falls, ON L2G 3W6, Canada (514) 446-6789                                                                       Unknown Niagara Falls
+         Butterfly Conservatory 43.137022 -79.055590 2565 Niagara River Pkwy, Niagara-on-the-Lake, ON L0S 1J0, Canada (905) 358-0025        https://www.niagaraparks.com/visit/attractions/butterfly-conservatory/ Niagara Falls
+          Great Canadian Midway 43.091105 -79.074608             4848 Clifton Hill, Niagara Falls, ON L2G 3N4, Canada (905) 358-3676                 https://www.cliftonhill.com/attractions/great-canadian-midway Niagara Falls
+            Aquarium of Niagara 43.094344 -79.059896                   701 Whirlpool St, Niagara Falls, NY 14301, USA (716) 285-3575                                             http://www.aquariumofniagara.org/ Niagara Falls
+           Niagara Falls Canada 43.091429 -79.070940                5704 Falls Ave, Niagara Falls, ON L2G 3K7, Canada (289) 800-2800                                               http://www.canadianshuttle.com/ Niagara Falls
+      Table Rock Welcome Centre 43.079167 -79.078831       6650 Niagara River Pkwy, Niagara Falls, ON L2E 6T2, Canada (905) 358-3268          http://www.niagaraparks.com/visit/welcome-centres/table-rock-centre/ Niagara Falls
+                 Niagara's Fury 43.079258 -79.078805       6650 Niagara River Pkwy, Niagara Falls, ON L2G 0L0, Canada (905) 358-3268                 https://www.niagaraparks.com/visit/attractions/niagaras-fury/ Niagara Falls
+        Niagara Falls Fireworks 43.084132 -79.076440       6660 Niagara River Pkwy, Niagara Falls, ON L2G 3N4, Canada (905) 356-6061                                https://www.niagarafallstourism.com/fireworks/ Niagara Falls
+     Fallsview Indoor Waterpark 43.092463 -79.071758                5685 Falls Ave, Niagara Falls, ON L2E 6W7, Canada (905) 374-4444                                           https://www.fallsviewwaterpark.com/ Niagara Falls
+             Whirlpool Aero Car 43.118031 -79.068789       3850 Niagara River Pkwy, Niagara Falls, ON L2E 3E8, Canada (877) 642-7275            https://www.niagaraparks.com/visit/attractions/whirlpool-aero-car/ Niagara Falls
+
+### Restaurants in Niagara Falls
+                             Name  Average Cost                                                   Cuisines  Aggregate Rating          City
+                 Izakaya Kikufuji            66 Desserts, Pizza, French, Fast Food, Mediterranean, Seafood               4.5 Niagara Falls
+                      Tony Roma's            47      Desserts, Tea, French, Fast Food, Cafe, Mediterranean               3.3 Niagara Falls
+                          Pier 70            60                        Tea, Bakery, Mediterranean, Seafood               2.6 Niagara Falls
+                          Scratch            19                                     Tea, American, Seafood               3.7 Niagara Falls
+                       Raju Dhaba            67                                American, Desserts, Seafood               2.9 Niagara Falls
+  Sri Meenakshi South Indian Food            77                              Tea, Seafood, Bakery, Italian               0.0 Niagara Falls
+                     Burger Point            59                                         Tea, American, BBQ               3.6 Niagara Falls
+            Barista Creme Lavazza            51                   Tea, Pizza, Mexican, Fast Food, American               3.2 Niagara Falls
+                         Hot Fork            14                                 Fast Food, Bakery, Seafood               0.0 Niagara Falls
+                     Divine Bites            11          Desserts, Tea, French, Bakery, Fast Food, Chinese               0.0 Niagara Falls
+                      Dilli Light            71                               BBQ, Mediterranean, Desserts               2.6 Niagara Falls
+          Natraj Dahi Bhalle Wala            88                               Tea, Cafe, Indian, Fast Food               3.9 Niagara Falls
+                Lala Chaap Corner            31                   Tea, Pizza, Cafe, Mediterranean, Seafood               0.0 Niagara Falls
+                         Rollplay            83                                  Tea, Bakery, BBQ, Seafood               2.9 Niagara Falls
+                           Tamura            11                                Chinese, Pizza, Indian, BBQ               3.5 Niagara Falls
+                            Singz            40                              Tea, Mexican, Bakery, Italian               2.9 Niagara Falls
+                   Meenu Caterers            25                                  Tea, Cafe, BBQ, Fast Food               2.7 Niagara Falls
+                          Giani's            74                                     Pizza, Indian, Seafood               3.5 Niagara Falls
+                      Khana Vaana            80                                Bakery, BBQ, Cafe, Desserts               3.4 Niagara Falls
+                Jeeta Kulfi Walle            51                              Cafe, Mediterranean, Desserts               3.3 Niagara Falls
+                  Buddy 's. Pizza            50                                                   Tea, BBQ               0.0 Niagara Falls
+                          Giani's            44                       Seafood, Bakery, Desserts, Fast Food               3.7 Niagara Falls
+                  KT's Shik-Shack            25                                             BBQ, Fast Food               0.0 Niagara Falls
+                  Biryani Express            28                                        Tea, Pizza, Seafood               0.0 Niagara Falls
+                             Hype            88                           Bakery, Pizza, Desserts, Seafood               3.7 Niagara Falls
+                    Pudding & Pie            61                                      Pizza, BBQ, Fast Food               2.7 Niagara Falls
+         361 Restaurant & Banquet            86                                   Tea, Cafe, Pizza, Bakery               3.4 Niagara Falls
+                   Baskin Robbins            39                 Desserts, Tea, Bakery, Fast Food, American               0.0 Niagara Falls
+Everest Momos & Chinese Fast Food            23                                                Cafe, Pizza               3.2 Niagara Falls
+         Polka Pastry & Snack Bar            62                                  Tea, Bakery, BBQ, Seafood               3.4 Niagara Falls
+                    Capital Grill            74                                         French, Pizza, BBQ               3.8 Niagara Falls
+                    Little Punjab            13         Italian, Mexican, Bakery, Fast Food, Cafe, Seafood               3.7 Niagara Falls
+                   Meghraj Sweets            63                Desserts, Pizza, Mexican, Bakery, Fast Food               3.2 Niagara Falls
+    DIOS The Neighbourhood Bistro            62                                Tea, BBQ, Desserts, Italian               4.2 Niagara Falls
+                            Giapo            37                                             Pizza, Seafood               4.7 Niagara Falls
+            Cafe Del Sol Botanico            78             Tea, Cafe, Italian, Bakery, Fast Food, Chinese               4.4 Niagara Falls
+
+### Accommodations in Niagara Falls
+                                          NAME  price       room type                           house_rules  minimum nights  maximum occupancy  review rate number          city
+        Sunny Bedroom In The Heart of Bushwick  893.0    Private room                  No pets & No parties             3.0                  2                 1.0 Niagara Falls
+             Sunny Spacious South Slope Studio  337.0 Entire home/apt               No parties & No smoking             2.0                  3                 4.0 Niagara Falls
+           Apartment in the Heart of Manhattan  694.0 Entire home/apt                            No smoking            14.0                  3                 3.0 Niagara Falls
+                                  Harlem Oasis  244.0    Private room No visitors & No smoking & No parties             1.0                  2                 2.0 Niagara Falls
+        HUGE, SUNNY room in Financial District   59.0    Private room                 No visitors & No pets             4.0                  2                 5.0 Niagara Falls
+Private Guestroom in Landmark Bklyn Brownstone 1005.0 Entire home/apt                            No parties             1.0                  5                 2.0 Niagara Falls
+Central Park South Luxury 2 Bedroom 2 Bathroom  371.0 Entire home/apt                            No parties            29.0                  2                 5.0 Niagara Falls
+
+### Attractions in New York
+                        Name  Latitude  Longitude                                        Address          Phone                                                                         Website     City
+             Top of The Rock 40.759350 -73.979409  30 Rockefeller Plaza, New York, NY 10112, USA (212) 698-2000 https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/ New York
+       One World Observatory 40.713006 -74.013173           117 West St, New York, NY 10007, USA (844) 696-1776                                                https://oneworldobservatory.com/ New York
+       SUMMIT One Vanderbilt 40.752764 -73.978746          45 E 42nd St, New York, NY 10017, USA        Unknown                                                        http://www.summitov.com/ New York
+          Rockefeller Center 40.758740 -73.978674  45 Rockefeller Plaza, New York, NY 10111, USA (212) 588-8601                                              https://www.rockefellercenter.com/ New York
+           Statue of Liberty 40.689249 -74.044500                        New York, NY 10004, USA (212) 363-3200                                              https://www.nps.gov/stli/index.htm New York
+               The High Line 40.747993 -74.004765                        New York, NY 10011, USA (212) 500-6035                                                    https://www.thehighline.org/ New York
+       Empire State Building 40.748441 -73.985664         20 W 34th St., New York, NY 10001, USA (212) 736-3100                                                         https://www.esbnyc.com/ New York
+             Brooklyn Bridge 40.706086 -73.996864                        New York, NY 10038, USA        Unknown          https://www.nyc.gov/html/dot/html/infrastructure/brooklyn-bridge.shtml New York
+      9/11 Memorial & Museum 40.711578 -74.013336      180 Greenwich St, New York, NY 10007, USA (212) 312-8800                                                    https://www.911memorial.org/ New York
+           Flatiron Building 40.741061 -73.989699           175 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+                Times Square 40.757975 -73.985543                       Manhattan, NY 10036, USA        Unknown                                                 https://www.timessquarenyc.org/ New York
+                      RiseNY 40.757621 -73.985176         160 W 45th St, New York, NY 10036, USA (718) 701-4998                                                              https://riseny.co/ New York
+         The Channel Gardens 40.758501 -73.978087                        New York, NY 10020, USA        Unknown              https://www.rockefellercenter.com/attractions/the-channel-gardens/ New York
+                 The Battery 40.702931 -74.015360     Battery Park City, New York, NY 10004, USA (212) 344-3491                                                     https://www.thebattery.org/ New York
+                Central Park 40.782555 -73.965583                              New York, NY, USA (212) 310-6600                                                 https://www.centralparknyc.org/ New York
+             Tenement Museum 40.718818 -73.990088        103 Orchard St, New York, NY 10002, USA (877) 975-3786                                                       https://www.tenement.org/ New York
+         MUSEUM OF ICE CREAM 40.723855 -73.997917          558 Broadway, New York, NY 10012, USA        Unknown                                               https://www.museumoficecream.com/ New York
+       Radio City Music Hall 40.759976 -73.979977          1260 6th Ave, New York, NY 10020, USA (212) 465-6000                                       https://www.msg.com/radio-city-music-hall New York
+Pier 46 at Hudson River Park 40.734189 -74.011265 Hudson River Greenway, New York, NY 10014, USA (212) 627-2020                                                     http://hudsonriverpark.org/ New York
+        Tiffany Street Clock 40.741981 -73.989378           200 5th Ave, New York, NY 10010, USA        Unknown                                                                         Unknown New York
+
+### Restaurants in New York
+                              Name  Average Cost                                             Cuisines  Aggregate Rating     City
+            Seasons 52 Fresh Grill            30                   Seafood, Indian, Desserts, Italian               4.4 New York
+                    Gurgaon Hights            46                    Cafe, American, Indian, Fast Food               2.5 New York
+                             G Dot            75                                   Cafe, Mexican, BBQ               2.4 New York
+                           Rambhog            95                     Tea, Seafood, Mexican, Fast Food               3.3 New York
+                  Green Chick Chop            26                           Tea, French, Cafe, Seafood               3.3 New York
+          Lord of the Drinks Forum            71                   Cafe, Bakery, BBQ, Chinese, Indian               4.2 New York
+                        Goosebumps            94                               Chinese, Pizza, Bakery               3.2 New York
+Aryan's Rajasthani Pyaz Ki Kachori            17                         Cafe, Pizza, Indian, Seafood               3.1 New York
+                   QD's Restaurant            93                           Tea, Desserts, Indian, BBQ               4.1 New York
+               Golooji's Chat Waat            53                                           Pizza, BBQ               3.3 New York
+              Sir John Bakery Cafe            78                              Pizza, Bakery, Desserts               3.4 New York
+                     Shree Rathnam            91            Tea, Bakery, Fast Food, American, Seafood               3.4 New York
+                    Domino's Pizza            86                           Tea, French, Pizza, Indian               3.3 New York
+                    Sugary Affairs            55               Desserts, Tea, Fast Food, Cafe, Indian               3.0 New York
+                        Sugar Rush            89                            Tea, Chinese, Pizza, Cafe               0.0 New York
+                            Amchur            67                                Tea, Bakery, American               2.9 New York
+                Kamal Chat Bhandar            36                                 Chinese, Bakery, BBQ               0.0 New York
+                          736 A.D.            99 Desserts, Bakery, Fast Food, American, Mediterranean               4.1 New York
+          Garam Masala Food Corner            40                              Pizza, Bakery, Desserts               3.3 New York
+                  Green Restaurant            74                          Tea, Cafe, Bakery, Desserts               0.0 New York
+                       Hungry Ullu            94                                          Tea, Bakery               3.3 New York
+                          The Best            79                                   Tea, Chinese, Cafe               3.4 New York
+                          Baltazar            46                      Tea, Fast Food, Bakery, Seafood               4.3 New York
+
+### Accommodations in New York
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number     city
+Versatile private room in Harlem/Hamilton Heights!  398.0    Private room           No pets & No visitors & No parties             4.0                  1                 5.0 New York
+Beautiful and big 1BR sublet close by Central Park  983.0    Private room            No parties & No children under 10             5.0                  2                 5.0 New York
+    A Contemporary Homelike Stay in the Best of BK  228.0 Entire home/apt No pets & No visitors & No children under 10             2.0                  2                 2.0 New York
+       Charming Bright Room in Bed Stuy Brownstone 1064.0    Private room           No visitors & No smoking & No pets            30.0                  2                 3.0 New York
+       Spacious Bedroom in Prime Brooklyn Location  782.0    Private room                         No parties & No pets             3.0                  1                 4.0 New York
+         Cool Downtown Apartment in Great Location  997.0 Entire home/apt                                      No pets             4.0                  7                 4.0 New York
+              Modern Brooklyn oasis (PRIVATE ROOM)  403.0    Private room                         No children under 10             1.0                  1                 5.0 New York
+       Magical rowhouse and garden in Williamsburg  189.0 Entire home/apt                                   No parties             4.0                  3                 1.0 New York
+                          Large Bed-Stuy Apartment  132.0 Entire home/apt                                  No visitors             6.0                  2                 4.0 New York
+IN MINT CONDITION-1BR&TERRACE-E 44TH/UNITED NATION  297.0 Entire home/apt                                      No pets            30.0                  2                 4.0 New York
+   Spacious Private Access Near Trains M - L and J  800.0    Private room                                      No pets             2.0                  1                 4.0 New York
+ Sunny + Spacious Master Bedroom with Outdoor Deck  109.0    Private room                                      No pets             3.0                  1                 5.0 New York
+ ✈ NYC/Travelers. New Private Access Room Bed Full 1158.0    Private room                                      No pets             2.0                  1                 5.0 New York
+
+### Flight from Pittsburgh to Rochester on 2022-03-13
+There is no flight from Pittsburgh to Rochester on 2022-03-13.
+
+### Self-driving from Pittsburgh to Rochester
+self-driving, from Pittsburgh to Rochester, duration: 4 hours 11 mins, distance: 457 km, cost: 22
+
+### Taxi from Pittsburgh to Rochester
+taxi, from Pittsburgh to Rochester, duration: 4 hours 11 mins, distance: 457 km, cost: 457
+
+### Flight from Rochester to Niagara Falls on 2022-03-15
+There is no flight from Rochester to Niagara Falls on 2022-03-15.
+
+### Self-driving from Rochester to Niagara Falls
+self-driving, from Rochester to Niagara Falls, duration: 1 hour 25 mins, distance: 139 km, cost: 6
+
+### Taxi from Rochester to Niagara Falls
+taxi, from Rochester to Niagara Falls, duration: 1 hour 25 mins, distance: 139 km, cost: 139
+
+### Flight from Niagara Falls to New York on 2022-03-17
+There is no flight from Niagara Falls to New York on 2022-03-17.
+
+### Self-driving from Niagara Falls to New York
+self-driving, from Niagara Falls to New York, duration: 6 hours 29 mins, distance: 657 km, cost: 32
+
+### Taxi from Niagara Falls to New York
+taxi, from Niagara Falls to New York, duration: 6 hours 29 mins, distance: 657 km, cost: 657
+
+### Flight from New York to Pittsburgh on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3643703    160   14:53   16:22 1 hours 29 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F3646001     82   09:35   11:09 1 hours 34 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F4051600    153   10:39   12:02 1 hours 23 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4051949     97   12:04   13:31 1 hours 27 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4052504    165   16:56   18:25 1 hours 29 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4053024    139   16:09   17:59 1 hours 50 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F4053999    101   09:44   11:10 1 hours 26 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4054695     94   17:12   18:55 1 hours 43 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F4058448    125   12:55   14:44 1 hours 49 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F4061234     96   12:36   14:08 1 hours 32 minutes 2022-03-19       New York   Pittsburgh     340.0
+     F4066681    136   17:01   18:25 1 hours 24 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4066747    116   10:50   12:15 1 hours 25 minutes 2022-03-19       New York   Pittsburgh     335.0
+     F4066798     95   19:23   21:40 2 hours 17 minutes 2022-03-19       New York   Pittsburgh     340.0
+
+### Self-driving from New York to Pittsburgh
+self-driving, from New York to Pittsburgh, duration: 5 hours 57 mins, distance: 594 km, cost: 29
+
+### Taxi from New York to Pittsburgh
+taxi, from New York to Pittsburgh, duration: 5 hours 57 mins, distance: 594 km, cost: 594
+
+JSON plan:

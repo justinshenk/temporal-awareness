@@ -1,0 +1,252 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I am looking for a 7-day travel plan for two people from Harrisburg to Texas, visiting 3 cities between March 8th and March 14th, 2022. The budget for this trip is $4,100. We have a preference for Italian and French cuisines throughout the trip.
+
+Reference information:
+### Attractions in Wichita Falls
+                                   Name  Latitude  Longitude                                                                 Address          Phone                                                                             Website          City
+          Museum of North Texas History 33.912819 -98.491417                           720 Indiana Ave, Wichita Falls, TX 76301, USA (940) 322-7628                                          https://www.museumofnorthtexashistory.org/ Wichita Falls
+               River Bend Nature Center 33.912315 -98.513345                               2200 3rd St, Wichita Falls, TX 76301, USA (940) 767-0843                                               http://www.riverbendnaturecenter.org/ Wichita Falls
+        The World's Littlest Skyscraper 33.914384 -98.489754 World's littlest skyscraper, 701 La Salle, Wichita Falls, TX 76301, USA (940) 761-9955                             http://www.wichitafallstx.gov/DocumentCenter/View/19745 Wichita Falls
+                              Lucy Park 33.917338 -98.516607                             100 Sunset Dr, Wichita Falls, TX 76302, USA (940) 761-7490                                         https://www.wichitafallstx.gov/69/Lucy-Park Wichita Falls
+                      Kell House Museum 33.907353 -98.497002                              900 Bluff St, Wichita Falls, TX 76301, USA (940) 723-2712                                                https://kellhouseheritagecenter.org/ Wichita Falls
+                          Scotland Park 33.917977 -98.509764                             1500 N 1st St, Wichita Falls, TX 76306, USA (940) 761-7490                                     http://www.wichitafallstx.gov/726/Scotland-Park Wichita Falls
+   CrashWorks STEAM Studio & Makerspace 33.911229 -98.490312                           900 Indiana Ave, Wichita Falls, TX 76301, USA (940) 264-7836                                                        http://www.crashworkswf.com/ Wichita Falls
+                      Lake Wichita Park 33.847436 -98.558368                         5205 Fairway Blvd, Wichita Falls, TX 76310, USA (940) 761-7490                                     http://www.wichitafallstx.gov/index.aspx?NID=70 Wichita Falls
+                          Hamilton Park 33.879927 -98.508594                        2901 Hamilton Blvd, Wichita Falls, TX 76308, USA (940) 761-7491                                      http://www.wichitafallstx.gov/71/Hamilton-Park Wichita Falls
+            Wichita Falls Museum of Art 33.868904 -98.524872                              2 Eureka Cir, Wichita Falls, TX 76308, USA (940) 397-8900                                                          https://wfma.msutexas.edu/ Wichita Falls
+                Castaway Cove Waterpark 33.887524 -98.472408                        1000 Central E Fwy, Wichita Falls, TX 76301, USA (940) 322-5500                                               http://www.castawaycovewaterpark.com/ Wichita Falls
+                Largest Shovel in Texas 33.838780 -98.489472                               7001 US-281, Wichita Falls, TX 76310, USA        Unknown                                                                             Unknown Wichita Falls
+                     Wee-Chi-Tah Statue 33.923069 -98.495713                        501-603 Wichita St, Wichita Falls, TX 76306, USA        Unknown                                                                             Unknown Wichita Falls
+              Lake Arrowhead State Park 33.757371 -98.390554                            229 Park Rd 63, Wichita Falls, TX 76310, USA (940) 528-2211 http://www.tpwd.state.tx.us/state-parks/parks/find-a-park/lake-arrowhead-state-park Wichita Falls
+                            Ohio Bridge 33.921740 -98.495940                               9 Bridge St, Wichita Falls, TX 76301, USA        Unknown                                                                             Unknown Wichita Falls
+                          Wichita Falls 33.913283 -98.506625                       Wichita River Trail, Wichita Falls, TX 76301, USA (940) 761-7490                                          http://www.wichitafallstx.gov/75/The-Falls Wichita Falls
+Urban Air Trampoline and Adventure Park 33.887753 -98.527301                            2505 Kemp Blvd, Wichita Falls, TX 76309, USA (940) 222-6460                                       https://www.urbanair.com/texas-wichita-falls/ Wichita Falls
+                      Veterans memorial 33.838686 -98.558112                         5205 Fairway Blvd, Wichita Falls, TX 76308, USA        Unknown                                                                             Unknown Wichita Falls
+                      Harold Jones Park 33.906804 -98.498984                          1400-1512 9th St, Wichita Falls, TX 76301, USA        Unknown                                       https://www.wichitafallstx.gov/74/Other-Parks Wichita Falls
+                             Weeks Park 33.857481 -98.518534                       2006 Southwest Pkwy, Wichita Falls, TX 76302, USA (940) 761-7491                                             http://wichitafallstx.gov/73/Weeks-Park Wichita Falls
+
+### Restaurants in Wichita Falls
+                            Name  Average Cost                                              Cuisines  Aggregate Rating          City
+           Mama's Boy Restaurant            25                                           Bakery, BBQ               4.5 Wichita Falls
+                      Tyre Patty            92        Pizza, BBQ, Bakery, Chinese, American, Seafood               3.9 Wichita Falls
+                  Made In Punjab            37                               French, Bakery, Seafood               4.0 Wichita Falls
+                    Juice Lounge            68                                 Cafe, Indian, Seafood               3.4 Wichita Falls
+               PM 2 AM Food Bank            45                                French, Cafe, Desserts               2.5 Wichita Falls
+                  Tibb's Frankie            35                                     Tea, BBQ, Seafood               3.2 Wichita Falls
+                  Viya Cupcakery            25                               Cafe, Desserts, Seafood               0.0 Wichita Falls
+                   Hunger Strike            32                   Desserts, Tea, BBQ, Indian, Seafood               3.3 Wichita Falls
+      The Coffee Bean & Tea Leaf            21                             Chinese, Bakery, Desserts               3.8 Wichita Falls
+                 Cafe Coffee Day            93 Desserts, Pizza, Italian, BBQ, Mediterranean, Seafood               3.2 Wichita Falls
+                 Cafe Coffee Day            98                              Tea, Pizza, BBQ, Seafood               2.7 Wichita Falls
+             Gulshan Pastry Shop            49               Desserts, Italian, BBQ, Indian, Seafood               3.0 Wichita Falls
+                 Da Pizza Corner            16                           Tea, BBQ, Desserts, Seafood               2.5 Wichita Falls
+                    First Choice            93                 Tea, Mexican, BBQ, Fast Food, Seafood               2.9 Wichita Falls
+                      Amit Hotel            58                                          Cafe, Bakery               2.9 Wichita Falls
+          Dilkhush Punjabi Dhaba            62                 Desserts, Tea, Pizza, Indian, Seafood               0.0 Wichita Falls
+                   Bala Ji Rasoi            11                      Cafe, Bakery, BBQ, Mediterranean               0.0 Wichita Falls
+                     Khan Chacha            20                                 Cafe, Indian, Seafood               0.0 Wichita Falls
+                             KFC            33                    Cafe, Seafood, Desserts, Fast Food               3.1 Wichita Falls
+                    Pastry Place            36               Desserts, Italian, French, Bakery, Cafe               0.0 Wichita Falls
+Platform Nine and Three Quarters            99                                  Chinese, Bakery, BBQ               2.6 Wichita Falls
+                      Delicacies            20                                  Chinese, Bakery, BBQ               0.0 Wichita Falls
+          Royal Spice Restaurant            70                         Tea, Fast Food, Cafe, Seafood               0.0 Wichita Falls
+                The Smoothie Bar            38                     Tea, Chinese, American, Fast Food               3.7 Wichita Falls
+                       The Kav's            98                                         Cafe, Seafood               3.2 Wichita Falls
+      3Cherryz Sky Lounge & Cafe            93                       Chinese, Bakery, Pizza, Italian               3.2 Wichita Falls
+                    Maranui Cafe            59       Pizza, Mexican, BBQ, Bakery, Fast Food, Chinese               4.3 Wichita Falls
+
+### Accommodations in Wichita Falls
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number          city
+                         Small, Cozy 1BD Apartment  712.0 Entire home/apt No parties & No smoking & No children under 10             3.0                  7                 3.0 Wichita Falls
+                       Modern Apartment on the UES  702.0    Private room No children under 10 & No smoking & No parties             1.0                  2                 2.0 Wichita Falls
+                                     Brooklyn Home 1149.0    Private room                                        No pets             1.0                  1                 2.0 Wichita Falls
+    Cheap large room with desk 10 min to JFK+ Mall 1056.0    Private room                           No children under 10            15.0                  1                 5.0 Wichita Falls
+               Stunning, sunny 1bedroom, Greenpoit  481.0 Entire home/apt                       No visitors & No smoking            14.0                  3                 5.0 Wichita Falls
+@Ferry,2Bedroom/3beds.Private,Renovated/Stylish...  969.0 Entire home/apt                          No visitors & No pets             4.0                  4                 4.0 Wichita Falls
+                   Lovely apartment with a balcony  178.0 Entire home/apt                           No smoking & No pets             5.0                  3                 5.0 Wichita Falls
+   Lovely West Harlem Duplex, Comfortably Sleeps 4 1183.0 Entire home/apt              No smoking & No parties & No pets            10.0                  6                 4.0 Wichita Falls
+  Bright 3-bedroom apartment in beautiful Brooklyn  552.0 Entire home/apt                           No children under 10             3.0                  2                 2.0 Wichita Falls
+                                    Manhattan Club  432.0    Private room             No pets & No visitors & No parties             1.0                  2                 5.0 Wichita Falls
+
+### Attractions in Waco
+                              Name  Latitude  Longitude                                                       Address          Phone                                                                          Website City
+                  Dr Pepper Museum 31.555158 -97.129600                             300 S 5th St, Waco, TX 76701, USA (254) 757-1024                                                   http://www.drpeppermuseum.com/ Waco
+                  Cameron Park Zoo 31.570147 -97.144567                            1701 N 4th St, Waco, TX 76707, USA (254) 750-8400                                                   http://www.cameronparkzoo.com/ Waco
+    Waco Mammoth National Monument 31.606734 -97.175839                   6220 Steinbeck Bend Dr, Waco, TX 76708, USA (254) 750-7946                                               https://www.nps.gov/waco/index.htm Waco
+Texas Ranger Hall of Fame & Museum 31.555547 -97.118718                   100 Texas Ranger Trail, Waco, TX 76706, USA (254) 750-8631                                                      http://www.texasranger.org/ Waco
+            Mayborn Museum Complex 31.551864 -97.114992               1300 S University Parks Dr, Waco, TX 76706, USA (254) 710-1110                                                  https://www.baylor.edu/mayborn/ Waco
+            Waco Suspension Bridge 31.561204 -97.127145                101 N University Parks Dr, Waco, TX 76701, USA (254) 750-5980                                                       http://www.waco-texas.com/ Waco
+               East Terrace Museum 31.567482 -97.134240                              100 Mill St, Waco, TX 76704, USA (254) 753-5166                                                     http://www.historicwaco.org/ Waco
+                Waco Sculpture Zoo 31.562098 -97.130861                407 N University Parks Dr, Waco, TX 76701, USA        Unknown                                                                          Unknown Waco
+                    Jacob's Ladder 31.577222 -97.148816                     2500 Cameron Park Dr, Waco, TX 76708, USA (254) 750-8080                                                                          Unknown Waco
+               Hawaiian Falls Waco 31.594965 -97.164885                        900 Lake Shore Dr, Waco, TX 76708, USA (254) 892-0222                                                      https://hfalls.com/waco.php Waco
+                      Cameron Park 31.583658 -97.156257               2601 N University Parks Dr, Waco, TX 76708, USA (254) 750-5980             https://www.waco-texas.com/Departments/Parks-Recreation/Cameron-Park Waco
+               Hueco Pedicab Tours 31.551014 -97.131072                          811 Webster Ave, Waco, TX 76706, USA (469) 763-2032                                                                          Unknown Waco
+   Lee Lockwood Library and Museum 31.540765 -97.156320                           2801 W Waco Dr, Waco, TX 76707, USA (254) 754-3942                                                          http://leelockwood.org/ Waco
+        Miss Nellie's Pretty Place 31.576769 -97.150752               2602 N University Parks Dr, Waco, TX 76708, USA (254) 750-5980     https://topbrunchspots.com/attractions/miss-nellies-pretty-place-waco-texas/ Waco
+              Martin Museum of Art 31.550101 -97.114728                            60 Baylor Ave, Waco, TX 76706, USA (254) 710-6371                                              http://www.baylor.edu/martinmuseum/ Waco
+    Amazing Brazos River Adventure 31.558176 -97.114984                    1001 S M.L.K. Jr Blvd, Waco, TX 76704, USA        Unknown                                                                          Unknown Waco
+                Lake Waco Wetlands 31.606368 -97.301710 1752 Eichelberger Crossing Road., China Spring, TX 76633, USA (254) 848-9654 https://www.waco-texas.com/Departments/Water-Utility-Services/Lake-Waco-Wetlands Waco
+         Texas Sports Hall of Fame 31.552843 -97.117887               1108 S University Parks Dr, Waco, TX 76706, USA (254) 756-1633                                                            http://www.tshof.org/ Waco
+     City of Waco Brazos Park East 31.584350 -97.151718                    3516 N M.L.K. Jr Blvd, Waco, TX 76702, USA (254) 750-5980                                                  http://www.waco-texas.com/parks Waco
+            McCulloch House Museum 31.559152 -97.133563                         407 Columbus Ave, Waco, TX 76701, USA (254) 753-5166                                                     http://www.historicwaco.org/ Waco
+
+### Restaurants in Waco
+                                Name  Average Cost                                       Cuisines  Aggregate Rating City
+                                Fork            58            Tea, French, Mediterranean, Seafood               4.4 Waco
+                     Blue House Cafe            55             Tea, Pizza, Mexican, Cafe, Seafood               4.3 Waco
+                     First Gear Cafe            76     Desserts, Tea, Fast Food, Chinese, Seafood               3.9 Waco
+                       Punjabi Rasoi            70               Fast Food, Cafe, Bakery, Seafood               0.0 Waco
+                 Singh Terrace Grill            72       Desserts, Tea, French, Bakery, Fast Food               0.0 Waco
+              Sialkoti Vaishno Dhaba            15                            Tea, Cafe, Desserts               3.1 Waco
+                          Nite Bites            99                           Tea, Cafe, Fast Food               3.7 Waco
+               Kishu Di Hatti Sweets            15                   Pizza, Bakery, Mediterranean               3.6 Waco
+                            Frontier            28                    Tea, Cafe, Mexican, Seafood               3.2 Waco
+                     Aunty's Kitchen            97       Tea, Pizza, Italian, Cafe, Mediterranean               0.0 Waco
+                 Vaishnu Bhojanalaya            87        Desserts, Pizza, Bakery, Cafe, American               3.1 Waco
+                            Mr. Lobo            63                        Desserts, American, BBQ               3.0 Waco
+              Gluten Free by Deepika            81                          Tea, Mexican, Seafood               0.0 Waco
+                     The Biryani Hut            58             Tea, Cafe, Mediterranean, Desserts               2.9 Waco
+              Amul Ice-Cream Parlour            83                                 Cafe, Desserts               0.0 Waco
+                        Pandit Dhaba            42                          Bakery, American, BBQ               0.0 Waco
+                     Mitra Da Dhabha            68        Cafe, Seafood, Mediterranean, Fast Food               0.0 Waco
+       Chatori Zubaan Chur Chur Naan            56                       Bakery, Pizza, Fast Food               0.0 Waco
+                 Night Food Delivery            20               Fast Food, French, Cafe, Italian               2.7 Waco
+                      Bake Me A Cake            97          Tea, Pizza, Bakery, Fast Food, Indian               4.0 Waco
+                       The Feast Box            27              Cafe, Chinese, Tea, Mediterranean               0.0 Waco
+                             My Corn            78         Tea, Pizza, Fast Food, Chinese, Indian               0.0 Waco
+                            Lemonier            18                    American, Desserts, Seafood               0.0 Waco
+Moti Mahal Delux- Legendary Culinary            56 Desserts, Pizza, BBQ, Chinese, Indian, Seafood               3.6 Waco
+                      The Zaika King            59                           Cafe, BBQ, Fast Food               0.0 Waco
+
+### Accommodations in Waco
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number city
+       Sonder | 21 Chelsea | Central 1BR + Rooftop 1105.0 Entire home/apt No visitors & No smoking & No children under 10            29.0                  9                 3.0 Waco
+                1 bedroom, large williamsburg loft  930.0    Private room No visitors & No children under 10 & No parties             7.0                  1                 2.0 Waco
+Room 2: Sunny Queen W Private Bathroom & Breakfast  257.0    Private room              No visitors & No children under 10             1.0                  2                 2.0 Waco
+           Sunny room in the heart of Williamsburg  168.0    Private room               No parties & No pets & No smoking             4.0                  2                 2.0 Waco
+Large-sunny-private room & bathroom in UES hi rise 1104.0    Private room                            No pets & No smoking             3.0                  2                 2.0 Waco
+Private room 5 mins to Manhattan 2 blocks to train  731.0    Private room              No children under 10 & No visitors             4.0                  1                 3.0 Waco
+                                New York Apartment 1062.0    Private room                                      No smoking             1.0                  2                 2.0 Waco
+
+### Attractions in Houston
+                                                           Name  Latitude  Longitude                                      Address          Phone                                                                                 Website    City
+                                              Downtown Aquarium 29.764270 -95.367379         410 Bagby St, Houston, TX 77002, USA (713) 223-3474                             http://www.aquariumrestaurants.com/downtownaquariumhouston/ Houston
+                                           Space Center Houston 29.551832 -95.098104     1601 E NASA Pkwy, Houston, TX 77058, USA (281) 244-2100                                                            https://www.spacecenter.org/ Houston
+                                                     Water Wall 29.735740 -95.461315   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                             https://uptown-houston.com/experience/parks/waterwall-park/ Houston
+                              Houston Museum of Natural Science 29.722062 -95.389562 5555 Hermann Park Dr, Houston, TX 77030, USA (713) 639-4629                                                                   https://www.hmns.org/ Houston
+                                                    Houston Zoo 29.715781 -95.390321 6200 Hermann Park Dr, Houston, TX 77030, USA (713) 533-6500                                                             https://www.houstonzoo.org/ Houston
+                               The Museum of Fine Arts, Houston 29.725623 -95.390533    1001 Bissonnet St, Houston, TX 77005, USA (713) 639-7300                                                                   https://www.mfah.org/ Houston
+                                                   Hermann Park 29.713528 -95.389952       6001 Fannin St, Houston, TX 77030, USA (713) 526-2183                                                            https://www.hermannpark.org/ Houston
+                              Houston Arboretum & Nature Center 29.765224 -95.452071      4501 Woodway Dr, Houston, TX 77024, USA (713) 681-8433                                                        http://www.houstonarboretum.org/ Houston
+Bayou Bend Collection and Gardens, Museum of Fine Arts, Houston 29.760659 -95.421693     6003 Memorial Dr, Houston, TX 77007, USA (713) 639-7750                            http://www.mfah.org/visit/bayou-bend-collection-and-gardens/ Houston
+                                             Market Square Park 29.762645 -95.362361         301 Milam St, Houston, TX 77002, USA (713) 650-3022                                                            http://marketsquarepark.com/ Houston
+                                                Discovery Green 29.753240 -95.359912     1500 McKinney St, Houston, TX 77010, USA (713) 400-7336                                                          http://www.discoverygreen.com/ Houston
+                                                   Smither Park 29.716761 -95.324637       2441 Munger St, Houston, TX 77023, USA (713) 926-6368                                                                  http://orangeshow.org/ Houston
+                                      Children's Museum Houston 29.722931 -95.385289         1500 Binz St, Houston, TX 77004, USA (713) 522-1138 https://www.cmhouston.org/?utm_source=google&utm_medium=organic&utm_campaign=gmbhouston Houston
+                                       Holocaust Museum Houston 29.725248 -95.385687     5401 Caroline St, Houston, TX 77004, USA (713) 942-8000                                                                        https://hmh.org/ Houston
+                                               Sam Houston Park 29.760137 -95.371640        1000 Bagby St, Houston, TX 77002, USA (832) 394-8805                              https://www.houstontx.gov/abouthouston/samhoustonpark.html Houston
+                            Houston Legendary Graffiti Building 29.747305 -95.359360      2011 Leeland St, Houston, TX 77003, USA (409) 245-3778          https://instagram.com/gofa_dagusto1k?utm_source=qr&igshid=MzNlNGNkZWQ4Mg%3D%3D Houston
+                                 Gerald D. Hines Waterwall Park 29.735948 -95.461302   2800 Post Oak Blvd, Houston, TX 77056, USA (713) 850-8841                                 http://www.uptown-houston.com/news/page/water-wall-park Houston
+                                                 Beer Can House 29.763759 -95.419103        222 Malone St, Houston, TX 77007, USA (713) 926-6368                                          https://www.full.orangeshow.org/beer-can-house Houston
+                                    American Statesmanship Park 29.771321 -95.366926        1400 Elder St, Houston, TX 77007, USA (713) 344-6568                   https://www.waymarking.com/waymarks/WMNHPK_Mount_Rush_Hour_Houston_TX Houston
+                                       Pioneer Memorial Obelisk 29.718633 -95.390929       6001 Fannin St, Houston, TX 77030, USA        Unknown                                                      http://www.hermannpark.org/poi/44/ Houston
+
+### Restaurants in Houston
+                              Name  Average Cost                                         Cuisines  Aggregate Rating    City
+                         Jalapenos            57            Desserts, Tea, Cafe, Chinese, Seafood               4.2 Houston
+                      Super Bakery            30                               Seafood, Fast Food               3.3 Houston
+                     Sheetla Dhaba            35 Desserts, Pizza, Bakery, American, Mediterranean               0.0 Houston
+                        Royal Mart            40        Tea, Bakery, Cafe, Mediterranean, Seafood               2.9 Houston
+                          Matchbox            33         Tea, Italian, Bakery, Fast Food, Seafood               4.8 Houston
+                    Earthen Spices            28             Tea, Mexican, Bakery, BBQ, Fast Food               2.7 Houston
+                         Chawla's宊            26   Chinese, Desserts, Bakery, Cafe, Mediterranean               2.2 Houston
+                     Cyber Adda 24            73                           Chinese, Pizza, Bakery               3.3 Houston
+The BrewMaster - The Mix Fine Dine            52                    French, Indian, Cafe, Seafood               3.9 Houston
+                   Vinayaka Mylari            14                 Fast Food, French, Cafe, Italian               4.2 Houston
+                Al Arabian Express            74                           BBQ, Desserts, Seafood               3.7 Houston
+                     Pebble Street            73                Tea, American, Mediterranean, BBQ               4.0 Houston
+                       Sultan Food            55                                 Bakery, Desserts               3.1 Houston
+                               KSG            73      Desserts, Tea, Fast Food, American, Seafood               0.0 Houston
+                             Zaika            18                       Tea, Cafe, Mexican, Bakery               2.7 Houston
+               34 Park Street Lane            67                            Chinese, Bakery, Cafe               0.0 Houston
+                Sunny Chicken Soup            60                      Tea, BBQ, Desserts, Seafood               3.6 Houston
+                             Giani            97                                 Cafe, Pizza, BBQ               3.5 Houston
+                       Bhola Dhaba            65       Tea, Italian, Cafe, Mediterranean, Seafood               2.8 Houston
+                    G's Patisserie            65        Desserts, Tea, Pizza, Fast Food, American               2.8 Houston
+                  Daawat E Mezbaan            63              Pizza, BBQ, Cafe, American, Seafood               3.1 Houston
+                Khanna's Hot Pizza            80        Pizza, Mediterranean, Desserts, Fast Food               0.0 Houston
+                          Taj Cafe            18                             French, BBQ, Seafood               3.1 Houston
+                         Dana Pani            91                          Bakery, Indian, Seafood               0.0 Houston
+                 Shiv Shakti Dhaba            54                             Tea, Pizza, American               0.0 Houston
+              Vrinda Vaishno Dhaba            54         French, Bakery, Fast Food, Cafe, Seafood               2.8 Houston
+                        Tasty Bite            15       Bakery, Fast Food, Cafe, American, Seafood               2.8 Houston
+               Hurry Curry Express            78                               Fast Food, Seafood               0.0 Houston
+                            Subway            51                   Tea, Bakery, Desserts, Seafood               2.3 Houston
+               Istanbul Restaurant            19                             Tea, Indian, Seafood               3.6 Houston
+                      Truth Coffee            29                         Pizza, American, Seafood               4.4 Houston
+
+### Accommodations in Houston
+                                              NAME  price       room type             house_rules  minimum nights  maximum occupancy  review rate number    city
+                     Sunny and Airy near Manhattan  499.0 Entire home/apt                 No pets             2.0                  4                 5.0 Houston
+                 Bright room in 2BR apt in Nolita! 1024.0    Private room    No children under 10             2.0                  2                 4.0 Houston
+                      Superhost 3 bedroom DISCOUNT  746.0 Entire home/apt                 No pets             1.0                  5                 4.0 Houston
+           Spacious room in front of prospect park  259.0    Private room              No smoking             1.0                  1                 5.0 Houston
+           Private bedroom in artsy NYC apartment.  488.0    Private room              No smoking             3.0                  1                 3.0 Houston
+                   Cozy Room near Casino and Metro 1092.0    Private room              No parties             1.0                  2                 4.0 Houston
+1BR in Newly Renovated Apartment - Rm C, Bushwick!  288.0    Private room              No smoking             1.0                  1                 4.0 Houston
+        Artsy, Sun-Soaked Pre-War Williamsburg Apt  872.0 Entire home/apt              No parties            10.0                  2                 4.0 Houston
+               Beautiful and Huge Room in Brooklyn  957.0    Private room    No parties & No pets            13.0                  1                 3.0 Houston
+         Backpackers Dream for 1 at The Funky Loft  244.0    Private room No parties & No smoking             3.0                  1                 4.0 Houston
+
+### Flight from Harrisburg to Wichita Falls on 2022-03-08
+There is no flight from Harrisburg to Wichita Falls on 2022-03-08.
+
+### Self-driving from Harrisburg to Wichita Falls
+self-driving, from Harrisburg to Wichita Falls, duration: 20 hours 58 mins, distance: 2,283 km, cost: 114
+
+### Taxi from Harrisburg to Wichita Falls
+taxi, from Harrisburg to Wichita Falls, duration: 20 hours 58 mins, distance: 2,283 km, cost: 2283
+
+### Flight from Wichita Falls to Waco on 2022-03-10
+There is no flight from Wichita Falls to Waco on 2022-03-10.
+
+### Self-driving from Wichita Falls to Waco
+self-driving, from Wichita Falls to Waco, duration: 3 hours 2 mins, distance: 327 km, cost: 16
+
+### Taxi from Wichita Falls to Waco
+taxi, from Wichita Falls to Waco, duration: 3 hours 2 mins, distance: 327 km, cost: 327
+
+### Flight from Waco to Houston on 2022-03-12
+There is no flight from Waco to Houston on 2022-03-12.
+
+### Self-driving from Waco to Houston
+self-driving, from Waco to Houston, duration: 2 hours 50 mins, distance: 298 km, cost: 14
+
+### Taxi from Waco to Houston
+taxi, from Waco to Houston, duration: 2 hours 50 mins, distance: 298 km, cost: 298
+
+### Flight from Houston to Harrisburg on 2022-03-14
+There is no flight from Houston to Harrisburg on 2022-03-14.
+
+### Self-driving from Houston to Harrisburg
+self-driving, from Houston to Harrisburg, duration: 21 hours 16 mins, distance: 2,353 km, cost: 117
+
+### Taxi from Houston to Harrisburg
+taxi, from Houston to Harrisburg, duration: 21 hours 16 mins, distance: 2,353 km, cost: 2353
+
+JSON plan:

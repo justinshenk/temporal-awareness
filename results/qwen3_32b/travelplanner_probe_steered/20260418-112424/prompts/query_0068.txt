@@ -1,0 +1,102 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help design a 3-day trip for a group of 4 from Las Vegas to Santa Maria from March 10th to March 12th, 2022? We have a budget of $3,700. We have a preference for American and Mediterranean cuisines.
+
+Reference information:
+### Attractions in Santa Maria
+                                 Name  Latitude   Longitude                                          Address          Phone                                                                                                                                         Website        City
+  Santa Maria Valley Discovery Museum 34.945471 -120.435054  705 S McClelland St, Santa Maria, CA 93454, USA (805) 928-8414                                                                                                              http://www.smvdiscoverymuseum.org/ Santa Maria
+         Santa Maria Museum of Flight 34.904965 -120.454755      3015 Airpark Dr, Santa Maria, CA 93455, USA (805) 922-8758                                                                                                               https://www.smmuseumofflight.com/ Santa Maria
+        Santa Maria Historical Museum 34.946632 -120.435633       616 S Broadway, Santa Maria, CA 93454, USA (805) 922-3130                                                                                                                   http://santamariahistory.com/ Santa Maria
+               Natural History Museum 34.948942 -120.434002  412 S McClelland St, Santa Maria, CA 93454, USA (805) 614-0806                                                                                                               https://www.smnaturalhistory.org/ Santa Maria
+                         Russell Park 34.951653 -120.451065     1000 W Church St, Santa Maria, CA 93458, USA (805) 925-0951 https://www.cityofsantamaria.org/city-government/departments/recreation-and-parks/visit-your-parks/view-park-photos-descriptions#Russell%20Park Santa Maria
+                         Jim May Park 34.975585 -120.424960      809 Stanford Dr, Santa Maria, CA 93454, USA (805) 925-0951                                                                                                                                         Unknown Santa Maria
+                Los Flores Ranch Park 34.842889 -120.335728     6245 Dominion Rd, Santa Maria, CA 93454, USA (805) 925-0951                                                                                                                                         Unknown Santa Maria
+ Adventure Safaris Dinosaur Warehouse 34.915398 -120.460658  1360 W McCoy Ln #11, Santa Maria, CA 93455, USA (805) 588-3353                                                                                                          https://www.centralcoastdinosaurs.com/ Santa Maria
+                        Preisker Park 34.984267 -120.437691 330 Hidden Pines Way, Santa Maria, CA 93458, USA (805) 925-0951                                                                                                                                         Unknown Santa Maria
+                         Pioneer Park 34.881777 -120.452363     1150 W Foster Rd, Santa Maria, CA 93455, USA (805) 925-0951                                                                                                                                         Unknown Santa Maria
+                    Presqu'ile Winery 34.853803 -120.371082    5391 Presquile Dr, Santa Maria, CA 93455, USA (805) 937-8110                                                                                                                  https://www.presquilewine.com/ Santa Maria
+                  Boomers Santa Maria 34.981854 -120.433393     2250 Preisker Ln, Santa Maria, CA 93458, USA (805) 928-4942                                                                              https://boomersparks.com/santamaria?utm_source=gmb&utm_medium=Yext Santa Maria
+                  Costa de Oro Winery 34.937192 -120.417316   1331 Nicholson Ave, Santa Maria, CA 93454, USA (805) 922-1468                                                                                                                https://www.costadeorowines.com/ Santa Maria
+                      Santa Maria, CA 34.991051 -120.453072                            Nipomo, CA 93444, USA        Unknown                                                                                                                                         Unknown Santa Maria
+Santa Maria Valley Historical Society 34.946585 -120.435529       616 S Broadway, Santa Maria, CA 93454, USA (805) 922-3130                                                                                                        https://santamariahistory.com/about.html Santa Maria
+                            Rice Park 34.964976 -120.426581     700 E Sunset Ave, Santa Maria, CA 93454, USA (805) 925-0951                                                                                                                                         Unknown Santa Maria
+                          Oakley Park 34.964552 -120.450391          119 010-019, Santa Maria, CA 93458, USA (805) 925-0951  https://www.cityofsantamaria.org/city-government/departments/recreation-and-parks/visit-your-parks/view-park-photos-descriptions#Oakley%20Park Santa Maria
+
+### Restaurants in Santa Maria
+                        Name  Average Cost                                                     Cuisines  Aggregate Rating        City
+            Indian By Nature            45                       Tea, Pizza, Bakery, BBQ, Mediterranean               4.3 Santa Maria
+            Pirates of Grill            90     Bakery, BBQ, Fast Food, American, Mediterranean, Seafood               4.0 Santa Maria
+                      Nashta            13                          Tea, Chinese, Bakery, Mediterranean               3.7 Santa Maria
+                 Raju Halwai            40                             Bakery, BBQ, Desserts, Fast Food               3.1 Santa Maria
+                         #45            14                                    Tea, Bakery, BBQ, Seafood               3.6 Santa Maria
+  RiverDine Restaurant & Bar            71                                        Chinese, BBQ, Seafood               3.5 Santa Maria
+                Nariyal Cafe            14                                  Tea, Bakery, BBQ, Fast Food               4.2 Santa Maria
+Kuremal Mohan Lal Kulfi Wale            84            Desserts, Italian, BBQ, Bakery, American, Seafood               4.5 Santa Maria
+         Etal The Lounge Bar            71                         Desserts, Pizza, BBQ, Bakery, Indian               3.2 Santa Maria
+                  Eat & Gulp            52                     Fast Food, Pizza, Mediterranean, Italian               0.0 Santa Maria
+             Peshawari Mehel            50                              Pizza, BBQ, Desserts, Fast Food               0.0 Santa Maria
+            Moti Mahal Delux            94                         Fast Food, Bakery, American, Italian               2.6 Santa Maria
+                   Tea Point            42                                   Bakery, American, Desserts               0.0 Santa Maria
+         Chinese Food Corner            21                           Tea, Pizza, Bakery, Cafe, American               0.0 Santa Maria
+             The Cake Basket            98                                                     Tea, BBQ               0.0 Santa Maria
+         Calendar Khana Laao            91                       Desserts, Tea, Fast Food, Cafe, Indian               4.2 Santa Maria
+             Halal Pizza Fun            14                               Cafe, Mediterranean, Fast Food               3.1 Santa Maria
+                       Kabab            35                                                Tea, Desserts               3.2 Santa Maria
+       London Street Kitchen            90                                       Chinese, Cafe, Seafood               4.2 Santa Maria
+       Bintang Sweet Thrills            86                                 Pizza, Bakery, Mediterranean               3.5 Santa Maria
+             The Drunk House            91    Desserts, Tea, Bakery, Fast Food, American, Mediterranean               4.2 Santa Maria
+               Punjabi Rasoi            11              Desserts, Mexican, Fast Food, American, Seafood               2.8 Santa Maria
+           The Belly Giggles            27 Desserts, Pizza, Fast Food, American, Mediterranean, Seafood               3.0 Santa Maria
+                Food Junkies            70                        BBQ, Mediterranean, Desserts, Seafood               3.2 Santa Maria
+           The Urban Canteen            37                                Cafe, Mexican, Pizza, Seafood               0.0 Santa Maria
+             Bhappe Di Hatti            50                                      Tea, BBQ, Mediterranean               3.1 Santa Maria
+                    The Anna            68                                    Seafood, Pizza, Fast Food               2.8 Santa Maria
+              Floating Cakes            79            Desserts, Pizza, French, Mexican, Fast Food, Cafe               2.8 Santa Maria
+Jungli Moon Dance Restaurant            70                                        Cafe, Bakery, Seafood               3.1 Santa Maria
+                   PappaRich            26                   Tea, Pizza, Italian, French, Cafe, Seafood               4.0 Santa Maria
+
+### Accommodations in Santa Maria
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number        city
+                 Big Bright Room ☼ Lower East Side  474.0    Private room No children under 10 & No pets & No parties            25.0                  1                 5.0 Santa Maria
+                             Cozy room in Brooklyn  906.0    Private room           No parties & No children under 10             8.0                  1                 3.0 Santa Maria
+Beautiful Manhattan 1br apartment close to subway!  573.0 Entire home/apt No parties & No pets & No children under 10             3.0                  3                 4.0 Santa Maria
+              Large Bedroom on upper west/columbia   98.0    Private room                        No parties & No pets             1.0                  2                 3.0 Santa Maria
+                 Crown Hts Beauty: Quiet and Cozy! 1054.0 Entire home/apt                        No children under 10             7.0                  8                 2.0 Santa Maria
+                  Cozy apartment near Central Park  738.0 Entire home/apt                                     No pets             1.0                  6                 5.0 Santa Maria
+   15 Minutes  to Manhattan and Safe Neighborhood!  914.0    Private room           No children under 10 & No parties             2.0                  2                 4.0 Santa Maria
+Private room in Astoria 10min ride to Central Park  416.0    Private room                                 No visitors             1.0                  2                 3.0 Santa Maria
+   Great Room In Brooklyn, The Park, 30 min to MH.  309.0    Private room           No pets & No parties & No smoking             5.0                  2                 3.0 Santa Maria
+
+### Flight from Las Vegas to Santa Maria on 2022-03-10
+There is no flight from Las Vegas to Santa Maria on 2022-03-10.
+
+### Self-driving from Las Vegas to Santa Maria
+self-driving, from Las Vegas to Santa Maria, duration: 6 hours 17 mins, distance: 634 km, cost: 31
+
+### Taxi from Las Vegas to Santa Maria
+taxi, from Las Vegas to Santa Maria, duration: 6 hours 17 mins, distance: 634 km, cost: 634
+
+### Flight from Santa Maria to Las Vegas on 2022-03-12
+There is no flight from Santa Maria to Las Vegas on 2022-03-12.
+
+### Self-driving from Santa Maria to Las Vegas
+self-driving, from Santa Maria to Las Vegas, duration: 6 hours 19 mins, distance: 636 km, cost: 31
+
+### Taxi from Santa Maria to Las Vegas
+taxi, from Santa Maria to Las Vegas, duration: 6 hours 19 mins, distance: 636 km, cost: 636
+
+JSON plan:

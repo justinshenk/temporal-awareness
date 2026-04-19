@@ -1,0 +1,951 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I'd like to book a flight for my friend Ivan using the same flights from my current reservation.",
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_smith_123\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ivan_smith_123"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_smith_123\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4627,
+    "output_tokens": 27,
+    "generation_seconds": 2.8675339221954346,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I couldn't find the user profile for Ivan. Could you please confirm the correct user ID for Ivan?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I couldn't find the user profile for Ivan. Could you please confirm the correct user ID for Ivan?"
+      }
+    },
+    "observation": "Oh, I don't have a separate user ID for him - he's in my profile as Ivan Smith. My user ID is ivan_muller_7015. Can you look up his information from my account?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I couldn't find the user profile for Ivan. Could you please confirm the correct user ID for Ivan?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4671,
+    "output_tokens": 38,
+    "generation_seconds": 3.526057004928589,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_muller_7015\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ivan_muller_7015"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ivan\", \"last_name\": \"Muller\"}, \"address\": {\"address1\": \"256 Pine Lane\", \"address2\": \"Suite 661\", \"city\": \"New York\", \"country\": \"USA\", \"state\": \"NY\", \"zip\": \"10029\"}, \"email\": \"ivan.muller6623@example.com\", \"dob\": \"1968-04-25\", \"payment_methods\": {\"certificate_8998287\": {\"source\": \"certificate\", \"amount\": 500, \"id\": \"certificate_8998287\"}, \"credit_card_3563913\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"6710\", \"id\": \"credit_card_3563913\"}, \"gift_card_8516878\": {\"source\": \"gift_card\", \"amount\": 128, \"id\": \"gift_card_8516878\"}}, \"saved_passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}, {\"first_name\": \"Lucas\", \"last_name\": \"Davis\", \"dob\": \"1988-10-12\"}], \"membership\": \"gold\", \"reservations\": [\"G72NSF\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ivan_muller_7015\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4765,
+    "output_tokens": 29,
+    "generation_seconds": 3.0197813510894775,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"G72NSF\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "G72NSF"
+      }
+    },
+    "observation": "{\"reservation_id\": \"G72NSF\", \"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"DTW\", \"destination\": \"PHX\", \"flight_number\": \"HAT097\", \"date\": \"2024-05-17\", \"price\": 158}, {\"origin\": \"PHX\", \"destination\": \"SEA\", \"flight_number\": \"HAT251\", \"date\": \"2024-05-17\", \"price\": 141}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Muller\", \"dob\": \"1968-04-25\"}, {\"first_name\": \"Isabella\", \"last_name\": \"Moore\", \"dob\": \"1952-01-28\"}], \"payment_history\": [{\"payment_id\": \"gift_card_8516878\", \"amount\": 658}], \"created_at\": \"2024-05-11T19:32:36\", \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"G72NSF\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5130,
+    "output_tokens": 25,
+    "generation_seconds": 2.894660234451294,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found the details of your current reservation (G72NSF). It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passengers are Ivan Muller and Isabella Moore. You have 2 free checked bags and travel insurance is included. Would you like to book a new reservation for Ivan Smith using the same flights?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found the details of your current reservation (G72NSF). It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passengers are Ivan Muller and Isabella Moore. You have 2 free checked bags and travel insurance is included. Would you like to book a new reservation for Ivan Smith using the same flights?"
+      }
+    },
+    "observation": "Yes, that's right - I want to book those exact same flights for Ivan Smith. But I should mention, for his booking I don't need the baggage or insurance included. And I'd prefer to use my certificate to pay if possible.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found the details of your current reservation (G72NSF). It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passengers are Ivan Muller and Isabella Moore. You have 2 free checked bags and travel insurance is included. Would you like to book a new reservation for Ivan Smith using the same flights?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5467,
+    "output_tokens": 136,
+    "generation_seconds": 9.587351083755493,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT097\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT251\", \"date\": \"2024-05-17\"}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}], \"payment_methods\": [{\"payment_id\": \"certificate_8998287\", \"amount\": 299}], \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}}",
+    "action": {
+      "name": "book_reservation",
+      "arguments": {
+        "user_id": "ivan_muller_7015",
+        "origin": "DTW",
+        "destination": "SEA",
+        "flight_type": "one_way",
+        "cabin": "economy",
+        "flights": [
+          {
+            "flight_number": "HAT097",
+            "date": "2024-05-17"
+          },
+          {
+            "flight_number": "HAT251",
+            "date": "2024-05-17"
+          }
+        ],
+        "passengers": [
+          {
+            "first_name": "Ivan",
+            "last_name": "Smith",
+            "dob": "1986-03-14"
+          }
+        ],
+        "payment_methods": [
+          {
+            "payment_id": "certificate_8998287",
+            "amount": 299
+          }
+        ],
+        "total_baggages": 0,
+        "nonfree_baggages": 0,
+        "insurance": "no"
+      }
+    },
+    "observation": "Error: payment amount does not add up, total price is 375, but paid 299",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "book_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT097\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT251\", \"date\": \"2024-05-17\"}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}], \"payment_methods\": [{\"payment_id\": \"certificate_8998287\", \"amount\": 299}], \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "parsed_action_name": "book_reservation",
+    "input_tokens": 5661,
+    "output_tokens": 202,
+    "generation_seconds": 13.576085090637207,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I noticed that the certificate amount is not sufficient to cover the total price of the reservation. The total price for the reservation is $375. Would you like me to adjust the payment method to cover the remaining amount, or would you prefer to use a different payment method?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I noticed that the certificate amount is not sufficient to cover the total price of the reservation. The total price for the reservation is $375. Would you like me to adjust the payment method to cover the remaining amount, or would you prefer to use a different payment method?"
+      }
+    },
+    "observation": "How much certificate balance do I have, and how much would be wasted if I use it? I want to know if it's more than $100 before I decide.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I noticed that the certificate amount is not sufficient to cover the total price of the reservation. The total price for the reservation is $375. Would you like me to adjust the payment method to cover the remaining amount, or would you prefer to use a different payment method?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5898,
+    "output_tokens": 73,
+    "generation_seconds": 5.9964845180511475,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"You have a certificate with a balance of $500. If you use $299 to pay for the reservation, the remaining $201 will stay on the certificate and can be used for future bookings. Only $299 will be used, and no amount will be wasted. Would you like to proceed with this payment?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "You have a certificate with a balance of $500. If you use $299 to pay for the reservation, the remaining $201 will stay on the certificate and can be used for future bookings. Only $299 will be used, and no amount will be wasted. Would you like to proceed with this payment?"
+      }
+    },
+    "observation": "Perfect, that works for me then. Yes, let's use the certificate for the $299 and I'll cover the remaining balance with my credit card.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"You have a certificate with a balance of $500. If you use $299 to pay for the reservation, the remaining $201 will stay on the certificate and can be used for future bookings. Only $299 will be used, and no amount will be wasted. Would you like to proceed with this payment?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6016,
+    "output_tokens": 87,
+    "generation_seconds": 6.850936651229858,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT097\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT251\", \"date\": \"2024-05-17\"}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}], \"payment_methods\": [{\"payment_id\": \"certificate_8998287\", \"amount\": 299}, {\"payment_id\": \"credit_card_3563913\", \"amount\": 76}], \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}}",
+    "action": {
+      "name": "book_reservation",
+      "arguments": {
+        "user_id": "ivan_muller_7015",
+        "origin": "DTW",
+        "destination": "SEA",
+        "flight_type": "one_way",
+        "cabin": "economy",
+        "flights": [
+          {
+            "flight_number": "HAT097",
+            "date": "2024-05-17"
+          },
+          {
+            "flight_number": "HAT251",
+            "date": "2024-05-17"
+          }
+        ],
+        "passengers": [
+          {
+            "first_name": "Ivan",
+            "last_name": "Smith",
+            "dob": "1986-03-14"
+          }
+        ],
+        "payment_methods": [
+          {
+            "payment_id": "certificate_8998287",
+            "amount": 299
+          },
+          {
+            "payment_id": "credit_card_3563913",
+            "amount": 76
+          }
+        ],
+        "total_baggages": 0,
+        "nonfree_baggages": 0,
+        "insurance": "no"
+      }
+    },
+    "observation": "{\"reservation_id\": \"HATHAT\", \"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT097\", \"date\": \"2024-05-17\", \"price\": 175, \"origin\": \"DTW\", \"destination\": \"PHX\"}, {\"flight_number\": \"HAT251\", \"date\": \"2024-05-17\", \"price\": 200, \"origin\": \"PHX\", \"destination\": \"SEA\"}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}], \"payment_history\": [{\"payment_id\": \"certificate_8998287\", \"amount\": 299}, {\"payment_id\": \"credit_card_3563913\", \"amount\": 76}], \"created_at\": \"2024-05-15T15:00:00\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "book_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"ivan_muller_7015\", \"origin\": \"DTW\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT097\", \"date\": \"2024-05-17\"}, {\"flight_number\": \"HAT251\", \"date\": \"2024-05-17\"}], \"passengers\": [{\"first_name\": \"Ivan\", \"last_name\": \"Smith\", \"dob\": \"1986-03-14\"}], \"payment_methods\": [{\"payment_id\": \"certificate_8998287\", \"amount\": 299}, {\"payment_id\": \"credit_card_3563913\", \"amount\": 76}], \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "parsed_action_name": "book_reservation",
+    "input_tokens": 6145,
+    "output_tokens": 225,
+    "generation_seconds": 15.239549160003662,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation (HATHAT) has been successfully booked! It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passenger is Ivan Smith. The total price is $375, paid with $299 from your certificate and $76 from your credit card. There are no checked bags or travel insurance included. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation (HATHAT) has been successfully booked! It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passenger is Ivan Smith. The total price is $375, paid with $299 from your certificate and $76 from your credit card. There are no checked bags or travel insurance included. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "No, that's everything I needed. Thanks for your help!\n\n###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "ivan_muller_7015",
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is ivan_muller_7015 and you want to book the same flights as your current reservation for your friend Ivan in your user profile (Ivan Smith, DOB you can't remember but in your profile). You want to use your certificate and know how much certificate balance will be left. If more than $100 is wasted, you want to instead use your GC and CC. No baggage and insurance.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.000986,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "0b006dde0a77c7918b80c791e9e40f37519f0d18581c04668512b407002cf5f2"
+        },
+        "actions": [
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "ivan_muller_7015",
+              "origin": "DTW",
+              "destination": "SEA",
+              "flight_type": "one_way",
+              "cabin": "economy",
+              "flights": [
+                {
+                  "flight_number": "HAT097",
+                  "date": "2024-05-17"
+                },
+                {
+                  "flight_number": "HAT251",
+                  "date": "2024-05-17"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Ivan",
+                  "last_name": "Smith",
+                  "dob": "1986-03-14"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_8516878",
+                  "amount": 128
+                },
+                {
+                  "payment_id": "credit_card_3563913",
+                  "amount": 247
+                }
+              ],
+              "total_baggages": 0,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation (HATHAT) has been successfully booked! It is for a one-way trip from DTW to SEA with two flights: HAT097 from DTW to PHX on 2024-05-17, and HAT251 from PHX to SEA on 2024-05-17. The passenger is Ivan Smith. The total price is $375, paid with $299 from your certificate and $76 from your credit card. There are no checked bags or travel insurance included. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6670,
+    "output_tokens": 146,
+    "generation_seconds": 10.593372344970703,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

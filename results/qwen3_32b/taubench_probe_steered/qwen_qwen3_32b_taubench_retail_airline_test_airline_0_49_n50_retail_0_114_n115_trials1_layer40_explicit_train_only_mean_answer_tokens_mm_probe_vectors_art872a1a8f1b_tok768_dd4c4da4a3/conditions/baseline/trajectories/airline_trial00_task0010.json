@@ -1,0 +1,2728 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need help with my reservation H9ZU1C - I'd like to remove one of the passengers, Ethan, from the booking.",
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"H9ZU1C\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "H9ZU1C"
+      }
+    },
+    "observation": "{\"reservation_id\": \"H9ZU1C\", \"user_id\": \"mia_kim_4397\", \"origin\": \"MIA\", \"destination\": \"IAH\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"MIA\", \"destination\": \"EWR\", \"flight_number\": \"HAT192\", \"date\": \"2024-05-24\", \"price\": 174}, {\"origin\": \"EWR\", \"destination\": \"IAH\", \"flight_number\": \"HAT166\", \"date\": \"2024-05-25\", \"price\": 125}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Moore\", \"dob\": \"1977-02-03\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}, {\"first_name\": \"Amelia\", \"last_name\": \"Sanchez\", \"dob\": \"1968-08-24\"}], \"payment_history\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 897}], \"created_at\": \"2024-05-01T04:50:18\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"H9ZU1C\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4636,
+    "output_tokens": 26,
+    "generation_seconds": 2.9411916732788086,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation H9ZU1C has three passengers. Unfortunately, I cannot remove a passenger from a reservation as per our policy. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that your reservation H9ZU1C has three passengers. Unfortunately, I cannot remove a passenger from a reservation as per our policy. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?"
+      }
+    },
+    "observation": "Oh, that's disappointing. In that case, can you please cancel this reservation for me? I'll rebook myself afterwards.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation H9ZU1C has three passengers. Unfortunately, I cannot remove a passenger from a reservation as per our policy. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5005,
+    "output_tokens": 71,
+    "generation_seconds": 5.833449363708496,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mia_kim_4397\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "mia_kim_4397"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Mia\", \"last_name\": \"Kim\"}, \"address\": {\"address1\": \"681 Cedar Street\", \"address2\": \"Suite 847\", \"city\": \"Washington\", \"country\": \"USA\", \"state\": \"DC\", \"zip\": \"20017\"}, \"email\": \"mia.kim6850@example.com\", \"dob\": \"1965-06-09\", \"payment_methods\": {\"gift_card_7359776\": {\"source\": \"gift_card\", \"amount\": 39, \"id\": \"gift_card_7359776\"}, \"gift_card_7773485\": {\"source\": \"gift_card\", \"amount\": 203, \"id\": \"gift_card_7773485\"}}, \"saved_passengers\": [{\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"membership\": \"silver\", \"reservations\": [\"C4GP7M\", \"XL2C75\", \"H9ZU1C\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mia_kim_4397\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5111,
+    "output_tokens": 28,
+    "generation_seconds": 3.20788836479187,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"H9ZU1C\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "H9ZU1C"
+      }
+    },
+    "observation": "{\"reservation_id\": \"H9ZU1C\", \"user_id\": \"mia_kim_4397\", \"origin\": \"MIA\", \"destination\": \"IAH\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"MIA\", \"destination\": \"EWR\", \"flight_number\": \"HAT192\", \"date\": \"2024-05-24\", \"price\": 174}, {\"origin\": \"EWR\", \"destination\": \"IAH\", \"flight_number\": \"HAT166\", \"date\": \"2024-05-25\", \"price\": 125}], \"passengers\": [{\"first_name\": \"James\", \"last_name\": \"Moore\", \"dob\": \"1977-02-03\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}, {\"first_name\": \"Amelia\", \"last_name\": \"Sanchez\", \"dob\": \"1968-08-24\"}], \"payment_history\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 897}, {\"payment_id\": \"gift_card_7359776\", \"amount\": -897}], \"created_at\": \"2024-05-01T04:50:18\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"H9ZU1C\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 5408,
+    "output_tokens": 25,
+    "generation_seconds": 3.059741258621216,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation H9ZU1C has been successfully cancelled. The refund will be processed back to your original payment methods in 5 to 7 business days. Let me know if you need help with anything else!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation H9ZU1C has been successfully cancelled. The refund will be processed back to your original payment methods in 5 to 7 business days. Let me know if you need help with anything else!"
+      }
+    },
+    "observation": "Thanks for cancelling that. Actually, I do have another request - I'm looking for a cheap direct flight round trip from New York to the West Coast. I'd be departing May 20 and returning May 25. Can you search for options for me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation H9ZU1C has been successfully cancelled. The refund will be processed back to your original payment methods in 5 to 7 business days. Let me know if you need help with anything else!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5806,
+    "output_tokens": 61,
+    "generation_seconds": 5.483635902404785,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "LAX",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5930,
+    "output_tokens": 43,
+    "generation_seconds": 4.461082220077515,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "SFO",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT023\", \"origin\": \"JFK\", \"destination\": \"SFO\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"20:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 13, \"business\": 11}, \"prices\": {\"basic_economy\": 100, \"economy\": 191, \"business\": 473}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 5986,
+    "output_tokens": 43,
+    "generation_seconds": 4.357294797897339,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "SFO",
+        "destination": "JFK",
+        "date": "2024-05-25"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 6166,
+    "output_tokens": 43,
+    "generation_seconds": 4.486839532852173,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "action": {
+      "name": "search_onestop_flight",
+      "arguments": {
+        "origin": "SFO",
+        "destination": "JFK",
+        "date": "2024-05-25"
+      }
+    },
+    "observation": "[[{\"flight_number\": \"HAT082\", \"origin\": \"SFO\", \"destination\": \"IAH\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 0, \"business\": 3}, \"prices\": {\"basic_economy\": 70, \"economy\": 171, \"business\": 455}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT025\", \"origin\": \"IAH\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"04:00:00\", \"scheduled_arrival_time_est\": \"07:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 7, \"economy\": 10, \"business\": 9}, \"prices\": {\"basic_economy\": 91, \"economy\": 169, \"business\": 261}, \"date\": \"2024-05-26\"}], [{\"flight_number\": \"HAT082\", \"origin\": \"SFO\", \"destination\": \"IAH\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 0, \"business\": 3}, \"prices\": {\"basic_economy\": 70, \"economy\": 171, \"business\": 455}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT068\", \"origin\": \"IAH\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"11:00:00\", \"scheduled_arrival_time_est\": \"14:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 6, \"economy\": 1, \"business\": 3}, \"prices\": {\"basic_economy\": 89, \"economy\": 108, \"business\": 221}, \"date\": \"2024-05-26\"}], [{\"flight_number\": \"HAT082\", \"origin\": \"SFO\", \"destination\": \"IAH\", \"scheduled_departure_time_est\": \"23:00:00\", \"scheduled_arrival_time_est\": \"03:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 11, \"economy\": 0, \"business\": 3}, \"prices\": {\"basic_economy\": 70, \"economy\": 171, \"business\": 455}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT085\", \"origin\": \"IAH\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"06:00:00\", \"scheduled_arrival_time_est\": \"09:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 9, \"business\": 5}, \"prices\": {\"basic_economy\": 89, \"economy\": 115, \"business\": 219}, \"date\": \"2024-05-26\"}], [{\"flight_number\": \"HAT204\", \"origin\": \"SFO\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 13, \"business\": 16}, \"prices\": {\"basic_economy\": 70, \"economy\": 172, \"business\": 212}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT021\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"19:00:00\", \"scheduled_arrival_time_est\": \"01:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 15, \"economy\": 14, \"business\": 19}, \"prices\": {\"basic_economy\": 60, \"economy\": 198, \"business\": 398}, \"date\": \"2024-05-25\"}], [{\"flight_number\": \"HAT204\", \"origin\": \"SFO\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 13, \"business\": 16}, \"prices\": {\"basic_economy\": 70, \"economy\": 172, \"business\": 212}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT089\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"10:00:00\", \"scheduled_arrival_time_est\": \"16:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 1, \"economy\": 2, \"business\": 15}, \"prices\": {\"basic_economy\": 99, \"economy\": 153, \"business\": 377}, \"date\": \"2024-05-25\"}], [{\"flight_number\": \"HAT204\", \"origin\": \"SFO\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 13, \"business\": 16}, \"prices\": {\"basic_economy\": 70, \"economy\": 172, \"business\": 212}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT100\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"13:00:00\", \"scheduled_arrival_time_est\": \"19:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 13, \"economy\": 12, \"business\": 1}, \"prices\": {\"basic_economy\": 97, \"economy\": 176, \"business\": 291}, \"date\": \"2024-05-25\"}], [{\"flight_number\": \"HAT204\", \"origin\": \"SFO\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"08:00:00\", \"scheduled_arrival_time_est\": \"10:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 8, \"economy\": 13, \"business\": 16}, \"prices\": {\"basic_economy\": 70, \"economy\": 172, \"business\": 212}, \"date\": \"2024-05-25\"}, {\"flight_number\": \"HAT276\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"18:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 20, \"business\": 12}, \"prices\": {\"basic_economy\": 55, \"economy\": 162, \"business\": 490}, \"date\": \"2024-05-25\"}]]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_onestop_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_onestop_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "parsed_action_name": "search_onestop_flight",
+    "input_tokens": 6222,
+    "output_tokens": 45,
+    "generation_seconds": 4.599174737930298,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found some one-stop flight options for your return journey from the West Coast to New York on May 25. Here are a few options:\\n\\n1. **HAT082 (SFO to IAH) + HAT025 (IAH to JFK)**\\n   - Departure: 23:00 from SFO on May 25\\n   - Arrival: 03:00+1 at IAH\\n   - Then 04:00 from IAH to JFK\\n   - Arrival: 07:30 at JFK on May 26\\n   - Prices: Basic Economy $70 + $91 = $161\\n\\n2. **HAT082 (SFO to IAH) + HAT068 (IAH to JFK)**\\n   - Departure: 23:00 from SFO on May 25\\n   - Arrival: 03:00+1 at IAH\\n   - Then 11:00 from IAH to JFK\\n   - Arrival: 14:30 at JFK on May 26\\n   - Prices: Basic Economy $70 + $89 = $159\\n\\n3. **HAT204 (SFO to SEA) + HAT021 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 19:00 from SEA to JFK\\n   - Arrival: 01:00+1 at JFK on May 26\\n   - Prices: Basic Economy $70 + $60 = $130\\n\\n4. **HAT204 (SFO to SEA) + HAT089 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 10:00 from SEA to JFK\\n   - Arrival: 16:00 at JFK on May 25\\n   - Prices: Basic Economy $70 + $99 = $169\\n\\n5. **HAT204 (SFO to SEA) + HAT100 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 13:00 from SEA to JFK\\n   - Arrival: 19:00 at JFK on May 25\\n   - Prices: Basic Economy $70 + $97 = $167\\n\\n6. **HAT204 (SFO to SEA) + HAT276 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 18:00 from SEA to JFK\\n   - Arrival: 00:00+1 at JFK on May 26\\n   - Prices: Basic Economy $70 + $55 = $125\\n\\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found some one-stop flight options for your return journey from the West Coast to New York on May 25. Here are a few options:\n\n1. **HAT082 (SFO to IAH) + HAT025 (IAH to JFK)**\n   - Departure: 23:00 from SFO on May 25\n   - Arrival: 03:00+1 at IAH\n   - Then 04:00 from IAH to JFK\n   - Arrival: 07:30 at JFK on May 26\n   - Prices: Basic Economy $70 + $91 = $161\n\n2. **HAT082 (SFO to IAH) + HAT068 (IAH to JFK)**\n   - Departure: 23:00 from SFO on May 25\n   - Arrival: 03:00+1 at IAH\n   - Then 11:00 from IAH to JFK\n   - Arrival: 14:30 at JFK on May 26\n   - Prices: Basic Economy $70 + $89 = $159\n\n3. **HAT204 (SFO to SEA) + HAT021 (SEA to JFK)**\n   - Departure: 08:00 from SFO on May 25\n   - Arrival: 10:00 at SEA\n   - Then 19:00 from SEA to JFK\n   - Arrival: 01:00+1 at JFK on May 26\n   - Prices: Basic Economy $70 + $60 = $130\n\n4. **HAT204 (SFO to SEA) + HAT089 (SEA to JFK)**\n   - Departure: 08:00 from SFO on May 25\n   - Arrival: 10:00 at SEA\n   - Then 10:00 from SEA to JFK\n   - Arrival: 16:00 at JFK on May 25\n   - Prices: Basic Economy $70 + $99 = $169\n\n5. **HAT204 (SFO to SEA) + HAT100 (SEA to JFK)**\n   - Departure: 08:00 from SFO on May 25\n   - Arrival: 10:00 at SEA\n   - Then 13:00 from SEA to JFK\n   - Arrival: 19:00 at JFK on May 25\n   - Prices: Basic Economy $70 + $97 = $167\n\n6. **HAT204 (SFO to SEA) + HAT276 (SEA to JFK)**\n   - Departure: 08:00 from SFO on May 25\n   - Arrival: 10:00 at SEA\n   - Then 18:00 from SEA to JFK\n   - Arrival: 00:00+1 at JFK on May 26\n   - Prices: Basic Economy $70 + $55 = $125\n\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!"
+      }
+    },
+    "observation": "I appreciate the options, but I specifically asked for direct flights. These all have connections. Can you search again for direct flights only?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found some one-stop flight options for your return journey from the West Coast to New York on May 25. Here are a few options:\\n\\n1. **HAT082 (SFO to IAH) + HAT025 (IAH to JFK)**\\n   - Departure: 23:00 from SFO on May 25\\n   - Arrival: 03:00+1 at IAH\\n   - Then 04:00 from IAH to JFK\\n   - Arrival: 07:30 at JFK on May 26\\n   - Prices: Basic Economy $70 + $91 = $161\\n\\n2. **HAT082 (SFO to IAH) + HAT068 (IAH to JFK)**\\n   - Departure: 23:00 from SFO on May 25\\n   - Arrival: 03:00+1 at IAH\\n   - Then 11:00 from IAH to JFK\\n   - Arrival: 14:30 at JFK on May 26\\n   - Prices: Basic Economy $70 + $89 = $159\\n\\n3. **HAT204 (SFO to SEA) + HAT021 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 19:00 from SEA to JFK\\n   - Arrival: 01:00+1 at JFK on May 26\\n   - Prices: Basic Economy $70 + $60 = $130\\n\\n4. **HAT204 (SFO to SEA) + HAT089 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 10:00 from SEA to JFK\\n   - Arrival: 16:00 at JFK on May 25\\n   - Prices: Basic Economy $70 + $99 = $169\\n\\n5. **HAT204 (SFO to SEA) + HAT100 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 13:00 from SEA to JFK\\n   - Arrival: 19:00 at JFK on May 25\\n   - Prices: Basic Economy $70 + $97 = $167\\n\\n6. **HAT204 (SFO to SEA) + HAT276 (SEA to JFK)**\\n   - Departure: 08:00 from SFO on May 25\\n   - Arrival: 10:00 at SEA\\n   - Then 18:00 from SEA to JFK\\n   - Arrival: 00:00+1 at JFK on May 26\\n   - Prices: Basic Economy $70 + $55 = $125\\n\\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 8201,
+    "output_tokens": 759,
+    "generation_seconds": 49.892122745513916,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "SFO",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT023\", \"origin\": \"JFK\", \"destination\": \"SFO\", \"scheduled_departure_time_est\": \"14:00:00\", \"scheduled_arrival_time_est\": \"20:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 20, \"economy\": 13, \"business\": 11}, \"prices\": {\"basic_economy\": 100, \"economy\": 191, \"business\": 473}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 8996,
+    "output_tokens": 43,
+    "generation_seconds": 5.361302375793457,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "SFO",
+        "destination": "JFK",
+        "date": "2024-05-25"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9176,
+    "output_tokens": 43,
+    "generation_seconds": 5.433633804321289,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "SFO",
+        "destination": "JFK",
+        "date": "2024-05-25"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SFO\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9232,
+    "output_tokens": 43,
+    "generation_seconds": 5.434875011444092,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no direct flights available from SFO to JFK on May 25. Would you like me to look for alternative dates or consider one-stop flights for your return journey?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but there are no direct flights available from SFO to JFK on May 25. Would you like me to look for alternative dates or consider one-stop flights for your return journey?"
+      }
+    },
+    "observation": "No, I need those specific dates. Let me clarify - I'm looking for a direct flight from New York to the West Coast on May 20, and then a direct flight back on May 25. Can you search for direct options from either EWR or JFK to any West Coast airport?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but there are no direct flights available from SFO to JFK on May 25. Would you like me to look for alternative dates or consider one-stop flights for your return journey?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 9288,
+    "output_tokens": 58,
+    "generation_seconds": 6.359036445617676,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "EWR",
+        "destination": "LAX",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT041\", \"origin\": \"EWR\", \"destination\": \"LAX\", \"scheduled_departure_time_est\": \"07:00:00\", \"scheduled_arrival_time_est\": \"12:30:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 9, \"economy\": 10, \"business\": 16}, \"prices\": {\"basic_economy\": 86, \"economy\": 196, \"business\": 306}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9417,
+    "output_tokens": 43,
+    "generation_seconds": 5.480329275131226,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 15,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "EWR",
+        "destination": "SFO",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"SFO\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9595,
+    "output_tokens": 43,
+    "generation_seconds": 5.522660970687866,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 16,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"SEA\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "EWR",
+        "destination": "SEA",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"EWR\", \"destination\": \"SEA\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9651,
+    "output_tokens": 42,
+    "generation_seconds": 5.582493782043457,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 17,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "LAX",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"LAX\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9706,
+    "output_tokens": 43,
+    "generation_seconds": 5.655572891235352,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 18,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SEA\", \"date\": \"2024-05-20\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "JFK",
+        "destination": "SEA",
+        "date": "2024-05-20"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT069\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"06:00:00\", \"scheduled_arrival_time_est\": \"12:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 17, \"economy\": 12, \"business\": 3}, \"prices\": {\"basic_economy\": 51, \"economy\": 121, \"business\": 239}}, {\"flight_number\": \"HAT083\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"scheduled_departure_time_est\": \"01:00:00\", \"scheduled_arrival_time_est\": \"07:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 16, \"economy\": 7, \"business\": 3}, \"prices\": {\"basic_economy\": 87, \"economy\": 100, \"business\": 276}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"JFK\", \"destination\": \"SEA\", \"date\": \"2024-05-20\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 9762,
+    "output_tokens": 42,
+    "generation_seconds": 5.614495277404785,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 19,
+    "model_text": "Action:\n{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SEA\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "action": {
+      "name": "search_direct_flight",
+      "arguments": {
+        "origin": "SEA",
+        "destination": "JFK",
+        "date": "2024-05-25"
+      }
+    },
+    "observation": "[{\"flight_number\": \"HAT021\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"19:00:00\", \"scheduled_arrival_time_est\": \"01:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 15, \"economy\": 14, \"business\": 19}, \"prices\": {\"basic_economy\": 60, \"economy\": 198, \"business\": 398}}, {\"flight_number\": \"HAT089\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"10:00:00\", \"scheduled_arrival_time_est\": \"16:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 1, \"economy\": 2, \"business\": 15}, \"prices\": {\"basic_economy\": 99, \"economy\": 153, \"business\": 377}}, {\"flight_number\": \"HAT100\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"13:00:00\", \"scheduled_arrival_time_est\": \"19:00:00\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 13, \"economy\": 12, \"business\": 1}, \"prices\": {\"basic_economy\": 97, \"economy\": 176, \"business\": 291}}, {\"flight_number\": \"HAT276\", \"origin\": \"SEA\", \"destination\": \"JFK\", \"scheduled_departure_time_est\": \"18:00:00\", \"scheduled_arrival_time_est\": \"00:00:00+1\", \"status\": \"available\", \"available_seats\": {\"basic_economy\": 18, \"economy\": 20, \"business\": 12}, \"prices\": {\"basic_economy\": 55, \"economy\": 162, \"business\": 490}}]",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "search_direct_flight",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"search_direct_flight\", \"arguments\": {\"origin\": \"SEA\", \"destination\": \"JFK\", \"date\": \"2024-05-25\"}}",
+    "parsed_action_name": "search_direct_flight",
+    "input_tokens": 10058,
+    "output_tokens": 42,
+    "generation_seconds": 5.6589744091033936,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 20,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I found a few direct flight options for your trip:\\n\\n**Outbound (May 20):**\\n1. **HAT041 (EWR to LAX)**\\n   - Departure: 07:00 from EWR\\n   - Arrival: 12:30 at LAX\\n   - Prices: Basic Economy $86, Economy $196, Business $306\\n\\n2. **HAT069 (JFK to SEA)**\\n   - Departure: 06:00 from JFK\\n   - Arrival: 12:00 at SEA\\n   - Prices: Basic Economy $51, Economy $121, Business $239\\n\\n3. **HAT083 (JFK to SEA)**\\n   - Departure: 01:00 from JFK\\n   - Arrival: 07:00 at SEA\\n   - Prices: Basic Economy $87, Economy $100, Business $276\\n\\n**Return (May 25):**\\n1. **HAT021 (SEA to JFK)**\\n   - Departure: 19:00 from SEA\\n   - Arrival: 01:00+1 at JFK\\n   - Prices: Basic Economy $60, Economy $198, Business $398\\n\\n2. **HAT089 (SEA to JFK)**\\n   - Departure: 10:00 from SEA\\n   - Arrival: 16:00 at JFK\\n   - Prices: Basic Economy $99, Economy $153, Business $377\\n\\n3. **HAT100 (SEA to JFK)**\\n   - Departure: 13:00 from SEA\\n   - Arrival: 19:00 at JFK\\n   - Prices: Basic Economy $97, Economy $176, Business $291\\n\\n4. **HAT276 (SEA to JFK)**\\n   - Departure: 18:00 from SEA\\n   - Arrival: 00:00+1 at JFK\\n   - Prices: Basic Economy $55, Economy $162, Business $490\\n\\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I found a few direct flight options for your trip:\n\n**Outbound (May 20):**\n1. **HAT041 (EWR to LAX)**\n   - Departure: 07:00 from EWR\n   - Arrival: 12:30 at LAX\n   - Prices: Basic Economy $86, Economy $196, Business $306\n\n2. **HAT069 (JFK to SEA)**\n   - Departure: 06:00 from JFK\n   - Arrival: 12:00 at SEA\n   - Prices: Basic Economy $51, Economy $121, Business $239\n\n3. **HAT083 (JFK to SEA)**\n   - Departure: 01:00 from JFK\n   - Arrival: 07:00 at SEA\n   - Prices: Basic Economy $87, Economy $100, Business $276\n\n**Return (May 25):**\n1. **HAT021 (SEA to JFK)**\n   - Departure: 19:00 from SEA\n   - Arrival: 01:00+1 at JFK\n   - Prices: Basic Economy $60, Economy $198, Business $398\n\n2. **HAT089 (SEA to JFK)**\n   - Departure: 10:00 from SEA\n   - Arrival: 16:00 at JFK\n   - Prices: Basic Economy $99, Economy $153, Business $377\n\n3. **HAT100 (SEA to JFK)**\n   - Departure: 13:00 from SEA\n   - Arrival: 19:00 at JFK\n   - Prices: Basic Economy $97, Economy $176, Business $291\n\n4. **HAT276 (SEA to JFK)**\n   - Departure: 18:00 from SEA\n   - Arrival: 00:00+1 at JFK\n   - Prices: Basic Economy $55, Economy $162, Business $490\n\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!"
+      }
+    },
+    "observation": "Perfect! These look good. For the cheapest option, I'd go with HAT069 on May 20 and HAT276 on May 25, both in basic economy. That should give me the best price for a direct round trip. Can you book those for me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I found a few direct flight options for your trip:\\n\\n**Outbound (May 20):**\\n1. **HAT041 (EWR to LAX)**\\n   - Departure: 07:00 from EWR\\n   - Arrival: 12:30 at LAX\\n   - Prices: Basic Economy $86, Economy $196, Business $306\\n\\n2. **HAT069 (JFK to SEA)**\\n   - Departure: 06:00 from JFK\\n   - Arrival: 12:00 at SEA\\n   - Prices: Basic Economy $51, Economy $121, Business $239\\n\\n3. **HAT083 (JFK to SEA)**\\n   - Departure: 01:00 from JFK\\n   - Arrival: 07:00 at SEA\\n   - Prices: Basic Economy $87, Economy $100, Business $276\\n\\n**Return (May 25):**\\n1. **HAT021 (SEA to JFK)**\\n   - Departure: 19:00 from SEA\\n   - Arrival: 01:00+1 at JFK\\n   - Prices: Basic Economy $60, Economy $198, Business $398\\n\\n2. **HAT089 (SEA to JFK)**\\n   - Departure: 10:00 from SEA\\n   - Arrival: 16:00 at JFK\\n   - Prices: Basic Economy $99, Economy $153, Business $377\\n\\n3. **HAT100 (SEA to JFK)**\\n   - Departure: 13:00 from SEA\\n   - Arrival: 19:00 at JFK\\n   - Prices: Basic Economy $97, Economy $176, Business $291\\n\\n4. **HAT276 (SEA to JFK)**\\n   - Departure: 18:00 from SEA\\n   - Arrival: 00:00+1 at JFK\\n   - Prices: Basic Economy $55, Economy $162, Business $490\\n\\nLet me know if you'd like to proceed with booking one of these options or if you need further assistance!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 10602,
+    "output_tokens": 540,
+    "generation_seconds": 36.09708261489868,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 21,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mia_kim_4397\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "mia_kim_4397"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Mia\", \"last_name\": \"Kim\"}, \"address\": {\"address1\": \"681 Cedar Street\", \"address2\": \"Suite 847\", \"city\": \"Washington\", \"country\": \"USA\", \"state\": \"DC\", \"zip\": \"20017\"}, \"email\": \"mia.kim6850@example.com\", \"dob\": \"1965-06-09\", \"payment_methods\": {\"gift_card_7359776\": {\"source\": \"gift_card\", \"amount\": 39, \"id\": \"gift_card_7359776\"}, \"gift_card_7773485\": {\"source\": \"gift_card\", \"amount\": 203, \"id\": \"gift_card_7773485\"}}, \"saved_passengers\": [{\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"membership\": \"silver\", \"reservations\": [\"C4GP7M\", \"XL2C75\", \"H9ZU1C\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"mia_kim_4397\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 11213,
+    "output_tokens": 28,
+    "generation_seconds": 5.211749315261841,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 22,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I need the user ID to proceed with booking the flights. Could you please provide your user ID?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I need the user ID to proceed with booking the flights. Could you please provide your user ID?"
+      }
+    },
+    "observation": "My user ID is mia_kim_4397.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I need the user ID to proceed with booking the flights. Could you please provide your user ID?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 11510,
+    "output_tokens": 37,
+    "generation_seconds": 5.85131311416626,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 23,
+    "model_text": "Action:\n{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 106}, {\"payment_id\": \"gift_card_7773485\", \"amount\": 125}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "action": {
+      "name": "book_reservation",
+      "arguments": {
+        "user_id": "mia_kim_4397",
+        "origin": "JFK",
+        "destination": "SEA",
+        "flight_type": "round_trip",
+        "cabin": "basic_economy",
+        "flights": [
+          {
+            "flight_number": "HAT069",
+            "date": "2024-05-20"
+          },
+          {
+            "flight_number": "HAT276",
+            "date": "2024-05-25"
+          }
+        ],
+        "passengers": [
+          {
+            "first_name": "Mia",
+            "last_name": "Kim",
+            "dob": "1965-06-09"
+          },
+          {
+            "first_name": "Ethan",
+            "last_name": "Lopez",
+            "dob": "1991-11-04"
+          }
+        ],
+        "payment_methods": [
+          {
+            "payment_id": "gift_card_7359776",
+            "amount": 106
+          },
+          {
+            "payment_id": "gift_card_7773485",
+            "amount": 125
+          }
+        ],
+        "total_baggages": 2,
+        "nonfree_baggages": 0,
+        "insurance": "no"
+      }
+    },
+    "observation": "Error: not enough balance in payment method gift_card_7359776",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "book_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 106}, {\"payment_id\": \"gift_card_7773485\", \"amount\": 125}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "parsed_action_name": "book_reservation",
+    "input_tokens": 11569,
+    "output_tokens": 257,
+    "generation_seconds": 19.272891998291016,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 24,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems that the gift card 'gift_card_7359776' does not have enough balance to cover the payment. Would you like to try using a different payment method or adjust the payment allocation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "It seems that the gift card 'gift_card_7359776' does not have enough balance to cover the payment. Would you like to try using a different payment method or adjust the payment allocation?"
+      }
+    },
+    "observation": "I have another gift card - can you use that one instead? I'd prefer to use the smaller gift card first and then the larger one if needed.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems that the gift card 'gift_card_7359776' does not have enough balance to cover the payment. Would you like to try using a different payment method or adjust the payment allocation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 11856,
+    "output_tokens": 61,
+    "generation_seconds": 7.46314811706543,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 25,
+    "model_text": "Action:\n{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7773485\", \"amount\": 203}, {\"payment_id\": \"gift_card_7359776\", \"amount\": 28}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "action": {
+      "name": "book_reservation",
+      "arguments": {
+        "user_id": "mia_kim_4397",
+        "origin": "JFK",
+        "destination": "SEA",
+        "flight_type": "round_trip",
+        "cabin": "basic_economy",
+        "flights": [
+          {
+            "flight_number": "HAT069",
+            "date": "2024-05-20"
+          },
+          {
+            "flight_number": "HAT276",
+            "date": "2024-05-25"
+          }
+        ],
+        "passengers": [
+          {
+            "first_name": "Mia",
+            "last_name": "Kim",
+            "dob": "1965-06-09"
+          },
+          {
+            "first_name": "Ethan",
+            "last_name": "Lopez",
+            "dob": "1991-11-04"
+          }
+        ],
+        "payment_methods": [
+          {
+            "payment_id": "gift_card_7773485",
+            "amount": 203
+          },
+          {
+            "payment_id": "gift_card_7359776",
+            "amount": 28
+          }
+        ],
+        "total_baggages": 2,
+        "nonfree_baggages": 0,
+        "insurance": "no"
+      }
+    },
+    "observation": "Error: payment amount does not add up, total price is 212, but paid 231",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "book_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7773485\", \"amount\": 203}, {\"payment_id\": \"gift_card_7359776\", \"amount\": 28}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "parsed_action_name": "book_reservation",
+    "input_tokens": 11957,
+    "output_tokens": 256,
+    "generation_seconds": 19.402143239974976,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 26,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems there is a discrepancy in the payment amount. The total price for the reservation is $212, but the sum of the amounts you provided is $231. Please adjust the payment amounts to match the total price. Would you like me to help you recalculate?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "It seems there is a discrepancy in the payment amount. The total price for the reservation is $212, but the sum of the amounts you provided is $231. Please adjust the payment amounts to match the total price. Would you like me to help you recalculate?"
+      }
+    },
+    "observation": "I apologize for the confusion. Let me clarify - I want you to use my smaller gift card first to cover what you can, and then apply my larger gift card for the remaining balance. Just split the $212 total between the two however needed.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"It seems there is a discrepancy in the payment amount. The total price for the reservation is $212, but the sum of the amounts you provided is $231. Please adjust the payment amounts to match the total price. Would you like me to help you recalculate?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 12248,
+    "output_tokens": 75,
+    "generation_seconds": 8.509207010269165,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 27,
+    "model_text": "Action:\n{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 39}, {\"payment_id\": \"gift_card_7773485\", \"amount\": 173}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "action": {
+      "name": "book_reservation",
+      "arguments": {
+        "user_id": "mia_kim_4397",
+        "origin": "JFK",
+        "destination": "SEA",
+        "flight_type": "round_trip",
+        "cabin": "basic_economy",
+        "flights": [
+          {
+            "flight_number": "HAT069",
+            "date": "2024-05-20"
+          },
+          {
+            "flight_number": "HAT276",
+            "date": "2024-05-25"
+          }
+        ],
+        "passengers": [
+          {
+            "first_name": "Mia",
+            "last_name": "Kim",
+            "dob": "1965-06-09"
+          },
+          {
+            "first_name": "Ethan",
+            "last_name": "Lopez",
+            "dob": "1991-11-04"
+          }
+        ],
+        "payment_methods": [
+          {
+            "payment_id": "gift_card_7359776",
+            "amount": 39
+          },
+          {
+            "payment_id": "gift_card_7773485",
+            "amount": 173
+          }
+        ],
+        "total_baggages": 2,
+        "nonfree_baggages": 0,
+        "insurance": "no"
+      }
+    },
+    "observation": "{\"reservation_id\": \"HATHAT\", \"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\", \"price\": 51, \"origin\": \"JFK\", \"destination\": \"SEA\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\", \"price\": 55, \"origin\": \"SEA\", \"destination\": \"JFK\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_history\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 39}, {\"payment_id\": \"gift_card_7773485\", \"amount\": 173}], \"created_at\": \"2024-05-15T15:00:00\", \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "book_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"book_reservation\", \"arguments\": {\"user_id\": \"mia_kim_4397\", \"origin\": \"JFK\", \"destination\": \"SEA\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"flight_number\": \"HAT069\", \"date\": \"2024-05-20\"}, {\"flight_number\": \"HAT276\", \"date\": \"2024-05-25\"}], \"passengers\": [{\"first_name\": \"Mia\", \"last_name\": \"Kim\", \"dob\": \"1965-06-09\"}, {\"first_name\": \"Ethan\", \"last_name\": \"Lopez\", \"dob\": \"1991-11-04\"}], \"payment_methods\": [{\"payment_id\": \"gift_card_7359776\", \"amount\": 39}, {\"payment_id\": \"gift_card_7773485\", \"amount\": 173}], \"total_baggages\": 2, \"nonfree_baggages\": 0, \"insurance\": \"no\"}}",
+    "parsed_action_name": "book_reservation",
+    "input_tokens": 12384,
+    "output_tokens": 256,
+    "generation_seconds": 19.570985794067383,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 28,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation HATHAT has been successfully booked! Here are the details:\\n\\n**Flights:**\\n- Outbound: HAT069 from JFK to SEA on May 20, 2024 (Price: $51)\\n- Return: HAT276 from SEA to JFK on May 25, 2024 (Price: $55)\\n\\n**Passengers:**\\n- Mia Kim\\n- Ethan Lopez\\n\\n**Payment:**\\n- $39 from gift card 'gift_card_7359776'\\n- $173 from gift card 'gift_card_7773485'\\n\\n**Baggage:**\\n- 2 free checked bags (based on your silver membership and economy cabin class)\\n\\n**Insurance:**\\n- Not purchased\\n\\nLet me know if you need any further assistance!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation HATHAT has been successfully booked! Here are the details:\n\n**Flights:**\n- Outbound: HAT069 from JFK to SEA on May 20, 2024 (Price: $51)\n- Return: HAT276 from SEA to JFK on May 25, 2024 (Price: $55)\n\n**Passengers:**\n- Mia Kim\n- Ethan Lopez\n\n**Payment:**\n- $39 from gift card 'gift_card_7359776'\n- $173 from gift card 'gift_card_7773485'\n\n**Baggage:**\n- 2 free checked bags (based on your silver membership and economy cabin class)\n\n**Insurance:**\n- Not purchased\n\nLet me know if you need any further assistance!"
+      }
+    },
+    "observation": "Wait, I notice Ethan Lopez is listed as a passenger on this new booking. I only want myself on this reservation - can you remove him?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation HATHAT has been successfully booked! Here are the details:\\n\\n**Flights:**\\n- Outbound: HAT069 from JFK to SEA on May 20, 2024 (Price: $51)\\n- Return: HAT276 from SEA to JFK on May 25, 2024 (Price: $55)\\n\\n**Passengers:**\\n- Mia Kim\\n- Ethan Lopez\\n\\n**Payment:**\\n- $39 from gift card 'gift_card_7359776'\\n- $173 from gift card 'gift_card_7773485'\\n\\n**Baggage:**\\n- 2 free checked bags (based on your silver membership and economy cabin class)\\n\\n**Insurance:**\\n- Not purchased\\n\\nLet me know if you need any further assistance!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 12969,
+    "output_tokens": 211,
+    "generation_seconds": 17.074960470199585,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 29,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I cannot remove a passenger from a reservation. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I cannot remove a passenger from a reservation. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?"
+      }
+    },
+    "observation": "This is frustrating - I specifically asked to travel alone. Can you cancel this booking so I can rebook just for myself?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mia_kim_4397",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "H9ZU1C"
+            }
+          },
+          {
+            "name": "book_reservation",
+            "kwargs": {
+              "user_id": "mia_kim_4397",
+              "origin": "JFK",
+              "destination": "SEA",
+              "flight_type": "round_trip",
+              "cabin": "basic_economy",
+              "flights": [
+                {
+                  "flight_number": "HAT069",
+                  "date": "2024-05-20"
+                },
+                {
+                  "flight_number": "HAT276",
+                  "date": "2024-05-25"
+                }
+              ],
+              "passengers": [
+                {
+                  "first_name": "Mia",
+                  "last_name": "Kim",
+                  "dob": "1965-06-09"
+                }
+              ],
+              "payment_methods": [
+                {
+                  "payment_id": "gift_card_7359776",
+                  "amount": 39
+                },
+                {
+                  "payment_id": "gift_card_7773485",
+                  "amount": 67
+                }
+              ],
+              "total_baggages": 1,
+              "nonfree_baggages": 0,
+              "insurance": "no"
+            }
+          }
+        ],
+        "instruction": "Your user id is mia_kim_4397 and you want to remove Ethan from you reservation H9ZU1C. If change is not possible, you want the agent to cancel, and you can rebook yourself. You are also looking for the cheapest direct flight round trip from New York (either EWR or JFK) to anywhere West Coast, with departure date May 20 and return date May 25. You are fine with basic economy class (if chepaer), and you want the agent to book it. You want to first use up your smaller GC and then the larger one. Would want to use all your free baggage allowance but no insurance. Your DOB is in your user profile and you do not want to speak it. You also wonder why cancellation does not refund to GC now.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I cannot remove a passenger from a reservation. The number of passengers cannot be modified, even by a human agent. Would you like me to assist with anything else?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 13218,
+    "output_tokens": 55,
+    "generation_seconds": 7.644648790359497,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

@@ -1,0 +1,321 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need to plan a 7-day solo trip starting in Los Angeles and including visits to 3 different cities in Florida, from March 22nd to March 28th, 2022. The budget for this trip should not exceed $4,700.
+
+Reference information:
+### Attractions in Fort Myers
+                              Name  Latitude  Longitude                                                                              Address          Phone                                                                   Website       City
+      Edison & Ford Winter Estates 26.633894 -81.880091                                        2350 McGregor Blvd, Fort Myers, FL 33901, USA (239) 334-7419                                  https://www.edisonfordwinterestates.org/ Fort Myers
+                    River District 26.644968 -81.868735                                        2180 First St #510, Fort Myers, FL 33901, USA        Unknown                                          https://www.myriverdistrict.com/ Fort Myers
+  Six Mile Cypress Slough Preserve 26.570541 -81.826563                                        7751 Penzance Blvd, Fort Myers, FL 33966, USA (239) 533-7550                                           https://www.sloughpreserve.org/ Fort Myers
+     IMAG History & Science Center 26.640431 -81.859454                                         2000 Cranford Ave, Fort Myers, FL 33916, USA (239) 243-0043                                                   http://www.theimag.org/ Fort Myers
+Calusa Nature Center & Planetarium 26.615671 -81.812469                                            3450 Ortiz Ave, Fort Myers, FL 33905, USA (239) 275-3435                                              http://www.calusanature.org/ Fort Myers
+                      Manatee Park 26.693153 -81.777554                                     10901 Palm Beach Blvd, Fort Myers, FL 33905, USA (239) 690-5030                            https://www.leegov.com/parks/parks/manateepark Fort Myers
+                   Centennial Park 26.643718 -81.874071                                           2000 W First St, Fort Myers, FL 33901, USA (239) 321-7524                                                                   Unknown Fort Myers
+                        Lakes Park 26.528064 -81.876818                                         7330 Gladiolus Dr, Fort Myers, FL 33908, USA (239) 533-7575                               http://www.leegov.com/parks/parks/lakespark Fort Myers
+             Lovers Key State Park 26.391327 -81.869141                                    8700 Estero Blvd, Fort Myers Beach, FL 33931, USA (239) 463-4588                         https://www.floridastateparks.org/park/Lovers-Key Fort Myers
+                     Shell Factory 26.705731 -81.898044                                2787 N Tamiami Trail, North Fort Myers, FL 33903, USA (239) 995-2141                                             https://www.shellfactory.com/ Fort Myers
+                  North Shore Park 26.657574 -81.882838                               13001 N Cleveland Ave, North Fort Myers, FL 33903, USA (239) 357-5443                             https://www.leegov.com/parks/parks/northshore Fort Myers
+                       Mound House 26.446123 -81.927753                                  451 Connecticut St, Fort Myers Beach, FL 33931, USA (239) 765-0865                                                http://www.moundhouse.org/ Fort Myers
+                    Riverside Park 26.657114 -81.853000                                       3061 E Riverside Dr, Fort Myers, FL 33916, USA (239) 321-7000 https://www.cityftmyers.com/facilities/facility/details/Riverside-Park-33 Fort Myers
+            Escape Room Adventures 26.552500 -81.870556                                12995 S Cleveland Ave #217, Fort Myers, FL 33907, USA (239) 689-6979                                      http://www.escaperoomadventures.com/ Fort Myers
+ The Shell Factory and Nature Park 26.705989 -81.897047 16554 North Cleveland Avenue, 41 N Tamiami Trail US, North Fort Myers, FL 33903, USA (239) 995-2141                                             https://www.shellfactory.com/ Fort Myers
+                        Snell Park 26.623662 -81.887050                                         2920 Valencia Way, Fort Myers, FL 33901, USA (239) 321-7530     https://www.cityftmyers.com/facilities/facility/details/Snell-Park-37 Fort Myers
+               Bowditch Point Park 26.463961 -81.966886                                      50 Estero Blvd, Fort Myers Beach, FL 33931, USA (239) 765-6794                        https://www.leegov.com/parks/beaches/bowditchpoint Fort Myers
+                     Clemente Park 26.641997 -81.847628                        3265 Dr Martin Luther King Jr Blvd, Fort Myers, FL 33916, USA        Unknown                                                                   Unknown Fort Myers
+          Sky Zone Trampoline Park 26.614373 -81.801369                                           9370 Dynasty Dr, Fort Myers, FL 33905, USA (239) 344-8244                                    https://www.skyzone.com/northfortmyers Fort Myers
+                   Vivas Palm Park 26.646758 -81.868619                                           2414 Edwards Dr, Fort Myers, FL 33901, USA (239) 931-7027  https://www.cityftmyers.com/Facilities/Facility/Details/Park-of-Palms-32 Fort Myers
+
+### Restaurants in Fort Myers
+                             Name  Average Cost                                             Cuisines  Aggregate Rating       City
+                     The Refinery            22                              Bakery, Indian, Seafood               4.0 Fort Myers
+                Al Mukhtar Bakery            54                         BBQ, Tea, American, Desserts               4.2 Fort Myers
+                          Haunted            50           Desserts, French, Fast Food, Cafe, Seafood               3.8 Fort Myers
+                  Eggers Madhouse            76                          BBQ, Mediterranean, Seafood               4.0 Fort Myers
+                     Maachh Bhaat            66   Desserts, Pizza, Fast Food, Mediterranean, Seafood               3.4 Fort Myers
+                    Kujay's Spoon            88 Pizza, Mexican, Bakery, Cafe, Mediterranean, Seafood               0.0 Fort Myers
+                 Enter The Dragon            93                                   Tea, Chinese, Cafe               3.4 Fort Myers
+ Puran Chand Ambala Wale Di Hatti            36                 Bakery, BBQ, Cafe, American, Seafood               3.3 Fort Myers
+                     Garam Masala            63                             Tea, Desserts, Fast Food               0.0 Fort Myers
+                       Haldiram's            43                             Tea, Cafe, Mediterranean               3.7 Fort Myers
+                   Taste of India            65                       Bakery, Mexican, BBQ, Desserts               0.0 Fort Myers
+                     Gujjar Dhaba            22                       Tea, French, Bakery, BBQ, Cafe               0.0 Fort Myers
+                      Cafe Turtle            30           Desserts, Cafe, Bakery, Fast Food, Chinese               3.2 Fort Myers
+          Sardar A Pure Meat Shop            28                               Chinese, Bakery, Pizza               3.4 Fort Myers
+                Urban Garden Cafe            77                     Tea, Cafe, BBQ, Chinese, Seafood               3.1 Fort Myers
+                          Mr. Sub            17           Pizza, Bakery, Fast Food, Chinese, Seafood               3.5 Fort Myers
+                 Kitchen of Awadh            88      Desserts, Italian, Cafe, Mediterranean, Seafood               3.4 Fort Myers
+   The Library - The Leela Palace            24                     Bakery, Pizza, American, Seafood               3.7 Fort Myers
+Orient Express - Taj Palace Hotel            48                          French, Pizza, Bakery, Cafe               4.0 Fort Myers
+  Moti Mahal Delux Tandoori Trail            32                     Desserts, Tea, French, BBQ, Cafe               2.2 Fort Myers
+              Hari Om Bhojanalaya            49                        Fast Food, Cafe, BBQ, Seafood               3.4 Fort Myers
+                            Giani            12              Desserts, Tea, Bakery, Chinese, Seafood               0.0 Fort Myers
+                       Red Chilli            28                      French, BBQ, Seafood, Fast Food               0.0 Fort Myers
+       Hungry House Pizzas & More            15            Tea, Italian, Fast Food, Chinese, Seafood               3.4 Fort Myers
+               Delicious Treasure            25           Desserts, Tea, French, Fast Food, American               0.0 Fort Myers
+                         Gymkhana           100                             Chinese, Bakery, Seafood               4.7 Fort Myers
+
+### Accommodations in Fort Myers
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+   Quiet and beautiful apartment near central park  930.0 Entire home/apt                         No parties & No smoking             7.0                  9                 2.0 Fort Myers
+                  Great room in Greenwich Village!  133.0    Private room                                     No visitors             1.0                  1                 4.0 Fort Myers
+ Basement suite in Bushwick, 4 minutes from the M!  193.0    Private room               No children under 10 & No parties             3.0                  2                 3.0 Fort Myers
+     Large one bed room pied a terre in Park Slope  903.0 Entire home/apt                            No pets & No smoking            30.0                  2                 4.0 Fort Myers
+   Beautiful & sunny large room in a gorgeous apt.  414.0    Private room                                      No smoking            30.0                  2                 5.0 Fort Myers
+   Spacious 1 Bedroom in the Heart of Williamsburg  623.0 Entire home/apt  No children under 10 & No smoking & No parties             1.0                  2                 2.0 Fort Myers
+ Private Apt in Queens NYC/less 5min walk to train  446.0 Entire home/apt                            No pets & No parties             5.0                  4                 4.0 Fort Myers
+                                Brooklyn Apartment  739.0    Private room               No smoking & No children under 10             6.0                  2                 3.0 Fort Myers
+Spacious and Cozy apartment, minutes to Manhattan! 1019.0    Private room               No children under 10 & No smoking             2.0                  2                 5.0 Fort Myers
+ Lovely room with private bathroom, near Manhattan  681.0    Private room                                      No parties             1.0                  1                 1.0 Fort Myers
+  Lower East Side, Bohemian Home, hipster location  783.0    Private room                                      No parties             3.0                  2                 2.0 Fort Myers
+               Studio Apartment in Upper East Side  366.0 Entire home/apt No children under 10 & No visitors & No parties             7.0                  3                 5.0 Fort Myers
+                       La Quinta Central Park West  327.0    Private room                                      No parties             1.0                  2                 5.0 Fort Myers
+       Medical Student Room A : Brooklyn Hospitals  508.0    Private room                                      No smoking            30.0                  2                 2.0 Fort Myers
+                       East Village~Organic Living  984.0 Entire home/apt               No children under 10 & No parties             2.0                  2                 5.0 Fort Myers
+
+### Attractions in Jacksonville
+                                           Name  Latitude  Longitude                                            Address          Phone                                                                                                                Website         City
+                   Jacksonville Zoo and Gardens 30.402224 -81.643258          370 Zoo Pkwy, Jacksonville, FL 32218, USA (904) 757-4463                                                                                        http://www.jacksonvillezoo.org/ Jacksonville
+                            Southbank Riverwalk 30.320148 -81.656499       1001 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489                                               http://downtownjacksonville.org/locations/l-100-southbank-riverwalk.aspx Jacksonville
+             MOSH (Museum Of Science & History) 30.318865 -81.659767       1025 Museum Cir, Jacksonville, FL 32207, USA (904) 396-6674                                                                                                    http://themosh.org/ Jacksonville
+                        Tree Hill Nature Center 30.333425 -81.582786     7152 Lone Star Rd, Jacksonville, FL 32211, USA (904) 724-4646                                                                                               http://www.treehill.org/ Jacksonville
+                            Kingsley Plantation 30.439890 -81.437809    11676 Palmetto Ave, Jacksonville, FL 32226, USA (904) 251-3537                                                          https://www.nps.gov/timu/learn/historyculture/kp_visiting.htm Jacksonville
+                       Kathryn Abbey Hanna Park 30.370925 -81.406772     500 Wonderwood Dr, Jacksonville, FL 32233, USA (904) 255-6767 http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/kathryn-abbey-hanna-park.aspx Jacksonville
+                       Castaway Island Preserve 30.296129 -81.437688   2885 San Pablo Rd S, Jacksonville, FL 32225, USA (904) 630-2489                                                                https://www.timucuanparks.org/castaway-island-preserve/ Jacksonville
+     Jacksonville Arboretum & Botanical Gardens 30.346136 -81.539776       1445 Millcoe Rd, Jacksonville, FL 32225, USA (904) 318-4342                                                                                  http://www.jacksonvillearboretum.org/ Jacksonville
+         Fort George Island Cultural State Park 30.423938 -81.431332  12241 Fort George Rd, Jacksonville, FL 32226, USA (904) 251-2320                              https://www.floridastateparks.org/parks-and-trails/fort-george-island-cultural-state-park Jacksonville
+                 Cummer Museum of Art & Gardens 30.315138 -81.676955     829 Riverside Ave, Jacksonville, FL 32204, USA (904) 356-6857                                                                                           http://www.cummermuseum.org/ Jacksonville
+                      James Weldon Johnson Park 30.328937 -81.659251       135 W Monroe St, Jacksonville, FL 32202, USA (904) 515-5098                                                                             https://jamesweldonjohnsonpark.org/events/ Jacksonville
+       The Catty Shack Ranch Wildlife Sanctuary 30.493178 -81.587492      1860 Starratt Rd, Jacksonville, FL 32226, USA (904) 757-3603                                                                                                https://cattyshack.org/ Jacksonville
+                    Shipwreck Island Water Park 30.287439 -81.411742 1944 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 246-4386                                https://jacksonville-beach.adventurelanding.com/attractions/shipwreck-island-waterpark/ Jacksonville
+                                 Beaches Museum 30.288558 -81.392760  381 Beach Blvd, Jacksonville Beach, FL 32250, USA (904) 241-5657                                                                                              http://beachesmuseum.org/ Jacksonville
+MOCA (Museum Of Contemporary Art), Jacksonville 30.329278 -81.658408        333 N Laura St, Jacksonville, FL 32202, USA (904) 366-6911                                                                                       http://mocajacksonville.unf.edu/ Jacksonville
+                         Huguenot Memorial Park 30.411009 -81.420488    10980 Heckscher Dr, Jacksonville, FL 32226, USA (904) 255-4255   http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/huguenot-memorial-park.aspx Jacksonville
+    Timucuan Ecological and Historical Preserve 30.454458 -81.449872  12713 Ft Caroline Rd, Jacksonville, FL 32225, USA (904) 641-7155                                                                                     https://www.nps.gov/timu/index.htm Jacksonville
+                     Walter Jones Historic Park 30.165363 -81.646456     11964 Mandarin Rd, Jacksonville, FL 32223, USA (904) 268-0784                                                       http://www.mandarinmuseum.net/visit/walter-jones-historical-park Jacksonville
+                     Museum of Southern History 30.282964 -81.713753      4304 Herschel St, Jacksonville, FL 32210, USA (904) 750-1950                                                                                 https://www.museumsouthernhistory.com/ Jacksonville
+                            Friendship Fountain 30.320018 -81.659820       1015 Museum Cir, Jacksonville, FL 32207, USA (904) 630-2489     http://www.coj.net/departments/parks-and-recreation/recreation-and-community-programming/parks/friendship-fountain Jacksonville
+
+### Restaurants in Jacksonville
+                            Name  Average Cost                                                 Cuisines  Aggregate Rating         City
+                   Villa Gargano            51                                  Tea, American, Desserts               3.7 Jacksonville
+       Pirates' House Restaurant            59                                      Chinese, Pizza, BBQ               3.8 Jacksonville
+  Goose Feathers Cafe and Bakery            57                                  Tea, Fast Food, Italian               4.2 Jacksonville
+               Ashoka Restaurant            11                Desserts, Mexican, Bakery, BBQ, Fast Food               2.9 Jacksonville
+                   Sanjha Chulha            57                                         Tea, Bakery, BBQ               3.3 Jacksonville
+                  Touch of Spice            70                          French, Bakery, Indian, Seafood               0.0 Jacksonville
+                           Giani            37                             Tea, Seafood, BBQ, Fast Food               3.4 Jacksonville
+                            Tpot            84                                 Tea, Cafe, American, BBQ               3.2 Jacksonville
+                       Oh! Fudge            26                      French, Bakery, American, Fast Food               3.8 Jacksonville
+Midnight Cravings Beyond Control            73                      Tea, Bakery, Mediterranean, Seafood               3.3 Jacksonville
+                Pirates of Grill            65                                   Tea, Chinese, Desserts               4.1 Jacksonville
+                       Keventers            96                  Tea, American, Mediterranean, Fast Food               3.6 Jacksonville
+              Pizza Hut Delivery            35          Tea, Pizza, Fast Food, Chinese, Indian, Seafood               2.7 Jacksonville
+                     Sna-X Point            50                              Seafood, BBQ, Cafe, Italian               3.2 Jacksonville
+              Nehra's Food Point            24                 Seafood, Pizza, Mediterranean, Fast Food               0.0 Jacksonville
+                   Ginger Garlic            28         Desserts, Tea, Pizza, French, Fast Food, Chinese               2.8 Jacksonville
+                  The Spice Room            68                                      Cafe, American, BBQ               3.4 Jacksonville
+                  The Pastry Hut            82                        Tea, Pizza, Italian, Bakery, Cafe               2.9 Jacksonville
+                  Kathi Junction            21             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.0 Jacksonville
+                   Kobe Sizzlers            93                                 Pizza, Indian, Fast Food               3.7 Jacksonville
+                The Cake Gallery            71                            Tea, Pizza, French, BBQ, Cafe               3.3 Jacksonville
+             Nathu's Pastry Shop            59              Desserts, Pizza, Fast Food, Indian, Seafood               3.8 Jacksonville
+                     Metro Grill            83                                     Tea, Pizza, Desserts               3.4 Jacksonville
+                   Pind Balluchi            89                                     Bakery, BBQ, Seafood               3.6 Jacksonville
+                   Biryani Blues            93                                       Tea, French, Pizza               4.0 Jacksonville
+          Chicken Biryani Centre            55                          Fast Food, Cafe, Pizza, Italian               0.0 Jacksonville
+   Bravo Diet Food and Nutrition            34                 Desserts, Tea, Bakery, American, Seafood               3.0 Jacksonville
+                        Al-Malik            32                       Mediterranean, Desserts, Fast Food               3.2 Jacksonville
+          Novelty Chicken Corner            76                                  Tea, Fast Food, Italian               3.3 Jacksonville
+                   Drool Waffles            59                        Desserts, Tea, Mexican, BBQ, Cafe               3.1 Jacksonville
+   Diva - The Italian Restaurant            32                                     Bakery, BBQ, Seafood               3.8 Jacksonville
+               Chhalava - 鯻_Lava            51 Desserts, Tea, Fast Food, Indian, Mediterranean, Seafood               4.4 Jacksonville
+                      McDonald's            15                           Tea, Indian, Desserts, Italian               3.8 Jacksonville
+           Secular House Canteen            64               Desserts, BBQ, Fast Food, Chinese, Seafood               3.8 Jacksonville
+        Aggarwal Bikaneri Sweets            38                       Bakery, BBQ, Cafe, Indian, Seafood               2.9 Jacksonville
+        Al Naseem Foods Shawarma            24                                    Cafe, Pizza, American               0.0 Jacksonville
+      OCD - Online Cake Delivery            34                      Cafe, American, Desserts, Fast Food               0.0 Jacksonville
+             Puja Sandwich House            71                                   French, Cafe, Desserts               0.0 Jacksonville
+                        Oberoi's            75                                  Mexican, Pizza, Seafood               3.6 Jacksonville
+     Sha-O-Lin Chinese Fast Food            72                  Desserts, Italian, Bakery, BBQ, Seafood               0.0 Jacksonville
+                         Mr. Sub            23                            Pizza, American, BBQ, Seafood               0.0 Jacksonville
+                          Mitraz            65                                          Pizza, Desserts               3.4 Jacksonville
+        Snaxpress Tastes & Cakes            19               Bakery, Fast Food, Cafe, American, Seafood               2.9 Jacksonville
+           JMD Family Restaurant            78                     Pizza, Mexican, BBQ, Fast Food, Cafe               0.0 Jacksonville
+                Green Chick Chop            65                          Fast Food, Bakery, BBQ, Seafood               3.0 Jacksonville
+                     TLC Kitchen            91                                         Pizza, Fast Food               0.0 Jacksonville
+                     Shyam Rasoi            52           Tea, Bakery, Fast Food, Mediterranean, Seafood               0.0 Jacksonville
+                       Keventers            67                                         Pizza, Fast Food               0.0 Jacksonville
+                Zaika Restaurant            92                   Desserts, Tea, Pizza, Mexican, Seafood               0.0 Jacksonville
+                       PK Shoppe            41               Desserts, Cafe, Chinese, American, Seafood               2.7 Jacksonville
+                           Pash!            32                                Cafe, Pizza, BBQ, Seafood               3.1 Jacksonville
+              Chakhna Food Point            35                                         Bakery, Desserts               2.9 Jacksonville
+                     Food Scouts            36                Tea, Pizza, French, Bakery, BBQ, American               4.4 Jacksonville
+ India Grill - Hilton Garden Inn            89             Desserts, Pizza, BBQ, Mediterranean, Seafood               3.6 Jacksonville
+        A-One Green Sweet Corner            30                             Cafe, Bakery, Pizza, Seafood               2.9 Jacksonville
+              Bharat Sweet House            69                Cafe, Italian, Bakery, Fast Food, Chinese               3.2 Jacksonville
+                   Dosa Junction            21               Tea, Italian, French, BBQ, Fast Food, Cafe               0.0 Jacksonville
+       Guru Kripa Chicken Corner            92                      Desserts, BBQ, Bakery, Cafe, Indian               0.0 Jacksonville
+                     Madras Cafe            81                 Bakery, Indian, Mediterranean, Fast Food               0.0 Jacksonville
+            Faeem Chicken Corner            46                                          Bakery, Seafood               0.0 Jacksonville
+                      Grill King            24                 Pizza, BBQ, Cafe, Mediterranean, Seafood               3.0 Jacksonville
+           Deez Biryani & Kebabs            99                        Chinese, French, Bakery, Desserts               3.5 Jacksonville
+                         Burnout            52                                    Tea, Bakery, Desserts               3.6 Jacksonville
+                Talaga Sampireun            19             Pizza, BBQ, Fast Food, Indian, Mediterranean               4.9 Jacksonville
+                       San Carlo            77                           French, Mexican, Bakery, Pizza               4.3 Jacksonville
+
+### Accommodations in Jacksonville
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number         city
+                 Huge Loft - Heart of Williamsburg  518.0 Entire home/apt                                      No smoking             2.0                  4                 3.0 Jacksonville
+         Bright & Spacious 1br in the Heart of UWS  561.0 Entire home/apt No parties & No visitors & No children under 10             3.0                  3                 3.0 Jacksonville
+                           Modern high-end studio!  541.0 Entire home/apt                                      No parties             2.0                  3                 3.0 Jacksonville
+            NYC Sanctuary, Skyline Views & Rooftop  954.0 Entire home/apt                                      No smoking             3.0                  6                 5.0 Jacksonville
+             Sunny room in cozy Bushwick apartment  897.0    Private room                                     No visitors             3.0                  2                 4.0 Jacksonville
+                    Cute Studio near Prospect Park  256.0 Entire home/apt                                     No visitors             1.0                  2                 3.0 Jacksonville
+          G1 Newly Renovated Long Island City Room 1130.0    Private room                                      No parties             1.0                  1                 2.0 Jacksonville
+                          2BR  Apt - 20min to Soho  938.0 Entire home/apt                                         No pets             3.0                  2                 2.0 Jacksonville
+                     Private Bedroom in Greenpoint  169.0    Private room               No parties & No children under 10             2.0                  2                 4.0 Jacksonville
+  ♛ Private & Beautiful West Village Townhouse 2BR  730.0 Entire home/apt                                     No visitors             5.0                  6                 2.0 Jacksonville
+                        Lovely New York Guest Room 1138.0    Private room                                         No pets             1.0                  1                 5.0 Jacksonville
+                                A Cozy Harlem Stay  373.0    Private room                                         No pets            30.0                  2                 2.0 Jacksonville
+      Cozy, quiet and location, location, location  125.0 Entire home/apt                         No smoking & No parties             4.0                  3                 4.0 Jacksonville
+                          Beautiful Bay Ridge room  390.0    Private room                  No pets & No children under 10             6.0                  2                 1.0 Jacksonville
+      Design-Infused Two Bed Beauty in Fort Greene  942.0 Entire home/apt               No parties & No children under 10             3.0                  2                 1.0 Jacksonville
+ Charming attic Room in Home + Backyard/Near Metro  249.0    Private room                            No parties & No pets             3.0                  2                 1.0 Jacksonville
+Huge Room in Upper West close to Columbia & Subway  260.0    Private room  No parties & No children under 10 & No smoking             4.0                  1                 4.0 Jacksonville
+ Sunny, Quiet Oasis w/ Elevator - Close to Subway!  383.0    Private room                            No pets & No parties             3.0                  1                 5.0 Jacksonville
+                    Great room near Chelsea market  800.0    Private room              No visitors & No children under 10             1.0                  1                 3.0 Jacksonville
+                          Gem off of Prospect Park  534.0    Private room                                      No parties             2.0                  1                 5.0 Jacksonville
+               Large sunny room queen bed &balcony  412.0    Private room                                         No pets             1.0                  2                 2.0 Jacksonville
+                              Next to Central Park  913.0    Private room                        No visitors & No smoking             2.0                  1                 2.0 Jacksonville
+                 Gorgeous Garden Apt Steps To Park 1176.0 Entire home/apt                                      No smoking             1.0                  4                 4.0 Jacksonville
+
+### Attractions in Orlando
+                                              Name  Latitude  Longitude                                            Address          Phone                                                                                                                                Website    City
+                                  SeaWorld Orlando 28.411042 -81.461227          7007 Sea World Dr, Orlando, FL 32821, USA (407) 545-5550                                                                                                          https://seaworld.com/orlando/ Orlando
+                            The Wheel at ICON Park 28.443281 -81.468316                             Orlando, FL 32819, USA (407) 601-7907                                                                                     https://iconparkorlando.com/attractions/the-wheel/ Orlando
+                      Fun Spot America Theme Parks 28.465418 -81.455557          5700 Fun Spot Way, Orlando, FL 32819, USA (407) 363-3867                                                                                                               http://www.fun-spot.com/ Orlando
+                           Madame Tussauds Orlando 28.443763 -81.468606      8387 International Dr, Orlando, FL 32819, USA (855) 450-0581                                                                                                https://www.madametussauds.com/orlando/ Orlando
+                       Ripley's Believe It or Not! 28.446211 -81.470400      8201 International Dr, Orlando, FL 32819, USA (407) 345-0501                                                                                                         http://www.ripleys.com/orlando Orlando
+                          Universal Orlando Resort 28.472353 -81.469003        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                                                             https://www.universalorlando.com/web/en/us Orlando
+                               Harry P Leu Gardens 28.569760 -81.356380          1920 N Forest Ave, Orlando, FL 32803, USA (407) 246-2620                                                                                                             http://www.leugardens.org/ Orlando
+                                     Seuss Landing 28.474321 -81.467819        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                            https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure Orlando
+The Wizarding World of Harry Potter - Diagon Alley 28.479612 -81.469375        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000      https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida/the-wizarding-world-of-harry-potter-diagon-alley Orlando
+   The Wizarding World of Harry Potter - Hogsmeade 28.472746 -81.472626        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000              https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure/the-wizarding-world-of-harry-potter-hogsmeade Orlando
+                        Crayola Experience Orlando 28.444874 -81.391740  8001 S Orange Blossom Trl, Orlando, FL 32809, USA (407) 757-1700                                                                                             https://www.crayolaexperience.com/orlando/ Orlando
+                         SEA LIFE Orlando Aquarium 28.442588 -81.468568      8449 International Dr, Orlando, FL 32819, USA (855) 450-0680                                                                                                  https://www.visitsealife.com/orlando/ Orlando
+                               WonderWorks Orlando 28.433743 -81.471528      9067 International Dr, Orlando, FL 32819, USA (407) 351-8800                                                                                                     http://www.wonderworksorlando.com/ Orlando
+                         Universal Studios Florida 28.479375 -81.468542        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000 https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida?utm_source=google&utm_medium=organic&utm_campaign=GMB Orlando
+                 Magical Midway Arcade & SlingShot 28.456953 -81.470116      7001 International Dr, Orlando, FL 32819, USA (407) 370-5353                                                                                                    https://magicalmidwayslingshot.com/ Orlando
+                                 Orlando Starflyer 28.444872 -81.469969      8265 International Dr, Orlando, FL 32819, USA (407) 640-7009                                                                                                                  http://starflyer.com/ Orlando
+                            Orlando Science Center 28.572263 -81.368264         777 E Princeton St, Orlando, FL 32803, USA (407) 514-2000                                                                                                                   https://www.osc.org/ Orlando
+                                 The Simpsons Ride 28.479510 -81.467616        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                            https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/the-simpsons-ride Orlando
+            Harry Potter and the Forbidden Journey 28.472103 -81.473724                             Orlando, FL 32819, USA (407) 363-8000                       https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/harry-potter-and-the-forbidden-journey Orlando
+                                         Gatorland 28.355650 -81.402211 14501 S Orange Blossom Trl, Orlando, FL 32837, USA (407) 855-5496                                                                                                             https://www.gatorland.com/ Orlando
+
+### Restaurants in Orlando
+                             Name  Average Cost                                             Cuisines  Aggregate Rating    City
+         Fuji Japanese Steakhouse            75                                Tea, Bakery, Desserts               3.8 Orlando
+                  Turquoise Villa            55                       French, Bakery, BBQ, Fast Food               4.0 Orlando
+               The Tandoori Times            84                              Tea, Cafe, BBQ, Italian               2.7 Orlando
+                    Crust N Cakes            61                               Tea, Cafe, Indian, BBQ               3.4 Orlando
+        Indochi Cafe & Restaurant            72    Pizza, French, Bakery, Fast Food, Indian, Seafood               0.0 Orlando
+                       Bite N Sip            76                     Chinese, Bakery, Cafe, Fast Food               0.0 Orlando
+                       Pure Bliss            84                         BBQ, Bakery, Pizza, Desserts               3.0 Orlando
+                 Wai Yu Mun Ching            51                                 Tea, Pizza, Desserts               3.6 Orlando
+        Shivani Catering Services            75                           Tea, Cafe, Indian, Seafood               3.1 Orlando
+                        Veg O Non            45                        BBQ, Mexican, Pizza, Desserts               3.1 Orlando
+                    Fabulous Cake            91                                 Cafe, BBQ, Fast Food               0.0 Orlando
+               Nirula's Ice Cream            46                  Tea, American, BBQ, Indian, Seafood               0.0 Orlando
+             Hotel New Tamil Nadu            13 Desserts, Italian, Fast Food, Mediterranean, Seafood               0.0 Orlando
+                       Milan Food            25                                   Cafe, BBQ, Seafood               0.0 Orlando
+                       Dessi Food            32                              Chinese, BBQ, Fast Food               0.0 Orlando
+                          Chaayos            73                                   Tea, Cafe, Mexican               3.9 Orlando
+Ambrosia - The Golden Palms Hotel            52                               Tea, Mexican, Desserts               2.8 Orlando
+                        Pizza Hut            35                       Bakery, Pizza, Indian, Seafood               3.4 Orlando
+                        Fun Bytes            13                Desserts, Tea, French, BBQ, Fast Food               2.5 Orlando
+                        Spice Hut            25                               Chinese, Cafe, Seafood               2.9 Orlando
+                    Lounge Bakery            31                   Tea, Italian, BBQ, Fast Food, Cafe               0.0 Orlando
+                    Khana Khazana            36             Chinese, Desserts, French, Cafe, Seafood               0.0 Orlando
+                             Dips            56                           Tea, Pizza, BBQ, Fast Food               2.8 Orlando
+                 Always Eat Green            98               Tea, Italian, Fast Food, Cafe, Seafood               0.0 Orlando
+                          Vaango!            32                   Tea, Italian, Bakery, BBQ, Seafood               2.8 Orlando
+                   Domino's Pizza            12                      Tea, Pizza, French, BBQ, Bakery               2.5 Orlando
+                      Lawn Bistro           100                           Fast Food, Bakery, Italian               3.6 Orlando
+                 Reena Restaurant            98                  Fast Food, Seafood, Bakery, Italian               3.5 Orlando
+                    Fusionn Rolls            63                                        Pizza, Bakery               0.0 Orlando
+                        Dhabha 27            24     Tea, French, Mexican, Bakery, Fast Food, Seafood               3.2 Orlando
+
+### Accommodations in Orlando
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number    city
+         Private furnished bedroom in Williamsburg  179.0    Private room No parties & No smoking & No children under 10             5.0                  1                 2.0 Orlando
+      Sixth Ave Chelsea, Studio Serviced Apartment   70.0 Entire home/apt                          No visitors & No pets            30.0                  3                 2.0 Orlando
+                               Large and furnished  345.0    Private room                           No smoking & No pets             7.0                  2                 4.0 Orlando
+      Private room in Jackson Heights Apartment 2+ 1081.0    Private room                                     No parties             1.0                  1                 1.0 Orlando
+Che’ Randall Deux\nSoBro\n10 minutes to Manhattan!  854.0    Private room                           No children under 10             5.0                  2                 4.0 Orlando
+                          Room in Upper East Side!  885.0    Private room              No smoking & No pets & No parties             1.0                  2                 4.0 Orlando
+                   BKLYN Brownstone- Glam Getaway!  287.0 Entire home/apt                          No pets & No visitors             3.0                  2                 3.0 Orlando
+    Rare Find: SUNNY, LARGE DUPLEX Chelsea 2BR 2BA  188.0 Entire home/apt                                        No pets             6.0                  2                 5.0 Orlando
+                         Riverside Drive Apartment  878.0 Entire home/apt          No visitors & No parties & No smoking            31.0                  5                 5.0 Orlando
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room                                        No pets             1.0                  2                 3.0 Orlando
+
+### Flight from Los Angeles to Fort Myers on 2022-03-22
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3895072    990   10:21   17:55 4 hours 34 minutes 2022-03-22    Los Angeles   Fort Myers    2238.0
+
+### Self-driving from Los Angeles to Fort Myers
+No valid information.
+
+### Taxi from Los Angeles to Fort Myers
+No valid information.
+
+### Flight from Fort Myers to Jacksonville on 2022-03-24
+There is no flight from Fort Myers to Jacksonville on 2022-03-24.
+
+### Self-driving from Fort Myers to Jacksonville
+self-driving, from Fort Myers to Jacksonville, duration: 4 hours 52 mins, distance: 510 km, cost: 25
+
+### Taxi from Fort Myers to Jacksonville
+taxi, from Fort Myers to Jacksonville, duration: 4 hours 52 mins, distance: 510 km, cost: 510
+
+### Flight from Jacksonville to Orlando on 2022-03-26
+There is no flight from Jacksonville to Orlando on 2022-03-26.
+
+### Self-driving from Jacksonville to Orlando
+self-driving, from Jacksonville to Orlando, duration: 2 hours 7 mins, distance: 227 km, cost: 11
+
+### Taxi from Jacksonville to Orlando
+taxi, from Jacksonville to Orlando, duration: 2 hours 7 mins, distance: 227 km, cost: 227
+
+### Flight from Orlando to Los Angeles on 2022-03-28
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3489076    557   19:27   22:30  6 hours 3 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3508157   1020   07:39   10:43  6 hours 4 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3515003    963   15:23   17:59 5 hours 36 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3537183   1091   11:30   14:18 5 hours 48 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3687761    971   07:27   10:01 5 hours 34 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3725391    902   18:01   20:25 5 hours 24 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3770225    683   05:58   08:21 5 hours 23 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3871404   1022   09:37   12:11 5 hours 34 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+     F3872295   1077   19:37   22:04 5 hours 27 minutes 2022-03-28        Orlando  Los Angeles    2218.0
+
+### Self-driving from Orlando to Los Angeles
+No valid information.
+
+### Taxi from Orlando to Los Angeles
+No valid information.
+
+JSON plan:

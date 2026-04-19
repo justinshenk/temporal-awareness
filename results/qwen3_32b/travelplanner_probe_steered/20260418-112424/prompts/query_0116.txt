@@ -1,0 +1,270 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+We're looking for a 7-day travel plan for a group of 5. We'll be departing from Provo and intend to visit 3 different cities in California from March 22nd to March 28th, 2022. We have a budget of $14,900 and require accommodations that allow parties.
+
+Reference information:
+### Attractions in San Diego
+                                      Name  Latitude   Longitude                                                   Address          Phone                                                                                      Website      City
+                Cabrillo National Monument 32.672256 -117.241609       1800 Cabrillo Memorial Dr, San Diego, CA 92106, USA (619) 523-4285                                                           https://www.nps.gov/cabr/index.htm San Diego
+                      La Jolla Shores Park 32.858154 -117.256103              8300 Camino Del Oro, La Jolla, CA 92037, USA (619) 221-8899                                           https://www.sandiego.gov/lifeguards/beaches/shores San Diego
+                          California Tower 32.731609 -117.152167 California Tower, 1350 El Prado, San Diego, CA 92101, USA (619) 239-2001                                            https://museumofus.org/exhibits/california-tower/ San Diego
+                        SeaWorld San Diego 32.764296 -117.226440               500 Sea World Dr., San Diego, CA 92109, USA (619) 222-4732 https://seaworld.com/san-diego?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing San Diego
+                        Old Town San Diego 32.755827 -117.197261                    2829 Juan St, San Diego, CA 92110, USA        Unknown                                                             https://www.oldtownsandiego.org/ San Diego
+                               Balboa Park 32.734148 -117.144553                                        San Diego, CA, USA (619) 239-0512                                                                   http://www.balboapark.org/ San Diego
+                           Seaport Village 32.709064 -117.170937                 849 W Harbor Dr, San Diego, CA 92101, USA (619) 530-0704                                                                  https://seaportvillage.com/ San Diego
+               The San Diego Museum of Art 32.732158 -117.150430                   1450 El Prado, San Diego, CA 92102, USA (619) 232-7931                                                                      https://www.sdmart.org/ San Diego
+                         USS Midway Museum 32.713740 -117.175127                 910 N Harbor Dr, San Diego, CA 92101, USA (619) 544-9600                                                                      https://www.midway.org/ San Diego
+                                  Skytower 32.765423 -117.226662               500 Sea World Dr., San Diego, CA 92109, USA        Unknown                                                                                      Unknown San Diego
+                             Dolphin Point 32.765390 -117.227412               500 Sea World Dr., San Diego, CA 92109, USA (915) 525-4772                                                                                      Unknown San Diego
+                             San Diego Zoo 32.736035 -117.150985                     2920 Zoo Dr, San Diego, CA 92101, USA (619) 231-1515                                                                 https://zoo.sandiegozoo.org/ San Diego
+                          Mission Bay Park 32.764107 -117.226265                                  San Diego, CA 92109, USA (619) 525-8213                                        https://www.sandiego.gov/locations/seaworld-san-diego San Diego
+                       Whaley House Museum 32.752904 -117.194510              2476 San Diego Ave, San Diego, CA 92110, USA (619) 786-1143                                                         https://www.whaleyhousesandiego.com/ San Diego
+                Sunset Cliffs Natural Park 32.715915 -117.255168                       Ladera St, San Diego, CA 92107, USA (619) 525-8213                 https://www.sandiego.gov/park-and-recreation/parks/regional/shoreline/sunset San Diego
+             Old Town San Diego State Park 32.754906 -117.197641                 4002 Wallace St, San Diego, CA 92110, USA (619) 220-5422                                                         http://www.parks.ca.gov/?page_id=663 San Diego
+           Martin Luther King Jr Promenade 32.708357 -117.161993                 326 W Harbor Dr, San Diego, CA 92101, USA (619) 525-8213                                           https://www.sandiego.gov/park-and-recreation/parks San Diego
+                      Balboa Park Carousel 32.734576 -117.146707                     1889 Zoo Pl, San Diego, CA 92101, USA (619) 232-2282                                                               http://balboaparkcarousel.org/ San Diego
+                       San Diego Free Tour 32.707586 -117.160287                   200 Fifth Ave, San Diego, CA 92101, USA (415) 503-7199                                                                      https://freesftour.com/ San Diego
+Mission Beach Boardwalk | Ocean Front Walk 32.771432 -117.252831                W Mission Bay Dr, San Diego, CA 92109, USA (619) 232-3101                                                                    https://www.sandiego.gov/ San Diego
+
+### Restaurants in San Diego
+                          Name  Average Cost                                              Cuisines  Aggregate Rating      City
+                     Open Yard            33                        Chinese, Pizza, Cafe, Desserts               3.3 San Diego
+           Jetha Lal Ka Dhabha            22                            Tea, Cafe, Indian, Italian               3.1 San Diego
+               The Lost Mughal            74                                    Tea, Cafe, Italian               3.8 San Diego
+                   Burger King            20            Pizza, Italian, French, Fast Food, Seafood               3.8 San Diego
+                Bikaner Sweets            37                      Bakery, Pizza, Indian, Fast Food               2.8 San Diego
+      Momos Hut & Chinese Food            94                                  Tea, Cafe, Fast Food               2.4 San Diego
+            Chaudhary Di Hatti            30              Desserts, Pizza, Italian, BBQ, Fast Food               3.3 San Diego
+                        Gopala            98                Pizza, Mexican, BBQ, American, Seafood               3.3 San Diego
+           Armaan's Restaurant            29                     Fast Food, Cafe, Seafood, Italian               2.8 San Diego
+                  Bun Intended            91                        Cafe, Pizza, Desserts, Seafood               3.9 San Diego
+                     Chawlas 2            67                        Bakery, Pizza, Indian, Seafood               0.0 San Diego
+                 Duggal Snacks            82     Desserts, Pizza, Italian, Fast Food, Cafe, Indian               3.6 San Diego
+Dabas Ke Special Chole Bhature            35                          BBQ, Pizza, Bakery, Desserts               0.0 San Diego
+                Midnight Bites            63                                  Bakery, Indian, Cafe               3.1 San Diego
+                Baskin Robbins            48                 Italian, Bakery, BBQ, Fast Food, Cafe               3.5 San Diego
+                     Chawlas 2            91 Desserts, Fast Food, American, Mediterranean, Seafood               3.0 San Diego
+                      Burgrill            54              Desserts, Tea, Pizza, Fast Food, Chinese               4.4 San Diego
+            Harry's Bar + Cafe            55                      Fast Food, French, Cafe, Seafood               3.6 San Diego
+                    Dragon Way            77            Desserts, Mexican, Cafe, American, Seafood               0.0 San Diego
+               Hum Sabki Rasoi            63              Pizza, BBQ, Fast Food, American, Seafood               3.3 San Diego
+              Aamantran Bangla            33               Pizza, Italian, Bakery, Fast Food, Cafe               2.7 San Diego
+                        Meraki            51                                          Tea, Seafood               4.0 San Diego
+
+### Accommodations in San Diego
+                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number      city
+Spacious Room in Large 2 Bedroom Prewar Apartment  585.0    Private room                       No parties & No visitors             1.0                  2                 4.0 San Diego
+                 Big room near Prospect Park! NY!  752.0    Private room              No parties & No smoking & No pets             7.0                  1                 2.0 San Diego
+    Luxury 4BR Home, Spacious & Central to Trains  392.0 Entire home/apt                                     No parties             3.0                  3                 5.0 San Diego
+                 Cozy 1.5BD in Parkslope Brooklyn 1093.0 Entire home/apt                                     No parties             3.0                 10                 2.0 San Diego
+      Spacious & Homey Williamsburg 1BR Apartment 1004.0 Entire home/apt                                     No parties             5.0                  4                 3.0 San Diego
+                    Upper East Side 1 Bedroom Gem  692.0     Shared room No children under 10 & No parties & No smoking             2.0                  1                 3.0 San Diego
+                  Organic Oasis Duplex (EMF-free) 1186.0 Entire home/apt                       No visitors & No smoking            60.0                  4                 4.0 San Diego
+ Harlem Garden Oasis in  New York City Brownstone  368.0 Entire home/apt                                    No visitors            31.0                  3                 5.0 San Diego
+  Conveniently located 2 BR Time Square Apartment  502.0 Entire home/apt No parties & No smoking & No children under 10             2.0                  4                 5.0 San Diego
+  LargeBedroom gem in historic Red Hook Brooklyn!  787.0    Private room                                    No visitors             4.0                  2                 3.0 San Diego
+            The Perfect Upper East Side Apartment  847.0 Entire home/apt                                    No visitors             1.0                  2                 3.0 San Diego
+                                 CHIC EVENT SPACE 1068.0 Entire home/apt                                    No visitors             1.0                  2                 5.0 San Diego
+
+### Attractions in Santa Ana
+                                                 Name  Latitude   Longitude                                          Address          Phone                                                           Website      City
+                                        Bowers Museum 33.763405 -117.868145         2002 N Main St, Santa Ana, CA 92706, USA (714) 567-3600                                            http://www.bowers.org/ Santa Ana
+                                        Santa Ana Zoo 33.743555 -117.842489    1801 E Chestnut Ave, Santa Ana, CA 92701, USA (714) 647-6575                                       http://www.santaanazoo.org/ Santa Ana
+                     Heritage Museum of Orange County 33.720743 -117.910692      3101 W Harvard St, Santa Ana, CA 92704, USA (714) 540-0404                                      http://heritagemuseumoc.org/ Santa Ana
+                             Discovery Science Center 33.770254 -117.867864         2500 N Main St, Santa Ana, CA 92705, USA (714) 542-2823                                    https://www.discoverycube.org/ Santa Ana
+                 Downtown Santa Ana Historic District 33.747666 -117.866706                         Santa Ana, CA 92701, USA        Unknown                                 http://www.downtown-santaana.com/ Santa Ana
+                    Santiago Park - City of Santa Ana 33.773376 -117.860910        600 E Memory Ln, Santa Ana, CA 92705, USA (714) 647-6902                          https://www.santa-ana.org/santiago-park/ Santa Ana
+The Dr. Willella Howe-Waffle House and Medical Museum 33.750432 -117.868432  120 W Civic Center Dr, Santa Ana, CA 92701, USA (714) 547-9645                https://www.santaanahistory.com/drhowewafflemuseum Santa Ana
+                         Old Orange County Courthouse 33.750171 -117.869209   211 W Santa Ana Blvd, Santa Ana, CA 92701, USA (714) 973-6605                             http://www.ocparks.com/oldcourthouse/ Santa Ana
+                                        Memorial Park 33.719147 -117.878394       2102 S Flower St, Santa Ana, CA 92707, USA (714) 571-4242                          https://www.santa-ana.org/memorial-park/ Santa Ana
+                            Southern Counties Gas Co. 33.746490 -117.869060           207 W 2nd St, Santa Ana, CA 92701, USA        Unknown                                                           Unknown Santa Ana
+                                     El Salvador Park 33.752695 -117.894538 1825 W Civic Center Dr, Santa Ana, CA 92703, USA (714) 571-4258 https://www.santa-ana.org/parks/parks-location/el-salvador-center Santa Ana
+                                      Lyon Air Museum 33.673561 -117.873392     19300 Ike Jones Rd, Santa Ana, CA 92707, USA (714) 210-4585                                     http://www.lyonairmuseum.org/ Santa Ana
+                                   Carl Thornton Park 33.709225 -117.892202  1801 W Segerstrom Ave, Santa Ana, CA 92704, USA (714) 571-4200                          https://www.santa-ana.org/thornton-park/ Santa Ana
+                            Marconi Automotive Museum 33.720972 -117.831186        1302 Industrial Dr, Tustin, CA 92780, USA (714) 258-3001                                     http://www.marconimuseum.org/ Santa Ana
+                                      Bomo Koral Park 33.698480 -117.879561   900 W MacArthur Blvd, Santa Ana, CA 92707, USA        Unknown                                                           Unknown Santa Ana
+                     Hilbert Museum of California Art 33.787659 -117.851542         216 E Chapman Ave, Orange, CA 92866, USA (714) 516-5880                                     http://www.hilbertmuseum.org/ Santa Ana
+                         George Upton All Access Park 33.710900 -117.892485            S Linda Way, Santa Ana, CA 92704, USA (714) 547-3361                                                           Unknown Santa Ana
+                          Cesar Chavez Campesino Park 33.749725 -117.912947          3311 W 5th St, Santa Ana, CA 92703, USA (714) 571-4200            https://www.santa-ana.org/cesar-chavez-campesino-park/ Santa Ana
+                                       Adventure City 33.815262 -117.992279        1238 S Beach Blvd, Anaheim, CA 90680, USA (714) 236-9300                                     http://www.adventurecity.com/ Santa Ana
+                                       Noguchi Garden 33.689059 -117.882239        611 Anton Blvd, Costa Mesa, CA 92626, USA        Unknown                                                           Unknown Santa Ana
+
+### Restaurants in Santa Ana
+                        Name  Average Cost                                        Cuisines  Aggregate Rating      City
+           Jimmie's Hot Dogs            96                         Fast Food, BBQ, Italian               3.9 Santa Ana
+             The Bee's Knees            12                  Cafe, Pizza, Desserts, Seafood               4.5 Santa Ana
+            Caf愆 Tu Tu Tango            88      Tea, Pizza, French, Bakery, Cafe, American               4.6 Santa Ana
+                Eram Rooftop            77                     Cafe, Bakery, American, BBQ               3.5 Santa Ana
+               The Chai Cafe            52                         Tea, American, Desserts               3.1 Santa Ana
+       Shahi  Chicken Corner            55                            Bakery, BBQ, Italian               0.0 Santa Ana
+         Bottles and Barrels            81             Desserts, Tea, French, Bakery, Cafe               4.0 Santa Ana
+                Flying Cakes            57     Desserts, Italian, Mexican, Fast Food, Cafe               2.4 Santa Ana
+         Shri Ram Bhojnalaya            68                       Cafe, Desserts, Fast Food               0.0 Santa Ana
+   Nawras Seafood Restaurant            83                           Tea, Bakery, Desserts               4.6 Santa Ana
+                 Mumbai Vibe            38 Desserts, Tea, French, Mexican, Fast Food, Cafe               3.8 Santa Ana
+                         FSB            87           Desserts, Bakery, BBQ, Cafe, American               4.3 Santa Ana
+                     HotMess            13           Tea, Fast Food, Cafe, Indian, Seafood               4.3 Santa Ana
+            Mehta Restaurant            95                Mediterranean, Desserts, Seafood               3.2 Santa Ana
+            Cafe 1 Fast Food            46                               Bakery, Fast Food               3.0 Santa Ana
+                  Al Jawahar            16      Tea, Pizza, Italian, Mexican, Bakery, Cafe               3.8 Santa Ana
+                 August Moon            45                    BBQ, Pizza, Bakery, Desserts               2.8 Santa Ana
+          Nero - Le Meridien            88                 Mexican, BBQ, Desserts, Seafood               3.5 Santa Ana
+             M&S Coffee Cafe            53        Desserts, Pizza, Fast Food, Cafe, Indian               0.0 Santa Ana
+                 Mr. Baker's            33                           Tea, Bakery, Desserts               0.0 Santa Ana
+             Moets Curry Pot            99                      Tea, Cafe, Pizza, Desserts               0.0 Santa Ana
+                 Food Campus            20       Seafood, Bakery, Mediterranean, Fast Food               0.0 Santa Ana
+        Deep Bakery And Cake            20         Desserts, Pizza, Italian, BBQ, American               0.0 Santa Ana
+               China Kitchen            50       Desserts, Tea, Mexican, Bakery, Fast Food               0.0 Santa Ana
+         Red Rose Restaurant            13               Tea, Mexican, Desserts, Fast Food               0.0 Santa Ana
+                 Khosla Cafe            76      Pizza, BBQ, Fast Food, Cafe, Mediterranean               3.2 Santa Ana
+         My Bar & Restaurant            90                            Tea, Chinese, Bakery               3.2 Santa Ana
+       Aggarwal Sweet Centre            96            Desserts, Tea, Italian, BBQ, Seafood               0.0 Santa Ana
+               Choice Corner            20      Tea, Italian, Cafe, Mediterranean, Seafood               3.0 Santa Ana
+                 Dirty Apron            60               Tea, Pizza, Italian, BBQ, Seafood               4.3 Santa Ana
+              Da Yummy Pizza            89                       Chinese, Bakery, Desserts               2.7 Santa Ana
+         Manmohan Food Plaza            24                             Tea, BBQ, Fast Food               2.6 Santa Ana
+New Town Lounge - Park Plaza            64       Tea, Pizza, Italian, Bakery, Cafe, Indian               3.2 Santa Ana
+  Balaji Restaurant & Sweets            24                  Tea, Chinese, Bakery, Desserts               0.0 Santa Ana
+             Butter Boutique            13      Desserts, Tea, Bakery, Cafe, Mediterranean               4.2 Santa Ana
+
+### Accommodations in Santa Ana
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+  Full 1-BR Apartment - Sunny, Cozy, and Eclectic!  522.0 Entire home/apt               No children under 10 & No smoking             4.0                  2                 3.0 Santa Ana
+  Sun-filled Artist Home 1BR in convenient L.I.C ! 1065.0 Entire home/apt                            No children under 10             2.0                  5                 5.0 Santa Ana
+                  Super Convenient Park Slope Room  623.0    Private room                                         No pets             2.0                  1                 3.0 Santa Ana
+                 MANHATTAN Neat, Nice, Bright ROOM   50.0    Private room               No parties & No children under 10             2.0                  2                 4.0 Santa Ana
+PRIVATE BEDROOM and BATHROOM crown heights Aprtmnt 1047.0    Private room                                     No visitors             1.0                  1                 5.0 Santa Ana
+                   Studio Apartment in Murray Hill  826.0    Private room                  No children under 10 & No pets             3.0                  2                 3.0 Santa Ana
+   Gorgeous sunny room in fabulous Brooklyn duplex  845.0    Private room                         No parties & No smoking             3.0                  1                 4.0 Santa Ana
+                     Sunny 3 bedroom LES apartment  813.0 Entire home/apt No smoking & No visitors & No children under 10             3.0                  2                 3.0 Santa Ana
+         Private Room With Manhattan Skyline Views 1119.0    Private room                                     No visitors             1.0                  2                 1.0 Santa Ana
+ Private sunny room with private bathroom&entrance  119.0    Private room                         No parties & No smoking             5.0                  2                 1.0 Santa Ana
+   Stunning designer loft in the heart of Downtown  933.0 Entire home/apt                  No pets & No children under 10            15.0                  4                 4.0 Santa Ana
+                               Upper East Side Gem  619.0 Entire home/apt                                     No visitors            15.0                  5                 2.0 Santa Ana
+    Huge private bedroom one block from the train! 1146.0    Private room              No visitors & No children under 10             1.0                  1                 5.0 Santa Ana
+                Bright Room in Historic Brownstone  181.0    Private room  No children under 10 & No smoking & No parties             5.0                  1                 3.0 Santa Ana
+      Private Room with 2 Beds in Hamilton Heights  545.0    Private room                                         No pets             4.0                  2                 3.0 Santa Ana
+                 Two BDRM Perfect CHTWN Manhattan!  351.0 Entire home/apt                  No pets & No children under 10             1.0                  3                 5.0 Santa Ana
+      Sunny one-bedroom with terrace in Park Slope  628.0 Entire home/apt                            No parties & No pets            70.0                  2                 4.0 Santa Ana
+  Incredible Views! Zen-Style Residence In The Sky  364.0 Entire home/apt                                      No smoking             3.0                  2                 5.0 Santa Ana
+
+### Attractions in Bakersfield
+                                           Name  Latitude   Longitude                                              Address          Phone                                                                                                                     Website        City
+Buena Vista Museum of Natural History & Science 35.377702 -119.018430         2018 Chester Ave, Bakersfield, CA 93301, USA (661) 324-6350 http://www.buenavistamuseum.org/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=17814811990716261384 Bakersfield
+                             Kern County Museum 35.393445 -119.019403         3801 Chester Ave, Bakersfield, CA 93301, USA (661) 437-3330                                                                                                http://kerncountymuseum.org/ Bakersfield
+                      Bakersfield Museum of Art 35.376786 -119.008974                1930 R St, Bakersfield, CA 93301, USA (661) 323-7219                                                                                                        http://www.bmoa.org/ Bakersfield
+                     Central Park at Mill Creek 35.374185 -119.008848              500 19th St, Bakersfield, CA 93301, USA (661) 326-3866                                                                         https://www.bakersfieldcity.us/297/Recreation-Parks Bakersfield
+                         The Park at River Walk 35.351381 -119.127218      11298 Stockdale Hwy, Bakersfield, CA 93311, USA (661) 326-3866                                                                         https://www.bakersfieldcity.us/297/Recreation-Parks Bakersfield
+                       California Living Museum 35.432296 -118.885353 10500 Alfred Harrell Hwy, Bakersfield, CA 93306, USA (661) 872-2256                                                                                                         http://calmzoo.org/ Bakersfield
+                        Mural Alley Bakersfield 35.375025 -119.022023     1727 18th St Suite B, Bakersfield, CA 93301, USA        Unknown                                                                                           http://www.localefarmtotable.com/ Bakersfield
+                        BLOOM Mural Bakersfield 35.377155 -118.989487          801 Kentucky St, Bakersfield, CA 93305, USA        Unknown                                                                                         http://www.thehubofbakersfield.org/ Bakersfield
+                    Lori Brock Discovery Center 35.393564 -119.019415         3801 Chester Ave, Bakersfield, CA 93301, USA (661) 437-3330                                                                   https://kerncountymuseum.org/lori-brock-discovery-center/ Bakersfield
+                  Colonel Thomas Baker Memorial 35.373033 -119.019521         1501 Truxtun Ave, Bakersfield, CA 93301, USA (661) 392-2130                                                                                      http://ohp.parks.ca.gov/?page_id=21423 Bakersfield
+                                     Beale Park 35.362288 -119.024993         500 Oleander Ave, Bakersfield, CA 93304, USA (661) 326-3866                                                                         https://www.bakersfieldcity.us/297/Recreation-Parks Bakersfield
+                              Visit Bakersfield 35.373009 -119.007677          515 Truxtun Ave, Bakersfield, CA 93301, USA (866) 425-7353                                                                                            http://www.visitbakersfield.com/ Bakersfield
+                           The Bakersfield Sign 35.386150 -119.042481    3032-3000 Sillect Ave, Bakersfield, CA 93308, USA        Unknown                                                                                                                     Unknown Bakersfield
+                                  Saunders Park 35.362133 -119.041228             3300 Palm St, Bakersfield, CA 93309, USA (661) 326-3866                                                                         https://www.bakersfieldcity.us/297/Recreation-Parks Bakersfield
+                        Panorama Vista Preserve 35.412793 -118.999486         901 E Roberts Ln, Bakersfield, CA 93308, USA (661) 872-3569                                                                                                   http://panoramavista.org/ Bakersfield
+                                 Cross of Palms 35.434294 -119.172055       7000-9698 Rudd Ave, Bakersfield, CA 93314, USA        Unknown                                                                                                                     Unknown Bakersfield
+                                  Panorama Park 35.408499 -118.993392          901 Panorama Dr, Bakersfield, CA 93305, USA (661) 872-5149                                                                                                                     Unknown Bakersfield
+                                    Yokuts Park 35.375995 -119.047092           4200 Empire Dr, Bakersfield, CA 93309, USA (661) 326-3866                                                                         https://www.bakersfieldcity.us/297/Recreation-Parks Bakersfield
+ Ingenious Escape Rooms - Bakersfield Stockdale 35.311399 -119.071908  6225 District Blvd #103, Bakersfield, CA 93313, USA (661) 493-6383                                                                                     https://ingeniousescapebakersfield.com/ Bakersfield
+                             Hart Memorial Park 35.444457 -118.908136                Hart Park, Bakersfield, CA 93308, USA        Unknown                                                                                                   https://hmp.areafish.com/ Bakersfield
+
+### Restaurants in Bakersfield
+                                 Name  Average Cost                                         Cuisines  Aggregate Rating        City
+   DePalma's Italian Cafe - East Side            12                           Chinese, Pizza, Bakery               4.1 Bakersfield
+                          Frick's Tap            19                               Tea, Bakery, Pizza               0.0 Bakersfield
+                          Kihei Caffe            47                Fast Food, BBQ, Desserts, Italian               4.5 Bakersfield
+             Tybee Island Social Club            83           Tea, Bakery, Fast Food, Cafe, American               3.9 Bakersfield
+                             Momo-Cha            68   Desserts, Pizza, BBQ, Fast Food, Mediterranean               2.8 Bakersfield
+                     Tmos Cafe Corner            10                Mexican, American, BBQ, Fast Food               0.0 Bakersfield
+                             Pita Pit            23             Tea, Pizza, Italian, Bakery, Seafood               3.9 Bakersfield
+              Gurgaon Mughlai Chicken            60                 Cafe, French, Seafood, Fast Food               0.0 Bakersfield
+                      Biryani & Rolls            48                 Cafe, Mexican, Bakery, Fast Food               0.0 Bakersfield
+                       Domino's Pizza            19                   Pizza, Mediterranean, Desserts               3.6 Bakersfield
+                            Chawla's宊            56                                 Pizza, Fast Food               3.4 Bakersfield
+                                Jakoi            90                                         Tea, BBQ               3.5 Bakersfield
+               Cool Point Shahi Tukda            50                       Pizza, Desserts, Fast Food               3.1 Bakersfield
+                          Wakhra Swag            20                     Chinese, BBQ, Cafe, Desserts               0.0 Bakersfield
+                             Samridhi            43         Italian, Bakery, BBQ, Fast Food, Seafood               3.2 Bakersfield
+     Cottage Caf愆 by Smoothie factory            32                              Cafe, BBQ, Desserts               3.7 Bakersfield
+                           Deli Belly            99                            Tea, Indian, Desserts               2.6 Bakersfield
+           SM Gopal Ice Cream & Cakes            57         Pizza, French, Bakery, American, Seafood               3.2 Bakersfield
+                        Chinese Mania            31               French, Bakery, Chinese, Fast Food               3.2 Bakersfield
+                           Baked Buns            73                        Tea, Cafe, BBQ, Fast Food               3.6 Bakersfield
+                      JMD Food Palace            66                   Tea, Cafe, Desserts, Fast Food               0.0 Bakersfield
+                        Zaika Biryani            85                                   Tea, Cafe, BBQ               0.0 Bakersfield
+                     The Pizza Family            68                                     BBQ, Seafood               0.0 Bakersfield
+                    Twenty Four Seven            63                Chinese, Bakery, Seafood, Italian               2.8 Bakersfield
+                        Pind Balluchi            28 Tea, Pizza, Italian, Fast Food, Chinese, Seafood               3.6 Bakersfield
+                       Pavitra Bakers            84                      Pizza, Bakery, BBQ, Seafood               3.2 Bakersfield
+                            Open Oven            84                          Fast Food, BBQ, Italian               3.4 Bakersfield
+                           China Town            98                          Fast Food, BBQ, Italian               0.0 Bakersfield
+                    Twenty Four Seven            70                        Cafe, Bakery, Indian, BBQ               3.0 Bakersfield
+Amrit's Agni Multi Cuisine Restaurant            89          Tea, Pizza, Bakery, Fast Food, American               2.9 Bakersfield
+
+### Accommodations in Bakersfield
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number        city
+                                    DaDukes Dreams  491.0    Private room                                  No visitors             1.0                  2                 2.0 Bakersfield
+GREAT LOCATION in NY! PRIVATE STUDIO with PARKING!  992.0 Entire home/apt               No pets & No children under 10             2.0                  3                 5.0 Bakersfield
+              A HOME AWAY FROM HOME IN NYC! UPTOWN  789.0     Shared room                        No pets & No visitors             1.0                  1                 1.0 Bakersfield
+                  Bright & spacious Room in Harlem  815.0    Private room           No visitors & No children under 10             1.0                  2                 2.0 Bakersfield
+            Bright and Spacious Parkside Apartment 1134.0 Entire home/apt                         No children under 10             3.0                 11                 2.0 Bakersfield
+          Large comfortable room near Penn Station  189.0    Private room                                      No pets             1.0                  2                 4.0 Bakersfield
+ Cozy private Apartment in Convenient Neighborhood 1057.0 Entire home/apt                                   No parties             1.0                  9                 3.0 Bakersfield
+                  Sunny Two Bedroom in South Slope  879.0 Entire home/apt No children under 10 & No pets & No visitors             7.0                  3                 1.0 Bakersfield
+                Bohemian Paradise in Industrial BK  821.0    Private room                        No visitors & No pets             2.0                  1                 5.0 Bakersfield
+   Small room nearby C-train station (female only)  232.0    Private room                        No pets & No visitors             1.0                  2                 2.0 Bakersfield
+                        Cozy 2 Bedroom Condominium   55.0 Entire home/apt                                   No parties             1.0                  3                 2.0 Bakersfield
+
+### Flight from Provo to San Diego on 2022-03-22
+There is no flight from Provo to San Diego on 2022-03-22.
+
+### Self-driving from Provo to San Diego
+self-driving, from Provo to San Diego, duration: 10 hours 13 mins, distance: 1,137 km, cost: 56
+
+### Taxi from Provo to San Diego
+taxi, from Provo to San Diego, duration: 10 hours 13 mins, distance: 1,137 km, cost: 1137
+
+### Flight from San Diego to Santa Ana on 2022-03-24
+There is no flight from San Diego to Santa Ana on 2022-03-24.
+
+### Self-driving from San Diego to Santa Ana
+self-driving, from San Diego to Santa Ana, duration: 1 hour 26 mins, distance: 144 km, cost: 7
+
+### Taxi from San Diego to Santa Ana
+taxi, from San Diego to Santa Ana, duration: 1 hour 26 mins, distance: 144 km, cost: 144
+
+### Flight from Santa Ana to Bakersfield on 2022-03-26
+There is no flight from Santa Ana to Bakersfield on 2022-03-26.
+
+### Self-driving from Santa Ana to Bakersfield
+self-driving, from Santa Ana to Bakersfield, duration: 2 hours 31 mins, distance: 231 km, cost: 11
+
+### Taxi from Santa Ana to Bakersfield
+taxi, from Santa Ana to Bakersfield, duration: 2 hours 31 mins, distance: 231 km, cost: 231
+
+### Flight from Bakersfield to Provo on 2022-03-28
+There is no flight from Bakersfield to Provo on 2022-03-28.
+
+### Self-driving from Bakersfield to Provo
+self-driving, from Bakersfield to Provo, duration: 9 hours 34 mins, distance: 1,063 km, cost: 53
+
+### Taxi from Bakersfield to Provo
+taxi, from Bakersfield to Provo, duration: 9 hours 34 mins, distance: 1,063 km, cost: 1063
+
+JSON plan:

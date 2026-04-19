@@ -1,0 +1,122 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please create a travel plan departing from Minneapolis and heading to Seattle for 3 days, from March 29th to March 31st, 2022, with a budget of $1,800.
+
+Reference information:
+### Attractions in Seattle
+                                  Name  Latitude   Longitude                                          Address          Phone                                                                  Website    City
+                      Seattle Aquarium 47.607400 -122.342956 1483 Alaskan Way Pier 59, Seattle, WA 98101, USA (206) 386-4300                                         https://www.seattleaquarium.org/ Seattle
+               The Seattle Great Wheel 47.606134 -122.342525          1301 Alaskan Wy, Seattle, WA 98101, USA (206) 623-8607                                            http://seattlegreatwheel.com/ Seattle
+              Chihuly Garden and Glass 47.620560 -122.350448          305 Harrison St, Seattle, WA 98109, USA (206) 753-4940                                   https://www.chihulygardenandglass.com/ Seattle
+                Olympic Sculpture Park 47.616603 -122.355317         2901 Western Ave, Seattle, WA 98121, USA (206) 654-3100           https://www.seattleartmuseum.org/visit/olympic-sculpture-park/ Seattle
+                          The Gum Wall 47.608361 -122.340338          1428 Post Alley, Seattle, WA 98101, USA (206) 587-2414                               https://unexpectedproductions.org/gumwall/ Seattle
+                        Seattle Center 47.620598 -122.350505          305 Harrison St, Seattle, WA 98109, USA (206) 684-7200                                           https://www.seattlecenter.com/ Seattle
+                 Museum of Pop Culture 47.621482 -122.348124            325 5th Ave N, Seattle, WA 98109, USA (206) 770-2700                                                   https://www.mopop.org/ Seattle
+                   Beneath the Streets 47.602850 -122.334093            102 Cherry St, Seattle, WA 98104, USA (206) 624-1237                                      http://www.beneath-the-streets.com/ Seattle
+                    Seattle Art Museum 47.607525 -122.337960             1300 1st Ave, Seattle, WA 98101, USA (206) 654-3100                                        https://www.seattleartmuseum.org/ Seattle
+                            Kerry Park 47.629469 -122.359922        211 W Highland Dr, Seattle, WA 98119, USA (206) 684-4075                       http://www.seattle.gov/parks/find/parks/kerry-park Seattle
+                          Space Needle 47.620506 -122.349277             400 Broad St, Seattle, WA 98109, USA (206) 905-2100                                             https://www.spaceneedle.com/ Seattle
+                           Smith Tower 47.601853 -122.331858              506 2nd Ave, Seattle, WA 98104, USA (206) 624-0414                                               http://www.smithtower.com/ Seattle
+                     Pike Place Market 47.608965 -122.340582               85 Pike St, Seattle, WA 98101, USA (206) 682-7453                                         https://www.pikeplacemarket.org/ Seattle
+                               Pier 55 47.604747 -122.339716          1101 Alaskan Wy, Seattle, WA 98101, USA (206) 623-1445                        https://www.argosycruises.com/parking-directions/ Seattle
+      Original Selfie Museum | Seattle 47.607803 -122.339772              92 Union St, Seattle, WA 98101, USA (206) 487-4500                                        https://originalselfiemuseum.com/ Seattle
+             Washington Park Arboretum 47.636416 -122.295815      2300 Arboretum Dr E, Seattle, WA 98112, USA (206) 543-8800                 https://botanicgardens.uw.edu/washington-park-arboretum/ Seattle
+Sky View Observatory - Columbia Center 47.604364 -122.331011              700 4th Ave, Seattle, WA 98104, USA (206) 386-5564                                           http://skyviewobservatory.com/ Seattle
+                        Discovery Park 47.661320 -122.417141                           Seattle, WA 98199, USA (206) 386-4236                    https://www.seattle.gov/parks/allparks/discovery-park Seattle
+                  The Museum of Flight 47.518538 -122.296854                           Seattle, WA 98108, USA (206) 764-5700                                          https://www.museumofflight.org/ Seattle
+                International Fountain 47.622523 -122.352032          305 Harrison St, Seattle, WA 98109, USA (206) 684-7200 https://www.seattlecenter.com/explore/attractions/international-fountain Seattle
+
+### Restaurants in Seattle
+                                Name  Average Cost                                          Cuisines  Aggregate Rating    City
+                  Ting's Red Lantern            24 Italian, Bakery, BBQ, Fast Food, Chinese, Seafood               4.2 Seattle
+      Ceviche Tapas Bar & Restaurant            86                            Tea, Chinese, Desserts               4.4 Seattle
+                      Mother Ringlet            63                 Tea, Cafe, Mediterranean, Seafood               2.5 Seattle
+                      Caf愆 Burger BC            43                 Tea, French, Bakery, BBQ, Seafood               3.7 Seattle
+                       The Godinho's            96           Tea, Pizza, American, BBQ, Cafe, Indian               3.8 Seattle
+                  Teddy Choco Studio            70                         Mexican, Bakery, Desserts               0.0 Seattle
+                 Goli Vada Pav No. 1            31                              Tea, Bakery, Seafood               3.4 Seattle
+                  Delhi Darbar Dhaba            69                        Cafe, Pizza, Mediterranean               3.2 Seattle
+                           Tawa King            74              Desserts, Tea, Cafe, Bakery, Chinese               0.0 Seattle
+                             Giani's            74                   Tea, Seafood, Desserts, Italian               3.6 Seattle
+                   Sarpal Restaurant            42                               Cafe, BBQ, Desserts               3.1 Seattle
+                            Depaul's            83                            BBQ, Desserts, Seafood               3.7 Seattle
+                Amul Sweets & Bakery            36                 Desserts, Tea, Pizza, BBQ, Indian               0.0 Seattle
+                         Hot Chimney            19            Tea, Pizza, Mexican, Bakery, Fast Food               2.5 Seattle
+Celebration Multi Cuisine Restaurant            65                         Pizza, American, Desserts               2.7 Seattle
+                            The Test            18                                Tea, Pizza, Bakery               2.9 Seattle
+                     Tandoori Zaaika            96                            Pizza, Indian, Seafood               3.0 Seattle
+                        Munch Nation            55       Desserts, BBQ, Cafe, Mediterranean, Seafood               3.8 Seattle
+                           Wow! Momo            28     Desserts, BBQ, Fast Food, Cafe, Mediterranean               3.2 Seattle
+                     Cafe Coffee Day            79              Pizza, Bakery, BBQ, Chinese, Seafood               3.0 Seattle
+                             Foodizm            68                      Cafe, Pizza, Bakery, Italian               0.0 Seattle
+                           Keventers            53                            Tea, Bakery, Fast Food               0.0 Seattle
+                         Durga Dhaba            95                Seafood, American, Cafe, Fast Food               2.9 Seattle
+                            FrenZone            44                                    Tea, Cafe, BBQ               3.9 Seattle
+                         Desi Kukkad            71                             Bakery, American, BBQ               0.0 Seattle
+                   The Golden Dragon            15                       BBQ, Mediterranean, Seafood               3.5 Seattle
+                           Deli Chic            91                                    Pizza, Seafood               0.0 Seattle
+                        Food Brigade            90                    Chinese, Pizza, BBQ, Fast Food               3.2 Seattle
+                     The Sassy Spoon            29                   Bakery, Mediterranean, Desserts               4.1 Seattle
+                            wagamama            21                     Tea, Pizza, Desserts, Seafood               3.7 Seattle
+
+### Accommodations in Seattle
+                                          NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+    Shared Apartment by Times Square Manhattan 1050.0     Shared room              No visitors & No pets & No smoking             1.0                  1                 4.0 Seattle
+     Large quiet private studio in East Harlem  181.0 Entire home/apt                            No children under 10             7.0                  2                 3.0 Seattle
+             Nolita 1br near Little Italy/SoHo  380.0 Entire home/apt                           No visitors & No pets            20.0                  2                 1.0 Seattle
+                  private spacious LES bedroom  325.0    Private room                            No parties & No pets             2.0                  1                 4.0 Seattle
+            Peaceful, cozy studio in Chinatown  576.0 Entire home/apt    No pets & No children under 10 & No visitors            20.0                  2                 1.0 Seattle
+     Small Private Room in quiet Manhattan Apt  105.0    Private room                                     No visitors             4.0                  1                 5.0 Seattle
+ Cozy Room Amazingly Located in Williamsburg !  448.0    Private room                                      No smoking             3.0                  2                 4.0 Seattle
+   NYC HUB HOME: Train @ 900ft; midtown 30min! 1184.0 Entire home/apt                            No parties & No pets             2.0                  7                 4.0 Seattle
+  New tidy  room attached by PRIVATE FULL BATH   73.0    Private room                         No parties & No smoking             3.0                  2                 5.0 Seattle
+     Sun Drenched Artist Loft in Williamsburg!  607.0 Entire home/apt No children under 10 & No visitors & No parties             4.0                  2                 5.0 Seattle
+**Cozy Room In Hip Ultra Location LES/NOLITA**  537.0    Private room                                     No visitors             2.0                  2                 5.0 Seattle
+                                 Comfort Haven  910.0    Private room           No smoking & No visitors & No parties             1.0                  2                 3.0 Seattle
+
+### Flight from Minneapolis to Seattle on 2022-03-29
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3526653    453   08:51   10:11 3 hours 20 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3527324    430   15:52   17:22 3 hours 30 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3527439    686   11:00   12:29 3 hours 29 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3528018    618   18:52   20:16 3 hours 24 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3531077    517   06:22   07:48 3 hours 26 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3753369    592   06:47   08:29 3 hours 42 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+     F3753441    595   14:44   16:22 3 hours 38 minutes 2022-03-29    Minneapolis      Seattle    1399.0
+
+### Self-driving from Minneapolis to Seattle
+self-driving, from Minneapolis to Seattle, duration: 23 hours 48 mins, distance: 2,666 km, cost: 133
+
+### Taxi from Minneapolis to Seattle
+taxi, from Minneapolis to Seattle, duration: 23 hours 48 mins, distance: 2,666 km, cost: 2666
+
+### Flight from Seattle to Minneapolis on 2022-03-31
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3502722    364   08:47   14:03 3 hours 16 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3509967    372   00:44   06:19 3 hours 35 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3514340    306   13:45   19:01 3 hours 16 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3529314    378   06:21   11:31 3 hours 10 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3533663    450   11:40   16:58 3 hours 18 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3754662    698   18:51   00:04 3 hours 13 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+     F3754738    563   09:07   14:16  3 hours 9 minutes 2022-03-31        Seattle  Minneapolis    1399.0
+
+### Self-driving from Seattle to Minneapolis
+self-driving, from Seattle to Minneapolis, duration: 23 hours 47 mins, distance: 2,665 km, cost: 133
+
+### Taxi from Seattle to Minneapolis
+taxi, from Seattle to Minneapolis, duration: 23 hours 47 mins, distance: 2,665 km, cost: 2665
+
+JSON plan:

@@ -1,0 +1,1403 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to make some changes to my reservations. My user ID is aarav_ahmed_6699.",
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"aarav_ahmed_6699\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "aarav_ahmed_6699"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\"}, \"address\": {\"address1\": \"176 Willow Lane\", \"address2\": \"Suite 431\", \"city\": \"Jacksonville\", \"country\": \"USA\", \"state\": \"FL\", \"zip\": \"32131\"}, \"email\": \"aarav.ahmed6812@example.com\", \"dob\": \"1981-05-26\", \"payment_methods\": {\"credit_card_9074831\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"7334\", \"id\": \"credit_card_9074831\"}, \"certificate_9645872\": {\"source\": \"certificate\", \"amount\": 250, \"id\": \"certificate_9645872\"}, \"credit_card_4959530\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"5018\", \"id\": \"credit_card_4959530\"}}, \"saved_passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Patel\", \"dob\": \"1980-12-03\"}], \"membership\": \"silver\", \"reservations\": [\"M20IZO\", \"N6F783\", \"IFOYYZ\", \"NQNU5R\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"aarav_ahmed_6699\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4633,
+    "output_tokens": 30,
+    "generation_seconds": 3.106349229812622,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Hello, Aarav! I see you have four reservations. Could you please provide the reservation ID you'd like to modify?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Hello, Aarav! I see you have four reservations. Could you please provide the reservation ID you'd like to modify?"
+      }
+    },
+    "observation": "Sure, I'd like to cancel two of them first. Let me start with reservation IFOYYZ.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Hello, Aarav! I see you have four reservations. Could you please provide the reservation ID you'd like to modify?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5001,
+    "output_tokens": 43,
+    "generation_seconds": 4.039763689041138,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"IFOYYZ\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "IFOYYZ"
+      }
+    },
+    "observation": "{\"reservation_id\": \"IFOYYZ\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"CLT\", \"destination\": \"EWR\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"CLT\", \"destination\": \"EWR\", \"flight_number\": \"HAT157\", \"date\": \"2024-05-28\", \"price\": 51}, {\"origin\": \"EWR\", \"destination\": \"CLT\", \"flight_number\": \"HAT215\", \"date\": \"2024-05-30\", \"price\": 65}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 116}], \"created_at\": \"2024-05-12T00:14:30\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"IFOYYZ\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5075,
+    "output_tokens": 23,
+    "generation_seconds": 2.7878634929656982,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that reservation IFOYYZ is for a round-trip flight from CLT to EWR in basic economy class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that reservation IFOYYZ is for a round-trip flight from CLT to EWR in basic economy class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'."
+      }
+    },
+    "observation": "The reason is change of plan.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that reservation IFOYYZ is for a round-trip flight from CLT to EWR in basic economy class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5379,
+    "output_tokens": 73,
+    "generation_seconds": 6.2079432010650635,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"IFOYYZ\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "IFOYYZ"
+      }
+    },
+    "observation": "{\"reservation_id\": \"IFOYYZ\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"CLT\", \"destination\": \"EWR\", \"flight_type\": \"round_trip\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"CLT\", \"destination\": \"EWR\", \"flight_number\": \"HAT157\", \"date\": \"2024-05-28\", \"price\": 51}, {\"origin\": \"EWR\", \"destination\": \"CLT\", \"flight_number\": \"HAT215\", \"date\": \"2024-05-30\", \"price\": 65}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 116}, {\"payment_id\": \"credit_card_4959530\", \"amount\": -116}], \"created_at\": \"2024-05-12T00:14:30\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"IFOYYZ\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 5468,
+    "output_tokens": 22,
+    "generation_seconds": 2.9043052196502686,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation IFOYYZ has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with cancelling another reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation IFOYYZ has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with cancelling another reservation?"
+      }
+    },
+    "observation": "Yes, I'd like to cancel my second reservation as well. The reservation ID is NQNU5R.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation IFOYYZ has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with cancelling another reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5801,
+    "output_tokens": 57,
+    "generation_seconds": 5.276434898376465,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"NQNU5R\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "NQNU5R"
+      }
+    },
+    "observation": "{\"reservation_id\": \"NQNU5R\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"MCO\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-13\", \"price\": 1377}, {\"origin\": \"PHX\", \"destination\": \"SEA\", \"flight_number\": \"HAT045\", \"date\": \"2024-05-14\", \"price\": 1712}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}, {\"first_name\": \"Aarav\", \"last_name\": \"Patel\", \"dob\": \"1980-12-03\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 6178}], \"created_at\": \"2024-05-13T05:37:57\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"NQNU5R\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5890,
+    "output_tokens": 25,
+    "generation_seconds": 3.211406707763672,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that reservation NQNU5R is for a one-way flight from MCO to SEA in business class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that reservation NQNU5R is for a one-way flight from MCO to SEA in business class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'."
+      }
+    },
+    "observation": "The reason is change of plan.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that reservation NQNU5R is for a one-way flight from MCO to SEA in business class. Could you please provide the reason for cancellation? The options are: 'change of plan', 'airline cancelled flight', or 'other reasons'.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6231,
+    "output_tokens": 71,
+    "generation_seconds": 6.377946615219116,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"NQNU5R\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "NQNU5R"
+      }
+    },
+    "observation": "{\"reservation_id\": \"NQNU5R\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"MCO\", \"destination\": \"SEA\", \"flight_type\": \"one_way\", \"cabin\": \"business\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-13\", \"price\": 1377}, {\"origin\": \"PHX\", \"destination\": \"SEA\", \"flight_number\": \"HAT045\", \"date\": \"2024-05-14\", \"price\": 1712}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}, {\"first_name\": \"Aarav\", \"last_name\": \"Patel\", \"dob\": \"1980-12-03\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 6178}, {\"payment_id\": \"credit_card_4959530\", \"amount\": -6178}], \"created_at\": \"2024-05-13T05:37:57\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"NQNU5R\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 6318,
+    "output_tokens": 24,
+    "generation_seconds": 3.2837305068969727,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation NQNU5R has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with any other actions?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation NQNU5R has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with any other actions?"
+      }
+    },
+    "observation": "Yes, I'd like to upgrade my remaining reservation M20IZO to business class.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation NQNU5R has been successfully cancelled. The refund will be processed to your original payment method within 5 to 7 business days. Would you like to proceed with any other actions?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6689,
+    "output_tokens": 58,
+    "generation_seconds": 5.507970333099365,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"M20IZO\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "M20IZO"
+      }
+    },
+    "observation": "{\"reservation_id\": \"M20IZO\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"JFK\", \"destination\": \"MCO\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"origin\": \"JFK\", \"destination\": \"ATL\", \"flight_number\": \"HAT268\", \"date\": \"2024-05-22\", \"price\": 136}, {\"origin\": \"ATL\", \"destination\": \"MCO\", \"flight_number\": \"HAT010\", \"date\": \"2024-05-22\", \"price\": 109}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}, {\"first_name\": \"Daiki\", \"last_name\": \"Li\", \"dob\": \"1980-12-24\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 490}], \"created_at\": \"2024-05-12T09:36:29\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"M20IZO\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6775,
+    "output_tokens": 25,
+    "generation_seconds": 3.4733474254608154,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation M20IZO is currently in economy class. Upgrading to business class will require an additional payment. Would you like to proceed with the upgrade?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation M20IZO is currently in economy class. Upgrading to business class will require an additional payment. Would you like to proceed with the upgrade?"
+      }
+    },
+    "observation": "Yes, I'd like to go ahead with the upgrade. I can pay with my credit card ending in 7334.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation M20IZO is currently in economy class. Upgrading to business class will require an additional payment. Would you like to proceed with the upgrade?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7114,
+    "output_tokens": 50,
+    "generation_seconds": 5.163273811340332,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"M20IZO\", \"cabin\": \"business\", \"flights\": [{\"flight_number\": \"HAT268\", \"date\": \"2024-05-22\"}, {\"flight_number\": \"HAT010\", \"date\": \"2024-05-22\"}], \"payment_id\": \"credit_card_9074831\"}}",
+    "action": {
+      "name": "update_reservation_flights",
+      "arguments": {
+        "reservation_id": "M20IZO",
+        "cabin": "business",
+        "flights": [
+          {
+            "flight_number": "HAT268",
+            "date": "2024-05-22"
+          },
+          {
+            "flight_number": "HAT010",
+            "date": "2024-05-22"
+          }
+        ],
+        "payment_id": "credit_card_9074831"
+      }
+    },
+    "observation": "{\"reservation_id\": \"M20IZO\", \"user_id\": \"aarav_ahmed_6699\", \"origin\": \"JFK\", \"destination\": \"MCO\", \"flight_type\": \"one_way\", \"cabin\": \"economy\", \"flights\": [{\"flight_number\": \"HAT268\", \"date\": \"2024-05-22\", \"price\": 430, \"origin\": \"JFK\", \"destination\": \"ATL\"}, {\"flight_number\": \"HAT010\", \"date\": \"2024-05-22\", \"price\": 412, \"origin\": \"ATL\", \"destination\": \"MCO\"}], \"passengers\": [{\"first_name\": \"Aarav\", \"last_name\": \"Ahmed\", \"dob\": \"1981-05-26\"}, {\"first_name\": \"Daiki\", \"last_name\": \"Li\", \"dob\": \"1980-12-24\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4959530\", \"amount\": 490}, {\"payment_id\": \"credit_card_9074831\", \"amount\": 1194}], \"created_at\": \"2024-05-12T09:36:29\", \"total_baggages\": 1, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "update_reservation_flights",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_flights\", \"arguments\": {\"reservation_id\": \"M20IZO\", \"cabin\": \"business\", \"flights\": [{\"flight_number\": \"HAT268\", \"date\": \"2024-05-22\"}, {\"flight_number\": \"HAT010\", \"date\": \"2024-05-22\"}], \"payment_id\": \"credit_card_9074831\"}}",
+    "parsed_action_name": "update_reservation_flights",
+    "input_tokens": 7200,
+    "output_tokens": 106,
+    "generation_seconds": 8.689315557479858,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation M20IZO has been successfully upgraded to business class. The additional cost of $1194 has been charged to your credit card ending in 7334. Is there anything else I can assist you with?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation M20IZO has been successfully upgraded to business class. The additional cost of $1194 has been charged to your credit card ending in 7334. Is there anything else I can assist you with?"
+      }
+    },
+    "observation": "No, that's everything I needed. Thank you for your help!\n\n###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "aarav_ahmed_6699",
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ],
+        "instruction": "Your user id is aarav_ahmed_6699. You want to cancel two of your upcoming reservations (IFOYYZ and NQNU5R) and upgrade a third (M20IZO) to business class. You want to use your credit card ending in 7334 to pay for all charges and are willing to comply with airline policies for the changes.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.000881,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "989dedfa6228fcddc7cc44bf3e67325463035a530d3446d8dc0c65284bec6b6f"
+        },
+        "actions": [
+          {
+            "name": "cancel_reservation",
+            "kwargs": {
+              "reservation_id": "NQNU5R"
+            }
+          },
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "M20IZO"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "JFK",
+              "destination": "ATL",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "search_direct_flight",
+            "kwargs": {
+              "origin": "ATL",
+              "destination": "MCO",
+              "date": "2024-05-22"
+            }
+          },
+          {
+            "name": "calculate",
+            "kwargs": {
+              "expression": "430 + 412 - (136 + 109)"
+            }
+          },
+          {
+            "name": "update_reservation_flights",
+            "kwargs": {
+              "reservation_id": "M20IZO",
+              "cabin": "business",
+              "flights": [
+                {
+                  "flight_number": "HAT268",
+                  "date": "2024-05-22"
+                },
+                {
+                  "flight_number": "HAT010",
+                  "date": "2024-05-22"
+                }
+              ],
+              "payment_id": "credit_card_9074831"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation M20IZO has been successfully upgraded to business class. The additional cost of $1194 has been charged to your credit card ending in 7334. Is there anything else I can assist you with?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 7646,
+    "output_tokens": 66,
+    "generation_seconds": 6.345840215682983,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

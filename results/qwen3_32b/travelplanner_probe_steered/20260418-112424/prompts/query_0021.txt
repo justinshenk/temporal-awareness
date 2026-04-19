@@ -1,0 +1,200 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you help create a travel itinerary for a solo trip departing from St. Louis and covering 2 cities in Florida over the course of 5 days, from March 15th to March 19th, 2022? The travel budget is set at $2,900.
+
+Reference information:
+### Attractions in Orlando
+                                              Name  Latitude  Longitude                                            Address          Phone                                                                                                                                Website    City
+                                  SeaWorld Orlando 28.411042 -81.461227          7007 Sea World Dr, Orlando, FL 32821, USA (407) 545-5550                                                                                                          https://seaworld.com/orlando/ Orlando
+                            The Wheel at ICON Park 28.443281 -81.468316                             Orlando, FL 32819, USA (407) 601-7907                                                                                     https://iconparkorlando.com/attractions/the-wheel/ Orlando
+                      Fun Spot America Theme Parks 28.465418 -81.455557          5700 Fun Spot Way, Orlando, FL 32819, USA (407) 363-3867                                                                                                               http://www.fun-spot.com/ Orlando
+                           Madame Tussauds Orlando 28.443763 -81.468606      8387 International Dr, Orlando, FL 32819, USA (855) 450-0581                                                                                                https://www.madametussauds.com/orlando/ Orlando
+                       Ripley's Believe It or Not! 28.446211 -81.470400      8201 International Dr, Orlando, FL 32819, USA (407) 345-0501                                                                                                         http://www.ripleys.com/orlando Orlando
+                          Universal Orlando Resort 28.472353 -81.469003        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                                                             https://www.universalorlando.com/web/en/us Orlando
+                               Harry P Leu Gardens 28.569760 -81.356380          1920 N Forest Ave, Orlando, FL 32803, USA (407) 246-2620                                                                                                             http://www.leugardens.org/ Orlando
+                                     Seuss Landing 28.474321 -81.467819        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                                            https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure Orlando
+The Wizarding World of Harry Potter - Diagon Alley 28.479612 -81.469375        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000      https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida/the-wizarding-world-of-harry-potter-diagon-alley Orlando
+   The Wizarding World of Harry Potter - Hogsmeade 28.472746 -81.472626        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000              https://www.universalorlando.com/web/en/us/theme-parks/islands-of-adventure/the-wizarding-world-of-harry-potter-hogsmeade Orlando
+                        Crayola Experience Orlando 28.444874 -81.391740  8001 S Orange Blossom Trl, Orlando, FL 32809, USA (407) 757-1700                                                                                             https://www.crayolaexperience.com/orlando/ Orlando
+                         SEA LIFE Orlando Aquarium 28.442588 -81.468568      8449 International Dr, Orlando, FL 32819, USA (855) 450-0680                                                                                                  https://www.visitsealife.com/orlando/ Orlando
+                               WonderWorks Orlando 28.433743 -81.471528      9067 International Dr, Orlando, FL 32819, USA (407) 351-8800                                                                                                     http://www.wonderworksorlando.com/ Orlando
+                         Universal Studios Florida 28.479375 -81.468542        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000 https://www.universalorlando.com/web/en/us/theme-parks/universal-studios-florida?utm_source=google&utm_medium=organic&utm_campaign=GMB Orlando
+                 Magical Midway Arcade & SlingShot 28.456953 -81.470116      7001 International Dr, Orlando, FL 32819, USA (407) 370-5353                                                                                                    https://magicalmidwayslingshot.com/ Orlando
+                                 Orlando Starflyer 28.444872 -81.469969      8265 International Dr, Orlando, FL 32819, USA (407) 640-7009                                                                                                                  http://starflyer.com/ Orlando
+                            Orlando Science Center 28.572263 -81.368264         777 E Princeton St, Orlando, FL 32803, USA (407) 514-2000                                                                                                                   https://www.osc.org/ Orlando
+                                 The Simpsons Ride 28.479510 -81.467616        6000 Universal Blvd, Orlando, FL 32819, USA (407) 363-8000                                            https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/the-simpsons-ride Orlando
+            Harry Potter and the Forbidden Journey 28.472103 -81.473724                             Orlando, FL 32819, USA (407) 363-8000                       https://www.universalorlando.com/web/en/us/things-to-do/rides-attractions/harry-potter-and-the-forbidden-journey Orlando
+                                         Gatorland 28.355650 -81.402211 14501 S Orange Blossom Trl, Orlando, FL 32837, USA (407) 855-5496                                                                                                             https://www.gatorland.com/ Orlando
+
+### Restaurants in Orlando
+                             Name  Average Cost                                             Cuisines  Aggregate Rating    City
+         Fuji Japanese Steakhouse            75                                Tea, Bakery, Desserts               3.8 Orlando
+                  Turquoise Villa            55                       French, Bakery, BBQ, Fast Food               4.0 Orlando
+               The Tandoori Times            84                              Tea, Cafe, BBQ, Italian               2.7 Orlando
+                    Crust N Cakes            61                               Tea, Cafe, Indian, BBQ               3.4 Orlando
+        Indochi Cafe & Restaurant            72    Pizza, French, Bakery, Fast Food, Indian, Seafood               0.0 Orlando
+                       Bite N Sip            76                     Chinese, Bakery, Cafe, Fast Food               0.0 Orlando
+                       Pure Bliss            84                         BBQ, Bakery, Pizza, Desserts               3.0 Orlando
+                 Wai Yu Mun Ching            51                                 Tea, Pizza, Desserts               3.6 Orlando
+        Shivani Catering Services            75                           Tea, Cafe, Indian, Seafood               3.1 Orlando
+                        Veg O Non            45                        BBQ, Mexican, Pizza, Desserts               3.1 Orlando
+                    Fabulous Cake            91                                 Cafe, BBQ, Fast Food               0.0 Orlando
+               Nirula's Ice Cream            46                  Tea, American, BBQ, Indian, Seafood               0.0 Orlando
+             Hotel New Tamil Nadu            13 Desserts, Italian, Fast Food, Mediterranean, Seafood               0.0 Orlando
+                       Milan Food            25                                   Cafe, BBQ, Seafood               0.0 Orlando
+                       Dessi Food            32                              Chinese, BBQ, Fast Food               0.0 Orlando
+                          Chaayos            73                                   Tea, Cafe, Mexican               3.9 Orlando
+Ambrosia - The Golden Palms Hotel            52                               Tea, Mexican, Desserts               2.8 Orlando
+                        Pizza Hut            35                       Bakery, Pizza, Indian, Seafood               3.4 Orlando
+                        Fun Bytes            13                Desserts, Tea, French, BBQ, Fast Food               2.5 Orlando
+                        Spice Hut            25                               Chinese, Cafe, Seafood               2.9 Orlando
+                    Lounge Bakery            31                   Tea, Italian, BBQ, Fast Food, Cafe               0.0 Orlando
+                    Khana Khazana            36             Chinese, Desserts, French, Cafe, Seafood               0.0 Orlando
+                             Dips            56                           Tea, Pizza, BBQ, Fast Food               2.8 Orlando
+                 Always Eat Green            98               Tea, Italian, Fast Food, Cafe, Seafood               0.0 Orlando
+                          Vaango!            32                   Tea, Italian, Bakery, BBQ, Seafood               2.8 Orlando
+                   Domino's Pizza            12                      Tea, Pizza, French, BBQ, Bakery               2.5 Orlando
+                      Lawn Bistro           100                           Fast Food, Bakery, Italian               3.6 Orlando
+                 Reena Restaurant            98                  Fast Food, Seafood, Bakery, Italian               3.5 Orlando
+                    Fusionn Rolls            63                                        Pizza, Bakery               0.0 Orlando
+                        Dhabha 27            24     Tea, French, Mexican, Bakery, Fast Food, Seafood               3.2 Orlando
+
+### Accommodations in Orlando
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number    city
+         Private furnished bedroom in Williamsburg  179.0    Private room No parties & No smoking & No children under 10             5.0                  1                 2.0 Orlando
+      Sixth Ave Chelsea, Studio Serviced Apartment   70.0 Entire home/apt                          No visitors & No pets            30.0                  3                 2.0 Orlando
+                               Large and furnished  345.0    Private room                           No smoking & No pets             7.0                  2                 4.0 Orlando
+      Private room in Jackson Heights Apartment 2+ 1081.0    Private room                                     No parties             1.0                  1                 1.0 Orlando
+Che’ Randall Deux\nSoBro\n10 minutes to Manhattan!  854.0    Private room                           No children under 10             5.0                  2                 4.0 Orlando
+                          Room in Upper East Side!  885.0    Private room              No smoking & No pets & No parties             1.0                  2                 4.0 Orlando
+                   BKLYN Brownstone- Glam Getaway!  287.0 Entire home/apt                          No pets & No visitors             3.0                  2                 3.0 Orlando
+    Rare Find: SUNNY, LARGE DUPLEX Chelsea 2BR 2BA  188.0 Entire home/apt                                        No pets             6.0                  2                 5.0 Orlando
+                         Riverside Drive Apartment  878.0 Entire home/apt          No visitors & No parties & No smoking            31.0                  5                 5.0 Orlando
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room                                        No pets             1.0                  2                 3.0 Orlando
+
+### Attractions in Fort Myers
+                              Name  Latitude  Longitude                                                                              Address          Phone                                                                   Website       City
+      Edison & Ford Winter Estates 26.633894 -81.880091                                        2350 McGregor Blvd, Fort Myers, FL 33901, USA (239) 334-7419                                  https://www.edisonfordwinterestates.org/ Fort Myers
+                    River District 26.644968 -81.868735                                        2180 First St #510, Fort Myers, FL 33901, USA        Unknown                                          https://www.myriverdistrict.com/ Fort Myers
+  Six Mile Cypress Slough Preserve 26.570541 -81.826563                                        7751 Penzance Blvd, Fort Myers, FL 33966, USA (239) 533-7550                                           https://www.sloughpreserve.org/ Fort Myers
+     IMAG History & Science Center 26.640431 -81.859454                                         2000 Cranford Ave, Fort Myers, FL 33916, USA (239) 243-0043                                                   http://www.theimag.org/ Fort Myers
+Calusa Nature Center & Planetarium 26.615671 -81.812469                                            3450 Ortiz Ave, Fort Myers, FL 33905, USA (239) 275-3435                                              http://www.calusanature.org/ Fort Myers
+                      Manatee Park 26.693153 -81.777554                                     10901 Palm Beach Blvd, Fort Myers, FL 33905, USA (239) 690-5030                            https://www.leegov.com/parks/parks/manateepark Fort Myers
+                   Centennial Park 26.643718 -81.874071                                           2000 W First St, Fort Myers, FL 33901, USA (239) 321-7524                                                                   Unknown Fort Myers
+                        Lakes Park 26.528064 -81.876818                                         7330 Gladiolus Dr, Fort Myers, FL 33908, USA (239) 533-7575                               http://www.leegov.com/parks/parks/lakespark Fort Myers
+             Lovers Key State Park 26.391327 -81.869141                                    8700 Estero Blvd, Fort Myers Beach, FL 33931, USA (239) 463-4588                         https://www.floridastateparks.org/park/Lovers-Key Fort Myers
+                     Shell Factory 26.705731 -81.898044                                2787 N Tamiami Trail, North Fort Myers, FL 33903, USA (239) 995-2141                                             https://www.shellfactory.com/ Fort Myers
+                  North Shore Park 26.657574 -81.882838                               13001 N Cleveland Ave, North Fort Myers, FL 33903, USA (239) 357-5443                             https://www.leegov.com/parks/parks/northshore Fort Myers
+                       Mound House 26.446123 -81.927753                                  451 Connecticut St, Fort Myers Beach, FL 33931, USA (239) 765-0865                                                http://www.moundhouse.org/ Fort Myers
+                    Riverside Park 26.657114 -81.853000                                       3061 E Riverside Dr, Fort Myers, FL 33916, USA (239) 321-7000 https://www.cityftmyers.com/facilities/facility/details/Riverside-Park-33 Fort Myers
+            Escape Room Adventures 26.552500 -81.870556                                12995 S Cleveland Ave #217, Fort Myers, FL 33907, USA (239) 689-6979                                      http://www.escaperoomadventures.com/ Fort Myers
+ The Shell Factory and Nature Park 26.705989 -81.897047 16554 North Cleveland Avenue, 41 N Tamiami Trail US, North Fort Myers, FL 33903, USA (239) 995-2141                                             https://www.shellfactory.com/ Fort Myers
+                        Snell Park 26.623662 -81.887050                                         2920 Valencia Way, Fort Myers, FL 33901, USA (239) 321-7530     https://www.cityftmyers.com/facilities/facility/details/Snell-Park-37 Fort Myers
+               Bowditch Point Park 26.463961 -81.966886                                      50 Estero Blvd, Fort Myers Beach, FL 33931, USA (239) 765-6794                        https://www.leegov.com/parks/beaches/bowditchpoint Fort Myers
+                     Clemente Park 26.641997 -81.847628                        3265 Dr Martin Luther King Jr Blvd, Fort Myers, FL 33916, USA        Unknown                                                                   Unknown Fort Myers
+          Sky Zone Trampoline Park 26.614373 -81.801369                                           9370 Dynasty Dr, Fort Myers, FL 33905, USA (239) 344-8244                                    https://www.skyzone.com/northfortmyers Fort Myers
+                   Vivas Palm Park 26.646758 -81.868619                                           2414 Edwards Dr, Fort Myers, FL 33901, USA (239) 931-7027  https://www.cityftmyers.com/Facilities/Facility/Details/Park-of-Palms-32 Fort Myers
+
+### Restaurants in Fort Myers
+                             Name  Average Cost                                             Cuisines  Aggregate Rating       City
+                     The Refinery            22                              Bakery, Indian, Seafood               4.0 Fort Myers
+                Al Mukhtar Bakery            54                         BBQ, Tea, American, Desserts               4.2 Fort Myers
+                          Haunted            50           Desserts, French, Fast Food, Cafe, Seafood               3.8 Fort Myers
+                  Eggers Madhouse            76                          BBQ, Mediterranean, Seafood               4.0 Fort Myers
+                     Maachh Bhaat            66   Desserts, Pizza, Fast Food, Mediterranean, Seafood               3.4 Fort Myers
+                    Kujay's Spoon            88 Pizza, Mexican, Bakery, Cafe, Mediterranean, Seafood               0.0 Fort Myers
+                 Enter The Dragon            93                                   Tea, Chinese, Cafe               3.4 Fort Myers
+ Puran Chand Ambala Wale Di Hatti            36                 Bakery, BBQ, Cafe, American, Seafood               3.3 Fort Myers
+                     Garam Masala            63                             Tea, Desserts, Fast Food               0.0 Fort Myers
+                       Haldiram's            43                             Tea, Cafe, Mediterranean               3.7 Fort Myers
+                   Taste of India            65                       Bakery, Mexican, BBQ, Desserts               0.0 Fort Myers
+                     Gujjar Dhaba            22                       Tea, French, Bakery, BBQ, Cafe               0.0 Fort Myers
+                      Cafe Turtle            30           Desserts, Cafe, Bakery, Fast Food, Chinese               3.2 Fort Myers
+          Sardar A Pure Meat Shop            28                               Chinese, Bakery, Pizza               3.4 Fort Myers
+                Urban Garden Cafe            77                     Tea, Cafe, BBQ, Chinese, Seafood               3.1 Fort Myers
+                          Mr. Sub            17           Pizza, Bakery, Fast Food, Chinese, Seafood               3.5 Fort Myers
+                 Kitchen of Awadh            88      Desserts, Italian, Cafe, Mediterranean, Seafood               3.4 Fort Myers
+   The Library - The Leela Palace            24                     Bakery, Pizza, American, Seafood               3.7 Fort Myers
+Orient Express - Taj Palace Hotel            48                          French, Pizza, Bakery, Cafe               4.0 Fort Myers
+  Moti Mahal Delux Tandoori Trail            32                     Desserts, Tea, French, BBQ, Cafe               2.2 Fort Myers
+              Hari Om Bhojanalaya            49                        Fast Food, Cafe, BBQ, Seafood               3.4 Fort Myers
+                            Giani            12              Desserts, Tea, Bakery, Chinese, Seafood               0.0 Fort Myers
+                       Red Chilli            28                      French, BBQ, Seafood, Fast Food               0.0 Fort Myers
+       Hungry House Pizzas & More            15            Tea, Italian, Fast Food, Chinese, Seafood               3.4 Fort Myers
+               Delicious Treasure            25           Desserts, Tea, French, Fast Food, American               0.0 Fort Myers
+                         Gymkhana           100                             Chinese, Bakery, Seafood               4.7 Fort Myers
+
+### Accommodations in Fort Myers
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+   Quiet and beautiful apartment near central park  930.0 Entire home/apt                         No parties & No smoking             7.0                  9                 2.0 Fort Myers
+                  Great room in Greenwich Village!  133.0    Private room                                     No visitors             1.0                  1                 4.0 Fort Myers
+ Basement suite in Bushwick, 4 minutes from the M!  193.0    Private room               No children under 10 & No parties             3.0                  2                 3.0 Fort Myers
+     Large one bed room pied a terre in Park Slope  903.0 Entire home/apt                            No pets & No smoking            30.0                  2                 4.0 Fort Myers
+   Beautiful & sunny large room in a gorgeous apt.  414.0    Private room                                      No smoking            30.0                  2                 5.0 Fort Myers
+   Spacious 1 Bedroom in the Heart of Williamsburg  623.0 Entire home/apt  No children under 10 & No smoking & No parties             1.0                  2                 2.0 Fort Myers
+ Private Apt in Queens NYC/less 5min walk to train  446.0 Entire home/apt                            No pets & No parties             5.0                  4                 4.0 Fort Myers
+                                Brooklyn Apartment  739.0    Private room               No smoking & No children under 10             6.0                  2                 3.0 Fort Myers
+Spacious and Cozy apartment, minutes to Manhattan! 1019.0    Private room               No children under 10 & No smoking             2.0                  2                 5.0 Fort Myers
+ Lovely room with private bathroom, near Manhattan  681.0    Private room                                      No parties             1.0                  1                 1.0 Fort Myers
+  Lower East Side, Bohemian Home, hipster location  783.0    Private room                                      No parties             3.0                  2                 2.0 Fort Myers
+               Studio Apartment in Upper East Side  366.0 Entire home/apt No children under 10 & No visitors & No parties             7.0                  3                 5.0 Fort Myers
+                       La Quinta Central Park West  327.0    Private room                                      No parties             1.0                  2                 5.0 Fort Myers
+       Medical Student Room A : Brooklyn Hospitals  508.0    Private room                                      No smoking            30.0                  2                 2.0 Fort Myers
+                       East Village~Organic Living  984.0 Entire home/apt               No children under 10 & No parties             2.0                  2                 5.0 Fort Myers
+
+### Flight from St. Louis to Orlando on 2022-03-15
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3564111    198   21:02   01:45 3 hours 43 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F3612337    208   11:56   15:29 2 hours 33 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F4003646    298   07:31   10:43 2 hours 12 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F4003647    233   12:40   16:09 2 hours 29 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F4003648    313   05:25   08:38 2 hours 13 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F4003649    416   20:53   00:49 2 hours 56 minutes 2022-03-15      St. Louis      Orlando     882.0
+     F4003650    209   16:49   20:06 2 hours 17 minutes 2022-03-15      St. Louis      Orlando     882.0
+
+### Self-driving from St. Louis to Orlando
+self-driving, from St. Louis to Orlando, duration: 14 hours 22 mins, distance: 1,597 km, cost: 79
+
+### Taxi from St. Louis to Orlando
+taxi, from St. Louis to Orlando, duration: 14 hours 22 mins, distance: 1,597 km, cost: 1597
+
+### Flight from Orlando to Fort Myers on 2022-03-17
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3564762     63   12:45   13:35 0 hours 50 minutes 2022-03-17        Orlando   Fort Myers     133.0
+     F4024348     60   16:27   17:14 0 hours 47 minutes 2022-03-17        Orlando   Fort Myers     133.0
+
+### Self-driving from Orlando to Fort Myers
+self-driving, from Orlando to Fort Myers, duration: 2 hours 58 mins, distance: 255 km, cost: 12
+
+### Taxi from Orlando to Fort Myers
+taxi, from Orlando to Fort Myers, duration: 2 hours 58 mins, distance: 255 km, cost: 255
+
+### Flight from Fort Myers to St. Louis on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3618962    286   11:35   13:29 2 hours 54 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+     F3951036    425   19:01   20:57 2 hours 56 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+     F3951037    448   12:51   14:33 2 hours 42 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+     F3951038    244   17:33   19:54 3 hours 21 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+     F3951039    462   23:50   01:13 2 hours 23 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+     F3951040    236   06:03   07:38 2 hours 35 minutes 2022-03-19     Fort Myers    St. Louis     979.0
+
+### Self-driving from Fort Myers to St. Louis
+self-driving, from Fort Myers to St. Louis, duration: 16 hours 16 mins, distance: 1,817 km, cost: 90
+
+### Taxi from Fort Myers to St. Louis
+taxi, from Fort Myers to St. Louis, duration: 16 hours 16 mins, distance: 1,817 km, cost: 1817
+
+JSON plan:

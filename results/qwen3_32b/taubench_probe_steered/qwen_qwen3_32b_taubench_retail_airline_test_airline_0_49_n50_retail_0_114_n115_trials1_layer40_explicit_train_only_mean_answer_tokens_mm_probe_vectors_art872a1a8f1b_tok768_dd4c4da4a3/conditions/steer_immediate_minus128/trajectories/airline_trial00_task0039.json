@@ -1,0 +1,215 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I need to cancel my flight H8Q05L please.",
+    "info": {
+      "task": {
+        "user_id": "sophia_silva_7557",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ],
+        "instruction": "You are Sophia Silva (with ID: sophia_silva_7557), you want to cancel your flight (confirmation: H8Q05L) because the flight coincides with your best friend's birthday, be persistent and don't provide more information than necessary. You want to get a full refund for the flight and you don't want to be transferred to another agent.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"H8Q05L\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "H8Q05L"
+      }
+    },
+    "observation": "{\"reservation_id\": \"H8Q05L\", \"user_id\": \"sophia_silva_7557\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"JFK\", \"destination\": \"ATL\", \"flight_number\": \"HAT268\", \"date\": \"2024-05-24\", \"price\": 74}], \"passengers\": [{\"first_name\": \"Harper\", \"last_name\": \"Kovacs\", \"dob\": \"1973-10-26\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4196779\", \"amount\": 104}], \"created_at\": \"2024-05-03T15:12:00\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "sophia_silva_7557",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ],
+        "instruction": "You are Sophia Silva (with ID: sophia_silva_7557), you want to cancel your flight (confirmation: H8Q05L) because the flight coincides with your best friend's birthday, be persistent and don't provide more information than necessary. You want to get a full refund for the flight and you don't want to be transferred to another agent.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"H8Q05L\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4621,
+    "output_tokens": 26,
+    "generation_seconds": 2.815094470977783,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation H8Q05L is for a basic economy flight on 2024-05-24. Since you have travel insurance, you can cancel this reservation. May I confirm if you would like to proceed with the cancellation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that your reservation H8Q05L is for a basic economy flight on 2024-05-24. Since you have travel insurance, you can cancel this reservation. May I confirm if you would like to proceed with the cancellation?"
+      }
+    },
+    "observation": "Yes, I want to cancel it. I need a full refund though.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "sophia_silva_7557",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ],
+        "instruction": "You are Sophia Silva (with ID: sophia_silva_7557), you want to cancel your flight (confirmation: H8Q05L) because the flight coincides with your best friend's birthday, be persistent and don't provide more information than necessary. You want to get a full refund for the flight and you don't want to be transferred to another agent.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation H8Q05L is for a basic economy flight on 2024-05-24. Since you have travel insurance, you can cancel this reservation. May I confirm if you would like to proceed with the cancellation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4885,
+    "output_tokens": 72,
+    "generation_seconds": 5.65520167350769,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"H8Q05L\"}}",
+    "action": {
+      "name": "cancel_reservation",
+      "arguments": {
+        "reservation_id": "H8Q05L"
+      }
+    },
+    "observation": "{\"reservation_id\": \"H8Q05L\", \"user_id\": \"sophia_silva_7557\", \"origin\": \"JFK\", \"destination\": \"ATL\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"JFK\", \"destination\": \"ATL\", \"flight_number\": \"HAT268\", \"date\": \"2024-05-24\", \"price\": 74}], \"passengers\": [{\"first_name\": \"Harper\", \"last_name\": \"Kovacs\", \"dob\": \"1973-10-26\"}], \"payment_history\": [{\"payment_id\": \"credit_card_4196779\", \"amount\": 104}, {\"payment_id\": \"credit_card_4196779\", \"amount\": -104}], \"created_at\": \"2024-05-03T15:12:00\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"yes\", \"status\": \"cancelled\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "sophia_silva_7557",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ],
+        "instruction": "You are Sophia Silva (with ID: sophia_silva_7557), you want to cancel your flight (confirmation: H8Q05L) because the flight coincides with your best friend's birthday, be persistent and don't provide more information than necessary. You want to get a full refund for the flight and you don't want to be transferred to another agent.",
+        "outputs": []
+      },
+      "source": "cancel_reservation",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"cancel_reservation\", \"arguments\": {\"reservation_id\": \"H8Q05L\"}}",
+    "parsed_action_name": "cancel_reservation",
+    "input_tokens": 4981,
+    "output_tokens": 25,
+    "generation_seconds": 2.852128028869629,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation H8Q05L has been successfully cancelled. The refund will be processed to your original payment method and should be reflected within 5 to 7 business days. Thank you for choosing our service, and I hope to assist you again in the future.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Your reservation H8Q05L has been successfully cancelled. The refund will be processed to your original payment method and should be reflected within 5 to 7 business days. Thank you for choosing our service, and I hope to assist you again in the future."
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "sophia_silva_7557",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ],
+        "instruction": "You are Sophia Silva (with ID: sophia_silva_7557), you want to cancel your flight (confirmation: H8Q05L) because the flight coincides with your best friend's birthday, be persistent and don't provide more information than necessary. You want to get a full refund for the flight and you don't want to be transferred to another agent.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.00046499999999999997,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "4587e6b48ad2b2c4f3e1fecb40aabec7bb2286513273b8f8cec3f5865222f290"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "H8Q05L"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Your reservation H8Q05L has been successfully cancelled. The refund will be processed to your original payment method and should be reflected within 5 to 7 business days. Thank you for choosing our service, and I hope to assist you again in the future.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5274,
+    "output_tokens": 71,
+    "generation_seconds": 5.704603672027588,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

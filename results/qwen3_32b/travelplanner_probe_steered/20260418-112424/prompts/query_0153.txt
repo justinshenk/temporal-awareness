@@ -1,0 +1,208 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Could you assist with a 5-day travel itinerary for a group of 4, departing from Boston and visiting two cities in North Carolina from March 2nd to March 6th, 2022? Our new budget is $8,800. Our stay must accommodate visitors and provide entire rooms. It's also preferred that we don't self-drive for this trip.
+
+Reference information:
+### Attractions in Wilmington
+                                   Name  Latitude  Longitude                                                  Address          Phone                                                                   Website       City
+                 Bellamy Mansion Museum 34.236148 -77.943010                 503 Market St, Wilmington, NC 28401, USA (910) 251-3700                                            http://www.bellamymansion.org/ Wilmington
+Cape Fear Museum of History and Science 34.235818 -77.938356                 814 Market St, Wilmington, NC 28401, USA (910) 798-4370                               https://www.nhcgov.com/548/Cape-Fear-Museum Wilmington
+                   Wilmington Riverwalk 34.235220 -77.949973 Wilmington Downtown Riverwalk, Wilmington, NC 28401, USA        Unknown                           https://www.wilmingtonnc.gov/visitors/riverwalk Wilmington
+             Wilmington Railroad Museum 34.241680 -77.950803                   505 Nutt St, Wilmington, NC 28401, USA (910) 763-2634                                                      http://www.wrrm.org/ Wilmington
+                  Museum of the Bizarre 34.232685 -77.949015                201 S Water St, Wilmington, NC 28401, USA (910) 399-2641                                             http://www.museumbizarre.com/ Wilmington
+                         Airlie Gardens 34.218298 -77.830242                 300 Airlie Rd, Wilmington, NC 28403, USA (910) 798-7700                                                 http://airliegardens.org/ Wilmington
+       Burgwin-Wright House and Gardens 34.235207 -77.946286                 224 Market St, Wilmington, NC 28401, USA (910) 762-0570                                        http://www.burgwinwrighthouse.com/ Wilmington
+    The Children's Museum of Wilmington 34.232741 -77.947496                 116 Orange St, Wilmington, NC 28401, USA (910) 254-3534                                            http://www.playwilmington.org/ Wilmington
+          Jungle Rapids Family Fun Park 34.207308 -77.863080              5320 Oleander Dr, Wilmington, NC 28403, USA (910) 791-0666                                              http://www.junglerapids.com/ Wilmington
+              Battleship North Carolina 34.236552 -77.954370            1 Battleship Rd NE, Wilmington, NC 28401, USA (910) 399-9100                                              http://www.battleshipnc.com/ Wilmington
+                     Cameron Art Museum 34.184095 -77.915415                3201 S 17th St, Wilmington, NC 28412, USA (910) 395-5999                                          http://www.cameronartmuseum.org/ Wilmington
+                          Latimer House 34.233218 -77.946143                  126 S 3rd St, Wilmington, NC 28401, USA (910) 606-4343                                              http://www.latimerhouse.org/ Wilmington
+              One Tree Hill: The Bridge 34.243811 -77.942927                  694 N 6th St, Wilmington, NC 28401, USA        Unknown                                                                   Unknown Wilmington
+                     1898 Memorial Park 34.247834 -77.947119                 1018 N 3rd St, Wilmington, NC 28401, USA (910) 341-7852            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+                        Halyburton Park 34.175631 -77.905358                4099 S 17th St, Wilmington, NC 28412, USA (910) 341-0075 https://www.wilmingtonnc.gov/departments/parks-recreation/halyburton-park Wilmington
+                             Bijou Park 34.238030 -77.949287                209 N Front St, Wilmington, NC 28401, USA        Unknown            http://www.wilmingtonnc.gov/departments/parks-recreation/parks Wilmington
+       Wilmington Downtown Incorporated 34.238118 -77.948567      226 N Front St Suite 130, Wilmington, NC 28401, USA (910) 998-7744                                        http://www.wilmingtondowntown.com/ Wilmington
+                        Battleship Park 34.235667 -77.952398 191-199 USS North Carolina Rd, Wilmington, NC 28401, USA        Unknown                                             https://www.battleshipnc.com/ Wilmington
+                Poplar Grove Plantation 34.320633 -77.765526                  10200 Hwy 17, Wilmington, NC 28411, USA        Unknown                                               http://www.poplargrove.org/ Wilmington
+                         Long Leaf Park 34.208175 -77.881924             314 Pine Grove Dr, Wilmington, NC 28409, USA (910) 798-7275                                                 https://parks.nhcgov.com/ Wilmington
+
+### Restaurants in Wilmington
+                      Name  Average Cost                                      Cuisines  Aggregate Rating       City
+                    Azteca            56                             Cafe, Indian, BBQ               4.3 Wilmington
+            Bandit Burrito            26  Desserts, French, Bakery, Fast Food, Seafood               4.0 Wilmington
+   Moonie's Texas Barbecue            38                    Chinese, Bakery, Fast Food               4.1 Wilmington
+                  Taco Bus            59                                Tea, Cafe, BBQ               4.5 Wilmington
+                  Momo-Cha            92          Desserts, Cafe, French, BBQ, Chinese               2.7 Wilmington
+Wangchuk's Ladakhi Kitchen            93                         Cafe, Bakery, Italian               3.6 Wilmington
+            Dunkin' Donuts            25         Desserts, Tea, Pizza, Italian, French               3.7 Wilmington
+           The Yellow Chef            45         French, BBQ, Mediterranean, Fast Food               3.7 Wilmington
+                  Kebabish            64 Desserts, Italian, BBQ, Cafe, Indian, Seafood               0.0 Wilmington
+     Aggarwal Sweet Corner            66                           Tea, Pizza, Italian               3.4 Wilmington
+             Biryani Blues            90               Bakery, BBQ, Seafood, Fast Food               3.9 Wilmington
+            ToLoveFromLove            53               Cafe, Bakery, Indian, Fast Food               0.0 Wilmington
+              Chaap Chaska            95                  Cafe, BBQ, Desserts, Seafood               0.0 Wilmington
+              Hungry Folks            91                    Tea, French, BBQ, Desserts               0.0 Wilmington
+                 Rose Cafe            96    Italian, Bakery, Fast Food, Cafe, American               4.1 Wilmington
+ P2 Tandoori Momos Station            64                       Bakery, Indian, Seafood               3.1 Wilmington
+                 Keventers            78                                Cafe, Desserts               3.8 Wilmington
+        Welcome Food Point            68                              Bakery, Desserts               2.3 Wilmington
+                   Karim's            93          Cafe, Pizza, Bakery, Chinese, Indian               0.0 Wilmington
+             Chicken Kraft            89              Cafe, Mexican, Desserts, Italian               2.9 Wilmington
+           Chaska By Taste            72 Tea, Fast Food, Cafe, American, Mediterranean               2.9 Wilmington
+
+### Accommodations in Wilmington
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number       city
+    Prime East Village location w/backyard garden!  978.0 Entire home/apt                            No pets & No smoking             4.0                  7                 5.0 Wilmington
+                  Private Bedroom in Williamsburg!  400.0    Private room                                         No pets             5.0                  2                 5.0 Wilmington
+               Doorman Harlem Apt with Great Views  921.0 Entire home/apt                           No visitors & No pets             1.0                  7                 3.0 Wilmington
+    Brooklyn Bedroom - Warm & Cozy Near Subway (1)  339.0    Private room              No visitors & No children under 10             2.0                  1                 5.0 Wilmington
+               #1 PRIVATE STUDIO IN BX,15MINS NYC. 1128.0    Private room                        No parties & No visitors             2.0                  2                 4.0 Wilmington
+    Wyndham Midtown 45 (1 Bedroom Presidential) 2A 1194.0 Entire home/apt                           No visitors & No pets             3.0                  5                 2.0 Wilmington
+                            Private: The Grey Room  954.0    Private room                                      No smoking             1.0                  2                 2.0 Wilmington
+  3BR/1.5BA East Harlem - Families, Space , Quiet!  616.0 Entire home/apt                                      No smoking             1.0                  2                 3.0 Wilmington
+      Private room. 1 bed, 2 guests, 3333 Broadway  705.0    Private room               No children under 10 & No smoking             1.0                  2                 3.0 Wilmington
+Close to East Side Hospitals- Modern 2 Bedroom Apt  285.0 Entire home/apt                                      No smoking            30.0                  3                 3.0 Wilmington
+                             Vibrant Crown Heights  343.0    Private room No visitors & No smoking & No children under 10             3.0                  1                 5.0 Wilmington
+                   A Lovely One Bedroom Apartment!  882.0 Entire home/apt                                      No parties            10.0                  8                 5.0 Wilmington
+    Full-Service Junior Suite in Midtown Manhattan  368.0 Entire home/apt                            No smoking & No pets             3.0                  2                 3.0 Wilmington
+Private room for 2 (10 min to city) - Females only  453.0    Private room           No parties & No smoking & No visitors             1.0                  1                 4.0 Wilmington
+                              Semi Private Bedroom  840.0     Shared room                        No smoking & No visitors             1.0                  1                 3.0 Wilmington
+ Luxury 3 bedroom apartment on the Upper East Side  481.0 Entire home/apt               No children under 10 & No smoking             2.0                  3                 5.0 Wilmington
+                                 Big and cozy room  104.0    Private room                         No smoking & No parties             3.0                  2                 5.0 Wilmington
+                Charming 1BR in heart of Chinatown  503.0    Private room               No smoking & No children under 10             2.0                  2                 2.0 Wilmington
+         Luxury Apt very close to public transport  871.0    Private room                  No pets & No children under 10             5.0                  2                 4.0 Wilmington
+                BEAUTIFUL&BRIGHT 1 bd (E. Village)  207.0    Private room                                         No pets             1.0                  1                 5.0 Wilmington
+
+### Attractions in Charlotte
+                           Name  Latitude  Longitude                                               Address          Phone                                                                                     Website      City
+                   Freedom Park 35.191449 -80.843441              1908 East Blvd, Charlotte, NC 28203, USA (980) 314-1002                                                                                     Unknown Charlotte
+ Levine Museum of the New South 35.224457 -80.846722              401 S Tryon St, Charlotte, NC 28202, USA (704) 333-1887                                                         http://www.museumofthenewsouth.org/ Charlotte
+        Discovery Place Science 35.229694 -80.841566              301 N Tryon St, Charlotte, NC 28202, USA (704) 327-2189                                                                  http://discoveryplace.org/ Charlotte
+            NASCAR Hall of Fame 35.221137 -80.843954        400 E M.L.K. Jr Blvd, Charlotte, NC 28202, USA (704) 654-4400                                                                  http://www.nascarhall.com/ Charlotte
+                The Mint Museum 35.197462 -80.814321            2730 Randolph Rd, Charlotte, NC 28207, USA (704) 337-2000                                                                  http://www.mintmuseum.org/ Charlotte
+  Bechtler Museum of Modern Art 35.224482 -80.847328              420 S Tryon St, Charlotte, NC 28202, USA (704) 353-9209                                                                        http://bechtler.org/ Charlotte
+The Charlotte Museum of History 35.233535 -80.766542            3500 Shamrock Dr, Charlotte, NC 28215, USA (704) 568-1774                                                             http://www.charlottemuseum.org/ Charlotte
+             Mint Museum Uptown 35.224408 -80.848085              500 S Tryon St, Charlotte, NC 28202, USA (704) 337-2000                                                                      http://mintmuseum.org/ Charlotte
+            Ray’s Splash Planet 35.238116 -80.851303           215 N Sycamore St, Charlotte, NC 28202, USA (980) 314-4729              https://www.mecknc.gov/ParkandRec/Aquatics/RaysSplashPlanet/Pages/default.aspx Charlotte
+               Trail of History 35.216842 -80.832673              100 N Kings Dr, Charlotte, NC 28204, USA        Unknown                                                         http://charlottetrailofhistory.org/ Charlotte
+UNC Charlotte Botanical Gardens 35.307813 -80.729735              9090 Craver Rd, Charlotte, NC 28262, USA (704) 687-0721                                                                    http://gardens.uncc.edu/ Charlotte
+                  Marshall Park 35.219210 -80.838582 Marshall Park, 800 E 3rd St, Charlotte, NC 28202, USA (704) 432-4280 https://www.mecknc.gov/ParkandRec/Parks/ParksByRegion/CentralRegion/Pages/marshallpark.aspx Charlotte
+           Billy Graham Library 35.190552 -80.909302            4330 Westmont Dr, Charlotte, NC 28217, USA (704) 401-3200                                                             https://billygrahamlibrary.org/ Charlotte
+            Romare Bearden Park 35.226970 -80.847877             300 S Church St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+                   Midtown Park 35.211013 -80.836628              510 S Kings Dr, Charlotte, NC 28204, USA (980) 314-1000                                                                                     Unknown Charlotte
+      Reedy Creek Nature Center 35.261767 -80.719380         2986 ROCKY RIVER RD, Charlotte, NC 28215, USA (980) 314-1119              https://parkandrec.mecknc.gov/Places-to-Visit/Nature/reedy-creek-nature-center Charlotte
+                First Ward Park 35.227678 -80.836459                301 E 7th St, Charlotte, NC 28202, USA (704) 336-3854                                                                                     Unknown Charlotte
+                 Books Monument 35.223480 -80.846129            435 S College St, Charlotte, NC 28202, USA        Unknown                                                                                     Unknown Charlotte
+                The Mural House 35.215190 -80.819654               1812 E 8th St, Charlotte, NC 28204, USA        Unknown                                                                                     Unknown Charlotte
+               Fourth Ward Park 35.231735 -80.842741             301 N Poplar St, Charlotte, NC 28202, USA (704) 432-4280                                                                                     Unknown Charlotte
+
+### Restaurants in Charlotte
+                        Name  Average Cost                                            Cuisines  Aggregate Rating      City
+             Olive Tree Cafe            23                              Tea, Chinese, Desserts               4.6 Charlotte
+              Central Perk 7            87                       Pizza, Bakery, BBQ, Fast Food               4.5 Charlotte
+                      Subway            60                Tea, Cafe, Mexican, Chinese, Seafood               2.5 Charlotte
+           Cafe Maple Street            91                             Fast Food, Tea, Italian               3.5 Charlotte
+                Kylin Skybar            44                           Tea, Cafe, Pizza, Italian               3.6 Charlotte
+   Shree Hari Vaishnav Dhaba            97                       Bakery, Pizza, American, Cafe               0.0 Charlotte
+         Unplugged Courtyard            54             Desserts, French, Bakery, Cafe, Seafood               4.0 Charlotte
+   Grover's - The Baker Shop            30             Pizza, Bakery, Chinese, Indian, Seafood               3.0 Charlotte
+Prince Snacks & Momo's Point            11                      Tea, Cafe, Desserts, Fast Food               3.4 Charlotte
+                China Garden            14                    Tea, Mexican, BBQ, Mediterranean               3.8 Charlotte
+          Nagaland's Kitchen            73                           Pizza, American, Desserts               3.8 Charlotte
+             Bombay Vada Pav            33                 Desserts, Pizza, Italian, BBQ, Cafe               2.8 Charlotte
+             Birbal Ji Dhaba            40                              Cafe, Bakery, Desserts               0.0 Charlotte
+                 Lotes Bakes            29                      BBQ, Bakery, Desserts, Seafood               0.0 Charlotte
+             Behrouz Biryani            19 Mexican, Bakery, Fast Food, Cafe, American, Seafood               3.5 Charlotte
+                Scorpio Cafe            89                     Tea, Cafe, Pizza, Mediterranean               3.7 Charlotte
+             Aggarwal Sweets            76                    Bakery, BBQ, Desserts, Fast Food               0.0 Charlotte
+     Aditya Da Vaishno Dhaba            70                        Cafe, Pizza, Indian, Seafood               0.0 Charlotte
+               Mithla Dhabha            71                                 Tea, BBQ, Fast Food               0.0 Charlotte
+                 Chicken Inn            18                   Tea, Pizza, Italian, BBQ, Seafood               3.6 Charlotte
+           Hong Kong Express            74                             Chinese, Cafe, Desserts               3.2 Charlotte
+               Pind Balluchi            42          Pizza, French, Mexican, BBQ, Cafe, Seafood               2.8 Charlotte
+              Ali Baba Caves            41                 Desserts, Tea, Bakery, Cafe, Indian               3.1 Charlotte
+                 Dial a Cake            25                        Tea, French, Indian, Seafood               0.0 Charlotte
+           Legends Barbeques            88               Desserts, Tea, Mexican, Cafe, Seafood               3.9 Charlotte
+                 Burger King            15                       Cafe, Pizza, Indian, Desserts               3.5 Charlotte
+                 Bansi Vihar            45                       Cafe, Pizza, Bakery, Desserts               3.4 Charlotte
+                     Le Club            64                                         Tea, Bakery               3.5 Charlotte
+  Tuk Tuk Indian Street Food            29                 Chinese, Bakery, Seafood, Fast Food               4.0 Charlotte
+             Life Grand Cafe            25             Tea, Bakery, Fast Food, Chinese, Indian               4.1 Charlotte
+
+### Accommodations in Charlotte
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+                              Cute Greenpoint room  335.0    Private room               No children under 10 & No pets             3.0                  1                 2.0 Charlotte
+            Elegant Studio Apt in Prospect Heights  640.0 Entire home/apt                                   No parties             2.0                  5                 5.0 Charlotte
+                  Two Bedrooms with Dedicated Bath  615.0    Private room                        No visitors & No pets             3.0                  2                 4.0 Charlotte
+               Lower East Side 1bedroom apt in NYC  861.0 Entire home/apt            No parties & No children under 10             3.0                  6                 3.0 Charlotte
+             Luxury 2 bdr/2 bath prime Williamburg  218.0 Entire home/apt  No children under 10 & No smoking & No pets             1.0                  3                 5.0 Charlotte
+                Nice apartment 4 Springbreak in NY  391.0    Private room                        No pets & No visitors             3.0                  2                 4.0 Charlotte
+   Spacious with amazing views 1 bedroom apartment  660.0 Entire home/apt                        No pets & No visitors             7.0                  5                 2.0 Charlotte
+Stunning 5 BR Townhouse with Chef's Kitchen #10288  664.0 Entire home/apt                                      No pets             3.0                  2                 4.0 Charlotte
+Designer 2 Bedroom Loft**Greenwich Village**4BEDS*  660.0 Entire home/apt                      No smoking & No parties             5.0                  6                 2.0 Charlotte
+                  1 Bedroom in 2 bedroom Apartment  286.0    Private room                                      No pets            30.0                  2                 2.0 Charlotte
+Home Away From Home. Sunny, Spacious 1BR Apartment 1008.0 Entire home/apt                                      No pets            90.0                  9                 1.0 Charlotte
+       Beautiful Williamsburg 1.5 BR-9 min to NYC! 1108.0 Entire home/apt                         No pets & No smoking             2.0                  6                 1.0 Charlotte
+            Awesome Room in the Heart of Bushwick!  404.0    Private room No visitors & No pets & No children under 10             7.0                  1                 4.0 Charlotte
+ Affordable Spacious Refurbished Room in Bushwick!  274.0    Private room                                  No visitors             2.0                  1                 1.0 Charlotte
+
+### Flight from Boston to Wilmington on 2022-03-02
+There is no flight from Boston to Wilmington on 2022-03-02.
+
+### Self-driving from Boston to Wilmington
+self-driving, from Boston to Wilmington, duration: 12 hours 27 mins, distance: 1,304 km, cost: 65
+
+### Taxi from Boston to Wilmington
+taxi, from Boston to Wilmington, duration: 12 hours 27 mins, distance: 1,304 km, cost: 1304
+
+### Flight from Wilmington to Charlotte on 2022-03-04
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3635146     75   08:53   09:55  1 hours 2 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F3666331     38   14:30   15:30  1 hours 0 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F3783506     87   10:57   12:14 1 hours 17 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F3786882     49   16:02   17:15 1 hours 13 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F4051026     44   04:52   05:48 0 hours 56 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F4053599     63   06:54   07:57  1 hours 3 minutes 2022-03-04     Wilmington    Charlotte     185.0
+     F4061653     67   20:05   21:03 0 hours 58 minutes 2022-03-04     Wilmington    Charlotte     185.0
+
+### Self-driving from Wilmington to Charlotte
+self-driving, from Wilmington to Charlotte, duration: 3 hours 24 mins, distance: 324 km, cost: 16
+
+### Taxi from Wilmington to Charlotte
+taxi, from Wilmington to Charlotte, duration: 3 hours 24 mins, distance: 324 km, cost: 324
+
+### Flight from Charlotte to Boston on 2022-03-06
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3662314    328   13:21   15:18 1 hours 57 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3663441    152   15:06   17:08  2 hours 2 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3690539    187   20:30   22:33  2 hours 3 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3693944    185   22:35   00:36  2 hours 1 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3695301    234   20:07   22:01 1 hours 54 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3702391    315   09:37   11:57 2 hours 20 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3711164    329   11:33   13:36  2 hours 3 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3711224    233   16:57   19:02  2 hours 5 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3711924    334   08:26   10:23 1 hours 57 minutes 2022-03-06      Charlotte       Boston     728.0
+     F3761399    246   12:42   14:43  2 hours 1 minutes 2022-03-06      Charlotte       Boston     728.0
+     F4063571    228   10:34   12:46 2 hours 12 minutes 2022-03-06      Charlotte       Boston     728.0
+     F4063705    256   18:07   20:20 2 hours 13 minutes 2022-03-06      Charlotte       Boston     728.0
+
+### Self-driving from Charlotte to Boston
+self-driving, from Charlotte to Boston, duration: 12 hours 53 mins, distance: 1,348 km, cost: 67
+
+### Taxi from Charlotte to Boston
+taxi, from Charlotte to Boston, duration: 12 hours 53 mins, distance: 1,348 km, cost: 1348
+
+JSON plan:

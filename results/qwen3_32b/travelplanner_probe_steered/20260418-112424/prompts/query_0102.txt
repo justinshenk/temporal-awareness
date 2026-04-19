@@ -1,0 +1,268 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need assistance with planning a week-long trip for three people, starting from Punta Gorda and traveling to three different cities in Michigan. The trip dates are from March 6th to March 12th, 2022, and our new budget is set at $4,400. For dining, we'd like to try local American and French cuisines.
+
+Reference information:
+### Attractions in Pellston
+                                 Name  Latitude  Longitude                                              Address          Phone                                                                   Website     City
+                Pellston Pioneer Park 45.549403 -84.788085 H627+88X, 100 Bud Carter Tr, Pellston, MI 49769, USA (231) 539-2616                                                http://www.pellstonmi.com/ Pellston
+   Pellston Historical Society Museum 45.552733 -84.784719  Petoskey to Mackinaw Trail, Pellston, MI 49769, USA        Unknown                                   https://www.facebook.com/pellstondepot/ Pellston
+      Philip J. Braun Nature Preserve 45.550682 -84.797974                     Mill St, Pellston, MI 49769, USA (231) 347-0991       https://landtrust.org/explore/philip-j-braun-nature-preserve-north/ Pellston
+                  Petoskey State Park 45.406717 -84.908516                  2475 M-119, Petoskey, MI 49770, USA (231) 347-2311   http://www.dnr.state.mi.us/parksandtrails/Details.aspx?id=483&type=SPRK Pellston
+Headlands International Dark Sky Park 45.775470 -84.781172     15675 Headlands Rd, Mackinaw City, MI 49701, USA (231) 427-1001                                             http://www.midarkskypark.org/ Pellston
+                Wilderness State Park 45.739095 -84.922077     903 Wilderness Park Dr, Carp Lake, MI 49718, USA (231) 436-5381 https://www2.dnr.state.mi.us/parksandtrails/Details.aspx?id=509&type=SPRK Pellston
+             Colonial Michilimackinac 45.786608 -84.732058        800 N Huron Ave, Mackinaw City, MI 49701, USA (231) 436-4100                    http://www.mackinacparks.com/colonial-michilimackinac/ Pellston
+               Conkling Heritage Park 45.778525 -84.725323        335 S Huron Ave, Mackinaw City, MI 49701, USA (888) 455-8100                                              http://www.mackinawcity.com/ Pellston
+    Bear River Valley Recreation Area 45.370465 -84.962901                 302 Ione St, Petoskey, MI 49770, USA (231) 347-2500                                                                   Unknown Pellston
+                    Mineral Well Park 45.374881 -84.960352           136-158 E Lake St, Petoskey, MI 49770, USA (231) 347-2500                                                   http://www.petoskey.us/ Pellston
+                     Aloha State Park 45.524797 -84.465454                4347 3rd St, Cheboygan, MI 49721, USA (231) 625-2522   http://www.michigandnr.com/parksandtrails/details.aspx?id=434&type=SPRK Pellston
+            McGulpin Point Lighthouse 45.787106 -84.772950       500 Headlands Rd, Mackinaw City, MI 49701, USA (231) 436-5860                                            https://www.mcgulpinpoint.org/ Pellston
+                          Castle Rock 45.910597 -84.741581       N2690 Castle Rock Rd, St Ignace, MI 49781, USA (906) 643-8268                                    http://www.castlerockmi.com/#!the-rock Pellston
+          Oden Island Nature Preserve 45.414935 -84.816050             3160 Leeward Dr, Petoskey, MI 49770, USA (231) 347-0991                                                     http://landtrust.org/ Pellston
+                 Burt Lake State Park 45.402049 -84.621736      6635 State Park Dr, Indian River, MI 49749, USA (231) 238-9392  https://www.dnr.state.mi.us/parksandtrails/Details.aspx?id=439&type=SPRK Pellston
+            Andrew J Blackbird Museum 45.430423 -84.984753         368 E Main St, Harbor Springs, MI 49740, USA (231) 526-9771                                                                   Unknown Pellston
+                   Douglas Lake trail 45.555750 -84.687014      8100-8998 County Rd 64, Pellston, MI 49769, USA        Unknown                                                                   Unknown Pellston
+                    Mystery Town, USA 45.779481 -84.732827       200 S Nicolet St, Mackinaw City, MI 49701, USA (231) 427-7030                                            http://www.mysterytownusa.com/ Pellston
+                            BlissFest 45.621938 -84.988102      3695 Division Rd, Harbor Springs, MI 49740, USA        Unknown                                                    https://blissfest.org/ Pellston
+                          Sunset Park 45.379440 -84.952072               101 E Lake St, Petoskey, MI 49770, USA (231) 347-2500                                                    http://www.petoskey.us Pellston
+
+### Restaurants in Pellston
+                                    Name  Average Cost                                             Cuisines  Aggregate Rating     City
+                            Johnnie Mars            33                                       Tea, Fast Food               3.9 Pellston
+                          Aroos Damascus            44               Desserts, Tea, Italian, Cafe, American               4.2 Pellston
+                   Sagar Gaire Fast Food            64    Desserts, Tea, Pizza, Italian, BBQ, Mediterranean               4.9 Pellston
+    The Great Kabab Factory - Park Plaza            84               Desserts, Pizza, Mexican, BBQ, Seafood               3.7 Pellston
+                     The Plaza Solitaire            72          Desserts, Tea, BBQ, American, Mediterranean               3.3 Pellston
+                            Premier Bite            53                                 Tea, Bakery, Seafood               0.0 Pellston
+                               Sky Beach            37                               Bakery, Pizza, Seafood               2.6 Pellston
+                           Flame & Grill            23                                          Bakery, BBQ               3.9 Pellston
+                         Standard Sweets            56            Desserts, French, Mexican, BBQ, Fast Food               3.6 Pellston
+                   Royal Kolkata Biryani            87                     Tea, BBQ, Mediterranean, Seafood               2.7 Pellston
+                           Tasty Tonight            97                                          Tea, Bakery               3.1 Pellston
+                            Kolkata Roll            67                                       Pizza, Seafood               2.8 Pellston
+                           Spezia Bistro            84                      Tea, Mexican, BBQ, Bakery, Cafe               4.6 Pellston
+                  K.K. Fast Food Service            71                              Chinese, Cafe, Desserts               0.0 Pellston
+                         The Square Meal            25 Desserts, Tea, BBQ, American, Mediterranean, Seafood               0.0 Pellston
+                 SGF - Spice Grill Flame            29                       American, Indian, BBQ, Seafood               2.9 Pellston
+                         Noor Restaurant            97                  Cafe, Chinese, Pizza, Mediterranean               3.4 Pellston
+                             Chowringhee            44                       Tea, Bakery, Desserts, Seafood               3.6 Pellston
+                         Behrouz Biryani            77                Fast Food, Mexican, Desserts, Seafood               3.0 Pellston
+       Little Pleasure Restaurant & Cafe            90             Cafe, Pizza, Fast Food, Chinese, Seafood               2.9 Pellston
+              Colonel's Kebabs & Curries            54                                   Cafe, BBQ, Seafood               0.0 Pellston
+                            Snacks Point            78   Tea, BBQ, Bakery, American, Mediterranean, Seafood               0.0 Pellston
+                         TCW Chaat Point            78            Pizza, French, Bakery, Fast Food, Chinese               0.0 Pellston
+                                  Yo Wok            27                               Bakery, Mexican, Pizza               2.8 Pellston
+                        Monis Kada Hotel            51                                Pizza, BBQ, Fast Food               0.0 Pellston
+                                 Cholkat            12                           Fast Food, French, Seafood               3.0 Pellston
+          Aqua Grill - Pride Plaza Hotel            44                          American, Desserts, Seafood               0.0 Pellston
+                         Ravi Ke Parathe            65                     Tea, American, Indian, Fast Food               0.0 Pellston
+                         New Madras Cafe            69                 French, Seafood, Desserts, Fast Food               0.0 Pellston
+                    Sikandrabadi Biryani            79                  French, Bakery, American, Fast Food               3.4 Pellston
+                       Punjabi By Nature            26                        Tea, Bakery, Pizza, Fast Food               3.7 Pellston
+                    Mudrika Food Factory            10               Tea, Pizza, French, Fast Food, Seafood               2.5 Pellston
+                              Le Plaisir            69                      BBQ, Bakery, American, Desserts               4.8 Pellston
+                             Wok On Fire            19                               Bakery, BBQ, Fast Food               3.9 Pellston
+The Great Kabab Factory - Radisson Hotel            85                               Bakery, BBQ, Fast Food               3.3 Pellston
+                      Grand Caf愆 & Beach            73                                       BBQ, Fast Food               3.8 Pellston
+                                  Perron            74                    Cafe, Bakery, Desserts, Fast Food               4.2 Pellston
+
+### Accommodations in Pellston
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number     city
+      Beautiful apartment ~25min from Times Square  571.0 Entire home/apt                        No smoking & No visitors             5.0                  5                 5.0 Pellston
+         Large Room with Pull-out Sofa and Balcony  443.0    Private room     No parties & No pets & No children under 10             1.0                  1                 3.0 Pellston
+One Bedroom Apartment in Brownstone in Harlem, NYC 1068.0 Entire home/apt                                      No parties             3.0                  3                 1.0 Pellston
+     Spacious 1 BR W/ adjustable Queen bed. Comfy!  581.0 Entire home/apt                           No pets & No visitors             2.0                  4                 2.0 Pellston
+ Designer's Beautiful 2BR Apartment in NOLITA/SOHO 1120.0 Entire home/apt               No smoking & No children under 10             2.0                  6                 5.0 Pellston
+               Airy and bright room. Prospect Park  214.0     Shared room              No smoking & No pets & No visitors             1.0                  1                 1.0 Pellston
+   Entire private # in a privately own  brownstone  833.0    Private room                                      No parties            10.0                  1                 2.0 Pellston
+Heart of NYC! - Large, Spacious, Bright 1 Bedroom!  583.0 Entire home/apt                            No smoking & No pets            30.0                  4                 4.0 Pellston
+                City Living with a Home Town Feel.  895.0    Private room No visitors & No parties & No children under 10             1.0                  2                 3.0 Pellston
+     Home For Medical Professionals - "The Macula"  710.0    Private room                                         No pets            19.0                  2                 2.0 Pellston
+
+### Attractions in Traverse City
+                                       Name  Latitude  Longitude                                                   Address          Phone                                                                                                    Website          City
+                                Clinch Park 44.765781 -85.621521        111 E Grandview Pkwy, Traverse City, MI 49684, USA (231) 922-4904                                                              http://www.michigan.org/property/clinch-park/ Traverse City
+              Great Lakes Children's Museum 44.786155 -85.638223      13240 S W Bay Shore Dr, Traverse City, MI 49684, USA (231) 932-4526                                                                             http://www.greatlakeskids.org/ Traverse City
+             World's Largest Cherry Pie Pan 44.736223 -85.625195                3424 Cass Rd, Traverse City, MI 49684, USA (231) 947-0692                                                                                                    Unknown Traverse City
+                                Hippie Tree 44.752576 -85.650390                              Traverse City, MI 49684, USA        Unknown                                                                                                    Unknown Traverse City
+               Pirate's Cove Adventure Park 44.745125 -85.542008            1710 US-31 North, Traverse City, MI 49686, USA (231) 938-9599                                                                                                    Unknown Traverse City
+                                Sunset Park 44.764611 -85.608104              635 E Front St, Traverse City, MI 49686, USA        Unknown                                                           http://www.traversecitymi.gov/tcparksmaplist.asp Traverse City
+                   Mission Point Lighthouse 44.991281 -85.479503             20500 Center Rd, Traverse City, MI 49686, USA (231) 645-0759                                                                     http://www.missionpointlighthouse.com/ Traverse City
+                              East Bay Park 44.762865 -85.576241            220 E Bay Blvd S, Traverse City, MI 49686, USA        Unknown                                                                                                    Unknown Traverse City
+Great Wolf Lodge Water Park | Traverse City 44.738819 -85.647586                  3575 US-31, Traverse City, MI 49684, USA (866) 478-9653 https://www.greatwolf.com/traverse-city?utm_source=google&utm_medium=organic&utm_campaign=gmb-traversecity Traverse City
+                             Discovery Pier 44.786198 -85.636034      13271 S W Bay Shore Dr, Traverse City, MI 49684, USA (231) 715-5200                                                                           https://discoverygreatlakes.org/ Traverse City
+                  Greilickville Harbor Park 44.788183 -85.636836      13133 S W Bay Shore Dr, Traverse City, MI 49684, USA (231) 946-0921                                                                                                    Unknown Traverse City
+                          Discovery Cruises 44.786957 -85.638251 13170 S W Bay Shore Dr #104, Traverse City, MI 49684, USA        Unknown                                                                                                    Unknown Traverse City
+       Traverse City Veterans Memorial Park 44.756304 -85.638579       902-998 W Eleventh St, Traverse City, MI 49684, USA        Unknown                                                                                                    Unknown Traverse City
+ Keith J. Charters Traverse City State Park 44.747328 -85.552911                  1132 US-31, Traverse City, MI 49686, USA (231) 922-5270                                  https://www2.dnr.state.mi.us/parksandtrails/details.aspx?id=501&type=SPRK Traverse City
+                                   Lay Park 44.761081 -85.623366              301 S Union St, Traverse City, MI 49684, USA        Unknown                                                           http://www.traversecitymi.gov/tcparksmaplist.asp Traverse City
+                        Historic Barns Park 44.747683 -85.647930                 1500 Red Dr, Traverse City, MI 49684, USA (231) 409-8382                                                                         https://www.historicbarnspark.com/ Traverse City
+                           City Opera House 44.763947 -85.623445              106 E Front St, Traverse City, MI 49684, USA (231) 941-8082                                                                             http://www.cityoperahouse.org/ Traverse City
+         Grand Traverse County Civic Center 44.762147 -85.591240      1213 W Civic Center Dr, Traverse City, MI 49686, USA (231) 922-4818                                                        http://www.co.grand-traverse.mi.us/916/Civic-Center Traverse City
+                                  Gens Park 44.746678 -85.530899             2263 Munson Ave, Traverse City, MI 49686, USA (231) 947-8647                                                            http://www.gtrec.org/facility.asp?ait=av&aid=39 Traverse City
+                      Family friendly beach 44.765518 -85.619638        191 E Grandview Pkwy, Traverse City, MI 49684, USA        Unknown                                                                                                    Unknown Traverse City
+
+### Restaurants in Traverse City
+                                        Name  Average Cost                                                   Cuisines  Aggregate Rating          City
+                               Famous Dave's            39                  Desserts, Italian, BBQ, Fast Food, Indian               3.6 Traverse City
+                                  Daily Eats            44                                          Desserts, Seafood               4.4 Traverse City
+                               Arigato Sushi            96   Desserts, Mexican, Bakery, BBQ, Fast Food, Mediterranean               3.3 Traverse City
+                                 Tasty Bites            27                         Chinese, Bakery, Desserts, Seafood               0.0 Traverse City
+India on my Plate - Fortune Select Excalibur            53                                      Tea, Chinese, Seafood               4.0 Traverse City
+                                 Desserts 83            78                      Tea, Cafe, Chinese, American, Seafood               3.2 Traverse City
+                           Tasty But Healthy            77                           Fast Food, Cafe, Bakery, Seafood               0.0 Traverse City
+                                     Vidorra            88                                             Tea, Fast Food               4.0 Traverse City
+                                French Toast            18                                            Pizza, Desserts               4.3 Traverse City
+                                     Whipped            90                                          Cafe, Indian, BBQ               4.2 Traverse City
+                                   Wow! Momo            60                                    Cafe, Indian, Fast Food               3.4 Traverse City
+                        Babu Bhai Kabab Wale            60                                    Chinese, Cafe, Desserts               3.4 Traverse City
+                   Sher 'A' Punjab Bhojnalya            76                   French, Bakery, Fast Food, Cafe, Seafood               3.3 Traverse City
+                                 Cafe Shloka            49                           Chinese, Mexican, BBQ, Fast Food               3.5 Traverse City
+                        Deepu Fish & Chicken            49                                   Tea, Cafe, American, BBQ               0.0 Traverse City
+                                     Al Bake            77                         Tea, Bakery, Indian, Mediterranean               2.5 Traverse City
+                Dhaba Cash 'N' Carry Kitchen            91                               BBQ, Mediterranean, Desserts               3.1 Traverse City
+                             Kents Fast Food            32                                    Tea, Cafe, BBQ, Seafood               2.8 Traverse City
+                          Perfect Party Chef            77                        Pizza, French, BBQ, Fast Food, Cafe               0.0 Traverse City
+                           Dukes Pastry Shop            77                                    Fast Food, BBQ, Italian               4.2 Traverse City
+                         Al-Arabi Restaurant            89                             Cafe, Mexican, Bakery, Seafood               2.9 Traverse City
+                                 Jony Sweets            82 Desserts, Mexican, Fast Food, Cafe, Mediterranean, Seafood               0.0 Traverse City
+             Standard Sweets & Confectioners            32                          Cafe, Pizza, BBQ, Bakery, Chinese               0.0 Traverse City
+                 Eden Noodles Cafe 蝊_螄漘唭_唭_潰            80                 Pizza, BBQ, Fast Food, Cafe, Mediterranean               4.3 Traverse City
+                                   Dragonfly            69                         Tea, Italian, French, BBQ, Seafood               4.3 Traverse City
+
+### Accommodations in Traverse City
+                                              NAME  price       room type                        house_rules  minimum nights  maximum occupancy  review rate number          city
+   Heart of Soho! Cute studio with clean finishes!  969.0 Entire home/apt                         No parties             4.0                  2                 4.0 Traverse City
+      Beautiful Room close to JFK, La Guardia, LIR  352.0    Private room                            No pets             2.0                  1                 4.0 Traverse City
+                   One bedroom apartment in NoLita  172.0 Entire home/apt     No children under 10 & No pets             1.0                  2                 4.0 Traverse City
+            15 minutes Barclay Center 25 Manhattan   76.0    Private room                            No pets             5.0                  1                 2.0 Traverse City
+                         Home sweet home in Harlem  654.0 Entire home/apt               No children under 10             3.0                  3                 5.0 Traverse City
+     Upper Westside apt with huge private terrace.  788.0 Entire home/apt  No smoking & No parties & No pets             5.0                  5                 2.0 Traverse City
+         Sunny and Spacious Room in Central Harlem  895.0    Private room                            No pets             3.0                  2                 4.0 Traverse City
+ Private Room in Little Italy/Chinatown, Manhattan  924.0    Private room               No children under 10             1.0                  2                 2.0 Traverse City
+Landmark Loft in Williamsburg Brooklyn 1 month min  834.0 Entire home/apt                         No smoking            31.0                  7                 1.0 Traverse City
+               2 Bedroom Penthouse with Good Vibes  745.0 Entire home/apt           No smoking & No visitors            30.0                  2                 4.0 Traverse City
+                  Big Size Room in a 2 Bedroom Apt  850.0    Private room                         No parties             4.0                  2                 4.0 Traverse City
+                           Skyline View Piano Room  395.0    Private room                            No pets             1.0                  1                 5.0 Traverse City
+                    New York I Love You 7 Bedrooms  400.0 Entire home/apt           No parties & No visitors             3.0                  3                 4.0 Traverse City
+                           Morningside Heights Gem  682.0 Entire home/apt                            No pets             3.0                  6                 5.0 Traverse City
+              Convenient Financial District Studio  219.0 Entire home/apt No pets & No visitors & No parties             2.0                  3                 3.0 Traverse City
+1 Bedroom Apartment -Tompkins sq Park/East Village  841.0 Entire home/apt              No visitors & No pets             4.0                  3                 5.0 Traverse City
+Sunny room in 2bed apt in East Harlem Fullsize bed  623.0    Private room               No children under 10            14.0                  2                 5.0 Traverse City
+ Cozy , Cute and Spacious one bedroom Brooklyn Apt  830.0 Entire home/apt           No visitors & No smoking             1.0                  4                 2.0 Traverse City
+  Sunny bedroom in historic Bed Stuy BK brownstone  490.0    Private room               No pets & No smoking            14.0                  1                 5.0 Traverse City
+
+### Attractions in Alpena
+                                 Name  Latitude  Longitude                                                  Address          Phone                                                                          Website   City
+ Great Lakes Maritime Heritage Center 45.068573 -83.434641                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200      https://thunderbay.noaa.gov/visit/great-lakes-maritime-heritage-center.html Alpena
+ Besser Museum for Northeast Michigan 45.080674 -83.448453                    491 Johnson St, Alpena, MI 49707, USA (989) 356-2202                                                     http://www.bessermuseum.org/ Alpena
+                   Mich-e-ke-wis Park 45.045014 -83.447579                  1302 S State Ave, Alpena, MI 49707, USA (989) 354-1720             https://www.alpena.mi.us/residents/city_parks/mich-e-ke-wis_park.php Alpena
+                        Bay View Park 45.058282 -83.432146                     208 N 1st Ave, Alpena, MI 49707, USA (989) 354-1780                  https://www.alpena.mi.us/residents/city_parks/bay_view_park.php Alpena
+                          Island Park 45.075870 -83.452625                          River St, Alpena, MI 49707, USA (989) 354-1700                    https://www.alpena.mi.us/residents/city_parks/island_park.php Alpena
+            Alpena Wildlife Sanctuary 45.070862 -83.457441                                    Alpena, MI 49707, USA        Unknown                                                        https://www.alpena.mi.us/ Alpena
+                           McRae Park 45.071621 -83.419532                    1301 N 2nd Ave, Alpena, MI 49707, USA (989) 354-1720                     https://www.alpena.mi.us/residents/city_parks/mcrae_park.php Alpena
+             Thunder Bay River Center 45.078451 -83.453908                                    Alpena, MI 49707, USA        Unknown                                            http://www.thunderbayrivercenter.org/ Alpena
+                  Arzo Amusement Park 45.134461 -83.440932                    6051 U.S. 23 N, Alpena, MI 49707, USA (989) 358-1111                                                         http://www.arzopark.com/ Alpena
+Thunder Bay National Marine Sanctuary 45.068847 -83.434676                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200                                          http://thunderbay.noaa.gov/welcome.html Alpena
+            Downtown Alpena, Michigan 45.062081 -83.433422                                    Alpena, MI 49707, USA (989) 356-6422                                                 http://www.downtownalpenami.com/ Alpena
+       Rockport State Recreation Area 45.202077 -83.384279                                    Alpena, MI 49707, USA (989) 734-2543          http://www.michigandnr.com/parksandtrails/Details.aspx?type=SPRK&id=729 Alpena
+              Maritime Heritage Trail 45.064914 -83.430356          Maritime Heritage Trail,, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+             Paul bunyan of car parts 45.081788 -83.446556                    666 Johnson St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+        Arthur E. Sytek Roadside Park 45.066698 -83.470817                                    Alpena, MI 49707, USA (989) 354-1700                     https://www.alpena.mi.us/residents/city_parks/sytek_park.php Alpena
+              Rotary Island Mill Park 45.067815 -83.436417 Rotary Island Mill Park, River St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+                       Culligan Plaza 45.061991 -83.433420                                    Alpena, MI 49707, USA (989) 354-1700                 https://www.alpena.mi.us/residents/city_parks/culligan_plaza.php Alpena
+               Washington Avenue Park 45.060580 -83.459097                       Lake Besser, Alpena, MI 49707, USA        Unknown         https://www.alpena.mi.us/residents/city_parks/washington_avenue_park.php Alpena
+ Alpena: Sanctuary of the Great Lakes 45.064752 -83.428735                     420 N 2nd Ave, Alpena, MI 49707, USA (989) 340-2288                                                      http://www.visitalpena.com/ Alpena
+                       Long Lake Park 45.194360 -83.448222               10002 Hinks Park Rd, Alpena, MI 49707, USA (989) 595-2401 https://www.visitalpena.com/member-detail/long-lake-campgrounds-and-county-park/ Alpena
+
+### Restaurants in Alpena
+                       Name  Average Cost                                          Cuisines  Aggregate Rating   City
+      A & A Pagliai's Pizza            72                          Tea, American, Fast Food               4.3 Alpena
+                     @Mango            38                     BBQ, Cafe, American, Desserts               4.1 Alpena
+           Shudh Restaurant            56                              Cafe, BBQ, Fast Food               3.4 Alpena
+                     Maplai            63          Tea, Indian, Bakery, Fast Food, American               4.2 Alpena
+Zaffran - The Bristol Hotel            33                          Pizza, Desserts, Seafood               3.2 Alpena
+              Kylin Express            30                     Chinese, Bakery, BBQ, Seafood               2.6 Alpena
+           Jain Chawal Wale            20           Desserts, Pizza, Italian, Mexican, Cafe               3.8 Alpena
+          Sahni Fish Corner            11        Desserts, Pizza, Bakery, Fast Food, Indian               3.5 Alpena
+           Big Fat Sandwich            51             Tea, Bakery, BBQ, Cafe, Mediterranean               2.9 Alpena
+    Handi Masala Restaurant            57 French, Bakery, BBQ, Fast Food, American, Seafood               2.6 Alpena
+              Punjabi Tadka            63                                      Tea, Seafood               3.1 Alpena
+            Cafe Coffee Day            22      Desserts, Tea, French, BBQ, Bakery, American               3.1 Alpena
+      Al Meraj Chicken Shop            77           French, BBQ, Fast Food, Indian, Seafood               0.0 Alpena
+           The Food Express            86 Desserts, Pizza, Bakery, Fast Food, Mediterranean               0.0 Alpena
+         Shashi's China Wok            29                        Tea, Bakery, BBQ, Desserts               0.0 Alpena
+       Chennai Dosa Express            20        Tea, Pizza, Mexican, BBQ, Bakery, American               0.0 Alpena
+                     Wrapss            79            Chinese, French, Bakery, Cafe, Seafood               3.1 Alpena
+       Young Wild Free Cafe            45                   Bakery, Mexican, BBQ, Fast Food               4.1 Alpena
+                 Annapoorna            49                       Cafe, Pizza, BBQ, Fast Food               3.1 Alpena
+               Burger House            39                                         Tea, Cafe               2.8 Alpena
+               Meatwale.com            55                                    Tea, Fast Food               0.0 Alpena
+                  Pizza Hut            93     Pizza, Italian, Mexican, Bakery, BBQ, Seafood               2.6 Alpena
+                   Breaktym            67                                          Tea, BBQ               2.6 Alpena
+                   DudeFood            87  Tea, Mexican, Fast Food, Cafe, American, Seafood               0.0 Alpena
+              My Restaurant            63                         Tea, Pizza, American, BBQ               3.5 Alpena
+
+### Accommodations in Alpena
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+Ultimate 50th Floor Downtown Penthouse  - 4000SqFt 1043.0 Entire home/apt No smoking & No visitors & No children under 10             2.0                  9                 4.0 Alpena
+ CHEERFUL RM IN BROOKLYN! EASY ACCESS TO TRAIN! R3  927.0    Private room                                         No pets            15.0                  2                 5.0 Alpena
+   SINGLE ROOM AVAILABLE IN JAMAICA NEAR JFK & LGA   88.0    Private room                                     No visitors             1.0                  2                 3.0 Alpena
+                                            #NAME?  839.0    Private room                                      No parties             2.0                  2                 3.0 Alpena
+            Loft in Times Square with Roof Balcony  104.0 Entire home/apt                        No parties & No visitors           180.0                  2                 2.0 Alpena
+  Bed-Stuy top floor room w/ extreme natural light 1184.0    Private room               No children under 10 & No parties             4.0                  1                 2.0 Alpena
+          Huge Bedroom w/direct access to backyard  635.0    Private room                                      No parties             2.0                  1                 2.0 Alpena
+ Beautiful Park Slope apartment in great location!   67.0 Entire home/apt                            No children under 10            31.0                  2                 5.0 Alpena
+                        Wonderlust in WIlliamsburg   65.0 Entire home/apt                                         No pets             2.0                  2                 5.0 Alpena
+                                 The Real B&B Home  971.0 Entire home/apt                                     No visitors             7.0                  5                 3.0 Alpena
+
+### Flight from Punta Gorda to Pellston on 2022-03-06
+There is no flight from Punta Gorda to Pellston on 2022-03-06.
+
+### Self-driving from Punta Gorda to Pellston
+self-driving, from Punta Gorda to Pellston, duration: 21 hours 40 mins, distance: 2,457 km, cost: 122
+
+### Taxi from Punta Gorda to Pellston
+taxi, from Punta Gorda to Pellston, duration: 21 hours 40 mins, distance: 2,457 km, cost: 2457
+
+### Flight from Pellston to Traverse City on 2022-03-08
+There is no flight from Pellston to Traverse City on 2022-03-08.
+
+### Self-driving from Pellston to Traverse City
+self-driving, from Pellston to Traverse City, duration: 1 hour 49 mins, distance: 137 km, cost: 6
+
+### Taxi from Pellston to Traverse City
+taxi, from Pellston to Traverse City, duration: 1 hour 49 mins, distance: 137 km, cost: 137
+
+### Flight from Traverse City to Alpena on 2022-03-10
+There is no flight from Traverse City to Alpena on 2022-03-10.
+
+### Self-driving from Traverse City to Alpena
+self-driving, from Traverse City to Alpena, duration: 2 hours 29 mins, distance: 204 km, cost: 10
+
+### Taxi from Traverse City to Alpena
+taxi, from Traverse City to Alpena, duration: 2 hours 29 mins, distance: 204 km, cost: 204
+
+### Flight from Alpena to Punta Gorda on 2022-03-12
+There is no flight from Alpena to Punta Gorda on 2022-03-12.
+
+### Self-driving from Alpena to Punta Gorda
+self-driving, from Alpena to Punta Gorda, duration: 21 hours 39 mins, distance: 2,401 km, cost: 120
+
+### Taxi from Alpena to Punta Gorda
+taxi, from Alpena to Punta Gorda, duration: 21 hours 39 mins, distance: 2,401 km, cost: 2401
+
+JSON plan:

@@ -1,0 +1,121 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you curate a travel plan spanning 3 days from March 17th to March 19th, 2022, for a group of 8, departing from Denver and heading to Bozeman? Our budget is set at $7,000. Regarding our culinary preferences, we enjoy American and Indian cuisines.
+
+Reference information:
+### Attractions in Bozeman
+                               Name  Latitude   Longitude                                      Address          Phone                                                                                              Website    City
+              Museum of the Rockies 45.658624 -111.045121      600 W Kagy Blvd, Bozeman, MT 59717, USA (406) 994-2251                                                                   http://www.museumoftherockies.org/ Bozeman
+            Gallatin History Museum 45.679657 -111.042195        317 W Main St, Bozeman, MT 59715, USA (406) 522-8122                                                                    http://gallatinhistorymuseum.org/ Bozeman
+American Computer & Robotics Museum 45.659281 -111.054964  2023 Stadium Dr #1a, Bozeman, MT 59715, USA (406) 582-1288                                                                            http://www.acrmuseum.org/ Bozeman
+             Bozeman Sculpture Park 45.676759 -111.027430        626 E Main St, Bozeman, MT 59715, USA        Unknown                                                                  http://www.gallatinartcrossing.org/ Bozeman
+   The Story Mansion and Story Park 45.670741 -111.039512    811 S Willson Ave, Bozeman, MT 59715, USA (406) 582-2290                                                                     http://www.friendsofthestory.org Bozeman
+             Montana Science Center 45.672181 -111.074406       2744 W Main St, Bozeman, MT 59718, USA (406) 522-9087                                                                    https://montanasciencecenter.org/ Bozeman
+              Peets Hill/Burke Park 45.673900 -111.029331       429 E Story St, Bozeman, MT 59715, USA (406) 587-8404                                              https://gvlt.org/featured-trails/peets-hill-burke-park/ Bozeman
+              Glen Lake Rotary Park 45.704505 -111.038820                       Bozeman, MT 59715, USA        Unknown            https://www.bozemansunriserotary.org/sitepage/glen-lake-rotary-park/glen-lake-rotary-park Bozeman
+                      Dinosaur Park 45.695488 -111.084781    1707 Vaquero Pkwy, Bozeman, MT 59718, USA (406) 582-3178                                                                                              Unknown Bozeman
+                        College 'M' 45.714692 -110.973499         Trail to 'M', Bozeman, MT 59715, USA        Unknown                                                                                              Unknown Bozeman
+                Lindley Park Center 45.677720 -111.024715                       Bozeman, MT 59715, USA (406) 582-2290                     https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/232/ Bozeman
+                       Bozeman Pond 45.673851 -111.081741     700 S Fowler Ave, Bozeman, MT 59718, USA (406) 444-2535                                                                              http://www.bozeman.net/ Bozeman
+      Gallatin County Regional Park 45.695075 -111.088943     5000 Tschache Ln, Bozeman, MT 59718, USA (406) 582-3178                                             https://gvlt.org/featured-trails/gallatin-regional-park/ Bozeman
+          Montana Grizzly Encounter 45.663931 -110.834042 80 W Bozeman Hill Rd, Bozeman, MT 59715, USA (406) 586-8893                                                                     http://www.grizzlyencounter.org/ Bozeman
+     Yellowstone Glacier Adventures 45.729051 -111.097913  65 Hidden Valley Rd, Bozeman, MT 59718, USA (406) 585-9041                                                                 http://www.yellowstoneyearround.com/ Bozeman
+               Bozeman Welcome Sign 45.677628 -111.015692                       Bozeman, MT 59715, USA        Unknown                                                                                              Unknown Bozeman
+                        Bogert Park 45.675793 -111.031227     325 S Church Ave, Bozeman, MT 59715, USA (406) 582-2290 https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/190/1863?selamenityid=11 Bozeman
+                        Cooper Park 45.674768 -111.046618    Cooper Park Trail, Bozeman, MT 59715, USA (406) 582-2290                 https://www.bozeman.net/Home/Components/FacilityDirectory/FacilityDirectory/219/1863 Bozeman
+           Snowfill Recreation Area 45.721413 -111.036662                       Bozeman, MT 59715, USA (406) 587-8404                                            http://gvlt.org/featured-trails/snowfill-recreation-area/ Bozeman
+        The Extreme History Project 45.680212 -111.033302  234 E Mendenhall St, Bozeman, MT 59715, USA (406) 220-2678                                                                http://www.extremehistoryproject.org/ Bozeman
+
+### Restaurants in Bozeman
+                          Name  Average Cost                                          Cuisines  Aggregate Rating    City
+                     Jiquitaia            36                              Tea, Pizza, American               4.1 Bozeman
+ McGuire's Irish Pub & Brewery            72                      Fast Food, Desserts, Italian               4.9 Bozeman
+                        Zaroob            67        Desserts, Tea, French, BBQ, Bakery, Indian               3.9 Bozeman
+                  Indo Chinese            66 Italian, BBQ, Bakery, Fast Food, Chinese, Seafood               3.2 Bozeman
+           Shri Bhujia Bhandar            87                   Tea, Chinese, Desserts, Italian               0.0 Bozeman
+               Saravana Bhavan            38                           Tea, American, Desserts               4.3 Bozeman
+                      Side Wok            14                                Tea, Pizza, Indian               3.8 Bozeman
+           Adyar Ananda Bhavan            22                              Tea, Chinese, Bakery               3.5 Bozeman
+          Aazad Chicken Corner            77                     Tea, BBQ, Desserts, Fast Food               0.0 Bozeman
+   Mukesh Chic-Inn Hot & Spice            71 Desserts, Tea, Pizza, Mexican, BBQ, Mediterranean               3.0 Bozeman
+                   Bunty Dhaba            55                       Indian, Desserts, Fast Food               2.5 Bozeman
+               Kukkuu Da Dhaba            58                    Tea, Bakery, BBQ, Cafe, Indian               0.0 Bozeman
+                Pepper Kitchen            75                               Pizza, BBQ, Seafood               4.0 Bozeman
+                Snack Junction            98                  Cafe, Pizza, American, Fast Food               3.2 Bozeman
+     Hinglish - Cafe Beach Bar            75       Tea, Pizza, Bakery, American, Mediterranean               3.7 Bozeman
+Shree Bhog Pure Veg Restaurant            79                            Indian, BBQ, Fast Food               3.0 Bozeman
+                 Shalimar Food            81                                 Cafe, Indian, BBQ               0.0 Bozeman
+                 Cakes & Bakes            71                           Seafood, BBQ, Fast Food               3.2 Bozeman
+                   Today Pizza            27      French, Bakery, BBQ, Fast Food, Cafe, Indian               0.0 Bozeman
+                     Keventers            39           Desserts, Pizza, BBQ, Fast Food, Indian               3.1 Bozeman
+               Behrouz Biryani            27                         Bakery, American, Seafood               3.5 Bozeman
+                      Chocopur            78              Desserts, Tea, Bakery, BBQ, American               3.0 Bozeman
+              Sweta Restaurant            48        Desserts, Mexican, Bakery, Fast Food, Cafe               3.2 Bozeman
+                    Dietwholic            12     Pizza, Mexican, Bakery, BBQ, Chinese, Seafood               3.7 Bozeman
+     Green Vally Chiiness Food            74                           Mexican, Pizza, Seafood               0.0 Bozeman
+                       Oh Buoy            79                                     Cafe, Seafood               3.3 Bozeman
+                       Italize            24  Italian, French, Bakery, BBQ, Fast Food, Seafood               3.6 Bozeman
+     The Manhattan FISH MARKET            41                   Bakery, Indian, Cafe, Fast Food               4.0 Bozeman
+
+### Accommodations in Bozeman
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number    city
+   18th Floor Bright Bedroom with Private Bathroom  874.0    Private room               No children under 10 & No parties             8.0                  1                 3.0 Bozeman
+SPACIOUS STUDIO APT 3 IN PROSPECT LEFFERTS GARDENS 1060.0 Entire home/apt               No children under 10 & No parties             5.0                  6                 4.0 Bozeman
+                  Two Bedrooms with Dedicated Bath  615.0    Private room     No pets & No smoking & No children under 10             3.0                  2                 4.0 Bozeman
+  Swimming Pool/Gym/ Doorman 2 bed 2 bath W&D 5192 1184.0 Entire home/apt    No children under 10 & No visitors & No pets            30.0                 10                 3.0 Bozeman
+         Convenient / Spacious 1BR in Union Square  801.0 Entire home/apt                            No children under 10             2.0                  8                 1.0 Bozeman
+     Private Guest Loft in a Sunny Etsy-Lovers Apt  481.0    Private room                                      No smoking             2.0                  2                 2.0 Bozeman
+    Greenpoint, BK 1 Bedroom, Couple/Solo Traveler  574.0 Entire home/apt No parties & No visitors & No children under 10             3.0                  2                 5.0 Bozeman
+       Sun-Filled Artist Loft in Private Townhouse  214.0 Entire home/apt                                      No parties             2.0                  2                 2.0 Bozeman
+Lovely 3 bedroom Townhouse in BK Historic District  350.0 Entire home/apt                            No children under 10             3.0                  3                 5.0 Bozeman
+ Decatur street Limestone an Urban Zen  experience  466.0 Entire home/apt                            No children under 10             3.0                  3                 2.0 Bozeman
+      Amazing 1 Bedroom | 1 Bedroom | Skyline View  220.0 Entire home/apt     No pets & No children under 10 & No parties            30.0                  2                 2.0 Bozeman
+  Beautiful Private Bedroom in North Brooklyn! 2-2  716.0    Private room              No pets & No smoking & No visitors            30.0                  2                 2.0 Bozeman
+
+### Flight from Denver to Bozeman on 2022-03-17
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3826809    148   07:58   10:17 2 hours 19 minutes 2022-03-17         Denver      Bozeman     524.0
+     F3856156    108   16:07   17:49 1 hours 42 minutes 2022-03-17         Denver      Bozeman     524.0
+     F3910676    167   20:11   21:48 1 hours 37 minutes 2022-03-17         Denver      Bozeman     524.0
+     F3910766    204   12:11   14:05 1 hours 54 minutes 2022-03-17         Denver      Bozeman     524.0
+     F4023282    151   12:09   13:56 1 hours 47 minutes 2022-03-17         Denver      Bozeman     524.0
+     F4023285    222   19:56   21:27 1 hours 31 minutes 2022-03-17         Denver      Bozeman     524.0
+
+### Self-driving from Denver to Bozeman
+self-driving, from Denver to Bozeman, duration: 9 hours 54 mins, distance: 1,119 km, cost: 55
+
+### Taxi from Denver to Bozeman
+taxi, from Denver to Bozeman, duration: 9 hours 54 mins, distance: 1,119 km, cost: 1119
+
+### Flight from Bozeman to Denver on 2022-03-19
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3811654    190   18:26   20:06 1 hours 40 minutes 2022-03-19        Bozeman       Denver     524.0
+     F3811817    187   10:50   12:23 1 hours 33 minutes 2022-03-19        Bozeman       Denver     524.0
+     F3899998    109   16:53   18:18 1 hours 25 minutes 2022-03-19        Bozeman       Denver     524.0
+     F3907089    172   15:47   17:18 1 hours 31 minutes 2022-03-19        Bozeman       Denver     524.0
+     F3907541    240   06:49   08:32 1 hours 43 minutes 2022-03-19        Bozeman       Denver     524.0
+     F4029867    239   14:25   15:56 1 hours 31 minutes 2022-03-19        Bozeman       Denver     524.0
+     F4029868    107   06:03   07:24 1 hours 21 minutes 2022-03-19        Bozeman       Denver     524.0
+     F4029869    161   19:11   20:34 1 hours 23 minutes 2022-03-19        Bozeman       Denver     524.0
+     F4029870    187   12:17   13:44 1 hours 27 minutes 2022-03-19        Bozeman       Denver     524.0
+
+### Self-driving from Bozeman to Denver
+self-driving, from Bozeman to Denver, duration: 9 hours 46 mins, distance: 1,115 km, cost: 55
+
+### Taxi from Bozeman to Denver
+taxi, from Bozeman to Denver, duration: 9 hours 46 mins, distance: 1,115 km, cost: 1115
+
+JSON plan:

@@ -1,0 +1,103 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Please assist in crafting a travel plan for a solo traveller, journeying from Detroit to San Diego for 3 days, from March 5th to March 7th, 2022. The travel plan should accommodate a total budget of $3,000.
+
+Reference information:
+### Attractions in San Diego
+                                      Name  Latitude   Longitude                                                   Address          Phone                                                                                      Website      City
+                Cabrillo National Monument 32.672256 -117.241609       1800 Cabrillo Memorial Dr, San Diego, CA 92106, USA (619) 523-4285                                                           https://www.nps.gov/cabr/index.htm San Diego
+                      La Jolla Shores Park 32.858154 -117.256103              8300 Camino Del Oro, La Jolla, CA 92037, USA (619) 221-8899                                           https://www.sandiego.gov/lifeguards/beaches/shores San Diego
+                          California Tower 32.731609 -117.152167 California Tower, 1350 El Prado, San Diego, CA 92101, USA (619) 239-2001                                            https://museumofus.org/exhibits/california-tower/ San Diego
+                        SeaWorld San Diego 32.764296 -117.226440               500 Sea World Dr., San Diego, CA 92109, USA (619) 222-4732 https://seaworld.com/san-diego?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing San Diego
+                        Old Town San Diego 32.755827 -117.197261                    2829 Juan St, San Diego, CA 92110, USA        Unknown                                                             https://www.oldtownsandiego.org/ San Diego
+                               Balboa Park 32.734148 -117.144553                                        San Diego, CA, USA (619) 239-0512                                                                   http://www.balboapark.org/ San Diego
+                           Seaport Village 32.709064 -117.170937                 849 W Harbor Dr, San Diego, CA 92101, USA (619) 530-0704                                                                  https://seaportvillage.com/ San Diego
+               The San Diego Museum of Art 32.732158 -117.150430                   1450 El Prado, San Diego, CA 92102, USA (619) 232-7931                                                                      https://www.sdmart.org/ San Diego
+                         USS Midway Museum 32.713740 -117.175127                 910 N Harbor Dr, San Diego, CA 92101, USA (619) 544-9600                                                                      https://www.midway.org/ San Diego
+                                  Skytower 32.765423 -117.226662               500 Sea World Dr., San Diego, CA 92109, USA        Unknown                                                                                      Unknown San Diego
+                             Dolphin Point 32.765390 -117.227412               500 Sea World Dr., San Diego, CA 92109, USA (915) 525-4772                                                                                      Unknown San Diego
+                             San Diego Zoo 32.736035 -117.150985                     2920 Zoo Dr, San Diego, CA 92101, USA (619) 231-1515                                                                 https://zoo.sandiegozoo.org/ San Diego
+                          Mission Bay Park 32.764107 -117.226265                                  San Diego, CA 92109, USA (619) 525-8213                                        https://www.sandiego.gov/locations/seaworld-san-diego San Diego
+                       Whaley House Museum 32.752904 -117.194510              2476 San Diego Ave, San Diego, CA 92110, USA (619) 786-1143                                                         https://www.whaleyhousesandiego.com/ San Diego
+                Sunset Cliffs Natural Park 32.715915 -117.255168                       Ladera St, San Diego, CA 92107, USA (619) 525-8213                 https://www.sandiego.gov/park-and-recreation/parks/regional/shoreline/sunset San Diego
+             Old Town San Diego State Park 32.754906 -117.197641                 4002 Wallace St, San Diego, CA 92110, USA (619) 220-5422                                                         http://www.parks.ca.gov/?page_id=663 San Diego
+           Martin Luther King Jr Promenade 32.708357 -117.161993                 326 W Harbor Dr, San Diego, CA 92101, USA (619) 525-8213                                           https://www.sandiego.gov/park-and-recreation/parks San Diego
+                      Balboa Park Carousel 32.734576 -117.146707                     1889 Zoo Pl, San Diego, CA 92101, USA (619) 232-2282                                                               http://balboaparkcarousel.org/ San Diego
+                       San Diego Free Tour 32.707586 -117.160287                   200 Fifth Ave, San Diego, CA 92101, USA (415) 503-7199                                                                      https://freesftour.com/ San Diego
+Mission Beach Boardwalk | Ocean Front Walk 32.771432 -117.252831                W Mission Bay Dr, San Diego, CA 92109, USA (619) 232-3101                                                                    https://www.sandiego.gov/ San Diego
+
+### Restaurants in San Diego
+                          Name  Average Cost                                              Cuisines  Aggregate Rating      City
+                     Open Yard            33                        Chinese, Pizza, Cafe, Desserts               3.3 San Diego
+           Jetha Lal Ka Dhabha            22                            Tea, Cafe, Indian, Italian               3.1 San Diego
+               The Lost Mughal            74                                    Tea, Cafe, Italian               3.8 San Diego
+                   Burger King            20            Pizza, Italian, French, Fast Food, Seafood               3.8 San Diego
+                Bikaner Sweets            37                      Bakery, Pizza, Indian, Fast Food               2.8 San Diego
+      Momos Hut & Chinese Food            94                                  Tea, Cafe, Fast Food               2.4 San Diego
+            Chaudhary Di Hatti            30              Desserts, Pizza, Italian, BBQ, Fast Food               3.3 San Diego
+                        Gopala            98                Pizza, Mexican, BBQ, American, Seafood               3.3 San Diego
+           Armaan's Restaurant            29                     Fast Food, Cafe, Seafood, Italian               2.8 San Diego
+                  Bun Intended            91                        Cafe, Pizza, Desserts, Seafood               3.9 San Diego
+                     Chawlas 2            67                        Bakery, Pizza, Indian, Seafood               0.0 San Diego
+                 Duggal Snacks            82     Desserts, Pizza, Italian, Fast Food, Cafe, Indian               3.6 San Diego
+Dabas Ke Special Chole Bhature            35                          BBQ, Pizza, Bakery, Desserts               0.0 San Diego
+                Midnight Bites            63                                  Bakery, Indian, Cafe               3.1 San Diego
+                Baskin Robbins            48                 Italian, Bakery, BBQ, Fast Food, Cafe               3.5 San Diego
+                     Chawlas 2            91 Desserts, Fast Food, American, Mediterranean, Seafood               3.0 San Diego
+                      Burgrill            54              Desserts, Tea, Pizza, Fast Food, Chinese               4.4 San Diego
+            Harry's Bar + Cafe            55                      Fast Food, French, Cafe, Seafood               3.6 San Diego
+                    Dragon Way            77            Desserts, Mexican, Cafe, American, Seafood               0.0 San Diego
+               Hum Sabki Rasoi            63              Pizza, BBQ, Fast Food, American, Seafood               3.3 San Diego
+              Aamantran Bangla            33               Pizza, Italian, Bakery, Fast Food, Cafe               2.7 San Diego
+                        Meraki            51                                          Tea, Seafood               4.0 San Diego
+
+### Accommodations in San Diego
+                                             NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number      city
+Spacious Room in Large 2 Bedroom Prewar Apartment  585.0    Private room                       No parties & No visitors             1.0                  2                 4.0 San Diego
+                 Big room near Prospect Park! NY!  752.0    Private room              No parties & No smoking & No pets             7.0                  1                 2.0 San Diego
+    Luxury 4BR Home, Spacious & Central to Trains  392.0 Entire home/apt                                     No parties             3.0                  3                 5.0 San Diego
+                 Cozy 1.5BD in Parkslope Brooklyn 1093.0 Entire home/apt                                     No parties             3.0                 10                 2.0 San Diego
+      Spacious & Homey Williamsburg 1BR Apartment 1004.0 Entire home/apt                                     No parties             5.0                  4                 3.0 San Diego
+                    Upper East Side 1 Bedroom Gem  692.0     Shared room No children under 10 & No parties & No smoking             2.0                  1                 3.0 San Diego
+                  Organic Oasis Duplex (EMF-free) 1186.0 Entire home/apt                       No visitors & No smoking            60.0                  4                 4.0 San Diego
+ Harlem Garden Oasis in  New York City Brownstone  368.0 Entire home/apt                                    No visitors            31.0                  3                 5.0 San Diego
+  Conveniently located 2 BR Time Square Apartment  502.0 Entire home/apt No parties & No smoking & No children under 10             2.0                  4                 5.0 San Diego
+  LargeBedroom gem in historic Red Hook Brooklyn!  787.0    Private room                                    No visitors             4.0                  2                 3.0 San Diego
+            The Perfect Upper East Side Apartment  847.0 Entire home/apt                                    No visitors             1.0                  2                 3.0 San Diego
+                                 CHIC EVENT SPACE 1068.0 Entire home/apt                                    No visitors             1.0                  2                 5.0 San Diego
+
+### Flight from Detroit to San Diego on 2022-03-05
+Flight Number  Price DepTime ArrTime ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3528556    720   08:33   10:36 5 hours 3 minutes 2022-03-05        Detroit    San Diego    1956.0
+
+### Self-driving from Detroit to San Diego
+No valid information.
+
+### Taxi from Detroit to San Diego
+No valid information.
+
+### Flight from San Diego to Detroit on 2022-03-07
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3519973    968   22:22   05:24  4 hours 2 minutes 2022-03-07      San Diego      Detroit    1956.0
+     F3528558    875   12:55   19:37 3 hours 42 minutes 2022-03-07      San Diego      Detroit    1956.0
+
+### Self-driving from San Diego to Detroit
+No valid information.
+
+### Taxi from San Diego to Detroit
+No valid information.
+
+JSON plan:

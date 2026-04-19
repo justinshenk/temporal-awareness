@@ -1,0 +1,335 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I booked a flight with confirmation number 3RK2T9 and I need to change the passenger name on it.",
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) and you want to change the passenger name on the reservation. You want to change the name from Mei Lee to Mei Garcia. Be insistent and don't provide more information than necessary.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "3RK2T9"
+      }
+    },
+    "observation": "{\"reservation_id\": \"3RK2T9\", \"user_id\": \"anya_garcia_5901\", \"origin\": \"MCO\", \"destination\": \"SFO\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-19\", \"price\": 57}, {\"origin\": \"PHX\", \"destination\": \"SFO\", \"flight_number\": \"HAT009\", \"date\": \"2024-05-20\", \"price\": 83}], \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Lee\", \"dob\": \"1989-12-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2550356\", \"amount\": 280}], \"created_at\": \"2024-05-02T06:02:56\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) and you want to change the passenger name on the reservation. You want to change the name from Mei Lee to Mei Garcia. Be insistent and don't provide more information than necessary.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"3RK2T9\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4631,
+    "output_tokens": 25,
+    "generation_seconds": 2.732541561126709,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation has two passengers. I can update the passenger information, but the number of passengers cannot be changed. Please provide the updated first name, last name, and date of birth (in the format YYYY-MM-DD) for each passenger.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I see that your reservation has two passengers. I can update the passenger information, but the number of passengers cannot be changed. Please provide the updated first name, last name, and date of birth (in the format YYYY-MM-DD) for each passenger."
+      }
+    },
+    "observation": "I only need to change one passenger's name. Change Mei Lee to Mei Garcia.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) and you want to change the passenger name on the reservation. You want to change the name from Mei Lee to Mei Garcia. Be insistent and don't provide more information than necessary.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I see that your reservation has two passengers. I can update the passenger information, but the number of passengers cannot be changed. Please provide the updated first name, last name, and date of birth (in the format YYYY-MM-DD) for each passenger.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4968,
+    "output_tokens": 68,
+    "generation_seconds": 5.389749050140381,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"update_reservation_passengers\", \"arguments\": {\"reservation_id\": \"3RK2T9\", \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Garcia\", \"dob\": \"1989-12-13\"}]}}",
+    "action": {
+      "name": "update_reservation_passengers",
+      "arguments": {
+        "reservation_id": "3RK2T9",
+        "passengers": [
+          {
+            "first_name": "Anya",
+            "last_name": "Garcia",
+            "dob": "1992-11-12"
+          },
+          {
+            "first_name": "Mei",
+            "last_name": "Garcia",
+            "dob": "1989-12-13"
+          }
+        ]
+      }
+    },
+    "observation": "{\"reservation_id\": \"3RK2T9\", \"user_id\": \"anya_garcia_5901\", \"origin\": \"MCO\", \"destination\": \"SFO\", \"flight_type\": \"one_way\", \"cabin\": \"basic_economy\", \"flights\": [{\"origin\": \"MCO\", \"destination\": \"PHX\", \"flight_number\": \"HAT214\", \"date\": \"2024-05-19\", \"price\": 57}, {\"origin\": \"PHX\", \"destination\": \"SFO\", \"flight_number\": \"HAT009\", \"date\": \"2024-05-20\", \"price\": 83}], \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Garcia\", \"dob\": \"1989-12-13\"}], \"payment_history\": [{\"payment_id\": \"gift_card_2550356\", \"amount\": 280}], \"created_at\": \"2024-05-02T06:02:56\", \"total_baggages\": 0, \"nonfree_baggages\": 0, \"insurance\": \"no\"}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) and you want to change the passenger name on the reservation. You want to change the name from Mei Lee to Mei Garcia. Be insistent and don't provide more information than necessary.",
+        "outputs": []
+      },
+      "source": "update_reservation_passengers",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"update_reservation_passengers\", \"arguments\": {\"reservation_id\": \"3RK2T9\", \"passengers\": [{\"first_name\": \"Anya\", \"last_name\": \"Garcia\", \"dob\": \"1992-11-12\"}, {\"first_name\": \"Mei\", \"last_name\": \"Garcia\", \"dob\": \"1989-12-13\"}]}}",
+    "parsed_action_name": "update_reservation_passengers",
+    "input_tokens": 5062,
+    "output_tokens": 96,
+    "generation_seconds": 7.114240407943726,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"The passenger name has been successfully updated. The new passenger names are Anya Garcia and Mei Garcia. Let me know if there's anything else I can assist you with!\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "The passenger name has been successfully updated. The new passenger names are Anya Garcia and Mei Garcia. Let me know if there's anything else I can assist you with!"
+      }
+    },
+    "observation": "###STOP###",
+    "reward": 1.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "anya_garcia_5901",
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ],
+        "instruction": "You are Anya Garcia (with ID: anya_garcia_5901). Mention that you booked the flight (with confirmation 3RK2T9) and you want to change the passenger name on the reservation. You want to change the name from Mei Lee to Mei Garcia. Be insistent and don't provide more information than necessary.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": 0.00046399999999999995,
+      "reward_info": {
+        "reward": 1.0,
+        "info": {
+          "r_actions": 1.0,
+          "gt_data_hash": "00da04f85438aebd098e217ffb9b5a6b9524e775bab6783f5c20c0ff1762e071"
+        },
+        "actions": [
+          {
+            "name": "get_reservation_details",
+            "kwargs": {
+              "reservation_id": "3RK2T9"
+            }
+          },
+          {
+            "name": "update_reservation_passengers",
+            "kwargs": {
+              "reservation_id": "3RK2T9",
+              "passengers": [
+                {
+                  "first_name": "Anya",
+                  "last_name": "Garcia",
+                  "dob": "1992-11-12"
+                },
+                {
+                  "first_name": "Mei",
+                  "last_name": "Garcia",
+                  "dob": "1989-12-13"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"The passenger name has been successfully updated. The new passenger names are Anya Garcia and Mei Garcia. Let me know if there's anything else I can assist you with!\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5472,
+    "output_tokens": 51,
+    "generation_seconds": 4.542924880981445,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

@@ -1,0 +1,169 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 5 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+Can you assist in crafting a travel itinerary for a pair of travelers originating from Milwaukee and visiting 2 cities in Michigan? The trip is 5 days long, spanning from March 21st to March 25th, 2022. Our budget is now set at $1,700, and we require accommodations that allow parties and provide private rooms. Moreover, we'd prefer if our transportation did not involve any flights.
+
+Reference information:
+### Attractions in Alpena
+                                 Name  Latitude  Longitude                                                  Address          Phone                                                                          Website   City
+ Great Lakes Maritime Heritage Center 45.068573 -83.434641                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200      https://thunderbay.noaa.gov/visit/great-lakes-maritime-heritage-center.html Alpena
+ Besser Museum for Northeast Michigan 45.080674 -83.448453                    491 Johnson St, Alpena, MI 49707, USA (989) 356-2202                                                     http://www.bessermuseum.org/ Alpena
+                   Mich-e-ke-wis Park 45.045014 -83.447579                  1302 S State Ave, Alpena, MI 49707, USA (989) 354-1720             https://www.alpena.mi.us/residents/city_parks/mich-e-ke-wis_park.php Alpena
+                        Bay View Park 45.058282 -83.432146                     208 N 1st Ave, Alpena, MI 49707, USA (989) 354-1780                  https://www.alpena.mi.us/residents/city_parks/bay_view_park.php Alpena
+                          Island Park 45.075870 -83.452625                          River St, Alpena, MI 49707, USA (989) 354-1700                    https://www.alpena.mi.us/residents/city_parks/island_park.php Alpena
+            Alpena Wildlife Sanctuary 45.070862 -83.457441                                    Alpena, MI 49707, USA        Unknown                                                        https://www.alpena.mi.us/ Alpena
+                           McRae Park 45.071621 -83.419532                    1301 N 2nd Ave, Alpena, MI 49707, USA (989) 354-1720                     https://www.alpena.mi.us/residents/city_parks/mcrae_park.php Alpena
+             Thunder Bay River Center 45.078451 -83.453908                                    Alpena, MI 49707, USA        Unknown                                            http://www.thunderbayrivercenter.org/ Alpena
+                  Arzo Amusement Park 45.134461 -83.440932                    6051 U.S. 23 N, Alpena, MI 49707, USA (989) 358-1111                                                         http://www.arzopark.com/ Alpena
+Thunder Bay National Marine Sanctuary 45.068847 -83.434676                 500 W Fletcher St, Alpena, MI 49707, USA (989) 884-6200                                          http://thunderbay.noaa.gov/welcome.html Alpena
+            Downtown Alpena, Michigan 45.062081 -83.433422                                    Alpena, MI 49707, USA (989) 356-6422                                                 http://www.downtownalpenami.com/ Alpena
+       Rockport State Recreation Area 45.202077 -83.384279                                    Alpena, MI 49707, USA (989) 734-2543          http://www.michigandnr.com/parksandtrails/Details.aspx?type=SPRK&id=729 Alpena
+              Maritime Heritage Trail 45.064914 -83.430356          Maritime Heritage Trail,, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+             Paul bunyan of car parts 45.081788 -83.446556                    666 Johnson St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+        Arthur E. Sytek Roadside Park 45.066698 -83.470817                                    Alpena, MI 49707, USA (989) 354-1700                     https://www.alpena.mi.us/residents/city_parks/sytek_park.php Alpena
+              Rotary Island Mill Park 45.067815 -83.436417 Rotary Island Mill Park, River St, Alpena, MI 49707, USA        Unknown                                                                          Unknown Alpena
+                       Culligan Plaza 45.061991 -83.433420                                    Alpena, MI 49707, USA (989) 354-1700                 https://www.alpena.mi.us/residents/city_parks/culligan_plaza.php Alpena
+               Washington Avenue Park 45.060580 -83.459097                       Lake Besser, Alpena, MI 49707, USA        Unknown         https://www.alpena.mi.us/residents/city_parks/washington_avenue_park.php Alpena
+ Alpena: Sanctuary of the Great Lakes 45.064752 -83.428735                     420 N 2nd Ave, Alpena, MI 49707, USA (989) 340-2288                                                      http://www.visitalpena.com/ Alpena
+                       Long Lake Park 45.194360 -83.448222               10002 Hinks Park Rd, Alpena, MI 49707, USA (989) 595-2401 https://www.visitalpena.com/member-detail/long-lake-campgrounds-and-county-park/ Alpena
+
+### Restaurants in Alpena
+                       Name  Average Cost                                          Cuisines  Aggregate Rating   City
+      A & A Pagliai's Pizza            72                          Tea, American, Fast Food               4.3 Alpena
+                     @Mango            38                     BBQ, Cafe, American, Desserts               4.1 Alpena
+           Shudh Restaurant            56                              Cafe, BBQ, Fast Food               3.4 Alpena
+                     Maplai            63          Tea, Indian, Bakery, Fast Food, American               4.2 Alpena
+Zaffran - The Bristol Hotel            33                          Pizza, Desserts, Seafood               3.2 Alpena
+              Kylin Express            30                     Chinese, Bakery, BBQ, Seafood               2.6 Alpena
+           Jain Chawal Wale            20           Desserts, Pizza, Italian, Mexican, Cafe               3.8 Alpena
+          Sahni Fish Corner            11        Desserts, Pizza, Bakery, Fast Food, Indian               3.5 Alpena
+           Big Fat Sandwich            51             Tea, Bakery, BBQ, Cafe, Mediterranean               2.9 Alpena
+    Handi Masala Restaurant            57 French, Bakery, BBQ, Fast Food, American, Seafood               2.6 Alpena
+              Punjabi Tadka            63                                      Tea, Seafood               3.1 Alpena
+            Cafe Coffee Day            22      Desserts, Tea, French, BBQ, Bakery, American               3.1 Alpena
+      Al Meraj Chicken Shop            77           French, BBQ, Fast Food, Indian, Seafood               0.0 Alpena
+           The Food Express            86 Desserts, Pizza, Bakery, Fast Food, Mediterranean               0.0 Alpena
+         Shashi's China Wok            29                        Tea, Bakery, BBQ, Desserts               0.0 Alpena
+       Chennai Dosa Express            20        Tea, Pizza, Mexican, BBQ, Bakery, American               0.0 Alpena
+                     Wrapss            79            Chinese, French, Bakery, Cafe, Seafood               3.1 Alpena
+       Young Wild Free Cafe            45                   Bakery, Mexican, BBQ, Fast Food               4.1 Alpena
+                 Annapoorna            49                       Cafe, Pizza, BBQ, Fast Food               3.1 Alpena
+               Burger House            39                                         Tea, Cafe               2.8 Alpena
+               Meatwale.com            55                                    Tea, Fast Food               0.0 Alpena
+                  Pizza Hut            93     Pizza, Italian, Mexican, Bakery, BBQ, Seafood               2.6 Alpena
+                   Breaktym            67                                          Tea, BBQ               2.6 Alpena
+                   DudeFood            87  Tea, Mexican, Fast Food, Cafe, American, Seafood               0.0 Alpena
+              My Restaurant            63                         Tea, Pizza, American, BBQ               3.5 Alpena
+
+### Accommodations in Alpena
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number   city
+Ultimate 50th Floor Downtown Penthouse  - 4000SqFt 1043.0 Entire home/apt No smoking & No visitors & No children under 10             2.0                  9                 4.0 Alpena
+ CHEERFUL RM IN BROOKLYN! EASY ACCESS TO TRAIN! R3  927.0    Private room                                         No pets            15.0                  2                 5.0 Alpena
+   SINGLE ROOM AVAILABLE IN JAMAICA NEAR JFK & LGA   88.0    Private room                                     No visitors             1.0                  2                 3.0 Alpena
+                                            #NAME?  839.0    Private room                                      No parties             2.0                  2                 3.0 Alpena
+            Loft in Times Square with Roof Balcony  104.0 Entire home/apt                        No parties & No visitors           180.0                  2                 2.0 Alpena
+  Bed-Stuy top floor room w/ extreme natural light 1184.0    Private room               No children under 10 & No parties             4.0                  1                 2.0 Alpena
+          Huge Bedroom w/direct access to backyard  635.0    Private room                                      No parties             2.0                  1                 2.0 Alpena
+ Beautiful Park Slope apartment in great location!   67.0 Entire home/apt                            No children under 10            31.0                  2                 5.0 Alpena
+                        Wonderlust in WIlliamsburg   65.0 Entire home/apt                                         No pets             2.0                  2                 5.0 Alpena
+                                 The Real B&B Home  971.0 Entire home/apt                                     No visitors             7.0                  5                 3.0 Alpena
+
+### Attractions in Kalamazoo
+                                       Name  Latitude  Longitude                                        Address          Phone                                                 Website      City
+                    Kalamazoo Valley Museum 42.293312 -85.583669        230 N Rose St, Kalamazoo, MI 49007, USA (800) 772-3370                        https://www.kalamazoomuseum.org/ Kalamazoo
+                Kalamazoo Institute of Arts 42.289282 -85.587980        314 S Park St, Kalamazoo, MI 49007, USA (269) 349-7775                                  http://www.kiarts.org/ Kalamazoo
+                    Kalamazoo Nature Center 42.363531 -85.590300 7000 N Westnedge Ave, Kalamazoo, MI 49009, USA (269) 381-1574                            http://www.naturecenter.org/ Kalamazoo
+                                Milham Park 42.246221 -85.572350     607 E Kilgore Rd, Kalamazoo, MI 49001, USA (269) 337-8191                    https://www.kzooparks.org/milhampark Kalamazoo
+         Air Zoo Aerospace & Science Museum 42.227468 -85.557180        6151 Portage Rd, Portage, MI 49002, USA (269) 382-6555                                  http://www.airzoo.org/ Kalamazoo
+                               Bronson Park 42.290332 -85.585328        200 S Rose St, Kalamazoo, MI 49007, USA (269) 337-8191 https://www.kzooparks.org/Parks-Facilities/Bronson-Park Kalamazoo
+                           Markin Glen Park 42.334936 -85.588031 5300 N Westnedge Ave, Kalamazoo, MI 49004, USA (269) 381-7570              http://www.kalcounty.com/parks/markinglen/ Kalamazoo
+    River Villa & Jan Schau Wildflower Walk 42.286119 -85.502586  6712 E Michigan Ave, Kalamazoo, MI 49048, USA (269) 381-2360                                                 Unknown Kalamazoo
+                       Asylum Lake Preserve 42.263360 -85.640927      3836 S Drake Rd, Kalamazoo, MI 49008, USA (269) 387-8557                            http://wmich.edu/asylumlake/ Kalamazoo
+                        Christmas Card Lane 42.289738 -85.624503  318 S Lauderdale Dr, Kalamazoo, MI 49006, USA        Unknown                                                 Unknown Kalamazoo
+Urban Nature Park - Kalamazoo Nature Center 42.293390 -85.577863   426 E Michigan Ave, Kalamazoo, MI 49007, USA (269) 381-1574                                                 Unknown Kalamazoo
+
+### Restaurants in Kalamazoo
+                              Name  Average Cost                                               Cuisines  Aggregate Rating      City
+                            Django            65                     Mediterranean, Desserts, Fast Food               4.3 Kalamazoo
+Giulios Greek & Italian Restaurant            76                   Fast Food, French, Desserts, Seafood               3.8 Kalamazoo
+                          Cha cTea            77                             Cafe, Pizza, Mediterranean               3.8 Kalamazoo
+                         Taco Bell            54                        Chinese, Bakery, Pizza, Seafood               4.2 Kalamazoo
+                        Oxy Lounge            65                                       Tea, Bakery, BBQ               3.1 Kalamazoo
+                 Tamasha In Tafree            11             Desserts, Italian, French, Bakery, Seafood               0.0 Kalamazoo
+                     Shree Rathnam            84                          Cafe, Indian, American, Pizza               2.9 Kalamazoo
+                    Bikaner Sweets            76                                 Tea, Indian, Fast Food               0.0 Kalamazoo
+                           Giani's           100                            Tea, Chinese, Bakery, Pizza               3.7 Kalamazoo
+     Pandit Ved Prakash Lemon Wale            87                Pizza, Mediterranean, Desserts, Seafood               3.2 Kalamazoo
+                Kolkata Kathi Roll            11                                Tea, Chinese, BBQ, Cafe               3.6 Kalamazoo
+             Ruchi's Food Junction            15              Desserts, Cafe, Pizza, Fast Food, Chinese               2.7 Kalamazoo
+                           Al Bake            36                                     Cafe, BBQ, Italian               3.2 Kalamazoo
+                     Tiffino Mania            78                        Tea, Bakery, Mediterranean, BBQ               0.0 Kalamazoo
+                Boheme Bar & Grill            26                                   Bakery, BBQ, Seafood               3.3 Kalamazoo
+                      Caf砺 Befikre            43     Desserts, Italian, Mexican, BBQ, Bakery, Fast Food               3.8 Kalamazoo
+                          Crispers            58                             Tea, Cafe, Bakery, Seafood               0.0 Kalamazoo
+                      Juice Lounge            83                     Fast Food, Chinese, Pizza, Seafood               0.0 Kalamazoo
+                       Cafe Lounge            58 Desserts, Mexican, BBQ, Bakery, Mediterranean, Seafood               0.0 Kalamazoo
+                      Black Pepper            36       Cafe, BBQ, Fast Food, Chinese, American, Seafood               0.0 Kalamazoo
+                           GreeNox            54                     Seafood, Indian, Desserts, Italian               3.4 Kalamazoo
+                       Six Degrees            20              Cafe, Italian, Bakery, Fast Food, Chinese               4.1 Kalamazoo
+
+### Accommodations in Kalamazoo
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number      city
+       East 63rd street, Studio Serviced Apartment  417.0 Entire home/apt           No parties & No visitors & No pets            30.0                  4                 3.0 Kalamazoo
+             Sunny, 1 Bedroom in Bedstuy, Brooklyn  160.0 Entire home/apt                                   No smoking             7.0                  2                 4.0 Kalamazoo
+                            Princess Palace Purple  636.0    Private room                         No children under 10             2.0                  2                 2.0 Kalamazoo
+      Apartment in Ridgewood/Bushwick Neighborhood  152.0    Private room                                   No smoking             2.0                  2                 5.0 Kalamazoo
+     Angie Suite  in the Heights\nSe habla Español  217.0    Private room                                      No pets             3.0                  2                 3.0 Kalamazoo
+           Country Manhattan Private Bedroom Suite  427.0    Private room                                   No smoking             5.0                  2                 1.0 Kalamazoo
+Sun-drenched corner apartment in East-Williamsburg  523.0 Entire home/apt No pets & No visitors & No children under 10             6.0                  3                 3.0 Kalamazoo
+       1 bedroom to yourself in Midtown Manhattan!  633.0 Entire home/apt                         No parties & No pets             3.0                  3                 4.0 Kalamazoo
+                             Comfy Basement Studio 1118.0    Private room                        No pets & No visitors             2.0                  2                 2.0 Kalamazoo
+                Spacious & Quaint 1 Bed in Midtown   55.0 Entire home/apt                         No smoking & No pets             2.0                  3                 5.0 Kalamazoo
+              Cozy Home in Brooklyn Prime Location  868.0    Private room                         No children under 10             3.0                  2                 4.0 Kalamazoo
+   Perfect Location_Upper West Side_*Central Park*  643.0    Private room                                   No parties             7.0                  2                 4.0 Kalamazoo
+                  Clean design, One BD, Renovated! 1033.0 Entire home/apt                         No children under 10             4.0                  6                 4.0 Kalamazoo
+                 Sunny Greenpoint Junior 1 Bedroom  140.0 Entire home/apt                         No smoking & No pets             5.0                  2                 5.0 Kalamazoo
+  Pvt Room for Two Near JFK 6 mi/ LGA 10 mi- Olive 1140.0    Private room                                   No smoking             2.0                  1                 3.0 Kalamazoo
+                              #2 Minutes to JFK!!!  746.0    Private room                                  No visitors             4.0                  1                 2.0 Kalamazoo
+                 Huge Artist Loft Space - Red Hook 1172.0 Entire home/apt                                   No parties             2.0                  9                 3.0 Kalamazoo
+
+### Flight from Milwaukee to Alpena on 2022-03-21
+There is no flight from Milwaukee to Alpena on 2022-03-21.
+
+### Self-driving from Milwaukee to Alpena
+self-driving, from Milwaukee to Alpena, duration: 7 hours 37 mins, distance: 749 km, cost: 37
+
+### Taxi from Milwaukee to Alpena
+taxi, from Milwaukee to Alpena, duration: 7 hours 37 mins, distance: 749 km, cost: 749
+
+### Flight from Alpena to Kalamazoo on 2022-03-23
+There is no flight from Alpena to Kalamazoo on 2022-03-23.
+
+### Self-driving from Alpena to Kalamazoo
+self-driving, from Alpena to Kalamazoo, duration: 4 hours 33 mins, distance: 464 km, cost: 23
+
+### Taxi from Alpena to Kalamazoo
+taxi, from Alpena to Kalamazoo, duration: 4 hours 33 mins, distance: 464 km, cost: 464
+
+### Flight from Kalamazoo to Milwaukee on 2022-03-25
+There is no flight from Kalamazoo to Milwaukee on 2022-03-25.
+
+### Self-driving from Kalamazoo to Milwaukee
+self-driving, from Kalamazoo to Milwaukee, duration: 3 hours 45 mins, distance: 382 km, cost: 19
+
+### Taxi from Kalamazoo to Milwaukee
+taxi, from Kalamazoo to Milwaukee, duration: 3 hours 45 mins, distance: 382 km, cost: 382
+
+JSON plan:

@@ -1,0 +1,127 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, yes, I'm calling to file a complaint about my flight HAT045 from Phoenix to Seattle that was delayed today.",
+    "info": {
+      "task": {
+        "user_id": "mei_brown_7075",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mei_brown_7075"
+            }
+          }
+        ],
+        "instruction": "You are Mei Brown (with ID: mei_brown_7075), and you are contacting to complain about your delayed flight HAT045 from PHX to SEA. Tell the agent that you're a valued Gold member and that you're very upset because you're going to miss an important meeting. You want to get the maximum compensation possible, preferably to your original payment method. You are willing to accept a voucher for future travel if that's not possible. Don't accept the first offer, be insistent.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HAT045\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "HAT045"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "mei_brown_7075",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mei_brown_7075"
+            }
+          }
+        ],
+        "instruction": "You are Mei Brown (with ID: mei_brown_7075), and you are contacting to complain about your delayed flight HAT045 from PHX to SEA. Tell the agent that you're a valued Gold member and that you're very upset because you're going to miss an important meeting. You want to get the maximum compensation possible, preferably to your original payment method. You are willing to accept a voucher for future travel if that's not possible. Don't accept the first offer, be insistent.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HAT045\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 4633,
+    "output_tokens": 25,
+    "generation_seconds": 2.7831859588623047,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"User is complaining about a delayed flight HAT045 from Phoenix to Seattle and wants to file a complaint, but the reservation details could not be retrieved because the user is not found.\"}}",
+    "action": {
+      "name": "transfer_to_human_agents",
+      "arguments": {
+        "summary": "User is complaining about a delayed flight HAT045 from Phoenix to Seattle and wants to file a complaint, but the reservation details could not be retrieved because the user is not found."
+      }
+    },
+    "observation": "Transfer successful",
+    "reward": 1.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "mei_brown_7075",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mei_brown_7075"
+            }
+          }
+        ],
+        "instruction": "You are Mei Brown (with ID: mei_brown_7075), and you are contacting to complain about your delayed flight HAT045 from PHX to SEA. Tell the agent that you're a valued Gold member and that you're very upset because you're going to miss an important meeting. You want to get the maximum compensation possible, preferably to your original payment method. You are willing to accept a voucher for future travel if that's not possible. Don't accept the first offer, be insistent.",
+        "outputs": []
+      },
+      "source": "transfer_to_human_agents",
+      "user_cost": 0.000463,
+      "reward_info": {
+        "reward": 1.0,
+        "info": {
+          "r_actions": 1.0,
+          "gt_data_hash": "4587e6b48ad2b2c4f3e1fecb40aabec7bb2286513273b8f8cec3f5865222f290"
+        },
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "mei_brown_7075"
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"User is complaining about a delayed flight HAT045 from Phoenix to Seattle and wants to file a complaint, but the reservation details could not be retrieved because the user is not found.\"}}",
+    "parsed_action_name": "transfer_to_human_agents",
+    "input_tokens": 4675,
+    "output_tokens": 58,
+    "generation_seconds": 4.897120952606201,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]

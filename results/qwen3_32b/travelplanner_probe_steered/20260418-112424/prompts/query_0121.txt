@@ -1,0 +1,120 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 3 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I need to organize a 3-day trip for a group of 3, departing from Asheville and arriving in Minneapolis. We will be traveling from March 7th to March 9th, 2022, with a total budget of $2,300. We require accommodations that allow pets and provide entire rooms. Regarding meals, our group enjoys a variety of cuisines, including Indian, Chinese, Mediterranean, and American.
+
+Reference information:
+### Attractions in Minneapolis
+                                        Name  Latitude  Longitude                                                                                               Address          Phone                                                                                                         Website        City
+                Minneapolis Sculpture Garden 44.969548 -93.289780                                                           725 Vineland Pl, Minneapolis, MN 55403, USA (612) 375-7600                                                                               https://www.walkerart.org/garden/ Minneapolis
+                Minneapolis Institute of Art 44.958500 -93.273218                                                            2400 3rd Ave S, Minneapolis, MN 55404, USA (888) 642-2787                                                                                        https://new.artsmia.org/ Minneapolis
+                            Mill City Museum 44.978783 -93.257271                                                              704 S 2nd St, Minneapolis, MN 55401, USA (612) 341-7555                                                                                   https://www.mnhs.org/millcity Minneapolis
+                             Mill Ruins Park 44.979804 -93.256390                                                        102 Portland Ave S, Minneapolis, MN 55401, USA (612) 313-7793                              https://www.minneapolisparks.org/parks__destinations/parks__lakes/mill_ruins_park/ Minneapolis
+                          Weisman Art Museum 44.973110 -93.236935                                                          333 E River Pkwy, Minneapolis, MN 55455, USA (612) 625-9494                                                                                            https://wam.umn.edu/ Minneapolis
+                             Gold Medal Park 44.977622 -93.253251                                       Second Street and 11th Avenue South, Minneapolis, MN 55415, USA (612) 904-5607                                                                                   http://www.goldmedalpark.org/ Minneapolis
+          Foshay Museum and Observation Deck 44.974790 -93.271986                                            821 S Marquette Ave 30th floor, Minneapolis, MN 55402, USA (612) 215-3700                                                                                        http://wminneapolis.com/ Minneapolis
+                             Minnehaha Falls 44.915356 -93.211078                                                       4801 S Minnehaha Dr, Minneapolis, MN 55417, USA (612) 230-6400                      https://www.minneapolisparks.org/parks__destinations/parks__lakes/minnehaha_regional_park/ Minneapolis
+                   Prospect Park Water Tower 44.968677 -93.212658                                                         55 Malcolm Ave SE, Minneapolis, MN 55414, USA (612) 767-6531                                                                               https://www.prospectparkmpls.org/ Minneapolis
+            St. Anthony Falls Visitor Center 44.981110 -93.258236                                                            1 Portland Ave, Minneapolis, MN 55401, USA (651) 293-0200                                                             https://www.nps.gov/miss/planyourvisit/stanfall.htm Minneapolis
+                            Mall of America® 44.854865 -93.242215                                                             60 E Broadway, Bloomington, MN 55425, USA (952) 883-8800                                                                                      https://mallofamerica.com/ Minneapolis
+                           Walker Art Center 44.968144 -93.288649                                                           725 Vineland Pl, Minneapolis, MN 55403, USA (612) 375-7600                                                                                          https://walkerart.org/ Minneapolis
+Central Mississippi Riverfront Regional Park 44.979517 -93.256592 East and West banks of the Mississippi River between & 35W bridges, Ave N, Minneapolis, MN 55401, USA        Unknown https://www.minneapolisparks.org/parks__destinations/parks__lakes/central_mississippi_riverfront_regional_park/ Minneapolis
+                         Minneapolis Lookout 45.003445 -93.218298                                                    3045-3109 Ridgway Pkwy, Minneapolis, MN 55413, USA        Unknown                                                                                                         Unknown Minneapolis
+                            Water Power Park 44.982972 -93.256595                                                            204 SE Main St, Minneapolis, MN 55414, USA (612) 230-6400                                                           https://www.nps.gov/miss/planyourvisit/waterpower.htm Minneapolis
+                     Minnehaha Regional Park 44.916739 -93.210107                                                       4801 S Minnehaha Dr, Minneapolis, MN 55417, USA (612) 230-6400                      https://www.minneapolisparks.org/parks__destinations/parks__lakes/minnehaha_regional_park/ Minneapolis
+                               Stepped Tower 44.973393 -93.242394                                                              Unnamed Road, Minneapolis, MN 55454, USA        Unknown                                                                                                         Unknown Minneapolis
+                  American Swedish Institute 44.954597 -93.265860                                                             2600 Park Ave, Minneapolis, MN 55407, USA (612) 871-4907                                                                                           http://www.asimn.org/ Minneapolis
+                      Boom Island Lighthouse 44.993135 -93.271789                                                      3-29 Plymouth Ave NE, Minneapolis, MN 55413, USA        Unknown                             https://www.minneapolisparks.org/parks__destinations/parks__lakes/boom_island_park/ Minneapolis
+                            Boom Island Park 44.992037 -93.268655                                                          724 Sibley St NE, Minneapolis, MN 55413, USA (612) 230-6400                                                                               https://www.minneapolisparks.org/ Minneapolis
+
+### Restaurants in Minneapolis
+                               Name  Average Cost                                                    Cuisines  Aggregate Rating        City
+                           The Cafe            14                    Indian, Mediterranean, Desserts, Seafood               4.9 Minneapolis
+                               Malo            80                                  Tea, Chinese, Indian, Cafe               3.2 Minneapolis
+       Court Avenue Brewing Company            31                         Pizza, French, Bakery, BBQ, Seafood               4.2 Minneapolis
+                       Troll Tavern            71                                     Tea, BBQ, Mediterranean               2.2 Minneapolis
+                    Texas Roadhouse            22                                  Cafe, Pizza, BBQ, Desserts               3.5 Minneapolis
+      Monkeypod Kitchen by Merriman            50   Desserts, Pizza, Bakery, Fast Food, Indian, Mediterranean               4.2 Minneapolis
+            Balbeer's Kitchen & Bar            81                                        Tea, Chinese, Bakery               3.3 Minneapolis
+                      Oregano India            91                               BBQ, French, Bakery, Desserts               3.1 Minneapolis
+                    Lavi Foji Dhaba            62 Desserts, Pizza, Mexican, Fast Food, Mediterranean, Seafood               0.0 Minneapolis
+                             Fomads            73                                      Cafe, Pizza, Fast Food               3.6 Minneapolis
+                         Nukkadwala            90                        Desserts, Tea, Italian, Bakery, Cafe               3.4 Minneapolis
+Purani Dilli's Al Karam Kebab House            97                                    Pizza, Desserts, Italian               3.4 Minneapolis
+                       Playboy Cafe            60                                       Cafe, Mexican, Bakery               3.7 Minneapolis
+                      Al Saad Foods            44                                 BBQ, Mediterranean, Seafood               3.2 Minneapolis
+                          FreshMenu            88                                Seafood, Desserts, Fast Food               3.6 Minneapolis
+                              Giani            17                             Cafe, Mexican, Bakery, Desserts               2.7 Minneapolis
+                 Wok  In The Clouds            52                                              Pizza, Seafood               3.8 Minneapolis
+                       Bawa Chicken            47                                    Cafe, Seafood, Fast Food               3.5 Minneapolis
+                   Bobby Tikki Wala            62                              Bakery, BBQ, Desserts, Seafood               3.0 Minneapolis
+         Lajawab Chicken & Fish Fry            42              Desserts, Pizza, Mexican, BBQ, Indian, Seafood               0.0 Minneapolis
+                         Raja Rasoi            85                                 Tea, French, Cafe, Desserts               0.0 Minneapolis
+                    Cheffron Bakery            31               Desserts, Bakery, BBQ, Mediterranean, Seafood               0.0 Minneapolis
+          Surprise - Bakers & Bites            22                                 Tea, Chinese, BBQ, Desserts               0.0 Minneapolis
+                Sahni Veg & Non Veg            97                           Chinese, BBQ, Desserts, Fast Food               3.1 Minneapolis
+                        Puri Bakers            85                                      Pizza, Bakery, Italian               3.9 Minneapolis
+                         Jeet Pizza            68                                               Tea, Desserts               0.0 Minneapolis
+                     Bablu Chic-Inn            95                          Tea, Pizza, BBQ, American, Seafood               2.6 Minneapolis
+                        Soni Bakers            42                                      Pizza, Bakery, Seafood               3.4 Minneapolis
+                  Rosart愆 Chocolate            45                        Desserts, Tea, Italian, BBQ, Seafood               3.4 Minneapolis
+                          Haveliram            19                  Pizza, Italian, Bakery, BBQ, Mediterranean               2.9 Minneapolis
+                             Tony's            27            Pizza, French, Fast Food, Mediterranean, Seafood               4.4 Minneapolis
+                Goli Vada Pav No. 1            41                                         Pizza, BBQ, Italian               3.6 Minneapolis
+              Uncle's Punjabi Rasoi            40                               Cafe, BBQ, Seafood, Fast Food               2.9 Minneapolis
+                     Southern Treat            52                                       French, Pizza, Bakery               2.8 Minneapolis
+                        Big Biryani            52                        Tea, Pizza, French, Chinese, Seafood               0.0 Minneapolis
+                   Agent Jack's Bar            93                     Desserts, Tea, Bakery, Chinese, Seafood               4.2 Minneapolis
+            Elite Indian Restaurant            89                   Desserts, Tea, Italian, American, Seafood               2.4 Minneapolis
+
+### Accommodations in Minneapolis
+                                              NAME  price       room type                                  house_rules  minimum nights  maximum occupancy  review rate number        city
+                Convent Ave & 127st Col Univ  RM 2  949.0    Private room                         No children under 10             2.0                  2                 1.0 Minneapolis
+    Balcony Duplex and Loft, Steps from the Subway 1056.0    Private room            No parties & No children under 10            21.0                  1                 3.0 Minneapolis
+Light-filled Apartment in great area, close 2 all!  343.0 Entire home/apt                                  No visitors             1.0                  2                 5.0 Minneapolis
+                                         ROOM  TWO  112.0    Private room                         No children under 10             3.0                  2                 5.0 Minneapolis
+  #1 Rated 3br Park Slope Apt (1700sqf+Renovated!)  169.0 Entire home/apt                         No parties & No pets             3.0                  2                 5.0 Minneapolis
+CHIC STUDIOS ON E 54TH~PRIME LOCATION~SUTTON PLACE  180.0 Entire home/apt                         No children under 10            30.0                  2                 3.0 Minneapolis
+                    Spacious artsy private bedroom  793.0    Private room                                   No smoking             1.0                  1                 2.0 Minneapolis
+           Elegant Stu Suite in  Midtown East  -21  981.0 Entire home/apt                     No visitors & No parties            30.0                  7                 2.0 Minneapolis
+                Nurturing room in a 3 bedroom apt. 1168.0    Private room                         No children under 10             3.0                  1                 1.0 Minneapolis
+                Small Sunny 1BR Apt Bradhurst Park  869.0 Entire home/apt            No parties & No children under 10             2.0                  5                 1.0 Minneapolis
+   Entire 1 Bedroom Apartment in Midtown Manhattan  107.0 Entire home/apt                                  No visitors             4.0                  3                 3.0 Minneapolis
+ENTIRE PLACE! near Columbia-sleeps up to 8 guests!  663.0 Entire home/apt                                  No visitors             1.0                  6                 5.0 Minneapolis
+                  20min To Times Square, 10min LGA  315.0    Private room                     No parties & No visitors             1.0                  2                 2.0 Minneapolis
+                     Beautiful room in West Harlem  944.0    Private room No visitors & No pets & No children under 10            30.0                  2                 5.0 Minneapolis
+                   Modern Condo in Heart of Harlem  191.0 Entire home/apt                                   No smoking             3.0                  3                 3.0 Minneapolis
+ Lovely & bright apartment in center of Park Slope 1013.0 Entire home/apt                                   No smoking            30.0                  9                 4.0 Minneapolis
+  Cozy UWS Only two blocks away from Central Park!  552.0    Private room                                   No smoking             2.0                  1                 3.0 Minneapolis
+
+### Flight from Asheville to Minneapolis on 2022-03-07
+There is no flight from Asheville to Minneapolis on 2022-03-07.
+
+### Self-driving from Asheville to Minneapolis
+self-driving, from Asheville to Minneapolis, duration: 15 hours 47 mins, distance: 1,711 km, cost: 85
+
+### Taxi from Asheville to Minneapolis
+taxi, from Asheville to Minneapolis, duration: 15 hours 47 mins, distance: 1,711 km, cost: 1711
+
+### Flight from Minneapolis to Asheville on 2022-03-09
+There is no flight from Minneapolis to Asheville on 2022-03-09.
+
+### Self-driving from Minneapolis to Asheville
+self-driving, from Minneapolis to Asheville, duration: 15 hours 43 mins, distance: 1,710 km, cost: 85
+
+### Taxi from Minneapolis to Asheville
+taxi, from Minneapolis to Asheville, duration: 15 hours 43 mins, distance: 1,710 km, cost: 1710
+
+JSON plan:

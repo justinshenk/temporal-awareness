@@ -1,0 +1,282 @@
+You are a proficient travel planner. Create a complete, feasible itinerary for the user query using only the provided reference information.
+
+All named flights, restaurants, attractions, accommodations, cities, prices, dates, and transport options in the plan must come from the reference information. Keep the trip within the user's requested budget and constraints. Use "-" only when that item is genuinely unnecessary, such as meals before departure or accommodation after returning on the final day.
+
+Return ONLY valid JSON. Do not use markdown. The JSON must be a list with exactly 7 objects. Each object must use these keys:
+"day", "current_city", "transportation", "breakfast", "attraction", "lunch", "dinner", "accommodation".
+
+Formatting rules:
+- "day" is the 1-based day number.
+- "current_city" should be a city name, or "from ORIGIN to DESTINATION" when traveling between cities that day.
+- "transportation" should include the flight number and route, or a self-driving/taxi route, or "-".
+- Restaurant, attraction, and accommodation values should include the name and city when possible.
+- Multiple attractions should be separated with semicolons and should end with a semicolon.
+
+User query:
+I require a travel itinerary for a seven-day trip beginning on March 2nd and ending on March 8th, 2022. The trip will begin in Philadelphia and involve visiting 3 cities in Virginia. The available budget for the trip is $2,900.
+
+Reference information:
+### Attractions in Richmond
+                                                         Name  Latitude  Longitude                                         Address          Phone                                                               Website     City
+                                 Virginia Museum of Fine Arts 37.556036 -77.474791 200 N Arthur Ashe Blvd, Richmond, VA 23220, USA (804) 340-1400                                                  https://vmfa.museum/ Richmond
+                                                      Maymont 37.534178 -77.474571        1700 Hampton St, Richmond, VA 23220, USA (804) 525-9000                                                  https://maymont.org/ Richmond
+                                               The Poe Museum 37.532094 -77.426034         1914 E Main St, Richmond, VA 23223, USA (804) 648-5523                                             http://www.poemuseum.org/ Richmond
+                 Haunts of Richmond - Shadows of Shockoe Tour 37.531483 -77.426079            5 S 20th St, Richmond, VA 23223, USA (804) 543-3189                                         https://hauntsofrichmond.com/ Richmond
+                                                   Canal Walk 37.532724 -77.432238        1512 Canal Walk, Richmond, VA 23219, USA        Unknown   https://venturerichmond.com/explore-downtown/riverfront-canal-walk/ Richmond
+                                              The Grand Kugel 37.560765 -77.466158        2500 W Broad St, Richmond, VA 23220, USA (804) 864-1400 https://www.atlasobscura.com/places/the-grand-kugel-richmond-virginia Richmond
+         Black History Museum and Cultural Center of Virginia 37.550050 -77.441377         122 W Leigh St, Richmond, VA 23220, USA (804) 780-9093                                        http://blackhistorymuseum.org/ Richmond
+                                       Virginia State Capitol 37.538841 -77.433596           1000 Bank St, Richmond, VA 23218, USA (804) 698-1788                                       http://www.virginiacapitol.gov/ Richmond
+                                                The Valentine 37.541460 -77.430808         1015 E Clay St, Richmond, VA 23219, USA (804) 649-0711                                          http://www.thevalentine.org/ Richmond
+                 American Civil War Museum- Historic Tredegar 37.535581 -77.445474        480 Tredegar St, Richmond, VA 23219, USA (804) 649-1861                                                  http://www.acwm.org/ Richmond
+                                Children's Museum of Richmond 37.562126 -77.467278        2626 W Broad St, Richmond, VA 23220, USA (804) 474-7000                                                http://www.cmorva.org/ Richmond
+                                              Libby Hill Park 37.526515 -77.417468     2801 E Franklin St, Richmond, VA 23223, USA (804) 646-0036                                                               Unknown Richmond
+                                               Memorial Clock 37.536521 -77.436058         1003 E Cary St, Richmond, VA 23219, USA        Unknown                                                               Unknown Richmond
+                                    Virginia Holocaust Museum 37.530911 -77.425978         2000 E Cary St, Richmond, VA 23223, USA (804) 257-5400                                           http://www.vaholocaust.org/ Richmond
+                                     Riverfront Canal Cruises 37.533446 -77.433270        139 Virginia St, Richmond, VA 23219, USA (804) 649-2800     https://venturerichmond.com/our-services/riverfront-canal-cruises Richmond
+                       Maggie L Walker National Historic Site 37.547811 -77.437476           600 N 2nd St, Richmond, VA 23219, USA (804) 771-2017                                               http://www.nps.gov/mawa Richmond
+                                      Agecroft Hall & Gardens 37.553023 -77.505198       4305 Sulgrave Rd, Richmond, VA 23221, USA (804) 353-4241                                          http://www.agecrofthall.com/ Richmond
+                                      The John Marshall House 37.541938 -77.433075      818 E Marshall St, Richmond, VA 23219, USA (804) 648-7998  https://preservationvirginia.org/historic-sites/john-marshall-house/ Richmond
+Richmond National Battlefield Park's Civil War Visitor Center 37.535506 -77.445797        470 Tredegar St, Richmond, VA 23219, USA (804) 771-2145                 https://www.nps.gov/rich/planyourvisit/directions.htm Richmond
+                                          Wilton House Museum 37.562531 -77.519660        215 S Wilton Rd, Richmond, VA 23226, USA (804) 282-5936                                     http://www.wiltonhousemuseum.org/ Richmond
+
+### Restaurants in Richmond
+                               Name  Average Cost                                             Cuisines  Aggregate Rating     City
+      Guang Zhou Chinese Restaurant            84      Desserts, Tea, Cafe, Fast Food, Chinese, Indian               3.9 Richmond
+      Sandpiper Restaurant & Lounge            20                         Tea, Cafe, Desserts, Seafood               3.6 Richmond
+                           Paradise            80              Tea, Pizza, Italian, Fast Food, Seafood               3.6 Richmond
+                            Welcome            86                          Tea, French, Bakery, Indian               2.9 Richmond
+                       Perfect Bake            33       Desserts, Tea, Italian, Bakery, Cafe, American               3.5 Richmond
+                   Mother's Kitchen            46               Tea, Cafe, Mexican, Fast Food, Chinese               0.0 Richmond
+                       Eat All Nite            55                     Chinese, Bakery, Cafe, Fast Food               3.2 Richmond
+              Sugarcraft Patisserie            38                          French, Desserts, Fast Food               3.3 Richmond
+                       Sona Chinese            79                                          Cafe, Pizza               2.8 Richmond
+                          Yo! China            36 Desserts, Tea, Bakery, Cafe, American, Mediterranean               3.5 Richmond
+Quote - The Eclectic Bar and Lounge            49                                     Pizza, Fast Food               3.5 Richmond
+                     Defence Bakery            36                                         BBQ, Seafood               4.1 Richmond
+                          Number 31            97                         Tea, Chinese, Mexican, Pizza               4.2 Richmond
+               Mirch Masala MM Cafe            32              Desserts, Bakery, Cafe, Indian, Seafood               3.7 Richmond
+      Krishna Juice & Shakes Corner            29                                          Tea, Bakery               0.0 Richmond
+                   Nice Food Corner            90                                   Seafood, Fast Food               0.0 Richmond
+                            Muffins            83                       Chinese, Pizza, Cafe, Desserts               1.9 Richmond
+                       Takkar Dhaba            45                           Fast Food, Indian, Seafood               2.6 Richmond
+             Kwality Bengali Sweets            36                                        Tea, Desserts               2.9 Richmond
+                           The Spot            17                                 Indian, BBQ, Seafood               3.5 Richmond
+                         Big Dragon            72                      Tea, Chinese, American, Seafood               3.1 Richmond
+     Chidambaram's New Madras Hotel            33                Desserts, Pizza, Bakery, BBQ, Chinese               3.8 Richmond
+             South Indian Fast Food            83                     Fast Food, Chinese, BBQ, Seafood               3.3 Richmond
+                   The Pure Kitchen            91             Desserts, Italian, BBQ, Chinese, Seafood               0.0 Richmond
+          Tipu Sultan Chicken Point            63                       Tea, Chinese, Seafood, Italian               3.2 Richmond
+               Annapurna Food Point            27             Desserts, Italian, Mexican, BBQ, Seafood               0.0 Richmond
+                        Sagar Ratna            27                         French, Pizza, Cafe, Seafood               2.7 Richmond
+          Jee Aao Jee Chole Bhature            99                               Pizza, Bakery, Seafood               0.0 Richmond
+               The Masterpiece Cafe            82                     Cafe, Mexican, Bakery, Fast Food               3.5 Richmond
+             Budapest Kitchen & Bar            65                   Tea, Cafe, Mediterranean, Desserts               3.0 Richmond
+        Al-Taj Shamim Chicken Point            81                 Cafe, Bakery, Mediterranean, Seafood               0.0 Richmond
+       San Gimignano - The Imperial            78                        Tea, Pizza, American, Seafood               3.7 Richmond
+   Shahi Muradabadi Chicken Biryani            55                       Tea, Mexican, Pizza, Fast Food               0.0 Richmond
+                          RollsKing            54                   Seafood, American, Cafe, Fast Food               3.9 Richmond
+                             Chakna            96                   Desserts, Tea, BBQ, Cafe, American               2.7 Richmond
+                 Noida Cakes Online            92                   Cafe, Seafood, Desserts, Fast Food               3.0 Richmond
+      Raging Bull - The Spicy Punch            72                             Tea, Cafe, Mediterranean               0.0 Richmond
+                    The Hanging Bat            51                           Seafood, Desserts, Italian               3.5 Richmond
+
+### Accommodations in Richmond
+                                              NAME  price       room type                                    house_rules  minimum nights  maximum occupancy  review rate number     city
+       Cool Summer Vibes UWS Pent House w/ rooftop  498.0 Entire home/apt                           No pets & No parties             3.0                  2                 4.0 Richmond
+                    12 East 86th St full furnished  451.0 Entire home/apt                                     No parties            30.0                  2                 5.0 Richmond
+                Spacious Room with Character in BK 1032.0    Private room                           No children under 10             1.0                  1                 3.0 Richmond
+              Gorgeous studio in midtown Manhattan  212.0 Entire home/apt              No parties & No children under 10            30.0                  3                 3.0 Richmond
+     Large cozy bedroom close to Times Square 43D4  403.0    Private room             No visitors & No children under 10             7.0                  2                 4.0 Richmond
+      2 bd 2 bathroom Apartment in Upper East Side  285.0 Entire home/apt                                     No smoking             4.0                  3                 5.0 Richmond
+Large suite with private bathroom (15 min to city)  764.0    Private room                                        No pets             3.0                  2                 3.0 Richmond
+                          Inviting Brooklyn Studio  398.0 Entire home/apt No parties & No smoking & No children under 10             3.0                  3                 5.0 Richmond
+                                      CB3 BROOKLYN 1009.0    Private room No smoking & No parties & No children under 10             6.0                  1                 4.0 Richmond
+               East Village 1BR with private patio  566.0 Entire home/apt                                     No smoking             3.0                  4                 4.0 Richmond
+                 Bright Spacious BK Room with Bath  204.0    Private room                          No visitors & No pets             3.0                  2                 1.0 Richmond
+               Centrally  Located Beautiful Escape  828.0    Private room                                     No parties             1.0                  2                 5.0 Richmond
+          Luxury NYC 1 Bed w/Gorgeous Views + Pool  255.0 Entire home/apt                 No pets & No children under 10             2.0                  3                 3.0 Richmond
+
+### Attractions in Jamestown
+                                    Name  Latitude  Longitude                                                          Address          Phone                                                                                                                                                                                            Website      City
+                     Historic Jamestowne 37.211280 -76.777203    1368 Colonial Nat'l Historical Pkwy, Jamestown, VA 23081, USA (757) 856-1250                                                                                                                                                                 http://www.historicjamestowne.org/ Jamestown
+                    Jamestown Settlement 37.224777 -76.783876                   2110 Jamestown Rd, Williamsburg, VA 23185, USA (757) 253-4838                                                                                   https://www.jyfmuseums.org/visit/jamestown-settlement?utm_source=gmb&utm_medium=organic&utm_campaign=gmb-listing Jamestown
+          Archaearium Archaeology Museum 37.210003 -76.780080    1369 Colonial Nat'l Historical Pkwy, Jamestown, VA 23081, USA (757) 856-1250                                                                                                                                    http://historicjamestowne.org/collections/exhibits/archaearium/ Jamestown
+                    Jamestown Glasshouse 37.220744 -76.785319 1348 Colonial Nat'l Historical Pkwy, Williamsburg, VA 23185, USA (757) 229-2437                                                                                                                                              https://www.nps.gov/jame/planyourvisit/glasshouse.htm Jamestown
+              Jamestown Beach Event Park 37.227194 -76.783844                   2205 Jamestown Rd, Williamsburg, VA 23185, USA (757) 259-5360                                                                                                         http://www.jamescitycountyva.gov/Facilities/Facility/Details/Jamestown-Beach-Event-Park-15 Jamestown
+                   Jamestown Rediscovery 37.210143 -76.779417 1365 Colonial Nat'l Historical Pkwy, Williamsburg, VA 23185, USA (757) 229-4997                                                                                                                                                                 http://www.historicjamestowne.org/ Jamestown
+                    Yorktown Battlefield 37.229478 -76.501946     1000 Colonial Nat'l Historical Pkwy, Yorktown, VA 23690, USA (757) 898-2410                                                                                                                                                                 https://www.nps.gov/york/index.htm Jamestown
+                            Jamestown VA 37.209742 -76.778241                        Jamestown Rd, Williamsburg, VA 23185, USA        Unknown                                                                                                                                                                                            Unknown Jamestown
+                 Powhatan Indian Village 37.224777 -76.783876                   2110 Jamestown Rd, Williamsburg, VA 23185, USA (843) 336-3395                                                                                                                                 http://www.historyisfun.org/jamestown-settlement/powhatan-village/ Jamestown
+  American Revolution Museum at Yorktown 37.238763 -76.518224                            200 Water St, Yorktown, VA 23690, USA (757) 253-4838                                                                    https://www.jyfmuseums.org/?utm_source=gmb&utm_medium=organic&utm_campaign=gmb-listing&utm_content=american-revolution-yorktown Jamestown
+              Jamestowne Visitors Center 37.211265 -76.777312    1368 Colonial Nat'l Historical Pkwy, Jamestown, VA 23081, USA (800) 275-8777                                                                                                                                                                    https://historicjamestowne.org/ Jamestown
+                   York River State Park 37.401879 -76.718269             9801 York River Park Rd, Williamsburg, VA 23188, USA (757) 566-3036                                                                                                                                           http://www.dcr.virginia.gov/state-parks/york-river.shtml Jamestown
+              Busch Gardens Williamsburg 37.233716 -76.643990                1 Busch Gardens Blvd, Williamsburg, VA 23185, USA (757) 229-4386                                                                                                https://buschgardens.com/williamsburg?utm_source=google&utm_medium=organic&utm_campaign=gbp_listing Jamestown
+    Colonial Williamsburg Visitor Center 37.279087 -76.698609               101 Visitor Center Dr, Williamsburg, VA 23185, USA (888) 965-7254                                            https://www.colonialwilliamsburg.org/locations/colonial-williamsburg-regional-visitor-center/?utm_source=google-gbp&utm_medium=organic&utm_campaign=gbp Jamestown
+                      George Wythe House 37.272072 -76.702458                 101 Palace Green St, Williamsburg, VA 23185, USA (888) 965-7254                                           https://www.colonialwilliamsburg.org/locations/george-wythe-house/?utm_source=google&utm_medium=organic&utm_campaign=map_listing&utm_content=Wythe_house Jamestown
+                         The Hunt Shrine 37.208920 -76.779292                          5420100001, Williamsburg, VA 23185, USA        Unknown                                                                                                                                                                                            Unknown Jamestown
+        Jamestown National Historic Site 37.209328 -76.775047                                      Williamsburg, VA 23185, USA        Unknown                                                                                                                                              https://historicjamestowne.org/visit/plan-your-visit/ Jamestown
+                            Smith’s Fort 37.164062 -76.820129                          217 Smith Fort Ln, Surry, VA 23883, USA        Unknown                                                                                                                            https://preservationvirginia.org/historic-sites/smiths-fort-plantation/ Jamestown
+    Dewitt Wallace Decorative Art Museum 37.268543 -76.705487                     301 S Nassau St, Williamsburg, VA 23185, USA (855) 776-1765                     https://www.colonialwilliamsburg.org/locations/dewitt-wallace-decorative-arts-museum/?utm_source=google&utm_medium=organic&utm_campaign=map_listing&utm_content=dewitt_wallace Jamestown
+Abby Aldrich Rockefeller Folk Art Museum 37.268489 -76.704741                     301 S Nassau St, Williamsburg, VA 23185, USA (877) 848-8039 https://www.colonialwilliamsburg.org/locations/abby-aldrich-rockefeller-folk-art-museum/?utm_source=google&utm_medium=organic&utm_campaign=map_listing&utm_content=abby_aldrich_rockefeller_museum Jamestown
+
+### Restaurants in Jamestown
+                       Name  Average Cost                                            Cuisines  Aggregate Rating      City
+              Beyond Breads            95                             French, Cafe, Fast Food               3.8 Jamestown
+           Cafe Soul Garden            99           Desserts, Bakery, Cafe, American, Seafood               4.1 Jamestown
+              Chauhan Hotel            13                Desserts, Mexican, BBQ, Bakery, Cafe               0.0 Jamestown
+                   BarShala            13               Fast Food, Seafood, Desserts, Italian               3.2 Jamestown
+           Mughlai Flavours            12                    Pizza, French, Bakery, BBQ, Cafe               3.2 Jamestown
+                     Janaab            38             Pizza, Fast Food, Cafe, Indian, Seafood               0.0 Jamestown
+          The Food Junction            78                              Tea, Indian, Fast Food               2.8 Jamestown
+        Punjabi's Veg Grill            89                             BBQ, American, Desserts               3.1 Jamestown
+K2 Multi Cuisine Restaurant            89                                  Tea, Cafe, Seafood               0.0 Jamestown
+   Riddhi Siddhi Restaurant            45                       Chinese, Bakery, Indian, Cafe               0.0 Jamestown
+             Domino's Pizza            45                       Tea, French, Pizza, Fast Food               2.8 Jamestown
+              Sher E Punjab            15                                  Tea, BBQ, Desserts               0.0 Jamestown
+                   Brajwasi            24                       BBQ, Mediterranean, Fast Food               0.0 Jamestown
+        Kavita's Restaurant            57                Desserts, Pizza, French, BBQ, Bakery               2.6 Jamestown
+             2 Bros Kitchen            46                                         Tea, Bakery               3.2 Jamestown
+                    Biryani            65                            Tea, Pizza, BBQ, Italian               0.0 Jamestown
+               Bake Walkers            12 French, BBQ, Bakery, Fast Food, Cafe, Mediterranean               0.0 Jamestown
+            Chopaal Marwari            69                Tea, Mexican, Bakery, Cafe, American               2.8 Jamestown
+       Vine - The St. Regis            98                              Cafe, Bakery, Desserts               4.4 Jamestown
+
+### Accommodations in Jamestown
+                                              NAME  price       room type                                     house_rules  minimum nights  maximum occupancy  review rate number      city
+    COZY APT CLOSE TO LGA & JFK AND TRANSPORTATION  652.0 Entire home/apt                            No children under 10             2.0                  2                 3.0 Jamestown
+  New York City Manhattan Midtown Convenient Place  795.0 Entire home/apt No visitors & No parties & No children under 10             1.0                  6                 2.0 Jamestown
+                         Room in Modern Apartment.   62.0    Private room               No smoking & No children under 10             2.0                  2                 4.0 Jamestown
+                Private cozy room near time square  949.0    Private room                                      No smoking             2.0                  2                 2.0 Jamestown
+Male room 2 minutes from East Broadway station III  625.0     Shared room                                         No pets            14.0                  1                 3.0 Jamestown
+                Bright and Spacious Park Slope 1BR  208.0 Entire home/apt                            No smoking & No pets             1.0                  2                 1.0 Jamestown
+               Artfully Renovated Brownstone Space  241.0 Entire home/apt    No children under 10 & No pets & No visitors             4.0                  2                 2.0 Jamestown
+                    "The Park View" in Sunset Park  713.0    Private room                            No pets & No parties             2.0                  1                 4.0 Jamestown
+                           room with view and bath  268.0    Private room                         No smoking & No parties             1.0                  2                 3.0 Jamestown
+                                     Warm bed room 1098.0    Private room                            No children under 10             1.0                  1                 2.0 Jamestown
+             Cozy apartment in Brooklyn Brownstone  267.0 Entire home/apt                                      No smoking             1.0                  3                 4.0 Jamestown
+
+### Attractions in Charlottesville
+                                                                                Name  Latitude  Longitude                                                   Address          Phone                                                                                     Website            City
+                                                                          Monticello 38.008604 -78.453199      1050 Monticello Loop, Charlottesville, VA 22902, USA (434) 984-9800                                                                 https://www.monticello.org/ Charlottesville
+                                                           Virginia Discovery Museum 38.029539 -78.477906             524 E Main St, Charlottesville, VA 22902, USA (434) 977-1025                                                                           https://vadm.org/ Charlottesville
+                              The Fralin Museum of Art at the University of Virginia 38.038286 -78.503002              155 Rugby Rd, Charlottesville, VA 22904, USA (434) 924-3592                                                    https://uvafralinartmuseum.virginia.edu/ Charlottesville
+                                                                         Ix Art Park 38.026311 -78.482232           522 2nd St SE D, Charlottesville, VA 22902, USA (434) 207-2964                                                                  https://www.ixartpark.org/ Charlottesville
+                                                                         The Rotunda 38.035551 -78.503426       1826 University Ave, Charlottesville, VA 22904, USA (434) 924-7969                                                                http://rotunda.virginia.edu/ Charlottesville
+                                                              Freedom of Speech Wall 38.029545 -78.477654             605 E Main St, Charlottesville, VA 22902, USA        Unknown                                                                                     Unknown Charlottesville
+                                        Albemarle Charlottesville Historical Society 38.031846 -78.479972             200 2nd St NE, Charlottesville, VA 22902, USA (434) 296-1492                                                            http://www.albemarlehistory.org/ Charlottesville
+Administrative Offices of the Charlottesville Albemarle Convention & Visitors Bureau 38.049869 -78.524593          501 Faulconer Dr, Charlottesville, VA 22903, USA (434) 293-6789                                                        http://www.visitcharlottesville.org/ Charlottesville
+                  Kluge-Ruhe Aboriginal Art Collection of the University of Virginia 38.025338 -78.442381            400 Worrell Dr, Charlottesville, VA 22911, USA (434) 243-8500                                                                     https://kluge-ruhe.org/ Charlottesville
+                                                           Saunders-Monticello Trail 38.002217 -78.477699 503 Thomas Jefferson Pkwy, Charlottesville, VA 22902, USA (434) 984-9822                                            http://www.monticello.org/site/visit/kemper-park Charlottesville
+                                                                            The Lawn 38.035242 -78.503606            400 Emmet St S, Charlottesville, VA 22903, USA (434) 924-0311                                                      https://housing.virginia.edu/area/1176 Charlottesville
+                                                                   Berkeley Art Wall 38.077207 -78.481299          2118 Dominion Dr, Charlottesville, VA 22901, USA        Unknown                                                                                     Unknown Charlottesville
+                                                                       McIntire Park 38.047298 -78.475385            375 US-250 BYP, Charlottesville, VA 22901, USA (434) 970-3589                https://www.charlottesville.gov/Facilities/Facility/Details/McIntire-Park-25 Charlottesville
+                                                       Leander McCormick Observatory 38.032976 -78.522397          600 McCormick Rd, Charlottesville, VA 22904, USA (434) 243-1885                                                                                     Unknown Charlottesville
+                                                               Blue Ridge Sanitarium 38.009934 -78.471730              Unnamed Road, Charlottesville, VA 22902, USA        Unknown                                                                                     Unknown Charlottesville
+                                                                      Riverview Park 38.023626 -78.454522        1909 Chesapeake St, Charlottesville, VA 22902, USA (434) 970-3333               https://www.charlottesville.gov/facilities/facility/details/Riverview-Park-61 Charlottesville
+                                                         Ragged Mountain Nature Area 38.026673 -78.555929         1730 Reservoir Rd, Charlottesville, VA 22902, USA        Unknown https://www.charlottesville.gov/Facilities/Facility/Details/Ragged-Mountain-Natural-Area-40 Charlottesville
+                                                                            Pen Park 38.053602 -78.454023          1300 Pen Park Rd, Charlottesville, VA 22901, USA (434) 970-3589                     https://www.charlottesville.gov/Facilities/Facility/Details/Pen-Park-26 Charlottesville
+                                                                   Forest Hills Park 38.024162 -78.497335     1022 Forest Hills Ave, Charlottesville, VA 22903, USA (434) 970-3260            https://www.charlottesville.gov/Facilities/Facility/Details/Forest-Hills-Park-23 Charlottesville
+                                                                      Greenleaf Park 38.049425 -78.482061         1598 Rose Hill Dr, Charlottesville, VA 22903, USA (434) 970-3021               https://www.charlottesville.gov/facilities/facility/details/Greenleaf-Park-24 Charlottesville
+
+### Restaurants in Charlottesville
+                                     Name  Average Cost                                          Cuisines  Aggregate Rating            City
+                        Mama's Fish House            63                   Tea, Pizza, Desserts, Fast Food               4.9 Charlottesville
+                         Restaurant Andre           250            Desserts, Tea, BBQ, Fast Food, Chinese               3.8 Charlottesville
+                           Domino's Pizza            53                         Tea, Chinese, Indian, BBQ               2.8 Charlottesville
+                                 Takamaka            72               Tea, Pizza, Italian, BBQ, Fast Food               3.9 Charlottesville
+               Sandys Cocktails & Kitchen            82                  Tea, Pizza, BBQ, Indian, Seafood               3.9 Charlottesville
+                             Dawat-e-Ishq            26            Desserts, Tea, Italian, BBQ, Fast Food               3.3 Charlottesville
+                                  Firefly            30                                     Pizza, Bakery               0.0 Charlottesville
+                       The Tongue Twister            81              Pizza, French, Bakery, Cafe, Seafood               3.4 Charlottesville
+                                56 Fresca            95         Pizza, French, BBQ, Cafe, Indian, Seafood               3.7 Charlottesville
+                                     Tpot            35                        Cafe, Mexican, Bakery, BBQ               0.0 Charlottesville
+                   Kamdhenu Family Corner            69                       French, Pizza, BBQ, Seafood               2.8 Charlottesville
+                              Boa Village            46                             Tea, Seafood, Italian               4.0 Charlottesville
+Cake Central - Premier Cake Design Studio            21                   Pizza, American, BBQ, Fast Food               3.4 Charlottesville
+                     A Vaishno Bhojnalaya            32      Desserts, Pizza, Bakery, Cafe, Mediterranean               3.1 Charlottesville
+                           Blue Bull Cafe            12                            French, Pizza, Seafood               2.8 Charlottesville
+                           Darbar E Awadh            63                    French, BBQ, Desserts, Seafood               3.2 Charlottesville
+                    Sanjha Chulah Babe Da            76                        Tea, Bakery, Mediterranean               0.0 Charlottesville
+                               Baking Bad            22          Desserts, Tea, Bakery, American, Seafood               3.8 Charlottesville
+                                    Giani            54                                     Cafe, Seafood               3.3 Charlottesville
+                              Madras Cafe            15                                  Pizza, Fast Food               3.2 Charlottesville
+                 P.S. Chinese & Thai Food            81                             Chinese, BBQ, Seafood               0.0 Charlottesville
+                                RollsKing            63                          Tea, Chinese, Pizza, BBQ               3.5 Charlottesville
+                          Cafe Coffee Day            50                        Tea, French, Bakery, Pizza               2.6 Charlottesville
+                         The Friends Cafe            62 Desserts, Pizza, American, Mediterranean, Seafood               0.0 Charlottesville
+                     Shahi Chicken Corner            85                                     Cafe, Seafood               0.0 Charlottesville
+              Anjel China & Tibetian Food            48                         Tea, Chinese, Bakery, BBQ               0.0 Charlottesville
+                         Picasso Roof Top            63        Tea, Pizza, Italian, Mexican, BBQ, Seafood               3.1 Charlottesville
+                                    Kasba            91                        Cafe, Indian, BBQ, Seafood               0.0 Charlottesville
+                         Amritsari Kulcha            49 French, Bakery, Fast Food, Mediterranean, Seafood               3.1 Charlottesville
+                 Chawla's Tandoori Xpress            75      Desserts, Tea, Pizza, Mediterranean, Seafood               3.2 Charlottesville
+                                 Frontier            34                         Tea, Bakery, BBQ, Seafood               0.0 Charlottesville
+                     Riyaz Biryani Corner            17       Cafe, Bakery, BBQ, Chinese, Indian, Seafood               0.0 Charlottesville
+                                   D Food            93        American, Mediterranean, Desserts, Seafood               0.0 Charlottesville
+                              Shah Bakery            20                          Pizza, American, Seafood               3.0 Charlottesville
+                          Majlis-e-Mughal            95                           French, Pizza, Desserts               3.5 Charlottesville
+                               Apni Rasoi            76     Desserts, French, Bakery, Cafe, Mediterranean               2.6 Charlottesville
+                      Alam Biryani Center            91        Desserts, Tea, Mexican, Fast Food, Seafood               0.0 Charlottesville
+                                      DND            64                         French, Bakery, BBQ, Cafe               3.5 Charlottesville
+                                Keventers            90       Desserts, Tea, Pizza, Bakery, Mediterranean               0.0 Charlottesville
+                          Tales & Spirits            91                       Tea, Mexican, BBQ, Desserts               4.1 Charlottesville
+
+### Accommodations in Charlottesville
+                                              NAME  price       room type                                 house_rules  minimum nights  maximum occupancy  review rate number            city
+    Gorgeous natural light in Chelsea photo studio 1094.0 Entire home/apt                                     No pets             1.0                  8                 2.0 Charlottesville
+                           Williamsburg Hidden Gem  391.0 Entire home/apt                    No visitors & No smoking             1.0                  2                 4.0 Charlottesville
+ Big Private Room in Perfect Williamsburg Location  946.0    Private room                                  No parties             2.0                  1                 2.0 Charlottesville
+                Single room in Bushwick w/backyard  107.0    Private room                                 No visitors             1.0                  2                 3.0 Charlottesville
+Fantastic Value - Quiet Room Seconds from Graham L  320.0    Private room                                 No visitors            28.0                  1                 4.0 Charlottesville
+           Charming Shared Place in East Manhattan  350.0     Shared room                        No parties & No pets             2.0                  1                 4.0 Charlottesville
+                                        Comfy Cozy  553.0 Entire home/apt                                     No pets             2.0                  2                 5.0 Charlottesville
+                             One bedroom apartment  176.0 Entire home/apt                        No children under 10             7.0                  2                 5.0 Charlottesville
+                       Charismatic Flat in Astoria 1098.0    Private room                        No children under 10             3.0                  2                 2.0 Charlottesville
+   Peaceful Spacious 1 Bdrm Apt in Carroll Gardens  611.0 Entire home/apt                                     No pets             7.0                  2                 5.0 Charlottesville
+      Comfortable PRIVATE ROOM in a great location  763.0    Private room                        No pets & No parties             4.0                  2                 5.0 Charlottesville
+                             Cozy and sunny Studio  154.0 Entire home/apt No pets & No children under 10 & No parties             5.0                  2                 2.0 Charlottesville
+           Sunny spacious room full of good energy  155.0    Private room                                 No visitors             1.0                  1                 2.0 Charlottesville
+  Amazing Private room in LIC minutes to Manhattan   97.0    Private room                                  No smoking             1.0                  2                 4.0 Charlottesville
+                    Spacious sun lit Bushwick room   87.0    Private room                    No visitors & No parties             5.0                  1                 5.0 Charlottesville
+
+### Flight from Philadelphia to Richmond on 2022-03-02
+Flight Number  Price DepTime ArrTime  ActualElapsedTime FlightDate OriginCityName DestCityName  Distance
+     F3728221     59   16:14   17:11 0 hours 57 minutes 2022-03-02   Philadelphia     Richmond     198.0
+     F3729486     62   19:55   21:06 1 hours 11 minutes 2022-03-02   Philadelphia     Richmond     198.0
+     F3730354     44   13:39   14:52 1 hours 13 minutes 2022-03-02   Philadelphia     Richmond     198.0
+     F3734535     47   09:40   10:51 1 hours 11 minutes 2022-03-02   Philadelphia     Richmond     198.0
+
+### Self-driving from Philadelphia to Richmond
+self-driving, from Philadelphia to Richmond, duration: 4 hours 2 mins, distance: 407 km, cost: 20
+
+### Taxi from Philadelphia to Richmond
+taxi, from Philadelphia to Richmond, duration: 4 hours 2 mins, distance: 407 km, cost: 407
+
+### Flight from Richmond to Jamestown on 2022-03-04
+There is no flight from Richmond to Jamestown on 2022-03-04.
+
+### Self-driving from Richmond to Jamestown
+self-driving, from Richmond to Jamestown, duration: 1 hour 1 min, distance: 92.4 km, cost: 4
+
+### Taxi from Richmond to Jamestown
+taxi, from Richmond to Jamestown, duration: 1 hour 1 min, distance: 92.4 km, cost: 92
+
+### Flight from Jamestown to Charlottesville on 2022-03-06
+There is no flight from Jamestown to Charlottesville on 2022-03-06.
+
+### Self-driving from Jamestown to Charlottesville
+self-driving, from Jamestown to Charlottesville, duration: 2 hours 2 mins, distance: 206 km, cost: 10
+
+### Taxi from Jamestown to Charlottesville
+taxi, from Jamestown to Charlottesville, duration: 2 hours 2 mins, distance: 206 km, cost: 206
+
+### Flight from Charlottesville to Philadelphia on 2022-03-08
+There is no flight from Charlottesville to Philadelphia on 2022-03-08.
+
+### Self-driving from Charlottesville to Philadelphia
+self-driving, from Charlottesville to Philadelphia, duration: 4 hours 24 mins, distance: 411 km, cost: 20
+
+### Taxi from Charlottesville to Philadelphia
+taxi, from Charlottesville to Philadelphia, duration: 4 hours 24 mins, distance: 411 km, cost: 411
+
+JSON plan:

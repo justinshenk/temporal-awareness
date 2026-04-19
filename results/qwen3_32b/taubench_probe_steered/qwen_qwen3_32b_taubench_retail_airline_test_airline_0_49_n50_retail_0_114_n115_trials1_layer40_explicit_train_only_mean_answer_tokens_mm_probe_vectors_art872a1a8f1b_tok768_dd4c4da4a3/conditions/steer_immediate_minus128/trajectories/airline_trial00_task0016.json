@@ -1,0 +1,818 @@
+[
+  {
+    "step": -1,
+    "event": "reset",
+    "observation": "Hi, I'm calling about my flight HAT039 that was supposed to go from Atlanta to Seattle, and it's been significantly delayed.",
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    }
+  },
+  {
+    "step": 0,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"HAT039\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "HAT039"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"HAT039\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4635,
+    "output_tokens": 25,
+    "generation_seconds": 2.7448019981384277,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 1,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a user with the ID 'HAT039'. Could you please provide your user ID or any other information that can help me locate your account?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I couldn't find a user with the ID 'HAT039'. Could you please provide your user ID or any other information that can help me locate your account?"
+      }
+    },
+    "observation": "Oh sorry, my user ID is ethan_martin_2396. I'm really frustrated about this delay on my flight.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a user with the ID 'HAT039'. Could you please provide your user ID or any other information that can help me locate your account?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 4677,
+    "output_tokens": 57,
+    "generation_seconds": 4.675214529037476,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 2,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ethan_martin_2396\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ethan_martin_2396"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ethan\", \"last_name\": \"Martin\"}, \"address\": {\"address1\": \"157 Willow Lane\", \"address2\": \"Suite 744\", \"city\": \"Dallas\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"75202\"}, \"email\": \"ethan.martin2913@example.com\", \"dob\": \"1963-05-18\", \"payment_methods\": {\"certificate_5449394\": {\"source\": \"certificate\", \"amount\": 250, \"id\": \"certificate_5449394\"}, \"gift_card_5853954\": {\"source\": \"gift_card\", \"amount\": 71, \"id\": \"gift_card_5853954\"}, \"certificate_7365778\": {\"source\": \"certificate\", \"amount\": 100, \"id\": \"certificate_7365778\"}, \"certificate_2942955\": {\"source\": \"certificate\", \"amount\": 100, \"id\": \"certificate_2942955\"}, \"credit_card_5447957\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"8023\", \"id\": \"credit_card_5447957\"}}, \"saved_passengers\": [{\"first_name\": \"Liam\", \"last_name\": \"Johnson\", \"dob\": \"1976-08-23\"}], \"membership\": \"silver\", \"reservations\": [\"GXWCPN\", \"DQST39\", \"BSSSM3\", \"RVQC22\", \"P824NH\", \"3HE6QG\", \"NTIRXF\", \"HG8X9P\", \"M61CQM\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ethan_martin_2396\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 4771,
+    "output_tokens": 29,
+    "generation_seconds": 3.021040201187134,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 3,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HAT039\"}}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "HAT039"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"HAT039\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 5231,
+    "output_tokens": 25,
+    "generation_seconds": 2.913912057876587,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 4,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a reservation with the ID 'HAT039'. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I couldn't find a reservation with the ID 'HAT039'. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?"
+      }
+    },
+    "observation": "I understand the confusion - HAT039 is the flight number, not the reservation ID. My user ID is ethan_martin_2396. Can you look up my account with that information so we can discuss this delayed flight?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a reservation with the ID 'HAT039'. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5273,
+    "output_tokens": 58,
+    "generation_seconds": 4.924626111984253,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 5,
+    "model_text": "Action:\n{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ethan_martin_2396\"}}",
+    "action": {
+      "name": "get_user_details",
+      "arguments": {
+        "user_id": "ethan_martin_2396"
+      }
+    },
+    "observation": "{\"name\": {\"first_name\": \"Ethan\", \"last_name\": \"Martin\"}, \"address\": {\"address1\": \"157 Willow Lane\", \"address2\": \"Suite 744\", \"city\": \"Dallas\", \"country\": \"USA\", \"state\": \"TX\", \"zip\": \"75202\"}, \"email\": \"ethan.martin2913@example.com\", \"dob\": \"1963-05-18\", \"payment_methods\": {\"certificate_5449394\": {\"source\": \"certificate\", \"amount\": 250, \"id\": \"certificate_5449394\"}, \"gift_card_5853954\": {\"source\": \"gift_card\", \"amount\": 71, \"id\": \"gift_card_5853954\"}, \"certificate_7365778\": {\"source\": \"certificate\", \"amount\": 100, \"id\": \"certificate_7365778\"}, \"certificate_2942955\": {\"source\": \"certificate\", \"amount\": 100, \"id\": \"certificate_2942955\"}, \"credit_card_5447957\": {\"source\": \"credit_card\", \"brand\": \"mastercard\", \"last_four\": \"8023\", \"id\": \"credit_card_5447957\"}}, \"saved_passengers\": [{\"first_name\": \"Liam\", \"last_name\": \"Johnson\", \"dob\": \"1976-08-23\"}], \"membership\": \"silver\", \"reservations\": [\"GXWCPN\", \"DQST39\", \"BSSSM3\", \"RVQC22\", \"P824NH\", \"3HE6QG\", \"NTIRXF\", \"HG8X9P\", \"M61CQM\"]}",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "get_user_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_user_details\", \"arguments\": {\"user_id\": \"ethan_martin_2396\"}}",
+    "parsed_action_name": "get_user_details",
+    "input_tokens": 5391,
+    "output_tokens": 29,
+    "generation_seconds": 3.211449384689331,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 6,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I have retrieved your account details, Ethan. Could you please provide the reservation ID associated with the delayed flight HAT039 so I can look up the reservation and assist you further?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I have retrieved your account details, Ethan. Could you please provide the reservation ID associated with the delayed flight HAT039 so I can look up the reservation and assist you further?"
+      }
+    },
+    "observation": "I apologize, but I don't have my reservation ID readily available right now. However, you should be able to find it in your system using my user ID and the flight number HAT039 from ATL to SEA. Can you search for it that way?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I have retrieved your account details, Ethan. Could you please provide the reservation ID associated with the delayed flight HAT039 so I can look up the reservation and assist you further?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5851,
+    "output_tokens": 55,
+    "generation_seconds": 4.892274618148804,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 7,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I can't search for the reservation using only the user ID and flight number. Could you please provide the reservation ID or any other information that can help me locate your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I can't search for the reservation using only the user ID and flight number. Could you please provide the reservation ID or any other information that can help me locate your reservation?"
+      }
+    },
+    "observation": "I really don't have that information on hand at the moment. Look, I'm already very upset about this delay - is there any other way you can pull up my booking? Maybe by my name and the flight details?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I can't search for the reservation using only the user ID and flight number. Could you please provide the reservation ID or any other information that can help me locate your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 5969,
+    "output_tokens": 57,
+    "generation_seconds": 5.031088829040527,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 8,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I can't search for the reservation using only the name and flight details. Could you please provide the reservation ID or any other information that can help me locate your reservation?\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I can't search for the reservation using only the name and flight details. Could you please provide the reservation ID or any other information that can help me locate your reservation?"
+      }
+    },
+    "observation": "This is frustrating - I'm calling about a delayed flight and you're asking me for information I don't have memorized. Can you at least tell me what other details would help you find my reservation? What do you need from me?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I can't search for the reservation using only the name and flight details. Could you please provide the reservation ID or any other information that can help me locate your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6080,
+    "output_tokens": 56,
+    "generation_seconds": 5.0492167472839355,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 9,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I understand your frustration, Ethan. To help me locate your reservation, I would need the reservation ID. If you don't have it, you can find it in your confirmation email, on your itinerary, or in your account under 'My Reservations'. Once I have the reservation ID, I can look up the details and assist you with the delay.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I understand your frustration, Ethan. To help me locate your reservation, I would need the reservation ID. If you don't have it, you can find it in your confirmation email, on your itinerary, or in your account under 'My Reservations'. Once I have the reservation ID, I can look up the details and assist you with the delay."
+      }
+    },
+    "observation": "Okay, let me check my email for the confirmation. One moment... I'm looking through my inbox now. Can you give me a minute to find it?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I understand your frustration, Ethan. To help me locate your reservation, I would need the reservation ID. If you don't have it, you can find it in your confirmation email, on your itinerary, or in your account under 'My Reservations'. Once I have the reservation ID, I can look up the details and assist you with the delay.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6193,
+    "output_tokens": 88,
+    "generation_seconds": 7.006319284439087,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 10,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"Of course, take your time, Ethan. I'll wait while you look for the confirmation email. Feel free to let me know once you have the reservation ID, and I'll assist you right away.\"}}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "Of course, take your time, Ethan. I'll wait while you look for the confirmation email. Feel free to let me know once you have the reservation ID, and I'll assist you right away."
+      }
+    },
+    "observation": "Alright, I found it. My reservation ID is RES-2024-ATL-SEA-89347.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"Of course, take your time, Ethan. I'll wait while you look for the confirmation email. Feel free to let me know once you have the reservation ID, and I'll assist you right away.\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6322,
+    "output_tokens": 58,
+    "generation_seconds": 5.247157573699951,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 11,
+    "model_text": "Action:\n{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"RES-2024-ATL-SEA-89347\"}}\"}",
+    "action": {
+      "name": "get_reservation_details",
+      "arguments": {
+        "reservation_id": "RES-2024-ATL-SEA-89347"
+      }
+    },
+    "observation": "Error: user not found",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "get_reservation_details",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"get_reservation_details\", \"arguments\": {\"reservation_id\": \"RES-2024-ATL-SEA-89347\"}}",
+    "parsed_action_name": "get_reservation_details",
+    "input_tokens": 6417,
+    "output_tokens": 38,
+    "generation_seconds": 4.090208053588867,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 12,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a reservation with the ID 'RES-2024-ATL-SEA-89347'. Could you please double-check the reservation ID or provide any other information that can help me locate your reservation?\"}}\"}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I'm sorry, but I couldn't find a reservation with the ID 'RES-2024-ATL-SEA-89347'. Could you please double-check the reservation ID or provide any other information that can help me locate your reservation?"
+      }
+    },
+    "observation": "I'm looking at it right now and that's definitely what's on my confirmation email. But honestly, can we just move past this? I'm extremely upset about this flight being delayed - I need to know why my flight HAT039 is delayed and what you're going to do to make this right.",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I'm sorry, but I couldn't find a reservation with the ID 'RES-2024-ATL-SEA-89347'. Could you please double-check the reservation ID or provide any other information that can help me locate your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6472,
+    "output_tokens": 72,
+    "generation_seconds": 6.127294540405273,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 13,
+    "model_text": "Action:\n{\"name\": \"respond\", \"arguments\": {\"content\": \"I understand that you're upset about the delay with your flight HAT039. To assist you, I need to locate your reservation. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?\"}}\"}",
+    "action": {
+      "name": "respond",
+      "arguments": {
+        "content": "I understand that you're upset about the delay with your flight HAT039. To assist you, I need to locate your reservation. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?"
+      }
+    },
+    "observation": "Look, I've given you my user ID, the flight number, and a reservation ID from my email. I don't know what else I can do here. Can you please just escalate this to a supervisor who might be able to help me find my booking in your system?",
+    "reward": 0.0,
+    "done": false,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "user",
+      "user_cost": null,
+      "reward_info": null
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"respond\", \"arguments\": {\"content\": \"I understand that you're upset about the delay with your flight HAT039. To assist you, I need to locate your reservation. Could you please provide the correct reservation ID or any other information that can help me locate your reservation?\"}}",
+    "parsed_action_name": "respond",
+    "input_tokens": 6617,
+    "output_tokens": 67,
+    "generation_seconds": 5.848613977432251,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  },
+  {
+    "step": 14,
+    "model_text": "Action:\n{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"Ethan Martin (user ID: ethan_martin_2396) is having trouble locating his reservation for flight HAT039. He has provided his user ID, the flight number, and a reservation ID from his email (RES-2024-ATL-SEA-89347), but it is not found in the system. He is frustrated and would like to speak with a supervisor for further assistance.\"}}\"}",
+    "action": {
+      "name": "transfer_to_human_agents",
+      "arguments": {
+        "summary": "Ethan Martin (user ID: ethan_martin_2396) is having trouble locating his reservation for flight HAT039. He has provided his user ID, the flight number, and a reservation ID from his email (RES-2024-ATL-SEA-89347), but it is not found in the system. He is frustrated and would like to speak with a supervisor for further assistance."
+      }
+    },
+    "observation": "Transfer successful",
+    "reward": 0.0,
+    "done": true,
+    "info": {
+      "task": {
+        "user_id": "ethan_martin_2396",
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ],
+        "instruction": "Your user id is ethan_martin_2396 and you are contacting to complain about your delayed flight HAT039 from ATL to SEA. You are very upset that the flight has been delayed and want to know the reason for the delay. You also want the airline to compensate you for the delay. You are willing to accept a voucher for future travel or a refund to your original payment method.",
+        "outputs": []
+      },
+      "source": "transfer_to_human_agents",
+      "user_cost": 0.0014399999999999999,
+      "reward_info": {
+        "reward": 0.0,
+        "info": {
+          "r_actions": 0.0,
+          "gt_data_hash": "196c89b4d8050bd39fbcf7fff0e7c031d61fe90ad992c3e61256ade858013d6c"
+        },
+        "actions": [
+          {
+            "name": "get_user_details",
+            "kwargs": {
+              "user_id": "ethan_martin_2396"
+            }
+          },
+          {
+            "name": "send_certificate",
+            "kwargs": {
+              "user_id": "ethan_martin_2396",
+              "amount": 150
+            }
+          }
+        ]
+      }
+    },
+    "action_parse_success": true,
+    "action_parse_error": null,
+    "action_json_text": "{\"name\": \"transfer_to_human_agents\", \"arguments\": {\"summary\": \"Ethan Martin (user ID: ethan_martin_2396) is having trouble locating his reservation for flight HAT039. He has provided his user ID, the flight number, and a reservation ID from his email (RES-2024-ATL-SEA-89347), but it is not found in the system. He is frustrated and would like to speak with a supervisor for further assistance.\"}}",
+    "parsed_action_name": "transfer_to_human_agents",
+    "input_tokens": 6749,
+    "output_tokens": 113,
+    "generation_seconds": 8.698492765426636,
+    "generation_kwargs": {
+      "max_new_tokens": 768,
+      "do_sample": false,
+      "pad_token_id": 151643,
+      "eos_token_id": 151645
+    }
+  }
+]
