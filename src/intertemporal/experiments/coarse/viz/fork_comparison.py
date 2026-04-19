@@ -29,7 +29,6 @@ def _extract_fork_metrics(
     Returns:
         List of dicts (one per fork), each mapping metric name to values
     """
-    from .....activation_patching import IntervenedChoiceMetrics
 
     fork_data = []
     for fork_idx in range(n_forks):

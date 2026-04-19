@@ -13,7 +13,7 @@ from typing import Literal, Sequence
 import matplotlib.pyplot as plt
 
 from .....activation_patching import IntervenedChoiceMetrics
-from .....activation_patching.act_patch_metrics import DEFAULT_AGGREGATION, PLOT_AGGREGATION_METHODS
+from .....activation_patching.act_patch_metrics import PLOT_AGGREGATION_METHODS
 from .....activation_patching.coarse import SweepStepResults
 from .....common.choice.grouped_binary_choice import ForkAggregation
 from .....viz.plot_helpers import add_pair_label, save_figure

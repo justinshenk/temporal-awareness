@@ -1,7 +1,6 @@
 """Tests for GeometryDataLoader."""
 
 import numpy as np
-import pytest
 from pathlib import Path
 
 from ..data_loader import GeometryDataLoader

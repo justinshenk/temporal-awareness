@@ -69,11 +69,8 @@ import random
 import sys
 import time
 import traceback
-from collections import defaultdict
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -124,7 +121,7 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed" / "patience_degradation"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_implicit_repetition"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -661,7 +658,7 @@ def run_implicit_repetition_experiment(
 
             # Handle edge case: all same label
             if len(np.unique(y_train)) < 2:
-                print(f"      Skipping — only one class in training data")
+                print("      Skipping — only one class in training data")
                 results["probe_transfer"][layer] = {"error": "single_class"}
                 continue
 

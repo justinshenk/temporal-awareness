@@ -71,12 +71,8 @@ Date: 2026-04-11
 import argparse
 import gc
 import json
-import random
 import sys
-import time
 import traceback
-from collections import defaultdict
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -129,7 +125,7 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed" / "patience_degradation"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase4_causal_bridge"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -994,7 +990,7 @@ def compute_causal_bridge(
         print(f"\n  ★ CAUSAL BRIDGE: r = {bridge_r:.4f}")
         if bridge_p is not None:
             print(f"    (p = {bridge_p:.4f}, n = {len(r_obs_values)} layers)")
-        print(f"    (Anthropic emotions paper: r = 0.85)")
+        print("    (Anthropic emotions paper: r = 0.85)")
     else:
         bridge_result["bridge_r"] = None
         print("\n  ⚠ Not enough layers for bridge correlation")
@@ -1296,7 +1292,7 @@ def plot_cross_directions(cross_results: dict, model_name: str, output_dir: Path
 
     # Random baseline
     baseline = cross_results[f"layer{layers[0]}"].get("random_baseline", 0)
-    ax.axhline(y=baseline, color="gray", linestyle=":", alpha=0.7, label=f"Random (√(2/πd))")
+    ax.axhline(y=baseline, color="gray", linestyle=":", alpha=0.7, label="Random (√(2/πd))")
     ax.axhline(y=-baseline, color="gray", linestyle=":", alpha=0.7)
 
     ax.set_xlabel("Layer", fontsize=12)
@@ -1367,7 +1363,7 @@ def run_causal_bridge(
     print(f"\n{'='*70}")
     print(f"CAUSAL BRIDGE EXPERIMENT: {model_key}")
     print(f"  Layers: {layers}")
-    print(f"  Pipeline: Probe → Behavior → Steering → Bridge")
+    print("  Pipeline: Probe → Behavior → Steering → Bridge")
     print(f"{'='*70}\n")
 
     # ── W&B ──

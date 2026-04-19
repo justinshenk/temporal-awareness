@@ -52,13 +52,10 @@ Date: 2026-04-10
 import argparse
 import gc
 import json
-import sys
 import time
 import traceback
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
 
 import numpy as np
 
@@ -830,7 +827,7 @@ def run_benchmark_for_model(
     print(f"\n{'='*60}")
     print(f"BENCHMARKING: {model_key}")
     print(f"  Layers: {layers}")
-    print(f"  Backends: TransformerLens vs PyTorch")
+    print("  Backends: TransformerLens vs PyTorch")
     print(f"{'='*60}\n")
 
     results = {
@@ -976,7 +973,7 @@ def run_benchmark_for_model(
                 print(f"  {layer_key}: refusal_dir_cos={df['direction_cosine']:.4f}")
 
     # ── Performance summary ──
-    print(f"\n── Performance ──")
+    print("\n── Performance ──")
     print(f"  TL: {tl_data['time_s']:.1f}s, {tl_data['peak_mem_mb']:.0f} MB peak")
     print(f"  PT: {pt_data['time_s']:.1f}s, {pt_data['peak_mem_mb']:.0f} MB peak")
     speedup = tl_data["time_s"] / max(pt_data["time_s"], 0.01)

@@ -325,7 +325,7 @@ def main() -> int:
             return 1
 
     log.info("=" * 60)
-    log.info(f"COMPUTE LINEAR PROBES")
+    log.info("COMPUTE LINEAR PROBES")
     log.info(f"Processing {len(datasets)} dataset(s):")
     for d in datasets:
         log.info(f"  - {d.name}")

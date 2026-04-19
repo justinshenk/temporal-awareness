@@ -102,7 +102,7 @@ def process_tram():
 
     cats = Counter(ex["category"] for ex in examples)
     print(f"  Examples: {len(examples)} (MCQ only, removed SAQ duplicates)")
-    print(f"  Categories:")
+    print("  Categories:")
     for cat, count in cats.most_common():
         print(f"    {cat}: {count}")
 
@@ -188,7 +188,7 @@ def process_medqa():
 
     cats = Counter(ex["category"] for ex in examples)
     print(f"  Examples: {len(examples)} (triple-filtered)")
-    print(f"  Temporal reasoning categories:")
+    print("  Temporal reasoning categories:")
     for cat, count in cats.most_common():
         print(f"    {cat}: {count}")
 
@@ -227,6 +227,6 @@ if __name__ == "__main__":
     print(f"  Medium-stakes: MBPP Code         {n_mbpp:>6} examples  (test split)")
     print(f"  High-stakes:   MedQA Temporal    {n_medqa:>6} examples  (curated)")
     print(f"\n  All saved to: {OUTPUT_DIR}/")
-    print(f"  Files:")
+    print("  Files:")
     for f in sorted(OUTPUT_DIR.glob("*.json")):
         print(f"    {f.name} ({f.stat().st_size / 1024:.1f} KB)")

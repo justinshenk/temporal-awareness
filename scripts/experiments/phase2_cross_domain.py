@@ -54,7 +54,7 @@ import random
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional

@@ -72,9 +72,8 @@ import argparse
 import json
 import random
 import sys
-import time
 from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -119,7 +118,7 @@ REFUSAL_DIR = PROJECT_ROOT / "data" / "refusal"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -1039,7 +1038,7 @@ def plot_cosine_similarity_profile(
         # Random baseline band
         baseline = random_baseline["mean_abs_cosine"]
         p95 = random_baseline["p95_abs_cosine"]
-        ax.axhspan(-p95, p95, alpha=0.1, color="gray", label=f"Random baseline (p95)")
+        ax.axhspan(-p95, p95, alpha=0.1, color="gray", label="Random baseline (p95)")
 
         ax.set_xticks(range(len(layers)))
         ax.set_xticklabels([str(l) for l in layers], fontsize=9)

@@ -14,10 +14,9 @@ Tests all edge cases including:
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 from src.intertemporal.common.sample_position_mapping import (
-    SamplePositionMapping,
     _assert_no_overlapping_positions,
     _assert_positions_in_bounds,
     _assert_prompt_response_separation,
@@ -26,7 +25,6 @@ from src.intertemporal.common.sample_position_mapping import (
     _assert_tail_is_max_of_content,
     _validate_position_mapping,
     _find_substring_token_range,
-    _build_named_positions_from_preference,
     _format_time_for_search,
     _format_reward_for_search,
 )
@@ -522,7 +520,7 @@ class TestBuildNamedPositionsFromPreference:
         pref = self.create_mock_pref(prompt, short_first=False)
 
         # When short_first=False, left=long, right=short
-        assert pref.short_term_first == False
+        assert not pref.short_term_first
 
 
 # =============================================================================

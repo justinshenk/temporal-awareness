@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ....activation_patching.coarse.coarse_results import CoarseActPatchResults
 from ....common.base_schema import BaseSchema
 from ....common.logging import log
 from ..attrib import MethodAgreementResults

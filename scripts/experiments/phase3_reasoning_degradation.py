@@ -65,10 +65,8 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -111,7 +109,7 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed" / "patience_degradation"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_reasoning_degradation"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------

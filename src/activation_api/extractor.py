@@ -6,13 +6,9 @@ hook-based activation capture with memory-efficient streaming.
 
 from __future__ import annotations
 
-import gc
-import json
 import time
-from pathlib import Path
 from typing import Any, Optional, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm

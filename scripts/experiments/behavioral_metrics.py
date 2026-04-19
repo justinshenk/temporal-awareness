@@ -42,7 +42,6 @@ import sys
 import math
 import random
 import textwrap
-from collections import Counter
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path

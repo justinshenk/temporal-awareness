@@ -22,7 +22,6 @@ from src.intertemporal.common.project_paths import get_pref_dataset_dir
 from src.intertemporal.data.default_configs import FULL_EXPERIMENT_CONFIG
 from src.intertemporal.preference import (
     PreferenceDataset,
-    analyze_preferences,
     analyze_samples,
     print_analysis,
 )

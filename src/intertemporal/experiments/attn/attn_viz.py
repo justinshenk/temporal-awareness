@@ -25,6 +25,7 @@ import torch
 from ....common.logging import log
 from ....viz.plot_helpers import add_pair_label, finalize_plot, save_figure
 from . import AttnAggregatedResults, AttnPairResult
+from .attn_head_attribution import HeadAttributionResults, HeadSweepResults
 from ..fine.fine_results import LayerPositionResult
 
 if TYPE_CHECKING:
@@ -2104,7 +2105,6 @@ def _plot_head_attribution_heatmap(
         output_path: Where to save the plot
         title: Plot title
     """
-    from .attn_head_attribution import HeadAttributionResults
 
     if head_attr.attribution_matrix is None:
         return
@@ -2152,7 +2152,6 @@ def _plot_head_attribution_bar(
         output_path: Where to save the plot
         n_top: Number of top heads to show
     """
-    from .attn_head_attribution import HeadAttributionResults
 
     top_heads = head_attr.get_top_heads(n_top)
     if not top_heads:
@@ -2209,7 +2208,6 @@ def visualize_head_redundancy(
     Returns:
         Number of plots generated
     """
-    from .attn_head_attribution import HeadSweepResults
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2242,7 +2240,6 @@ def _plot_head_redundancy_gap(
         output_path: Where to save the plot
         n_top: Number of heads to show
     """
-    from .attn_head_attribution import HeadSweepResults
 
     sorted_heads = redundancy.get_sorted_by_gap(descending=True)[:n_top]
     if not sorted_heads:

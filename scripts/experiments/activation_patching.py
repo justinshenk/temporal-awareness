@@ -27,7 +27,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
-from typing import Optional, Dict, List, Tuple
+from typing import Dict, List
 import warnings
 warnings.filterwarnings('ignore')
 

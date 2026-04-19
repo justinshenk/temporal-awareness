@@ -87,11 +87,9 @@ Usage:
 
 import argparse
 import json
-import os
-import random
 import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
 
@@ -143,7 +141,7 @@ DIRECTIONS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_prompt_dimensions"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -723,7 +721,7 @@ def extract_interaction_activations(
     Returns:
         Dict: condition_name -> layer -> activations (n_examples, d_model)
     """
-    print(f"\n  Extracting interaction condition activations...")
+    print("\n  Extracting interaction condition activations...")
 
     condition_activations = {}
     for cond_name, cond_config in INTERACTION_CONDITIONS.items():
@@ -1428,7 +1426,7 @@ def run_prompt_dimensions(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
-    print(f"Phase 3: Prompt Dimension Cartography")
+    print("Phase 3: Prompt Dimension Cartography")
     print(f"Model:    {model_key}")
     print(f"Layers:   {layers}")
     print(f"Examples: {max_examples}")

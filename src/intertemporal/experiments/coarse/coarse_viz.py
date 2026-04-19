@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from ....common.position_mapping import SamplePositionMapping
     from ..analysis import ProcessedResults
 from .viz.sweep_plots import (
-    ExtractionMode,
     get_multilabel_extraction_modes,
     get_n_labels_from_sweep,
     plot_layer_sweep,

@@ -9,7 +9,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..common.semantic_positions import (
-    DEFAULT_LAYERS as SEMANTIC_DEFAULT_LAYERS,
     PROMPT_LABEL_POSITIONS,
     PROMPT_CONSTRAINT_POSITIONS,
     RESPONSE_POSITIONS,

@@ -76,7 +76,7 @@ class Patching:
         print(f"Corrupted logit TOP-3: {self.model.to_string(torch.stack(self.corrupted_logits_top_3))}")
         print()
         print()
-        
+
         print(f"Clean logit diff: {self.clean_baseline:.4f}")
         print(f"Corrupted logit diff: {self.corrupted_baseline:.4f}")
 
@@ -206,13 +206,13 @@ class ActivationPatching(Patching):
                 self.corrupted_logits_top_3.append(torch.sort(corrupted_logits[-1, -1, :], descending=True).indices[0:3])
                 batched_corrupted_logits.append(corrupted_logits)
             if (self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS or
-                self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or 
+                self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS or
                 self.technique_type == ActivationPatching.Technique.DENOISING_BOTH_LOGPROBS_CUSTOM or
                 self.technique_type == ActivationPatching.Technique.NOISING_BOTH_LOGPROBS_CUSTOM):
                 self.corrupted_q_clean_a_bsl, self.corrupted_q_corrupted_a_bsl = self.inner_metric(torch.cat(batched_corrupted_logits))
                 self.corrupted_q_clean_a_bsl = self.corrupted_q_clean_a_bsl.item()
                 self.corrupted_q_corrupted_a_bsl = self.corrupted_q_corrupted_a_bsl.item()
-            else:      
+            else:
                 self.corrupted_q_clean_a_bsl = self.inner_metric(torch.cat(batched_corrupted_logits)).item()
             del batched_corrupted_logits
             gc.collect()
@@ -441,7 +441,7 @@ class AttributionPatching(Patching):
                 lambda name: "_input" not in name and "mlp_in" not in name and "attn_in" not in name
         else:
             filter_layers = \
-                lambda name: "_input" not in name and "mlp_in" not in name            
+                lambda name: "_input" not in name and "mlp_in" not in name
 
         self.model.reset_hooks()
 

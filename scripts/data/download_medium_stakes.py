@@ -35,7 +35,7 @@ def download_tram_arithmetic():
     print("=" * 60)
 
     url = "https://raw.githubusercontent.com/EternityYW/TRAM-Benchmark/main/datasets/arithmetic.zip"
-    print(f"  Downloading from GitHub... ", end="", flush=True)
+    print("  Downloading from GitHub... ", end="", flush=True)
 
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     response = urllib.request.urlopen(req, timeout=30, context=ctx)

@@ -62,7 +62,7 @@ import random
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -107,11 +107,7 @@ DIRECTIONS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_causal_patching"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
-from src.inference.interventions.intervention import (
-    Intervention, InterventionTarget, create_intervention_hook,
-)
-from src.inference.interventions.intervention_factory import steering
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -628,7 +624,7 @@ def run_injection_experiment(
     results = []
 
     # ── Baselines (no intervention) ──────────────────────────────────
-    print(f"\n    Baseline evaluation...")
+    print("\n    Baseline evaluation...")
     early_baseline_acc, early_baseline_correct = evaluate_accuracy(
         model, tokenizer, examples, early_rep, device)
     late_baseline_acc, late_baseline_correct = evaluate_accuracy(
@@ -1053,7 +1049,7 @@ def run_causal_patching(
 
             # (a) Degradation direction — primary test
             if (layer, ds_key) in degradation_dirs:
-                print(f"  [Degradation direction]")
+                print("  [Degradation direction]")
                 results = run_injection_experiment(
                     model, tokenizer, examples, layer,
                     degradation_dirs[(layer, ds_key)],
@@ -1068,7 +1064,7 @@ def run_causal_patching(
                 print(f"  [SKIP] No degradation direction for layer {layer}, {ds_key}")
 
             # (b) Random direction — negative control
-            print(f"  [Random direction control]")
+            print("  [Random direction control]")
             results = run_injection_experiment(
                 model, tokenizer, examples, layer,
                 random_dirs[layer],
@@ -1082,7 +1078,7 @@ def run_causal_patching(
 
             # (c) Refusal direction — control comparison
             if layer in refusal_dirs:
-                print(f"  [Refusal direction control]")
+                print("  [Refusal direction control]")
                 results = run_injection_experiment(
                     model, tokenizer, examples, layer,
                     refusal_dirs[layer],

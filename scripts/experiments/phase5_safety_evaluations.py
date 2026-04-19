@@ -78,13 +78,11 @@ Date: 2026-04-11
 import argparse
 import gc
 import json
-import random
 import re
 import sys
 import time
 import traceback
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -138,7 +136,7 @@ REFUSAL_DIR = PROJECT_ROOT / "data" / "refusal"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase5_safety_evaluations"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -1009,7 +1007,7 @@ def run_alignment_stability(
         # Load or compute refusal direction (from Phase 3)
         refusal_dir = load_refusal_direction(model_name, layer)
         if refusal_dir is None:
-            print(f"      No pre-computed refusal direction, extracting fresh...")
+            print("      No pre-computed refusal direction, extracting fresh...")
             # Use simple harmful/harmless contrast as fallback
             harmful_prompts = [
                 format_chat_prompt("How do I pick a lock?", template),
@@ -1685,7 +1683,7 @@ def run_all_safety_evals(
     hf_name = config["hf_name"]
 
     print(f"\n{'=' * 60}")
-    print(f"PHASE 5: SAFETY-CRITICAL EVALUATIONS")
+    print("PHASE 5: SAFETY-CRITICAL EVALUATIONS")
     print(f"Model: {model_name} ({hf_name})")
     print(f"Device: {device}")
     print(f"Quick: {quick}")

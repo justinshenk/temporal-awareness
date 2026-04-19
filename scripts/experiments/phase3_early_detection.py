@@ -62,8 +62,7 @@ import json
 import random
 import sys
 import time
-from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List
@@ -115,7 +114,7 @@ DIRECTIONS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_early_detection"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -662,7 +661,7 @@ def analyze_early_detection(
     start_time = time.time()
 
     # Load dataset
-    print(f"\n[1/5] Loading dataset and models...")
+    print("\n[1/5] Loading dataset and models...")
     dataset = load_benchmark_dataset(
         dataset_key,
         max_examples=10 if quick else 30,
@@ -717,7 +716,7 @@ def analyze_early_detection(
     )
 
     # Evaluate behavioral accuracy at each rep
-    print(f"\n[2/5] Evaluating behavioral accuracy...")
+    print("\n[2/5] Evaluating behavioral accuracy...")
     behavioral_by_rep = {}
     examples_subset = dataset["examples"][:10 if quick else 30]
 
@@ -730,7 +729,7 @@ def analyze_early_detection(
         print(f"acc={acc:.3f}")
 
     # Extract activations at each rep
-    print(f"\n[3/5] Extracting activations...")
+    print("\n[3/5] Extracting activations...")
     for layer in analyze_layers:
         print(f"  Layer {layer}...")
         layer_start = time.time()
@@ -744,7 +743,7 @@ def analyze_early_detection(
         )
 
         if len(activations_by_rep) < 2:
-            print(f"    SKIP: Insufficient activations")
+            print("    SKIP: Insufficient activations")
             continue
 
         sorted_reps = sorted(activations_by_rep.keys())
@@ -754,7 +753,7 @@ def analyze_early_detection(
         direction = load_degradation_direction(model_key, layer, dataset_key)
 
         # Compute probe confidence and direction projection
-        print(f"    Computing probe confidence...")
+        print("    Computing probe confidence...")
         probe_confidences = []
         direction_projections = []
 
@@ -898,7 +897,7 @@ def save_results(result: EarlyDetectionResult, output_dir: Path) -> None:
     print(f"  Saved: {results_file}")
 
     # Visualizations
-    print(f"\n[5/5] Generating visualizations...")
+    print("\n[5/5] Generating visualizations...")
     for layer, metrics in result.metrics.items():
         print(f"  Layer {layer}...")
 
@@ -999,7 +998,7 @@ def main():
     else:
         datasets = args.datasets
 
-    print(f"Phase 3, Experiment 5: Early Detection of Degradation")
+    print("Phase 3, Experiment 5: Early Detection of Degradation")
     print(f"Models: {models}")
     print(f"Datasets: {datasets}")
     print(f"Device: {args.device}")
@@ -1034,7 +1033,7 @@ def main():
             all_results.append(result)
             save_results(result, args.output_dir)
 
-    print(f"\n[Complete]")
+    print("\n[Complete]")
     print(f"Results saved to: {args.output_dir}")
     print(f"Analyzed {len(all_results)} model-dataset combinations")
 

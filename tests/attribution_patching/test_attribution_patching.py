@@ -1,6 +1,5 @@
 """Tests for attribution patching module."""
 
-import pytest
 import numpy as np
 import torch
 
@@ -212,9 +211,9 @@ class TestCoreFunctions:
     def test_build_position_arrays_out_of_bounds(self):
         pos_mapping = {0: 0, 1: 5, 2: 10}
         src_pos, dst_pos, valid = build_position_arrays(pos_mapping, 3, 8)
-        assert valid[0] == True
-        assert valid[1] == True
-        assert valid[2] == False
+        assert valid[0]
+        assert valid[1]
+        assert not valid[2]
 
     def test_compute_attribution_vectorized(self):
         clean_act = torch.randn(1, 5, 10)

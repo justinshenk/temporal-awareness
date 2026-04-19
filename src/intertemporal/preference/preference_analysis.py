@@ -5,7 +5,6 @@ Analyzes choices by: rationality, association, reward, time, and horizon.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -367,19 +366,19 @@ def print_analysis(analysis: PreferenceAnalysis) -> None:
     o = analysis.overall
     log(f"  Total samples: {analysis.n_total}")
     log("")
-    log(f"  Choices:")
+    log("  Choices:")
     log(f"    short_term: {_stat(o.n_short, o.n_total)}")
     log(f"    long_term:  {_stat(o.n_long, o.n_total)}")
     log("")
-    log(f"  Rationality (choice matches economic optimum given horizon):")
+    log("  Rationality (choice matches economic optimum given horizon):")
     log(f"    rational:   {_stat(o.n_rational, o.n_total)}")
     log(f"    irrational: {_stat(o.n_total - o.n_rational, o.n_total)}")
     log("")
-    log(f"  Association (choice time closest to horizon):")
+    log("  Association (choice time closest to horizon):")
     log(f"    associated:     {_stat(o.n_associated, o.n_total)}")
     log(f"    non-associated: {_stat(o.n_total - o.n_associated, o.n_total)}")
     log("")
-    log(f"  Largest Reward (chose option with highest reward):")
+    log("  Largest Reward (chose option with highest reward):")
     log(f"    largest:     {_stat(o.n_largest_reward, o.n_total)}")
     log(f"    not largest: {_stat(o.n_total - o.n_largest_reward, o.n_total)}")
 

@@ -51,8 +51,7 @@ import json
 import random
 import sys
 import time
-from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple, Dict
@@ -96,7 +95,7 @@ DIRECTIONS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_trajectory"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -618,7 +617,7 @@ def analyze_trajectory(
     start_time = time.time()
 
     # Load dataset and extractor
-    print(f"\n[1/5] Loading dataset and initializing extractor...")
+    print("\n[1/5] Loading dataset and initializing extractor...")
     dataset = load_benchmark_dataset(
         dataset_key,
         max_examples=10 if quick else 30,
@@ -677,19 +676,19 @@ def analyze_trajectory(
         )
 
         if len(activations_by_rep) < 2:
-            print(f"    SKIP: Insufficient activations captured")
+            print("    SKIP: Insufficient activations captured")
             continue
 
         sorted_reps = sorted(activations_by_rep.keys())
 
         # Compute geometric metrics
-        print(f"    Computing trajectory metrics...")
+        print("    Computing trajectory metrics...")
         velocities, accelerations, curvatures, cosine_drifts = compute_trajectory_metrics(
             activations_by_rep, sorted_reps
         )
 
         # PCA projection
-        print(f"    Applying PCA projection...")
+        print("    Applying PCA projection...")
         pca_proj, pca_dirs, pca_var = apply_pca_projection(
             activations_by_rep, sorted_reps, n_components=3
         )
@@ -773,7 +772,7 @@ def save_results(result: TrajectoryResult, output_dir: Path) -> None:
     print(f"  Saved: {results_file}")
 
     # Generate visualizations
-    print(f"\n[4/5] Generating visualizations...")
+    print("\n[4/5] Generating visualizations...")
     for layer, metrics in result.metrics.items():
         print(f"  Layer {layer}...")
 
@@ -888,7 +887,7 @@ def main():
     else:
         datasets = args.datasets
 
-    print(f"Phase 3, Experiment 4: Trajectory Geometry Analysis")
+    print("Phase 3, Experiment 4: Trajectory Geometry Analysis")
     print(f"Models: {models}")
     print(f"Datasets: {datasets}")
     print(f"Device: {args.device}")
@@ -921,7 +920,7 @@ def main():
             all_results.append(result)
             save_results(result, args.output_dir)
 
-    print(f"\n[5/5] Complete!")
+    print("\n[5/5] Complete!")
     print(f"Results saved to: {args.output_dir}")
     print(f"Analyzed {len(all_results)} model-dataset combinations")
 

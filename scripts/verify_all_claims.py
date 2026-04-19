@@ -16,7 +16,6 @@ import pickle
 import sys
 from pathlib import Path
 
-import numpy as np
 
 # Add project root to path
 ROOT = Path(__file__).parent.parent
@@ -163,7 +162,7 @@ def verify_claim_3(quick=True):
         }
         print(f"  Reported ablated accuracy (L10): {reported['ablated_accuracy_layer_10']}%")
         print(f"  Reported ablated accuracy (L11): {reported['ablated_accuracy_layer_11']}%")
-        print(f"  ⚠️  This is the most surprising claim - needs careful validation")
+        print("  ⚠️  This is the most surprising claim - needs careful validation")
         return "UNVERIFIED", reported
 
     print("  Full verification requires ablation experiment...")

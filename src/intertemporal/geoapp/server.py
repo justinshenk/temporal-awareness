@@ -232,7 +232,7 @@ def create_app(
             # Phase 0: Validate data directory structure
             pca_count, available_methods = _validate_dataset(data_dir, dataset_name)
 
-            print(f"    Data structure: OK")
+            print("    Data structure: OK")
             print(f"    PCA embeddings: {pca_count} files")
             print(f"    Available methods: {available_methods}")
 

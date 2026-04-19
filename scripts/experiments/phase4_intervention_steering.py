@@ -61,8 +61,7 @@ import json
 import random
 import sys
 import time
-from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -107,11 +106,7 @@ DIRECTIONS_DIR = PROJECT_ROOT / "results" / "phase3_refusal_direction"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase4_interventions"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
-from src.inference.interventions.intervention import (
-    Intervention, InterventionTarget, create_intervention_hook,
-)
-from src.inference.interventions.intervention_factory import steering
+from src.activation_api import ExtractionConfig, ActivationExtractor
 
 
 # ---------------------------------------------------------------------------
@@ -826,7 +821,7 @@ def run_steering_experiment(
     results = []
 
     # Get baseline (no steering) accuracy curve
-    print(f"\n    Computing baseline (no steering)...")
+    print("\n    Computing baseline (no steering)...")
     baseline_curve = {}
     for rep in rep_counts:
         acc, _ = evaluate_accuracy(model, tokenizer, examples, rep, device)
@@ -910,7 +905,7 @@ def run_control_experiments(
         baseline_curve[rep] = acc
 
     # Test random direction control
-    print(f"\n    Testing RANDOM direction control...")
+    print("\n    Testing RANDOM direction control...")
     random_dir = generate_random_direction(d_model)
 
     for strength in strengths[:len(strengths)//2]:  # Test fewer strengths for controls
@@ -1104,6 +1099,7 @@ def run_phase4_steering(
     direction_source_dir: Optional[str] = None,
     wandb_project: Optional[str] = None,
     output_dir: Optional[str] = None,
+    backend: str = "pytorch",
 ):
     """Run the full Phase 4 intervention steering experiment.
 
@@ -1132,7 +1128,7 @@ def run_phase4_steering(
     output_path.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*70}")
-    print(f"PHASE 4: Intervention Steering")
+    print("PHASE 4: Intervention Steering")
     print(f"Model: {model_key}")
     print(f"Device: {device}")
     print(f"Max examples: {max_examples}")
@@ -1170,7 +1166,7 @@ def run_phase4_steering(
         return []
 
     # ─── Load directions ────────────────────────────────────────────────
-    print(f"\nLoading directions from Phase 3...")
+    print("\nLoading directions from Phase 3...")
     source_dir = Path(direction_source_dir) if direction_source_dir else None
 
     all_results = {}
@@ -1194,14 +1190,14 @@ def run_phase4_steering(
                 model_config["hf_name"],
                 model_config["d_model"],
                 device,
-                backend=args.backend,
+                backend=backend,
             )
             if direction is None:
                 print(f"  SKIPPING layer {layer}")
                 continue
 
         # Run steering experiments
-        print(f"\n  Running steering experiments...")
+        print("\n  Running steering experiments...")
         t0 = time.time()
         steering_results = run_steering_experiment(
             model, tokenizer, examples, layer, direction,
@@ -1211,7 +1207,7 @@ def run_phase4_steering(
         print(f"  Completed in {elapsed/60:.1f} minutes")
 
         # Run control experiments
-        print(f"\n  Running control experiments...")
+        print("\n  Running control experiments...")
         control_results = run_control_experiments(
             model, tokenizer, examples, layer, model_config["d_model"],
             rep_counts, strengths, dataset_key, model_key, device
@@ -1267,7 +1263,7 @@ def run_phase4_steering(
 
     with open(output_path / "intervention_results.json", "w") as f:
         json.dump(all_results_flat, f, indent=2)
-    print(f"  Saved: intervention_results.json")
+    print("  Saved: intervention_results.json")
 
     # Summary statistics
     summary = {
@@ -1295,7 +1291,7 @@ def run_phase4_steering(
 
     with open(output_path / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
-    print(f"  Saved: summary.json")
+    print("  Saved: summary.json")
 
     # Log to W&B
     if wandb_project and HAS_WANDB:
@@ -1385,6 +1381,7 @@ def main():
                 direction_source_dir=args.direction_dir,
                 wandb_project=args.wandb_project,
                 output_dir=args.output_dir,
+                backend=args.backend,
             )
         except Exception as e:
             print(f"\nERROR running {model_key}: {e}")

@@ -23,12 +23,11 @@ from .coarse.coarse_viz import (
     visualize_component_comparison,
 )
 from .diffmeans.diffmeans_viz import visualize_diffmeans, visualize_diffmeans_pair
-from .mlp.mlp_viz import visualize_mlp_analysis, visualize_mlp_pair, visualize_all_mlp_slices
-from .attn.attn_viz import visualize_attn_analysis, visualize_attn_pair, visualize_all_attn_slices
+from .mlp.mlp_viz import visualize_mlp_pair, visualize_all_mlp_slices
+from .attn.attn_viz import visualize_attn_pair, visualize_all_attn_slices
 from ..viz.att_patching_viz import visualize_att_patching
 
 if TYPE_CHECKING:
-    from .experiment_context import ExperimentContext
     from .analysis import ProcessedResults
     from .diffmeans import DiffMeansConfig
 

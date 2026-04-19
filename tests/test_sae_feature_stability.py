@@ -43,8 +43,8 @@ class TestDatasetGeneration:
         assert len(cond.prompts) > 0, f"{cond.name}: no prompts"
         assert len(cond.prompts) == len(cond.labels), f"{cond.name}: prompt/label mismatch"
         assert set(cond.labels).issubset({0, 1}), f"{cond.name}: invalid labels"
-        assert cond.name, f"condition has no name"
-        assert cond.description, f"condition has no description"
+        assert cond.name, "condition has no name"
+        assert cond.description, "condition has no description"
 
         # Check balance (should be roughly balanced)
         n_imm = (cond.labels == 0).sum()

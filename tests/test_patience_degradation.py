@@ -22,8 +22,6 @@ from scripts.experiments.patience_degradation import (
     compute_precursor_gap,
     RepetitionMetrics,
     DegradationResult,
-    REPETITION_COUNTS,
-    QUICK_REPETITION_COUNTS,
 )
 
 

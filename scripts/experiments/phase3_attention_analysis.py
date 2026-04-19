@@ -60,9 +60,8 @@ import argparse
 import json
 import random
 import sys
-import time
 from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
@@ -112,7 +111,6 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed" / "patience_degradation"
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3_attention"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from src.activation_api import ExtractionConfig, ActivationExtractor, ActivationResult
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +351,7 @@ def extract_attention_patterns(
     )
     model.eval()
 
-    print(f"  Loading tokenizer...")
+    print("  Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(hf_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
