@@ -69,6 +69,29 @@ def _get_component_scores_by_layer(
     return layer_scores
 
 
+def _get_component_stds_by_layer(
+    summary: AttributionSummary,
+    component_type: ComponentType,
+) -> dict[int, float]:
+    """Per-pair std of summed scores by layer for a component (uses std_scores)."""
+    layer_stds: dict[int, float] = {}
+    component_patterns = {
+        "attn": ["attn_out", "attn"],
+        "mlp": ["mlp_out", "mlp"],
+        "resid": ["resid_post", "resid"],
+    }
+    patterns = component_patterns.get(component_type, [component_type])
+    for key, result in summary.results.items():
+        if not any(p in result.component for p in patterns):
+            continue
+        if result.std_scores is None:
+            continue
+        for layer_idx, layer in enumerate(result.layers):
+            std_val = float(np.sum(result.std_scores[layer_idx]))
+            layer_stds[layer] = layer_stds.get(layer, 0.0) + std_val
+    return layer_stds
+
+
 @profile
 def plot_mode_bar_chart(
     denoising_summary: AttributionSummary | None,
@@ -115,17 +138,27 @@ def plot_mode_bar_chart(
 
         denoise_scores = [0.0] * len(layers)
         noise_scores = [0.0] * len(layers)
+        denoise_errs = [0.0] * len(layers)
+        noise_errs = [0.0] * len(layers)
 
         if denoising_summary:
             denoise_layer_scores = _get_component_scores_by_layer(denoising_summary, comp)
             denoise_scores = [denoise_layer_scores.get(layer, 0.0) for layer in layers]
+            denoise_layer_stds = _get_component_stds_by_layer(denoising_summary, comp)
+            denoise_errs = [denoise_layer_stds.get(layer, 0.0) for layer in layers]
 
         if noising_summary:
             noise_layer_scores = _get_component_scores_by_layer(noising_summary, comp)
             noise_scores = [noise_layer_scores.get(layer, 0.0) for layer in layers]
+            noise_layer_stds = _get_component_stds_by_layer(noising_summary, comp)
+            noise_errs = [noise_layer_stds.get(layer, 0.0) for layer in layers]
 
-        ax.bar(x - bar_width / 2, denoise_scores, bar_width, label="Denoising", color="#64B5F6")
-        ax.bar(x + bar_width / 2, noise_scores, bar_width, label="Noising", color="#EF5350")
+        ax.bar(x - bar_width / 2, denoise_scores, bar_width,
+               yerr=denoise_errs if any(e > 0 for e in denoise_errs) else None,
+               label="Denoising", color="#64B5F6", capsize=2, ecolor="gray")
+        ax.bar(x + bar_width / 2, noise_scores, bar_width,
+               yerr=noise_errs if any(e > 0 for e in noise_errs) else None,
+               label="Noising", color="#EF5350", capsize=2, ecolor="gray")
 
         ax.axhline(y=0, color="gray", linestyle="-", linewidth=0.5)
         ax.set_ylabel("Attribution Score")

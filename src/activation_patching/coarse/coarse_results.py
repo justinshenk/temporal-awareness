@@ -248,6 +248,46 @@ class CoarseActPatchAggregatedResults(BaseSchema):
         ]
         return sum(scores) / len(scores) if scores else 0.0
 
+    def _build_mean_sweep(self, getter: str, step_size: int | None, step_sizes_prop: str) -> SweepStepResults:
+        """Build population-mean SweepStepResults from per-pair data.
+
+        Args:
+            getter: Method name on CoarseActPatchResults ('get_layer_results_for_step'
+                    or 'get_position_results_for_step')
+            step_size: Step size to use
+            step_sizes_prop: Property name for available step sizes
+        """
+        if step_size is None:
+            available = getattr(self, step_sizes_prop)
+            step_size = available[0] if available else None
+        if step_size is None:
+            return SweepStepResults()
+
+        by_idx: dict[int, list[ActPatchTargetResult]] = {}
+        for sample in self.by_sample.values():
+            sw = getattr(sample, getter)(step_size)
+            for idx in sw.keys():
+                tr = sw.get(idx)
+                if tr is not None:
+                    by_idx.setdefault(int(idx), []).append(tr)
+
+        mean_results = SweepStepResults()
+        for idx, results in by_idx.items():
+            mean_results[idx] = ActPatchTargetResult.mean_of(results)
+        return mean_results
+
+    def get_mean_layer_results(self, step_size: int | None = None) -> SweepStepResults:
+        """Population-mean SweepStepResults for layer sweeps across all pairs."""
+        return self._build_mean_sweep(
+            "get_layer_results_for_step", step_size, "layer_step_sizes"
+        )
+
+    def get_mean_position_results(self, step_size: int | None = None) -> SweepStepResults:
+        """Population-mean SweepStepResults for position sweeps across all pairs."""
+        return self._build_mean_sweep(
+            "get_position_results_for_step", step_size, "position_step_sizes"
+        )
+
     def get_mean_layer_scores(self, step_size: int | None = None) -> dict[int, float]:
         """Mean recovery per layer across all samples for a given step size."""
         if step_size is None:

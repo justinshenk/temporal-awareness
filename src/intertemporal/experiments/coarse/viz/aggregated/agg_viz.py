@@ -33,6 +33,7 @@ from .metric_plots import plot_column
 from .agg_style import COLUMN_METRICS
 
 if TYPE_CHECKING:
+    from ......common.position_mapping import SamplePositionMapping
     from ....common.contrastive_preferences import ContrastivePreferences
     from ....experiments.analysis import ProcessedResults
 
@@ -333,6 +334,7 @@ def plot_all_aggregated_slices(
     pref_pairs: list["ContrastivePreferences"] | None = None,
     exp_dir: Path | None = None,
     processed_results: "ProcessedResults | None" = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Create aggregated visualizations for all analysis slices and components.
 
@@ -353,6 +355,7 @@ def plot_all_aggregated_slices(
         pref_pairs: List of ContrastivePreferences for slice filtering
         exp_dir: Experiment directory for loading cached horizon analysis
         processed_results: Pre-computed analysis results from step_process_results
+        position_mapping: Position mapping for semantic labels (typically from pair_0)
     """
     from ..component_comparison import plot_all_component_comparisons
 
@@ -407,12 +410,14 @@ def plot_all_aggregated_slices(
         # Multi-component comparison plots
         has_multi_component = len(filtered_agg) > 1
         if has_multi_component:
-            # Get first sample from each component for component_comparison plots
+            # Build results_by_component as a compatibility shim — comp_main.py
+            # now prefers agg_by_component for population means, but some
+            # downstream functions still accept results_by_component for
+            # step-size discovery and sanity-check access.
             results_by_component: dict[str, CoarseActPatchResults] = {}
             for comp, agg_result in filtered_agg.items():
                 if agg_result.by_sample:
-                    first_sample = next(iter(agg_result.by_sample.values()))
-                    results_by_component[comp] = first_sample
+                    results_by_component[comp] = next(iter(agg_result.by_sample.values()))
 
             if results_by_component:
                 comp_comparison_dir = slice_dir / "sweep_component_comparison"
@@ -425,6 +430,8 @@ def plot_all_aggregated_slices(
                     results_by_component,
                     comp_comparison_dir,
                     processed_results=comp_processed,
+                    position_mapping=position_mapping,
+                    agg_by_component=filtered_agg,
                 )
 
     print(f"[viz] All aggregated slices saved to {output_dir}")

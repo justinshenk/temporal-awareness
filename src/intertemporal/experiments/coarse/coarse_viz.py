@@ -224,6 +224,7 @@ def visualize_all_aggregated(
     pref_pairs: list | None = None,
     exp_dir: Path | None = None,
     processed_results: "ProcessedResults | None" = None,
+    position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
     """Visualize all aggregated results with new folder structure.
 
@@ -244,6 +245,7 @@ def visualize_all_aggregated(
         pref_pairs: Optional ContrastivePreferences list for slice filtering
         exp_dir: Optional experiment dir for loading cached horizon analysis
         processed_results: Pre-computed analysis results from step_process_results
+        position_mapping: Position mapping for semantic labels (typically from pair_0)
     """
     if not agg_by_component:
         print("[viz] No aggregated results to visualize")
@@ -252,4 +254,4 @@ def visualize_all_aggregated(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_all_aggregated_slices(agg_by_component, output_dir, pref_pairs, exp_dir, processed_results)
+    plot_all_aggregated_slices(agg_by_component, output_dir, pref_pairs, exp_dir, processed_results, position_mapping)

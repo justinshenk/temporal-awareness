@@ -823,18 +823,19 @@ class ModelRunner:
     #### Internal ####
     ##################
 
-    def _init_transformerlens(self) -> None:
+    def _init_transformerlens(self, process_weights: bool = True) -> None:
         from transformer_lens import HookedTransformer
 
         print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
 
-        # Check if model is directly supported by TransformerLens
-        # If not, try loading via HuggingFace wrapper with compatible base model
-        base_model_name = self._get_transformerlens_base_model(self.model_name)
+        load_fn = (
+            HookedTransformer.from_pretrained
+            if process_weights
+            else HookedTransformer.from_pretrained_no_processing
+        )
 
+        base_model_name = self._get_transformerlens_base_model(self.model_name)
         if base_model_name and base_model_name != self.model_name:
-            # Model not directly supported, but has compatible architecture
-            # Load HuggingFace model and wrap with TransformerLens
             print(f"  Using HF wrapper: {self.model_name} -> {base_model_name} config")
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -846,7 +847,7 @@ class ModelRunner:
             tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name, trust_remote_code=True
             )
-            self._model = HookedTransformer.from_pretrained_no_processing(
+            self._model = load_fn(
                 base_model_name,
                 hf_model=hf_model,
                 tokenizer=tokenizer,
@@ -854,12 +855,7 @@ class ModelRunner:
                 dtype=self.dtype,
             )
         else:
-            # Model is directly supported or no mapping exists
-            # Use from_pretrained_no_processing to avoid weight centering/folding
-            # that changes raw logit values (though softmax output is the same)
-            self._model = HookedTransformer.from_pretrained_no_processing(
-                self.model_name, device=self.device, dtype=self.dtype
-            )
+            self._model = load_fn(self.model_name, device=self.device, dtype=self.dtype)
         self._model.eval()
         self._backend = TransformerLensBackend(self)
 

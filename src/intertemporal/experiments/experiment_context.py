@@ -93,6 +93,11 @@ class ExperimentContext(ExperimentMixin):
         return self.cfg.viz_cfg.get("save_svg", False)
 
     @property
+    def save_pdf(self) -> bool:
+        """Whether to save PDF files alongside PNGs (camera-ready mode)."""
+        return self.cfg.viz_cfg.get("save_pdf", False)
+
+    @property
     def only_viz_agg(self) -> bool:
         """Check if ALL step configs have only_viz_agg=True (skip per-pair viz)."""
         return all(cfg.get("only_viz_agg", False) for cfg in self.cfg.step_cfgs)

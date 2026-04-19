@@ -71,6 +71,7 @@ from src.intertemporal.experiments.experiment_config import (
 )
 from src.intertemporal.experiments.intertemporal_experiment import (
     ExperimentConfig,
+    run_agg_only,
     run_experiment_per_pair,
 )
 # =============================================================================
@@ -164,6 +165,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Save SVG files alongside PNGs for publication-quality figures",
     )
+    parser.add_argument(
+        "--agg-only",
+        action="store_true",
+        help="Only regenerate aggregated visualizations from cached per-pair data",
+    )
 
     # --- Phase overrides (JSON, ordered to match run_experiment) ---
     _add_json_override(parser, "--attrib", "att_patch", "attribution patching")
@@ -253,8 +259,10 @@ def apply_only_viz_agg_flag(config: dict) -> None:
 
 
 def apply_camera_ready_flag(config: dict) -> None:
-    """Enable SVG output alongside PNGs for publication-quality figures."""
-    config.setdefault("viz_cfg", VIZ_CFG.copy())["save_svg"] = True
+    """Enable SVG and PDF output alongside PNGs for publication-quality figures."""
+    viz_cfg = config.setdefault("viz_cfg", VIZ_CFG.copy())
+    viz_cfg["save_svg"] = True
+    viz_cfg["save_pdf"] = True
 
 
 def apply_json_overrides(config: dict, args: argparse.Namespace) -> None:
@@ -369,6 +377,7 @@ def main() -> int:
         # Apply camera-ready flag even when using cached config
         if args.camera_ready:
             working_cfg.viz_cfg["save_svg"] = True
+            working_cfg.viz_cfg["save_pdf"] = True
         exp_cfg = working_cfg
     else:
         # Build experiment config from CLI args
@@ -420,12 +429,20 @@ def main() -> int:
 
     # Run experiment
     try:
-        run_experiment_per_pair(
-            exp_cfg,
-            try_loading_data=try_loading_data,
-            output_dir=output_dir,
-            backend=args.backend,
-        )
+        if args.agg_only:
+            # Aggregation-only mode: regenerate viz from cached per-pair data
+            run_agg_only(
+                exp_cfg,
+                output_dir=output_dir,
+                backend=args.backend,
+            )
+        else:
+            run_experiment_per_pair(
+                exp_cfg,
+                try_loading_data=try_loading_data,
+                output_dir=output_dir,
+                backend=args.backend,
+            )
         P.report()
         P.save(output_dir / "profile.json")
     finally:

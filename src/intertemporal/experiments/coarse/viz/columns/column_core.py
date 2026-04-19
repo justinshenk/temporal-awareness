@@ -44,7 +44,7 @@ def plot(
     """
     # Extract metric arrays - use mode-aware effect metrics (target - source semantics)
     effect_values = [m.effect for m in metrics]
-    effect_label = "recovery" if mode == "denoising" else "effect"
+    effect_label = "recovery" if mode == "denoising" else "disruption"
     rr_values = [m.effect_reciprocal_rank for m in metrics]
     rr_label = "recip_rank(target)"
     logit_diffs = [m.effect_logit_diff for m in metrics]
@@ -72,7 +72,7 @@ def plot(
         ),
     )
 
-    ylabel_left = "Recovery / RR" if mode == "denoising" else "Effect / RR"
+    ylabel_left = "Recovery / RR" if mode == "denoising" else "Disruption / RR"
     setup_column(ax, "Core", xlabel, ylabel_left, tick_positions, ylim=(-0.1, 1.5))
 
     # Secondary axis: logit differences

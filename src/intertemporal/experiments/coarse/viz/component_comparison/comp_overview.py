@@ -17,11 +17,18 @@ if TYPE_CHECKING:
 
 
 def _get_position_label(pos: int, mapping: "SamplePositionMapping | None") -> str:
-    """Get semantic label for a position if available, else fall back to P{pos}."""
+    """Semantic position label: format_pos:rel_pos with R_/L_ normalized."""
     if mapping:
-        pos_info = mapping.get_position(pos)
-        if pos_info and pos_info.format_pos:
-            return pos_info.format_pos
+        info = mapping.get_position(pos)
+        if info and info.format_pos:
+            fp = info.format_pos
+            if fp.startswith("left_"):
+                fp = "L_" + fp[5:]
+            elif fp.startswith("right_"):
+                fp = "R_" + fp[6:]
+            if info.rel_pos is not None:
+                return f"{fp}:{info.rel_pos}"
+            return fp
     return f"P{pos}"
 
 
@@ -33,15 +40,21 @@ def plot_overview(
     layer_step_size: int = 1,
     pos_step_size: int = 10,
     position_mapping: "SamplePositionMapping | None" = None,
+    agg_by_component: dict | None = None,
 ) -> None:
-    """Generate all overview plots."""
+    """Generate all overview plots.
+
+    layer_data and pos_data are now POPULATION MEANS (computed by comp_main.py
+    from agg_by_component). The overview heatmaps therefore show the mean
+    across all pairs, not a single arbitrary pair.
+    """
     _plot_layer_heatmap(layer_data, output_dir, "denoising")
     _plot_layer_heatmap(layer_data, output_dir, "noising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "denoising")
     _plot_layer_heatmap_colnorm(layer_data, output_dir, "noising")
     _plot_position_heatmap(pos_data, output_dir, "denoising", position_mapping)
     _plot_position_heatmap(pos_data, output_dir, "noising", position_mapping)
-    _plot_layer_position_heatmap(results_by_component, output_dir, layer_step_size, pos_step_size, position_mapping)
+    _plot_layer_position_heatmap(layer_data, pos_data, output_dir, position_mapping)
 
 
 def _build_layer_matrix(
@@ -245,19 +258,17 @@ def _plot_position_heatmap(
 
 
 def _plot_layer_position_heatmap(
-    results_by_component: dict[str, CoarseActPatchResults],
+    layer_data_all: dict[str, SweepStepResults | None],
+    pos_data_all: dict[str, SweepStepResults | None],
     output_dir: Path,
-    layer_step_size: int = 1,
-    pos_step_size: int = 10,
     position_mapping: "SamplePositionMapping | None" = None,
 ) -> None:
-    """Plot Layer × Position 2D localization heatmap."""
-    result = results_by_component.get("resid_post") or next(iter(results_by_component.values()), None)
-    if not result:
-        return
+    """Plot Layer × Position 2D localization heatmap using population-mean data.
 
-    layer_data = result.get_layer_results_for_step(layer_step_size)
-    pos_data = result.get_position_results_for_step(pos_step_size)
+    Uses resid_post layer and position sweep means for the outer product.
+    """
+    layer_data = layer_data_all.get("resid_post")
+    pos_data = pos_data_all.get("resid_post")
 
     if not layer_data or not pos_data:
         return
@@ -297,14 +308,14 @@ def _plot_layer_position_heatmap(
         im = ax.imshow(interaction_flipped, aspect="auto", cmap="hot", vmin=0, vmax=1)
         plt.colorbar(im, ax=ax, label="Interaction Strength")
 
-        # Position labels
-        if n_positions > 20:
-            step = max(1, n_positions // 15)
-            ax.set_xticks(range(0, n_positions, step))
-            ax.set_xticklabels([_get_position_label(positions[i], position_mapping) for i in range(0, n_positions, step)], rotation=45, ha="right")
-        else:
-            ax.set_xticks(range(n_positions))
-            ax.set_xticklabels([_get_position_label(p, position_mapping) for p in positions], rotation=45, ha="right")
+        # Position labels — show as many named positions as possible, small font
+        ax.set_xticks(range(n_positions))
+        ax.set_xticklabels(
+            [_get_position_label(p, position_mapping) for p in positions],
+            rotation=90,
+            ha="center",
+            fontsize=5,
+        )
 
         # Layer labels
         if n_layers > 20:
@@ -320,10 +331,6 @@ def _plot_layer_position_heatmap(
         title = "Denoising Recovery" if mode == "denoising" else "Noising Disruption"
         ax.set_title(f"{title}", fontsize=12, fontweight="bold")
 
-    # Clear title: what it shows, not methodology
     fig.suptitle("Layer × Position Importance Map", fontsize=14, fontweight="bold", y=1.02)
-    # Methodology note as subtitle
-    fig.text(0.5, 0.98, "(Outer product of marginal layer and position effects)",
-             fontsize=9, ha="center", va="top", style="italic", color="gray")
     plt.tight_layout()
     save_plot(fig, output_dir, "layer_position_heatmap.png")

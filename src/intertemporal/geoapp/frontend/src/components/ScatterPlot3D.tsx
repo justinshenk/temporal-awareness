@@ -87,27 +87,6 @@ function Grid3D({
   );
 }
 
-// Simple floor grid helper (legacy)
-function GridHelper({
-  size = 10,
-  divisions = 10,
-  colorCenterLine = '#D97757',
-  colorGrid = '#e0dae8',
-}: {
-  size?: number;
-  divisions?: number;
-  colorCenterLine?: string;
-  colorGrid?: string;
-}) {
-  return (
-    <gridHelper
-      args={[size, divisions, colorCenterLine, colorGrid]}
-      position={[0, -0.01, 0]}
-      rotation={[0, 0, 0]}
-    />
-  );
-}
-
 // Loading fallback
 function LoadingFallback() {
   return (
