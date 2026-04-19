@@ -5,14 +5,22 @@ from __future__ import annotations
 import gc
 import os
 import sys
-import torch
 
 # Track memory across iterations for leak detection
 _memory_history: list[dict] = []
 
+_torch_available = True
+try:
+    import torch
+except ImportError:
+    _torch_available = False
+    torch = None  # type: ignore
+
 
 def get_device() -> str:
     """Return the best available device: cuda, mps, or cpu."""
+    if not _torch_available:
+        return "cpu"
     if torch.cuda.is_available():
         return "cuda"
     elif torch.backends.mps.is_available():
@@ -23,6 +31,9 @@ def get_device() -> str:
 def get_memory_usage() -> dict:
     """Return current memory usage statistics for available accelerators and system RAM."""
     stats = {}
+
+    if not _torch_available:
+        return stats
 
     # GPU memory
     if torch.cuda.is_available():
@@ -90,6 +101,9 @@ def clear_gpu_memory(aggressive: bool = False) -> None:
     """
     # First GC pass
     gc.collect()
+
+    if not _torch_available:
+        return
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
