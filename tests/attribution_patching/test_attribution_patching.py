@@ -1,19 +1,29 @@
 """Tests for attribution patching module."""
 
 import numpy as np
+import pytest
 import torch
 
 from src.attribution_patching import (
-    AttributionMetric,
     AttributionSettings,
     AttributionScore,
     AttributionPatchingResult,
     AttributionSummary,
 )
 from src.common.token_positions import build_position_arrays
-from src.attribution_patching.vectorized import compute_attribution_vectorized
+from src.attribution_patching.attribution_vectorized import compute_attribution_vectorized
+
+# AttributionMetric depends on a deep import chain (ModelRunner → backends)
+# that may fail in CI when optional backend deps aren't fully available.
+try:
+    from src.attribution_patching import AttributionMetric
+
+    _has_attribution_metric = True
+except ImportError:
+    _has_attribution_metric = False
 
 
+@pytest.mark.skipif(not _has_attribution_metric, reason="AttributionMetric requires full backend import chain")
 class TestAttributionMetric:
     """Tests for AttributionMetric class."""
 
