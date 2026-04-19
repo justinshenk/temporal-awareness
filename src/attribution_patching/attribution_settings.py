@@ -30,7 +30,7 @@ class AttributionSettings(BaseSchema):
     """
 
     components: list[PatchingComponent] = field(default_factory=lambda: ["resid_post"])
-    methods: list[Method] = field(default_factory=lambda: ["eap_ig"])
+    methods: list[Method] = field(default_factory=lambda: ["standard", "eap"])
     ig_steps: int = 10
     quadrature: list[QuadratureMethod] = field(
         default_factory=lambda: [QuadratureMethod.CHEBYSHEV]
@@ -40,3 +40,13 @@ class AttributionSettings(BaseSchema):
     def all(cls) -> "AttributionSettings":
         """Default settings."""
         return cls()
+
+    @classmethod
+    def standard_only(cls) -> "AttributionSettings":
+        """Settings with only standard attribution method."""
+        return cls(methods=["standard"])
+
+    @classmethod
+    def with_ig(cls, steps: int) -> "AttributionSettings":
+        """Settings with EAP-IG method."""
+        return cls(methods=["eap_ig"], ig_steps=steps)
