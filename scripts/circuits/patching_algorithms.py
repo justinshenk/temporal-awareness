@@ -10,6 +10,7 @@ from transformer_lens import (
 )
 
 import gc
+import os
 
 def get_logit_diff(logits, clean_answer_id, corrupted_answer_id):
     if len(logits.shape) == 3:
@@ -818,6 +819,7 @@ class ActivationPatching(Patching):
                 if self.dump:
                     assert activation_name != "", "If dumping is enabled, activation_name should be sent!"
                     dump_folder = f"denoising_optimal_{activation_name}_{len(self.clean_tokens)}"
+                    os.makedirs(dump_folder, exist_ok=True)
                     print(f"Dumping is enabled! Results will be collected to {dump_folder}")
 
                 metrics_output = []
@@ -928,6 +930,7 @@ class ActivationPatching(Patching):
                 if self.dump:
                     assert activation_name != "", "If dumping is enabled, activation_name should be sent!"
                     dump_folder = f"noising_optimal_{activation_name}_{len(self.clean_tokens)}"
+                    os.makedirs(dump_folder, exist_ok=True)
                     print(f"Dumping is enabled! Results will be collected to {dump_folder}")
 
                 metrics_output = []
