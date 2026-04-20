@@ -149,7 +149,7 @@ class ActivationPatching(Patching):
                  metric_type=Metric.LOGIT_DIFF,
                  technique_type=Technique.DENOISING,
                  viz_type=Viz.UP_MEANS_HIGH_ATTRIBUTION,
-                 unbatched=False, pairs_ids=None, dump=False):
+                 unbatched=False, pairs_ids=None, dump=True):
         super().__init__(model_name, clean_prompts, clean_answers, corrupted_prompts, corrupted_answers)
         self.caches_and_baselines_ready = False
         self.metric_type = metric_type
@@ -814,6 +814,12 @@ class ActivationPatching(Patching):
             else:
                 print(f"Launching DENOISING_OPTIMAL!")
 
+                dump_folder = ""
+                if self.dump:
+                    assert activation_name != "", "If dumping is enabled, activation_name should be sent!"
+                    dump_folder = f"denoising_optimal_{activation_name}_{len(self.clean_tokens)}"
+                    print(f"Dumping is enabled! Results will be collected to {dump_folder}")
+
                 metrics_output = []
                 idx_state = 0
 
@@ -858,14 +864,27 @@ class ActivationPatching(Patching):
                     ___, index_df = layer_specific_algorithm(self.model, self.corrupted_tokens[i], clean_cache,
                                                              __metrics_unbatched__, return_index_df=True)
 
-                    assert len(metrics_output) > 0, "More than one layer were processed!"        
+                    assert len(metrics_output) > 0, "More than one layer were processed!"
+                    if self.dump:
+                        metrics_to_dump = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                           for _ in range(0, metrics_number)]
+                        for m in range(0, metrics_number):
+                            for c, index_row in enumerate(list(index_df.iterrows())):
+                                index = index_row[1].to_list()
+                                metrics_to_dump[m][tuple(index)] = metrics_output[c][m]
+                        # Separate dumps are needed for calculation of Confidence Intervals:
+                        torch.save(torch.stack(metrics_to_dump), f"{dump_folder}/{idx_state}_prompt_{metrics_number}_metrics.pt")
+
                     for m in range(0, metrics_number):
                         for c, index_row in enumerate(list(index_df.iterrows())):
                             index = index_row[1].to_list()
                             patched_metrics_output[m][tuple(index)] += metrics_output[c][m] / num_prompts
                     metrics_output = []
                 idx_state = 0
-                return torch.stack(patched_metrics_output)
+                patched_metrics_output_tnsr = torch.stack(patched_metrics_output)
+                if self.dump:
+                    torch.save(patched_metrics_output_tnsr, f"{dump_folder}/averaged_{metrics_number}_metrics.pt")
+                return patched_metrics_output_tnsr
         elif (self.technique_type == ActivationPatching.Technique.NOISING_OPTIMAL):
             assert(self.viz_type == ActivationPatching.Viz.READER_FRIENDLY)
             if not self.unbatched:
@@ -904,6 +923,12 @@ class ActivationPatching(Patching):
                 return torch.stack(patched_metrics_output)
             else:
                 print(f"Launching NOISING_OPTIMAL!")
+
+                dump_folder = ""
+                if self.dump:
+                    assert activation_name != "", "If dumping is enabled, activation_name should be sent!"
+                    dump_folder = f"noising_optimal_{activation_name}_{len(self.clean_tokens)}"
+                    print(f"Dumping is enabled! Results will be collected to {dump_folder}")
 
                 metrics_output = []
                 idx_state = 0
@@ -950,14 +975,27 @@ class ActivationPatching(Patching):
                     ___, index_df = layer_specific_algorithm(self.model, self.clean_tokens[i], corrupted_cache,
                                                              __metrics_unbatched__, return_index_df=True)
 
-                    assert len(metrics_output) > 0, "More than one layer were processed!"        
+                    assert len(metrics_output) > 0, "More than one layer were processed!"
+                    if self.dump:
+                        metrics_to_dump = [torch.zeros(index_axis_max_range, device=self.model.cfg.device) \
+                                           for _ in range(0, metrics_number)]
+                        for m in range(0, metrics_number):
+                            for c, index_row in enumerate(list(index_df.iterrows())):
+                                index = index_row[1].to_list()
+                                metrics_to_dump[m][tuple(index)] = metrics_output[c][m]
+                        # Separate dumps are needed for calculation of Confidence Intervals:
+                        torch.save(torch.stack(metrics_to_dump), f"{dump_folder}/{idx_state}_prompt_{metrics_number}_metrics.pt")
+
                     for m in range(0, metrics_number):
                         for c, index_row in enumerate(list(index_df.iterrows())):
                             index = index_row[1].to_list()
                             patched_metrics_output[m][tuple(index)] += metrics_output[c][m] / num_prompts
                     metrics_output = []
                 idx_state = 0
-                return torch.stack(patched_metrics_output)
+                patched_metrics_output_tnsr = torch.stack(patched_metrics_output)
+                if self.dump:
+                    torch.save(patched_metrics_output_tnsr, f"{dump_folder}/averaged_{metrics_number}_metrics.pt")
+                return patched_metrics_output_tnsr
         else:
             raise Exception("Unknown patching technique type is sent!")
 
