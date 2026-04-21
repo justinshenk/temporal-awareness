@@ -524,6 +524,11 @@ class ActivationPatching(Patching):
                                                                       self.corrupted_answer_ids[i]).item() / num_prompts
             gc.collect()
 
+
+            if self.dump and not self.baselines_ready:
+                df_to_dump = pd.DataFrame(baselines_to_dump, columns=headers_to_dump)
+                df_to_dump.to_csv("computed_baselines.csv")
+                print("Dumped baseline metrics into \"computed_baselines.csv\"!")
             self.baselines_ready = True
 
         clean_tokens_top3 = self.model.to_string(torch.stack(self.clean_logits_top_3))
@@ -561,11 +566,6 @@ class ActivationPatching(Patching):
         else:
             print(f"Clean baseline metric: {self.clean_q_clean_a_bsl:.4f}")
             print(f"Corrupted baseline metric: {self.corrupted_q_clean_a_bsl:.4f}")
-
-        if self.dump:
-            df_to_dump = pd.DataFrame(baselines_to_dump, columns=headers_to_dump)
-            df_to_dump.to_csv("computed_baselines.csv")
-            print("Dumped baseline metrics into \"computed_baselines.csv\"!")
 
         assert not self.caches_and_baselines_ready
 
