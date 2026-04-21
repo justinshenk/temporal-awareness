@@ -2,7 +2,7 @@
 Script: Fix Alternation for Explicit Temporal Scope Dataset
 
 Description:
-This script processes `data/raw/temporal_scope_....json` to enforce an alternating 
+This script processes `data/raw/temporal_scope_....json` to enforce an alternating
 pattern for option labels (A) and (B). This is done to mitigate position bias in model evaluations.
 
 Logic:
@@ -32,7 +32,7 @@ def fix_explicit_alternation():
         return
 
     pairs = data.get('pairs', [])
-    
+
     # Pattern to match existing labels like " (A) ", "(A) ", " (B) ", etc.
     # It looks for optional whitespace, parentheses, A or B, parentheses, and trailing spaces.
     label_pattern = re.compile(r'^\s*\([AB]\)\s+')
@@ -48,10 +48,10 @@ def fix_explicit_alternation():
         lt_text = label_pattern.sub('', long_term_raw)
 
         # 2. Assign new labels based on parity
-        # i starts at 0 (1st pair). 
+        # i starts at 0 (1st pair).
         # Requirement: 1st pair (Odd number) -> A is Immediate.
         #              2nd pair (Even number) -> B is Immediate.
-        
+
         if i % 2 == 0:
             # Even index (0, 2, 4...) corresponds to Odd numbered pairs (1st, 3rd...)
             # Immediate gets (A)
@@ -67,7 +67,7 @@ def fix_explicit_alternation():
     with open(file_path, 'w', encoding='utf-8') as f:
         # indent=2 matches the visual style of your snippet
         json.dump(data, f, indent=2, ensure_ascii=False)
-    
+
     print(f"Successfully processed {len(pairs)} pairs with alternating A/B assignment.")
 
 if __name__ == "__main__":

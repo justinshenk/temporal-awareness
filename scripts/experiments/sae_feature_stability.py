@@ -46,9 +46,7 @@ Date: 2026-02-26
 import argparse
 import json
 import re
-import random
-import pickle
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -56,9 +54,9 @@ from typing import Optional
 import numpy as np
 import torch
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
-    accuracy_score, classification_report, log_loss,
+    accuracy_score, log_loss,
     precision_score, recall_score, f1_score,
 )
 import matplotlib
@@ -1075,7 +1073,7 @@ def plot_degradation_curves(
     plt.tight_layout()
     fig.savefig(output_dir / f"accuracy_degradation_{timestamp}.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved accuracy degradation plot.")
+    print("Saved accuracy degradation plot.")
 
     # --- Plot 2: Feature stability metrics ---
     fig, axes = plt.subplots(1, len(results), figsize=(6 * len(results), 5), squeeze=False)
@@ -1111,7 +1109,7 @@ def plot_degradation_curves(
     plt.tight_layout()
     fig.savefig(output_dir / f"feature_stability_{timestamp}.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved feature stability plot.")
+    print("Saved feature stability plot.")
 
     # --- Plot 3: Accuracy vs Feature Stability scatter ---
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -1142,7 +1140,7 @@ def plot_degradation_curves(
     plt.tight_layout()
     fig.savefig(output_dir / f"accuracy_vs_stability_{timestamp}.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"Saved accuracy vs stability scatter plot.")
+    print("Saved accuracy vs stability scatter plot.")
 
 
 # ---------------------------------------------------------------------------

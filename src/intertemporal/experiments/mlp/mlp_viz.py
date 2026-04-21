@@ -10,7 +10,7 @@ import numpy as np
 from matplotlib.patches import Patch
 
 from ....common.logging import log
-from ....viz.plot_helpers import add_pair_label, finalize_plot, save_figure
+from ....viz.plot_helpers import finalize_plot, save_figure
 from ..fine.fine_results import LayerPositionResult
 from . import MLPAggregatedResults, MLPPairResult, NeuronInfo
 

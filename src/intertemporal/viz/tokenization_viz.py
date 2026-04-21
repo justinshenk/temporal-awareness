@@ -13,12 +13,14 @@ from ...common import profile
 from ...common.base_schema import BaseSchema
 from ...common.contrastive_pair import ContrastivePair
 from ...common.file_io import load_json, save_json
+from ...common.token_positions import PairPositionMapping
 from ...viz.plot_helpers import add_pair_label, finalize_plot as _finalize_plot
 from ...viz.viz_palettes import TOKEN_COLORS
 from ...viz.token_coloring import (
     TokenColorInfo,
     PairTokenColoring,
 )
+from ..common.sample_position_mapping import SamplePositionMapping
 
 
 TOKENIZATION_CACHE_FILENAME = "tokenization_viz_cache.json"
@@ -925,7 +927,6 @@ def visualize_pair_alignment(
         pair_mapping: PairPositionMapping with src_tokens (clean), dst_tokens (corrupted), mapping, anchors
         save_path: Path to save the PNG
     """
-    from ...common.token_positions import PairPositionMapping
 
     # Use clean/corrupted terminology (src=clean, dst=corrupted)
     clean_tokens = pair_mapping.src_tokens

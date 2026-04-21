@@ -1,0 +1,76 @@
+# Model registry — canonical names, HuggingFace IDs, and hardware requirements.
+# Used by submit_all_models.sh and experiment scripts.
+
+models:
+  Llama-3.1-8B-Instruct:
+    hf_name: meta-llama/Llama-3.1-8B-Instruct
+    family: llama
+    type: dense-instruct
+    params_B: 8
+    n_layers: 32
+    d_model: 4096
+    gpu_mem_gb: 32
+    venv: ml-env
+
+  Llama-3.1-8B:
+    hf_name: meta-llama/Llama-3.1-8B
+    family: llama
+    type: dense-base
+    params_B: 8
+    n_layers: 32
+    d_model: 4096
+    gpu_mem_gb: 32
+    venv: ml-env
+
+  Qwen3-8B:
+    hf_name: Qwen/Qwen3-8B
+    family: qwen
+    type: dense
+    params_B: 8
+    n_layers: 36
+    d_model: 4096
+    gpu_mem_gb: 32
+    venv: ml-env
+
+  Qwen3-4B-Instruct-2507:
+    hf_name: Qwen/Qwen3-4B-Instruct-2507
+    family: qwen
+    type: dense-instruct
+    params_B: 4
+    n_layers: 36
+    d_model: 2560
+    gpu_mem_gb: 32
+    venv: ml-env
+    note: "Non-thinking variant; see Rios-Sialer et al. (2026)"
+
+  Qwen3-30B-A3B:
+    hf_name: Qwen/Qwen3-30B-A3B
+    family: qwen
+    type: MoE
+    params_B: 30
+    active_params_B: 3
+    n_layers: 48
+    d_model: 2048
+    gpu_mem_gb: 80
+    venv: ml-env
+
+  DeepSeek-R1-Distill-Qwen-7B:
+    hf_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    family: deepseek
+    type: distilled-reasoning
+    params_B: 7
+    n_layers: 28
+    d_model: 3584
+    gpu_mem_gb: 32
+    venv: ml-env
+
+  Ouro-2.6B:
+    hf_name: ouro-labs/Ouro-2.6B
+    family: ouro
+    type: looped-recurrent
+    params_B: 2.6
+    n_layers: 28
+    d_model: 2048
+    gpu_mem_gb: 32
+    venv: ouro-env
+    note: "Requires transformers==4.54.1"

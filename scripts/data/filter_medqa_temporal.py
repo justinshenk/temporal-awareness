@@ -113,7 +113,7 @@ def main():
     try:
         ds = load_dataset("GBaker/MedQA-USMLE-4-options", split="train")
         dataset_name = "GBaker/MedQA-USMLE-4-options"
-    except Exception:
+    except (ValueError, FileNotFoundError, ConnectionError):
         ds = load_dataset("bigbio/med_qa", "med_qa_en_source", split="train")
         dataset_name = "bigbio/med_qa"
 

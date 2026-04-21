@@ -433,7 +433,6 @@ class HuggingFaceBackend(Backend):
             layer_idx: Layer index
             intervention: The intervention to apply
         """
-        from ..interventions.intervention_base import Intervention
 
         head = intervention.head
         positions = list(intervention.target.positions) if intervention.target.positions else None

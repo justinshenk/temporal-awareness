@@ -13,15 +13,13 @@ from typing import Literal, Sequence
 import matplotlib.pyplot as plt
 
 from .....activation_patching import IntervenedChoiceMetrics
-from .....activation_patching.act_patch_metrics import DEFAULT_AGGREGATION, PLOT_AGGREGATION_METHODS
+from .....activation_patching.act_patch_metrics import PLOT_AGGREGATION_METHODS
 from .....activation_patching.coarse import SweepStepResults
 from .....common.choice.grouped_binary_choice import ForkAggregation
 from .....viz.plot_helpers import add_pair_label, save_figure
 from .....viz.token_coloring import PairTokenColoring
 from .columns import column_core, column_logits, column_probs, column_trajectory, column_vocab
 from .coarse_helpers import (
-    add_boundary_legend,
-    add_token_type_legend,
     add_xaxis_boundary_markers,
     color_xaxis_ticks,
     get_tick_spacing,

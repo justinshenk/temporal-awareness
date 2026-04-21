@@ -1,0 +1,28 @@
+% Proposed subsection for Section 5.2 ("What is the LLM's temporal preference like?")
+% Connects Molofsky (2026) patience degradation results with Rios-Sialer et al. (2026) temporal preference characterization
+
+\subsection{Temporal preference stability under repetitive deployment}\label{sec:temporal-stability}
+
+The preceding characterization treats temporal preference as a static property of the model.
+In concurrent work, \citet{molofsky2026patience} asks whether this preference \emph{remains stable} when the model is deployed under repetitive task conditions---the setting most relevant to real-world batch inference and multi-turn assistants.
+
+Using the same Qwen3-4B-Instruct-2507 model studied here, together with six additional models spanning four architecture families (dense, mixture-of-experts, reasoning-distilled, and looped transformers), \citet{molofsky2026patience} induces controlled repetition by prepending ``\texttt{[This is task N of N identical tasks]}'' and tracking both behavioral and representational changes across $N \in \{1, 3, 5, \ldots, 20\}$.
+
+Three findings connect directly to our temporal preference characterization:
+
+\paragraph{The degradation direction is distinct from the temporal preference subgraph.}
+Contrastive mean-difference extraction yields a \emph{degradation direction} in residual stream activations that is geometrically distinct from both the refusal direction (cosine similarity $< 0.2$) and sycophancy direction ($< 0.15$).
+Critically, PCA of the degradation trajectory shows that PC1 captures 44.7--55.8\% of variance, indicating a substantially low-rank but not monosemantic phenomenon.
+This suggests that repetitive deployment creates a novel representational state that \emph{modulates} temporal preference rather than simply reusing the preference circuitry we localize in Section~\ref{sec:results}.
+
+\paragraph{Behavioral coherence degrades asymmetrically across architectures.}
+While Section~\ref{sec:steering} shows that our base Qwen3-4B model already exhibits instrumental incoherence (choosing undeliverable long-term options 82\% of the time), \citet{molofsky2026patience} finds that repetitive deployment \emph{amplifies} this incoherence in architecture-dependent ways.
+Safety refusal rates erode by up to 33\% in Qwen3-8B under repetition, while remaining perfectly stable in Llama-3.1-8B-Instruct---and the erosion is category-selective (misinformation resistance collapses while harassment refusal remains robust).
+This pattern is consistent with our finding that distillation collapses graded temporal sensitivity into discrete modes (Section~\ref{sec:steering}): the same architectural choices that produce static incoherence also produce dynamic fragility.
+
+\paragraph{Convergent localization across paradigms.}
+Both our attribution patching (identifying L24\_attn and L21\_attn as top temporal signal components) and the EAP-IG analysis in \citet{molofsky2026patience} (identifying L22\_attn and L20\_attn as top degradation components in 8B-class models) converge on the same mid-to-late layer subgraph (layers 19--35).
+This convergence across independent methods, different behavioral targets (temporal preference vs.\ degradation), and different model scales strengthens the claim that temporal processing is concentrated in a specific, identifiable subnetwork.
+Moreover, anti-degradation steering at L21--L24 partially restores safety properties~\citep{molofsky2026patience}, directly paralleling our CAA steering results at layers 19--22 (Section~\ref{sec:steering}).
+
+Taken together, these results extend our static characterization into a dynamic one: the temporal preference subgraph we identify is not only geometrically structured and steerable, but also \emph{vulnerable} to systematic degradation under deployment-realistic conditions---and the same interpretability tools that localize it can monitor and mitigate that degradation at runtime.

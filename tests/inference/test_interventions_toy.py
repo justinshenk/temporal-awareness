@@ -18,18 +18,39 @@ import pytest
 import torch
 import torch.nn as nn
 
-from transformer_lens import HookedTransformer, HookedTransformerConfig
+# Guard against missing or incompatible TransformerLens
+try:
+    from transformer_lens import HookedTransformer, HookedTransformerConfig
+
+    _HAS_TRANSFORMER_LENS = True
+except (ImportError, AttributeError):
+    _HAS_TRANSFORMER_LENS = False
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_TRANSFORMER_LENS, reason="TransformerLens not available or incompatible"
+)
 
 from src.inference import ModelRunner
-from src.inference.backends import (
-    ModelBackend,
-    TransformerLensBackend,
-    NNsightBackend,
-    HuggingFaceBackend,
-)
+from src.inference.backends import ModelBackend
 from src.inference.interventions import steering, ablation, scale, interpolate
 
-# Check if pyvene is available
+# Backend classes are imported lazily to avoid collection failures
+# when specific backend dependencies are unavailable
+try:
+    from src.inference.backends import TransformerLensBackend
+except ImportError:
+    TransformerLensBackend = None
+
+try:
+    from src.inference.backends import NNsightBackend
+except ImportError:
+    NNsightBackend = None
+
+try:
+    from src.inference.backends import HuggingFaceBackend
+except ImportError:
+    HuggingFaceBackend = None
+
 try:
     from src.inference.backends import PyveneBackend
     PYVENE_AVAILABLE = True

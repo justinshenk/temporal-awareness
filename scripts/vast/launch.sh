@@ -39,6 +39,9 @@
 #   PREDOWNLOAD_HF    space-separated HF model IDs to pre-download before REMOTE_CMD
 #   LABEL             default "vast-launch" — prefix for result files
 #   LEAVE_INSTANCE    default 0 — if 1, skip destroy at end (useful for debugging)
+#   VAST_USER         default $USER — tag included in the instance label so
+#                     other users on a shared account can attribute running
+#                     instances. Falls back to "unknown" if neither is set.
 #
 # Exits:
 #   0 on success (instance destroyed)
@@ -86,6 +89,7 @@ BOOTSTRAP_EXTRA="${BOOTSTRAP_EXTRA:-}"
 PREDOWNLOAD_HF="${PREDOWNLOAD_HF:-}"
 LABEL="${LABEL:-vast-launch}"
 LEAVE_INSTANCE="${LEAVE_INSTANCE:-0}"
+VAST_USER="${VAST_USER:-${USER:-unknown}}"
 
 # ---- vastai CLI ----
 VASTAI_VENV="${VASTAI_VENV:-$HOME/.cache/vastai-venv}"
@@ -161,8 +165,11 @@ print(f'[launch] budget=\${budget:.2f} -> {budget/dph:.1f}h of runtime headroom'
 "
 
 # ---- create instance ----
-echo "[launch] creating instance (image=$IMAGE, disk=${MIN_DISK_GB}GB)"
-CREATE_OUT="$("$VASTAI" create instance "$OFFER_ID" --image "$IMAGE" --disk "$MIN_DISK_GB" --ssh 2>&1)"
+VAST_INSTANCE_LABEL="${VAST_USER}/${LABEL}/$(date -u +%Y%m%dT%H%M%SZ)"
+echo "[launch] creating instance (image=$IMAGE, disk=${MIN_DISK_GB}GB, label=$VAST_INSTANCE_LABEL)"
+CREATE_OUT="$("$VASTAI" create instance "$OFFER_ID" \
+    --image "$IMAGE" --disk "$MIN_DISK_GB" --ssh \
+    --label "$VAST_INSTANCE_LABEL" 2>&1)"
 echo "[launch] create output: $CREATE_OUT"
 INSTANCE_ID="$(echo "$CREATE_OUT" | python3 -c "
 import re, sys

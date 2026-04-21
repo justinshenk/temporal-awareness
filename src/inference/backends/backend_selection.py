@@ -33,7 +33,7 @@ def _is_cuda_available() -> bool:
 def _mlx_available() -> bool:
     """Check if MLX is installed."""
     try:
-        import mlx.core
+        import mlx.core  # noqa: F401
 
         return True
     except ImportError:

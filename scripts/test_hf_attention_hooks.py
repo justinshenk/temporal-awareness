@@ -72,7 +72,7 @@ def test_attention_hooks():
     if pattern_key in cache:
         pattern = cache[pattern_key]
         print(f"Attention pattern shape: {pattern.shape}")
-        print(f"  Expected: [batch, n_heads, seq_q, seq_k]")
+        print("  Expected: [batch, n_heads, seq_q, seq_k]")
         print(f"  Got: [batch={pattern.shape[0]}, n_heads={pattern.shape[1]}, "
               f"seq_q={pattern.shape[2]}, seq_k={pattern.shape[3]}]")
 
@@ -95,16 +95,16 @@ def test_attention_hooks():
     W_O = backend.get_W_O(layer=0)
 
     print(f"W_Q[0] shape: {W_Q.shape}")
-    print(f"  Expected: [n_heads, d_model, d_head]")
+    print("  Expected: [n_heads, d_model, d_head]")
     print(f"W_K[0] shape: {W_K.shape}")
     print(f"W_V[0] shape: {W_V.shape}")
     print(f"W_O[0] shape: {W_O.shape}")
-    print(f"  Expected: [n_heads, d_head, d_model]")
+    print("  Expected: [n_heads, d_head, d_model]")
 
     # All layers access
     W_Q_all = backend.get_W_Q(layer=None)
     print(f"\nW_Q (all layers) shape: {W_Q_all.shape}")
-    print(f"  Expected: [n_layers, n_heads, d_model, d_head]")
+    print("  Expected: [n_layers, n_heads, d_model, d_head]")
 
     # Test combined matrices
     print("\n" + "-" * 40)
@@ -115,9 +115,9 @@ def test_attention_hooks():
     W_QK = backend.get_W_QK(layer=0, head=0)
 
     print(f"W_OV[0,0] shape: {W_OV.shape}")
-    print(f"  Expected: [d_model, d_model]")
+    print("  Expected: [d_model, d_model]")
     print(f"W_QK[0,0] shape: {W_QK.shape}")
-    print(f"  Expected: [d_model, d_model]")
+    print("  Expected: [d_model, d_model]")
 
     # Test that W_OV = W_V @ W_O
     W_V_head = W_V[0]  # [d_model, d_head]
@@ -135,9 +135,9 @@ def test_attention_hooks():
     b_U = backend.get_b_U()
 
     print(f"W_E shape: {W_E.shape}")
-    print(f"  Expected: [vocab_size, d_model]")
+    print("  Expected: [vocab_size, d_model]")
     print(f"W_U shape: {W_U.shape}")
-    print(f"  Expected: [d_model, vocab_size]")
+    print("  Expected: [d_model, vocab_size]")
     print(f"b_U: {b_U}")
 
     print("\n" + "=" * 60)

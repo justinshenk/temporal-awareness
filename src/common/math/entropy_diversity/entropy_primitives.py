@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from ..num_types import Num, Nums, is_numpy, is_tensor
 from .core_impl import (
-    _EPS,
     _log_sum_exp_native,
     _log_sum_exp_numpy,
     _log_sum_exp_torch,

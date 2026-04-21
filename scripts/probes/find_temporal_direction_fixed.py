@@ -324,7 +324,7 @@ def test_all_layers(model, tokenizer, train_pairs, test_pairs, probes, positions
                 direction, immediate_acts, longterm_acts
             )
 
-            print(f"Direction statistics:")
+            print("Direction statistics:")
             print(f"  Separation: {stats_dict['separation']:.3f}")
             print(f"  Cohen's d: {stats_dict['cohen_d']:.3f}")
             print(f"  Mann-Whitney p: {stats_dict['mann_whitney_p']:.4f}")
@@ -335,7 +335,7 @@ def test_all_layers(model, tokenizer, train_pairs, test_pairs, probes, positions
                 model, tokenizer, probe, direction, test_pairs, layer, position
             )
 
-            print(f"\nAblation results:")
+            print("\nAblation results:")
             print(f"  Baseline accuracy: {baseline_acc:.1%}")
             print(f"  Ablated accuracy: {ablated_acc:.1%}")
             print(f"  Accuracy drop: {accuracy_drop*100:.1f} pp")
@@ -346,7 +346,7 @@ def test_all_layers(model, tokenizer, train_pairs, test_pairs, probes, positions
                 model, tokenizer, probe, test_pairs, layer, position, n_random=100
             )
 
-            print(f"\nRandom baseline:")
+            print("\nRandom baseline:")
             print(f"  Mean drop: {random_mean*100:.1f} pp")
             print(f"  Std: {random_std*100:.1f} pp")
             print(f"  Temporal vs Random: {(accuracy_drop - random_mean) / random_std:.2f} σ")

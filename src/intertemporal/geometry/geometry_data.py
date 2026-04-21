@@ -22,6 +22,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -34,6 +35,9 @@ from ..common.sample_position_mapping import (
     SamplePositionMapping,
 )
 from .geometry_config import GeometryConfig, TargetSpec, ACTIVATION_DTYPE
+
+if TYPE_CHECKING:
+    from ..prompt import PromptDataset
 
 logger = logging.getLogger(__name__)
 

@@ -39,13 +39,13 @@ def run_sanity_check(
     dn_target = InterventionTarget.at_positions(dn_positions, component)
     ns_target = InterventionTarget.at_positions(ns_positions, component)
 
-    print(f"[coarse]   Running patch_target...")
+    print("[coarse]   Running patch_target...")
     sys.stdout.flush()
 
     result = patch_target(
         runner, pair, dn_target, denoising_target=dn_target, noising_target=ns_target
     )
-    print(f"[coarse]   patch_target complete")
+    print("[coarse]   patch_target complete")
 
     result.pop_heavy()
     clear_gpu_memory()

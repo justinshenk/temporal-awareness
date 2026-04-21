@@ -221,7 +221,7 @@ class GeometryDataLoader:
             self._summary = {}
 
         elapsed = time.time() - start_time
-        _log("load_data", f"Data loaded", n_samples=len(self._samples), n_layers=len(self._layers), n_positions=len(self._semantic_positions), elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("load_data", "Data loaded", n_samples=len(self._samples), n_layers=len(self._layers), n_positions=len(self._semantic_positions), elapsed_ms=f"{elapsed*1000:.1f}")
 
     def _discover_targets(self):
         """Discover available layers and semantic positions."""
@@ -586,10 +586,10 @@ class GeometryDataLoader:
         """
         cache_key = f"{self._cache_prefix}|L{layer}_{component}_{position}"
         if cache_key in self._activations_cache:
-            _log("load_activations", f"Cache HIT", key=f"L{layer}_{component}_{position}")
+            _log("load_activations", "Cache HIT", key=f"L{layer}_{component}_{position}")
             return self._activations_cache[cache_key]
 
-        _log("load_activations", f"Cache MISS - loading from disk", key=f"L{layer}_{component}_{position}")
+        _log("load_activations", "Cache MISS - loading from disk", key=f"L{layer}_{component}_{position}")
         start_time = time.time()
 
         samples_dir = self.data_dir / "data" / "samples"
@@ -672,7 +672,7 @@ class GeometryDataLoader:
         self._activations_cache[cache_key] = result
 
         elapsed = time.time() - start_time
-        _log("load_activations", f"Loaded activations", shape=result.shape, n_files=len(load_tasks), elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("load_activations", "Loaded activations", shape=result.shape, n_files=len(load_tasks), elapsed_ms=f"{elapsed*1000:.1f}")
         return result
 
     def _get_embedding_path(self, method: str, layer: int, component: str, position: str) -> Path:
@@ -728,10 +728,10 @@ class GeometryDataLoader:
 
         # Check memory cache first
         if cache_key in self._pca_cache:
-            _log("load_pca", f"Memory cache HIT", key=key_short)
+            _log("load_pca", "Memory cache HIT", key=key_short)
             return self._pca_cache[cache_key]
 
-        _log("load_pca", f"Memory cache MISS", key=key_short)
+        _log("load_pca", "Memory cache MISS", key=key_short)
         start_time = time.time()
 
         # Load from pre-computed embeddings
@@ -745,7 +745,7 @@ class GeometryDataLoader:
                 result[:, :disk_result.shape[1]] = disk_result
             self._pca_cache[cache_key] = result
             elapsed = time.time() - start_time
-            _log("load_pca", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            _log("load_pca", "Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
             return result
 
         # Not found - embeddings MUST be pre-computed
@@ -777,10 +777,10 @@ class GeometryDataLoader:
 
         # Check memory cache first
         if cache_key in self._umap_cache:
-            _log("load_umap", f"Memory cache HIT", key=key_short)
+            _log("load_umap", "Memory cache HIT", key=key_short)
             return self._umap_cache[cache_key]
 
-        _log("load_umap", f"Memory cache MISS", key=key_short)
+        _log("load_umap", "Memory cache MISS", key=key_short)
         start_time = time.time()
 
         # Load from pre-computed embeddings
@@ -793,7 +793,7 @@ class GeometryDataLoader:
                 result[:, :disk_result.shape[1]] = disk_result
             self._umap_cache[cache_key] = result
             elapsed = time.time() - start_time
-            _log("load_umap", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            _log("load_umap", "Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
             return result
 
         # Not found - CRASH: embeddings MUST be pre-computed
@@ -824,10 +824,10 @@ class GeometryDataLoader:
 
         # Check memory cache first
         if cache_key in self._tsne_cache:
-            _log("load_tsne", f"Memory cache HIT", key=key_short)
+            _log("load_tsne", "Memory cache HIT", key=key_short)
             return self._tsne_cache[cache_key]
 
-        _log("load_tsne", f"Memory cache MISS", key=key_short)
+        _log("load_tsne", "Memory cache MISS", key=key_short)
         start_time = time.time()
 
         # Load from pre-computed embeddings
@@ -840,7 +840,7 @@ class GeometryDataLoader:
                 result[:, :disk_result.shape[1]] = disk_result
             self._tsne_cache[cache_key] = result
             elapsed = time.time() - start_time
-            _log("load_tsne", f"Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
+            _log("load_tsne", "Loaded from disk", key=key_short, shape=result.shape, elapsed_ms=f"{elapsed*1000:.1f}")
             return result
 
         # Not found - CRASH: embeddings MUST be pre-computed
@@ -1327,10 +1327,10 @@ class GeometryDataLoader:
         with open(metrics_path) as f:
             return json.load(f)
 
-    def load_pca_metrics(
+    def load_pca_metrics_legacy(
         self, layer: int, component: str, position: str
     ) -> dict | None:
-        """Load PCA metrics for a target."""
+        """Load PCA metrics for a target (legacy path)."""
         key = f"L{layer}_{component}_{position}"
         metrics_path = self.data_dir / "results" / "pca" / key / "metrics.json"
         if not metrics_path.exists():
@@ -1661,7 +1661,7 @@ class GeometryDataLoader:
         layers = data["layers"].tolist()
         pc1_values = data["pc1_values"]  # shape: (n_layers, n_samples)
         sample_indices = data["sample_indices"].tolist()
-        _log("trajectory", f"Loaded cached layer trajectory", comp=component, position=position, mode=mode)
+        _log("trajectory", "Loaded cached layer trajectory", comp=component, position=position, mode=mode)
 
         if include_pc2:
             if "pc2_values" not in data:
@@ -1711,7 +1711,7 @@ class GeometryDataLoader:
         # pc1_values is stored as object array - each element is a 1D array
         pc1_values_list = [arr for arr in data["pc1_values"]]
         sample_indices_list = [list(arr) for arr in data["sample_indices_list"]]
-        _log("trajectory", f"Loaded cached position trajectory", layer=layer, comp=component, mode=mode)
+        _log("trajectory", "Loaded cached position trajectory", layer=layer, comp=component, mode=mode)
 
         if include_pc2:
             if "pc2_values" not in data:

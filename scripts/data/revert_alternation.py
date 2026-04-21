@@ -45,7 +45,7 @@ def revert_to_invariant_AB():
             continue
 
         input_path = os.path.join(input_dir, filename)
-        
+
         # Construct new filename (append _invariant to avoid confusion)
         new_filename = filename.replace('.json', '_invariant.json')
         output_path = os.path.join(output_dir, new_filename)
@@ -55,7 +55,7 @@ def revert_to_invariant_AB():
         try:
             with open(input_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
+
             pairs = data.get('pairs', [])
 
             # 3. Process pairs
@@ -77,7 +77,7 @@ def revert_to_invariant_AB():
             # 4. Save to NEW file
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            
+
             files_processed += 1
 
         except Exception as e:

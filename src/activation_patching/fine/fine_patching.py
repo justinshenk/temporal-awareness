@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from ...common.contrastive_pair import ContrastivePair
 from ...common.device_utils import clear_gpu_memory
 from ...common.profiler import profile
-from ...common.patching_types import PatchingMode
 
 from .fine_config import FineConfig, DEFAULT_FINE_CONFIG
 from .fine_results import FinePatchingResults

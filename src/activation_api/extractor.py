@@ -6,13 +6,9 @@ hook-based activation capture with memory-efficient streaming.
 
 from __future__ import annotations
 
-import gc
-import json
 import time
-from pathlib import Path
 from typing import Any, Optional, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -153,14 +149,14 @@ class ActivationExtractor:
             try:
                 from transformers import __version__ as _tf_version
                 _major, _minor = (int(x) for x in _tf_version.split(".")[:2])
-                _dtype_key = "dtype" if (_major, _minor) >= (4, 50) else "torch_dtype"
-            except Exception:
+                _dtype_key = "dtype" if (_major, _minor) >= (5, 0) else "torch_dtype"
+            except (ImportError, ValueError, AttributeError):
                 _dtype_key = "torch_dtype"
             kwargs[_dtype_key] = load_dtype
 
-        self._model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
+        self._model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, **kwargs)
         if self._tokenizer is None:
-            self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
             if self._tokenizer.pad_token is None:
                 self._tokenizer.pad_token = self._tokenizer.eos_token
 
@@ -384,7 +380,7 @@ class ActivationExtractor:
                     ).to(self._device)
 
                     with torch.no_grad():
-                        self._model(**encoded)
+                        self._model(**encoded, use_cache=False)
 
                     if return_tokens:
                         for i in range(len(batch_texts)):

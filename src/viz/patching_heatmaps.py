@@ -9,7 +9,7 @@ Extends the base heatmap functionality with:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt

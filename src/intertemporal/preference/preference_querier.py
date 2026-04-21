@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from ...common.file_io import load_json
 from ...common.logging import log
 from ...inference import InternalsConfig, CapturedInternals
-from ..common.preference_types import PreferenceSample
+from ..common.preference_types import PromptSample, PreferenceSample
 from ...inference.interventions import (
     Intervention,
     InterventionTarget,

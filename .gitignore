@@ -1,4 +1,3 @@
-project_guidelines_gitignore
 # Python
 __pycache__/
 *.py[cod]
@@ -12,6 +11,7 @@ build/
 venv/
 .venv/
 env/
+tam_env/
 
 # IDE
 .idea/
@@ -27,7 +27,7 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Large files
+# Large model/data files
 *.npy
 *.npz
 *.pt
@@ -40,12 +40,26 @@ Thumbs.db
 # Secrets
 .env
 
+# SLURM / experiment logs (regenerated per run)
+logs/
 
-# Experiments 
+# W&B local cache
+wandb/
+
+# Results and data (large, tracked via W&B)
+results/
+data/
+
+# Word docs (personal notes)
+*.docx
+
+# LaTeX artifacts
+texput.log
+
+# Experiments
 out/
 
-
-# Other 
+# Other
 tmp/
 temp/
 git_worktrees/

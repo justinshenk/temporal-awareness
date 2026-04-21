@@ -112,7 +112,7 @@ def load_preference_data(
             # Use newest file
             prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
             print(f"\n{'='*60}")
-            print(f"WARNING: Using fallback glob to find prompt dataset")
+            print("WARNING: Using fallback glob to find prompt dataset")
             print(f"  Expected: {pref_data.prompt_dataset_name}_{pref_data.prompt_dataset_id}.json")
             print(f"  Found: {prompt_files[0].name}")
             print(f"{'='*60}\n")

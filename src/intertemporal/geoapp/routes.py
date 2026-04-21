@@ -57,7 +57,6 @@ from .models import (
     HeatmapResponse,
     MetricsResponse,
     PCAMetrics,
-    Point3D,
     ProbeMetrics,
     SampleResponse,
     TokenInfo,
@@ -227,7 +226,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 format_texts=example_data["format_texts"],
             )
 
-        _log("/config", f"Returning config", n_layers=len(layers), n_positions=len(positions), n_samples=data_loader.n_samples, methods=available_methods)
+        _log("/config", "Returning config", n_layers=len(layers), n_positions=len(positions), n_samples=data_loader.n_samples, methods=available_methods)
         return ConfigResponse(
             layers=layers,
             components=data_loader.get_components(),
@@ -263,7 +262,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Returns:
             3D coordinates for all samples.
         """
-        _log("/embedding", f"GET request", layer=layer, component=component, position=position, method=method)
+        _log("/embedding", "GET request", layer=layer, component=component, position=position, method=method)
         start_time = time.time()
 
         # Parse position to extract base format_pos and optional rel_pos
@@ -313,10 +312,10 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid method: {method}")
-        except ValueError as e:
+        except ValueError:
             # If per-rel_pos embedding doesn't exist, fall back to combined embedding
             if rel_pos is not None:
-                _log("/embedding", f"Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
+                _log("/embedding", "Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
                 load_position = base_position
                 used_fallback = True
                 try:
@@ -348,7 +347,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         # No additional filtering needed - per-rel_pos embeddings are pre-filtered
         sample_indices = list(all_sample_indices)
         if rel_pos is not None:
-            _log("/embedding", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
+            _log("/embedding", "Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
 
         # Use embedding size as n_samples
         n_samples = embedding.shape[0]
@@ -362,7 +361,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             response.headers["Cache-Control"] = "max-age=1800, stale-while-revalidate=3600"
 
         elapsed = time.time() - start_time
-        _log("/embedding", f"Returning embedding", n_samples=n_samples, n_coords=len(coordinates_flat), elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("/embedding", "Returning embedding", n_samples=n_samples, n_coords=len(coordinates_flat), elapsed_ms=f"{elapsed*1000:.1f}")
 
         return EmbeddingResponse(
             layer=layer,
@@ -387,7 +386,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Sends data in chunks so UI can render progressively.
         Each chunk contains coordinates for chunk_size points.
         """
-        _log("/embedding/stream", f"🚀 SSE request received", layer=layer, component=component, position=position, method=method, chunk_size=chunk_size)
+        _log("/embedding/stream", "🚀 SSE request received", layer=layer, component=component, position=position, method=method, chunk_size=chunk_size)
 
         # Parse position to extract base format_pos and optional rel_pos
         base_position, rel_pos = data_loader._parse_position(position)
@@ -425,10 +424,9 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         async def generate_chunks():
             """Generator that yields SSE chunks."""
-            import asyncio
 
             stream_start = time.time()
-            _log("/embedding/stream", f"Loading embedding...", method=method)
+            _log("/embedding/stream", "Loading embedding...", method=method)
 
             # Load embedding using full position (with rel_pos) if specified
             load_position = position if rel_pos is not None else base_position
@@ -447,7 +445,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             except ValueError as e:
                 # If per-rel_pos embedding doesn't exist, fall back to combined embedding
                 if rel_pos is not None:
-                    _log("/embedding/stream", f"Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
+                    _log("/embedding/stream", "Per-rel_pos embedding not found, falling back to combined", position=position, rel_pos=rel_pos)
                     load_position = base_position
                     used_fallback = True
                     try:
@@ -458,16 +456,16 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                         elif method == "tsne":
                             embedding = data_loader.load_tsne(layer, component, load_position, n_components=3)
                     except ValueError:
-                        _log("/embedding/stream", f"Embedding not found", position=base_position)
+                        _log("/embedding/stream", "Embedding not found", position=base_position)
                         yield f"data: {json.dumps({'error': f'No embedding data for {base_position}.'})}\n\n"
                         return
                 else:
-                    _log("/embedding/stream", f"Embedding not found", position=load_position, error=str(e))
+                    _log("/embedding/stream", "Embedding not found", position=load_position, error=str(e))
                     yield f"data: {json.dumps({'error': f'No embedding data for {position}.'})}\n\n"
                     return
 
             load_elapsed = time.time() - stream_start
-            _log("/embedding/stream", f"Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
+            _log("/embedding/stream", "Embedding loaded", elapsed_ms=f"{load_elapsed*1000:.1f}", shape=embedding.shape)
 
             # Validate embedding - crash if NaN/Infinity found (indicates computation failure)
             _validate_embedding(embedding, f"L{layer}_{component}_{position}_{method}")
@@ -485,12 +483,12 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             # No additional filtering needed - per-rel_pos embeddings are pre-filtered
             sample_indices = list(all_sample_indices)
             if rel_pos is not None:
-                _log("/embedding/stream", f"Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
+                _log("/embedding/stream", "Loaded per-rel_pos embedding", rel_pos=rel_pos, n_samples=len(sample_indices))
 
             # Use embedding size as total_points
             total_points = embedding.shape[0]
 
-            _log("/embedding/stream", f"Sending metadata", total_points=total_points)
+            _log("/embedding/stream", "Sending metadata", total_points=total_points)
 
             # Send metadata first
             metadata = {
@@ -524,7 +522,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 await asyncio.sleep(0)  # Yield to event loop between chunks
 
             total_elapsed = time.time() - stream_start
-            _log("/embedding/stream", f"Stream complete", total_ms=f"{total_elapsed*1000:.1f}", total_points=total_points)
+            _log("/embedding/stream", "Stream complete", total_ms=f"{total_elapsed*1000:.1f}", total_points=total_points)
             # Send completion signal
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
@@ -551,7 +549,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Returns:
             Color values for all samples with data type information.
         """
-        _log("/metadata", f"GET request", color_by=color_by)
+        _log("/metadata", "GET request", color_by=color_by)
         valid_options = data_loader.get_color_options()
         if color_by not in valid_options:
             raise HTTPException(
@@ -585,7 +583,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         if response:
             response.headers["Cache-Control"] = "max-age=3600, stale-while-revalidate=7200"
 
-        _log("/metadata", f"Returning values", dtype=dtype, n_values=len(values_list))
+        _log("/metadata", "Returning values", dtype=dtype, n_values=len(values_list))
         return ColorValues(
             color_by=color_by,
             values=values_list,
@@ -602,7 +600,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Returns:
             Full sample information including text and metadata.
         """
-        _log("/sample", f"GET request", idx=idx)
+        _log("/sample", "GET request", idx=idx)
         if idx < 0 or idx >= data_loader.n_samples:
             raise HTTPException(
                 status_code=404,
@@ -978,7 +976,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         - "aligned": Per-target PCA with sign alignment (original method)
         - "shared": Single PCA subspace across all layers (new method)
         """
-        _log("/trajectory/layers", f"GET request", component=component, position=position, mode=mode)
+        _log("/trajectory/layers", "GET request", component=component, position=position, mode=mode)
         start_time = time.time()
         if component not in data_loader.get_components():
             raise HTTPException(status_code=400, detail=f"Invalid component: {component}")
@@ -1011,7 +1009,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 ))
             n_samples = len(shared_sample_indices)
             elapsed = time.time() - start_time
-            _log("/trajectory/layers", f"Returning cached trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+            _log("/trajectory/layers", "Returning cached trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
             return TrajectoryResponse(
                 component=component,
                 position=position,
@@ -1041,7 +1039,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         Returns PC1 values for each sample at each position, enabling visualization
         of how representations vary across different parts of the prompt.
         """
-        _log("/trajectory/positions", f"GET request", layer=layer, component=component, positions_filter=positions_filter or "default", mode=mode)
+        _log("/trajectory/positions", "GET request", layer=layer, component=component, positions_filter=positions_filter or "default", mode=mode)
         start_time = time.time()
         if layer not in data_loader.get_layers():
             raise HTTPException(status_code=404, detail=f"Layer {layer} not found")
@@ -1086,7 +1084,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                         sample_indices=indices,
                     ))
                 elapsed = time.time() - start_time
-                _log("/trajectory/positions", f"Returning cached trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+                _log("/trajectory/positions", "Returning cached trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
                 return TrajectoryResponse(
                     layer=layer,
                     component=component,
@@ -1118,7 +1116,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         3D visualization of how representations evolve through the model.
         X-axis: layer, Y-axis: PC1, Z-axis: PC2
         """
-        _log("/trajectory2d/layers", f"GET request", component=component, position=position, mode=mode)
+        _log("/trajectory2d/layers", "GET request", component=component, position=position, mode=mode)
         start_time = time.time()
 
         if component not in data_loader.get_components():
@@ -1154,7 +1152,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                 ))
             n_samples = len(shared_sample_indices)
             elapsed = time.time() - start_time
-            _log("/trajectory2d/layers", f"Returning cached 2D trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+            _log("/trajectory2d/layers", "Returning cached 2D trajectory", n_layers=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
             return Trajectory2DResponse(
                 component=component,
                 position=position,
@@ -1185,7 +1183,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
         3D visualization of how representations vary across positions.
         X-axis: position, Y-axis: PC1, Z-axis: PC2
         """
-        _log("/trajectory2d/positions", f"GET request", layer=layer, component=component, mode=mode)
+        _log("/trajectory2d/positions", "GET request", layer=layer, component=component, mode=mode)
         start_time = time.time()
 
         if layer not in data_loader.get_layers():
@@ -1226,7 +1224,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
                         sample_indices=sample_indices,
                     ))
                 elapsed = time.time() - start_time
-                _log("/trajectory2d/positions", f"Returning cached 2D trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+                _log("/trajectory2d/positions", "Returning cached 2D trajectory", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
                 return Trajectory2DResponse(
                     layer=layer,
                     component=component,
@@ -1267,7 +1265,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
             ))
 
         elapsed = time.time() - start_time
-        _log("/trajectory2d/positions", f"Returning 2D trajectory (filtered)", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
+        _log("/trajectory2d/positions", "Returning 2D trajectory (filtered)", n_positions=len(x_values), n_samples=n_samples, elapsed_ms=f"{elapsed*1000:.1f}")
 
         return Trajectory2DResponse(
             layer=layer,
@@ -1322,7 +1320,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         Returns cumulative variance explained across all layers and components.
         """
-        _log("/scree", f"GET request", position=position)
+        _log("/scree", "GET request", position=position)
         # Validate base position (strip rel_pos suffix for validation)
         base_position = position.rsplit(":", 1)[0] if ":" in position else position
         if base_position not in data_loader.get_positions():
@@ -1340,7 +1338,7 @@ def create_router(data_loader: GeometryDataLoader, dataset_name: str = "geometry
 
         Returns cosine similarity between PC directions across all targets.
         """
-        _log("/alignment", f"GET request", position=position, pc_index=pc_index)
+        _log("/alignment", "GET request", position=position, pc_index=pc_index)
         # Validate base position (strip rel_pos suffix for validation)
         base_position = position.rsplit(":", 1)[0] if ":" in position else position
         if base_position not in data_loader.get_positions():
