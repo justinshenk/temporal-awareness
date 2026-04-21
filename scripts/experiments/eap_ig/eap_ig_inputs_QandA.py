@@ -483,8 +483,11 @@ def run_eap_ig(
                     eap_ig_scores.attention_mask = expand_mask(
                         eap_ig_scores.attention_mask, system_prompt_length
                     )
+                    token_position_counts = (
+                        eap_ig_scores.attention_mask.sum(dim=1).detach().cpu()
+                    )
                     eap_ig_scores = eap_ig_scores.apply(
-                        torch.nanmean, dim=1, mask_aware=True
+                        torch.nansum, dim=1, mask_aware=True
                     )  # (batch,) | (batch, n_head) | (batch, neuron)
                     eap_ig_scores = eap_ig_scores.apply(lambda x: x.detach().cpu())
 
@@ -499,10 +502,14 @@ def run_eap_ig(
                     batch_output[f"step_{num_steps}__corrupted_logits"] = (
                         corrupted_logits_cpu.float().numpy()
                     )
+                    batch_output[f"step_{num_steps}__token_positions_considered"] = (
+                        tensor_to_numpy(token_position_counts)
+                    )
 
                     # Delete temporary objects to free memory
                     del (
                         eap_ig_scores,
+                        token_position_counts,
                         clean_inputs,
                         corrupted_inputs,
                         clean_logits_cpu,
