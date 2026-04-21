@@ -6,12 +6,11 @@ Memory-optimized implementation:
 - Use compact coloring scheme storage
 """
 
-import gc
 import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
@@ -23,7 +22,14 @@ from matplotlib.colors import LogNorm
 from src.common.device_utils import clear_gpu_memory
 from src.viz.plot_helpers import save_figure
 
-from .geometry_analysis import EmbeddingResult, LinearProbeResult, NoHorizonProjectionResult, PCAResult
+from .geometry_analysis import (
+    EmbeddingResult,
+    LinearProbeResult,
+    NoHorizonProjectionResult,
+    PCAResult,
+    CrossPositionSimilarityResult,
+    ContinuousTimeProbeResult,
+)
 from .geometry_config import (
     GeometryConfig,
     ACTIVATION_DTYPE,
@@ -31,6 +37,10 @@ from .geometry_config import (
     MAX_TRAJECTORY_SAMPLES,
 )
 from .geometry_data import ActivationData, VisualizationData, get_time_horizon_months
+from .geometry_logit_lens import LogitLensResult
+
+if TYPE_CHECKING:
+    pass
 
 # Type alias for either data type
 PlotData = Union[ActivationData, VisualizationData]
@@ -1248,7 +1258,6 @@ def plot_cross_position_similarity(
     Shows how PC0 directions at source positions correlate with
     PC0 directions at destination positions across layers.
     """
-    from .geometry_analysis import CrossPositionSimilarityResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1373,7 +1382,6 @@ def plot_continuous_time_probe(
     Shows how well we can predict the raw time_horizon_months value
     from activations at different source positions and layers.
     """
-    from .geometry_analysis import ContinuousTimeProbeResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

@@ -193,10 +193,10 @@ def main():
 
     # If we have enough, great. If not, note it.
     if len(cleaned) >= 100:
-        print(f"  => Sufficient for high-stakes experiments (need ~100-200)")
+        print("  => Sufficient for high-stakes experiments (need ~100-200)")
     else:
         print(f"  => WARNING: Only {len(cleaned)} examples. May need to loosen criteria.")
-        print(f"     Consider adding select 'weak' examples with manual review.")
+        print("     Consider adding select 'weak' examples with manual review.")
 
     # Save cleaned subset
     cleaned_output = {
@@ -236,9 +236,9 @@ def main():
         json.dump(sample_output, f, indent=2)
     print(f"  Manual review sample: {sample_path} ({sample_size} examples)")
 
-    print(f"\n" + "=" * 60)
-    print(f"SUMMARY")
-    print(f"=" * 60)
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
     print(f"  Original filtered:  {len(examples)}")
     print(f"  After quality audit: {len(cleaned)} (strong: {len(classifications['strong'])}, moderate: {len(classifications['moderate'])})")
     print(f"  Removed as weak:    {len(classifications['weak'])}")

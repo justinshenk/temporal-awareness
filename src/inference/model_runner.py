@@ -11,13 +11,6 @@ from ..common.profiler import profile
 from .interventions import Intervention, Interventions
 from .backends import (
     ModelBackend,
-    TransformerLensBackend,
-    NNsightBackend,
-    PyveneBackend,
-    HuggingFaceBackend,
-    MLXBackend,
-    OpenAIBackend,
-    AnthropicBackend,
     get_recommended_backend_inference,
 )
 from .generated_trajectory import (
@@ -824,6 +817,7 @@ class ModelRunner:
     ##################
 
     def _init_transformerlens(self, process_weights: bool = True) -> None:
+        from .backends import TransformerLensBackend
         from transformer_lens import HookedTransformer
 
         print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
@@ -889,6 +883,7 @@ class ModelRunner:
             return None  # Not supported
 
     def _init_nnsight(self) -> None:
+        from .backends import NNsightBackend
         from nnsight import LanguageModel
 
         print(f"Loading {self.model_name} on {self.device} (nnsight)...")
@@ -903,6 +898,7 @@ class ModelRunner:
         self._backend = NNsightBackend(self)
 
     def _init_pyvene(self) -> None:
+        from .backends import PyveneBackend
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         print(f"Loading {self.model_name} on {self.device} (pyvene)...")
@@ -916,6 +912,7 @@ class ModelRunner:
         self._backend = PyveneBackend(self, tokenizer)
 
     def _init_huggingface(self) -> None:
+        from .backends import HuggingFaceBackend
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         print(f"Loading {self.model_name} on {self.device} (HuggingFace)...")
@@ -929,6 +926,7 @@ class ModelRunner:
         self._backend = HuggingFaceBackend(self, tokenizer)
 
     def _init_mlx(self) -> None:
+        from .backends import MLXBackend
         from mlx_lm import load
 
         print(f"Loading {self.model_name} (MLX)...")
@@ -936,9 +934,13 @@ class ModelRunner:
         self._backend = MLXBackend(self, tokenizer)
 
     def _init_openai(self) -> None:
+        from .backends import OpenAIBackend
+
         self._backend = OpenAIBackend(self, model=self.model_name)
 
     def _init_anthropic(self) -> None:
+        from .backends import AnthropicBackend
+
         self._backend = AnthropicBackend(self, model=self.model_name)
 
     def _detect_chat_model(self, model_name: str) -> bool:

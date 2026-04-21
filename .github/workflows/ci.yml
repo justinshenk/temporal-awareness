@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint
+        run: ruff check src/ scripts/ tests/ experiments/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+      - name: Run tests (CPU only, no slow)
+        run: |
+          python -m pytest tests/ -v -m "not slow" --timeout=120 \
+            --ignore=tests/inference \
+            --ignore=tests/test_integration.py \
+            --ignore=tests/test_activation_api.py \
+            --ignore=tests/test_patience_degradation.py \
+            --ignore=tests/test_sae_feature_stability.py \
+            --ignore=tests/test_sequential_activation_tracking.py \
+            --ignore=tests/common/test_tree_as_structures_system.py \
+            --ignore=tests/intertemporal/test_sample_position_mapping.py
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+      - name: Mypy
+        run: mypy src/ --ignore-missing-imports
+        continue-on-error: true

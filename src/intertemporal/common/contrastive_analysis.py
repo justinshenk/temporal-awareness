@@ -377,7 +377,7 @@ def print_contrastive_pairs(pairs: list[ContrastivePreferences]) -> None:
 
     if analysis.n_both_horizon > 0:
         log("")
-        log(f"  When both have horizon:")
+        log("  When both have horizon:")
         log(f"    Same value:     {_stat(analysis.n_same_horizon, analysis.n_both_horizon)}")
         log(f"    Different:      {_stat(analysis.n_different_horizon, analysis.n_both_horizon)}")
 

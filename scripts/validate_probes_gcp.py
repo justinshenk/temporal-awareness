@@ -27,9 +27,7 @@ Success Criteria:
 import argparse
 import hashlib
 import json
-import pickle
 import subprocess
-import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,7 +36,7 @@ import numpy as np
 import torch
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import accuracy_score
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from tqdm import tqdm
 

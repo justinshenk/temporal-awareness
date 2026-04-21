@@ -32,7 +32,7 @@ from .geometry_logit_lens import LogitLensResult, run_logit_lens_from_cache
 from .geometry_plotting import generate_all_plots, plot_logit_lens
 
 if TYPE_CHECKING:
-    from .geometry_data import ActivationDataset
+    pass
 
 logger = logging.getLogger(__name__)
 

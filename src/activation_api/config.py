@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional, Union
 
+import torch
+
 
 @dataclass
 class ModuleSpec:

@@ -54,7 +54,7 @@ import random
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -148,6 +148,16 @@ MODEL_CONFIGS = {
         "is_reasoning": True,
         "sae_source": "airi",  # AIRI-Institute SAEs
     },
+    "Ouro-2.6B": {
+        "hf_name": "ByteDance/Ouro-2.6B",
+        "layers": [0, 3, 6, 9, 12, 15, 18, 21, 23],
+        "quick_layers": [6, 12, 18],
+        "n_layers": 24,
+        "d_model": 2048,
+        "is_instruct": True,
+        "max_new_tokens": 512,
+        "sae_source": None,
+    },
 }
 
 # Repetition counts — matches Phase 1 for comparability
@@ -156,7 +166,7 @@ QUICK_REP_COUNTS = [1, 5, 20]
 
 # Datasets
 DATASET_FILES = {
-    "low": "low_stakes_ag_news.json",
+    "low": "low_stakes_tram_ordering.json",
     "medium_temporal": "medium_stakes_tram_arithmetic.json",
     "medium_code": "medium_stakes_mbpp_code.json",
     "high": "high_stakes_medqa_temporal.json",
@@ -318,9 +328,9 @@ def extract_activations_for_condition(
 
     # Extract answer-index labels (letter codes A/B/C/D)
     # Different datasets store this differently:
-    #   - TRAM arithmetic: "answer" is already a letter ("A", "B", "C", "D")
+    #   - TRAM arithmetic/ordering: "answer" is already a letter ("A", "B", "C", "D")
     #   - MedQA: "answer" is the full text, "answer_idx" has the letter
-    #   - AG News: "answer" is the category text, need to map via options
+    #   - Legacy AG News: "answer" is the category text, need to map via options
     labels = []
     for ex in examples:
         if "answer_idx" in ex:
@@ -875,7 +885,7 @@ def run_phase2_experiment(
     # Behavioral onsets from Phase 1 (hardcoded from W&B results)
     # These should be loaded from Phase 1 results in production
     behavioral_onsets = {
-        "low": 20,             # AG News: no degradation until very late
+        "low": 12,             # TRAM ordering: simple, expect late degradation
         "medium_temporal": 5,  # TRAM: Llama degrades by rep 5
         "medium_code": 8,      # MBPP: moderate degradation
         "high": 3,             # MedQA: early degradation

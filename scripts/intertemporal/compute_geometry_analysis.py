@@ -375,7 +375,7 @@ def _compute_single_embedding(
                 # =============================================================
                 if np.any(np.isnan(pca_model.explained_variance_ratio_)):
                     _print_nan_warning(
-                        f"PCA EMBEDDING explained_variance",
+                        "PCA EMBEDDING explained_variance",
                         f"Target: {key} | PCA returned NaN explained variance - indicates zero variance input"
                     )
                     raise NaNDetectedError(f"PCA embedding has NaN explained_variance for {key}")
@@ -400,7 +400,7 @@ def _compute_single_embedding(
                 # =============================================================
                 if np.any(np.isnan(e)):
                     _print_nan_warning(
-                        f"UMAP EMBEDDING",
+                        "UMAP EMBEDDING",
                         f"Target: {key} | UMAP returned NaN values - check input data variance"
                     )
                     raise NaNDetectedError(f"UMAP embedding has NaN values for {key}")
@@ -425,7 +425,7 @@ def _compute_single_embedding(
                 # =============================================================
                 if np.any(np.isnan(e_sub)):
                     _print_nan_warning(
-                        f"t-SNE EMBEDDING",
+                        "t-SNE EMBEDDING",
                         f"Target: {key} | t-SNE returned NaN values - check input data"
                     )
                     raise NaNDetectedError(f"t-SNE embedding has NaN values for {key}")
@@ -1229,7 +1229,7 @@ def main() -> int:
             return 1
 
     log.info("=" * 60)
-    log.info(f"COMPUTE GEOMETRY ANALYSIS")
+    log.info("COMPUTE GEOMETRY ANALYSIS")
     if args.fast:
         log.info("MODE: FAST (PCA only, skipping UMAP and t-SNE)")
     log.info(f"Processing {len(datasets)} dataset(s):")

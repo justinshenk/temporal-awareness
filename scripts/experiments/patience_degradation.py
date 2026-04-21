@@ -42,7 +42,6 @@ Date: 2026-03-11
 
 import argparse
 import json
-import random
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
@@ -704,7 +703,7 @@ def run_single_layer_degradation(
                       f"cos={cos_sim:.3f} conc={conc:.3f}")
 
             # Summary analysis
-            print(f"  [3/3] Analyzing degradation patterns...")
+            print("  [3/3] Analyzing degradation patterns...")
             reps = [m.repetition_count for m in rep_metrics]
             # Use SAE probe accuracy for behavioral onset when available, else act probe
             probe_accs = [m.sae_probe_accuracy if m.sae_probe_accuracy is not None

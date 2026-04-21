@@ -187,7 +187,7 @@ def extract_activations_with_sae(model, sae, prompts, layer, batch_size=16, verb
     sae_latents = np.concatenate(all_sae_latents, axis=0)
 
     if verbose:
-        print(f"\nExtracted activations:")
+        print("\nExtracted activations:")
         print(f"  Raw shape: {raw_activations.shape}")
         print(f"  SAE latents shape: {sae_latents.shape}")
         print(f"  Mean SAE sparsity: {(sae_latents != 0).mean():.4f}")
@@ -226,7 +226,7 @@ def select_top_k_latents(sae_latents, labels, k=32, verbose=True):
     # Stats on selected latents
     if verbose:
         selected_diffs = abs_diff[top_k_indices]
-        print(f"\nSelected latent statistics:")
+        print("\nSelected latent statistics:")
         print(f"  Top k: {top_k_indices}")
         print(f"  Max abs diff: {selected_diffs.max():.4f}")
         print(f"  Min abs diff: {selected_diffs.min():.4f}")
@@ -554,7 +554,7 @@ def main():
     # Middle layers tend to encode semantic information best
     layers_to_probe = [6, 13, 20, 24]  # Middle-ish layers for Gemma-2-2b (26 layers total) # Checked
 
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Model: {MODEL_NAME}")
     print(f"  SAE Release: {SAE_RELEASE}")
     print(f"  Dataset: {dataset_path}")
@@ -650,7 +650,7 @@ def main():
     }
 
     print(f"\nUsing layer {best_layer} with top {TOP_K_LATENTS} discriminative latents")
-    print(f"Comparing P('now') vs P('later') under different steering conditions")
+    print("Comparing P('now') vs P('later') under different steering conditions")
     print(f"\nTemporal token IDs: {temporal_tokens}")
 
     # Test multiple alpha values

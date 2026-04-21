@@ -11,7 +11,6 @@ Checks:
 """
 
 import json
-import numpy as np
 from pathlib import Path
 from collections import Counter
 import re
@@ -58,7 +57,7 @@ def check_exact_overlap(explicit_pairs, implicit_pairs):
             print(f"    - {text[:100]}...")
         return False
     else:
-        print(f"  ✓ PASS: No exact text overlap")
+        print("  ✓ PASS: No exact text overlap")
         print(f"    Explicit dataset: {len(explicit_texts)} unique pairs")
         print(f"    Implicit dataset: {len(implicit_texts)} unique pairs")
         return True
@@ -81,7 +80,7 @@ def check_question_overlap(explicit_pairs, implicit_pairs):
             print(f"    - {q}")
         return False
     else:
-        print(f"  ✓ PASS: No question overlap")
+        print("  ✓ PASS: No question overlap")
         return True
 
 
@@ -112,15 +111,15 @@ def check_vocabulary_overlap(explicit_pairs, implicit_pairs):
     explicit_counter = Counter(explicit_words)
     implicit_counter = Counter(implicit_words)
 
-    print(f"\n  Explicit dataset vocabulary:")
+    print("\n  Explicit dataset vocabulary:")
     print(f"    Total words: {len(explicit_words)}")
     print(f"    Unique words: {len(explicit_counter)}")
 
-    print(f"\n  Implicit dataset vocabulary:")
+    print("\n  Implicit dataset vocabulary:")
     print(f"    Total words: {len(implicit_words)}")
     print(f"    Unique words: {len(implicit_counter)}")
 
-    print(f"\n  Temporal markers in datasets:")
+    print("\n  Temporal markers in datasets:")
     explicit_markers = {m: explicit_counter[m] for m in temporal_markers if explicit_counter[m] > 0}
     implicit_markers = {m: implicit_counter[m] for m in temporal_markers if implicit_counter[m] > 0}
 
@@ -132,7 +131,7 @@ def check_vocabulary_overlap(explicit_pairs, implicit_pairs):
     total_marker_count = sum(implicit_markers.values())
 
     if implicit_markers:
-        print(f"      Temporal markers detected:")
+        print("      Temporal markers detected:")
         for marker, count in sorted(implicit_markers.items(), key=lambda x: -x[1]):
             print(f"        {marker}: {count}")
 
@@ -144,7 +143,7 @@ def check_vocabulary_overlap(explicit_pairs, implicit_pairs):
             print(f"      ✗ FAIL: Significant contamination ({total_marker_count} occurrences)")
             return False
     else:
-        print(f"      ✓ PASS: No explicit temporal markers")
+        print("      ✓ PASS: No explicit temporal markers")
         return True
 
 
@@ -157,11 +156,11 @@ def check_category_distribution(explicit_pairs, implicit_pairs):
     explicit_categories = Counter(p.get('category', 'unknown') for p in explicit_pairs)
     implicit_categories = Counter(p.get('category', 'unknown') for p in implicit_pairs)
 
-    print(f"\n  Explicit dataset categories:")
+    print("\n  Explicit dataset categories:")
     for cat, count in explicit_categories.most_common():
         print(f"    {cat}: {count}")
 
-    print(f"\n  Implicit dataset categories:")
+    print("\n  Implicit dataset categories:")
     for cat, count in implicit_categories.most_common():
         print(f"    {cat}: {count}")
 
@@ -206,14 +205,14 @@ def check_semantic_similarity(explicit_pairs, implicit_pairs):
     print(f"\n  Maximum n-gram similarity (sample): {max_similarity:.3f}")
 
     if max_similarity > 0.3:
-        print(f"  ✗ WARNING: High similarity detected")
+        print("  ✗ WARNING: High similarity detected")
         print(f"    Explicit: {most_similar_pair[0]}...")
         print(f"    Implicit: {most_similar_pair[1]}...")
     else:
-        print(f"  ✓ PASS: Low semantic overlap (< 0.3)")
+        print("  ✓ PASS: Low semantic overlap (< 0.3)")
 
     if most_similar_pair:
-        print(f"\n  Most similar pair:")
+        print("\n  Most similar pair:")
         print(f"    Explicit: {most_similar_pair[0]}...")
         print(f"    Implicit: {most_similar_pair[1]}...")
 
@@ -282,7 +281,7 @@ def main():
     # Load datasets
     explicit_pairs, implicit_pairs = load_datasets()
 
-    print(f"\nLoaded datasets:")
+    print("\nLoaded datasets:")
     print(f"  Explicit (training): {len(explicit_pairs)} pairs")
     print(f"  Implicit (test): {len(implicit_pairs)} pairs")
 

@@ -49,7 +49,7 @@ def download_ag_news():
     print(f"  Label distribution: {dict(label_dist)}")
 
     if examples:
-        print(f"\n  Sample:")
+        print("\n  Sample:")
         print(f"    text: {examples[0]['text'][:120]}...")
         print(f"    label: {examples[0]['label_name']}")
 

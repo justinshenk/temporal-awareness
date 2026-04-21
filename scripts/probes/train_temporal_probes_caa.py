@@ -21,7 +21,6 @@ import torch
 import numpy as np
 import json
 import pickle
-import os
 from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, train_test_split
@@ -83,7 +82,7 @@ def extract_activations(model, decoder_blocks, tokenizer, prompt):
             if isinstance(output, tuple):
                 activations[layer_idx] = output[0][0, -1, :].detach().cpu().numpy()
             elif isinstance(output, torch.Tensor) and len(output.shape) == 3:
-                activations[layer_idx] = output[0, -1, :].detach().cpu().numpy()                
+                activations[layer_idx] = output[0, -1, :].detach().cpu().numpy()
         return hook
 
     # Register hooks for all layers
@@ -161,7 +160,7 @@ def create_probe_dataset(model, decoder_blocks, tokenizer, pairs):
 
     y = np.array(labels)
 
-    print(f"\n✓ Created dataset:")
+    print("\n✓ Created dataset:")
     print(f"  Total samples: {len(y)}")
     print(f"  Immediate (0): {sum(y == 0)}")
     print(f"  Long-term (1): {sum(y == 1)}")
@@ -324,8 +323,8 @@ def detailed_evaluation(model, tokenizer, pairs, probe_path, layer):
     print("\nConfusion Matrix:")
     print("-"*70)
     cm = confusion_matrix(y_test, y_pred)
-    print(f"                 Predicted")
-    print(f"               Immediate  Long-term")
+    print("                 Predicted")
+    print("               Immediate  Long-term")
     print(f"Actual Immediate    {cm[0,0]:3d}       {cm[0,1]:3d}")
     print(f"       Long-term    {cm[1,0]:3d}       {cm[1,1]:3d}")
     print()
@@ -342,7 +341,7 @@ def main(args):
     model_name = args.model
     output_dir = args.output
 
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Dataset: {dataset_path}")
     print(f"  Model: {model_name}")
     print(f"  Output: {output_dir}")

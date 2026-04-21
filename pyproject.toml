@@ -46,7 +46,7 @@ dependencies = [
 temporal-awareness-eap-ig-workflow = "src.workflows.eap_ig_workflow:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "black", "ruff"]
+dev = ["pytest", "pytest-timeout", "black", "ruff"]
 api = ["openai>=1.0.0", "anthropic>=0.25.0", "tiktoken>=0.5.0"]
 eap_ig = [
     "mech_interp_toolkit @ git+https://github.com/SD-interp/mech-interp-toolkit.git@789b12ce0f448d1cd5747be9b743a950e6cb7a90"
@@ -65,3 +65,25 @@ testpaths = ["tests"]
 markers = [
     "slow: mark test as slow (multi-architecture or benchmark)"
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E741",   # ambiguous variable name (l, I, O) — standard in ML code for layers/indices
+    "E402",   # module-level import not at top — scripts use conditional imports after arg parsing
+    "F403",   # star imports — used in __init__.py auto-export pattern
+    "F405",   # may be undefined from star import — companion to F403
+    "F841",   # unused variable — common in research code (intermediate results, debugging)
+    "E501",   # line too long — handled by formatter
+    "E702",   # multiple statements on one line (semicolon) — idiomatic in matplotlib plotting code
+    "E731",   # lambda assignment — used for inline filter functions
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["F401"]  # unused imports common in exploratory scripts
+"tests/*" = ["F401"]
+"src/**/__init__.py" = ["F401", "F811"]  # unused imports in __init__.py (re-exports)

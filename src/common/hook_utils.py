@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from .patching_types import COMPONENTS, PATCHING_COMPONENTS
+from .patching_types import COMPONENTS
 
 
 def hook_name(layer: int, component: str) -> str:

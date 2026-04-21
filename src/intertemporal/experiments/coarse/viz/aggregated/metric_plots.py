@@ -9,7 +9,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-import numpy as np
 
 from ......viz.plot_helpers import save_figure
 from .data_extraction import ColumnData

@@ -13,6 +13,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -20,6 +21,9 @@ import torch
 from src.common.device_utils import clear_gpu_memory
 
 from .geometry_config import ACTIVATION_DTYPE
+
+if TYPE_CHECKING:
+    from .geometry_data import ActivationData
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +274,7 @@ def run_logit_lens_analysis(
         if sample_idx % 100 == 0:
             clear_gpu_memory(aggressive=True)
 
-    logger.info(f"Logit lens analysis complete")
+    logger.info("Logit lens analysis complete")
 
     return LogitLensResult(
         n_samples=n_samples,
@@ -408,7 +412,7 @@ def run_logit_lens_from_cache(
         if layer_idx % 10 == 0:
             clear_gpu_memory(aggressive=True)
 
-    logger.info(f"Logit lens analysis complete")
+    logger.info("Logit lens analysis complete")
 
     return LogitLensResult(
         n_samples=n_samples,

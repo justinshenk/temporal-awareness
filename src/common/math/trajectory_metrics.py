@@ -156,7 +156,6 @@ def token_ranks_from_logits(
     Returns:
         [n_sequence] ranks (1-indexed, where 1 = top token)
     """
-    import torch
 
     if full_logits is None:
         return [1] * len(token_ids)

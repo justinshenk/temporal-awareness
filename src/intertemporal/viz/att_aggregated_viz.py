@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from enum import Enum
 from pathlib import Path
 from typing import Literal
 
@@ -317,7 +316,7 @@ def visualize_all_att_aggregated_slices(
         output_dir: Output directory
         pref_pairs: List of ContrastivePreferences for slice filtering
     """
-    from ..experiments.coarse.viz.aggregated.analysis_slices import ANALYSIS_SLICES, get_analysis_slice
+    from ..experiments.coarse.viz.aggregated.analysis_slices import ANALYSIS_SLICES
 
     output_dir = Path(output_dir)
 
