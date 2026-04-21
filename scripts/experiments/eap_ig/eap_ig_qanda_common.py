@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore")
 load_dotenv()
 
 CONFIG_PATH = Path(__file__).parent / "config"
-HF_REPO_ID = os.getenv("HF_REPO_ID", "Temporal_Awareness_EAP_IG")
+HF_REPO_ID = os.getenv("HF_REPO_ID", "Temporal_Awareness_Node_Scores")
 SUPPORTED_QUADRATURES = {
     "gauss-chebyshev",
     "gauss-legendre",
@@ -29,7 +29,7 @@ SUPPORTED_QUADRATURES = {
 QUADRATURE_ALIASES = {
     "midpoint": "riemann-midpoint",
 }
-DOT_CONFIG_SYMBOLS = {"â—", "â– "}
+DOT_CONFIG_SYMBOLS = {"●", "■"}
 
 
 def tensor_to_numpy(tensor: torch.Tensor) -> np.ndarray:
