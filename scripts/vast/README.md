@@ -36,6 +36,24 @@ script, it is not from this script. Other places to look: another user on a
 shared account, vast's own eviction of interruptible bids, or credit
 exhaustion auto-stops.
 
+## Attribution on shared accounts
+
+Every instance created by this launcher is tagged with a vast.ai label of the form:
+
+    <VAST_USER>/<LABEL>/<utc-timestamp>
+
+e.g. `justin/rq4-smoke/20260421T143022Z`. This shows up in `vastai show
+instances` so other users on a shared account can tell whose instance is
+whose at a glance. Filter to your own with `vastai show instances | grep ^justin/`.
+
+Override with:
+
+    VAST_USER=ci-bot LABEL=nightly-sweep scripts/vast/launch.sh '...'
+
+The label is for *visibility only*. Destroy behavior is unchanged: the
+launcher still only destroys the instance ID it created itself, regardless
+of labels.
+
 ## Configuration
 
 All env vars are optional unless marked required.
@@ -55,6 +73,7 @@ All env vars are optional unless marked required.
 | `PREDOWNLOAD_HF` | *(empty)* | space-separated HF model IDs to pre-fetch |
 | `LABEL` | `vast-launch` | prefix for the pulled results tarball |
 | `LEAVE_INSTANCE` | `0` | `1` = skip destroy, useful for debugging |
+| `VAST_USER` | `$USER` | identity tag baked into the instance label for shared-account attribution |
 
 ## GPU tier examples
 
