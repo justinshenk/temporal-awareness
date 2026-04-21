@@ -515,10 +515,6 @@ def run_eap_ig(
                         clean_logits_cpu,
                         corrupted_logits_cpu,
                     )
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                    gc.collect()
-
                 output_file = save_loc / (
                     f"{filename}_{order_label}_{metric_label}_batch_{i:05d}.npz"
                 )
@@ -532,6 +528,10 @@ def run_eap_ig(
                 except ValueError:
                     path_in_repo = output_file.name
                 enqueue_upload(output_file_abs, path_in_repo)
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
 
     if upload_queue is not None and upload_thread is not None:
         upload_queue.put(None)
