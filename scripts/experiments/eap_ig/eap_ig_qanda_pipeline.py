@@ -150,7 +150,9 @@ def process_batch(
         )
 
         clean_logits_cpu = clean_logits[:, -1, [token_a, token_b]].detach().cpu()
-        corrupted_logits_cpu = corrupted_logits[:, -1, [token_a, token_b]].detach().cpu()
+        corrupted_logits_cpu = (
+            corrupted_logits[:, -1, [token_a, token_b]].detach().cpu()
+        )
         del clean_logits, corrupted_logits
 
         eap_ig_scores.attention_mask = expand_mask(
@@ -165,12 +167,14 @@ def process_batch(
                 value
             )
 
-        batch_output[f"step_{num_steps}__clean_logits"] = clean_logits_cpu.float().numpy()
+        batch_output[f"step_{num_steps}__clean_logits"] = (
+            clean_logits_cpu.float().numpy()
+        )
         batch_output[f"step_{num_steps}__corrupted_logits"] = (
             corrupted_logits_cpu.float().numpy()
         )
-        batch_output[f"step_{num_steps}__token_positions_considered"] = (
-            tensor_to_numpy(token_position_counts)
+        batch_output[f"step_{num_steps}__token_positions_considered"] = tensor_to_numpy(
+            token_position_counts
         )
 
         del (
