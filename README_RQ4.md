@@ -215,21 +215,6 @@ results/lookahead/final/
 
 ---
 
-## Key Experiment Scripts
-
-| Script | Purpose | Time |
-|--------|---------|------|
-| `run_rq4_final.py` | Main 500ex, 11 models | ~10h |
-| `run_rq4_futurelens_multimodel.py` | Future Lens (3 models, CIs) | ~5h |
-| `run_opus_fixes.py` | Qwen-7B + scrambled CoT | ~15m |
-| `run_rq4_domains.py` | Intermediate domains | ~1h |
-| `run_rq4_fl_fixed.py` | Pal et al. method comparison | ~1h |
-| `run_fix5_fast.py` | 100-sig fixed positions | ~10m |
-| `run_rq4_gentime.py` | Generation-time curves | ~4h |
-| `generate_figures.py` | All paper figures (no GPU) | ~1m |
-
----
-
 ## Reproduction
 
 ```bash
@@ -267,8 +252,6 @@ python3 -m pytest tests/lookahead/ -v                               # Tests
 5. Code probing signal fully explained by surface features (14 models, 5 families)
 
 **Target venues:** EMNLP 2026 (ARR submission May 25)
-
-**Compute:** ~$6 total on Vast.ai
 
 ---
 
