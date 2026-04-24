@@ -1,4 +1,4 @@
-# RQ4: Lookahead Planning Detection in Language Models
+# RQ4: A Baseline Staircase for Discriminating Planning from Continuation in Language Models
 
 **Branch:** `psycoplankton/rq4-lookahead-planning`  
 **Author:** Tejas Dahiya (tdahiya2@wisc.edu, UW-Madison)  
@@ -7,46 +7,123 @@
 
 ---
 
-## Summary
+## Key Findings
 
-We investigate whether language models plan ahead by committing to future structure before producing tokens. Through experiments across **14 models**, **5 architecture families**, **5 text domains**, and **8+ baselines**, we find:
+We propose the **baseline staircase**, a progressive series of surface-feature baselines that reveals what probing classifiers actually detect. Applied across **14 models** (124M–14B, 5 architecture families), **6 text domains**, and **4 Future Lens models**, we discover:
 
-1. **Code domain (11 models, 124M–7B):** No evidence of planning. A `name+params` baseline (87–95%) beats the probe (80–91%) at every layer in every model. 0/66 significant after FDR correction.
+1. **A domain spectrum of model processing.** Chain-of-thought math maintains the largest probe-vs-baseline gap (+28–33% at K=3), even when template structure is scrambled. Code and structured prose show moderate gaps (+10–22%). Poetry collapses to zero. The staircase diagnoses *which* domains elicit genuine multi-step representations.
 
-2. **Natural text (3 models with bootstrap CIs):** Probe genuinely beats fair embedding baselines, replicating Pal et al.'s Future Lens. But the gap decays rapidly with prediction distance (K=1: +19–51%, K=5: near zero) — short-range statistical continuation, not long-range planning.
+2. **Universal K decay across architectures.** Replicating Pal et al.'s Future Lens across Pythia-2.8B, Qwen-1.5B, GPT-J-6B, and Qwen-7B, the probe-vs-baseline gap shrinks from +19–60% at K=1 to near zero at K=5. This is consistent with short-range statistical continuation, not long-range planning.
 
-3. **Intermediate domains (5 domains):** Chain-of-thought math maintains the strongest planning-like signal (+28% at K=3). Poetry collapses to zero. The baseline staircase is a general diagnostic tool.
+3. **Code probing signal = surface features.** Across 14 models, a name+params baseline (87–95%) beats the probe (80–91%) at every layer (0/66 significant after FDR). Capability correlates with probe accuracy (ρ=+0.940) but not with planning signal (ρ=−0.078).
 
-4. **Methodology:** We propose a **baseline staircase protocol** extending Hewitt & Liang (2019) control tasks from binary (random vs real) to progressive (chance → BoW → name → name+params).
+---
+
+## The Baseline Staircase
+
+Instead of Hewitt & Liang's (2019) binary control tasks (random vs real), we use **progressive baselines** that isolate which surface features probes exploit:
+
+```
+Chance:        20%   →  Random guessing
+BoW features:  ~50%  →  Token-level statistics  
+Name-only:     63-75% →  Function name carries most info
+Name+Params:   84-95% →  Explains ALL probe signal
+Probe:         80-91% →  No residual beyond surface features
+```
+
+The staircase reveals that what appears as "planning" is progressively explained by surface features.
+
+![Baseline Staircase](results/lookahead/final/figures/fig1_baseline_staircase.png)
 
 ---
 
 ## Operationalization of Planning
 
-We define "lookahead planning" as internal representations satisfying three criteria:
+We define "lookahead planning" as internal representations satisfying two testable criteria:
 
 - **Beyond-surface (B):** Probe accuracy significantly exceeds the best surface-feature baseline after FDR correction
 - **Persistence (P):** Signal maintains or strengthens during autoregressive generation
-- **Transfer (T):** Representation transfers to structurally analogous tasks
 
-| Domain | Criterion B | Criterion P | Criterion T | Verdict |
-|--------|------------|------------|------------|---------|
-| Code return types | ✗ (0/66 sig.) | ✗ (decays 95→63%) | ✗ (fails on rhyme) | **No planning** |
-| Natural text (K=1) | ✓ (+19–51%) | ✗ (decays to ~0% at K=5) | Untested | **Statistical continuation** |
-| Chain-of-thought | ✓ (+28% at K=3) | Partial (maintains gap) | Untested | **Strongest candidate** |
+| Domain | Criterion B | Criterion P | Verdict |
+|--------|------------|------------|---------|
+| Code return types | ✗ (0/66 sig.) | ✗ (decays 95→63%) | **No planning** |
+| Natural text (K=1) | ✓ (+19–60%) | ✗ (decays to ~0% at K=5) | **Statistical continuation** |
+| Chain-of-thought | ✓ (+28–33% at K=3) | Partial (maintains gap) | **Strongest candidate** |
 
 ---
 
-## Part I: Code Domain Results
+## Part I: Domain Spectrum (6 Domains, 2 Models)
 
-### Core Finding: Baseline Staircase
+The staircase is a **general diagnostic**, not a code-specific finding. Testing on GPT-J-6B and Qwen-7B:
 
-```
-Naive probe:       80-91%  →  "Planning detected!"
-Name-only:         63-75%  →  Name explains most signal
-Name+Params:       84-95%  →  Explains ALL signal (beats probe everywhere)
-Gap (Probe - N+P): -2% to -11%  →  Zero residual planning
-```
+### GPT-J-6B
+
+| Domain | K=1 Gap | K=3 Gap |
+|--------|---------|---------|
+| **Chain-of-thought** | +31.1% | **+28.8%** |
+| **CoT scrambled** | +30.2% | **+29.2%** |
+| Free prose | +21.0% | +18.9% |
+| Structured prose | +21.3% | +10.0% |
+| Code | +22.5% | +11.0% |
+| **Poetry** | +33.0% | **−1.2%** |
+
+### Qwen-7B
+
+| Domain | K=1 Gap | K=3 Gap |
+|--------|---------|---------|
+| **Chain-of-thought** | +66.2% | **+33.4%** |
+| **CoT scrambled** | +53.5% | **+20.8%** |
+| Structured prose | +40.5% | +31.4% |
+| Free prose | +30.5% | +38.9% |
+| Code | +28.8% | +22.5% |
+| Poetry | +35.6% | skipped |
+
+### The Scrambled CoT Finding
+
+The gap **survives template disruption**. Scrambling "Step 1... Step 2... Therefore" into "Therefore the answer. Step 3: carry over" barely affects probe accuracy. On GPT-J-6B, scrambled CoT (+29.2%) ≈ normal CoT (+28.8%) at K=3. This is NOT template following — the model encodes something about the mathematical reasoning itself.
+
+![Scrambled CoT](results/lookahead/final/figures/fig9_scrambled_cot.png)
+
+---
+
+## Part II: Future Lens Replication (4 Models, Bootstrap CIs)
+
+Predicting exact token at position N+K from layer activations. Fair baselines (same-dimensionality embeddings). Proper 50/50 train/test split.
+
+### Multi-Model K Decay
+
+| Model | K=1 Gap | K=2 Gap | K=3 Gap | K=5 Gap |
+|-------|---------|---------|---------|---------|
+| Pythia-2.8B | +18.7% | +10.3% | +6.0% | −1.2% |
+| Qwen-1.5B | +51.3% | +24.5% | +11.1% | +2.7% |
+| GPT-J-6B | +30.9% | +15.8% | +5.2% | +4.9% |
+| **Qwen-7B** | **+60.3%** | **+22.5%** | **+10.6%** | **+5.0%** |
+
+K decay is **universal across architectures and scales** (1.5B–7B). Models encode short-range statistical continuation that dissipates within ~5 tokens.
+
+![Future Lens K Decay](results/lookahead/final/figures/fig2_future_lens_k_decay.png)
+
+### Comparison to Pal et al.'s Actual Method
+
+| Method | K=1 | K=3 | K=5 |
+|--------|-----|-----|-----|
+| Pal et al. linear mapping (PCA source) | 4.8% | 4.6% | 4.1% |
+| Pal et al. linear mapping (full 4096-dim) | 2.0% | 2.7% | 2.5% |
+| **Our classification probe** | **85.4%** | **44.4%** | **34.0%** |
+
+Linear hidden-state mapping requires substantially more training data. Our classification probe is more practical for baseline staircase comparisons.
+
+![Pal Comparison](results/lookahead/final/figures/fig8_pal_comparison.png)
+
+---
+
+## Part III: Code Domain Results (14 Models)
+
+### The Spearman Dissociation
+
+The cleanest statement of our thesis: capability correlates with probe accuracy (ρ=+0.940, p<0.001) but NOT with planning signal (ρ=−0.078, p=0.819). More capable models have higher probe accuracy, but the gap between probe and surface baselines stays the same — **zero**.
+
+![Spearman](results/lookahead/final/figures/fig6_spearman.png)
 
 ### Results Table (11 Models + 3 Independent Qwen Replications)
 
@@ -67,91 +144,47 @@ Gap (Probe - N+P): -2% to -11%  →  Zero residual planning
 | *Qwen2.5-7B* | *7B* | — | — | — | *Same pattern* |
 | *Qwen2.5-14B* | *14B* | — | — | — | *Same pattern* |
 
-*Qwen models independently replicated by Justin Shenk. 0/66 layer-model combinations significant after Benjamini-Hochberg FDR correction.*
-
-### Statistical Analysis
-
-**FDR (Benjamini-Hochberg):** Probe vs name+params: **0/66 significant.** Probe vs name-only: 55/66 significant.
-
-**Spearman correlations (the cleanest thesis statement):**
-- Behavioral accuracy vs Probe accuracy: **ρ = +0.940** (p < 0.001) — capability predicts probe signal
-- Behavioral accuracy vs Gap (probe − N+P): **ρ = −0.078** (p = 0.819) — capability does NOT predict planning
-
----
-
-## Part II: Future Lens Replication (3 Models, Bootstrap CIs)
-
-Predicting exact token at position N+K from layer activations. Fair baselines use same-dimensionality embeddings. Proper 50/50 train/test split, 300 bootstrap samples, 3 probe seeds.
-
-### Multi-Model K Decay (Gap = Probe − Context Embedding)
-
-| Model | K=1 Gap | K=2 Gap | K=3 Gap | K=5 Gap |
-|-------|---------|---------|---------|---------|
-| Pythia-2.8B | **+18.7%** [.873,.940]* | +10.3% | +6.0% | −1.2% |
-| Qwen2.5-1.5B | **+51.3%** [.832,.910]* | +24.5% | +11.1% | +2.7% |
-| GPT-J-6B | **+30.9%** [.830,.896]* | +15.8% | +5.2% | +4.9% |
-
-*\* = statistically significant (probe CI_lo > context CI_hi)*
-
-**Finding:** K decay is **universal across architectures**. Models encode short-range statistical continuation that dissipates within ~5 tokens.
-
-### Comparison to Pal et al.'s Actual Method
-
-| Method | K=1 | K=3 | K=5 |
-|--------|-----|-----|-----|
-| Pal et al. linear mapping (PCA source) | 4.8% | 4.6% | 4.1% |
-| Pal et al. linear mapping (full 4096-dim) | 2.0% | 2.7% | 2.5% |
-| **Our classification probe** | **85.4%** | **44.4%** | **34.0%** |
-
-Linear hidden-state mapping requires orders of magnitude more training data. Our classification probe is more practical for baseline staircase comparisons.
-
----
-
-## Part III: Intermediate Domains (5 Domains, GPT-J-6B)
-
-### K=3 — The Diagnostic Test
-
-| Domain | Context Emb | Probe | Gap | Interpretation |
-|--------|-------------|-------|-----|----------------|
-| **Chain-of-thought** | 59.3% | 87.3% | **+28.0%** | Strongest planning-like signal |
-| Free prose | 44.5% | 63.4% | +18.9% | Moderate continuation |
-| Structured prose | 62.0% | 73.0% | +11.0% | Template following |
-| Code | 74.5% | 85.5% | +11.0% | Syntactic patterns |
-| **Poetry** | 42.0% | 40.8% | **−1.2%** | Collapses to zero |
-
-Chain-of-thought maintains the gap where poetry collapses. The staircase distinguishes domains where model processing adds genuine multi-step information.
+*Qwen models independently replicated by Justin Shenk. 0/66 significant after Benjamini-Hochberg FDR.*
 
 ---
 
 ## Part IV: Supporting Experiments
 
-### Misleading Names (50 examples × 3 models)
-Functions where name contradicts params (e.g., `def greet(numbers):`). Models follow params 56%, name 22–34%.
+### Generation-Time Decay (Fails Persistence Criterion)
 
-### Fair Subset Analysis (3 models)
-Train easy / test hard. Probe: 47–74% vs name+params: 86–93%.
+Probe accuracy **decays** during generation (CodeLlama: 95.3% → 62.9%). Models lose structural info as they generate — the opposite of planning commitment.
 
-### Generation-Time Commitment (20 steps × 4 models)
-Probe accuracy **decays** during generation (CodeLlama: 95.3% → 62.9%). Fails Persistence criterion.
+![Generation-Time Decay](results/lookahead/final/figures/fig4_gentime_decay.png)
 
-### Fixed-Position Probing (100 signatures, GPT-J-6B)
+### Fixed-Position Probing (100 Signatures)
+
+Where does return type info live?
 
 | Position | What it is | Accuracy |
 |----------|-----------|----------|
 | pos=0 (BOS) | Start token | 22% (chance) |
 | pos=1 (def) | Keyword | 22% (chance) |
 | pos=2 (name) | Function name | **81%** |
-| pos=3 | After name | 80% |
+| pos=3 (paren) | After name | 80% |
 | pos=5 (params) | Parameters | 80% |
 | pos=last | Full signature | **94%** |
 
 Info lives in the function name — exactly where surface features predict.
 
-### Mean-Pooling Confound (3 models)
-Mean-pooled probe = name+params accuracy. Original gap was information quantity, not planning.
+![Fixed Positions](results/lookahead/final/figures/fig5_fixed_positions.png)
 
-### Acrostic Behavioral (6 models)
-4–20% accuracy (near chance). Models cannot plan structurally.
+### Misleading Names (50 examples × 3 models)
+
+Functions where name contradicts params (e.g., `def greet(numbers):`). Models follow params 56%, name 22–34%. Surface matching, not semantic understanding.
+
+![Misleading Names](results/lookahead/final/figures/fig7_misleading_names.png)
+
+### Additional Experiments
+
+- **Fair Subset Analysis** (3 models) — Train easy / test hard. Probe: 47–74% vs N+P: 86–93%.
+- **Mean-Pooling Confound** (3 models) — Mean-pooled probe = name+params accuracy.
+- **Acrostic Behavioral** (6 models) — 4–20% (near chance). Models cannot plan structurally.
+- **FP32 steering** (10 models), causal patching, cross-task transfer (code→rhyme: fails), base vs instruct.
 
 ---
 
@@ -162,45 +195,38 @@ src/lookahead/
 ├── datasets/           # code_return.py, rhyme.py, acrostic.py
 ├── probing/            # activation_extraction, baselines, probes
 ├── patching/           # causal_patching.py
-└── utils/              # types.py (PlanningExample, TaskType)
+└── utils/              # types.py
 
 tests/lookahead/        # 49/49 passing
 
-scripts/lookahead/
-├── experiments/        # All GPU experiment scripts
-├── run_comprehensive.py
-└── run_phase1_commitment_curves.py
+scripts/lookahead/experiments/   # All experiment scripts (22 scripts)
 
-results/lookahead/
-├── complete/           # Initial runs (150 examples)
-└── final/              # Final runs (500 examples)
-    ├── *_final.json              # Per-model code results (11 models)
-    ├── gentime_*.json            # Generation-time curves
-    ├── fixes_*.json              # Mean-pool + def-position
-    ├── future_lens_multimodel.json  # 3-model Future Lens with CIs
-    ├── future_lens_v4_fixed.json    # GPT-J with proper train/test
-    ├── future_lens_fixed_method.json # Pal et al. actual method
-    ├── intermediate_domains.json    # 5-domain experiment
-    ├── reviewer_fixes.json          # Larger scale (100 prompts)
-    ├── fix5_100sigs.json            # 100-sig fixed positions
-    ├── figures/                     # Paper figures (PNG + PDF)
-    └── stats/                       # FDR + Spearman JSON
+results/lookahead/final/
+├── *_final.json                   # Per-model code results
+├── future_lens_multimodel.json    # 3-model Future Lens with CIs
+├── opus_fixes_7b_scrambled.json   # Qwen-7B + scrambled CoT
+├── intermediate_domains.json      # 5-domain experiment
+├── future_lens_fixed_method.json  # Pal et al. comparison
+├── fix5_100sigs.json              # 100-sig fixed positions
+├── reviewer_fixes.json            # Larger scale (100 prompts)
+├── figures/                       # 10 figures (PNG + PDF)
+└── stats/                         # FDR + Spearman JSON
 ```
 
 ---
 
 ## Key Experiment Scripts
 
-| Script | Purpose | GPU | Time |
-|--------|---------|-----|------|
-| `run_rq4_final.py` | Main 500ex, 11 models | Yes | ~10h |
-| `run_rq4_gentime.py` | Generation-time curves | Yes | ~4h |
-| `run_rq4_futurelens_multimodel.py` | Future Lens (3 models, CIs) | Yes | ~5h |
-| `run_rq4_domains.py` | Intermediate domains | Yes | ~1h |
-| `run_rq4_fl_fixed.py` | Pal et al. method comparison | Yes | ~1h |
-| `run_fix5_fast.py` | 100-sig fixed positions | Yes | ~10m |
-| `run_rq4_reviewer_fixes.py` | Larger scale (100 prompts) | Yes | ~3h |
-| `run_rq4_analysis.py` | Stats + figures (no GPU) | No | ~1m |
+| Script | Purpose | Time |
+|--------|---------|------|
+| `run_rq4_final.py` | Main 500ex, 11 models | ~10h |
+| `run_rq4_futurelens_multimodel.py` | Future Lens (3 models, CIs) | ~5h |
+| `run_opus_fixes.py` | Qwen-7B + scrambled CoT | ~15m |
+| `run_rq4_domains.py` | Intermediate domains | ~1h |
+| `run_rq4_fl_fixed.py` | Pal et al. method comparison | ~1h |
+| `run_fix5_fast.py` | 100-sig fixed positions | ~10m |
+| `run_rq4_gentime.py` | Generation-time curves | ~4h |
+| `generate_figures.py` | All paper figures (no GPU) | ~1m |
 
 ---
 
@@ -212,20 +238,11 @@ cd temporal-awareness && git checkout psycoplankton/rq4-lookahead-planning
 pip install "transformer-lens==2.11.0" "transformers==4.44.0" scikit-learn scipy matplotlib
 export PYTHONPATH=$(pwd):$PYTHONPATH
 
-# Code domain (GPU, ~10h)
-python3 scripts/lookahead/experiments/run_rq4_final.py
-
-# Future Lens with CIs (GPU, ~5h)
-python3 run_rq4_futurelens_multimodel.py
-
-# Intermediate domains (GPU, ~1h)
-python3 run_rq4_domains.py
-
-# Stats + figures (no GPU)
-python3 scripts/lookahead/experiments/run_rq4_analysis.py
-
-# Tests
-python3 -m pytest tests/lookahead/ -v
+python3 scripts/lookahead/experiments/run_rq4_final.py             # Code (GPU, ~10h)
+python3 scripts/lookahead/experiments/run_rq4_futurelens_multimodel.py  # Future Lens (GPU, ~5h)
+python3 run_opus_fixes.py                                           # Qwen-7B + CoT (GPU, ~15m)
+python3 scripts/lookahead/experiments/generate_figures.py           # Figures (no GPU)
+python3 -m pytest tests/lookahead/ -v                               # Tests
 ```
 
 ---
@@ -233,21 +250,25 @@ python3 -m pytest tests/lookahead/ -v
 ## Related Work
 
 - **Hewitt & Liang (2019)** — Control tasks for probes. We extend from binary to progressive staircase.
-- **Pal et al. (2023)** — Future Lens. We replicate with fair baselines, show universal K decay.
+- **Pal et al. (2023)** — Future Lens. We replicate with fair baselines across 4 architectures, show universal K decay.
 - **Belrose et al. (2023)** — Tuned Lens. Our layer-wise analysis aligns with iterative refinement.
 
 ---
 
 ## Paper
 
-**Title:** *Knowledge Without Planning: How Probing Baselines Explain Away Apparent Lookahead in Code Generation*
+**Working Title:** *A Baseline Staircase for Discriminating Planning from Continuation in Language Models*
 
 **Contributions:**
-1. Baseline staircase protocol extending Hewitt & Liang (2019)
-2. Code probing signal fully explained by surface features (14 models, 5 families)
-3. Future Lens replication: universal K decay across 3 architectures
-4. Intermediate domains: chain-of-thought maintains signal, poetry collapses
-5. Generation-time decay refutes commitment hypothesis
+1. Baseline staircase protocol extending Hewitt & Liang (2019) control tasks
+2. Domain spectrum: CoT maintains planning-like signal (+28%), poetry collapses to zero
+3. Scrambled CoT ablation: signal survives template disruption — not template following
+4. Universal K decay across 4 architectures (1.5B–7B)
+5. Code probing signal fully explained by surface features (14 models, 5 families)
+
+**Target venues:** EMNLP 2026 (ARR submission May 25)
+
+**Compute:** ~$6 total on Vast.ai
 
 ---
 
