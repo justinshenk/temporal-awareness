@@ -22,7 +22,7 @@ plt.savefig(f"{FIGDIR}/fig1_baseline_staircase.png"); plt.savefig(f"{FIGDIR}/fig
 
 # Fig 2: Future Lens K decay
 fig,ax=plt.subplots(figsize=(8,5))
-for name,gaps,c,m in [('Pythia-2.8B',[18.7,10.3,6.0,-1.2],'#4C72B0','o'),('Qwen-1.5B',[51.3,24.5,11.1,2.7],'#DD8452','s'),('GPT-J-6B',[30.9,15.8,5.2,4.9],'#55A868','^')]:
+for name,gaps,c,m in [('Pythia-2.8B',[18.7,10.3,6.0,-1.2],'#4C72B0','o'),('Qwen-1.5B',[51.3,24.5,11.1,2.7],'#DD8452','s'),('GPT-J-6B',[30.9,15.8,5.2,4.9],'#55A868','^'),('Qwen-7B',[60.3,22.5,10.6,5.0],'#C44E52','D')]:
     ax.plot([1,2,3,5],gaps,'-'+m,color=c,label=name,lw=2,ms=8)
 ax.axhline(0,color='gray',ls='--',alpha=.5); ax.fill_between([.5,5.5],-5,5,alpha=.1,color='gray')
 ax.set_xlabel('Prediction Distance (K)'); ax.set_ylabel('Gap: Probe − Context Emb (%)'); ax.set_title('Future Lens K Decay: Universal Across Architectures'); ax.set_xticks([1,2,3,5]); ax.legend(); ax.grid(alpha=.3); ax.set_xlim(.5,5.5)
@@ -85,3 +85,23 @@ ax.set_ylabel('Accuracy (%)'); ax.set_title('Classification Probes vs Linear Hid
 plt.savefig(f"{FIGDIR}/fig8_pal_comparison.png"); plt.savefig(f"{FIGDIR}/fig8_pal_comparison.pdf"); plt.close(); print("  Fig 8 ✓")
 
 print(f"\nAll 8 figures saved to {FIGDIR}/")
+
+# Fig 9: Scrambled CoT ablation
+def fig9_scrambled_cot():
+    fig,(ax1,ax2)=plt.subplots(1,2,figsize=(12,5))
+    x=np.arange(2); w=0.3
+    ax1.bar(x-w/2,[31.1,30.2],w,label='K=1',color='#4C72B0',alpha=.85)
+    ax1.bar(x+w/2,[28.8,29.2],w,label='K=3',color='#DD8452',alpha=.85)
+    ax1.set_ylabel('Gap (%)'); ax1.set_title('GPT-J-6B: Gap Survives Scrambling')
+    ax1.set_xticks(x); ax1.set_xticklabels(['CoT (normal)','CoT (scrambled)']); ax1.legend(); ax1.grid(axis='y',alpha=.3); ax1.set_ylim(0,40)
+    ax1.annotate('Nearly\nidentical',xy=(1.15,29),fontsize=10,color='green',fontweight='bold')
+    ax2.bar(x-w/2,[66.2,53.5],w,label='K=1',color='#4C72B0',alpha=.85)
+    ax2.bar(x+w/2,[33.4,20.8],w,label='K=3',color='#DD8452',alpha=.85)
+    ax2.set_ylabel('Gap (%)'); ax2.set_title('Qwen-7B: Partial Reduction, Still Large')
+    ax2.set_xticks(x); ax2.set_xticklabels(['CoT (normal)','CoT (scrambled)']); ax2.legend(); ax2.grid(axis='y',alpha=.3); ax2.set_ylim(0,75)
+    ax2.annotate('Still +21%\nat K=3',xy=(1.15,21),fontsize=10,color='green',fontweight='bold')
+    plt.suptitle('Scrambled CoT: Signal Is NOT Template Following',fontsize=14,y=1.02); plt.tight_layout()
+    plt.savefig(f"{FIGDIR}/fig9_scrambled_cot.png"); plt.savefig(f"{FIGDIR}/fig9_scrambled_cot.pdf"); plt.close()
+    print("  Fig 9: Scrambled CoT ✓")
+
+fig9_scrambled_cot()
