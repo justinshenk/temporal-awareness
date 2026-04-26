@@ -11,6 +11,17 @@ from typing import Any
 import torch
 from tqdm import tqdm
 
+def find_project_root(start: Path) -> Path:
+    """Find the repository root by walking upward until src/ is present."""
+    for path in (start, *start.parents):
+        if (path / "src").is_dir():
+            return path
+    raise RuntimeError(f"Could not find project root containing src/ from {start}")
+
+
+PROJECT_ROOT = find_project_root(Path(__file__).resolve())
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.intertemporal.data.default_datasets import (
     FULL_EXPERIMENT_DATASET_CONFIG,
     GEO_VIZ_CFG,
@@ -19,10 +30,6 @@ from src.intertemporal.data.default_datasets import (
 )
 from src.intertemporal.prompt import PromptDataset, PromptDatasetConfig  # type: ignore
 from src.intertemporal.prompt.prompt_dataset_generator import PromptDatasetGenerator
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT))
-
 
 DATASET_CONFIGS: dict[str, dict[str, Any]] = {
     "geo_viz": GEO_VIZ_CFG,
