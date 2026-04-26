@@ -43,6 +43,15 @@ except ImportError:
     from eap_ig_qanda_upload import maybe_start_upload_worker
 
 
+def selected_nodes_include_attention_heads(selected_node_groups: dict) -> bool:
+    """Return whether selected nodes include z attention-head entries."""
+    return any(
+        component == "z"
+        for group_nodes in selected_node_groups.values()
+        for (_, component), _ in group_nodes
+    )
+
+
 def cache_prompt_activations(
     *,
     dataset: str,
@@ -109,6 +118,10 @@ def cache_prompt_activations(
             return_logits=False,
             clone_tensors=True,
         )
+        if average_positions and selected_nodes_include_attention_heads(
+            selected_node_groups
+        ):
+            activations = activations.split_heads()
         activations = maybe_average_positions(activations, average_positions)
 
         cache_payload = {
