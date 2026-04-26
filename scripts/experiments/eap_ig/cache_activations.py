@@ -68,6 +68,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--attn-type", default="sdpa")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument(
+        "--positions",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Optional token position(s) to cache. Defaults to all positions.",
+    )
+    parser.add_argument(
         "--average-positions",
         action="store_true",
         help="Save activations averaged across valid token positions.",
@@ -105,6 +112,7 @@ def main() -> None:
         device=args.device,
         attn_type=args.attn_type,
         max_samples=args.max_samples,
+        positions=args.positions,
         save_to_hf=args.save_to_hf,
         hf_repo_id=args.hf_repo_id,
         hf_repo_type=args.hf_repo_type,

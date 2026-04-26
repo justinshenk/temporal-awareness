@@ -63,6 +63,7 @@ def cache_prompt_activations(
     device: str | None,
     attn_type: str,
     max_samples: int | None,
+    positions: list[int] | None,
     save_to_hf: bool,
     hf_repo_id: str,
     hf_repo_type: str,
@@ -109,7 +110,7 @@ def cache_prompt_activations(
             model,
             tokenized_batch,
             layer_components,
-            positions=None,
+            positions=positions,
             return_logits=False,
             clone_tensors=True,
         )
@@ -124,6 +125,7 @@ def cache_prompt_activations(
             "nodes_path": str(nodes_path),
             "layer_components": layer_components,
             "metadata": metadata_batches[batch_idx],
+            "positions": positions,
             "average_positions": average_positions,
             "activations": extract_selected_activations(
                 activations,
