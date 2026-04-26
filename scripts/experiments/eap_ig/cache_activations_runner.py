@@ -23,7 +23,7 @@ try:
         load_selected_node_groups,
     )
     from .cache_activations_paths import chunk_list
-    from .eap_ig_qanda_upload import maybe_start_upload_worker
+    from .cache_activations_upload import upload_cache_folder
 except ImportError:
     from cache_activations_data import (
         get_sample_text,
@@ -40,7 +40,7 @@ except ImportError:
         load_selected_node_groups,
     )
     from cache_activations_paths import chunk_list
-    from eap_ig_qanda_upload import maybe_start_upload_worker
+    from cache_activations_upload import upload_cache_folder
 
 
 def selected_nodes_include_attention_heads(selected_node_groups: dict) -> bool:
@@ -74,11 +74,6 @@ def cache_prompt_activations(
 
     selected_node_groups = load_selected_node_groups(nodes_path)
     layer_components = get_unique_layer_components(selected_node_groups)
-    upload_queue, upload_thread, enqueue_upload = maybe_start_upload_worker(
-        save_to_hf=save_to_hf,
-        hf_repo_id=hf_repo_id,
-        hf_repo_type=hf_repo_type,
-    )
 
     prompt_dataset = load_prompt_dataset(dataset)
     samples = prompt_dataset.samples
@@ -141,13 +136,15 @@ def cache_prompt_activations(
         output_file = output_dir / f"activations_batch_{batch_idx:05d}.pt"
         torch.save(cache_payload, output_file)
 
-        output_file_abs = output_file.resolve()
-        try:
-            path_in_repo = output_file_abs.relative_to(Path.cwd().resolve()).as_posix()
-        except ValueError:
-            path_in_repo = output_file.name
-        enqueue_upload(output_file_abs, path_in_repo)
-
-    if upload_queue is not None and upload_thread is not None:
-        upload_queue.put(None)
-        upload_thread.join()
+    output_dir_abs = output_dir.resolve()
+    try:
+        path_in_repo = output_dir_abs.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        path_in_repo = output_dir.name
+    upload_cache_folder(
+        save_to_hf=save_to_hf,
+        local_dir=output_dir_abs,
+        path_in_repo=path_in_repo,
+        hf_repo_id=hf_repo_id,
+        hf_repo_type=hf_repo_type,
+    )
