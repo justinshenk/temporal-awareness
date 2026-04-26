@@ -82,6 +82,14 @@ def get_time_horizon_label(sample: Any) -> str:
     return str(sample.prompt.time_horizon)
 
 
+def get_sample_text(sample: Any) -> str:
+    """Return rendered prompt text from a PromptSample."""
+    text = getattr(sample, "text", None)
+    if isinstance(text, str) and text:
+        return text
+    raise ValueError(f"Prompt sample {sample!r} does not contain rendered text.")
+
+
 def chunk_list(items: list[Any], batch_size: int) -> list[list[Any]]:
     """Split a list into fixed-size chunks."""
     return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
@@ -234,7 +242,7 @@ def cache_prompt_activations(
     if max_samples is not None:
         samples = samples[:max_samples]
 
-    prompts = [sample.prompt.text for sample in samples]
+    prompts = [get_sample_text(sample) for sample in samples]
     metadata = [
         {
             "sample_index": idx,
