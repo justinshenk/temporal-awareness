@@ -2,10 +2,9 @@
 
 The input is a JSONL file produced by ``generate_completions.py``. Each record is
 expected to contain ``full_text`` plus prompt metadata. Activations are averaged
-over the generated answer span from ``Strategy:`` through the generated
-``Steps:`` section, then cached in batch ``.pt`` files with the same
-selected-node layout used by the old ``feature_geometry`` activation cache
-scripts.
+over the generated ``Strategy:`` section up to, but not including, the generated
+``Steps:`` marker, then cached in batch ``.pt`` files with the same selected-node
+layout used by the old ``feature_geometry`` activation cache scripts.
 """
 
 from __future__ import annotations
@@ -230,7 +229,7 @@ def get_underlying_tokenizer(tokenizer: Any) -> Any:
 
 
 def find_strategy_steps_span(full_text: str) -> tuple[int, int, str] | None:
-    """Return the char span for the generated Strategy/Steps answer section."""
+    """Return the char span for generated Strategy text before Steps."""
     assistant_marker = "assistant\n"
     assistant_start = full_text.rfind(assistant_marker)
     if assistant_start == -1:
@@ -245,9 +244,9 @@ def find_strategy_steps_span(full_text: str) -> tuple[int, int, str] | None:
     if steps_start == -1:
         return None
 
-    span_end = steps_start + len("Steps:")
-    while span_end < len(full_text) and full_text[span_end] in " \t":
-        span_end += 1
+    span_end = steps_start
+    while span_end > strategy_start and full_text[span_end - 1].isspace():
+        span_end -= 1
     if span_end <= strategy_start:
         return None
 
