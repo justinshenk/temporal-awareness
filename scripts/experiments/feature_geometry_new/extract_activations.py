@@ -245,9 +245,9 @@ def find_strategy_steps_span(full_text: str) -> tuple[int, int, str] | None:
     if steps_start == -1:
         return None
 
-    span_end = full_text.find("\n\n", steps_start + len("Steps:"))
-    if span_end == -1:
-        span_end = len(full_text.rstrip())
+    span_end = steps_start + len("Steps:")
+    while span_end < len(full_text) and full_text[span_end] in " \t":
+        span_end += 1
     if span_end <= strategy_start:
         return None
 
