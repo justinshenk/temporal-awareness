@@ -1,10 +1,10 @@
 """Extract selected-node activations for generated feature-geometry completions.
 
 The input is a JSONL file produced by ``generate_completions.py``. Each record is
-expected to contain ``full_text`` plus prompt metadata. Activations are averaged
-over the generated ``Strategy:`` section up to, but not including, the generated
-``Steps:`` marker, then cached in batch ``.pt`` files with the same selected-node
-layout used by the old ``feature_geometry`` activation cache scripts.
+expected to contain ``full_text`` plus prompt metadata. Position-wise activations
+are cached from the generated ``assistant`` marker up to, but not including, the
+generated ``Steps:`` marker, using the same selected-node layout as the old
+``feature_geometry`` activation cache scripts.
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ import argparse
 import json
 import pickle
 import sys
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -57,11 +56,6 @@ def resolve_path(path: str | Path) -> Path:
     if path.is_absolute():
         return path
     return PROJECT_ROOT / path
-
-
-def chunk_list(items: list[Any], batch_size: int) -> list[list[Any]]:
-    """Split a list into fixed-size chunks."""
-    return [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
 
 
 def load_selected_node_groups(nodes_path: Path) -> SelectedNodeGroups:
@@ -141,13 +135,6 @@ def selected_nodes_include_attention_heads(
     )
 
 
-def maybe_average_positions(activations: Any, average_positions: bool) -> Any:
-    """Optionally average activations across valid token positions."""
-    if not average_positions:
-        return activations
-    return activations.apply(torch.nanmean, dim=1, mask_aware=True)
-
-
 def extract_selected_activations(
     activations: Any,
     selected_node_groups: SelectedNodeGroups,
@@ -194,42 +181,13 @@ def load_completion_records(
     return records
 
 
-def iter_batches(
-    records: list[dict[str, Any]],
-    batch_size: int,
-) -> Iterator[tuple[int, list[dict[str, Any]]]]:
-    """Yield indexed record batches."""
-    if batch_size < 1:
-        raise ValueError(f"batch_size must be >= 1, got {batch_size}")
-
-    for batch_idx, start in enumerate(range(0, len(records), batch_size)):
-        yield batch_idx, records[start : start + batch_size]
-
-
-def build_metadata(
-    batch: list[dict[str, Any]], start_index: int
-) -> list[dict[str, Any]]:
-    """Build serializable metadata for a completion batch."""
-    metadata = []
-    for offset, record in enumerate(batch):
-        metadata.append(
-            {
-                "sample_index": start_index + offset,
-                "prompt": record.get("prompt"),
-                "prompt_metadata": record.get("prompt_metadata", {}),
-                "completion_model_name": record.get("model_name"),
-            }
-        )
-    return metadata
-
-
 def get_underlying_tokenizer(tokenizer: Any) -> Any:
     """Return the HF tokenizer wrapped by mech_interp_toolkit when present."""
     return getattr(tokenizer, "tokenizer", tokenizer)
 
 
-def find_strategy_steps_span(full_text: str) -> tuple[int, int, str] | None:
-    """Return the char span for generated Strategy text before Steps."""
+def find_assistant_strategy_span(full_text: str) -> tuple[int, int, str] | None:
+    """Return the char span from assistant marker through generated Strategy."""
     assistant_marker = "assistant\n"
     assistant_start = full_text.rfind(assistant_marker)
     if assistant_start == -1:
@@ -245,12 +203,12 @@ def find_strategy_steps_span(full_text: str) -> tuple[int, int, str] | None:
         return None
 
     span_end = steps_start
-    while span_end > strategy_start and full_text[span_end - 1].isspace():
+    while span_end > assistant_start and full_text[span_end - 1].isspace():
         span_end -= 1
-    if span_end <= strategy_start:
+    if span_end <= assistant_start:
         return None
 
-    return strategy_start, span_end, full_text[strategy_start:span_end]
+    return assistant_start, span_end, full_text[assistant_start:span_end]
 
 
 def token_positions_for_char_span(
@@ -282,21 +240,21 @@ def token_positions_for_char_span(
     return positions
 
 
-def build_strategy_steps_metadata(
+def build_activation_metadata(
     record: dict[str, Any],
     sample_index: int,
     char_span: tuple[int, int],
     token_positions: list[int],
     activation_text: str,
 ) -> list[dict[str, Any]]:
-    """Build metadata for one averaged Strategy/Steps activation sample."""
+    """Build metadata for one assistant-to-strategy activation sample."""
     return [
         {
             "sample_index": sample_index,
             "prompt": record.get("prompt"),
             "prompt_metadata": record.get("prompt_metadata", {}),
             "completion_model_name": record.get("model_name"),
-            "activation_section": "strategy_steps_generation",
+            "activation_section": "assistant_to_strategy_generation",
             "activation_char_span": list(char_span),
             "activation_token_positions": token_positions,
             "activation_text": activation_text,
@@ -310,22 +268,15 @@ def cache_completion_activations(
     model_name: str,
     nodes_path: Path,
     output_dir: Path,
-    batch_size: int,
     dtype: str | None,
     device: str | None,
     attn_type: str,
     max_samples: int | None,
     overwrite: bool,
 ) -> None:
-    """Load completions, average Strategy/Steps activations, and save caches."""
+    """Load completions, cache assistant-to-strategy activations, and save caches."""
     from mech_interp_toolkit.activation_utils import get_activations
     from mech_interp_toolkit.utils import load_model_tokenizer_config
-
-    if batch_size != 1:
-        raise ValueError(
-            "Strategy/Steps spans have different token positions per prompt; "
-            "use batch_size=1."
-        )
 
     selected_node_groups = load_selected_node_groups(nodes_path)
     layer_components = get_unique_layer_components(selected_node_groups)
@@ -338,30 +289,29 @@ def cache_completion_activations(
         attn_type=attn_type,
     )
     if getattr(tokenizer, "pad_token_id", None) is None:
-        tokenizer.pad_token = tokenizer.eos_token  # type:ignore
+        tokenizer.pad_token = tokenizer.eos_token  # type: ignore
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    total_batches = (len(records) + batch_size - 1) // batch_size
     skipped_spans: list[dict[str, Any]] = []
 
-    for batch_idx, batch in tqdm(
-        iter_batches(records, batch_size),
-        total=total_batches,
-        desc="Caching completion activation batches",
+    for sample_index, record in enumerate(
+        tqdm(
+            records,
+            total=len(records),
+            desc="Caching completion activations",
+        )
     ):
-        output_file = output_dir / f"activations_batch_{batch_idx:05d}.pt"
+        output_file = output_dir / f"activations_sample_{sample_index:05d}.pt"
         if output_file.exists() and not overwrite:
             continue
 
-        record = batch[0]
         text = record["full_text"]
-        start_index = batch_idx * batch_size
-        span = find_strategy_steps_span(text)
+        span = find_assistant_strategy_span(text)
         if span is None:
             skipped_spans.append(
                 {
-                    "sample_index": start_index,
-                    "error": "Could not find non-empty Strategy/Steps span",
+                    "sample_index": sample_index,
+                    "error": "Could not find non-empty assistant-to-strategy span",
                     "prompt": record.get("prompt"),
                     "prompt_metadata": record.get("prompt_metadata", {}),
                 }
@@ -389,22 +339,21 @@ def cache_completion_activations(
 
         if selected_nodes_include_attention_heads(selected_node_groups):
             activations = activations.split_heads()
-        activations = maybe_average_positions(activations, average_positions=True)
         cache_payload: dict[str, Any] = {
             "input_path": str(input_path),
             "model_name": model_name,
             "nodes_path": str(nodes_path),
             "layer_components": layer_components,
-            "metadata": build_strategy_steps_metadata(
+            "metadata": build_activation_metadata(
                 record=record,
-                sample_index=start_index,
+                sample_index=sample_index,
                 char_span=(start_char, end_char),
                 token_positions=token_positions,
                 activation_text=activation_text,
             ),
             "positions": token_positions,
-            "average_positions": True,
-            "activation_section": "strategy_steps_generation",
+            "average_positions": False,
+            "activation_section": "assistant_to_strategy_generation",
             "activations": extract_selected_activations(
                 activations,
                 selected_node_groups,
@@ -416,7 +365,7 @@ def cache_completion_activations(
         torch.save(cache_payload, output_file)
 
     if skipped_spans:
-        skipped_path = output_dir / "skipped_strategy_steps_spans.jsonl"
+        skipped_path = output_dir / "skipped_assistant_strategy_spans.jsonl"
         with skipped_path.open("w", encoding="utf-8") as f:
             for skipped in skipped_spans:
                 f.write(json.dumps(skipped, ensure_ascii=False) + "\n")
@@ -449,12 +398,6 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR,
         help=f"Activation cache output directory. Defaults to {DEFAULT_OUTPUT_DIR}.",
     )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=1,
-        help="Must be 1 because Strategy/Steps token spans differ by sample.",
-    )
     parser.add_argument("--dtype", default=None)
     parser.add_argument("--device", default=None)
     parser.add_argument("--attn-type", default="sdpa")
@@ -474,7 +417,6 @@ def main() -> None:
         model_name=args.model_name,
         nodes_path=resolve_path(args.nodes_path),
         output_dir=resolve_path(args.output_dir),
-        batch_size=args.batch_size,
         dtype=args.dtype,
         device=args.device,
         attn_type=args.attn_type,
