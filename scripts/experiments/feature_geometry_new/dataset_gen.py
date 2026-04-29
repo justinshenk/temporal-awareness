@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -207,20 +208,28 @@ def generate_task_dataset(
     task_units: dict[str, set[str]] = tasks,
     time_values: Iterable[int] = values,
     output_path: str | Path | None = None,
+    randomize_template: bool = False,
 ) -> list[PromptRecord]:
-    """Return every formatted prompt record from the configured templates and tasks."""
-    records: list[PromptRecord] = []
+    """Return formatted prompt records from the configured templates and tasks.
 
-    for template_config in template_list:
-        template_id = template_config["id"]
-        template = template_config["template"]
+    When ``randomize_template`` is false, return the full cartesian product of
+    templates and task parameters. When true, generate each task-parameter sample
+    once and choose one template from ``template_list`` at random for that sample.
+    """
+    records: list[PromptRecord] = []
+    template_configs = tuple(template_list)
+    if not template_configs:
+        raise ValueError("template_list must contain at least one template")
+
+    if randomize_template:
         for task, units in sorted(task_units.items()):
             for unit in sorted(units):
                 for value in time_values:
+                    template_config = random.choice(template_configs)
                     append_prompt_variants(
                         records=records,
-                        template=template,
-                        template_id=template_id,
+                        template=template_config["template"],
+                        template_id=template_config["id"],
                         task=task,
                         base_value=value,
                         base_unit=unit,
@@ -232,10 +241,11 @@ def generate_task_dataset(
                     smaller = smaller_unit_value(value, unit)
                     if smaller is not None:
                         smaller_value, smaller_unit = smaller
+                        template_config = random.choice(template_configs)
                         append_prompt_variants(
                             records=records,
-                            template=template,
-                            template_id=template_id,
+                            template=template_config["template"],
+                            template_id=template_config["id"],
                             task=task,
                             base_value=value,
                             base_unit=unit,
@@ -243,6 +253,39 @@ def generate_task_dataset(
                             unit=smaller_unit,
                             unit_variant="smaller",
                         )
+    else:
+        for template_config in template_configs:
+            template_id = template_config["id"]
+            template = template_config["template"]
+            for task, units in sorted(task_units.items()):
+                for unit in sorted(units):
+                    for value in time_values:
+                        append_prompt_variants(
+                            records=records,
+                            template=template,
+                            template_id=template_id,
+                            task=task,
+                            base_value=value,
+                            base_unit=unit,
+                            value=value,
+                            unit=unit,
+                            unit_variant="original",
+                        )
+
+                        smaller = smaller_unit_value(value, unit)
+                        if smaller is not None:
+                            smaller_value, smaller_unit = smaller
+                            append_prompt_variants(
+                                records=records,
+                                template=template,
+                                template_id=template_id,
+                                task=task,
+                                base_value=value,
+                                base_unit=unit,
+                                value=smaller_value,
+                                unit=smaller_unit,
+                                unit_variant="smaller",
+                            )
 
     if output_path is not None:
         Path(output_path).write_text(json.dumps(records, indent=2), encoding="utf-8")
@@ -250,8 +293,6 @@ def generate_task_dataset(
     return records
 
 
-dataset: list[PromptRecord] = generate_task_dataset()
-
-
 if __name__ == "__main__":
+    dataset: list[PromptRecord] = generate_task_dataset()
     print(json.dumps(dataset, indent=2))

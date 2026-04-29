@@ -85,13 +85,14 @@ def write_completions(
     max_new_tokens: int = 256,
     temperature: float = 0.5,
     top_p: float = 0.95,
+    randomize_template: bool = False,
 ) -> None:
     """Generate completions for the task dataset and write one JSONL record per prompt.
 
     The ``full_text`` field contains the entire decoded model output, including
     the original prompt and generated continuation.
     """
-    records = generate_task_dataset()
+    records = generate_task_dataset(randomize_template=randomize_template)
     model, tokenizer = load_model_and_tokenizer(model_name)
 
     if tokenizer.pad_token_id is None:
@@ -148,6 +149,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument(
+        "--randomize-template",
+        action="store_true",
+        help="Randomly select one template per task-parameter sample.",
+    )
+    parser.add_argument(
         "--temperature",
         type=float,
         default=0.0,
@@ -166,6 +172,7 @@ def main() -> None:
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
+        randomize_template=args.randomize_template,
     )
 
 
