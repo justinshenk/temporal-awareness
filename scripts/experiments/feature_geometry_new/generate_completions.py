@@ -47,7 +47,7 @@ def generate_full_strings(
     prompts: list[str],
     max_new_tokens: int,
     temperature: float,
-    top_p: float,
+    top_k: int,
 ) -> list[str]:
     """Generate and decode full prompt-plus-completion strings."""
     inputs = tokenizer(prompts)
@@ -65,7 +65,7 @@ def generate_full_strings(
             {
                 "do_sample": True,
                 "temperature": temperature,
-                "top_p": top_p,
+                "top_k": top_k,
             }
         )
     else:
@@ -84,7 +84,7 @@ def write_completions(
     batch_size: int = 128,
     max_new_tokens: int = 256,
     temperature: float = 0.5,
-    top_p: float = 0.95,
+    top_k: int = 50,
     randomize_template: bool = False,
 ) -> None:
     """Generate completions for the task dataset and write one JSONL record per prompt.
@@ -110,7 +110,7 @@ def write_completions(
                 prompts=prompts,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
-                top_p=top_p,
+                top_k=top_k,
             )
 
             for record, full_string in zip(batch, full_strings, strict=True):
@@ -156,10 +156,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.0,
+        default=0.7,
         help="Use 0 for greedy decoding.",
     )
-    parser.add_argument("--top-p", type=float, default=1.0)
+    parser.add_argument("--top-k", type=int, default=20)
     return parser.parse_args()
 
 
@@ -171,7 +171,7 @@ def main() -> None:
         batch_size=args.batch_size,
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
-        top_p=args.top_p,
+        top_k=args.top_k,
         randomize_template=args.randomize_template,
     )
 
