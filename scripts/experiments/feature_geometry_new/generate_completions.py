@@ -114,10 +114,14 @@ def write_completions(
             )
 
             for record, full_string in zip(batch, full_strings, strict=True):
+                prompt_metadata = {
+                    key: value for key, value in record.items() if key != "text"
+                }
                 output_file.write(
                     json.dumps(
                         {
-                            **record,
+                            "prompt": record["text"],
+                            "prompt_metadata": prompt_metadata,
                             "model_name": model_name,
                             "full_text": full_string,
                         },
