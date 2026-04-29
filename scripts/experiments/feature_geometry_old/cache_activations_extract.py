@@ -9,7 +9,9 @@ import torch
 try:
     from .cache_activations_nodes import SelectedNodeGroups
 except ImportError:
-    from cache_activations_nodes import SelectedNodeGroups
+    from scripts.experiments.feature_geometry.cache_activations_nodes import (
+        SelectedNodeGroups,
+    )
 
 
 def group_node_indices(

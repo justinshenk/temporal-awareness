@@ -16,15 +16,19 @@ try:
     )
     from .cache_activations_runner import cache_prompt_activations
 except ImportError:
-    from cache_activations_config import load_model_settings
-    from cache_activations_paths import (
+    from scripts.experiments.feature_geometry.cache_activations_config import (
+        load_model_settings,
+    )
+    from scripts.experiments.feature_geometry.cache_activations_paths import (
         DEFAULT_CONFIG_PATH,
         DEFAULT_NODES_PATH,
         HF_REPO_ID,
         PROJECT_ROOT,
         resolve_path,
     )
-    from cache_activations_runner import cache_prompt_activations
+    from scripts.experiments.feature_geometry.cache_activations_runner import (
+        cache_prompt_activations,
+    )
 
 
 def parse_args() -> argparse.Namespace:

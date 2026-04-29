@@ -25,22 +25,24 @@ try:
     from .cache_activations_paths import chunk_list
     from .cache_activations_upload import upload_cache_folder
 except ImportError:
-    from cache_activations_data import (
+    from scripts.experiments.feature_geometry.cache_activations_data import (
         get_sample_text,
         get_time_horizon_label,
         get_time_horizon_months,
         load_prompt_dataset,
     )
-    from cache_activations_extract import (
+    from scripts.experiments.feature_geometry.cache_activations_extract import (
         extract_selected_activations,
         maybe_average_positions,
     )
-    from cache_activations_nodes import (
+    from scripts.experiments.feature_geometry.cache_activations_nodes import (
         get_unique_layer_components,
         load_selected_node_groups,
     )
-    from cache_activations_paths import chunk_list
-    from cache_activations_upload import upload_cache_folder
+    from scripts.experiments.feature_geometry.cache_activations_paths import chunk_list
+    from scripts.experiments.feature_geometry.cache_activations_upload import (
+        upload_cache_folder,
+    )
 
 
 def selected_nodes_include_attention_heads(selected_node_groups: dict) -> bool:

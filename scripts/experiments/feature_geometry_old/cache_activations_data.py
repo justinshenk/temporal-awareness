@@ -8,7 +8,9 @@ from typing import Any
 try:
     from .cache_activations_paths import PROJECT_ROOT  # noqa: F401
 except ImportError:
-    from cache_activations_paths import PROJECT_ROOT  # noqa: F401
+    from scripts.experiments.feature_geometry.cache_activations_paths import (
+        PROJECT_ROOT,  # noqa: F401
+    )
 
 from src.intertemporal.data.default_datasets import (
     FULL_EXPERIMENT_DATASET_CONFIG,

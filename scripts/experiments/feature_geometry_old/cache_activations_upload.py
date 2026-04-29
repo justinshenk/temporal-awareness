@@ -8,7 +8,7 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 try:
-    from .eap_ig_qanda_common import resolve_hf_repo_id
+    from ..eap_ig.eap_ig_qanda_common import resolve_hf_repo_id
 except ImportError:
     from eap_ig_qanda_common import resolve_hf_repo_id
 
