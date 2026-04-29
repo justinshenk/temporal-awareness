@@ -50,8 +50,7 @@ def generate_full_strings(
     top_p: float,
 ) -> list[str]:
     """Generate and decode full prompt-plus-completion strings."""
-    tokenizer.padding_side = "left"
-    inputs = tokenizer(prompts, return_tensors="pt", padding=True)
+    inputs = tokenizer(prompts)
 
     device = getattr(model, "device", None)
     if device is not None:
@@ -143,7 +142,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model-name",
-        default=None,
+        default="Qwen/Qwen3-4B-Instruct-2507",
         help="Optional model identifier passed to load_model_and_tokenizer().",
     )
     parser.add_argument("--batch-size", type=int, default=1)
