@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ...common.base_schema import BaseSchema
+from .circuit_hypothesis import CircuitTestResult
 
 
 @dataclass
@@ -117,6 +118,9 @@ class FinePatchingResults(BaseSchema):
 
     # Attention pattern analysis
     attention_patterns: list[AttentionPatternResult] = field(default_factory=list)
+
+    # Circuit hypothesis testing results
+    circuit_tests: list[CircuitTestResult] = field(default_factory=list)
 
     # Metadata
     sample_id: int | None = None

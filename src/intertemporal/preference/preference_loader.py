@@ -6,9 +6,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
-from ..common.project_paths import get_pref_dataset_dir
+from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from ..common.preference_types import PreferenceSample
 from .preference_dataset import PreferenceDataset
+from ..prompt import PromptDataset
 
 
 def find_preference_files(prefix: str, directory: Optional[Path] = None) -> list[Path]:
@@ -60,36 +61,64 @@ def find_preference_data(name: str, directory: Optional[Path] = None) -> Optiona
     return None
 
 
-def load_and_merge_preference_data(
-    prefix: str, directory: Optional[Path] = None, with_internals: bool = False
-) -> Optional[PreferenceDataset]:
-    """Load all preference files matching a prefix and merge them.
+def load_preference_data(
+    prefix: str,
+    directory: Optional[Path] = None,
+    with_internals: bool = False,
+    prompt_directory: Optional[Path] = None,
+) -> Optional[tuple[PreferenceDataset, PromptDataset | None]]:
+    """Load preference data matching a prefix.
 
     Args:
         prefix: Prefix to match (e.g., "{dataset_id}_{model_name}")
         directory: Directory to search in (default: get_pref_dataset_dir())
+        prompt_directory: Directory to search for prompt datasets (default: get_prompt_dataset_dir())
 
     Returns:
-        Merged PreferenceDataset, or None if no files found
+        Tuple of (PreferenceDataset, PromptDataset), or None if no pref files found.
+        PromptDataset may be None if not found.
+
+    Raises:
+        ValueError: If more than one preference file matches the prefix.
     """
     files = find_preference_files(prefix, directory)
     if not files:
         return None
 
-    datasets = [
-        PreferenceDataset.from_json(f, with_internals=with_internals) for f in files
-    ]
-    if len(datasets) == 1:
-        return datasets[0]
+    if len(files) > 1:
+        raise ValueError(
+            f"Found {len(files)} preference files matching '{prefix}'. "
+            f"Expected exactly 1. Files: {[f.name for f in files]}"
+        )
 
-    print("\n\n")
-    print(
-        "WARNING: load_and_merge_preference_data found more than 1 match!. Merging matches."
-    )
-    print("\n\n")
+    pref_data = PreferenceDataset.from_json(files[0], with_internals=with_internals)
 
-    pref_data = PreferenceDataset.merge_all(datasets)
-    return pref_data
+    # Try to load corresponding PromptDataset
+    # Prompt files are named: {name}_{dataset_id}.json
+    # Use the prompt_dataset_id from the loaded preference data
+    prompt_dataset = None
+    prompt_dir = prompt_directory or get_prompt_dataset_dir()
+
+    # Try exact match first: {name}_{id}.json
+    if pref_data.prompt_dataset_name:
+        exact_path = Path(prompt_dir) / f"{pref_data.prompt_dataset_name}_{pref_data.prompt_dataset_id}.json"
+        if exact_path.exists():
+            prompt_dataset = PromptDataset.from_json(exact_path)
+
+    # Fallback: search for any file containing the dataset_id
+    if prompt_dataset is None:
+        prompt_files = list(Path(prompt_dir).glob(f"*{pref_data.prompt_dataset_id}*.json"))
+        if prompt_files:
+            # Use newest file
+            prompt_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            print(f"\n{'='*60}")
+            print(f"WARNING: Using fallback glob to find prompt dataset")
+            print(f"  Expected: {pref_data.prompt_dataset_name}_{pref_data.prompt_dataset_id}.json")
+            print(f"  Found: {prompt_files[0].name}")
+            print(f"{'='*60}\n")
+            prompt_dataset = PromptDataset.from_json(prompt_files[0])
+
+    return pref_data, prompt_dataset
 
 
 def get_full_text(pref: PreferenceSample, include_response: bool = True) -> str:

@@ -15,7 +15,7 @@ from ...common.device_utils import clear_gpu_memory
 from ..common.project_paths import get_pref_dataset_dir, get_prompt_dataset_dir
 from .preference_querier import PreferenceQuerier, PreferenceQueryConfig
 from .preference_dataset import PreferenceDataset
-from ..prompt import PromptDatasetGenerator, PromptDatasetConfig
+from ..prompt import PromptDataset, PromptDatasetGenerator, PromptDatasetConfig
 from ..data.default_configs import FULL_EXPERIMENT_CONFIG
 from ...common.profiler import P
 
@@ -29,7 +29,7 @@ def generate_preference_data(
     save_data: bool = False,
     prompt_datasets_dir: Optional[Path] = None,
     pref_datasets_dir: Optional[Path] = None,
-) -> PreferenceDataset:
+) -> tuple[PreferenceDataset, PromptDataset]:
     """Generate preference data on-the-fly by querying a model."""
 
     model = model or FULL_EXPERIMENT_CONFIG["model"]
@@ -72,4 +72,4 @@ def generate_preference_data(
                 pref_datasets_dir / pref_data.get_filename(), with_internals=True
             )
 
-    return pref_data
+    return pref_data, prompt_dataset

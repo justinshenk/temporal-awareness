@@ -115,24 +115,30 @@ class AttributionPatchingResult(BaseSchema):
     layers: list[int]
     component: str = "resid_post"
     method: Literal["standard", "eap", "eap_ig"] = "standard"
+    std_scores: np.ndarray | None = None  # ±std across pairs (populated by aggregate)
 
     def to_dict(self) -> dict:
         """Convert to dict with numpy array as list."""
-        return {
+        d = {
             "scores": self.scores.tolist(),
             "layers": self.layers,
             "component": self.component,
             "method": self.method,
         }
+        if self.std_scores is not None:
+            d["std_scores"] = self.std_scores.tolist()
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "AttributionPatchingResult":
         """Create from dict, converting list back to numpy array."""
+        std = np.array(d["std_scores"]) if "std_scores" in d else None
         return cls(
             scores=np.array(d["scores"]),
             layers=d["layers"],
             component=d.get("component", "resid_post"),
             method=d.get("method", "standard"),
+            std_scores=std,
         )
 
     @property
@@ -421,11 +427,13 @@ class AttributionSummary(BaseSchema):
                 else:
                     padded.append(a)
 
+            stacked = np.array(padded)
             aggregated_results[key] = AttributionPatchingResult(
-                scores=np.mean(padded, axis=0),
+                scores=np.mean(stacked, axis=0),
                 layers=layers,
                 component=component,
                 method=method,
+                std_scores=np.std(stacked, axis=0) if len(padded) > 1 else None,
             )
 
         return cls(results=aggregated_results, n_pairs=len(results))
@@ -595,6 +603,16 @@ class AttrPatchAggregatedResults(BaseSchema):
         """Get intervention target from aggregated results."""
         agg = self.denoising_agg or self.noising_agg
         return agg.get_target(n=n, mode=mode) if agg else None
+
+    def filter_by_indices(self, indices: list[int]) -> "AttrPatchAggregatedResults":
+        """Create a filtered copy containing only the specified pair indices."""
+        filtered = AttrPatchAggregatedResults()
+        for idx in indices:
+            if idx < len(self.denoising):
+                filtered.denoising.append(self.denoising[idx])
+            if idx < len(self.noising):
+                filtered.noising.append(self.noising[idx])
+        return filtered
 
     def print_summary(self) -> None:
         print(f"Attribution Patching ({len(self.denoising)} denoising, {len(self.noising)} noising):")

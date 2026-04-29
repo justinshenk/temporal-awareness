@@ -2,17 +2,155 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
 from .viz_palettes import BAR_COLORS
 
+# Module-level save settings (can be controlled via context manager)
+_SAVE_SVG: bool = False
+_SAVE_PDF: bool = False
+
+
+@contextmanager
+def svg_mode(enabled: bool = True):
+    """Context manager to enable/disable SVG saving globally.
+
+    Usage:
+        with svg_mode(True):
+            # All save_figure/finalize_plot calls will also save SVG
+            visualize_something(...)
+
+    Args:
+        enabled: Whether to save SVG files alongside PNGs
+    """
+    global _SAVE_SVG
+    old_value = _SAVE_SVG
+    _SAVE_SVG = enabled
+    try:
+        yield
+    finally:
+        _SAVE_SVG = old_value
+
+
+@contextmanager
+def camera_ready_mode(enabled: bool = True):
+    """Context manager to enable/disable camera-ready mode (SVG + PDF).
+
+    Usage:
+        with camera_ready_mode(True):
+            # All save_figure/finalize_plot calls will also save SVG and PDF
+            visualize_something(...)
+
+    Args:
+        enabled: Whether to save SVG and PDF files alongside PNGs
+    """
+    global _SAVE_SVG, _SAVE_PDF
+    old_svg = _SAVE_SVG
+    old_pdf = _SAVE_PDF
+    _SAVE_SVG = enabled
+    _SAVE_PDF = enabled
+    try:
+        yield
+    finally:
+        _SAVE_SVG = old_svg
+        _SAVE_PDF = old_pdf
+
+
+def set_svg_mode(enabled: bool) -> None:
+    """Set global SVG save mode.
+
+    Args:
+        enabled: Whether to save SVG files alongside PNGs
+    """
+    global _SAVE_SVG
+    _SAVE_SVG = enabled
+
+
+def set_pdf_mode(enabled: bool) -> None:
+    """Set global PDF save mode.
+
+    Args:
+        enabled: Whether to save PDF files alongside PNGs
+    """
+    global _SAVE_PDF
+    _SAVE_PDF = enabled
+
+
+def set_camera_ready_mode(enabled: bool) -> None:
+    """Set global camera-ready mode (SVG + PDF).
+
+    Args:
+        enabled: Whether to save SVG and PDF files alongside PNGs
+    """
+    global _SAVE_SVG, _SAVE_PDF
+    _SAVE_SVG = enabled
+    _SAVE_PDF = enabled
+
+
+def get_svg_mode() -> bool:
+    """Get current SVG save mode setting."""
+    return _SAVE_SVG
+
+
+def get_pdf_mode() -> bool:
+    """Get current PDF save mode setting."""
+    return _SAVE_PDF
+
+
+def save_figure(
+    fig: plt.Figure | None,
+    save_path: Path,
+    dpi: int = 150,
+    facecolor: str = "white",
+    save_svg: bool | None = None,
+    save_pdf: bool | None = None,
+    close: bool = True,
+) -> None:
+    """Save a figure to PNG and optionally SVG/PDF.
+
+    This is a low-level utility for saving figures. Use finalize_plot or
+    finalize_and_save for most cases.
+
+    Args:
+        fig: Figure to save, or None to use current figure (plt.gcf())
+        save_path: Path to save the PNG file
+        dpi: DPI for PNG output
+        facecolor: Background color
+        save_svg: If True, also save SVG. If None, uses global svg_mode setting.
+        save_pdf: If True, also save PDF. If None, uses global pdf_mode setting.
+        close: If True, close the figure after saving
+    """
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if fig is None:
+        fig = plt.gcf()
+
+    # Use global setting if not explicitly specified
+    should_save_svg = save_svg if save_svg is not None else _SAVE_SVG
+    should_save_pdf = save_pdf if save_pdf is not None else _SAVE_PDF
+
+    fig.savefig(save_path, dpi=dpi, bbox_inches="tight", facecolor=facecolor)
+    if should_save_svg:
+        svg_path = save_path.with_suffix(".svg")
+        fig.savefig(svg_path, format="svg", bbox_inches="tight", facecolor=facecolor)
+    if should_save_pdf:
+        pdf_path = save_path.with_suffix(".pdf")
+        fig.savefig(pdf_path, format="pdf", bbox_inches="tight", facecolor=facecolor)
+
+    if close:
+        plt.close(fig)
+
 
 def finalize_plot(
     save_path: Path | None = None,
     dpi: int = 150,
     facecolor: str = "white",
+    save_svg: bool | None = None,
+    save_pdf: bool | None = None,
 ) -> None:
     """Finalize current figure: save or show.
 
@@ -22,15 +160,34 @@ def finalize_plot(
         save_path: Path to save the figure. If None, shows the plot.
         dpi: DPI for the saved image
         facecolor: Background color
+        save_svg: If True, also save SVG. If None, uses global svg_mode setting.
+        save_pdf: If True, also save PDF. If None, uses global pdf_mode setting.
     """
     plt.tight_layout()
 
     if save_path:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Use global setting if not explicitly specified
+        should_save_svg = save_svg if save_svg is not None else _SAVE_SVG
+        should_save_pdf = save_pdf if save_pdf is not None else _SAVE_PDF
+
         plt.savefig(save_path, dpi=dpi, bbox_inches="tight", facecolor=facecolor)
+        extras = []
+        if should_save_svg:
+            svg_path = save_path.with_suffix(".svg")
+            plt.savefig(svg_path, format="svg", bbox_inches="tight", facecolor=facecolor)
+            extras.append(".svg")
+        if should_save_pdf:
+            pdf_path = save_path.with_suffix(".pdf")
+            plt.savefig(pdf_path, format="pdf", bbox_inches="tight", facecolor=facecolor)
+            extras.append(".pdf")
+        if extras:
+            print(f"Saved: {save_path} + {', '.join(extras)}")
+        else:
+            print(f"Saved: {save_path}")
         plt.close()
-        print(f"Saved: {save_path}")
     else:
         plt.show()
 
@@ -40,6 +197,8 @@ def finalize_and_save(
     save_path: Path,
     dpi: int = 150,
     facecolor: str = "white",
+    save_svg: bool | None = None,
+    save_pdf: bool | None = None,
 ) -> None:
     """Finalize and save a specific figure with white background.
 
@@ -48,12 +207,45 @@ def finalize_and_save(
         save_path: Path to save the figure
         dpi: DPI for the saved image
         facecolor: Background color
+        save_svg: If True, also save SVG. If None, uses global svg_mode setting.
+        save_pdf: If True, also save PDF. If None, uses global pdf_mode setting.
     """
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Use global setting if not explicitly specified
+    should_save_svg = save_svg if save_svg is not None else _SAVE_SVG
+    should_save_pdf = save_pdf if save_pdf is not None else _SAVE_PDF
+
     fig.savefig(save_path, dpi=dpi, bbox_inches="tight", facecolor=facecolor)
+    extras = []
+    if should_save_svg:
+        svg_path = save_path.with_suffix(".svg")
+        fig.savefig(svg_path, format="svg", bbox_inches="tight", facecolor=facecolor)
+        extras.append(".svg")
+    if should_save_pdf:
+        pdf_path = save_path.with_suffix(".pdf")
+        fig.savefig(pdf_path, format="pdf", bbox_inches="tight", facecolor=facecolor)
+        extras.append(".pdf")
+    if extras:
+        print(f"Saved: {save_path} + {', '.join(extras)}")
+    else:
+        print(f"Saved: {save_path}")
     plt.close(fig)
-    print(f"Saved: {save_path}")
+
+
+def add_pair_label(fig: plt.Figure, pair_idx: int | None) -> None:
+    """Add a subtle pair index label to the figure corner.
+
+    Args:
+        fig: Matplotlib figure
+        pair_idx: Pair index to display, or None to skip
+    """
+    if pair_idx is not None:
+        fig.text(
+            0.99, 0.01, f"Pair {pair_idx}",
+            fontsize=10, color="gray", ha="right", va="bottom",
+        )
 
 
 def create_comparison_bars(

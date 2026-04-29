@@ -80,6 +80,8 @@ class PromptDatasetConfig(BaseSchema):
     do_full_formatting_variation_grid: bool = False
     do_context_variations: bool = False
     prompt_format: str = "default_prompt_format"
+    round_time_units: bool = False
+    round_reward_units: bool = False
 
     @property
     def prompt_format_config(self):
@@ -89,3 +91,6 @@ class PromptDatasetConfig(BaseSchema):
     def get_filename(self) -> str:
         """Get the filename for saving this prompt dataset."""
         return f"{self.name}_{self.get_id()}.json"
+
+    def _extra_id(self) -> str:
+        return self.prompt_format_config.get_id()

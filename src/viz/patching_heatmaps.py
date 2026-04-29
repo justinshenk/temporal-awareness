@@ -27,6 +27,7 @@ from .layer_position_heatmaps import (
     _set_title,
     _setup_position_axis,
 )
+from .plot_helpers import add_pair_label
 
 
 @dataclass
@@ -59,6 +60,7 @@ def plot_patching_heatmap(
     config: PatchingHeatmapConfig | None = None,
     section_markers: dict[str, int] | None = None,
     save_path: Path | None = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Enhanced heatmap for patching results.
 
@@ -111,6 +113,7 @@ def plot_patching_heatmap(
     # Y-axis: layers
     ax.set_yticks(range(n_layers))
     ax.set_yticklabels([f"L{l}" for l in layers], fontsize=9)
+    ax.set_ylim(-0.5, n_layers - 0.5)
 
     # X-axis: positions
     _setup_position_axis(ax, position_labels, config.max_labels)
@@ -126,6 +129,7 @@ def plot_patching_heatmap(
     if config.highlight_top_n > 0:
         _highlight_top_cells(ax, matrix, config.highlight_top_n, config.highlight_color)
 
+    add_pair_label(fig, pair_idx)
     _finalize_plot(save_path)
 
 
@@ -197,6 +201,7 @@ def plot_multi_metric_heatmap(
             [f"L{layers[i]}" for i in range(0, n_layers, max(1, n_layers // 10))],
             fontsize=8,
         )
+        ax.set_ylim(-0.5, n_layers - 0.5)
 
         step = max(1, n_positions // 15)
         ax.set_xticks(range(0, n_positions, step))
@@ -209,6 +214,7 @@ def plot_multi_metric_heatmap(
             rotation=45,
             ha="right",
         )
+        ax.set_xlim(-0.5, n_positions - 0.5)
 
         plt.colorbar(im, ax=ax, shrink=0.6)
 

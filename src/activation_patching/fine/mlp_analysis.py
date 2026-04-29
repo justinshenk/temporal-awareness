@@ -115,8 +115,14 @@ def run_mlp_neuron_analysis(
 
         # Get neuron activations at metric position
         # hook_post: [batch, pos, d_mlp]
-        clean_acts = clean_post[0, metric_pos, :]  # [d_mlp]
-        corrupted_acts = corrupted_post[0, metric_pos, :]  # [d_mlp]
+        # Clamp metric_pos to be within bounds of the actual sequence length
+        clean_seq_len = clean_post.shape[1]
+        corrupted_seq_len = corrupted_post.shape[1]
+        clean_metric_pos = min(metric_pos, clean_seq_len - 1)
+        corrupted_metric_pos = min(metric_pos, corrupted_seq_len - 1)
+
+        clean_acts = clean_post[0, clean_metric_pos, :]  # [d_mlp]
+        corrupted_acts = corrupted_post[0, corrupted_metric_pos, :]  # [d_mlp]
         act_diff = clean_acts - corrupted_acts  # [d_mlp]
 
         d_mlp = act_diff.shape[0]

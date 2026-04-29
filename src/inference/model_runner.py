@@ -329,9 +329,7 @@ class ModelRunner:
 
     # Optimized inference APIs (for classes like BinaryChoiceRunner)
 
-    def _pad_token_ids_batch(
-        self, token_ids_batch: list[list[int]]
-    ) -> torch.Tensor:
+    def _pad_token_ids_batch(self, token_ids_batch: list[list[int]]) -> torch.Tensor:
         """Pad a batch of token ID sequences to the same length.
 
         Args:
@@ -581,8 +579,10 @@ class ModelRunner:
         interventions = self._normalize_interventions(intervention)
 
         with self._inference_context():
-            logits_batch, internals_cache = self._backend.run_with_intervention_and_cache(
-                input_ids_batch, interventions, names_filter
+            logits_batch, internals_cache = (
+                self._backend.run_with_intervention_and_cache(
+                    input_ids_batch, interventions, names_filter
+                )
             )  # [batch, seq_len, vocab_size]
 
         # Build trajectories with per-batch internals attached
@@ -823,17 +823,70 @@ class ModelRunner:
     #### Internal ####
     ##################
 
-    def _init_transformerlens(self) -> None:
+    def _init_transformerlens(self, process_weights: bool = True) -> None:
         from transformer_lens import HookedTransformer
 
         print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
-        # Use from_pretrained_no_processing to avoid weight centering/folding
-        # that changes raw logit values (though softmax output is the same)
-        self._model = HookedTransformer.from_pretrained_no_processing(
-            self.model_name, device=self.device, dtype=self.dtype
+
+        load_fn = (
+            HookedTransformer.from_pretrained
+            if process_weights
+            else HookedTransformer.from_pretrained_no_processing
         )
+
+        base_model_name = self._get_transformerlens_base_model(self.model_name)
+        if base_model_name and base_model_name != self.model_name:
+            print(f"  Using HF wrapper: {self.model_name} -> {base_model_name} config")
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
+            hf_model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                torch_dtype=self.dtype,
+                trust_remote_code=True,
+            )
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name, trust_remote_code=True
+            )
+            self._model = load_fn(
+                base_model_name,
+                hf_model=hf_model,
+                tokenizer=tokenizer,
+                device=self.device,
+                dtype=self.dtype,
+            )
+        else:
+            self._model = load_fn(self.model_name, device=self.device, dtype=self.dtype)
         self._model.eval()
         self._backend = TransformerLensBackend(self)
+
+    def _get_transformerlens_base_model(self, model_name: str) -> str | None:
+        """Get the TransformerLens-compatible base model name for a given model.
+
+        For models not directly supported by TransformerLens but with compatible
+        architecture (e.g., instruct variants), returns the base model name.
+
+        Returns:
+            Base model name if mapping exists, original name if directly supported,
+            None if not supported at all.
+        """
+        # Mapping from unsupported model names to their compatible base models
+        # These models share the same architecture, just different weights
+        MODEL_MAPPINGS = {
+            # Qwen3 instruct variants -> base models
+            "Qwen/Qwen3-4B-Instruct-2507": "Qwen/Qwen3-4B",
+        }
+
+        if model_name in MODEL_MAPPINGS:
+            return MODEL_MAPPINGS[model_name]
+
+        # Check if model is directly supported by TransformerLens
+        try:
+            from transformer_lens.loading_from_pretrained import get_official_model_name
+
+            get_official_model_name(model_name)
+            return model_name  # Directly supported
+        except ValueError:
+            return None  # Not supported
 
     def _init_nnsight(self) -> None:
         from nnsight import LanguageModel
@@ -844,6 +897,8 @@ class ModelRunner:
             device_map=self.device,
             dtype=self.dtype,
             trust_remote_code=True,
+            dispatch=True,  # Efficient lazy loading
+            attn_implementation="eager",  # Required for attention pattern capture
         )
         self._backend = NNsightBackend(self)
 
@@ -984,3 +1039,13 @@ class ModelRunner:
         if self.is_reasoning_model:
             return "<think>\n</think>\n\n"
         return ""
+
+    def unload(self) -> None:
+        """Unload model from memory and clear GPU/MPS memory.
+
+        Call this before spawning subprocesses to free memory in the main process.
+        """
+        if self._model is not None:
+            del self._model
+            self._model = None
+        clear_gpu_memory(aggressive=True)

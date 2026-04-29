@@ -275,12 +275,12 @@ class PreferenceDataset(BaseSchema):
         """
         path = Path(path)
         ensure_dir(path.parent)
-        internals_dir = get_internals_dir(path.parent)
-        ensure_dir(internals_dir)
 
         data = self._to_dict()
 
         if with_internals:
+            internals_dir = get_internals_dir(path.parent)
+            ensure_dir(internals_dir)
             for idx, pref in enumerate(self.preferences):
                 if pref.internals:
                     file_path = internals_dir / self.get_internals_filename(idx)
@@ -394,8 +394,6 @@ class PreferenceDataset(BaseSchema):
                 internals_paths=pref.internals_paths,
                 formatting_id=pref.formatting_id,
                 context_id=pref.context_id,
-                matches_rational=pref.matches_rational,
-                matches_associated=pref.matches_associated,
                 content_key=pref.content_key,
                 is_flipped=pref.is_flipped,
                 has_time_unit_variation=pref.has_time_unit_variation,
@@ -422,8 +420,6 @@ class PreferenceDataset(BaseSchema):
                 internals_paths=pref.internals_paths,
                 formatting_id=pref.formatting_id,
                 context_id=pref.context_id,
-                matches_rational=pref.matches_rational,
-                matches_associated=pref.matches_associated,
                 content_key=pref.content_key,
                 is_flipped=pref.is_flipped,
                 has_time_unit_variation=pref.has_time_unit_variation,

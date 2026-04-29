@@ -30,13 +30,22 @@ def run_sanity_check(
     print(
         f"[coarse] Starting sanity check (all layers, dn_pos=0-{corrupted_max_pos - 1}, ns_pos=0-{clean_max_pos - 1})..."
     )
+    import sys
+    sys.stdout.flush()
+
+    print(f"[coarse]   Creating intervention targets for {len(dn_positions)} denoising, {len(ns_positions)} noising positions...")
+    sys.stdout.flush()
 
     dn_target = InterventionTarget.at_positions(dn_positions, component)
     ns_target = InterventionTarget.at_positions(ns_positions, component)
 
+    print(f"[coarse]   Running patch_target...")
+    sys.stdout.flush()
+
     result = patch_target(
         runner, pair, dn_target, denoising_target=dn_target, noising_target=ns_target
     )
+    print(f"[coarse]   patch_target complete")
 
     result.pop_heavy()
     clear_gpu_memory()

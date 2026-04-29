@@ -14,4 +14,9 @@ from .choice import *
 from .profiler import *
 from .time_value import TimeValue, TIME_UNITS, TIME_UNIT_TO_YEARS, DEFAULT_TIME_UNIT
 
+# Position mapping base types (generic, no domain-specific builders)
+from .position_info import TokenPositionInfo
+from .position_mapping_base import DatasetPositionMappingBase, SamplePositionMappingBase
+from .token_positions import *
+
 __all__ = auto_export(__file__, __name__, globals())

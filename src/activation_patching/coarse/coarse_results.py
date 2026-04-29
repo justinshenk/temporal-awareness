@@ -19,25 +19,38 @@ class SweepStepResults(BaseSchema):
     by_start: dict[int, ActPatchTargetResult] = field(default_factory=dict)
 
     def __getitem__(self, key: int) -> ActPatchTargetResult:
-        return self.by_start[key]
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        if key in self.by_start:
+            return self.by_start[key]
+        return self.by_start[str(key)]
 
     def __setitem__(self, key: int, value: ActPatchTargetResult) -> None:
         self.by_start[key] = value
 
     def get(self, key: int) -> ActPatchTargetResult | None:
-        return self.by_start.get(key)
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        result = self.by_start.get(key)
+        if result is None:
+            result = self.by_start.get(str(key))
+        return result
 
     def keys(self):
-        return self.by_start.keys()
+        # Convert string keys to int for consistent behavior
+        return [int(k) for k in self.by_start.keys()]
 
     def values(self):
         return self.by_start.values()
 
     def items(self):
-        return self.by_start.items()
+        # Convert string keys to int for consistent behavior
+        return [(int(k), v) for k, v in self.by_start.items()]
 
     def __len__(self) -> int:
         return len(self.by_start)
+
+    def __contains__(self, key: int) -> bool:
+        # Handle both int and string keys (JSON deserializes int keys as strings)
+        return key in self.by_start or str(key) in self.by_start
 
     def __bool__(self) -> bool:
         return bool(self.by_start)
@@ -66,13 +79,19 @@ class CoarseActPatchResults(BaseSchema):
 
     @property
     def layer_step_sizes(self) -> list[int]:
-        """Available layer step sizes."""
-        return sorted(self.layer_results.keys())
+        """Available layer step sizes.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        return sorted(int(k) for k in self.layer_results.keys())
 
     @property
     def position_step_sizes(self) -> list[int]:
-        """Available position step sizes."""
-        return sorted(self.position_results.keys())
+        """Available position step sizes.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        return sorted(int(k) for k in self.position_results.keys())
 
     @property
     def component(self) -> str:
@@ -82,12 +101,26 @@ class CoarseActPatchResults(BaseSchema):
         return "resid_post"
 
     def get_layer_results_for_step(self, step_size: int) -> SweepStepResults:
-        """Get layer results for a specific step size."""
-        return self.layer_results.get(step_size, SweepStepResults())
+        """Get layer results for a specific step size.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        # Try int key first, then string key (JSON deserializes int keys as strings)
+        result = self.layer_results.get(step_size)
+        if result is None:
+            result = self.layer_results.get(str(step_size))
+        return result if result is not None else SweepStepResults()
 
     def get_position_results_for_step(self, step_size: int) -> SweepStepResults:
-        """Get position results for a specific step size."""
-        return self.position_results.get(step_size, SweepStepResults())
+        """Get position results for a specific step size.
+
+        Handles both int and string keys for JSON deserialization compatibility.
+        """
+        # Try int key first, then string key (JSON deserializes int keys as strings)
+        result = self.position_results.get(step_size)
+        if result is None:
+            result = self.position_results.get(str(step_size))
+        return result if result is not None else SweepStepResults()
 
     def get_result_for_layer(
         self, layer: int, step_size: int | None = None
@@ -214,6 +247,46 @@ class CoarseActPatchAggregatedResults(BaseSchema):
             r.sanity_result.score() for r in self.by_sample.values() if r.sanity_result
         ]
         return sum(scores) / len(scores) if scores else 0.0
+
+    def _build_mean_sweep(self, getter: str, step_size: int | None, step_sizes_prop: str) -> SweepStepResults:
+        """Build population-mean SweepStepResults from per-pair data.
+
+        Args:
+            getter: Method name on CoarseActPatchResults ('get_layer_results_for_step'
+                    or 'get_position_results_for_step')
+            step_size: Step size to use
+            step_sizes_prop: Property name for available step sizes
+        """
+        if step_size is None:
+            available = getattr(self, step_sizes_prop)
+            step_size = available[0] if available else None
+        if step_size is None:
+            return SweepStepResults()
+
+        by_idx: dict[int, list[ActPatchTargetResult]] = {}
+        for sample in self.by_sample.values():
+            sw = getattr(sample, getter)(step_size)
+            for idx in sw.keys():
+                tr = sw.get(idx)
+                if tr is not None:
+                    by_idx.setdefault(int(idx), []).append(tr)
+
+        mean_results = SweepStepResults()
+        for idx, results in by_idx.items():
+            mean_results[idx] = ActPatchTargetResult.mean_of(results)
+        return mean_results
+
+    def get_mean_layer_results(self, step_size: int | None = None) -> SweepStepResults:
+        """Population-mean SweepStepResults for layer sweeps across all pairs."""
+        return self._build_mean_sweep(
+            "get_layer_results_for_step", step_size, "layer_step_sizes"
+        )
+
+    def get_mean_position_results(self, step_size: int | None = None) -> SweepStepResults:
+        """Population-mean SweepStepResults for position sweeps across all pairs."""
+        return self._build_mean_sweep(
+            "get_position_results_for_step", step_size, "position_step_sizes"
+        )
 
     def get_mean_layer_scores(self, step_size: int | None = None) -> dict[int, float]:
         """Mean recovery per layer across all samples for a given step size."""

@@ -66,6 +66,7 @@ class BucketStats:
     n_long: int = 0
     n_rational: int = 0
     n_associated: int = 0
+    n_largest_reward: int = 0
 
     @property
     def n_total(self) -> int:
@@ -86,6 +87,10 @@ class BucketStats:
     @property
     def associated_pct(self) -> float:
         return 100 * self.n_associated / self.n_total if self.n_total else 0
+
+    @property
+    def largest_reward_pct(self) -> float:
+        return 100 * self.n_largest_reward / self.n_total if self.n_total else 0
 
 
 @dataclass
@@ -165,6 +170,75 @@ def _add_sample_to_stats(stats: BucketStats, sample: "PreferenceSample") -> None
         stats.n_rational += 1
     if sample.matches_associated is True:
         stats.n_associated += 1
+    if sample.matches_largest_reward is True:
+        stats.n_largest_reward += 1
+
+
+def analyze_samples(
+    samples: list["PreferenceSample"],
+    model_name: str = "",
+) -> PreferenceAnalysis:
+    """Analyze a list of preference samples.
+
+    Breaks down choices by:
+    - Overall rationality and association
+    - By time horizon (in years)
+    - By reward amounts (short and long)
+    - By delivery times (short and long)
+    - By reward ratio
+    """
+    analysis = PreferenceAnalysis(model_name=model_name)
+    analysis.n_total = len(samples)
+
+    for sample in samples:
+        # Skip invalid samples
+        if sample.choice_term not in ("short_term", "long_term"):
+            continue
+
+        # Overall
+        _add_sample_to_stats(analysis.overall, sample)
+
+        # By horizon
+        horizon = _get_horizon_years(sample)
+        bucket_h = _bucket_horizon(horizon)
+        if bucket_h not in analysis.by_horizon:
+            analysis.by_horizon[bucket_h] = BucketStats()
+        _add_sample_to_stats(analysis.by_horizon[bucket_h], sample)
+
+        # By rewards
+        if sample.short_term_reward is not None:
+            r = sample.short_term_reward
+            if r not in analysis.by_short_reward:
+                analysis.by_short_reward[r] = BucketStats()
+            _add_sample_to_stats(analysis.by_short_reward[r], sample)
+
+        if sample.long_term_reward is not None:
+            r = sample.long_term_reward
+            if r not in analysis.by_long_reward:
+                analysis.by_long_reward[r] = BucketStats()
+            _add_sample_to_stats(analysis.by_long_reward[r], sample)
+
+        # By times
+        if sample.short_term_time is not None:
+            t = sample.short_term_time
+            if t not in analysis.by_short_time:
+                analysis.by_short_time[t] = BucketStats()
+            _add_sample_to_stats(analysis.by_short_time[t], sample)
+
+        if sample.long_term_time is not None:
+            t = sample.long_term_time
+            if t not in analysis.by_long_time:
+                analysis.by_long_time[t] = BucketStats()
+            _add_sample_to_stats(analysis.by_long_time[t], sample)
+
+        # By reward ratio
+        if sample.short_term_reward and sample.long_term_reward:
+            ratio = round(sample.long_term_reward / sample.short_term_reward, 2)
+            if ratio not in analysis.by_reward_ratio:
+                analysis.by_reward_ratio[ratio] = BucketStats()
+            _add_sample_to_stats(analysis.by_reward_ratio[ratio], sample)
+
+    return analysis
 
 
 def analyze_preferences(dataset: "PreferenceDataset") -> PreferenceAnalysis:
@@ -252,8 +326,8 @@ def _print_bucket_table(
     log("")
 
     # Header
-    log(f"  {key_label:>12} │  N   │ Short │ Long  │ Rational │ Associated")
-    log(f"  {'─' * 12}─┼──────┼───────┼───────┼──────────┼───────────")
+    log(f"  {key_label:>12} │  N   │ Short │ Long  │ Rational │ Associated │ LargestRwd")
+    log(f"  {'─' * 12}─┼──────┼───────┼───────┼──────────┼────────────┼───────────")
 
     # Sort keys
     keys = sorted(buckets.keys(), key=sort_key or (lambda x: (x is None, x or 0)))
@@ -274,7 +348,8 @@ def _print_bucket_table(
         log(
             f"  {key_str:>12} │ {stats.n_total:4d} │"
             f" {stats.short_pct:5.1f}% │ {stats.long_pct:5.1f}% │"
-            f"   {stats.rational_pct:5.1f}% │    {stats.associated_pct:5.1f}%"
+            f"   {stats.rational_pct:5.1f}% │     {stats.associated_pct:5.1f}% │"
+            f"    {stats.largest_reward_pct:5.1f}%"
         )
 
     log("")
@@ -303,6 +378,10 @@ def print_analysis(analysis: PreferenceAnalysis) -> None:
     log(f"  Association (choice time closest to horizon):")
     log(f"    associated:     {_stat(o.n_associated, o.n_total)}")
     log(f"    non-associated: {_stat(o.n_total - o.n_associated, o.n_total)}")
+    log("")
+    log(f"  Largest Reward (chose option with highest reward):")
+    log(f"    largest:     {_stat(o.n_largest_reward, o.n_total)}")
+    log(f"    not largest: {_stat(o.n_total - o.n_largest_reward, o.n_total)}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # By Horizon

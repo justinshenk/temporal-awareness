@@ -20,6 +20,10 @@ class PromptFormatConfig(ABC):
         """Return the name of this prompt format."""
         ...
 
+    @property
+    @abstractmethod
+    def get_id(self) -> str: ...
+
     @abstractmethod
     def question_template(self, time_horizon: Optional[TimeValue] = None) -> str:
         """Assemble the question template.
@@ -47,20 +51,6 @@ class PromptFormatConfig(ABC):
 
         Used for splitting response text into choice/reasoning sections.
         """
-        ...
-
-    @abstractmethod
-    def get_anchor_texts(self) -> list[str]:
-        """Return text anchors for position alignment between sequences.
-
-        Extracts text values suitable for aligning token positions
-        across different prompts with the same structure.
-        """
-        ...
-
-    @abstractmethod
-    def get_prompt_marker_before_time_horizon(self) -> str:
-        """Return the EXACT prefix right before  choice"""
         ...
 
     @abstractmethod

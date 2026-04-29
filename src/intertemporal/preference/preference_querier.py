@@ -195,17 +195,8 @@ class PreferenceQuerier:
                 activation_names, cache
             )
 
-        # Compute matches_rational and matches_associated
-        choice_idx = choice.choice_idx
-        expected_rational = sample.expected_rational_choice
-        associated = sample.associated_choice
-
-        matches_rational = (
-            (choice_idx == expected_rational) if expected_rational is not None else None
-        )
-        matches_associated = (
-            (choice_idx == associated) if associated is not None else None
-        )
+        # Extract divergent_logits before clearing heavy data
+        stored_logits = choice.divergent_logits
 
         # Clear heavy data from choice tree before storing
         choice.pop_heavy()
@@ -233,13 +224,12 @@ class PreferenceQuerier:
             decoding_mismatch=decoding_mismatch,
             formatting_id=sample.formatting_id,
             context_id=sample.context_id,
-            matches_rational=matches_rational,
-            matches_associated=matches_associated,
             short_term_first=sample.short_term_first,
+            stored_divergent_logits=stored_logits,
         )
 
     def query_dataset(
-        self, prompt_dataset: PromptDataset, model_name: str
+        self, prompt_dataset: PromptDataset, model_name: str, verbose: bool = False
     ) -> PreferenceDataset:
         """Query a single dataset with a model. Returns results in memory."""
 
@@ -275,6 +265,18 @@ class PreferenceQuerier:
             pref = self.query_sample(
                 sample, runner, choice_prefix, activation_names, intervention
             )
+            if verbose:
+                print("\n")
+                if pref.response_text:
+                    print(pref.response_text)
+                else:
+                    chosen_label = (
+                        pref.short_term_label
+                        if pref.choice.choice_idx == 0
+                        else pref.long_term_label
+                    )
+                    print(chosen_label)
+                print("\n")
             preferences.append(pref)
 
         return PreferenceDataset(

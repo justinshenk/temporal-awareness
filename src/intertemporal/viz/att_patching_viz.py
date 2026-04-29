@@ -24,6 +24,7 @@ def visualize_att_patching(
     position_labels: list[str] | None = None,
     section_markers: dict[str, int] | None = None,
     title_prefix: str = "",
+    pair_idx: int | None = None,
 ) -> None:
     """Visualize attribution patching results.
 
@@ -87,6 +88,7 @@ def visualize_att_patching(
             config=config,
             section_markers=section_markers,
             save_path=output_dir / filename,
+            pair_idx=pair_idx,
         )
 
     print(f"[viz] Attribution patching plots saved to {output_dir}")

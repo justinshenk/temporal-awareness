@@ -1,37 +1,46 @@
 """Configuration for analysis visualizations (diffmeans, geo).
 
 Centralizes position/layer selection so it's easy to modify.
+Uses semantic position names (format_pos) that are resolved at runtime.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..common.semantic_positions import (
+    DEFAULT_LAYERS as SEMANTIC_DEFAULT_LAYERS,
+    PROMPT_LABEL_POSITIONS,
+    PROMPT_CONSTRAINT_POSITIONS,
+    RESPONSE_POSITIONS,
+)
+
 
 @dataclass
 class AnalysisPositions:
     """Configurable positions for analysis plots.
 
+    Uses semantic position names (format_pos) that are resolved via SamplePositionMapping.
     Positions are grouped by their role in the prompt structure.
     """
 
     # Source positions (where short-term option info appears)
-    source: list[int] = field(default_factory=lambda: [86, 87, 88])
+    source: list[str] = field(default_factory=lambda: list(PROMPT_LABEL_POSITIONS))
 
-    # Destination positions (where long-term option info appears)
-    destination: list[int] = field(default_factory=lambda: [143, 144, 145])
+    # Destination positions (where long-term/constraint info appears)
+    destination: list[str] = field(default_factory=lambda: list(PROMPT_CONSTRAINT_POSITIONS))
 
     # Final position (where choice is made)
-    final: list[int] = field(default_factory=lambda: [145, 146])
+    final: list[str] = field(default_factory=lambda: list(RESPONSE_POSITIONS))
 
     @property
-    def all_key_positions(self) -> list[int]:
-        """All key positions in order."""
-        return sorted(set(self.source + self.destination + self.final))
+    def all_key_positions(self) -> list[str]:
+        """All key position names."""
+        return list(dict.fromkeys(self.source + self.destination + self.final))
 
     @property
-    def for_difference_norm(self) -> list[int]:
-        """Positions to show in difference norm plots."""
+    def for_difference_norm(self) -> list[str]:
+        """Position names for difference norm plots."""
         return self.source + self.destination
 
 

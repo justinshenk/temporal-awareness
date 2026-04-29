@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
 from ..common.contrastive_pair import ContrastivePair
-from ..common.device_utils import clear_gpu_memory
-from ..common.hook_utils import hook_filter_for_component, hook_names_for_layers
-from ..common.profiler import P, profile
+from ..common.hook_utils import hook_names_for_layers
+from ..common.profiler import P
 from ..common.token_positions import build_position_arrays
 from ..common.patching_types import GradTarget, PatchingMode
 
-from .trajectory_helpers import get_caches_for_attribution, get_seq_len
+from .trajectory_helpers import get_seq_len
 from .attribution_vectorized import compute_attribution_vectorized
 
 if TYPE_CHECKING:
@@ -53,9 +53,6 @@ def _compute_gradients(
             f"Position {metric.divergent_position} out of bounds for seq_len={seq_len} "
             f"(grad_at={grad_at}). Using last position."
         )
-        # Create adjusted metric with valid position
-        from dataclasses import replace
-
         adjusted_metric = replace(metric, divergent_position=-1)
 
     metric_val = adjusted_metric.compute_raw(grad_logits.unsqueeze(0))
@@ -75,32 +72,34 @@ def _compute_gradients(
     }
 
 
-@profile
-def compute_attribution(
+def compute_attribution_from_caches(
     runner: "BinaryChoiceRunner",
     pair: ContrastivePair,
     metric: "AttributionMetric",
     mode: PatchingMode,
-    component: str = "resid_post",
+    component: str,
+    grad_logits: torch.Tensor,
+    clean_cache: dict,
+    corr_cache: dict,
+    grad_cache: dict,
 ) -> np.ndarray:
-    """Standard attribution patching: (clean - corrupted) * grad.
-
-    Gradient computation point is determined by mode:
-    - noising: grad@clean (gradients at clean/source state)
-    - denoising: grad@corrupted (gradients at corrupted/source state)
+    """Standard attribution using pre-computed caches.
 
     Args:
         runner: Model runner
-        pair: Contrastive pair with trajectories
+        pair: Contrastive pair
         metric: Attribution metric
         mode: "denoising" or "noising"
         component: Component to analyze
+        grad_logits: Logits from the gradient trajectory
+        clean_cache: Cached activations from clean trajectory
+        corr_cache: Cached activations from corrupted trajectory
+        grad_cache: Cache with requires_grad=True (reference to clean or corr)
 
     Returns:
         Attribution scores [n_layers, seq_len]
     """
     n_layers = runner.n_layers
-    hook_filter = hook_filter_for_component(component)
     grad_at = _get_grad_at_for_mode(mode)
 
     pos_mapping = (
@@ -109,16 +108,8 @@ def compute_attribution(
         else dict(pair.position_mapping.mapping)
     )
 
-    with P("attr_caches"):
-        grad_logits, clean_cache, corr_cache, grad_cache = get_caches_for_attribution(
-            runner, pair, mode, hook_filter, grad_at
-        )
-
     logger.debug(
         f"Standard attribution: mode={mode}, component={component}, grad_at={grad_at}"
-    )
-    logger.debug(
-        f"  clean_traj len={len(pair.clean_traj.token_ids)}, corr_traj len={len(pair.corrupted_traj.token_ids)}"
     )
 
     with P("attr_grads"):
@@ -151,9 +142,5 @@ def compute_attribution(
             results[layer] = compute_attribution_vectorized(
                 clean_act, corr_act, grad, clean_pos, corr_pos, valid
             )
-
-    # Clean up GPU memory
-    del clean_cache, corr_cache, grad_cache, grads
-    clear_gpu_memory()
 
     return results

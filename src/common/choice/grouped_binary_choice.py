@@ -241,7 +241,7 @@ class GroupedBinaryChoice(SimpleBinaryChoice):
         """Divergent position for each fork.
 
         Note: With single-tree structure, all forks share the same divergent
-        position (first divergence in tree). Returns list for API compatibility.
+        position (first divergence in tree). Returns list to match interface.
         """
         if not self.tree.nodes:
             return [None] * self.n_forks

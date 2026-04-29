@@ -82,19 +82,42 @@ def check_memory_trend() -> None:
     print()
 
 
-def clear_gpu_memory() -> None:
-    """Clear GPU memory caches for CUDA, MPS, and MLX."""
+def clear_gpu_memory(aggressive: bool = False) -> None:
+    """Clear GPU memory caches for CUDA, MPS, and MLX.
+
+    Args:
+        aggressive: If True, run more thorough cleanup (slower but frees more memory)
+    """
+    # First GC pass
     gc.collect()
+
     if torch.cuda.is_available():
+        torch.cuda.synchronize()
         torch.cuda.empty_cache()
+
     if torch.backends.mps.is_available():
+        # Synchronize to ensure all operations complete before clearing
+        torch.mps.synchronize()
         torch.mps.empty_cache()
+
+        if aggressive:
+            # Extra cleanup for MPS memory pressure
+            gc.collect(generation=0)
+            gc.collect(generation=1)
+            gc.collect(generation=2)
+            torch.mps.synchronize()
+            torch.mps.empty_cache()
+
     # Clear MLX memory if available
     try:
         import mlx.core as mx
         mx.clear_cache()
     except (ImportError, AttributeError):
         pass
+
+    # Final GC pass
+    if aggressive:
+        gc.collect()
 
 
 class ProgressTracker:
