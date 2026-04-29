@@ -83,7 +83,7 @@ def write_completions(
     model_name: str = "Qwen/Qwen3-4B-Instruct-2507",
     batch_size: int = 128,
     max_new_tokens: int = 256,
-    temperature: float = 0.5,
+    temperature: float = 0.7,
     top_k: int = 50,
     randomize_template: bool = False,
 ) -> None:
@@ -146,7 +146,7 @@ def parse_args() -> argparse.Namespace:
         default="Qwen/Qwen3-4B-Instruct-2507",
         help="Optional model identifier passed to load_model_and_tokenizer().",
     )
-    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument(
         "--randomize-template",
