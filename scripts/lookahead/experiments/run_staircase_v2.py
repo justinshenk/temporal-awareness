@@ -147,12 +147,11 @@ def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
     from src.lookahead.utils.types import PlanningExample, TaskType
 
     if domain == "code":
-        # Use the clean code_return module directly; the workshop's
-        # run_rq4_final.py imports transformer_lens at module load.
-        from src.lookahead.datasets.code_return import generate_code_return_dataset
-        examples = generate_code_return_dataset(
-            include_untyped=True, include_contrastive=True,
-        )
+        # Workshop's original 507-signature dataset (untyped). 'code_return.py'
+        # contains TYPED signatures with explicit '-> int' annotations which
+        # trivializes the task; do NOT use it for the code-anchor staircase.
+        from src.lookahead.datasets.code_untyped import load_code_untyped
+        examples = load_code_untyped()
         label_fn = lambda ex: ex.metadata.get("return_type", ex.target_value)
         n_classes = len(set(label_fn(e) for e in examples))
         return examples, n_classes, label_fn, None
