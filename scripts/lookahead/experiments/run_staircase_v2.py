@@ -133,26 +133,35 @@ logger = logging.getLogger("staircase_v2")
 # ──────────────────────────────────────────────────────────────────────
 
 def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
-    """Return (examples, n_classes_primary, label_extractor).
+    """Return (examples, n_classes_primary, label_extractor, group_fn).
 
     label_extractor: a callable(PlanningExample) → str label for the
     primary classification task in this domain.
+
+    group_fn: optional callable(PlanningExample) → group_id. When provided,
+    CV uses StratifiedGroupKFold to ensure all examples sharing the same
+    group_id stay in the same fold. Needed for qa_neutral where pair
+    members share question text — random CV puts opposite-labeled examples
+    in train and test, making the task unlearnable.
     """
     from src.lookahead.utils.types import PlanningExample, TaskType
 
     if domain == "code":
-        # Reuse the workshop's DATASET_500 by importing the legacy script
-        # Avoid the heavy import; build the examples inline instead.
-        from scripts.lookahead.experiments.run_rq4_final import DATASET_500, make_examples
-        examples = make_examples(DATASET_500)
-        label_fn = lambda ex: ex.target_value
-        return examples, 5, label_fn
+        # Use the clean code_return module directly; the workshop's
+        # run_rq4_final.py imports transformer_lens at module load.
+        from src.lookahead.datasets.code_return import generate_code_return_dataset
+        examples = generate_code_return_dataset(
+            include_untyped=True, include_contrastive=True,
+        )
+        label_fn = lambda ex: ex.metadata.get("return_type", ex.target_value)
+        n_classes = len(set(label_fn(e) for e in examples))
+        return examples, n_classes, label_fn, None
 
     if domain == "trivia":
         from src.lookahead.datasets.trivia import load_trivia
         examples = load_trivia(split=split)
         label_fn = lambda ex: ex.metadata["category"]
-        return examples, 5, label_fn
+        return examples, 5, label_fn, None
 
     if domain == "rhyme":
         from src.lookahead.datasets.maar_data import load_maar_rhyme
@@ -160,7 +169,7 @@ def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
             os.environ["MAAR_DATA_ROOT"] = maar_root
         examples = load_maar_rhyme(split=split)
         label_fn = lambda ex: ex.metadata["rhyme_family"]
-        return examples, 10, label_fn
+        return examples, 10, label_fn, None
 
     if domain == "qa_suggestive":
         from src.lookahead.datasets.maar_data import load_maar_qa_suggestive
@@ -168,7 +177,8 @@ def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
             os.environ["MAAR_DATA_ROOT"] = maar_root
         examples = load_maar_qa_suggestive(split=split)
         label_fn = lambda ex: ex.metadata["article"]  # 2-class
-        return examples, 2, label_fn
+        # Each suggestive question is noun-specific; random CV is appropriate.
+        return examples, 2, label_fn, None
 
     if domain == "qa_neutral":
         from src.lookahead.datasets.maar_data import load_maar_qa_neutral
@@ -176,7 +186,12 @@ def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
             os.environ["MAAR_DATA_ROOT"] = maar_root
         examples = load_maar_qa_neutral()
         label_fn = lambda ex: ex.metadata["article"]
-        return examples, 2, label_fn
+        # CRITICAL: pair members share question text. Random CV puts the
+        # same text with opposite labels in train/test, making the task
+        # systematically unlearnable. Group by question text so each pair
+        # stays in one fold; probe must then generalize across pairs.
+        group_fn = lambda ex: ex.metadata["question"]
+        return examples, 2, label_fn, group_fn
 
     raise ValueError(f"Unknown domain: {domain}")
 
@@ -231,6 +246,7 @@ def train_per_position(
     caches, examples, label_fn, layer: int,
     pca_dim: int, n_folds: int, seed: int,
     probe_type: str = "linear",
+    groups=None,  # array of group_ids (e.g., question text); enables StratifiedGroupKFold
 ):
     """Probe at every token position (up to min_seq_len) at the given layer.
 
@@ -238,7 +254,9 @@ def train_per_position(
     """
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
-    from sklearn.model_selection import cross_val_score, StratifiedKFold
+    from sklearn.model_selection import (
+        cross_val_score, StratifiedKFold, StratifiedGroupKFold,
+    )
 
     if probe_type == "linear":
         from sklearn.linear_model import LogisticRegression
@@ -259,7 +277,15 @@ def train_per_position(
         return {}, classes
 
     min_seq = min(len(c.token_ids) for c in caches)
-    cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+
+    # Pick the CV splitter
+    if groups is not None:
+        groups_arr = np.asarray(groups)
+        cv = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {"groups": groups_arr}
+    else:
+        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {}
 
     out: dict = {}
     for pos in range(min_seq):
@@ -270,7 +296,7 @@ def train_per_position(
             k = min(pca_dim, Xs.shape[0] - 1, Xs.shape[1])
             Xs = PCA(n_components=k, random_state=seed).fit_transform(Xs)
         try:
-            scores = cross_val_score(make_clf(), Xs, labels, cv=cv, scoring="accuracy")
+            scores = cross_val_score(make_clf(), Xs, labels, cv=cv, scoring="accuracy", **cv_kwargs)
         except Exception as e:
             logger.warning(f"  pos={pos} L{layer}: CV failed ({e}); skipping")
             continue
@@ -292,6 +318,7 @@ def target_position_accuracies(
     resolved_positions,            # list[ResolvedPositions]
     pca_dim: int, n_folds: int, seed: int,
     probe_type: str = "linear",
+    groups=None,
 ) -> dict[str, dict]:
     """For each target resolver, build features from each example's resolved
     target position and CV-score a probe on them.
@@ -300,7 +327,9 @@ def target_position_accuracies(
     """
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
-    from sklearn.model_selection import cross_val_score, StratifiedKFold
+    from sklearn.model_selection import (
+        cross_val_score, StratifiedKFold, StratifiedGroupKFold,
+    )
 
     if probe_type == "linear":
         from sklearn.linear_model import LogisticRegression
@@ -313,18 +342,22 @@ def target_position_accuracies(
     classes = sorted(set(labels_str))
     cls_to_idx = {c: i for i, c in enumerate(classes)}
     labels_all = np.array([cls_to_idx[s] for s in labels_str])
+    groups_all = np.asarray(groups) if groups is not None else None
 
-    # Collect the set of resolver names from the first ResolvedPositions
     if not resolved_positions:
         return {}
     resolver_names = list(resolved_positions[0].targets_by_resolver.keys())
 
-    cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+    if groups_all is not None:
+        cv = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+    else:
+        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
 
     out: dict[str, dict] = {}
     for resolver_name in resolver_names:
         rows = []
         rlbls = []
+        rgroups = []
         positions_used = []
         for i, rp in enumerate(resolved_positions):
             idx = rp.targets_by_resolver.get(resolver_name)
@@ -332,6 +365,8 @@ def target_position_accuracies(
                 continue
             rows.append(caches[i].activations[layer][idx])
             rlbls.append(labels_all[i])
+            if groups_all is not None:
+                rgroups.append(groups_all[i])
             positions_used.append(idx)
 
         if len(rows) < 10:
@@ -347,13 +382,16 @@ def target_position_accuracies(
             k = min(pca_dim, Xs.shape[0] - 1, Xs.shape[1])
             Xs = PCA(n_components=k, random_state=seed).fit_transform(Xs)
         try:
-            scores = cross_val_score(make_clf(), Xs, y, cv=cv, scoring="accuracy")
+            if groups_all is not None:
+                scores = cross_val_score(make_clf(), Xs, y, cv=cv,
+                                          groups=np.asarray(rgroups), scoring="accuracy")
+            else:
+                scores = cross_val_score(make_clf(), Xs, y, cv=cv, scoring="accuracy")
             acc = float(scores.mean())
         except Exception as e:
             logger.warning(f"  resolver={resolver_name} L{layer}: CV failed ({e})")
             continue
 
-        # Modal target position (informational)
         from collections import Counter
         mode_pos = Counter(positions_used).most_common(1)[0][0] if positions_used else None
 
@@ -531,13 +569,19 @@ def run(args) -> dict:
     from src.lookahead.domains import get_domain
 
     spec = get_domain(args.domain)
-    examples, n_classes, label_fn = load_dataset_for_domain(
+    examples, n_classes, label_fn, group_fn = load_dataset_for_domain(
         args.domain, args.split, args.maar_data_root,
     )
     if args.max_examples and args.max_examples < len(examples):
         examples = examples[: args.max_examples]
+    # Compute groups (if any) after example truncation so indexing matches.
+    groups = [group_fn(ex) for ex in examples] if group_fn is not None else None
     logger.info(f"Domain={args.domain}  n_examples={len(examples)}  n_classes={n_classes}  "
                 f"predicted_gap={spec.predicted_gap.value}")
+    if groups is not None:
+        n_groups = len(set(groups))
+        logger.info(f"  Using StratifiedGroupKFold with {n_groups} unique groups "
+                    f"(pair-stratified CV)")
 
     # Load model
     model, tokenizer = load_model_and_tokenizer(
@@ -590,6 +634,7 @@ def run(args) -> dict:
                 caches, examples, label_fn, layer,
                 pca_dim=args.pca_dim, n_folds=args.n_folds, seed=args.seed,
                 probe_type=probe_type,
+                groups=groups,
             )
             if not per_pos:
                 continue
@@ -599,6 +644,7 @@ def run(args) -> dict:
                 layer=layer, resolved_positions=resolved,
                 pca_dim=args.pca_dim, n_folds=args.n_folds, seed=args.seed,
                 probe_type=probe_type,
+                groups=groups,
             )
 
             # Headline computation
