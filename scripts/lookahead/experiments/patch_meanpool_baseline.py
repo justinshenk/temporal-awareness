@@ -24,9 +24,17 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
+
+# CRITICAL: add cwd to sys.path so `from src.lookahead...` works.
+# When this script runs via `python3 scripts/.../patch_meanpool_baseline.py`,
+# Python adds the SCRIPT's directory to sys.path, NOT the cwd. The src/ package
+# lives in cwd (/workspace/temporal-awareness), so we add it explicitly here,
+# before any imports of src.* below.
+sys.path.insert(0, os.getcwd())
 
 import numpy as np
 import torch
