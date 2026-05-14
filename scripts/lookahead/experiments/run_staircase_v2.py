@@ -307,6 +307,76 @@ def train_per_position(
     return out, classes
 
 
+def compute_mean_pool_baseline(
+    caches, examples, label_fn, layer: int,
+    pool_positions: int,  # number of leading tokens to pool (workshop uses 10 for code signature)
+    pca_dim: int, n_folds: int, seed: int,
+    probe_type: str = "linear",
+    groups=None,
+) -> dict:
+    """Workshop-style baseline: mean-pool positions 0..pool_positions, PCA, LR, CV.
+
+    This is THE baseline used in the original workshop submission (run_rq4_final.py's
+    get_name_and_params_features). We report it alongside our stricter max-across-earlier
+    baseline so reviewers see both measurements.
+
+    Returns: {"accuracy": float, "n_samples": int, "pool_positions": int}
+    """
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    from sklearn.model_selection import (
+        cross_val_score, StratifiedKFold, StratifiedGroupKFold,
+    )
+
+    if probe_type == "linear":
+        from sklearn.linear_model import LogisticRegression
+        make_clf = lambda: LogisticRegression(C=1.0, max_iter=2000, solver="lbfgs", random_state=seed)
+    else:
+        from src.lookahead.probing.mlp_probe import MLPProbe
+        make_clf = lambda: MLPProbe(random_state=seed)
+
+    labels_str = [label_fn(ex) for ex in examples]
+    classes = sorted(set(labels_str))
+    cls_to_idx = {c: i for i, c in enumerate(classes)}
+    y = np.array([cls_to_idx[s] for s in labels_str])
+
+    if len(classes) < 2:
+        return {"accuracy": float("nan"), "n_samples": 0, "pool_positions": pool_positions}
+
+    # Mean-pool the first N tokens for each example
+    feats = []
+    for c in caches:
+        n_pool = min(pool_positions, len(c.token_ids))
+        feats.append(c.activations[layer][:n_pool].mean(axis=0))
+    X = np.stack(feats)
+
+    scaler = StandardScaler()
+    Xs = scaler.fit_transform(X)
+    if Xs.shape[1] > pca_dim:
+        k = min(pca_dim, Xs.shape[0] - 1, Xs.shape[1])
+        Xs = PCA(n_components=k, random_state=seed).fit_transform(Xs)
+
+    if groups is not None:
+        cv = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {"groups": np.asarray(groups)}
+    else:
+        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {}
+
+    try:
+        scores = cross_val_score(make_clf(), Xs, y, cv=cv, scoring="accuracy", **cv_kwargs)
+    except Exception as e:
+        logger.warning(f"  mean-pool L{layer}: CV failed ({e})")
+        return {"accuracy": float("nan"), "n_samples": int(len(y)), "pool_positions": pool_positions}
+
+    return {
+        "accuracy": float(scores.mean()),
+        "accuracy_std": float(scores.std()),
+        "n_samples": int(len(y)),
+        "pool_positions": int(pool_positions),
+    }
+
+
 # ──────────────────────────────────────────────────────────────────────
 # Target-position accuracy per resolver
 # ──────────────────────────────────────────────────────────────────────
