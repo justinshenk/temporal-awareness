@@ -198,12 +198,11 @@ def backfill_one(json_path: Path, maar_root: str, force: bool) -> bool:
 
     # Load model + tokenizer, extract activations
     sys.path.insert(0, ".")
-    from src.lookahead.probing.hf_activation_extraction import (
-        load_model_for_extraction, extract_activations_hf,
-    )
+    from scripts.lookahead.experiments.run_staircase_v2 import load_model_and_tokenizer
+    from src.lookahead.probing.hf_activation_extraction import extract_activations_hf
 
     t0 = time.time()
-    tokenizer, model = load_model_for_extraction(model_id, quantization="bf16")
+    model, tokenizer = load_model_and_tokenizer(model_id, quantization="bf16", device_map="auto")
     caches = extract_activations_hf(
         model=model, tokenizer=tokenizer, examples=examples,
         layers=layers, include_attention=False,

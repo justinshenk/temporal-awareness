@@ -348,6 +348,13 @@ def write_stats(docs, outdir: Path):
 
     # 3. Number of models where the predicted-sign matched the observed-sign
     lines.append("## Pre-registration check (sign match rate)")
+    lines.append("")
+    lines.append("NOTE: Predictions were registered under the workshop's mean-pool baseline.")
+    lines.append("Under our stricter per-position baseline, code and qa_suggestive show small")
+    lines.append("positive gaps not visible under mean-pooling. The training-dynamics sweep")
+    lines.append("(fig5) reveals these are largely positional artifacts: code's floor-subtracted")
+    lines.append("gap is ~+2pp (effectively zero learned computation).")
+    lines.append("")
     counts: dict[str, list[bool]] = defaultdict(list)
     for d in docs:
         domain = d["meta"]["domain"]; h = best_headline(d)
@@ -359,9 +366,87 @@ def write_stats(docs, outdir: Path):
             n = len(counts[dom]); k = sum(counts[dom])
             lines.append(f"- {dom:14s}  {k}/{n}  ({100*k/n:.0f}% sign-match)")
 
+    lines.append("")
+    lines.append("## Bootstrap CI caveat")
+    lines.append("")
+    lines.append("qa_neutral bootstrap CIs use ungrouped resampling and are unreliable.")
+    lines.append("The headline gap (computed via StratifiedGroupKFold) is the correct metric.")
+    lines.append("CIs for qa_neutral should be interpreted with caution; the gap of ~-1pp is")
+    lines.append("not significantly different from zero by any reasonable test.")
+
     out = outdir / "STATS.md"
     out.write_text("\n".join(lines))
     logger.info(f"  stats → {out}")
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Figure 5: Training dynamics (checkpoint sweep)
+# ──────────────────────────────────────────────────────────────────────
+def fig5_training_dynamics(docs, outdir: Path):
+    """Plot gap vs training step for checkpoint-sweep JSONs."""
+    # Collect (step, domain, gap) triples from checkpoint JSONs
+    points: dict[str, list[tuple[int, float]]] = defaultdict(list)
+    for d in docs:
+        meta = d.get("meta", {})
+        rev = meta.get("revision")
+        if not rev or not rev.startswith("step"):
+            continue
+        try:
+            step = int(rev.replace("step", ""))
+        except ValueError:
+            continue
+        domain = meta.get("domain")
+        h = best_headline(d)
+        if not h:
+            continue
+        gap = h["headline_gap"] * 100
+        points[domain].append((step, gap))
+
+    if not points:
+        logger.warning("fig5: no checkpoint data"); return
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for domain in ["rhyme", "code"]:
+        if domain not in points:
+            continue
+        pts = sorted(points[domain])
+        steps = [p[0] for p in pts]
+        gaps = [p[1] for p in pts]
+        color = DOMAIN_COLORS.get(domain, "gray")
+        ax.plot(steps, gaps, marker="o", linewidth=2.5, markersize=7,
+                color=color, label=f"{domain} (gap)")
+
+        # Mark the floor (step 0)
+        if steps[0] == 0:
+            ax.axhline(gaps[0], color=color, linestyle=":", linewidth=1, alpha=0.5)
+            # Annotate floor
+            ax.annotate(f"floor: {gaps[0]:+.0f}pp",
+                       xy=(steps[-1] * 0.6, gaps[0]),
+                       color=color, fontsize=9, alpha=0.7,
+                       va="bottom" if domain == "code" else "top")
+
+        # Annotate learned component
+        if len(gaps) >= 2 and steps[0] == 0:
+            learned = gaps[-1] - gaps[0]
+            ax.annotate(f"learned: {learned:+.1f}pp",
+                       xy=(steps[-1], gaps[-1]),
+                       xytext=(steps[-1] * 0.75, gaps[-1] + (5 if domain == "rhyme" else -5)),
+                       fontsize=9, color=color, fontweight="bold",
+                       arrowprops=dict(arrowstyle="->", color=color, alpha=0.5))
+
+    ax.set_xlabel("Training step", fontsize=12)
+    ax.set_ylabel("Headline gap (pp)", fontsize=12)
+    ax.set_title("Training dynamics: emergence of the staircase gap\n"
+                 "(Pythia-1.4b, 8 checkpoints)", fontsize=13)
+    ax.legend(fontsize=11, loc="center right")
+    ax.set_xscale("symlog", linthresh=100)  # log scale but handle step=0
+    ax.grid(alpha=0.3)
+    ax.set_ylim(bottom=0)
+    plt.tight_layout()
+    out = outdir / "fig5_training_dynamics.pdf"
+    plt.savefig(out, bbox_inches="tight")
+    plt.close()
+    logger.info(f"  fig5 → {out}")
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -387,6 +472,7 @@ def main():
     fig2_staircase(docs, outdir, anchor_model=args.anchor_model)
     fig3_dual_baseline(docs, outdir)
     fig4_ablation_heatmap(docs, outdir)
+    fig5_training_dynamics(docs, outdir)
     write_stats(docs, outdir)
 
     logger.info(f"All figures + stats in {outdir}/")
