@@ -1,0 +1,612 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate implicit-trained probes on explicit temporal examples",
+    "timestamp": "2026-05-14T04:07:21.454731+00:00",
+    "random_seed": 42,
+    "model": {
+      "name": "Qwen/Qwen3-4B",
+      "tag": "Qwen__Qwen3-4B",
+      "source": "huggingface"
+    },
+    "package_versions": {
+      "torch": "2.7.1+cu118",
+      "transformers": "5.3.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.1"
+    },
+    "compute": {
+      "device": "cuda",
+      "cuda_available": true,
+      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_count": 2
+    },
+    "git_commit": "6cb568ff281249bf3227915f31df1e9c0b8fa605",
+    "git_branch": "oversight-in-real-time",
+    "git_dirty": true
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+      "sha256": "1e782fe6304cbd7b3460a87bac1d4c78e72519a8aa4ad93e0b309d0d50798280"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+      "sha256": "9eeaec55cd10e2f72102c6758d0f6682f543aa2ce83591391695aff01ed44e53"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "probe_method": "dmm",
+    "probe_type": "DifferenceOfMeans(hidden-state)",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "batch_size": 2,
+    "max_length": 256,
+    "attn_implementation": "eager",
+    "device_map": "single",
+    "local_files_only": false,
+    "probe_source_dir": "research/probes/dmm/Qwen__Qwen3-4B",
+    "implicit_training_results_csv": "research/results/dmm/Qwen__Qwen3-4B_temporal_probe_dmm_implicit_train.csv"
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "dmm",
+      "explicit_acc": 0.63,
+      "test_acc": 0.63
+    },
+    {
+      "layer": 1,
+      "probe_method": "dmm",
+      "explicit_acc": 0.66,
+      "test_acc": 0.66
+    },
+    {
+      "layer": 2,
+      "probe_method": "dmm",
+      "explicit_acc": 0.68,
+      "test_acc": 0.68
+    },
+    {
+      "layer": 3,
+      "probe_method": "dmm",
+      "explicit_acc": 0.76,
+      "test_acc": 0.76
+    },
+    {
+      "layer": 4,
+      "probe_method": "dmm",
+      "explicit_acc": 0.77,
+      "test_acc": 0.77
+    },
+    {
+      "layer": 5,
+      "probe_method": "dmm",
+      "explicit_acc": 0.78,
+      "test_acc": 0.78
+    },
+    {
+      "layer": 6,
+      "probe_method": "dmm",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 7,
+      "probe_method": "dmm",
+      "explicit_acc": 0.77,
+      "test_acc": 0.77
+    },
+    {
+      "layer": 8,
+      "probe_method": "dmm",
+      "explicit_acc": 0.85,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 9,
+      "probe_method": "dmm",
+      "explicit_acc": 0.82,
+      "test_acc": 0.82
+    },
+    {
+      "layer": 10,
+      "probe_method": "dmm",
+      "explicit_acc": 0.87,
+      "test_acc": 0.87
+    },
+    {
+      "layer": 11,
+      "probe_method": "dmm",
+      "explicit_acc": 0.88,
+      "test_acc": 0.88
+    },
+    {
+      "layer": 12,
+      "probe_method": "dmm",
+      "explicit_acc": 0.89,
+      "test_acc": 0.89
+    },
+    {
+      "layer": 13,
+      "probe_method": "dmm",
+      "explicit_acc": 0.87,
+      "test_acc": 0.87
+    },
+    {
+      "layer": 14,
+      "probe_method": "dmm",
+      "explicit_acc": 0.92,
+      "test_acc": 0.92
+    },
+    {
+      "layer": 15,
+      "probe_method": "dmm",
+      "explicit_acc": 0.89,
+      "test_acc": 0.89
+    },
+    {
+      "layer": 16,
+      "probe_method": "dmm",
+      "explicit_acc": 0.94,
+      "test_acc": 0.94
+    },
+    {
+      "layer": 17,
+      "probe_method": "dmm",
+      "explicit_acc": 0.91,
+      "test_acc": 0.91
+    },
+    {
+      "layer": 18,
+      "probe_method": "dmm",
+      "explicit_acc": 0.9,
+      "test_acc": 0.9
+    },
+    {
+      "layer": 19,
+      "probe_method": "dmm",
+      "explicit_acc": 0.89,
+      "test_acc": 0.89
+    },
+    {
+      "layer": 20,
+      "probe_method": "dmm",
+      "explicit_acc": 0.87,
+      "test_acc": 0.87
+    },
+    {
+      "layer": 21,
+      "probe_method": "dmm",
+      "explicit_acc": 0.89,
+      "test_acc": 0.89
+    },
+    {
+      "layer": 22,
+      "probe_method": "dmm",
+      "explicit_acc": 0.88,
+      "test_acc": 0.88
+    },
+    {
+      "layer": 23,
+      "probe_method": "dmm",
+      "explicit_acc": 0.92,
+      "test_acc": 0.92
+    },
+    {
+      "layer": 24,
+      "probe_method": "dmm",
+      "explicit_acc": 0.89,
+      "test_acc": 0.89
+    },
+    {
+      "layer": 25,
+      "probe_method": "dmm",
+      "explicit_acc": 0.88,
+      "test_acc": 0.88
+    },
+    {
+      "layer": 26,
+      "probe_method": "dmm",
+      "explicit_acc": 0.88,
+      "test_acc": 0.88
+    },
+    {
+      "layer": 27,
+      "probe_method": "dmm",
+      "explicit_acc": 0.87,
+      "test_acc": 0.87
+    },
+    {
+      "layer": 28,
+      "probe_method": "dmm",
+      "explicit_acc": 0.85,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 29,
+      "probe_method": "dmm",
+      "explicit_acc": 0.86,
+      "test_acc": 0.86
+    },
+    {
+      "layer": 30,
+      "probe_method": "dmm",
+      "explicit_acc": 0.86,
+      "test_acc": 0.86
+    },
+    {
+      "layer": 31,
+      "probe_method": "dmm",
+      "explicit_acc": 0.87,
+      "test_acc": 0.87
+    },
+    {
+      "layer": 32,
+      "probe_method": "dmm",
+      "explicit_acc": 0.85,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 33,
+      "probe_method": "dmm",
+      "explicit_acc": 0.85,
+      "test_acc": 0.85
+    },
+    {
+      "layer": 34,
+      "probe_method": "dmm",
+      "explicit_acc": 0.83,
+      "test_acc": 0.83
+    },
+    {
+      "layer": 35,
+      "probe_method": "dmm",
+      "explicit_acc": 0.83,
+      "test_acc": 0.83
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "dmm",
+      "cv_mean": 0.6,
+      "cv_std": 0.0499999999999999,
+      "implicit_acc": 0.65,
+      "n_features": 2560
+    },
+    {
+      "layer": 1,
+      "probe_method": "dmm",
+      "cv_mean": 0.625,
+      "cv_std": 0.0559016994374947,
+      "implicit_acc": 0.6,
+      "n_features": 2560
+    },
+    {
+      "layer": 2,
+      "probe_method": "dmm",
+      "cv_mean": 0.6375,
+      "cv_std": 0.0467707173346742,
+      "implicit_acc": 0.6,
+      "n_features": 2560
+    },
+    {
+      "layer": 3,
+      "probe_method": "dmm",
+      "cv_mean": 0.65,
+      "cv_std": 0.1286953767623375,
+      "implicit_acc": 0.7,
+      "n_features": 2560
+    },
+    {
+      "layer": 4,
+      "probe_method": "dmm",
+      "cv_mean": 0.6875,
+      "cv_std": 0.1311011060212689,
+      "implicit_acc": 0.8,
+      "n_features": 2560
+    },
+    {
+      "layer": 5,
+      "probe_method": "dmm",
+      "cv_mean": 0.725,
+      "cv_std": 0.1089724735885168,
+      "implicit_acc": 0.8,
+      "n_features": 2560
+    },
+    {
+      "layer": 6,
+      "probe_method": "dmm",
+      "cv_mean": 0.7375,
+      "cv_std": 0.0999999999999999,
+      "implicit_acc": 0.8,
+      "n_features": 2560
+    },
+    {
+      "layer": 7,
+      "probe_method": "dmm",
+      "cv_mean": 0.8,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.85,
+      "n_features": 2560
+    },
+    {
+      "layer": 8,
+      "probe_method": "dmm",
+      "cv_mean": 0.775,
+      "cv_std": 0.0935414346693485,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 9,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.0306186217847897,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 10,
+      "probe_method": "dmm",
+      "cv_mean": 0.825,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.9,
+      "n_features": 2560
+    },
+    {
+      "layer": 11,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 12,
+      "probe_method": "dmm",
+      "cv_mean": 0.8625,
+      "cv_std": 0.1,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 13,
+      "probe_method": "dmm",
+      "cv_mean": 0.8875,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 14,
+      "probe_method": "dmm",
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 15,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.05,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 16,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.0306186217847897,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 17,
+      "probe_method": "dmm",
+      "cv_mean": 0.875,
+      "cv_std": 0.0684653196881457,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 18,
+      "probe_method": "dmm",
+      "cv_mean": 0.825,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 19,
+      "probe_method": "dmm",
+      "cv_mean": 0.8375,
+      "cv_std": 0.0306186217847897,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 20,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.05,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 21,
+      "probe_method": "dmm",
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 22,
+      "probe_method": "dmm",
+      "cv_mean": 0.825,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 23,
+      "probe_method": "dmm",
+      "cv_mean": 0.7875,
+      "cv_std": 0.0847791247890658,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 24,
+      "probe_method": "dmm",
+      "cv_mean": 0.8,
+      "cv_std": 0.0829156197588849,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 25,
+      "probe_method": "dmm",
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 26,
+      "probe_method": "dmm",
+      "cv_mean": 0.85,
+      "cv_std": 0.0499999999999999,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 27,
+      "probe_method": "dmm",
+      "cv_mean": 0.8625,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 28,
+      "probe_method": "dmm",
+      "cv_mean": 0.8375,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 29,
+      "probe_method": "dmm",
+      "cv_mean": 0.825,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 30,
+      "probe_method": "dmm",
+      "cv_mean": 0.8,
+      "cv_std": 0.0467707173346742,
+      "implicit_acc": 1.0,
+      "n_features": 2560
+    },
+    {
+      "layer": 31,
+      "probe_method": "dmm",
+      "cv_mean": 0.7875,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 32,
+      "probe_method": "dmm",
+      "cv_mean": 0.725,
+      "cv_std": 0.075,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 33,
+      "probe_method": "dmm",
+      "cv_mean": 0.7,
+      "cv_std": 0.0999999999999999,
+      "implicit_acc": 0.95,
+      "n_features": 2560
+    },
+    {
+      "layer": 34,
+      "probe_method": "dmm",
+      "cv_mean": 0.65,
+      "cv_std": 0.1159202311936963,
+      "implicit_acc": 0.85,
+      "n_features": 2560
+    },
+    {
+      "layer": 35,
+      "probe_method": "dmm",
+      "cv_mean": 0.6625,
+      "cv_std": 0.075,
+      "implicit_acc": 0.85,
+      "n_features": 2560
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 16,
+    "best_explicit_accuracy": 0.94,
+    "best_implicit_accuracy": 1.0,
+    "validation_passed": true,
+    "semantic_layers": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35
+    ],
+    "weak_layers": [
+      0,
+      1,
+      2
+    ],
+    "lexical_layers": [],
+    "mean_explicit_accuracy": 0.8416666666666666,
+    "mean_implicit_accuracy": 0.9097222222222222,
+    "mean_generalization_gap": -0.06805555555555554
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate implicit-trained probes on explicit temporal examples",
+    "timestamp": "2026-05-14T03:57:55.352186+00:00",
+    "random_seed": 42,
+    "model": {
+      "name": "gpt2",
+      "tag": "gpt2",
+      "source": "huggingface"
+    },
+    "package_versions": {
+      "torch": "2.7.1+cu118",
+      "transformers": "5.3.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.1"
+    },
+    "compute": {
+      "device": "cuda",
+      "cuda_available": true,
+      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_count": 2
+    },
+    "git_commit": "6cb568ff281249bf3227915f31df1e9c0b8fa605",
+    "git_branch": "oversight-in-real-time",
+    "git_dirty": true
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+      "sha256": "1e782fe6304cbd7b3460a87bac1d4c78e72519a8aa4ad93e0b309d0d50798280"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+      "sha256": "9eeaec55cd10e2f72102c6758d0f6682f543aa2ce83591391695aff01ed44e53"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "probe_method": "lr",
+    "probe_type": "LogisticRegression(hidden-state)",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "batch_size": 2,
+    "max_length": 256,
+    "attn_implementation": "model_default",
+    "device_map": "single",
+    "local_files_only": false,
+    "probe_source_dir": "research/probes/lr/gpt2",
+    "implicit_training_results_csv": "research/results/lr/gpt2_temporal_probe_lr_implicit_train.csv"
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "lr",
+      "explicit_acc": 0.68,
+      "test_acc": 0.68
+    },
+    {
+      "layer": 1,
+      "probe_method": "lr",
+      "explicit_acc": 0.67,
+      "test_acc": 0.67
+    },
+    {
+      "layer": 2,
+      "probe_method": "lr",
+      "explicit_acc": 0.67,
+      "test_acc": 0.67
+    },
+    {
+      "layer": 3,
+      "probe_method": "lr",
+      "explicit_acc": 0.7,
+      "test_acc": 0.7
+    },
+    {
+      "layer": 4,
+      "probe_method": "lr",
+      "explicit_acc": 0.79,
+      "test_acc": 0.79
+    },
+    {
+      "layer": 5,
+      "probe_method": "lr",
+      "explicit_acc": 0.77,
+      "test_acc": 0.77
+    },
+    {
+      "layer": 6,
+      "probe_method": "lr",
+      "explicit_acc": 0.79,
+      "test_acc": 0.79
+    },
+    {
+      "layer": 7,
+      "probe_method": "lr",
+      "explicit_acc": 0.78,
+      "test_acc": 0.78
+    },
+    {
+      "layer": 8,
+      "probe_method": "lr",
+      "explicit_acc": 0.78,
+      "test_acc": 0.78
+    },
+    {
+      "layer": 9,
+      "probe_method": "lr",
+      "explicit_acc": 0.75,
+      "test_acc": 0.75
+    },
+    {
+      "layer": 10,
+      "probe_method": "lr",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 11,
+      "probe_method": "lr",
+      "explicit_acc": 0.73,
+      "test_acc": 0.73
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "lr",
+      "cv_mean": 0.6125,
+      "cv_std": 0.1391941090707505,
+      "implicit_acc": 0.6,
+      "n_features": 768
+    },
+    {
+      "layer": 1,
+      "probe_method": "lr",
+      "cv_mean": 0.55,
+      "cv_std": 0.1211919964354082,
+      "implicit_acc": 0.5,
+      "n_features": 768
+    },
+    {
+      "layer": 2,
+      "probe_method": "lr",
+      "cv_mean": 0.6125,
+      "cv_std": 0.1334634781503914,
+      "implicit_acc": 0.55,
+      "n_features": 768
+    },
+    {
+      "layer": 3,
+      "probe_method": "lr",
+      "cv_mean": 0.6375,
+      "cv_std": 0.1075290658380328,
+      "implicit_acc": 0.6,
+      "n_features": 768
+    },
+    {
+      "layer": 4,
+      "probe_method": "lr",
+      "cv_mean": 0.6625,
+      "cv_std": 0.0935414346693485,
+      "implicit_acc": 0.6,
+      "n_features": 768
+    },
+    {
+      "layer": 5,
+      "probe_method": "lr",
+      "cv_mean": 0.65,
+      "cv_std": 0.1015504800579495,
+      "implicit_acc": 0.7,
+      "n_features": 768
+    },
+    {
+      "layer": 6,
+      "probe_method": "lr",
+      "cv_mean": 0.65,
+      "cv_std": 0.1510380746699321,
+      "implicit_acc": 0.75,
+      "n_features": 768
+    },
+    {
+      "layer": 7,
+      "probe_method": "lr",
+      "cv_mean": 0.6375,
+      "cv_std": 0.1334634781503914,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    },
+    {
+      "layer": 8,
+      "probe_method": "lr",
+      "cv_mean": 0.6375,
+      "cv_std": 0.1334634781503914,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    },
+    {
+      "layer": 9,
+      "probe_method": "lr",
+      "cv_mean": 0.6625,
+      "cv_std": 0.075,
+      "implicit_acc": 0.85,
+      "n_features": 768
+    },
+    {
+      "layer": 10,
+      "probe_method": "lr",
+      "cv_mean": 0.6625,
+      "cv_std": 0.075,
+      "implicit_acc": 0.95,
+      "n_features": 768
+    },
+    {
+      "layer": 11,
+      "probe_method": "lr",
+      "cv_mean": 0.6625,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 4,
+    "best_explicit_accuracy": 0.79,
+    "best_implicit_accuracy": 0.6,
+    "validation_passed": true,
+    "semantic_layers": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "weak_layers": [
+      0,
+      1,
+      2
+    ],
+    "lexical_layers": [],
+    "mean_explicit_accuracy": 0.7374999999999999,
+    "mean_implicit_accuracy": 0.7083333333333334,
+    "mean_generalization_gap": 0.029166666666666684
+  }
+}

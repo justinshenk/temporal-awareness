@@ -1,0 +1,553 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate implicit-trained probes on explicit temporal examples",
+    "timestamp": "2026-05-14T04:12:49.913824+00:00",
+    "random_seed": 42,
+    "model": {
+      "name": "microsoft/Phi-3-mini-4k-instruct",
+      "tag": "microsoft__Phi-3-mini-4k-instruct",
+      "source": "huggingface"
+    },
+    "package_versions": {
+      "torch": "2.7.1+cu118",
+      "transformers": "5.3.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.1"
+    },
+    "compute": {
+      "device": "cuda",
+      "cuda_available": true,
+      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_count": 2
+    },
+    "git_commit": "6cb568ff281249bf3227915f31df1e9c0b8fa605",
+    "git_branch": "oversight-in-real-time",
+    "git_dirty": true
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+      "sha256": "1e782fe6304cbd7b3460a87bac1d4c78e72519a8aa4ad93e0b309d0d50798280"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+      "sha256": "9eeaec55cd10e2f72102c6758d0f6682f543aa2ce83591391695aff01ed44e53"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "probe_method": "attn",
+    "probe_type": "LogisticRegression(attention-summary)",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "batch_size": 1,
+    "max_length": 256,
+    "attn_implementation": "eager",
+    "device_map": "single",
+    "local_files_only": false,
+    "probe_source_dir": "research/probes/attn/microsoft__Phi-3-mini-4k-instruct",
+    "implicit_training_results_csv": "research/results/attn/microsoft__Phi-3-mini-4k-instruct_temporal_probe_attn_implicit_train.csv"
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "attn",
+      "explicit_acc": 0.51,
+      "test_acc": 0.51
+    },
+    {
+      "layer": 1,
+      "probe_method": "attn",
+      "explicit_acc": 0.5,
+      "test_acc": 0.5
+    },
+    {
+      "layer": 2,
+      "probe_method": "attn",
+      "explicit_acc": 0.51,
+      "test_acc": 0.51
+    },
+    {
+      "layer": 3,
+      "probe_method": "attn",
+      "explicit_acc": 0.5,
+      "test_acc": 0.5
+    },
+    {
+      "layer": 4,
+      "probe_method": "attn",
+      "explicit_acc": 0.54,
+      "test_acc": 0.54
+    },
+    {
+      "layer": 5,
+      "probe_method": "attn",
+      "explicit_acc": 0.6,
+      "test_acc": 0.6
+    },
+    {
+      "layer": 6,
+      "probe_method": "attn",
+      "explicit_acc": 0.56,
+      "test_acc": 0.56
+    },
+    {
+      "layer": 7,
+      "probe_method": "attn",
+      "explicit_acc": 0.64,
+      "test_acc": 0.64
+    },
+    {
+      "layer": 8,
+      "probe_method": "attn",
+      "explicit_acc": 0.61,
+      "test_acc": 0.61
+    },
+    {
+      "layer": 9,
+      "probe_method": "attn",
+      "explicit_acc": 0.55,
+      "test_acc": 0.55
+    },
+    {
+      "layer": 10,
+      "probe_method": "attn",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 11,
+      "probe_method": "attn",
+      "explicit_acc": 0.55,
+      "test_acc": 0.55
+    },
+    {
+      "layer": 12,
+      "probe_method": "attn",
+      "explicit_acc": 0.61,
+      "test_acc": 0.61
+    },
+    {
+      "layer": 13,
+      "probe_method": "attn",
+      "explicit_acc": 0.65,
+      "test_acc": 0.65
+    },
+    {
+      "layer": 14,
+      "probe_method": "attn",
+      "explicit_acc": 0.69,
+      "test_acc": 0.69
+    },
+    {
+      "layer": 15,
+      "probe_method": "attn",
+      "explicit_acc": 0.59,
+      "test_acc": 0.59
+    },
+    {
+      "layer": 16,
+      "probe_method": "attn",
+      "explicit_acc": 0.69,
+      "test_acc": 0.69
+    },
+    {
+      "layer": 17,
+      "probe_method": "attn",
+      "explicit_acc": 0.8,
+      "test_acc": 0.8
+    },
+    {
+      "layer": 18,
+      "probe_method": "attn",
+      "explicit_acc": 0.69,
+      "test_acc": 0.69
+    },
+    {
+      "layer": 19,
+      "probe_method": "attn",
+      "explicit_acc": 0.69,
+      "test_acc": 0.69
+    },
+    {
+      "layer": 20,
+      "probe_method": "attn",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 21,
+      "probe_method": "attn",
+      "explicit_acc": 0.67,
+      "test_acc": 0.67
+    },
+    {
+      "layer": 22,
+      "probe_method": "attn",
+      "explicit_acc": 0.59,
+      "test_acc": 0.59
+    },
+    {
+      "layer": 23,
+      "probe_method": "attn",
+      "explicit_acc": 0.66,
+      "test_acc": 0.66
+    },
+    {
+      "layer": 24,
+      "probe_method": "attn",
+      "explicit_acc": 0.61,
+      "test_acc": 0.61
+    },
+    {
+      "layer": 25,
+      "probe_method": "attn",
+      "explicit_acc": 0.54,
+      "test_acc": 0.54
+    },
+    {
+      "layer": 26,
+      "probe_method": "attn",
+      "explicit_acc": 0.45,
+      "test_acc": 0.45
+    },
+    {
+      "layer": 27,
+      "probe_method": "attn",
+      "explicit_acc": 0.64,
+      "test_acc": 0.64
+    },
+    {
+      "layer": 28,
+      "probe_method": "attn",
+      "explicit_acc": 0.62,
+      "test_acc": 0.62
+    },
+    {
+      "layer": 29,
+      "probe_method": "attn",
+      "explicit_acc": 0.53,
+      "test_acc": 0.53
+    },
+    {
+      "layer": 30,
+      "probe_method": "attn",
+      "explicit_acc": 0.62,
+      "test_acc": 0.62
+    },
+    {
+      "layer": 31,
+      "probe_method": "attn",
+      "explicit_acc": 0.59,
+      "test_acc": 0.59
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "attn",
+      "cv_mean": 0.575,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 0.45,
+      "n_features": 224
+    },
+    {
+      "layer": 1,
+      "probe_method": "attn",
+      "cv_mean": 0.625,
+      "cv_std": 0.1677050983124842,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 2,
+      "probe_method": "attn",
+      "cv_mean": 0.5125,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 3,
+      "probe_method": "attn",
+      "cv_mean": 0.6125,
+      "cv_std": 0.0829156197588849,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    },
+    {
+      "layer": 4,
+      "probe_method": "attn",
+      "cv_mean": 0.55,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 5,
+      "probe_method": "attn",
+      "cv_mean": 0.5875,
+      "cv_std": 0.0935414346693485,
+      "implicit_acc": 0.7,
+      "n_features": 224
+    },
+    {
+      "layer": 6,
+      "probe_method": "attn",
+      "cv_mean": 0.625,
+      "cv_std": 0.1185854122563142,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 7,
+      "probe_method": "attn",
+      "cv_mean": 0.6125,
+      "cv_std": 0.0918558653543691,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 8,
+      "probe_method": "attn",
+      "cv_mean": 0.525,
+      "cv_std": 0.1561249499599599,
+      "implicit_acc": 0.75,
+      "n_features": 224
+    },
+    {
+      "layer": 9,
+      "probe_method": "attn",
+      "cv_mean": 0.425,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 10,
+      "probe_method": "attn",
+      "cv_mean": 0.5125,
+      "cv_std": 0.0467707173346742,
+      "implicit_acc": 0.45,
+      "n_features": 224
+    },
+    {
+      "layer": 11,
+      "probe_method": "attn",
+      "cv_mean": 0.5625,
+      "cv_std": 0.1311011060212689,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 12,
+      "probe_method": "attn",
+      "cv_mean": 0.5625,
+      "cv_std": 0.0883883476483184,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    },
+    {
+      "layer": 13,
+      "probe_method": "attn",
+      "cv_mean": 0.575,
+      "cv_std": 0.0467707173346742,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 14,
+      "probe_method": "attn",
+      "cv_mean": 0.7125,
+      "cv_std": 0.1015504800579495,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    },
+    {
+      "layer": 15,
+      "probe_method": "attn",
+      "cv_mean": 0.5625,
+      "cv_std": 0.0559016994374947,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    },
+    {
+      "layer": 16,
+      "probe_method": "attn",
+      "cv_mean": 0.625,
+      "cv_std": 0.1045825033167594,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 17,
+      "probe_method": "attn",
+      "cv_mean": 0.6625,
+      "cv_std": 0.161051234084064,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 18,
+      "probe_method": "attn",
+      "cv_mean": 0.65,
+      "cv_std": 0.1015504800579495,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 19,
+      "probe_method": "attn",
+      "cv_mean": 0.55,
+      "cv_std": 0.0918558653543691,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 20,
+      "probe_method": "attn",
+      "cv_mean": 0.5875,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    },
+    {
+      "layer": 21,
+      "probe_method": "attn",
+      "cv_mean": 0.55,
+      "cv_std": 0.0612372435695794,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 22,
+      "probe_method": "attn",
+      "cv_mean": 0.5875,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.7,
+      "n_features": 224
+    },
+    {
+      "layer": 23,
+      "probe_method": "attn",
+      "cv_mean": 0.6125,
+      "cv_std": 0.0999999999999999,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 24,
+      "probe_method": "attn",
+      "cv_mean": 0.5875,
+      "cv_std": 0.1089724735885168,
+      "implicit_acc": 0.5,
+      "n_features": 224
+    },
+    {
+      "layer": 25,
+      "probe_method": "attn",
+      "cv_mean": 0.575,
+      "cv_std": 0.1075290658380328,
+      "implicit_acc": 0.7,
+      "n_features": 224
+    },
+    {
+      "layer": 26,
+      "probe_method": "attn",
+      "cv_mean": 0.5875,
+      "cv_std": 0.0935414346693485,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 27,
+      "probe_method": "attn",
+      "cv_mean": 0.6,
+      "cv_std": 0.1286953767623375,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 28,
+      "probe_method": "attn",
+      "cv_mean": 0.55,
+      "cv_std": 0.1075290658380328,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 29,
+      "probe_method": "attn",
+      "cv_mean": 0.55,
+      "cv_std": 0.0829156197588849,
+      "implicit_acc": 0.55,
+      "n_features": 224
+    },
+    {
+      "layer": 30,
+      "probe_method": "attn",
+      "cv_mean": 0.575,
+      "cv_std": 0.1145643923738959,
+      "implicit_acc": 0.6,
+      "n_features": 224
+    },
+    {
+      "layer": 31,
+      "probe_method": "attn",
+      "cv_mean": 0.7,
+      "cv_std": 0.0467707173346742,
+      "implicit_acc": 0.65,
+      "n_features": 224
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 17,
+    "best_explicit_accuracy": 0.8,
+    "best_implicit_accuracy": 0.6,
+    "validation_passed": true,
+    "semantic_layers": [
+      10,
+      17,
+      20
+    ],
+    "weak_layers": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      18,
+      19,
+      21,
+      22,
+      23,
+      24,
+      27,
+      28,
+      30,
+      31
+    ],
+    "lexical_layers": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      25,
+      26,
+      29
+    ],
+    "mean_explicit_accuracy": 0.6087499999999999,
+    "mean_implicit_accuracy": 0.58125,
+    "mean_generalization_gap": 0.027499999999999993
+  }
+}

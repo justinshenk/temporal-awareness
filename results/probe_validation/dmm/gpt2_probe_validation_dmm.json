@@ -1,0 +1,252 @@
+{
+  "metadata": {
+    "experiment": "probe_semantic_validation",
+    "description": "Validate implicit-trained probes on explicit temporal examples",
+    "timestamp": "2026-05-14T04:06:48.108767+00:00",
+    "random_seed": 42,
+    "model": {
+      "name": "gpt2",
+      "tag": "gpt2",
+      "source": "huggingface"
+    },
+    "package_versions": {
+      "torch": "2.7.1+cu118",
+      "transformers": "5.3.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.1"
+    },
+    "compute": {
+      "device": "cuda",
+      "cuda_available": true,
+      "gpu_name": "NVIDIA GeForce RTX 3080 Ti",
+      "gpu_count": 2
+    },
+    "git_commit": "6cb568ff281249bf3227915f31df1e9c0b8fa605",
+    "git_branch": "oversight-in-real-time",
+    "git_dirty": true
+  },
+  "datasets": {
+    "explicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_caa.json",
+      "sha256": "1e782fe6304cbd7b3460a87bac1d4c78e72519a8aa4ad93e0b309d0d50798280"
+    },
+    "implicit_dataset": {
+      "path": "data/raw/temporal_scope_AB_randomized/temporal_scope_implicit.json",
+      "sha256": "9eeaec55cd10e2f72102c6758d0f6682f543aa2ce83591391695aff01ed44e53"
+    }
+  },
+  "config": {
+    "device": "cuda",
+    "probe_method": "dmm",
+    "probe_type": "DifferenceOfMeans(hidden-state)",
+    "n_explicit_pairs": 50,
+    "n_implicit_pairs": 50,
+    "train_test_split": 0.2,
+    "cv_folds": 5,
+    "batch_size": 2,
+    "max_length": 256,
+    "attn_implementation": "model_default",
+    "device_map": "single",
+    "local_files_only": false,
+    "probe_source_dir": "research/probes/dmm/gpt2",
+    "implicit_training_results_csv": "research/results/dmm/gpt2_temporal_probe_dmm_implicit_train.csv"
+  },
+  "explicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "dmm",
+      "explicit_acc": 0.72,
+      "test_acc": 0.72
+    },
+    {
+      "layer": 1,
+      "probe_method": "dmm",
+      "explicit_acc": 0.64,
+      "test_acc": 0.64
+    },
+    {
+      "layer": 2,
+      "probe_method": "dmm",
+      "explicit_acc": 0.68,
+      "test_acc": 0.68
+    },
+    {
+      "layer": 3,
+      "probe_method": "dmm",
+      "explicit_acc": 0.67,
+      "test_acc": 0.67
+    },
+    {
+      "layer": 4,
+      "probe_method": "dmm",
+      "explicit_acc": 0.68,
+      "test_acc": 0.68
+    },
+    {
+      "layer": 5,
+      "probe_method": "dmm",
+      "explicit_acc": 0.69,
+      "test_acc": 0.69
+    },
+    {
+      "layer": 6,
+      "probe_method": "dmm",
+      "explicit_acc": 0.72,
+      "test_acc": 0.72
+    },
+    {
+      "layer": 7,
+      "probe_method": "dmm",
+      "explicit_acc": 0.72,
+      "test_acc": 0.72
+    },
+    {
+      "layer": 8,
+      "probe_method": "dmm",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 9,
+      "probe_method": "dmm",
+      "explicit_acc": 0.74,
+      "test_acc": 0.74
+    },
+    {
+      "layer": 10,
+      "probe_method": "dmm",
+      "explicit_acc": 0.71,
+      "test_acc": 0.71
+    },
+    {
+      "layer": 11,
+      "probe_method": "dmm",
+      "explicit_acc": 0.73,
+      "test_acc": 0.73
+    }
+  ],
+  "implicit_results": [
+    {
+      "layer": 0,
+      "probe_method": "dmm",
+      "cv_mean": 0.5875,
+      "cv_std": 0.1015504800579495,
+      "implicit_acc": 0.55,
+      "n_features": 768
+    },
+    {
+      "layer": 1,
+      "probe_method": "dmm",
+      "cv_mean": 0.5625,
+      "cv_std": 0.1118033988749894,
+      "implicit_acc": 0.7,
+      "n_features": 768
+    },
+    {
+      "layer": 2,
+      "probe_method": "dmm",
+      "cv_mean": 0.6375,
+      "cv_std": 0.1446979612848778,
+      "implicit_acc": 0.6,
+      "n_features": 768
+    },
+    {
+      "layer": 3,
+      "probe_method": "dmm",
+      "cv_mean": 0.65,
+      "cv_std": 0.075,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    },
+    {
+      "layer": 4,
+      "probe_method": "dmm",
+      "cv_mean": 0.625,
+      "cv_std": 0.0395284707521047,
+      "implicit_acc": 0.75,
+      "n_features": 768
+    },
+    {
+      "layer": 5,
+      "probe_method": "dmm",
+      "cv_mean": 0.6,
+      "cv_std": 0.0306186217847897,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    },
+    {
+      "layer": 6,
+      "probe_method": "dmm",
+      "cv_mean": 0.675,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.75,
+      "n_features": 768
+    },
+    {
+      "layer": 7,
+      "probe_method": "dmm",
+      "cv_mean": 0.6625,
+      "cv_std": 0.0637377439199098,
+      "implicit_acc": 0.75,
+      "n_features": 768
+    },
+    {
+      "layer": 8,
+      "probe_method": "dmm",
+      "cv_mean": 0.6875,
+      "cv_std": 0.0790569415042094,
+      "implicit_acc": 0.85,
+      "n_features": 768
+    },
+    {
+      "layer": 9,
+      "probe_method": "dmm",
+      "cv_mean": 0.7,
+      "cv_std": 0.0728868986855662,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    },
+    {
+      "layer": 10,
+      "probe_method": "dmm",
+      "cv_mean": 0.725,
+      "cv_std": 0.0847791247890658,
+      "implicit_acc": 0.75,
+      "n_features": 768
+    },
+    {
+      "layer": 11,
+      "probe_method": "dmm",
+      "cv_mean": 0.725,
+      "cv_std": 0.0499999999999999,
+      "implicit_acc": 0.8,
+      "n_features": 768
+    }
+  ],
+  "summary": {
+    "best_semantic_layer": 8,
+    "best_explicit_accuracy": 0.74,
+    "best_implicit_accuracy": 0.85,
+    "validation_passed": true,
+    "semantic_layers": [
+      0,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "weak_layers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "lexical_layers": [],
+    "mean_explicit_accuracy": 0.7033333333333333,
+    "mean_implicit_accuracy": 0.7416666666666666,
+    "mean_generalization_gap": -0.03833333333333335
+  }
+}
