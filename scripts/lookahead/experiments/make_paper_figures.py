@@ -134,8 +134,13 @@ def fig1_cross_model(docs, outdir: Path):
                 errs_hi.append(data[(model, domain)]["ci_hi"] - data[(model, domain)]["gap"])
         if xs:
             label = MODEL_DISPLAY.get(model, model.split("/")[-1])
+            # Clamp yerr to non-negative: bootstrap CI can be inconsistent with
+            # headline gap on qa_neutral (known bug: bootstrap uses ungrouped
+            # sampling while headline uses StratifiedGroupKFold).
+            yerr_lo = [max(0, e) for e in errs_lo]
+            yerr_hi = [max(0, e) for e in errs_hi]
             ax.bar(xs, gaps, width=width * 0.95, label=label,
-                   yerr=[errs_lo, errs_hi], capsize=2,
+                   yerr=[yerr_lo, yerr_hi], capsize=2,
                    edgecolor="black", linewidth=0.3, alpha=0.85)
 
     ax.axhline(0, color="black", linewidth=0.5, linestyle="-")
