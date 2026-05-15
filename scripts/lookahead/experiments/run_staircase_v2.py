@@ -58,6 +58,8 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--model", required=True,
                    help="HF model id, e.g. 'EleutherAI/pythia-2.8b-deduped' or 'google/gemma-2-9b-it'")
+    p.add_argument("--revision", default=None,
+                   help="HF model revision/branch (e.g. 'step128000' for Pythia checkpoints)")
     p.add_argument("--domain", required=True,
                    choices=["code", "rhyme", "qa_suggestive", "qa_neutral", "trivia"],
                    help="Which staircase domain to evaluate")
@@ -199,16 +201,20 @@ def load_dataset_for_domain(domain: str, split: str, maar_root: Optional[str]):
 # Model loading with quantization options
 # ──────────────────────────────────────────────────────────────────────
 
-def load_model_and_tokenizer(model_id: str, quantization: str, device_map: str):
+def load_model_and_tokenizer(model_id: str, quantization: str, device_map: str, revision: str = None):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    logger.info(f"Loading tokenizer: {model_id}")
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    rev_str = f"  (revision={revision})" if revision else ""
+    logger.info(f"Loading tokenizer: {model_id}{rev_str}")
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True,
+                                               revision=revision)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     quant_kwargs: dict = {"device_map": device_map, "trust_remote_code": True}
+    if revision:
+        quant_kwargs["revision"] = revision
     if quantization == "bf16":
         quant_kwargs["torch_dtype"] = torch.bfloat16
     elif quantization == "fp16":
@@ -226,15 +232,18 @@ def load_model_and_tokenizer(model_id: str, quantization: str, device_map: str):
                 bnb_4bit_quant_type="nf4",
             )
 
-    logger.info(f"Loading model: {model_id}  (quantization={quantization})")
+    logger.info(f"Loading model: {model_id}  (quantization={quantization}){rev_str}")
     model = AutoModelForCausalLM.from_pretrained(model_id, **quant_kwargs)
     model.eval()
     return model, tokenizer
 
 
-def model_slug(model_id: str) -> str:
-    """Filesystem-safe identifier from a model id."""
-    return model_id.replace("/", "__").replace(":", "_")
+def model_slug(model_id: str, revision: str = None) -> str:
+    """Filesystem-safe identifier from a model id + optional revision."""
+    slug = model_id.replace("/", "__").replace(":", "_")
+    if revision:
+        slug += f"__{revision}"
+    return slug
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -657,6 +666,7 @@ def run(args) -> dict:
         model_id=args.model,
         quantization=args.quantization,
         device_map=args.device_map,
+        revision=getattr(args, 'revision', None),
     )
 
     # Decide which layers to probe
@@ -911,6 +921,7 @@ def run(args) -> dict:
     out_doc = {
         "meta": {
             "model": args.model,
+            "revision": getattr(args, 'revision', None),
             "domain": args.domain,
             "split": args.split,
             "n_examples": len(examples),
@@ -945,7 +956,7 @@ def main():
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{model_slug(args.model)}__{args.domain}__staircase.json"
+    out_path = out_dir / f"{model_slug(args.model, getattr(args, 'revision', None))}__{args.domain}__staircase.json"
 
     if out_path.exists() and not args.overwrite:
         logger.info(f"Output exists, skipping (use --overwrite): {out_path}")
