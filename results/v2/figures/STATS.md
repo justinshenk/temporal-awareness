@@ -16,8 +16,22 @@ _13 models, 28 (model, domain) pairs_
 - trivia          n= 4  mean=  +0.0pp  median=  +0.0pp  range=[+0.0, +0.0]
 
 ## Pre-registration check (sign match rate)
+
+NOTE: Predictions were registered under the workshop's mean-pool baseline.
+Under our stricter per-position baseline, code and qa_suggestive show small
+positive gaps not visible under mean-pooling. The training-dynamics sweep
+(fig5) reveals these are largely positional artifacts: code's floor-subtracted
+gap is ~+2pp (effectively zero learned computation).
+
 - rhyme           17/17  (100% sign-match)
 - qa_suggestive   0/3  (0% sign-match)
 - code            0/16  (0% sign-match)
 - qa_neutral      0/9  (0% sign-match)
 - trivia          0/4  (0% sign-match)
+
+## Bootstrap CI caveat
+
+qa_neutral bootstrap CIs use ungrouped resampling and are unreliable.
+The headline gap (computed via StratifiedGroupKFold) is the correct metric.
+CIs for qa_neutral should be interpreted with caution; the gap of ~-1pp is
+not significantly different from zero by any reasonable test.
