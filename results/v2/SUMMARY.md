@@ -1,15 +1,15 @@
 # Staircase v2 — results summary
 
-_Aggregated from 49 (model, domain) pairs._
+_Aggregated from 62 (model, domain) pairs._
 
 ## Pre-registration check by domain
 
 | Domain | Predicted | n_models | Mean gap (pp) | Min gap (pp) | Max gap (pp) | Pre-reg match rate |
 |--------|-----------|----------|---------------|--------------|--------------|---------------------|
-| code           | negative           |       16 | +12.1         | +8.9         | +15.0        | 0/16 (0%) |
-| qa_neutral     | strong_positive    |        9 | -1.4          | -1.9         | -0.6         | 0/9 (0%) |
+| code           | negative           |       20 | +11.9         | +8.9         | +15.0        | 0/20 (0%) |
+| qa_neutral     | strong_positive    |       10 | -1.7          | -4.4         | -0.6         | 0/10 (0%) |
 | qa_suggestive  | near_zero          |        3 | +12.2         | +11.0        | +13.8        | 0/3 (0%) |
-| rhyme          | strong_positive    |       17 | +62.1         | +34.0        | +73.5        | 17/17 (100%) |
+| rhyme          | strong_positive    |       25 | +60.2         | +34.0        | +73.5        | 25/25 (100%) |
 | trivia         | negative           |        4 | +0.0          | +0.0         | +0.0         | 0/4 (0%) |
 
 ## Best headline per (model, domain)
@@ -28,10 +28,15 @@ _Aggregated from 49 (model, domain) pairs._
 | EleutherAI/pythia-1b-deduped | code           | 2     | last_token                   | 0.854 | 0.704 | +15.0 | [+7.7, +21.1] | strong_positive | ✗ |
 | EleutherAI/pythia-2.8b-deduped | code           | 0     | last_token                   | 0.825 | 0.688 | +13.6 | [+5.0, +18.7] | strong_positive | ✗ |
 | EleutherAI/pythia-410m-deduped | code           | 0     | colon                        | 0.813 | 0.686 | +12.6 | [+6.8, +20.2] | strong_positive | ✗ |
+| Qwen/Qwen3-1.7B-Base | code           | 4     | colon                        | 0.880 | 0.769 | +11.0 | [+3.9, +17.2] | strong_positive | ✗ |
+| Qwen/Qwen3-8B-Base | code           | 0     | colon                        | 0.811 | 0.675 | +13.6 | [+6.6, +20.7] | strong_positive | ✗ |
 | google/gemma-2-27b | code           | 45    | last_token                   | 0.933 | 0.835 | +9.8 | [+5.7, +16.6] | strong_positive | ✗ |
+| google/gemma-2-2b | code           | 25    | newline                      | 0.923 | 0.826 | +9.7 | [+7.1, +17.8] | strong_positive | ✗ |
+| google/gemma-2-9b | code           | 41    | newline                      | 0.966 | 0.866 | +10.1 | [+5.8, +14.9] | strong_positive | ✗ |
 | gpt2 | code           | 2     | colon                        | 0.826 | 0.694 | +13.2 | [+5.4, +19.8] | strong_positive | ✗ |
 | gpt2-medium | code           | 0     | newline                      | 0.793 | 0.651 | +14.2 | [+6.1, +21.2] | strong_positive | ✗ |
 | gpt2-xl | code           | 0     | newline                      | 0.807 | 0.686 | +12.0 | [+4.2, +17.9] | strong_positive | ✗ |
+| Qwen/Qwen3-1.7B-Base | qa_neutral     | 6     | question_mark                | 0.478 | 0.522 | -4.4 | [-38.6, +0.0] | negative | ✗ |
 | Qwen/Qwen3-1.7B-Base | qa_neutral     | 3     | last_token                   | 0.509 | 0.522 | -1.2 | [-39.6, -14.6] | near_zero | ✗ |
 | Qwen/Qwen3-8B-Base | qa_neutral     | 6     | last_token                   | 0.503 | 0.522 | -1.9 | [-40.9, -15.7] | near_zero | ✗ |
 | Qwen/Qwen3-8B-Base | qa_neutral     | 6     | last_token                   | 0.503 | 0.522 | -1.9 | [-40.9, -15.7] | near_zero | ✗ |
@@ -44,6 +49,7 @@ _Aggregated from 49 (model, domain) pairs._
 | google/gemma-2-27b | qa_suggestive  | 15    | last_word_before_question_ma | 0.931 | 0.814 | +11.7 | [-4.7, +17.6] | strong_positive | ✗ |
 | google/gemma-2-2b | qa_suggestive  | 13    | question_mark                | 0.952 | 0.814 | +13.8 | [+0.0, +17.2] | strong_positive | ✗ |
 | google/gemma-2-9b | qa_suggestive  | 24    | last_word_before_question_ma | 0.938 | 0.828 | +11.0 | [+0.0, +20.2] | strong_positive | ✗ |
+| EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.825 | 0.250 | +57.5 | [+48.6, +71.6] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 15    | last_word_before_newline     | 0.540 | 0.200 | +34.0 | [+24.5, +48.3] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.830 | 0.240 | +59.0 | [+52.1, +74.5] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.825 | 0.250 | +57.5 | [+48.6, +71.6] | strong_positive | ✓ |
@@ -52,6 +58,10 @@ _Aggregated from 49 (model, domain) pairs._
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.750 | 0.225 | +52.5 | [+42.9, +67.1] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 5     | last_word_before_newline     | 0.660 | 0.210 | +45.0 | [+33.1, +57.8] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.805 | 0.220 | +58.5 | [+50.7, +74.3] | strong_positive | ✓ |
+| EleutherAI/pythia-1b-deduped | rhyme          | 1     | last_word_before_newline     | 0.850 | 0.230 | +62.0 | [+49.3, +73.3] | strong_positive | ✓ |
+| EleutherAI/pythia-2.8b-deduped | rhyme          | 3     | last_word_before_newline     | 0.835 | 0.255 | +58.0 | [+46.2, +70.1] | strong_positive | ✓ |
+| EleutherAI/pythia-410m-deduped | rhyme          | 2     | last_word_before_newline     | 0.790 | 0.215 | +57.5 | [+50.0, +73.5] | strong_positive | ✓ |
+| Qwen/Qwen3-1.7B-Base | rhyme          | 2     | last_word_before_newline     | 0.890 | 0.250 | +64.0 | [+52.9, +75.4] | strong_positive | ✓ |
 | Qwen/Qwen3-1.7B-Base | rhyme          | 2     | last_word_before_newline     | 0.890 | 0.250 | +64.0 | [+52.9, +75.4] | strong_positive | ✓ |
 | Qwen/Qwen3-8B-Base | rhyme          | 3     | last_word_before_newline     | 0.910 | 0.245 | +66.5 | [+55.2, +78.7] | strong_positive | ✓ |
 | Qwen/Qwen3-8B-Base | rhyme          | 3     | last_word_before_newline     | 0.910 | 0.245 | +66.5 | [+55.2, +78.7] | strong_positive | ✓ |
@@ -61,6 +71,9 @@ _Aggregated from 49 (model, domain) pairs._
 | google/gemma-2-2b-it | rhyme          | 6     | newline                      | 0.995 | 0.260 | +73.5 | [+63.2, +81.9] | strong_positive | ✓ |
 | google/gemma-2-9b | rhyme          | 10    | newline                      | 1.000 | 0.275 | +72.5 | [+64.2, +82.3] | strong_positive | ✓ |
 | google/gemma-2-9b | rhyme          | 10    | newline                      | 1.000 | 0.275 | +72.5 | [+64.2, +82.3] | strong_positive | ✓ |
+| gpt2 | rhyme          | 4     | last_word_before_newline     | 0.735 | 0.250 | +48.5 | [+33.3, +58.9] | strong_positive | ✓ |
+| gpt2-medium | rhyme          | 4     | last_word_before_newline     | 0.760 | 0.250 | +51.0 | [+39.7, +63.6] | strong_positive | ✓ |
+| gpt2-xl | rhyme          | 13    | last_word_before_newline     | 0.760 | 0.255 | +50.5 | [+38.6, +63.4] | strong_positive | ✓ |
 | Qwen/Qwen3-1.7B-Base | trivia         | 2     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
 | google/gemma-2-27b | trivia         | 4     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
 | google/gemma-2-2b | trivia         | 2     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
