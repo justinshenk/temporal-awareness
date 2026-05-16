@@ -21,10 +21,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from sklearn.base import BaseEstimator, ClassifierMixin
 
 
-class MLPProbe:
+class MLPProbe(BaseEstimator, ClassifierMixin):
     """Small MLP with sklearn-style .fit() / .predict() / .predict_proba().
+
+    Inherits from BaseEstimator + ClassifierMixin for full sklearn compatibility
+    (required for cross_val_score, __sklearn_tags__, get_params, set_params).
 
     Designed to be a controlled comparison to LogisticRegression. Not a
     deep network — just enough capacity to test nonlinear separability
