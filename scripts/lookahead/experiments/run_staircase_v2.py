@@ -495,12 +495,14 @@ def bootstrap_headline_ci(
     n_boot: int = 1000,
     seed: int = 42,
     probe_type: str = "linear",
+    groups=None,
 ) -> dict:
     """Paired bootstrap CI for the (target_accuracy − earlier_accuracy) gap.
 
-    The same bootstrap-sample indices are used for both target-position
-    features and earlier-position features, so the per-iteration gap is a
-    meaningful paired statistic. Percentile-method 95% CI.
+    When groups is provided, uses CLUSTER BOOTSTRAP: sample groups with
+    replacement (not indices). All examples from sampled groups go to the
+    bootstrap sample; OOB groups form the test set. This is correct for
+    qa_neutral where pair members share question text.
     """
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
@@ -531,7 +533,6 @@ def bootstrap_headline_ci(
         return {"available": False, "reason": "too few valid examples"}
 
     X_target = np.stack(X_target_rows)
-    # Earlier-position features at the chosen global earlier position
     X_earlier_rows = []
     for i in valid_indices:
         seq_len = len(caches[i].token_ids)
@@ -540,9 +541,12 @@ def bootstrap_headline_ci(
     X_earlier = np.stack(X_earlier_rows)
     y = labels_all[valid_indices]
 
-    # Fit one global PCA per feature matrix (computed ONCE outside the
-    # bootstrap loop — same dim reduction applied to all bootstrap samples
-    # is the standard practice and matches the workshop pipeline).
+    # Groups for the valid subset
+    groups_valid = None
+    if groups is not None:
+        groups_arr = np.asarray(groups)
+        groups_valid = groups_arr[valid_indices]
+
     def reduce(X):
         Xs = StandardScaler().fit_transform(X)
         if Xs.shape[1] > pca_dim:
@@ -557,19 +561,49 @@ def bootstrap_headline_ci(
     n = len(y)
     boot_target, boot_earlier, boot_gap = [], [], []
     valid_boots = 0
-    for _ in range(n_boot):
-        idx = rng.choice(n, n, replace=True)
-        oob = list(set(range(n)) - set(idx))
-        if len(oob) < 5 or len(np.unique(y[idx])) < len(np.unique(y)):
-            continue
-        valid_boots += 1
-        clf_t = make_clf().fit(X_tgt_red[idx], y[idx])
-        a_t = clf_t.score(X_tgt_red[oob], y[oob])
-        clf_e = make_clf().fit(X_ear_red[idx], y[idx])
-        a_e = clf_e.score(X_ear_red[oob], y[oob])
-        boot_target.append(a_t)
-        boot_earlier.append(a_e)
-        boot_gap.append(a_t - a_e)
+
+    if groups_valid is not None:
+        # CLUSTER BOOTSTRAP: sample groups with replacement
+        unique_groups = np.unique(groups_valid)
+        n_groups = len(unique_groups)
+        # Build group → indices mapping
+        group_to_idx = {}
+        for i, g in enumerate(groups_valid):
+            group_to_idx.setdefault(g, []).append(i)
+
+        for _ in range(n_boot):
+            sampled_groups = rng.choice(unique_groups, n_groups, replace=True)
+            oob_groups = set(unique_groups) - set(sampled_groups)
+            if len(oob_groups) < 2:
+                continue
+            train_idx = np.concatenate([group_to_idx[g] for g in sampled_groups])
+            test_idx = np.concatenate([group_to_idx[g] for g in oob_groups])
+            if len(np.unique(y[train_idx])) < len(classes) or len(test_idx) < 5:
+                continue
+            valid_boots += 1
+            try:
+                clf_t = make_clf().fit(X_tgt_red[train_idx], y[train_idx])
+                a_t = clf_t.score(X_tgt_red[test_idx], y[test_idx])
+                clf_e = make_clf().fit(X_ear_red[train_idx], y[train_idx])
+                a_e = clf_e.score(X_ear_red[test_idx], y[test_idx])
+            except Exception:
+                continue
+            boot_target.append(a_t); boot_earlier.append(a_e)
+            boot_gap.append(a_t - a_e)
+    else:
+        # Standard bootstrap (ungrouped)
+        for _ in range(n_boot):
+            idx = rng.choice(n, n, replace=True)
+            oob = list(set(range(n)) - set(idx))
+            if len(oob) < 5 or len(np.unique(y[idx])) < len(np.unique(y)):
+                continue
+            valid_boots += 1
+            clf_t = make_clf().fit(X_tgt_red[idx], y[idx])
+            a_t = clf_t.score(X_tgt_red[oob], y[oob])
+            clf_e = make_clf().fit(X_ear_red[idx], y[idx])
+            a_e = clf_e.score(X_ear_red[oob], y[oob])
+            boot_target.append(a_t); boot_earlier.append(a_e)
+            boot_gap.append(a_t - a_e)
 
     if valid_boots < 10:
         return {"available": False, "reason": f"only {valid_boots} valid bootstrap samples"}
@@ -580,6 +614,7 @@ def bootstrap_headline_ci(
     return {
         "available": True,
         "valid_boots": valid_boots,
+        "cluster_bootstrap": groups_valid is not None,
         "earlier_position_global": int(earlier_position_global),
         "target_mean": float(np.mean(boot_target)),
         "target_ci": [float(np.percentile(boot_target, 2.5)),
@@ -597,10 +632,11 @@ def bootstrap_headline_ci(
 # Bag-of-words baseline (simple, fast, lower-bound diagnostic)
 # ──────────────────────────────────────────────────────────────────────
 
-def bow_baseline_accuracy(caches, examples, label_fn, n_folds: int, seed: int) -> float:
+def bow_baseline_accuracy(caches, examples, label_fn, n_folds: int, seed: int,
+                          groups=None) -> float:
     from sklearn.preprocessing import StandardScaler
     from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import cross_val_score, StratifiedKFold
+    from sklearn.model_selection import cross_val_score, StratifiedKFold, StratifiedGroupKFold
 
     labels_str = [label_fn(ex) for ex in examples]
     classes = sorted(set(labels_str))
@@ -621,11 +657,16 @@ def bow_baseline_accuracy(caches, examples, label_fn, n_folds: int, seed: int) -
         return float(1.0 / len(classes))
 
     Xs = StandardScaler(with_mean=False).fit_transform(X_bow)  # sparse-friendly
-    cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+    if groups is not None:
+        cv = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {"groups": np.asarray(groups)}
+    else:
+        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        cv_kwargs = {}
     scores = cross_val_score(
         LogisticRegression(C=1.0, max_iter=2000, solver="lbfgs", random_state=seed),
         Xs.toarray() if hasattr(Xs, "toarray") else Xs,
-        y, cv=cv, scoring="accuracy",
+        y, cv=cv, scoring="accuracy", **cv_kwargs,
     )
     return float(scores.mean())
 
@@ -695,7 +736,8 @@ def run(args) -> dict:
 
     # BoW baseline (chance lower bound)
     t0 = time.time()
-    bow_acc = bow_baseline_accuracy(caches, examples, label_fn, args.n_folds, args.seed)
+    bow_acc = bow_baseline_accuracy(caches, examples, label_fn, args.n_folds, args.seed,
+                                    groups=groups)
     logger.info(f"BoW baseline accuracy: {bow_acc:.3f}   (chance={1.0/n_classes:.3f})  "
                 f"[{time.time()-t0:.1f}s]")
 
@@ -769,6 +811,7 @@ def run(args) -> dict:
                         n_boot=args.n_boot,
                         seed=args.seed,
                         probe_type=probe_type,
+                        groups=groups,
                     )
                     # Attach CI to that row in headlines_all
                     for r in headlines_all:
@@ -866,14 +909,22 @@ def run(args) -> dict:
                 classes_local = sorted(set(labels_str))
                 cls_to_idx = {c: i for i, c in enumerate(classes_local)}
                 y_local = np.array([cls_to_idx[s] for s in labels_str])
-                cv = StratifiedKFold(n_splits=args.n_folds, shuffle=True, random_state=args.seed)
+                # Groups for valid examples (if grouped domain like qa_neutral)
+                groups_local = None
+                if groups is not None:
+                    groups_arr = np.asarray(groups)
+                    groups_local = groups_arr[valid_idx]
+
+                from sklearn.model_selection import StratifiedGroupKFold
+                if groups_local is not None:
+                    cv = StratifiedGroupKFold(n_splits=args.n_folds, shuffle=True, random_state=args.seed)
+                else:
+                    cv = StratifiedKFold(n_splits=args.n_folds, shuffle=True, random_state=args.seed)
 
                 for mode in ablation_modes:
                     rows = []
                     for rec, ex in zip(ablated[mode], valid_examples):
-                        # Find target position in the ablated cache (same prompt → same tokens)
                         tok_strs = rec["token_strings"]
-                        # Re-resolve the target position in the ablated cache
                         from src.lookahead.domains import DOMAINS
                         sp = DOMAINS[args.domain]
                         res = {r.name: r.find(tok_strs, rec["token_ids"], tokenizer)
@@ -890,14 +941,16 @@ def run(args) -> dict:
                     idxs, feats = zip(*kept)
                     X = np.stack(feats)
                     y_kept = y_local[list(idxs)]
+                    groups_kept = groups_local[list(idxs)] if groups_local is not None else None
                     Xs = StandardScaler().fit_transform(X)
                     if Xs.shape[1] > args.pca_dim:
                         k = min(args.pca_dim, Xs.shape[0] - 1, Xs.shape[1])
                         Xs = PCA(n_components=k, random_state=args.seed).fit_transform(Xs)
+                    cv_kwargs = {"groups": groups_kept} if groups_kept is not None else {}
                     scores = cross_val_score(
                         LogisticRegression(C=1.0, max_iter=2000, solver="lbfgs",
                                            random_state=args.seed),
-                        Xs, y_kept, cv=cv, scoring="accuracy",
+                        Xs, y_kept, cv=cv, scoring="accuracy", **cv_kwargs,
                     )
                     ablation_results[mode] = {
                         "intervention_layer": intervention_layer,
