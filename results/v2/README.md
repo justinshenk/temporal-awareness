@@ -133,15 +133,39 @@ Models with larger probe gaps generate correct rhymes more frequently:
 
 ## Figures
 
-All figures are in `results/v2/figures/`:
+All figures are in `results/v2/figures/` (PDF + PNG):
 
-| Figure | File | Description |
-|---|---|---|
-| **Fig 1** | `fig1_cross_model_gaps.pdf` | Cross-model gap bar chart — the graded discriminator |
-| **Fig 2** | `fig2_per_position_staircase.pdf` | Per-position accuracy curves (staircase visualization) |
-| **Fig 3** | `fig3_dual_baseline_scatter.pdf` | Dual-baseline comparison: max-earlier vs mean-pool |
-| **Fig 4** | `fig4_ablation_heatmap.pdf` | Causal ablation effect sizes across models and domains |
-| **Fig 5** | `fig5_training_dynamics.pdf` | **Training dynamics emergence curve** — code flat, rhyme logarithmic |
+### Fig 1 — Cross-Model Gaps (The Graded Discriminator)
+![Fig 1: Cross-model gaps](figures/fig1_cross_model_gaps.png)
+*Headline gap (target accuracy − max-earlier accuracy) across 13 models and 5 domains. Rhyme gaps (+62pp mean) are an order of magnitude larger than code (+12pp) or qa_neutral (0pp).*
+
+### Fig 2 — Per-Position Staircase
+![Fig 2: Per-position staircase](figures/fig2_per_position_staircase.png)
+*Probe accuracy at each token position for Gemma-2-2b. The staircase pattern shows accuracy increasing at domain-specific positions, with the target position showing the largest jump.*
+
+### Fig 3 — Dual-Baseline Scatter
+![Fig 3: Dual baseline scatter](figures/fig3_dual_baseline_scatter.png)
+*Same data, different baselines. Under max-earlier baseline, code shows a +12pp gap (looks positive). Under mean-pool baseline, it drops to ~+1pp (null). Rhyme gaps persist under both baselines.*
+
+### Fig 4 — Ablation Heatmap
+![Fig 4: Ablation heatmap](figures/fig4_ablation_heatmap.png)
+*Causal ablation drop (pp) when zeroing or mean-ablating earlier-position residual streams. Large drops for rhyme on Gemma models confirm the probe reads causally relevant information.*
+
+### Fig 5 — Training Dynamics (The Headline Figure)
+![Fig 5: Training dynamics](figures/fig5_training_dynamics.png)
+*Gap vs training step for Pythia-1.4B across 8 checkpoints. Code gap is flat from random initialization (+10pp) — a pure positional artifact. Rhyme gap grows logarithmically from +34pp floor to +58pp, plateauing at step 32K (22% of training).*
+
+### Fig 6 — Size Invariance
+![Fig 6: Size invariance](figures/fig6_size_invariance.png)
+*Probe gap as a function of model size (log scale, 120M to 27B). Rhyme gaps are flat (+64–73pp) across a 66× parameter range. QA-neutral gaps are flat at zero. Planning is either fully present or fully absent at every tested scale.*
+
+### Fig 7 — MLP vs Linear Probe Agreement
+![Fig 7: MLP agreement](figures/fig7_mlp_agreement.png)
+*MLP probe gap vs linear probe gap for 8 (model, domain) pairs. All points cluster near the identity line, confirming that findings are not artifacts of linear probe expressivity (Hewitt & Liang, 2019).*
+
+### Fig 8 — Behavioral Validation
+![Fig 8: Behavioral validation](figures/fig8_behavioral.png)
+*Probe gap (blue) vs actual rhyme generation accuracy (red) for three models. Models with larger probe gaps generate correct rhymes more frequently, confirming the probe reads behaviorally relevant information.*
 
 ---
 
