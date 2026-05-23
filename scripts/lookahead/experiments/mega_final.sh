@@ -53,7 +53,7 @@ run_job() {
     fi
     echo ""
     echo "[$(date '+%H:%M:%S')] START: $model × $domain ${revision:+(rev=$revision)}"
-    timeout 3600 python3 scripts/lookahead/experiments/run_staircase_v2.py \
+    python3 scripts/lookahead/experiments/run_staircase_v2.py \
         --model "$model" --domain "$domain" --layer_mode "$layer_mode" \
         $rev_arg $COMMON 2>&1 | tee "$log"
     local rc=${PIPESTATUS[0]}
@@ -76,7 +76,7 @@ run_mlp() {
         return 0
     fi
     echo "[$(date '+%H:%M:%S')] MLP: $model × $domain"
-    timeout 5400 python3 -c "
+    python3 -c "
 import sys, os, json, time
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault('MAAR_DATA_ROOT', 'data/maar_supplementary_material')

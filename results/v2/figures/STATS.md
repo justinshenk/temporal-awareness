@@ -1,19 +1,19 @@
 # Statistical tests — staircase v2
 
-_13 models, 38 (model, domain) pairs_
+_17 models, 53 (model, domain) pairs_
 
 ## Paired Wilcoxon: rhyme vs each domain (across models)
-- rhyme vs qa_suggestive:  n=3  median diff=+59.3pp  W=0.0  p=0.2500
-- rhyme vs code:  n=12  median diff=+46.5pp  W=0.0  p=0.0005
-- rhyme vs qa_neutral:  n=6  median diff=+72.7pp  W=0.0  p=0.0312
-- rhyme vs trivia:  n=4  median diff=+71.8pp  W=0.0  p=0.1250
+- rhyme vs qa_suggestive:  n=5  median diff=+61.5pp  W=0.0  p=0.0625
+- rhyme vs code:  n=16  median diff=+47.7pp  W=0.0  p=0.0000
+- rhyme vs qa_neutral:  n=10  median diff=+71.7pp  W=0.0  p=0.0020
+- rhyme vs trivia:  n=5  median diff=+72.5pp  W=0.0  p=0.0625
 
 ## Mean headline gap per domain (across all models tested)
-- rhyme           n=13  mean= +61.6pp  median= +62.0pp  range=[+48.5, +73.5]
-- qa_suggestive   n= 3  mean= +12.2pp  median= +11.7pp  range=[+11.0, +13.8]
-- code            n=12  mean= +12.1pp  median= +12.2pp  range=[+9.7, +15.0]
-- qa_neutral      n= 6  mean=  -1.3pp  median=  -1.2pp  range=[-1.9, -0.6]
-- trivia          n= 4  mean=  +0.0pp  median=  +0.0pp  range=[+0.0, +0.0]
+- rhyme           n=17  mean= +62.6pp  median= +62.0pp  range=[+48.5, +76.5]
+- qa_suggestive   n= 5  mean=  +7.6pp  median= +11.7pp  range=[-13.1, +14.5]
+- code            n=16  mean= +12.0pp  median= +11.9pp  range=[+9.7, +15.0]
+- qa_neutral      n=10  mean=  -1.4pp  median=  -1.2pp  range=[-1.9, -0.6]
+- trivia          n= 5  mean=  +0.0pp  median=  +0.0pp  range=[+0.0, +0.0]
 
 ## Pre-registration check (sign match rate)
 
@@ -23,11 +23,11 @@ positive gaps not visible under mean-pooling. The training-dynamics sweep
 (fig5) reveals these are largely positional artifacts: code's floor-subtracted
 gap is ~+2pp (effectively zero learned computation).
 
-- rhyme           29/29  (100% sign-match)
-- qa_suggestive   0/3  (0% sign-match)
-- code            0/24  (0% sign-match)
-- qa_neutral      0/10  (0% sign-match)
-- trivia          0/4  (0% sign-match)
+- rhyme           37/37  (100% sign-match)
+- qa_suggestive   0/5  (0% sign-match)
+- code            0/32  (0% sign-match)
+- qa_neutral      0/19  (0% sign-match)
+- trivia          0/5  (0% sign-match)
 
 ## Bootstrap CI caveat
 

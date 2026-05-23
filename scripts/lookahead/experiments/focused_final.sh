@@ -211,3 +211,55 @@ T1=$(date +%s)
 echo ""
 echo "=== focused_final.sh COMPLETE in $(( (T1-T0)/3600 ))h $(( (T1-T0)%3600/60 ))m ==="
 echo "JSONs: $(ls results/v2/*__staircase.json | wc -l)"
+
+# ─────────────────────────────────────────────
+# BONUS: Retry OLMo + StableLM (likely failed from old timeout, not OOM)
+# ─────────────────────────────────────────────
+echo ""
+echo "### BONUS: OLMo-7B retry"
+for dom in rhyme code qa_neutral; do
+    lm="maar_range"; [ "$dom" = "code" ] && lm="workshop_6"
+    run_job allenai/OLMo-7B-0724-hf "$dom" "$lm"
+done
+clean allenai/OLMo-7B-0724-hf
+
+echo ""
+echo "### BONUS: StableLM-2-1.6B retry"
+for dom in rhyme code qa_neutral; do
+    lm="maar_range"; [ "$dom" = "code" ] && lm="workshop_6"
+    run_job stabilityai/stablelm-2-1_6b "$dom" "$lm"
+done
+clean stabilityai/stablelm-2-1_6b
+
+# ─────────────────────────────────────────────
+# FIXED: Falcon3-7B-Base (modern arch, compatible with transformers 5.8)
+# ─────────────────────────────────────────────
+echo ""
+echo "### FIXED: Falcon3-7B-Base (replaces broken falcon-7b)"
+for dom in rhyme code qa_neutral; do
+    lm="maar_range"; [ "$dom" = "code" ] && lm="workshop_6"
+    run_job tiiuae/Falcon3-7B-Base "$dom" "$lm"
+done
+clean tiiuae/Falcon3-7B-Base
+
+# ─────────────────────────────────────────────
+# FIXED: Llama-3.1-8B via ungated NousResearch mirror
+# ─────────────────────────────────────────────
+echo ""
+echo "### FIXED: Llama-3.1-8B (ungated mirror)"
+for dom in rhyme code qa_neutral; do
+    lm="maar_range"; [ "$dom" = "code" ] && lm="workshop_6"
+    run_job NousResearch/Meta-Llama-3.1-8B "$dom" "$lm"
+done
+clean NousResearch/Meta-Llama-3.1-8B
+
+# ─────────────────────────────────────────────
+# BONUS: Llama-3.2-3B (also accessible, smaller)
+# ─────────────────────────────────────────────
+echo ""
+echo "### BONUS: Llama-3.2-3B"
+for dom in rhyme code qa_neutral; do
+    lm="maar_range"; [ "$dom" = "code" ] && lm="workshop_6"
+    run_job meta-llama/Llama-3.2-3B "$dom" "$lm"
+done
+clean meta-llama/Llama-3.2-3B
