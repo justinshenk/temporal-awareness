@@ -1,15 +1,15 @@
 # Staircase v2 — results summary
 
-_Aggregated from 98 (model, domain) pairs._
+_Aggregated from 101 (model, domain) pairs._
 
 ## Pre-registration check by domain
 
 | Domain | Predicted | n_models | Mean gap (pp) | Min gap (pp) | Max gap (pp) | Pre-reg match rate |
 |--------|-----------|----------|---------------|--------------|--------------|---------------------|
-| code           | negative           |       32 | +11.8         | +8.5         | +15.0        | 0/32 (0%) |
+| code           | negative           |       33 | +11.8         | +8.5         | +15.0        | 0/33 (0%) |
 | qa_neutral     | strong_positive    |       19 | -1.9          | -4.4         | -0.6         | 0/19 (0%) |
-| qa_suggestive  | near_zero          |        5 | +7.6          | -13.1        | +14.5        | 0/5 (0%) |
-| rhyme          | strong_positive    |       37 | +58.5         | +32.5        | +76.5        | 37/37 (100%) |
+| qa_suggestive  | near_zero          |        6 | +8.4          | -13.1        | +14.5        | 0/6 (0%) |
+| rhyme          | strong_positive    |       38 | +58.9         | +32.5        | +76.5        | 38/38 (100%) |
 | trivia         | negative           |        5 | +0.0          | +0.0         | +0.0         | 0/5 (0%) |
 
 ## Best headline per (model, domain)
@@ -41,6 +41,7 @@ _Aggregated from 98 (model, domain) pairs._
 | Qwen/Qwen3-8B-Base | code           | 0     | colon                        | 0.811 | 0.675 | +13.6 | [+6.6, +20.7] | strong_positive | ✗ |
 | allenai/OLMo-7B-0724-hf | code           | 16    | last_token                   | 0.941 | 0.832 | +10.8 | [+5.8, +18.1] | strong_positive | ✗ |
 | google/gemma-2-27b | code           | 45    | last_token                   | 0.933 | 0.835 | +9.8 | [+5.7, +16.6] | strong_positive | ✗ |
+| google/gemma-2-2b | code           | 3     | newline                      | 0.897 | 0.765 | +13.2 | [+5.6, +17.5] | strong_positive | ✗ |
 | google/gemma-2-2b | code           | 25    | newline                      | 0.923 | 0.826 | +9.7 | [+7.1, +17.8] | strong_positive | ✗ |
 | google/gemma-2-9b | code           | 41    | newline                      | 0.966 | 0.866 | +10.1 | [+5.8, +14.9] | strong_positive | ✗ |
 | gpt2 | code           | 2     | colon                        | 0.826 | 0.694 | +13.2 | [+5.4, +19.8] | strong_positive | ✗ |
@@ -68,6 +69,7 @@ _Aggregated from 98 (model, domain) pairs._
 | mistralai/Mistral-7B-v0.3 | qa_neutral     | 8     | newline                      | 0.509 | 0.522 | -1.2 | [-3.2, +0.0] | near_zero | ✗ |
 | stabilityai/stablelm-2-1_6b | qa_neutral     | 3     | question_mark                | 0.509 | 0.522 | -1.2 | [-3.3, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_suggestive  | 17    | last_word_before_question_ma | 0.552 | 0.683 | -13.1 | [-20.0, +10.5] | negative | ✗ |
+| EleutherAI/pythia-1.4b-deduped | qa_suggestive  | 10    | question_mark                | 0.931 | 0.807 | +12.4 | [-2.0, +17.9] | strong_positive | ✗ |
 | google/gemma-2-27b | qa_suggestive  | 15    | last_word_before_question_ma | 0.931 | 0.814 | +11.7 | [-4.7, +17.6] | strong_positive | ✗ |
 | google/gemma-2-2b | qa_suggestive  | 13    | question_mark                | 0.952 | 0.814 | +13.8 | [+0.0, +17.2] | strong_positive | ✗ |
 | google/gemma-2-9b | qa_suggestive  | 24    | last_word_before_question_ma | 0.938 | 0.828 | +11.0 | [+0.0, +20.2] | strong_positive | ✗ |
@@ -99,6 +101,7 @@ _Aggregated from 98 (model, domain) pairs._
 | Qwen/Qwen3-8B-Base | rhyme          | 3     | last_word_before_newline     | 0.910 | 0.245 | +66.5 | [+55.2, +78.7] | strong_positive | ✓ |
 | allenai/OLMo-7B-0724-hf | rhyme          | 27    | last_word_before_newline     | 0.970 | 0.270 | +70.0 | [+62.3, +82.4] | strong_positive | ✓ |
 | google/gemma-2-27b | rhyme          | 21    | last_word_before_newline     | 0.985 | 0.275 | +71.0 | [+54.7, +75.0] | strong_positive | ✓ |
+| google/gemma-2-2b | rhyme          | 5     | newline                      | 0.995 | 0.270 | +72.5 | [+63.2, +78.5] | strong_positive | ✓ |
 | google/gemma-2-2b | rhyme          | 5     | newline                      | 0.995 | 0.270 | +72.5 | [+63.1, +81.2] | strong_positive | ✓ |
 | google/gemma-2-2b | rhyme          | 5     | newline                      | 0.995 | 0.270 | +72.5 | [+63.1, +81.2] | strong_positive | ✓ |
 | google/gemma-2-2b-it | rhyme          | 6     | newline                      | 0.995 | 0.260 | +73.5 | [+63.2, +81.9] | strong_positive | ✓ |
