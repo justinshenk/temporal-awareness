@@ -23,7 +23,7 @@ positive gaps not visible under mean-pooling. The training-dynamics sweep
 (fig5) reveals these are largely positional artifacts: code's floor-subtracted
 gap is ~+2pp (effectively zero learned computation).
 
-- rhyme           38/38  (100% sign-match)
+- rhyme           39/39  (100% sign-match)
 - qa_suggestive   0/6  (0% sign-match)
 - code            0/33  (0% sign-match)
 - qa_neutral      0/19  (0% sign-match)
