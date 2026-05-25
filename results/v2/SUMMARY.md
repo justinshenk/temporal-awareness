@@ -1,15 +1,15 @@
 # Staircase v2 — results summary
 
-_Aggregated from 102 (model, domain) pairs._
+_Aggregated from 111 (model, domain) pairs._
 
 ## Pre-registration check by domain
 
 | Domain | Predicted | n_models | Mean gap (pp) | Min gap (pp) | Max gap (pp) | Pre-reg match rate |
 |--------|-----------|----------|---------------|--------------|--------------|---------------------|
-| code           | negative           |       33 | +11.8         | +8.5         | +15.0        | 0/33 (0%) |
-| qa_neutral     | strong_positive    |       19 | -1.9          | -4.4         | -0.6         | 0/19 (0%) |
+| code           | negative           |       36 | +11.8         | +8.5         | +15.0        | 0/36 (0%) |
+| qa_neutral     | strong_positive    |       22 | -1.8          | -4.4         | -0.6         | 0/22 (0%) |
 | qa_suggestive  | near_zero          |        6 | +8.4          | -13.1        | +14.5        | 0/6 (0%) |
-| rhyme          | strong_positive    |       39 | +59.0         | +32.5        | +76.5        | 39/39 (100%) |
+| rhyme          | strong_positive    |       42 | +59.8         | +32.5        | +76.5        | 42/42 (100%) |
 | trivia         | negative           |        5 | +0.0          | +0.0         | +0.0         | 0/5 (0%) |
 
 ## Best headline per (model, domain)
@@ -37,6 +37,7 @@ _Aggregated from 102 (model, domain) pairs._
 | EleutherAI/pythia-6.9b-deduped | code           | 5     | last_token                   | 0.888 | 0.763 | +12.4 | [+6.0, +19.8] | strong_positive | ✗ |
 | EleutherAI/pythia-6.9b-deduped | code           | 0     | colon                        | 0.765 | 0.653 | +11.2 | [+3.2, +17.4] | strong_positive | ✗ |
 | EleutherAI/pythia-6.9b-deduped | code           | 5     | last_token                   | 0.882 | 0.763 | +11.8 | [+5.0, +19.7] | strong_positive | ✗ |
+| NousResearch/Meta-Llama-3.1-8B | code           | 0     | last_token                   | 0.813 | 0.690 | +12.2 | [+5.2, +19.9] | strong_positive | ✗ |
 | Qwen/Qwen3-1.7B-Base | code           | 4     | colon                        | 0.880 | 0.769 | +11.0 | [+3.9, +17.2] | strong_positive | ✗ |
 | Qwen/Qwen3-8B-Base | code           | 0     | colon                        | 0.811 | 0.675 | +13.6 | [+6.6, +20.7] | strong_positive | ✗ |
 | allenai/OLMo-7B-0724-hf | code           | 16    | last_token                   | 0.941 | 0.832 | +10.8 | [+5.8, +18.1] | strong_positive | ✗ |
@@ -47,14 +48,17 @@ _Aggregated from 102 (model, domain) pairs._
 | gpt2 | code           | 2     | colon                        | 0.826 | 0.694 | +13.2 | [+5.4, +19.8] | strong_positive | ✗ |
 | gpt2-medium | code           | 0     | newline                      | 0.793 | 0.651 | +14.2 | [+6.1, +21.2] | strong_positive | ✗ |
 | gpt2-xl | code           | 0     | newline                      | 0.807 | 0.686 | +12.0 | [+4.2, +17.9] | strong_positive | ✗ |
+| meta-llama/Llama-3.2-3B | code           | 0     | colon                        | 0.834 | 0.688 | +14.6 | [+7.9, +22.9] | strong_positive | ✗ |
 | mistralai/Mistral-7B-v0.3 | code           | 31    | newline                      | 0.951 | 0.815 | +13.6 | [+7.9, +18.6] | strong_positive | ✗ |
 | stabilityai/stablelm-2-1_6b | code           | 23    | colon                        | 0.927 | 0.819 | +10.8 | [+5.9, +16.8] | strong_positive | ✗ |
+| tiiuae/Falcon3-7B-Base | code           | 0     | newline                      | 0.789 | 0.700 | +8.9 | [+3.1, +18.2] | strong_positive | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 5     | last_token                   | 0.497 | 0.522 | -2.5 | [-5.6, +0.0] | negative | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 7     | last_token                   | 0.509 | 0.522 | -1.2 | [-2.6, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 8     | last_token                   | 0.503 | 0.522 | -1.9 | [-3.3, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 8     | last_token                   | 0.503 | 0.522 | -1.9 | [-3.4, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 2     | question_mark                | 0.509 | 0.522 | -1.2 | [-3.3, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_neutral     | 9     | last_token                   | 0.503 | 0.522 | -1.9 | [-2.6, +0.0] | near_zero | ✗ |
+| NousResearch/Meta-Llama-3.1-8B | qa_neutral     | 3     | question_mark                | 0.516 | 0.522 | -0.6 | [-3.4, +0.0] | near_zero | ✗ |
 | Qwen/Qwen3-1.7B-Base | qa_neutral     | 6     | question_mark                | 0.478 | 0.522 | -4.4 | [-38.6, +0.0] | negative | ✗ |
 | Qwen/Qwen3-1.7B-Base | qa_neutral     | 3     | last_token                   | 0.509 | 0.522 | -1.2 | [-3.8, +0.0] | near_zero | ✗ |
 | Qwen/Qwen3-8B-Base | qa_neutral     | 10    | last_token                   | 0.497 | 0.522 | -2.5 | [-6.6, +0.0] | negative | ✗ |
@@ -66,8 +70,10 @@ _Aggregated from 102 (model, domain) pairs._
 | google/gemma-2-2b-it | qa_neutral     | 3     | last_token                   | 0.509 | 0.522 | -1.2 | [-3.3, +0.0] | near_zero | ✗ |
 | google/gemma-2-9b | qa_neutral     | 26    | last_token                   | 0.484 | 0.522 | -3.7 | [-6.7, +0.0] | negative | ✗ |
 | google/gemma-2-9b | qa_neutral     | 4     | newline                      | 0.516 | 0.522 | -0.6 | [-2.6, +0.0] | near_zero | ✗ |
+| meta-llama/Llama-3.2-3B | qa_neutral     | 2     | last_token                   | 0.516 | 0.522 | -0.6 | [-1.9, +0.0] | near_zero | ✗ |
 | mistralai/Mistral-7B-v0.3 | qa_neutral     | 8     | newline                      | 0.509 | 0.522 | -1.2 | [-3.2, +0.0] | near_zero | ✗ |
 | stabilityai/stablelm-2-1_6b | qa_neutral     | 3     | question_mark                | 0.509 | 0.522 | -1.2 | [-3.3, +0.0] | near_zero | ✗ |
+| tiiuae/Falcon3-7B-Base | qa_neutral     | 6     | last_token                   | 0.509 | 0.522 | -1.2 | [-2.0, +0.0] | near_zero | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_suggestive  | 17    | last_word_before_question_ma | 0.552 | 0.683 | -13.1 | [-20.0, +10.5] | negative | ✗ |
 | EleutherAI/pythia-1.4b-deduped | qa_suggestive  | 10    | question_mark                | 0.931 | 0.807 | +12.4 | [-2.0, +17.9] | strong_positive | ✗ |
 | google/gemma-2-27b | qa_suggestive  | 15    | last_word_before_question_ma | 0.931 | 0.814 | +11.7 | [-4.7, +17.6] | strong_positive | ✗ |
@@ -96,6 +102,7 @@ _Aggregated from 102 (model, domain) pairs._
 | EleutherAI/pythia-6.9b-deduped | rhyme          | 4     | last_word_before_newline     | 0.780 | 0.255 | +52.5 | [+42.4, +64.1] | strong_positive | ✓ |
 | EleutherAI/pythia-6.9b-deduped | rhyme          | 3     | last_word_before_newline     | 0.735 | 0.220 | +51.5 | [+34.9, +61.7] | strong_positive | ✓ |
 | EleutherAI/pythia-6.9b-deduped | rhyme          | 3     | last_word_before_newline     | 0.810 | 0.220 | +59.0 | [+45.4, +69.9] | strong_positive | ✓ |
+| NousResearch/Meta-Llama-3.1-8B | rhyme          | 22    | last_word_before_newline     | 0.990 | 0.275 | +71.5 | [+61.3, +79.1] | strong_positive | ✓ |
 | Qwen/Qwen3-1.7B-Base | rhyme          | 2     | last_word_before_newline     | 0.890 | 0.250 | +64.0 | [+52.9, +75.4] | strong_positive | ✓ |
 | Qwen/Qwen3-1.7B-Base | rhyme          | 2     | last_word_before_newline     | 0.890 | 0.250 | +64.0 | [+52.9, +75.4] | strong_positive | ✓ |
 | Qwen/Qwen3-8B-Base | rhyme          | 3     | last_word_before_newline     | 0.910 | 0.245 | +66.5 | [+55.2, +78.7] | strong_positive | ✓ |
@@ -111,8 +118,10 @@ _Aggregated from 102 (model, domain) pairs._
 | gpt2 | rhyme          | 4     | last_word_before_newline     | 0.735 | 0.250 | +48.5 | [+33.3, +58.9] | strong_positive | ✓ |
 | gpt2-medium | rhyme          | 4     | last_word_before_newline     | 0.760 | 0.250 | +51.0 | [+39.7, +63.6] | strong_positive | ✓ |
 | gpt2-xl | rhyme          | 13    | last_word_before_newline     | 0.760 | 0.255 | +50.5 | [+38.6, +63.4] | strong_positive | ✓ |
+| meta-llama/Llama-3.2-3B | rhyme          | 18    | last_word_before_newline     | 0.980 | 0.295 | +68.5 | [+60.5, +79.7] | strong_positive | ✓ |
 | mistralai/Mistral-7B-v0.3 | rhyme          | 24    | newline                      | 0.990 | 0.225 | +76.5 | [+68.1, +85.0] | strong_positive | ✓ |
 | stabilityai/stablelm-2-1_6b | rhyme          | 2     | last_word_before_newline     | 0.815 | 0.225 | +59.0 | [+49.7, +73.4] | strong_positive | ✓ |
+| tiiuae/Falcon3-7B-Base | rhyme          | 20    | last_word_before_newline     | 0.965 | 0.295 | +67.0 | [+55.9, +76.3] | strong_positive | ✓ |
 | Qwen/Qwen3-1.7B-Base | trivia         | 2     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
 | google/gemma-2-27b | trivia         | 4     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
 | google/gemma-2-2b | trivia         | 2     | colon                        | 1.000 | 1.000 | +0.0 | [+0.0, +0.0] | near_zero | ✗ |
