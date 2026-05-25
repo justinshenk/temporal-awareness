@@ -1,6 +1,6 @@
 # Staircase v2 — results summary
 
-_Aggregated from 101 (model, domain) pairs._
+_Aggregated from 102 (model, domain) pairs._
 
 ## Pre-registration check by domain
 
@@ -9,7 +9,7 @@ _Aggregated from 101 (model, domain) pairs._
 | code           | negative           |       33 | +11.8         | +8.5         | +15.0        | 0/33 (0%) |
 | qa_neutral     | strong_positive    |       19 | -1.9          | -4.4         | -0.6         | 0/19 (0%) |
 | qa_suggestive  | near_zero          |        6 | +8.4          | -13.1        | +14.5        | 0/6 (0%) |
-| rhyme          | strong_positive    |       38 | +58.9         | +32.5        | +76.5        | 38/38 (100%) |
+| rhyme          | strong_positive    |       39 | +59.0         | +32.5        | +76.5        | 39/39 (100%) |
 | trivia         | negative           |        5 | +0.0          | +0.0         | +0.0         | 0/5 (0%) |
 
 ## Best headline per (model, domain)
@@ -74,6 +74,7 @@ _Aggregated from 101 (model, domain) pairs._
 | google/gemma-2-2b | qa_suggestive  | 13    | question_mark                | 0.952 | 0.814 | +13.8 | [+0.0, +17.2] | strong_positive | ✗ |
 | google/gemma-2-9b | qa_suggestive  | 24    | last_word_before_question_ma | 0.938 | 0.828 | +11.0 | [+0.0, +20.2] | strong_positive | ✗ |
 | mistralai/Mistral-7B-v0.3 | qa_suggestive  | 3     | question_mark                | 0.924 | 0.779 | +14.5 | [+0.0, +21.0] | strong_positive | ✗ |
+| EleutherAI/pythia-1.4b-deduped | rhyme          | 0     | last_word_before_newline     | 0.850 | 0.210 | +64.0 | [+57.1, +79.4] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.825 | 0.250 | +57.5 | [+48.6, +71.6] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 15    | last_word_before_newline     | 0.540 | 0.200 | +34.0 | [+24.5, +48.3] | strong_positive | ✓ |
 | EleutherAI/pythia-1.4b-deduped | rhyme          | 2     | last_word_before_newline     | 0.830 | 0.240 | +59.0 | [+52.1, +74.5] | strong_positive | ✓ |
