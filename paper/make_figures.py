@@ -60,7 +60,7 @@ def fig1_training_dynamics():
 
     fig, ax = plt.subplots(figsize=(5.2, 3.4))
     labels = {"code":"Code (positional artifact)",
-              "rhyme":"Rhyme (learned planning)",
+              "rhyme":"Rhyme (planning-consistent learned signal)",
               "qa_neutral":"QA-neutral (genuinely absent)"}
     markers = {"code":"s","rhyme":"o","qa_neutral":"^"}
     for dom in ["rhyme","code","qa_neutral"]:
