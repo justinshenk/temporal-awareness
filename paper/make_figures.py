@@ -321,3 +321,79 @@ if __name__ == "__main__":
     figA_mlp()
     figB_size_invariance()
     print("\nAll figures written to", OUT)
+
+# ════════════════════════════════════════════════════════════════════
+# FIG 6 — Diagnostic regimes overview (floor vs learned) [MUST-HAVE]
+# ════════════════════════════════════════════════════════════════════
+def fig6_regimes():
+    import json as _json
+    reg = _json.load(open("/tmp/regime.json"))
+    labels = {"rhyme":"Rhyme","code":"Code","qa_neutral":"QA-neutral",
+              "qa_suggestive":"QA-suggestive"}
+    fig, ax = plt.subplots(figsize=(5.0, 4.0))
+    for dom, r in reg.items():
+        ax.scatter(r["floor"], r["learned"], color=C.get(dom,"#555"), s=130,
+                   edgecolors="black", linewidths=0.8, zorder=3)
+        dx = 2.5 if dom!="rhyme" else -2.5
+        ha = "left" if dom!="rhyme" else "right"
+        ax.annotate(labels.get(dom,dom), (r["floor"], r["learned"]),
+                    xytext=(r["floor"]+dx, r["learned"]+1.8), fontsize=9,
+                    ha=ha, color=C.get(dom,"#555"), fontweight="bold")
+    ax.axhline(0, color="black", lw=0.6, ls=":")
+    ax.axvline(0, color="black", lw=0.6, ls=":")
+    # Quadrant guide text
+    ax.text(34, 23.5+5, "", fontsize=7)
+    ax.annotate("planning-consistent\n(high floor, high learned)",
+                xy=(34,23.5), xytext=(20,15), fontsize=7, style="italic",
+                color="#444", ha="center")
+    ax.annotate("positional artifact\n(low learned)",
+                xy=(10.3,2.0), xytext=(14,7.5), fontsize=7, style="italic",
+                color="#444", ha="center",
+                arrowprops=dict(arrowstyle="->", color="#999", lw=0.6))
+    ax.annotate("genuine null\n(no floor, no learned)",
+                xy=(-2.5,1.3), xytext=(-1,8), fontsize=7, style="italic",
+                color="#444", ha="center",
+                arrowprops=dict(arrowstyle="->", color="#999", lw=0.6))
+    ax.set_xlabel("Positional floor (gap at step 0, pp)")
+    ax.set_ylabel("Learned component (final $-$ floor, pp)")
+    ax.set_title("Diagnostic regimes: the decomposition separates\nthree qualitatively different task signatures")
+    ax.set_xlim(-8, 42); ax.set_ylim(-3, 28)
+    fig.tight_layout()
+    for ext in ["pdf","png"]:
+        fig.savefig(f"{OUT}/fig6_regimes.{ext}")
+    plt.close(fig)
+    print("✓ fig6_regimes")
+
+# ════════════════════════════════════════════════════════════════════
+# FIG 7 — Full layer curves (kills max-over-layer attack) [MUST-HAVE]
+# ════════════════════════════════════════════════════════════════════
+def fig7_layer_curves():
+    import json as _json
+    cur = _json.load(open("/tmp/layer_curves.json"))
+    fig, axes = plt.subplots(1, 3, figsize=(7.0, 2.7), sharey=True)
+    titles = {"rhyme":"Rhyme","code":"Code","qa_neutral":"QA-neutral"}
+    for ax, dom in zip(axes, ["rhyme","code","qa_neutral"]):
+        c = cur[dom]
+        L = c["layers"]
+        ax.plot(L, [t*100 for t in c["target"]], "o-", color=C[dom],
+                markersize=3, lw=1.5, label="target")
+        ax.plot(L, [e*100 for e in c["earlier"]], "s--", color="#888",
+                markersize=3, lw=1.2, label="max-earlier")
+        ax.fill_between(L, [e*100 for e in c["earlier"]],
+                        [t*100 for t in c["target"]], color=C[dom], alpha=0.15)
+        ax.set_title(titles[dom], fontsize=9)
+        ax.set_xlabel("Layer")
+        ax.axhline(0, color="black", lw=0.4, ls=":")
+        if dom=="rhyme":
+            ax.set_ylabel("Probe accuracy (%)")
+            ax.legend(fontsize=6.5, loc="center right")
+    fig.suptitle("Per-layer target vs. strongest-earlier accuracy (Gemma-2-2B): the gap is broad, not one lucky layer",
+                 fontsize=8.5, y=1.04)
+    fig.tight_layout()
+    for ext in ["pdf","png"]:
+        fig.savefig(f"{OUT}/fig7_layer_curves.{ext}")
+    plt.close(fig)
+    print("✓ fig7_layer_curves")
+
+fig6_regimes()
+fig7_layer_curves()

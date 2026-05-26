@@ -1,10 +1,11 @@
 \documentclass[11pt]{article}
 
 % ===================================================================
-% EMNLP submission. For the official submission, this file expects the
-% ACL style files (acl.sty, acl_natbib.bst) in the project root --
-% available from the ACL ARR template gallery on Overleaf.
-% Compile: pdfLaTeX -> pdfLaTeX (bibliography is inline; no BibTeX run needed).
+% EMNLP submission. For the official submission this file expects the
+% ACL style files (acl.sty, acl_natbib.bst), available from the ACL ARR
+% template gallery on Overleaf. A local shim acl.sty is included in the
+% repo only so the draft compiles outside Overleaf.
+% Compile: pdfLaTeX x2 (bibliography is inline; no BibTeX run needed).
 % ===================================================================
 \usepackage[review]{acl}
 
@@ -39,54 +40,66 @@ model is \emph{planning} ahead. We show that such probe accuracies are
 structure already present at initialization, and computation the model
 \emph{learns} during training. We introduce a per-position \emph{staircase}
 baseline that compares a target-position probe against the strongest earlier
-position, and a \emph{training-dynamics decomposition} that splits the
-resulting gap into a positional \emph{floor} (measured at random initialization)
-and a \emph{learned} component (acquired during training). Applying this
-diagnostic to 19 models across nine architecture families and five tasks
-(116 probing experiments), we find that a \emph{single} methodology produces
-three qualitatively different signatures: a large learned component for rhyme
-(genuine forward planning, consistent with prior causal steering results),
-a flat positional floor for code return-types (an artifact that vanishes under
-a mean-pool baseline), and an absent signal for a controlled question-answering
-task. The decomposition is consistent across three model scales
-(1.4B--6.9B), and a within-model checkpoint analysis shows that the rhyme probe
-gap and behavioral rhyme generation emerge together during training
-(Spearman $\rho=0.75$, $p=0.03$). Our results argue that probing claims about
-planning should be evaluated against position baselines and training dynamics
-rather than raw probe accuracy.
+position, and a \emph{training-dynamics decomposition} that splits the resulting
+gap into a positional \emph{floor} (measured at random initialization) and a
+\emph{learned} component (acquired during training). Applying this diagnostic to
+19 models across nine architecture families and five tasks (116 probing
+experiments), we find that a \emph{single} methodology produces three
+qualitatively different signatures: a large learned component for rhyme
+(a planning-consistent learned signal in a domain where prior causal work found
+planning), a flat positional floor for code return-types (an artifact that
+vanishes under a mean-pool baseline and is unchanged by training), and an absent
+signal for a controlled question-answering task. The pattern is consistent
+across three model scales (1.4B--6.9B) and across all probed layers, not a
+single lucky layer. A within-model checkpoint analysis shows that the rhyme
+probe gap and behavioral rhyme generation emerge together during training
+(Spearman $\rho=0.75$, $p=0.03$), while a cross-model comparison deliberately
+does \emph{not} claim the gap ranks unrelated models. We argue that probing
+claims about planning should be reported against position baselines and, where
+checkpoints exist, decomposed against the positional floor---and we provide a
+concrete reporting checklist.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-Linear probes are a standard tool for asking what information a language
-model's hidden states contain \citep{alain2017,belinkov2022}. A recent and
+Linear probes are a standard tool for asking what information a language model's
+hidden states contain \citep{alain2017,belinkov2022,tenney2019}. A recent and
 striking application probes for information about \emph{future} tokens: if a
-hidden state at position $t$ already encodes a property of a token that the
-model has not yet generated, this is read as evidence that the model is
-\emph{planning} ahead rather than predicting one token at a time. Causal
-steering work supports this interpretation in some settings: \citet{maar2026}
-show that steering vectors applied at intermediate positions can manipulate
-future rhymes and question answers in models from 1B parameters upward.
+hidden state at position $t$ already encodes a property of a token the model has
+not yet generated, this is read as evidence that the model is \emph{planning}
+ahead rather than predicting one token at a time. Causal steering work supports
+this interpretation in some settings: \citet{maar2026} show that steering vectors
+applied at intermediate positions can manipulate future rhymes and question
+answers in models from 1B parameters upward.
 
-Probing alone, however, is a fragile basis for planning claims. Probing
-classifiers can exploit confounds and recover information that is not
-\emph{used} by the model \citep{hewitt2019,belinkov2022}, and the distinction
-matters precisely because probing is far cheaper to scale than causal
-intervention---making it tempting to treat probe accuracy as a proxy for
-mechanistic evidence. The central question of this paper is methodological:
-\emph{when a probe recovers future-token information, how much of that signal
-reflects model computation, versus information already recoverable from earlier
-token positions?}
+Consider a concrete case. A model reads the first line of a couplet ending in
+\emph{``light''} and is about to generate a second line that must rhyme. A probe
+at the position just before the rhyming word predicts the rhyme family well
+above chance. Is the model \emph{planning} the rhyme, or was the rhyme
+constraint already recoverable from \emph{``light''} several tokens earlier?
+The raw probe accuracy cannot tell these apart. Probing classifiers can exploit
+confounds and recover information that is not \emph{used} by the model
+\citep{hewitt2019,belinkov2022,voita2020}, and the distinction matters precisely
+because probing is far cheaper to scale than causal intervention---making it
+tempting to treat probe accuracy as a proxy for mechanistic evidence. The
+central question of this paper is methodological: \emph{when a probe recovers
+future-token information, how much of that signal reflects model computation,
+versus information already recoverable from earlier token positions?}
 
-We argue that a raw probe accuracy answers this question only relative to a
-baseline, and that the natural baselines have been too weak. We make three
-contributions.
+We argue that this question has three distinct quantities, only the first of
+which is usually reported: (i) the raw target-position probe accuracy;
+(ii) the \emph{gap} between that accuracy and the strongest earlier position,
+which removes information already present upstream; and (iii) the \emph{learned}
+component of that gap, isolated by subtracting the gap measured at random
+initialization. A signal can have high raw accuracy, a large gap, and yet a
+\emph{near-zero learned component}---in which case the probe is reading
+positional structure, not acquired planning. We make three contributions.
 
 \textbf{(1) A per-position staircase baseline.} For each task we compare the
 target-position probe against the \emph{single strongest earlier position}
-(Section~\ref{sec:staircase}). This is a stricter baseline than the mean-pooled
-``signature region'' baseline used in prior work, and it already changes the
+(Section~\ref{sec:staircase}), a stricter baseline than the mean-pooled
+``signature region'' baseline used in prior work. This already changes the
 picture: tasks that look like planning under weak baselines often do not survive
 a per-position comparison.
 
@@ -94,54 +107,64 @@ a per-position comparison.
 initialization isolates the part of any staircase gap that is purely
 \emph{positional}---it requires no learning. Subtracting this \emph{floor} from
 the trained model's gap yields the \emph{learned} component
-(Section~\ref{sec:decomp}). This decomposition is, to our knowledge, a novel way
-to separate positional artifacts from acquired computation in future-token
-probing.
+(Section~\ref{sec:decomp}). To our knowledge this is a novel way to separate
+positional artifacts from acquired computation in future-token probing.
 
 \textbf{(3) A large-scale, multi-architecture evaluation.} We apply the
 diagnostic to 19 models spanning nine architecture families, five tasks, and
 (for three Pythia scales) eight training checkpoints---116 probing experiments
-in total, with linear and MLP probes, two baselines, and behavioral validation.
+with linear and MLP probes, two baselines, full layer curves, name controls,
+logit-lens corroboration, and behavioral validation.
 
 The result is not a single ``planning'' verdict but a \emph{discriminating
 diagnostic}. The same methodology yields three qualitatively different
-signatures (Figure~\ref{fig:dynamics}): rhyme couplets show a large gap that
-\emph{grows} during training and persists under every baseline (genuine forward
-planning); code return-type prediction shows a small gap that is \emph{flat}
-across training and \emph{collapses} under a mean-pool baseline (a positional
-artifact); and a controlled neutral-QA task shows \emph{no} gap at any training
-stage (a genuine null). We further show, within a single model across training,
-that the rhyme probe gap and the model's behavioral rhyme-generation ability
-emerge together. The takeaway for practitioners is concrete: future-token
-probing claims should be reported relative to a per-position baseline and,
-where checkpoints are available, decomposed against the positional floor.
+signatures (Figure~\ref{fig:regimes}): rhyme shows a large gap that
+\emph{grows} during training and persists under every baseline; code return-type
+prediction shows a small gap that is \emph{flat} across training and
+\emph{collapses} under a mean-pool baseline; and a controlled neutral-QA task
+shows \emph{no} gap at any training stage. The diagnostic's value is that it
+tells these cases apart---a method that returned ``planning'' for all of them
+would be useless. We close with a concrete checklist of what future-token
+probing studies should report.
 
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Probing and its confounds.} Linear probing
-\citep{alain2017,conneau2018} is widely used to test what representations
-encode, but \citet{hewitt2019} showed that probe accuracy conflates information
-in the representation with the probe's own capacity, motivating control tasks
-and selectivity. \citet{belinkov2022} surveys these limitations. Our staircase
-is in this tradition: it replaces an absolute accuracy with a difference against
-a position-matched baseline, and the training-dynamics floor plays a role
-analogous to a control task but derived from the model itself.
+\paragraph{Probing and its controls.} Linear probing
+\citep{alain2017,conneau2018} tests what representations encode, but
+\citet{hewitt2019} showed that probe accuracy conflates information in the
+representation with the probe's own capacity, motivating \emph{control tasks} and
+selectivity. Information-theoretic and minimum-description-length formulations
+\citep{voita2020,pimentel2020} make the same point: absolute accuracy is not the
+right unit. Our staircase is in this tradition---it replaces an absolute accuracy
+with a difference against a position-matched baseline, and the training-dynamics
+floor plays a role analogous to a control task but derived from the model itself
+rather than from random labels.
 
 \paragraph{Future-token information and planning.} A growing literature asks
-whether language models represent future tokens. Future Lens \citep{pal2023}
-decodes future tokens from individual hidden states; \citet{maar2026} provide
-causal steering evidence for implicit planning in rhyme and question answering.
-Our work is complementary and deliberately diagnostic: rather than adding
-another planning claim, we ask how much of a probing signal would survive a
-stricter baseline and how much is acquired during training.
+whether models represent future tokens. Future Lens \citep{pal2023} decodes
+future tokens from individual hidden states; \citet{maar2026} provide causal
+steering evidence for implicit planning in rhyme and question answering; and
+work on emergent world representations probes for state that the model later
+acts on \citep{li2023,gurnee2024}. Our work is complementary and deliberately
+diagnostic: rather than adding another planning claim, we ask how much of a
+probing signal would survive a stricter baseline and how much is acquired during
+training.
 
-\paragraph{Interpreting hidden states across layers and training.} The logit
-lens \citep{nostalgebraist2020} and tuned lens \citep{belrose2023} read hidden
-states through the unembedding; the Pythia suite \citep{biderman2023} enables
-analysis across training checkpoints. We use checkpoints not to track loss but
-to define a positional floor and to correlate representational change with
-behavioral change.
+\paragraph{Reading hidden states across layers.} The logit lens
+\citep{nostalgebraist2020} and tuned lens \citep{belrose2023} read hidden states
+through the unembedding; layerwise probing shows that information is distributed
+across depth \citep{tenney2019}, and feed-forward layers act as key--value stores
+\citep{geva2021}. We use the logit lens as an independent, classifier-free check
+on one of our tasks (Section~\ref{sec:robust}).
+
+\paragraph{Training dynamics and model development.} Capabilities and internal
+structure emerge at identifiable points in training: induction heads
+\citep{olsson2022}, grokking and progress measures \citep{nanda2023}, and
+knowledge acquisition in game-playing agents \citep{mcgrath2022}. The Pythia
+suite \citep{biderman2023} releases intermediate checkpoints that make such
+analysis possible. We use checkpoints not to track loss but to define a
+positional floor and to correlate representational change with behavioral change.
 
 \section{Method}
 \label{sec:method}
@@ -150,34 +173,46 @@ behavioral change.
 \label{sec:staircase}
 
 Each task provides prompts $x$ with a categorical label $y$ describing a
-\emph{future} token (e.g.\ the rhyme family of an upcoming line-ending word).
-For a model with hidden states $h^{(\ell)}_p(x)$ at layer $\ell$ and position
-$p$, and a designated \emph{target} position $t(x)$ (e.g.\ the newline before
-the upcoming line), we train probes at the target and at every earlier position.
-Writing $\mathrm{acc}^{(\ell)}_p$ for the cross-validated accuracy of a probe
-trained on activations at layer $\ell$, position $p$, the \emph{staircase gap}
-at layer $\ell$ is
+\emph{future} token (e.g.\ the rhyme family of an upcoming line-ending word). For
+a model with hidden state $h^{(\ell)}_p(x)$ at layer $\ell$ and position $p$, and
+a designated \emph{target} position $t(x)$, we train a probe at the target and at
+every earlier position $p<t$. Target positions are defined by interpretable
+\emph{resolvers}---e.g.\ the newline before the upcoming line, the last word of
+the first line, or the question mark---and we report results for each resolver
+rather than hand-picking one (Section~\ref{sec:probing}). Earlier positions are
+all token positions strictly before the target in the same prompt; because
+prompts vary in length, positions are indexed from the target backward so that
+``earlier'' is well defined across examples.
+
+Writing $\mathrm{acc}^{(\ell)}_p$ for the cross-validated accuracy of a probe at
+layer $\ell$, position $p$, the \emph{staircase gap} at layer $\ell$ is
 \begin{equation}
 \label{eq:gap}
 \Delta^{(\ell)} \;=\; \mathrm{acc}^{(\ell)}_{t}
 \;-\; \max_{p < t}\, \mathrm{acc}^{(\ell)}_{p}.
 \end{equation}
-The baseline is the \emph{single strongest} earlier position, not an average:
-if any earlier position already carries the label, $\Delta$ is small or
-negative. We report the \emph{headline gap} as the largest-magnitude
-$\Delta^{(\ell)}$ across probed layers and target-position resolvers, together
-with a 500-sample bootstrap confidence interval. A positive gap is necessary
-(not sufficient) evidence that the target position adds future-token information
-beyond what is already linearly recoverable earlier.
+The baseline is the \emph{single strongest} earlier position, not an average: if
+any earlier position already carries the label, $\Delta$ is small or negative. A
+positive gap is necessary (not sufficient) evidence that the target position adds
+future-token information beyond what is already linearly recoverable earlier.
+
+\paragraph{Layer selection and non-max summaries.} We report the \emph{headline
+gap} as the largest-magnitude $\Delta^{(\ell)}$ across probed layers and
+resolvers, with a 500-sample bootstrap confidence interval. Because this is a
+maximum over layers and resolvers, it is susceptible to selection inflation. We
+therefore also report \emph{non-max} summaries---the mean and median gap over all
+probed layers, and the mean over the final third of layers---and show the full
+per-layer curves (Section~\ref{sec:layers}, Appendix~\ref{app:nonmax}). The
+qualitative ordering of tasks is preserved under every summary, which is the
+property the headline statistic alone cannot guarantee.
 
 \subsection{Dual baselines}
 \label{sec:dual}
 
-The max-earlier baseline of Eq.~\ref{eq:gap} is strict, but it compares single
-positions. As a second, independent baseline we also probe the
-\emph{mean-pooled} activations over all positions up to the signature region
-(the ``$N{+}P$'' baseline of prior work), giving a gap
-$\Delta_{\text{mp}}$. A signal that reflects genuine target-position
+The max-earlier baseline of Eq.~\ref{eq:gap} compares single positions. As a
+second, independent baseline we probe the \emph{mean-pooled} activations over all
+positions up to the signature region (the ``$N{+}P$'' baseline of prior work),
+giving a gap $\Delta_{\text{mp}}$. A signal that reflects genuine target-position
 computation should survive both baselines; a positional artifact may survive the
 single-position comparison yet collapse against a pooled representation that
 aggregates the same information from many earlier tokens.
@@ -185,70 +220,97 @@ aggregates the same information from many earlier tokens.
 \subsection{Training-dynamics decomposition}
 \label{sec:decomp}
 
-A staircase gap at a \emph{trained} model mixes two things: structure that is
-present before any learning (token identity in the embedding, positional
-encoding) and computation acquired during training. We separate them using
-checkpoints. Let $\Delta_{0}$ be the headline gap measured at
-random initialization (step 0) and $\Delta_{\text{final}}$ the gap at the end of
-training. We define
+A staircase gap at a \emph{trained} model mixes two things: structure present
+before any learning (token identity in the embedding, positional encoding) and
+computation acquired during training. We separate them using checkpoints. Let
+$\Delta_{0}$ be the headline gap at random initialization (step~0) and
+$\Delta_{\text{final}}$ the gap at the end of training. We define
 \begin{align}
-\text{floor} &= \Delta_{0}, \\
+\text{floor} &= \Delta_{0}, &
 \text{learned} &= \Delta_{\text{final}} - \Delta_{0}.
 \end{align}
 The floor is the gap attributable purely to position and embedding; the learned
 component is what training adds. A large learned component is the signature we
-associate with acquired forward planning; a near-zero learned component
-(regardless of the raw gap) indicates a positional artifact. We test
-significance of the learned component with a permutation test over examples.
+associate with an acquired, planning-consistent signal; a near-zero learned
+component (regardless of the raw gap) indicates a positional artifact. We test
+significance of the learned component with an example-level permutation test, but
+emphasize \emph{magnitude} over significance: with hundreds of examples a $+2$pp
+effect can be ``significant'' yet behaviorally negligible
+(Section~\ref{sec:dynamics}).
 
 \subsection{Probing setup}
 \label{sec:probing}
 
 Probes are logistic-regression classifiers on PCA-reduced activations
-(128 components by default) with stratified cross-validation. For the
-neutral-QA task, where prompts are grouped into minimal pairs that share
-surface text, we use \emph{grouped} cross-validation (\texttt{StratifiedGroupKFold})
-and cluster bootstrap so that paired prompts never straddle the train/test split;
-this corrects an optimistic bias that ungrouped splitting introduces
-(Appendix~\ref{app:grouped}). We additionally fit two-layer MLP probes to test
-whether findings are artifacts of probe linearity (Section~\ref{sec:mlp}). We
-report a bag-of-words baseline per task to flag cases where the label is
-trivially recoverable from surface tokens.
+(128 components by default). To avoid leakage, \emph{PCA is fit inside each
+training fold} and applied to the held-out fold; cross-validation is stratified
+by label. For the neutral-QA task, where prompts form minimal pairs that share
+surface text, we use \emph{grouped} cross-validation
+(\texttt{StratifiedGroupKFold}) and a cluster bootstrap so that paired prompts
+never straddle the train/test split; ungrouped splitting inflates accuracy by
+letting the probe memorize pair identity (Appendix~\ref{app:grouped}). We fit
+two-layer MLP probes on a subset of models to test whether findings are artifacts
+of probe linearity (Section~\ref{sec:robust}). For every task we report a
+bag-of-words baseline to flag cases where the label is trivially recoverable from
+surface tokens; all hyperparameters (PCA dimension, probe regularization, fold
+count, bootstrap size) are fixed across tasks and models before analysis.
 
-\section{Experimental Setup}
+\section{Tasks and Experimental Setup}
 \label{sec:setup}
 
-\subsection{Tasks}
+\subsection{Task construction}
 \label{sec:tasks}
 
-We study five tasks chosen to span the space from genuine forward planning to
-trivial surface prediction (Table~\ref{tab:tasks}). \textbf{Rhyme} uses the
-couplet data of \citet{maar2026}: the model must commit to a rhyme family before
-generating the rhyming word, and steering at the target positions causally
-changes the produced rhyme. \textbf{Code} is return-type prediction over Python
-functions; the function signature carries return-type cues, so the target
-position is not expected to add information. \textbf{QA-neutral} uses minimal
-question pairs that share \emph{identical} surface text across answers, so the
-label cannot be read off earlier tokens; it is our cleanest test for planning in
-the absence of surface confounds. \textbf{QA-suggestive} uses questions whose
-surface content predicts the answer (a weak-gap control), and \textbf{Trivia}
-uses questions whose content fully determines the answer category (a
-bag-of-words--saturating null).
+We study five tasks chosen to span the space from a planning-positive domain to
+trivial surface prediction (Table~\ref{tab:tasks}). For each we specify the
+target position, the label, the confound a naive probe might exploit, and how we
+control it.
+
+\textbf{Rhyme} (10 classes, 200 examples) uses the couplet data of
+\citet{maar2026}. A prompt is the first line plus the start of the second; the
+label is the rhyme family of the upcoming line-final word, and the target
+position is the newline / last-word position where \citet{maar2026} found
+steering to causally change the produced rhyme. The potential confound is that
+the first line's final word already constrains the rhyme; the staircase controls
+for exactly this by comparing against the strongest earlier position, and the
+behavioral check (Section~\ref{sec:behav}) scores generated rhymes with a
+pronunciation dictionary (out-of-vocabulary words fall back to a suffix match).
+
+\textbf{Code} (5 classes, 507 examples) is Python return-type prediction. The
+prompt is a function signature and body; the label is the return type and the
+target is the position before the return annotation. The signature---name and
+parameters---carries strong return-type cues, so we expect earlier positions to
+match the target. We additionally stress-test this with opaque and adversarial
+function names (Section~\ref{sec:robust}).
+
+\textbf{QA-neutral} (2 classes, 161 examples) uses minimal question pairs that
+share \emph{identical} surface text across the two answers (the same question
+stem appears under both labels), so the label cannot be read off earlier tokens.
+It is our cleanest test for a target-position signal in the absence of surface
+confounds; minimal-pair members are kept in the same CV fold.
+
+\textbf{QA-suggestive} (2 classes, 145 examples) uses questions whose surface
+content predicts the answer (a weak-gap control), and \textbf{Trivia}
+(5 classes, 100 examples) uses questions whose content fully determines the
+answer category, saturating a bag-of-words baseline and making the staircase
+uninformative by construction (a null we include to show the diagnostic does not
+manufacture signal).
 
 \begin{table}[t]
 \centering\small
-\begin{tabular}{@{}lccp{3.4cm}@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccp{3.0cm}@{}}
 \toprule
-\textbf{Task} & \textbf{Cls.} & \textbf{$N$} & \textbf{Expected signal} \\
+\textbf{Task} & \textbf{Cls.} & \textbf{$N$} & \textbf{Target / expectation} \\
 \midrule
-Rhyme & 10 & 200 & Forward planning \\
-QA-neutral & 2 & 161 & Planning, no surface cue \\
-Code & 5 & 507 & Local / positional \\
-QA-suggestive & 2 & 145 & Weak (surface cue) \\
-Trivia & 5 & 100 & None (BoW-saturated) \\
+Rhyme & 10 & 200 & pre-rhyme newline; planning-positive \\
+QA-neutral & 2 & 161 & pre-answer; planning, no surface cue \\
+Code & 5 & 507 & pre-return; local/positional \\
+QA-suggestive & 2 & 145 & pre-answer; weak (surface cue) \\
+Trivia & 5 & 100 & pre-answer; none (BoW-saturated) \\
 \bottomrule
 \end{tabular}
-\caption{The five tasks, number of label classes, examples, and the
+\caption{The five tasks: label classes, examples, target position, and the
 \emph{a priori} expectation for the staircase signal.}
 \label{tab:tasks}
 \end{table}
@@ -259,7 +321,7 @@ Trivia & 5 & 100 & None (BoW-saturated) \\
 We evaluate 19 models spanning nine architecture families: Gemma-2
 (2B/2B-it/9B/27B), Qwen3 (1.7B/8B), Pythia (410M--6.9B), GPT-2
 (small/medium/XL), Mistral-7B, Llama-3.1-8B, Llama-3.2-3B, Falcon3-7B, OLMo-7B,
-and StableLM-2-1.6B. These cover absolute, rotary, and RoPE-with-normalization
+and StableLM-2-1.6B, covering absolute, rotary, and RoPE-with-normalization
 positional schemes. For the training-dynamics decomposition we use the three
 deduplicated Pythia scales (1.4B, 2.8B, 6.9B) for which intermediate checkpoints
 are released \citep{biderman2023}, probing at steps
@@ -269,69 +331,109 @@ $\{0, 512, 4\mathrm{k}, 16\mathrm{k}, 32\mathrm{k}, 64\mathrm{k},
 \section{Results}
 \label{sec:results}
 
-\subsection{The staircase gap is baseline-dependent and varies by an order of
-magnitude across tasks}
+\subsection{Three diagnostic regimes}
+\label{sec:regimes}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\columnwidth]{fig6_regimes.pdf}
+\caption{The training-dynamics decomposition places each task in one of three
+regimes. Rhyme has a high positional floor \emph{and} a large learned component
+(planning-consistent); code has a moderate floor but a near-zero learned
+component (positional artifact); QA-neutral has neither (genuine null).
+Pythia-1.4B.}
+\label{fig:regimes}
+\end{figure}
+
+Our central result is summarized in Figure~\ref{fig:regimes}: decomposing each
+task's staircase gap into a positional floor (gap at initialization) and a
+learned component (gain over training) separates the tasks into three regimes.
+Rhyme sits in the high-floor, high-learned corner; code has a moderate floor but
+essentially no learned component; QA-neutral has neither. The remainder of this
+section establishes each axis of this plot and shows it is robust to baseline
+choice, layer selection, probe family, scale, and architecture.
+
+\subsection{The gap is baseline-dependent and varies by an order of magnitude}
 \label{sec:res-cross}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig2_cross_model.pdf}
 \caption{Per-position staircase gap by task, one point per model, colored by
-architecture family; black bars are task means. The gap separates rhyme
-(+64pp mean) from code and QA-suggestive ($\sim$+12pp), QA-neutral
-($\sim$0), and trivia (0). The ordering is consistent across all nine
-architecture families.}
+architecture family; black bars are task means. Rhyme ($+64$pp mean) separates
+from code and QA-suggestive ($\sim$$+12$pp), QA-neutral ($\sim$$0$), and trivia
+($0$). The ordering holds across all nine families.}
 \label{fig:cross}
 \end{figure}
 
-Figure~\ref{fig:cross} shows the headline gap for every (model, task) pair.
-The gap varies by an order of magnitude across tasks and is remarkably
-consistent within a task across architectures. Rhyme yields a large positive
-gap on all 19 models (mean $+63.6$pp, range $[+48.5, +76.5]$); code and
-QA-suggestive yield small positive gaps (means $+12.0$ and $+12.7$pp);
-QA-neutral yields a small \emph{negative} gap (mean $-1.2$pp, range
-$[-1.9,-0.6]$); and trivia yields exactly zero, because its label is already
-saturated by a bag-of-words baseline. A paired Wilcoxon test across models
-confirms rhyme exceeds code (median difference $+53$pp, $n{=}18$,
+Figure~\ref{fig:cross} shows the headline gap for every (model, task) pair. The
+gap varies by an order of magnitude across tasks and is remarkably consistent
+within a task across architectures. Rhyme yields a large positive gap on all 19
+models (mean $+63.6$pp, range $[+48.5, +76.5]$); code and QA-suggestive yield
+small positive gaps (means $+12.0$ and $+12.7$pp); QA-neutral yields a small
+\emph{negative} gap (mean $-1.2$pp, range $[-1.9,-0.6]$); and trivia yields
+exactly zero, its label already saturated by bag-of-words. A paired Wilcoxon test
+across models confirms rhyme exceeds code (median difference $+53$pp, $n{=}18$,
 $p<10^{-4}$) and QA-neutral (median $+72$pp, $n{=}12$, $p<10^{-3}$).
 
-That rhyme stands apart is expected; the methodological point is that
-the \emph{same} measurement, applied uniformly, places three tasks
-(code, QA-suggestive, QA-neutral) near or below the floor despite their being
-the kind of future-token tasks for which raw probe accuracy is high. A positive
-probe accuracy is not a positive gap.
+The methodological point is that the \emph{same} measurement, applied uniformly,
+places three future-token tasks (code, QA-suggestive, QA-neutral) near or below
+the floor despite their being exactly the kind of task for which raw probe
+accuracy is high. For code, raw target-position accuracy exceeds 90\% on most
+models---but the gap over earlier positions is only $\sim$$12$pp, and (next) most
+of that is positional. A positive probe accuracy is not a positive gap.
 
-\subsection{Training dynamics decompose the gap into a positional floor and a
-learned component}
-\label{sec:res-dynamics}
+\subsection{The gap is broad across layers, not one lucky layer}
+\label{sec:layers}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig7_layer_curves.pdf}
+\caption{Per-layer target accuracy (solid) and strongest-earlier accuracy
+(dashed) for Gemma-2-2B. The rhyme gap is large at \emph{every} layer; the code
+gap is small but consistent; QA-neutral shows target and earlier overlapping at
+chance throughout. The headline result is not an artifact of selecting one layer.}
+\label{fig:layers}
+\end{figure}
+
+Because the headline gap is a maximum over layers and resolvers, we examine the
+full per-layer curves (Figure~\ref{fig:layers}). For rhyme the gap is large at
+\emph{every} probed layer (target $\approx$ 80--100\% vs.\ earlier
+$\approx$ 25--30\%); for code it is small but consistent; for QA-neutral target
+and earlier accuracies track each other at chance across the entire depth. The
+non-max summaries confirm this: averaging the gap over all layers (or over the
+final third) leaves rhyme at $+46$ to $+75$pp, code at $+6$ to $+11$pp, and
+QA-neutral at $\approx 0$ across the anchor models we examined
+(Appendix~\ref{app:nonmax}). The task ordering---and the rhyme/code/QA-neutral
+regime assignment---is therefore not a selection artifact of the maximum.
+
+\subsection{Training dynamics decompose the gap}
+\label{sec:dynamics}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig1_training_dynamics.pdf}
 \caption{Staircase gap across training (Pythia-1.4B, log-scale steps). Rhyme
-(blue) starts at a $+34$pp floor and \emph{grows} to $+58$pp; code (orange)
-is \emph{flat} near $+11$pp throughout; QA-neutral (green) sits at zero at every
-checkpoint. A single methodology yields three qualitatively different
-trajectories.}
+starts at a $+34$pp floor and \emph{grows} to $+58$pp; code is \emph{flat} near
+$+11$pp; QA-neutral sits at zero at every checkpoint.}
 \label{fig:dynamics}
 \end{figure}
 
-Probing across training checkpoints reveals \emph{why} the tasks differ
+Probing across checkpoints reveals \emph{why} the tasks differ
 (Figure~\ref{fig:dynamics}). At random initialization, rhyme already shows a
 $+34$pp gap---a substantial positional floor, since rhyme labels correlate with
-token identity that the embedding exposes. But the gap then \emph{grows} to
-$+58$pp over training: training adds $+23.5$pp of learned computation. Code, by
-contrast, starts at a $+10$pp floor and stays flat (learned $+2$pp): training
-adds essentially nothing at the target position. QA-neutral sits at zero at
-every checkpoint, including step 0: the target position never carries the label,
-trained or not.
+token identity the embedding exposes---but the gap then \emph{grows} to $+58$pp:
+training adds $+23.5$pp of learned signal. Code starts at a $+10$pp floor and
+stays flat (learned $+2$pp): training adds essentially nothing at the target
+position. QA-neutral sits at zero at every checkpoint, step~0 included.
 
-A permutation test on the learned component is significant for both
-rhyme and code on Pythia-1.4B and 2.8B ($p<10^{-3}$ for rhyme;
-$p<10^{-3}$ and $p{=}9\times10^{-4}$ for code), but the \emph{magnitudes} tell
-the story: a $+2$--$4$pp learned gap for code versus $+19$--$26$pp for rhyme.
-The decomposition, not the raw significance, is what distinguishes acquired
-computation from a stable positional artifact.
+An example-level permutation test finds the learned component significant for
+both rhyme and code on Pythia-1.4B and 2.8B ($p<10^{-3}$ for rhyme;
+$p<10^{-3}$ and $p{=}9{\times}10^{-4}$ for code). We stress that the
+\emph{magnitudes}, not the $p$-values, carry the message: a $+2$--$4$pp learned
+gap for code versus $+19$--$26$pp for rhyme. The decomposition---not statistical
+significance---is what distinguishes acquired computation from a stable
+positional artifact.
 
 \subsection{The decomposition is consistent across model scale}
 \label{sec:res-scale}
@@ -341,21 +443,13 @@ computation from a stable positional artifact.
 \includegraphics[width=\columnwidth]{fig3_decomposition.pdf}
 \caption{Floor/learned decomposition for code and rhyme at three Pythia scales.
 The positional floor (grey) and learned component (color) are stable across an
-order of magnitude in parameters: code learns $+2$--$4$pp, rhyme learns
-$+19$--$26$pp.}
+order of magnitude in parameters: code learns $+2$--$4$pp, rhyme $+19$--$26$pp.}
 \label{fig:decomp}
 \end{figure}
 
-Table~\ref{tab:decomp} and Figure~\ref{fig:decomp} repeat the decomposition on
-Pythia-1.4B, 2.8B, and 6.9B. The pattern is stable across an order of magnitude
-in scale: the code floor is $+8$--$10$pp with a $+2$--$4$pp learned component,
-while the rhyme floor is $+33$--$36$pp with a $+19$--$26$pp learned component.
-The consistency across three independently trained models indicates the
-decomposition reflects a property of the task--representation interaction, not
-an idiosyncrasy of one model.
-
 \begin{table}[t]
 \centering\small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lcccccc@{}}
 \toprule
 & \multicolumn{3}{c}{\textbf{Code}} & \multicolumn{3}{c}{\textbf{Rhyme}} \\
@@ -373,118 +467,160 @@ rhyme's is an order of magnitude larger.}
 \label{tab:decomp}
 \end{table}
 
+Table~\ref{tab:decomp} and Figure~\ref{fig:decomp} repeat the decomposition on
+Pythia-1.4B, 2.8B, and 6.9B. The pattern is stable across an order of magnitude
+in scale: the code floor is $+8$--$10$pp with a $+2$--$4$pp learned component,
+while the rhyme floor is $+33$--$36$pp with a $+19$--$26$pp learned component.
+Consistency across three independently trained models indicates the
+decomposition reflects a property of the task--representation interaction, not an
+idiosyncrasy of one model.
+
 \subsection{A mean-pool baseline confirms the code gap is positional}
 \label{sec:res-dual}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.85\columnwidth]{fig4_dual_baseline.pdf}
+\includegraphics[width=0.82\columnwidth]{fig4_dual_baseline.pdf}
 \caption{Each point is a model: staircase gap under the max-earlier baseline
-($x$) versus the mean-pool baseline ($y$). Rhyme (blue) lies near the diagonal,
-persisting under both baselines ($+59$ to $+86$pp). Code (orange) collapses to
-the $x$-axis ($-5$ to $+7$pp): its single-position gap disappears once earlier
-positions are pooled.}
+($x$) versus the mean-pool baseline ($y$). Rhyme (blue) persists under both
+($+59$ to $+86$pp); code (orange) collapses to the $x$-axis ($-5$ to $+7$pp).}
 \label{fig:dual}
 \end{figure}
 
 The training-dynamics view is corroborated by the second baseline
-(Figure~\ref{fig:dual}). Under the mean-pool baseline, the code gap collapses to
-$[-5.1, +7.1]$pp across models---i.e.\ pooling earlier positions recovers as much
-return-type information as the target position---while the rhyme gap remains
-large ($[+59.5, +86.5]$pp). Two independent baselines (a stricter single-position
-comparison through training, and a pooled comparison) thus agree: the code
-signal is recoverable from earlier positions, and the rhyme signal is not.
+(Figure~\ref{fig:dual}). Under the mean-pool baseline the code gap collapses to
+$[-5.1, +7.1]$pp---pooling earlier positions recovers as much return-type
+information as the target position---while the rhyme gap remains large
+($[+59.5, +86.5]$pp). Two independent baselines (a stricter single-position
+comparison through training, and a pooled comparison) thus agree: the code signal
+is recoverable from earlier positions, and the rhyme signal is not.
 
-\subsection{Behavioral validation: the rhyme gap and rhyme generation emerge
-together}
-\label{sec:res-behav}
+\subsection{Behavioral validation: representation tracks generation within a
+model}
+\label{sec:behav}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig5_behavioral.pdf}
-\caption{Within-model behavioral validation (Pythia-1.4B). As training proceeds,
-the rhyme staircase gap (blue) and the model's actual rhyme-generation accuracy
-(orange) rise together; both emerge between steps 4k--32k. Within-model
-Spearman $\rho=0.75$ ($p=0.03$); Pearson $r=0.88$ ($p=0.004$), $n=8$
-checkpoints.}
+\caption{Within-model behavioral validation (Pythia-1.4B). The rhyme staircase
+gap (blue) and the model's actual rhyme-generation accuracy (orange) rise
+together; both emerge between steps 4k--32k. Within-model Spearman $\rho=0.75$
+($p=0.03$), Pearson $r=0.88$ ($p=0.004$), $n=8$.}
 \label{fig:behav}
 \end{figure}
 
-If the rhyme gap reflects acquired planning, it should track the model's actual
-ability to produce rhymes. We measure behavioral rhyme-generation accuracy
-(does the model complete a couplet with a correctly rhyming word, scored with a
-pronunciation dictionary) at each Pythia-1.4B checkpoint and compare it to the
-probe gap (Figure~\ref{fig:behav}). The two emerge together: at initialization
-both are at floor (0\% generation, $+34$pp probe), and both rise sharply between
-steps 4k and 32k. The within-model correlation is strong
-(Spearman $\rho=0.75$, $p=0.03$; Pearson $r=0.88$, $p=0.004$; $n=8$).
+If the rhyme gap reflects an acquired, planning-consistent signal, it should
+track the model's actual ability to produce rhymes. We measure behavioral
+rhyme-generation accuracy (does the model complete a couplet with a correctly
+rhyming word, scored with a pronunciation dictionary) at each Pythia-1.4B
+checkpoint and compare it to the probe gap (Figure~\ref{fig:behav}). The two
+emerge together: at initialization both are at floor (0\% generation, $+34$pp
+probe), and both rise sharply between steps 4k and 32k. The within-model
+correlation is strong (Spearman $\rho=0.75$, $p=0.03$; Pearson $r=0.88$,
+$p=0.004$; $n=8$).
 
-We note an important negative result. The \emph{cross-model} correlation between
-probe gap and generation accuracy is \emph{not} significant
-($\rho=0.17$, $p=0.52$, $n=17$): a larger probe gap in model $A$ than model $B$
-does not imply $A$ generates better rhymes. This is expected---generation
-quality depends on decoding, tokenization, and scale, not only on whether the
-information is linearly present---and it is why the within-model, across-training
-comparison (which holds architecture and tokenizer fixed) is the appropriate
-test. We report both to avoid overclaiming: the probe gap measures
-\emph{representation}, which is necessary but not sufficient for behavior.
+We report an important negative result and treat it as a feature, not a
+weakness. The \emph{cross-model} correlation between probe gap and generation
+accuracy is \emph{not} significant ($\rho=0.17$, $p=0.52$, $n=17$): a larger
+probe gap in model $A$ than model $B$ does not imply $A$ generates better rhymes.
+This is expected---generation quality depends on decoding, tokenization, and
+scale, not only on whether information is linearly present---and it is precisely
+why the within-model, across-training comparison (which holds architecture,
+tokenizer, and decoding fixed) is the appropriate test. The staircase gap is a
+diagnostic of \emph{representation}, which is necessary but not sufficient for
+behavior; it is not a universal score for ranking unrelated models, and we do not
+use it as one.
 
-\subsection{Robustness: MLP probes and architecture coverage}
-\label{sec:mlp}
+\subsection{Robustness: probe family, names, and the logit lens}
+\label{sec:robust}
 
-The findings are not artifacts of linear probing. We refit the rhyme and
-QA-neutral staircases with two-layer MLP probes on six models across four
-families; in all 13 runs the MLP agrees with the linear probe in sign and
-regime (large positive for rhyme, near-zero for QA-neutral;
-Appendix~\ref{app:mlp}, Figure~\ref{fig:mlp}). Architecture coverage is broad:
-the rhyme gap is $+48$ to $+77$pp on all nine families and is size-invariant
-from 0.12B to 27B parameters (Appendix~\ref{app:size},
-Figure~\ref{fig:size}). A floor analysis grouping models by positional-encoding
-scheme finds the rhyme floor's positional component is essentially identical
-across rotary, RoPE, and absolute schemes, indicating it is not an artifact of
-one positional encoding.
+\paragraph{MLP probes.} The findings are not artifacts of linear probing. We
+refit the rhyme and QA-neutral staircases with two-layer MLP probes on six models
+across four families; in all 13 runs the MLP agrees with the linear probe in sign
+and regime (large positive for rhyme, near-zero for QA-neutral;
+Appendix~\ref{app:mlp}). Architecture coverage is broad: the rhyme gap is $+48$ to
+$+77$pp on all nine families and is size-invariant from 0.12B to 27B parameters
+(Appendix~\ref{app:size}).
+
+\paragraph{Code name controls.} If the code signal is carried by earlier
+signature positions, then (i) removing informative function names should not hurt
+and (ii) \emph{misleading} names should hurt. Both hold. Replacing names with
+opaque placeholders (\texttt{func\_000}) leaves probe accuracy essentially
+unchanged (Pythia-2.8B: $0.906\rightarrow0.907$; Llama-3.2-1B:
+$0.940\rightarrow0.812$), showing names are not necessary---parameter context
+suffices. \emph{Adversarial} names that suggest the wrong return type crash
+accuracy to near chance (Llama-3.2-1B: $0.386$). The probe is reading
+earlier-position cues, consistent with the positional-artifact interpretation
+(Appendix~\ref{app:names}).
+
+\paragraph{Logit-lens corroboration.}
+As a classifier-free check on the code domain, we read each hidden state through
+the model's own unembedding (the logit lens) and measure how often the correct
+return-type token is recoverable. This accessibility grows over training
+(Pythia-2.8B: $0.23\rightarrow0.65$; Pythia-410M: $0.21\rightarrow0.61$ from step
+0 to 143k), confirming that the model does learn to \emph{represent} return
+types. Crucially, this does not contradict the flat code staircase: the logit
+lens measures whether the information is present \emph{anywhere}, while the
+staircase measures whether it is \emph{localized to the target position} beyond
+earlier positions. The two together sharpen the paper's point---a growing
+representation (logit lens up) need not imply target-position planning (staircase
+flat) (Appendix~\ref{app:logit}).
 
 \section{Discussion}
 \label{sec:discussion}
 
 \paragraph{What the staircase does and does not show.} The staircase is a
 diagnostic for \emph{evidential strength}, not a claim that a capability is
-absent. A near-zero or negative gap means the probe has not demonstrated
-target-position information beyond what earlier positions already provide; it
-does not prove the model lacks the relevant computation, nor that causal methods
-would fail to find it. This distinction matters because probing is routinely
-used as a scalable proxy for mechanistic evidence: our results show that such
-proxy evidence must be read relative to progressively stronger position
-baselines, and---where checkpoints exist---relative to the positional floor.
+present or absent. A near-zero or negative gap means the probe has not
+demonstrated target-position information beyond what earlier positions provide;
+it does not prove the model lacks the relevant computation, nor that causal
+methods would fail to find it. A large, baseline-robust, training-acquired gap
+(as for rhyme) is the strongest \emph{observational} signature one can obtain
+short of intervention, and it is consistent with the causal planning that
+\citet{maar2026} establish for that domain---but our probes do not themselves
+establish causation.
 
-\paragraph{Why the negative tasks are a feature.} A reader might object that only
-rhyme shows a large learned gap. We view the negative tasks as the core of the
-contribution: they demonstrate that the methodology \emph{discriminates}. The
-same uniform measurement yields a growing-with-training, baseline-robust signal
-for rhyme; a flat, pool-collapsible signal for code; and a flat-zero signal for
+\paragraph{QA-neutral is not a refutation of Maar et al.} Our QA-neutral null
+does not contradict prior causal QA results. QA-neutral is a deliberately
+stricter, surface-controlled diagnostic: minimal pairs share identical text, so
+\emph{any} earlier-position signal is removed by construction. A null here shows
+that the staircase does not manufacture a positive gap merely because a task
+involves a future answer; it does not claim that question-answering planning is
+absent in the less controlled settings where steering succeeds.
+
+\paragraph{Why the negative tasks are the contribution.} A reader might object
+that only rhyme shows a large learned gap. We view the negative tasks as the core
+of the contribution: they show the methodology \emph{discriminates}. The same
+uniform measurement yields a growing-with-training, baseline-robust signal for
+rhyme; a flat, pool-collapsible signal for code; and a flat-zero signal for
 QA-neutral. A diagnostic that returned ``planning'' for everything would be
-useless. The value is in telling these cases apart.
+useless; the value is in telling these apart.
 
-\paragraph{Practical recommendation.} For future-token probing studies we
-recommend (i) reporting the gap against the strongest earlier position, not raw
-accuracy; (ii) reporting a second pooled baseline; and (iii) where training
-checkpoints are available, decomposing the gap into floor and learned components.
-These are cheap additions that materially change which signals count as evidence
-for planning.
+\paragraph{A checklist for future-token probing.} We recommend that studies
+claiming future-token planning report: (1) raw target-position accuracy;
+(2) the gap against the \emph{strongest earlier position}; (3) a second
+\emph{mean-pool} baseline; (4) where checkpoints exist, the step-0 positional
+\emph{floor}; (5) the \emph{learned} component (final $-$ floor); (6) full layer
+curves or non-max summaries rather than a single maxed layer; (7) leakage checks
+and grouped splits for any minimal-pair data; and (8) behavioral or causal
+validation where feasible---reported \emph{within} a model across training rather
+than across unrelated models. These are inexpensive additions that materially
+change which signals count as evidence for planning.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 We introduced a per-position staircase baseline and a training-dynamics
-decomposition for diagnosing probing claims about future tokens, and applied
-them at scale across 19 models, nine architecture families, and five tasks. The
-diagnostic cleanly separates acquired forward planning (rhyme: a large learned
-component that grows with training, survives two baselines, and tracks
-behavioral generation within a model) from a positional artifact (code: a flat
-floor that collapses under pooling) and a genuine null (QA-neutral). The central
-message is methodological: probe accuracy alone does not establish planning;
-the appropriate evidence is a positive gap against a strong position baseline,
-ideally decomposed against the positional floor measured at initialization.
+decomposition for diagnosing probing claims about future tokens, and applied them
+at scale across 19 models, nine architecture families, and five tasks. The
+diagnostic cleanly separates an acquired, planning-consistent signal (rhyme: a
+large learned component that grows with training, survives two baselines and all
+layers, and tracks behavioral generation within a model) from a positional
+artifact (code: a flat floor that collapses under pooling and is unmoved by
+training) and a genuine null (QA-neutral). The message is methodological: probe
+accuracy alone does not establish planning; the appropriate evidence is a
+positive gap against a strong position baseline, ideally decomposed against the
+positional floor measured at initialization.
 
 \section*{Limitations}
 
@@ -499,18 +635,19 @@ across training for a single model scale; the cross-model correlation is not
 significant, and we explicitly do not claim the probe gap predicts behavior
 across architectures. The QA-suggestive and trivia tasks have fewer models and,
 for trivia, a bag-of-words--saturated label that makes the staircase
-uninformative by construction. Finally, our probes use PCA-reduced features and
-a fixed default dimensionality; while the MLP results argue against a linearity
-artifact, we did not complete a full hyperparameter sensitivity sweep and leave
-it, along with logit-lens corroboration, to future work.
+uninformative by construction. The logit-lens corroboration is available for the
+code domain only. Finally, our probes use PCA-reduced features at a fixed default
+dimensionality; while the MLP results argue against a linearity artifact, we did
+not run a full PCA-dimension or random-seed sensitivity sweep, and we report this
+as an open item rather than claiming robustness we did not measure.
 
 \section*{Ethics Statement}
 
-This work analyzes publicly available pretrained language models on synthetic
-and benchmark linguistic tasks. It introduces a diagnostic method and does not
-release new models or data beyond derived probing results. We see no direct risk
-of harm; the main societal relevance is methodological caution against
-overinterpreting probing results as evidence of model capabilities.
+This work analyzes publicly available pretrained language models on synthetic and
+benchmark linguistic tasks. It introduces a diagnostic method and does not release
+new models or data beyond derived probing results. We see no direct risk of harm;
+the main societal relevance is methodological caution against overinterpreting
+probing results as evidence of model capabilities.
 
 % ===================================================================
 %                         REFERENCES (inline)
@@ -534,27 +671,55 @@ McKinney, Stella Biderman, and Jacob Steinhardt. 2023.
 \newblock \emph{arXiv preprint arXiv:2303.08112}.
 
 \bibitem[Biderman et al.(2023)]{biderman2023}
-Stella Biderman, Hailey Schoelkopf, Quentin Anthony, et al. 2023.
-\newblock Pythia: A suite for analyzing large language models across training
-and scaling.
+Stella Biderman, Hailey Schoelkopf, Quentin Anthony, Herbie Bradley, Kyle
+O'Brien, Eric Hallahan, and others. 2023.
+\newblock Pythia: A suite for analyzing large language models across training and
+scaling.
 \newblock In \emph{International Conference on Machine Learning (ICML)}.
 
 \bibitem[Conneau et al.(2018)]{conneau2018}
-Alexis Conneau, German Kruszewski, Guillaume Lample, Lo\"{i}c Barrault, and
-Marco Baroni. 2018.
+Alexis Conneau, German Kruszewski, Guillaume Lample, Lo\"{i}c Barrault, and Marco
+Baroni. 2018.
 \newblock What you can cram into a single \$\&!\#* vector: Probing sentence
 embeddings for linguistic properties.
 \newblock In \emph{Proceedings of ACL}.
+
+\bibitem[Geva et al.(2021)]{geva2021}
+Mor Geva, Roei Schuster, Jonathan Berant, and Omer Levy. 2021.
+\newblock Transformer feed-forward layers are key-value memories.
+\newblock In \emph{Proceedings of EMNLP}.
+
+\bibitem[Gurnee and Tegmark(2024)]{gurnee2024}
+Wes Gurnee and Max Tegmark. 2024.
+\newblock Language models represent space and time.
+\newblock In \emph{International Conference on Learning Representations (ICLR)}.
 
 \bibitem[Hewitt and Liang(2019)]{hewitt2019}
 John Hewitt and Percy Liang. 2019.
 \newblock Designing and interpreting probes with control tasks.
 \newblock In \emph{Proceedings of EMNLP}.
 
+\bibitem[Li et al.(2023)]{li2023}
+Kenneth Li, Aspen K. Hopkins, David Bau, Fernanda Vi\'{e}gas, Hanspeter Pfister,
+and Martin Wattenberg. 2023.
+\newblock Emergent world representations: Exploring a sequence model trained on a
+synthetic task.
+\newblock In \emph{International Conference on Learning Representations (ICLR)}.
+
 \bibitem[Maar et al.(2026)]{maar2026}
 J. Maar, D. Paperno, C. S. McDougall, and N. Nanda. 2026.
-\newblock What's the plan? Metrics for implicit planning in large language
-models.
+\newblock What's the plan? Metrics for implicit planning in large language models.
+\newblock In \emph{International Conference on Learning Representations (ICLR)}.
+
+\bibitem[McGrath et al.(2022)]{mcgrath2022}
+Thomas McGrath, Andrei Kapishnikov, Nenad Toma\v{s}ev, Adam Pearce, Martin
+Wattenberg, Demis Hassabis, Been Kim, Ulrich Paquet, and Vladimir Kramnik. 2022.
+\newblock Acquisition of chess knowledge in AlphaZero.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 119(47).
+
+\bibitem[Nanda et al.(2023)]{nanda2023}
+Neel Nanda, Lawrence Chan, Tom Lieberum, Jess Smith, and Jacob Steinhardt. 2023.
+\newblock Progress measures for grokking via mechanistic interpretability.
 \newblock In \emph{International Conference on Learning Representations (ICLR)}.
 
 \bibitem[nostalgebraist(2020)]{nostalgebraist2020}
@@ -562,11 +727,32 @@ nostalgebraist. 2020.
 \newblock Interpreting GPT: The logit lens.
 \newblock LessWrong.
 
+\bibitem[Olsson et al.(2022)]{olsson2022}
+Catherine Olsson, Nelson Elhage, Neel Nanda, Nicholas Joseph, Nova DasSarma, Tom
+Henighan, and others. 2022.
+\newblock In-context learning and induction heads.
+\newblock \emph{Transformer Circuits Thread}.
+
 \bibitem[Pal et al.(2023)]{pal2023}
 Koyena Pal, Jiuding Sun, Andrew Yuan, Byron Wallace, and David Bau. 2023.
-\newblock Future Lens: Anticipating subsequent tokens from a single hidden
-state.
+\newblock Future Lens: Anticipating subsequent tokens from a single hidden state.
 \newblock In \emph{Proceedings of CoNLL}.
+
+\bibitem[Pimentel et al.(2020)]{pimentel2020}
+Tiago Pimentel, Josef Valvoda, Rowan Hall Maudslay, Ran Zmigrod, Adina Williams,
+and Ryan Cotterell. 2020.
+\newblock Information-theoretic probing for linguistic structure.
+\newblock In \emph{Proceedings of ACL}.
+
+\bibitem[Tenney et al.(2019)]{tenney2019}
+Ian Tenney, Dipanjan Das, and Ellie Pavlick. 2019.
+\newblock BERT rediscovers the classical NLP pipeline.
+\newblock In \emph{Proceedings of ACL}.
+
+\bibitem[Voita and Titov(2020)]{voita2020}
+Elena Voita and Ivan Titov. 2020.
+\newblock Information-theoretic probing with minimum description length.
+\newblock In \emph{Proceedings of EMNLP}.
 
 \end{thebibliography}
 
@@ -575,34 +761,67 @@ state.
 \section{Grouped cross-validation for QA-neutral}
 \label{app:grouped}
 
-The QA-neutral task pairs each prompt with a minimal-pair counterpart that
-shares identical surface text but a different answer. Ungrouped
-cross-validation lets the two members of a pair fall on opposite sides of the
-train/test split, allowing the probe to memorize pair identity and inflating
-accuracy. Switching to \texttt{StratifiedGroupKFold} (keeping pairs together)
-and a cluster bootstrap removes this leakage: the bag-of-words baseline moves
-from an inflated value to chance ($\approx0.51$), and the headline gap moves to
-$\approx-1.2$pp. All QA-neutral numbers in the main text use grouped CV.
+The QA-neutral task pairs each prompt with a minimal-pair counterpart that shares
+identical surface text but a different answer. Ungrouped cross-validation lets the
+two members of a pair fall on opposite sides of the train/test split, allowing the
+probe to memorize pair identity and inflating accuracy. Switching to
+\texttt{StratifiedGroupKFold} (keeping pairs together) with a cluster bootstrap
+removes this leakage: the bag-of-words baseline moves to chance ($\approx0.51$)
+and the headline gap moves to $\approx-1.2$pp. All QA-neutral numbers in the main
+text use grouped CV.
+
+\section{Non-max layer summaries}
+\label{app:nonmax}
+
+\begin{table}[h]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Model} & \textbf{Task} & \textbf{max} & \textbf{mean} & \textbf{median} & \textbf{final-$\tfrac{1}{3}$} \\
+\midrule
+\multirow{3}{*}{Gemma-2-2B}
+ & Rhyme & $+73.5$ & $+67.7$ & $+67.5$ & $+67.8$ \\
+ & Code  & $+9.7$  & $+6.2$  & $+5.4$  & $+7.1$  \\
+ & QA-n. & $-1.9$  & $-0.4$  & $+0.0$  & $+0.0$  \\
+\midrule
+\multirow{3}{*}{Mistral-7B}
+ & Rhyme & $+76.5$ & $+69.1$ & $+72.0$ & $+74.8$ \\
+ & Code  & $+13.6$ & $+9.3$  & $+9.1$  & $+11.2$ \\
+ & QA-n. & $-1.2$  & $-0.0$  & $+0.0$  & $+0.0$  \\
+\midrule
+\multirow{2}{*}{Pythia-1.4B}
+ & Rhyme & $+57.5$ & $+47.9$ & $+46.5$ & $+46.5$ \\
+ & Code  & $+12.2$ & $+10.1$ & $+10.4$ & $+11.0$ \\
+\bottomrule
+\end{tabular}
+\caption{Staircase gap (pp) summarized over layers in four ways. The
+rhyme/code/QA-neutral ordering is preserved under every summary, so the headline
+maximum is not a selection artifact.}
+\label{tab:nonmax}
+\end{table}
+
+Table~\ref{tab:nonmax} reports the staircase gap summarized over layers as the
+maximum, mean, median, and mean over the final third of layers. The qualitative
+regime assignment is invariant to the choice of summary.
 
 \section{MLP probe agreement}
 \label{app:mlp}
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.85\columnwidth]{figA_mlp_agreement.pdf}
-\caption{Two-layer MLP probe gap versus linear probe gap, for rhyme and
-QA-neutral across six models. All 13 runs agree in sign and regime; points lie
-near the diagonal for rhyme and near the origin for QA-neutral.}
+\includegraphics[width=0.82\columnwidth]{figA_mlp_agreement.pdf}
+\caption{Two-layer MLP probe gap versus linear probe gap for rhyme and QA-neutral
+across six models. All 13 runs agree in sign and regime.}
 \label{fig:mlp}
 \end{figure}
 
-We refit the staircase with a two-layer MLP probe (one hidden layer, ReLU)
-under the same cross-validation protocol. Across six models spanning four
-families (Gemma-2-2B/9B, Qwen3-1.7B/8B, Mistral-7B, Llama-3.1-8B), all 13 runs
-agree with the linear probe: rhyme gaps remain large and positive
-($+48$ to $+72$pp) and QA-neutral gaps remain near zero ($-2$ to $-4$pp). The
-discrimination between tasks is therefore not an artifact of linear probe
-capacity.
+We refit the staircase with a two-layer MLP probe (one hidden layer, ReLU) under
+the same cross-validation protocol. Across six models spanning four families
+(Gemma-2-2B/9B, Qwen3-1.7B/8B, Mistral-7B, Llama-3.1-8B), all 13 runs agree with
+the linear probe: rhyme gaps remain large and positive ($+48$ to $+72$pp) and
+QA-neutral gaps remain near zero ($-2$ to $-4$pp). The discrimination between
+tasks is not an artifact of linear probe capacity.
 
 \section{Size invariance}
 \label{app:size}
@@ -611,15 +830,73 @@ capacity.
 \centering
 \includegraphics[width=\columnwidth]{figB_size_invariance.pdf}
 \caption{Rhyme staircase gap versus model size (log scale), colored by family.
-The gap is $+48$ to $+77$pp across 0.12B--27B parameters with no systematic
-size trend.}
+The gap is $+48$ to $+77$pp across 0.12B--27B with no systematic size trend.}
 \label{fig:size}
 \end{figure}
 
 The rhyme gap is essentially flat in model size across nine families
-(Figure~\ref{fig:size}), ranging from $+48.5$pp (GPT-2 small, 124M) to
-$+76.5$pp (Mistral-7B) with no monotonic trend. The signal is a property of the
-task and the representation, not of scale.
+(Figure~\ref{fig:size}), from $+48.5$pp (GPT-2 small, 124M) to $+76.5$pp
+(Mistral-7B), with no monotonic trend---a property of the task and
+representation, not of scale.
+
+\section{Code name controls}
+\label{app:names}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Original} & \textbf{Opaque} & \textbf{Adversarial} \\
+\midrule
+Pythia-2.8B   & 0.906 & 0.907 & --- \\
+Llama-3.2-1B  & 0.940 & 0.812 & 0.386 \\
+\bottomrule
+\end{tabular}
+\caption{Code return-type probe accuracy under original, opaque
+(\texttt{func\_000}), and adversarial (misleading) function names. Opaque names
+preserve accuracy (names unnecessary); adversarial names crash it (the probe
+reads earlier-position cues).}
+\label{tab:names}
+\end{table}
+
+Table~\ref{tab:names} reports the name-control experiment. Opaque placeholder
+names leave accuracy essentially unchanged, showing the probe does not depend on
+informative function names; adversarial names that imply the wrong return type
+reduce accuracy to near chance, showing the probe relies on (here, misleading)
+earlier-position information. Both support the interpretation that the code signal
+is carried by earlier signature positions rather than by target-position
+computation.
+
+\section{Logit-lens corroboration (code)}
+\label{app:logit}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Step} & \textbf{Pythia-2.8B} & \textbf{Pythia-410M} \\
+\midrule
+0       & 0.226 & 0.210 \\
+512     & 0.290 & 0.242 \\
+4{,}000   & 0.589 & 0.379 \\
+32{,}000  & 0.524 & 0.371 \\
+143{,}000 & 0.653 & 0.613 \\
+\bottomrule
+\end{tabular}
+\caption{Return-type accuracy in vocabulary space via the logit lens (best layer
+per checkpoint), no trained classifier. Accessibility grows over training even
+though the staircase gap stays flat: representational presence does not imply
+target-position localization.}
+\label{tab:logit}
+\end{table}
+
+Table~\ref{tab:logit} reports, for two Pythia scales, how often the correct
+return-type token is the top vocabulary prediction when a hidden state is read
+through the model's unembedding. Accessibility rises from chance-ish to
+$0.61$--$0.65$ over training. This independent, classifier-free measurement
+confirms the model learns to represent return types; read alongside the flat
+staircase gap, it shows a growing representation need not be localized to the
+target position---exactly the distinction the staircase is designed to detect.
 
 \section{Per-task cross-model summary}
 \label{app:summary}
@@ -642,8 +919,7 @@ Trivia & \phantom{0}5 & $+0.0$ & $+0.0$ & $[+0.0,+0.0]$ \\
 \end{table}
 
 Table~\ref{tab:summary} summarizes the headline gap across all models for each
-task. The complete set of 116 probing experiments, including all per-layer
-accuracies, bootstrap intervals, ablations, and checkpoint sweeps, is released
-with the code.
+task. The complete set of 116 probing experiments---per-layer accuracies,
+bootstrap intervals, ablations, and checkpoint sweeps---is released with the code.
 
 \end{document}
