@@ -1,0 +1,18 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{acl}[2026/01/01 ACL shim for local verification]
+\DeclareOption{review}{}
+\DeclareOption{final}{}
+\DeclareOption{preprint}{}
+\ProcessOptions\relax
+\RequirePackage[letterpaper,top=2cm,bottom=2.5cm,left=2cm,right=2cm,columnsep=0.7cm]{geometry}
+\RequirePackage{natbib}
+\bibliographystyle{plainnat}
+\setlength{\bibsep}{0pt plus 0.3ex}
+\RequirePackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\twocolumn
+\setlength{\parindent}{1em}
+\RequirePackage{titlesec}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\providecommand{\citeposs}[1]{\citeauthor{#1}'s (\citeyear{#1})}
