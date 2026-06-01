@@ -1,0 +1,31 @@
+# Does the harm-direction ablation recipe survive long context?
+# Measure LoRA vs LoRA+ablate-harm refusal (and accuracy) across context fills.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+directions:
+  medical_shifts: results/lora_icl/shifts
+  safety_shifts: results/safety/shifts
+  layer: 35
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_filler: 400
+  n_task_eval: 25
+  task_offset: 950
+
+eval:
+  n_harmful: 25
+  harmful_offset: 380
+  max_new_refusal: 64
+  max_new_task: 8
+
+fills: [0.0, 0.45, 0.85]
+max_ctx: 8192
+
+output:
+  report: results/safety/2026-06-01-ablation-under-context.md

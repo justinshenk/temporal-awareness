@@ -28,6 +28,7 @@ fixed number you can read off a short-context eval; it is a fragility that long 
 | 7 | **Keep-component steering + sweep** | At safe magnitude both ICL-parallel and orthogonal components carry task signal (~0.7 acc). The **refusal damage rides on the ICL-shared / context-mode direction**: at c=0.5 orthogonal keeps refusal 1.00, parallel drops to 0.16. (The earlier "parallel destroys task" was a c=1.0 over-drive artifact.) |
 | 8 | **Geometry resolution** | Three *distinct* late-layer directions: `ctx` (ICL/context-mode, cos with r ≈ 0), `medPerp` (medical task knowledge, cos with r ≈ 0 — safety-neutral), `harmPerp` (harmful-input compliance, cos with r ≈ −0.5 — the harm). medPerp vs harmPerp cos ≈ 0.3 — partially overlapping but **not the same vector**, so "LoRA-specific" is input-dependent, not one axis. |
 | 9 | **Context-fill baseline** | Base model, neutral filler, **local** harmful questions: refusal **flat ≈1.0** from 0→90% fill (~7k tokens). Pure context length does not erode a normal model's refusal — confirming #6's collapse is the finetuning × context **interaction**. |
+| 10 | **Recipe under context** | Ablating the harm direction holds up under fill: un-ablated LoRA refusal collapses 0.76→**0.04** @45%, but **+ablate-harm stays 1.00→0.88→0.84** across 0/45/85% fill, with accuracy retained (0.84→0.80). The context erosion is expressed through the *same* compliance direction the ablation removes, so one static direction restores safety even in long context. |
 
 ## What is solid
 - **ICL and finetuning converge on the task subspace** (1), but **safety degradation is weight-specific** (2): the same content in-context does not erode refusal or move along the refusal axis.
@@ -41,8 +42,8 @@ fixed number you can read off a short-context eval; it is a fragility that long 
 - Scope: one model, one finetune task, near-ceiling base refusal (modest behavioral headroom), N≈25–60.
 
 ## Practical takeaways
-- A finetune that looks "mostly safe" in a short-context eval (refusal 0.84) can lose ~90% of its refusals once context fills (→0.10). **Safety-eval finetuned models under long context.**
-- The safety damage occupies a specific low-rank direction that can be ablated to restore refusal with little task cost (the task is weight-redundant). A keep-the-ICL-aligned-component recipe is plausible but not yet cleanly demonstrated (steering magnitude confounds).
+- A finetune that looks "mostly safe" in a short-context eval (refusal 0.84) can lose ~90% of its refusals once context fills (→0.04–0.16). **Safety-eval finetuned models under long context.**
+- The safety damage occupies a specific low-rank direction that can be ablated to restore refusal with little task cost (the task is weight-redundant). **The ablation is robust to long context** (#10): one static direction removed holds refusal at 0.84–1.00 across the fill range where the un-ablated model collapses — a deployable recipe. (The additive "keep-the-ICL-component" recipe is the wrong framing — the ICL-shared direction is the refusal-eroding one.)
 
 ## Reproduce
 Runbooks: [`results/lora_icl/README.md`](lora_icl/README.md), [`results/safety/README.md`](safety/README.md).
