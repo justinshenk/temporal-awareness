@@ -1,0 +1,27 @@
+# Fit a context-specific compliance direction from the LoRA's actual refuse/comply
+# behavior under context fill, then test whether it (a) differs from the static r,
+# (b) tracks the drift, and (c) ablating it prevents the context refusal collapse.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca
+  n_pool: 600
+
+fit:
+  n_harmful: 36
+  offset: 0            # prompts for fitting d_comply (labels = refuse/comply behavior)
+test:
+  n_harmful: 24
+  offset: 150          # held-out prompts for the causal ablation test (disjoint)
+
+refusal_dir: results/safety/shifts   # the static Arditi r, for comparison
+layers: [21, 28, 35]
+fills: [0.0, 0.45, 0.85]
+max_ctx: 8192
+max_new_refusal: 48
+
+output:
+  report: results/safety/2026-06-01-context-refusal-probe.md

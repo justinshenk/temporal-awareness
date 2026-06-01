@@ -1,0 +1,23 @@
+# Stress-test the context-fill representation drift: even when behavioral refusal
+# is flat at the ceiling, does the drift latently point toward compliance (−r)?
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca   # neutral filler — isolates pure context-fill drift
+  n_pool: 600
+
+harmful:
+  n: 24
+  offset: 150                 # disjoint from the refusal-direction fit set [0:64]
+
+refusal_dir: results/safety/shifts
+layers: [21, 28, 35]
+fills: [0.0, 0.45, 0.85]
+max_ctx: 8192
+max_new_refusal: 48
+
+output:
+  report: results/safety/2026-06-01-drift-stress-test.md
