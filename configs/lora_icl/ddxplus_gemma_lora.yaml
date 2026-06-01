@@ -1,0 +1,42 @@
+# LoRA-vs-ICL activation-subspace comparison on DDXPlus.
+# See tasks/current_task.md for the execution brief.
+
+base_model: google/gemma-2-9b-it
+seed: 42
+
+data:
+  dataset: aai530-group6/ddxplus
+  train_split: train          # cases used to LoRA-finetune (clean, no context)
+  eval_split: test            # held-out cases used for shift extraction
+  n_options: 5                # MCQ choices (gold filtered to be in top-N DDx)
+  n_train_cases: 800          # supervised single-case MCQ examples
+  n_eval_cases: 60            # disjoint cases for ICL/LoRA shift extraction
+
+lora:
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+train:
+  epochs: 2
+  lr: 2.0e-4
+  micro_batch_size: 4
+  grad_accum: 4
+  max_seq_len: 1024
+  bf16: true
+
+extract:
+  # gemma-2-9b has 42 layers (0..41); mirrors the task_position layer grid.
+  layers: [0, 7, 14, 21, 28, 35, 41]
+  icl_fill_target: 0.85       # fraction of max_ctx filled before the probe case
+  max_ctx: 8192
+
+metrics:
+  pca_k: 5                    # subspace dimensionality for principal angles
+
+output:
+  adapter_dir: results/lora_icl/adapter
+  shuffled_adapter_dir: results/lora_icl/adapter_shuffled
+  shifts_dir: results/lora_icl/shifts
+  report: results/lora_icl/2026-06-01-subspace-comparison.md

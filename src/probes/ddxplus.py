@@ -16,6 +16,12 @@ from pathlib import Path
 OPTION_LABELS = ["A", "B", "C", "D", "E"]
 SYSTEM_PROMPT = "You are a doctor."
 
+# Repo-relative location of the DDXPlus evidence database (committed under data/).
+DEFAULT_EVIDENCE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "data" / "context_fatigue" / "release_evidences.json"
+)
+
 
 def load_evidence_db(path: str | Path) -> dict:
     """Load the DDXPlus evidence database JSON."""
