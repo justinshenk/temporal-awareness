@@ -1,0 +1,30 @@
+# Safety degradation: weights vs activations, reusing the DDXPlus medical setup.
+# See tasks/safety_weights_vs_activations.md.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter      # the EXISTING DDXPlus LoRA (finetune arm)
+seed: 42
+
+ddxplus:                                   # medical cases used as the ICL filler context
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_filler: 400
+
+direction:                                 # refusal direction (Arditi)
+  n_harmful: 64                            # harmful prompts to fit r (disjoint from eval)
+  n_harmless: 64                           # harmless prompts to fit r
+
+eval:                                      # held-out harmful prompts
+  n_harmful: 60
+  max_new: 64                              # generation length for behavioral refusal
+
+extract:
+  layers: [0, 7, 14, 21, 28, 35, 41]
+  icl_fill_target: 0.85
+  max_ctx: 8192
+
+output:
+  shifts_dir: results/safety/shifts
+  refusal_json: results/safety/refusal_rates.json
+  report: results/safety/2026-06-01-safety-weights-vs-activations.md

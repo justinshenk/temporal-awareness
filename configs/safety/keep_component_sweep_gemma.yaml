@@ -1,0 +1,26 @@
+# Coefficient sweep for keep-only-component steering — find a non-over-driven
+# regime and read parallel vs orthogonal task/refusal effects at matched magnitude.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+medical_shifts: results/lora_icl/shifts
+layers: [14, 21, 28, 35, 41]
+coeffs: [0.1, 0.25, 0.5, 1.0]
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_task_eval: 25
+  task_offset: 900
+
+eval:
+  n_harmful: 25
+  harmful_offset: 300
+  max_new_refusal: 64
+  max_new_task: 8
+
+output:
+  report: results/safety/2026-06-01-keep-component-sweep.md

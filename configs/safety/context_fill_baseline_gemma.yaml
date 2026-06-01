@@ -1,0 +1,20 @@
+# Baseline: does pure context fill erode refusal on the BASE model, for a LOCAL
+# harmful question (self-contained, independent of the neutral filler content)?
+
+base_model: google/gemma-2-9b-it
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca   # neutral benign Q&A, unrelated to the harmful question
+  n_pool: 600
+
+harmful:
+  n: 30
+  offset: 340                 # disjoint from earlier harmful slices
+
+fills: [0.0, 0.25, 0.5, 0.75, 0.9]
+max_ctx: 8192
+max_new_refusal: 64
+
+output:
+  report: results/safety/2026-06-01-context-fill-baseline.md

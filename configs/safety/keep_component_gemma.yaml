@@ -1,0 +1,25 @@
+# Q3/Q4: steer base by the parallel-only vs orthogonal-only component of the LoRA
+# shift and measure task accuracy + refusal (functional sufficiency test).
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+medical_shifts: results/lora_icl/shifts     # icl_shift_L*, lora_shift_real_L*
+layers: [14, 21, 28, 35, 41]                 # late layers where ICL/LoRA align
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_task_eval: 30
+  task_offset: 900
+
+eval:
+  n_harmful: 30
+  harmful_offset: 260
+  max_new_refusal: 64
+  max_new_task: 8
+
+output:
+  report: results/safety/2026-06-01-keep-component-steering.md

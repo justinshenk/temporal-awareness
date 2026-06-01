@@ -1,0 +1,28 @@
+# Causal capstone: ablate the finetune-only "harm" direction from the DDXPlus LoRA
+# and test the double dissociation (safety restored vs task retained).
+# See tasks/safety_weights_vs_activations.md.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+directions:                                # source shifts for harm/task directions
+  medical_shifts: results/lora_icl/shifts  # icl_shift_L*, lora_shift_real_L*
+  safety_shifts: results/safety/shifts     # icl_shift_L*, lora_shift_L*, refusal_dir_L*
+  layer: 35                                 # residual-space direction taken from this layer
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_task_eval: 50                           # held-out medical cases for accuracy
+  task_offset: 900                          # skip indices used elsewhere to stay disjoint
+
+eval:
+  n_harmful: 50                             # held-out harmful prompts for refusal
+  harmful_offset: 124                       # skip the direction-fit (64) + safety-eval (60) sets
+  max_new_refusal: 64
+  max_new_task: 8
+
+output:
+  report: results/safety/2026-06-01-ablation-capstone.md
