@@ -1,5 +1,8 @@
 # ICL ≈ Finetuning on the task, but the safety cost is weight-specific and context-fragile
 
+> Part of a larger investigation — see [`activation_weight_investigation.md`](activation_weight_investigation.md)
+> for the overview tying this refusal arc to the sycophancy arc, the literature maps, and the ICL↔weights/FV bridge.
+
 A thirteen-experiment investigation on `google/gemma-2-9b-it`, DDXPlus medical MCQ as the finetuning
 task, AdvBench (`mlabonne/harmful_behaviors`) + Alpaca for the refusal probe. All code under
 `src/probes/{lora_icl,safety}`, `scripts/{lora_icl,safety}`; reports under `results/{lora_icl,safety}`.
