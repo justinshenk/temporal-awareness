@@ -1,0 +1,25 @@
+# Function-vector extraction on DDXPlus + FV-vs-LoRA direction comparison.
+# Causal-mediation head sweep, top-K FV heads, zero-shot validation, cosine vs LoRA shift.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+dataset: aai530-group6/ddxplus
+split: test
+n_options: 4
+k_shot: 4
+
+demo:
+  n: 200          # pool to sample k-shot demonstrations from
+  offset: 0
+query:
+  n: 24           # ICL instances / validation queries (disjoint from demos)
+  offset: 300
+
+top_k_heads: 10
+insert_layers: [10, 14, 20]   # candidate middle layers to transplant the FV (Todd: early-middle)
+
+output:
+  report: results/lora_icl/2026-06-02-fv-extraction.md
+  shifts: results/lora_icl/shifts

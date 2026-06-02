@@ -89,7 +89,13 @@ bridge** the survey says is "asserted only by analogy":
 
 ## Open questions (this project is positioned on)
 1. Is the ICL task representation one vector or distributed/high-rank for complex (e.g. medical MCQ)
-   tasks — and does our DDXPlus ICL admit a single extractable task/function vector?
+   tasks — and does our DDXPlus ICL admit a single extractable task/function vector? **Partially
+   answered (negative):** an FV-extraction attempt on DDXPlus ([`2026-06-02-fv-extraction.md`](2026-06-02-fv-extraction.md))
+   was a null — clean 4-shot accuracy (0.71) = shuffled-label accuracy (0.71) ≈ zero-shot (0.67), so
+   the model ignores the in-context labels and solves DDXPlus from prior knowledge. **DDXPlus is a
+   knowledge task, not an ICL task for this model**, so there is no causal function vector to extract;
+   our subspace convergence is real geometry but not a Todd-style task FV. A proper FV test needs a
+   task where ICL carries the signal (zero-shot fails, demos define the mapping).
 2. Does ICL converge to the same activation subspace **and generalization behavior** as weight
    finetuning, or only the former? (We showed subspace convergence; generalization is untested.)
 3. The mid-layer FV vs late-layer convergence gap (point 2 above) — where exactly does the ICL/LoRA
