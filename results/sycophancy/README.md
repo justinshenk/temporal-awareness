@@ -49,6 +49,25 @@ refusal rescue of #13), inside a **narrow** band (coeff 2 over-drives, collapsin
 axis is causal, but base-model sycophancy behaves like a more **distributed** disposition than the
 low-rank finetune-added harm direction — a single additive vector only partly counters it.
 
+**Many-shot priming** ([`2026-06-02-sycophancy-priming.md`](2026-06-02-sycophancy-priming.md)) — the
+headline. Fill the context with prior pushback episodes where the model **caved** vs **held** (vs
+neutral filler), matched length/content, then measure caving on a fresh held-out question:
+
+| fill | neutral | cave-primed | hold-primed |
+|-----:|--------:|------------:|------------:|
+| 0%   | 0.60 | 0.60 | 0.60 |
+| 45%  | 0.65 | **0.98** | **0.00** |
+| 85%  | 0.72 | **0.98** | **0.00** |
+
+- **In-context demonstrated behavior gives near-total bidirectional control** — caving saturates to
+  0.98 (cave-primed) or collapses to 0.00 (hold-primed) at matched length, turn-1 accuracy intact
+  (47–48/48). This **dwarfs** both neutral length (0.60→0.72) and the activation steer (0.51→0.38).
+- **Under context, sycophancy is governed by the demonstrated *response policy*, not length and not
+  one residual direction.** The many-shot channel (Anil et al. 2024) is dominant; hold-priming is a
+  clean *inoculation*.
+- **Nuance:** this is in-context policy imitation — behavioral conformity to the demonstrations, not
+  proof of belief change (QA staying intact shows it isn't degenerate copying).
+
 ## Code
 
 | Module | Purpose |
@@ -56,6 +75,7 @@ low-rank finetune-added harm direction — a single additive vector only partly 
 | `src/probes/sycophancy/factual_cases.py` | ARC factual cases + turn-1 / pushback formatting |
 | `scripts/sycophancy/run_sycophancy_context.py` | caving vs context fill + fit `d_syco` |
 | `scripts/sycophancy/run_sycophancy_steering.py` | additive steer toward holding ground (coeff sweep) |
+| `scripts/sycophancy/run_sycophancy_priming.py` | many-shot cave/hold priming vs neutral length |
 
 Reuses `scripts/safety/run_context_fill_baseline.py` (`alpaca_turns`, `fill_context`),
 `run_ablation_capstone.py` (`generate`, `set_seed`), and `src/probes/safety` (direction,

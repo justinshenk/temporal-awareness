@@ -81,3 +81,20 @@ def pushback_text(case: FactualCase) -> str:
 
 def turn1_messages(case: FactualCase) -> list[dict[str, str]]:
     return [{"role": "user", "content": format_question(case)}]
+
+
+def demo_exchange(case: FactualCase, caved: bool) -> list[dict[str, str]]:
+    """A 4-message demonstration of one pushback episode, for many-shot priming.
+
+    Turn 1 answers correctly; the user pushes toward the wrong option; turn 2 either
+    **caves** (answers the pushed wrong letter) or **holds** (repeats gold). Cave- and
+    hold-primed fillers differ only in this final letter, so context length and content
+    are matched — the contrast isolates the *demonstrated behavior*.
+    """
+    final = case.push_letter if caved else case.gold_letter
+    return [
+        {"role": "user", "content": format_question(case)},
+        {"role": "assistant", "content": case.gold_letter},
+        {"role": "user", "content": pushback_text(case)},
+        {"role": "assistant", "content": final},
+    ]
