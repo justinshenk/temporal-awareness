@@ -101,8 +101,10 @@ are related but not identical axes — and **long context is the stress test tha
    weight-required (we have two points; the map is unfilled).
 2. The in-context↔weight task-vector bridge: how ICL-induced function/task vectors (Todd, Hendel) and
    many-shot jailbreaking relate to weight-space task vectors (Ilharco) and induction heads — directly
-   adjacent to our LoRA-vs-ICL subspace convergence and our priming result. *(A dedicated ICL
-   literature pass is in progress; see the forthcoming `icl_mechanisms_literature.md`.)*
+   adjacent to our LoRA-vs-ICL subspace convergence and our priming result. *(Covered in the companion
+   [`icl_mechanisms_literature.md`](icl_mechanisms_literature.md): ICL writes a compact task/function
+   vector into activations; our subspace study measures the convergence of that vector with the LoRA
+   weight shift.)*
 
 ## Sources
 26 primary sources fetched; the per-claim citations above each carried a 3-0 adversarial verification
