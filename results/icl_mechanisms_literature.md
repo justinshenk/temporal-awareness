@@ -93,9 +93,17 @@ bridge** the survey says is "asserted only by analogy":
    answered (negative):** an FV-extraction attempt on DDXPlus ([`2026-06-02-fv-extraction.md`](2026-06-02-fv-extraction.md))
    was a null — clean 4-shot accuracy (0.71) = shuffled-label accuracy (0.71) ≈ zero-shot (0.67), so
    the model ignores the in-context labels and solves DDXPlus from prior knowledge. **DDXPlus is a
-   knowledge task, not an ICL task for this model**, so there is no causal function vector to extract;
-   our subspace convergence is real geometry but not a Todd-style task FV. A proper FV test needs a
-   task where ICL carries the signal (zero-shot fails, demos define the mapping).
+   knowledge task, not an ICL task for this model**, so there is no causal function vector to extract.
+   **Followed up on a genuine ICL task** ([`2026-06-02-antonym-fv-vs-lora.md`](2026-06-02-antonym-fv-vs-lora.md)):
+   antonyms (zero-shot 0.00 → 10-shot 0.70; a LoRA trained on the mapping generalizes to held-out
+   words at 0.67). Result is two-sided: **(a) the coarse (Hendel) ICL task vector and the LoRA
+   weight-shift converge to cos +0.766 @ L35 (~46× the random-null std)** — replicating the DDXPlus
+   subspace profile (0.81 @ L35) on a *bona fide* ICL task where the LoRA provably generalizes, so the
+   "same task direction, two routes (in-context vs in-weights)" claim now holds at the representational
+   level; **(b) the sparse head-localized (Todd) FV does NOT extract** — single-head AIE ≈ 0 for every
+   head and the transplanted FV gives no accuracy lift, i.e. the antonym task is *distributed across
+   heads* on this 9B instruct model, not carried by a few causal heads. So: shared task *direction*
+   yes; sparse *function vector* no.
 2. Does ICL converge to the same activation subspace **and generalization behavior** as weight
    finetuning, or only the former? (We showed subspace convergence; generalization is untested.)
 3. The mid-layer FV vs late-layer convergence gap (point 2 above) — where exactly does the ICL/LoRA

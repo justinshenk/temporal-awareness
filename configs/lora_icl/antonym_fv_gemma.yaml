@@ -1,0 +1,30 @@
+# Antonym function-vector vs LoRA "two routes" experiment (config shared by the
+# signal check, LoRA training, and FV extraction).
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/antonym_adapter
+seed: 42
+
+n_train: 90          # antonym pairs for LoRA training (rest held out for FV + eval)
+k_shot: 10
+n_eval: 30           # held-out queries
+max_new: 4
+
+# LoRA training
+train:
+  epochs: 8
+  lr: 2.0e-4
+  batch_size: 8
+  rank: 16
+  alpha: 32
+
+# FV extraction
+fv:
+  n_instances: 30
+  top_k_heads: 10
+  insert_layers: [9, 14, 20]
+compare_layers: [4, 9, 14, 20, 28, 35]   # FV-independent depth sweep for the taskvec/LoRA cosine
+
+output:
+  report: results/lora_icl/2026-06-02-antonym-fv-vs-lora.md
+  shifts: results/lora_icl/shifts
