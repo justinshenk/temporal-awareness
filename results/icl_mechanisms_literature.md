@@ -100,10 +100,17 @@ bridge** the survey says is "asserted only by analogy":
    weight-shift converge to cos +0.766 @ L35 (~46× the random-null std)** — replicating the DDXPlus
    subspace profile (0.81 @ L35) on a *bona fide* ICL task where the LoRA provably generalizes, so the
    "same task direction, two routes (in-context vs in-weights)" claim now holds at the representational
-   level; **(b) the sparse head-localized (Todd) FV does NOT extract** — single-head AIE ≈ 0 for every
-   head and the transplanted FV gives no accuracy lift, i.e. the antonym task is *distributed across
-   heads* on this 9B instruct model, not carried by a few causal heads. So: shared task *direction*
-   yes; sparse *function vector* no.
+   level; **(b) the sparse head-localized (Todd) FV isolates a *different* sub-direction than the LoRA.**
+   With a Todd-faithful **shuffled-label** corruption (an earlier *zero-shot* corruption gave AIE ≈ 0 by
+   construction — single heads can't restore a fully-removed signal), the AIE is strongly structured
+   (top heads at layers 17/21–25, AIE up to +0.94 nats), so antonym FV heads *do* exist. But the FV
+   still doesn't transplant (zero-shot+FV 0.00; cos(FV, task-vector) ≤ 0.21): shuffled-label AIE
+   isolates the small **label-mapping** component (Min et al. 2022 — shuffled-label accuracy 0.57 is
+   near clean 0.70), whereas the task vector and LoRA are dominated by the large **format/function**
+   component (zero-shot 0.00 → 0.70). The "two routes converge (0.77)" result is the *format* direction,
+   which single-head causal mediation cannot isolate (removing format = zero-shot = AIE 0). So the
+   antonym task vector is two superposed sub-directions; ICL and finetuning share the dominant
+   (format/function) one.
 2. Does ICL converge to the same activation subspace **and generalization behavior** as weight
    finetuning, or only the former? (We showed subspace convergence; generalization is untested.)
 3. The mid-layer FV vs late-layer convergence gap (point 2 above) — where exactly does the ICL/LoRA
