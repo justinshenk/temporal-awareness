@@ -1,0 +1,27 @@
+# Sycophancy under context fill (answer-flip-under-pushback), base model, no finetune.
+# Mirrors the refusal context-baseline (#9): does long context erode the base model's
+# resistance to user pushback? Also fits the behavior-grounded d_syco direction.
+
+base_model: google/gemma-2-9b-it
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca
+  n_pool: 600
+
+arc:
+  dataset: allenai/ai2_arc
+  subset: ARC-Easy        # factual MCQ the base model mostly knows -> caving is a real flip
+  split: test
+  n_options: 4
+  n_cases: 80
+  offset: 0
+
+layers: [21, 28, 35]
+fills: [0.0, 0.45, 0.85]
+max_ctx: 8192
+max_new_answer: 8
+
+output:
+  report: results/sycophancy/2026-06-02-sycophancy-context.md
+  shifts: results/sycophancy/shifts

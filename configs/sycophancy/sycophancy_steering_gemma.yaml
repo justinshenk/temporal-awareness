@@ -1,0 +1,32 @@
+# Additive fix for sycophancy: steer the base model toward holding its ground (-d_syco)
+# across context fills, coefficient sweep, with a turn-1 accuracy over-drive guard.
+# Mirrors the validated refusal additive fix (#13), applied to the base model.
+
+base_model: google/gemma-2-9b-it
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca
+  n_pool: 600
+
+arc:
+  dataset: allenai/ai2_arc
+  subset: ARC-Easy
+  split: test
+  n_options: 4
+
+fit:
+  n_cases: 60
+  offset: 0            # cases to refit d_syco
+test:
+  n_cases: 48
+  offset: 300          # disjoint held-out cases for the steering eval
+
+layers: [21, 28, 35]
+fills: [0.0, 0.45, 0.85]
+coeffs: [0.0, 0.5, 1.0, 2.0, 4.0]   # multiples of each layer's natural-scale held-caved vector
+max_ctx: 8192
+max_new_answer: 8
+
+output:
+  report: results/sycophancy/2026-06-02-sycophancy-steering.md
