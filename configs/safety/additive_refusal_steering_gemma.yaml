@@ -1,0 +1,37 @@
+# Additive context-aware fix: steer the LoRA TOWARD refusal along the behavior-grounded
+# compliance axis (-d_comply) across context fills, with a coefficient sweep, and test
+# whether it prevents the context refusal collapse without over-driving the model.
+# This is the corrected (additive, not ablation) version of the context-refusal probe.
+
+base_model: google/gemma-2-9b-it
+adapter_dir: results/lora_icl/adapter
+seed: 42
+
+filler:
+  dataset: tatsu-lab/alpaca
+  n_pool: 600
+
+fit:
+  n_harmful: 36
+  offset: 0            # prompts to fit d_comply (labels = LoRA refuse/comply behavior)
+test:
+  n_harmful: 24
+  offset: 150          # held-out prompts for the steering eval (disjoint from fit)
+
+# DDXPlus task block — accuracy at clean context is the over-drive guard.
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 4
+  n_task_eval: 24
+  task_offset: 400     # disjoint from training/eval cases used elsewhere
+
+layers: [21, 28, 35]   # d_comply fit here; additive steer applied at all of them
+fills: [0.0, 0.45, 0.85]
+coeffs: [0.0, 0.5, 1.0, 2.0, 4.0]   # multiples of each layer's natural-scale refuse-comply vector
+max_ctx: 8192
+max_new_refusal: 48
+max_new_task: 8
+
+output:
+  report: results/safety/2026-06-02-additive-refusal-steering.md

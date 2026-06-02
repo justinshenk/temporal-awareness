@@ -88,3 +88,5 @@ uv run python -m scripts.safety.run_safety_comparison --config $CFG    # seconds
 | `src/probes/safety/safety_data.py` | harmful (AdvBench mirror) + harmless (Alpaca) loaders |
 | `scripts/safety/extract_refusal_shifts.py` | refusal direction + base/ICL/LoRA residuals & generations |
 | `scripts/safety/run_safety_comparison.py` | refusal-rate + projection report |
+| `scripts/safety/run_context_refusal_probe.py` | fit behavior-grounded `d_comply` under fill; compare to static `r` |
+| `scripts/safety/run_additive_refusal_steering.py` | additive context-aware fix: steer toward refusal across fills (coeff sweep) |
