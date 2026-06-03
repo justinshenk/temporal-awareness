@@ -1,0 +1,13 @@
+# Tiny smoke config to verify the route sweep driver end-to-end (not a real result).
+base_model: Qwen/Qwen2.5-7B-Instruct
+seed: 42
+ddxplus: {dataset: aai530-group6/ddxplus, split: test, n_options: 5, n_filler: 20, n_task_eval: 5}
+direction: {n_harmful: 8, n_harmless: 8}
+eval: {n_harmful: 4, max_new: 64}
+extract: {layers: [0, 14, 27], max_ctx: 8192, icl_fill_target: 0.90}
+doses:
+  icl_shots: [4, 16]
+  lora:
+    - {cases: 25, adapter_dir: results/safety/qwen_sweep/adapter_d25}
+    - {cases: 75, adapter_dir: results/safety/qwen_sweep/adapter_d75}
+output: {dir: results/safety/qwen_sweep_smoke}

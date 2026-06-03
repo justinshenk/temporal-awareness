@@ -1,0 +1,29 @@
+# Qwen2.5-1.5B-Instruct DDXPlus LoRA — small-model replication of the route sweep.
+base_model: Qwen/Qwen2.5-1.5B-Instruct
+seed: 42
+
+data:
+  dataset: aai530-group6/ddxplus
+  train_split: train
+  eval_split: test
+  n_options: 5
+  n_train_cases: 600          # overridden per dose
+  n_eval_cases: 100
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+train:
+  epochs: 3
+  lr: 2.0e-4
+  micro_batch_size: 8
+  grad_accum: 2
+  max_seq_len: 1024
+  bf16: true
+
+output:
+  adapter_dir: results/safety/qwen1.5b_sweep/adapter
+  shuffled_adapter_dir: results/safety/qwen1.5b_sweep/adapter_shuffled

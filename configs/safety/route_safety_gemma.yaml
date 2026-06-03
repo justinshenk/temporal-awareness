@@ -1,0 +1,27 @@
+# Cross-family replication on gemma-2-9b-it (cached; load offline). Reuses the existing
+# DDXPlus LoRA at results/lora_icl/adapter.
+base_model: google/gemma-2-9b-it
+seed: 42
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_filler: 200
+  n_task_eval: 40
+
+direction:
+  n_harmful: 64
+  n_harmless: 64
+
+eval:
+  n_harmful: 50
+  max_new: 64
+
+extract:
+  layers: [0, 7, 14, 21, 28, 35, 41]   # gemma-2-9b has 42 layers
+  max_ctx: 8192
+  icl_fill_target: 0.85
+
+output:
+  dir: results/safety/gemma_sweep

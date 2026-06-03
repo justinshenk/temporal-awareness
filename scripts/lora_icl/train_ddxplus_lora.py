@@ -51,6 +51,8 @@ def encode_example(tokenizer, prompt_text: str, gold_letter: str, max_seq_len: i
     prompt_ids = tokenizer.apply_chat_template(
         chat_messages(prompt_text), add_generation_prompt=True, tokenize=True,
     )
+    if not isinstance(prompt_ids, list):  # some tokenizers (Qwen) return a BatchEncoding
+        prompt_ids = prompt_ids["input_ids"]
     answer_ids = tokenizer(gold_letter, add_special_tokens=False)["input_ids"]
     answer_ids = answer_ids + [tokenizer.eos_token_id]
     input_ids = (prompt_ids + answer_ids)[:max_seq_len]
@@ -78,14 +80,21 @@ def main() -> None:
     ap.add_argument("--config", required=True)
     ap.add_argument("--shuffle-labels", action="store_true",
                     help="train on permuted answers (task-specificity control)")
+    ap.add_argument("--n-train-cases", type=int, default=None,
+                    help="override data.n_train_cases (LoRA dose for the safety sweep)")
+    ap.add_argument("--adapter-dir", default=None,
+                    help="override the output adapter directory")
     ap.add_argument("--device", default="cuda")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
+    if args.n_train_cases is not None:
+        cfg["data"]["n_train_cases"] = args.n_train_cases
 
     out_dir = Path(
-        cfg["output"]["shuffled_adapter_dir"] if args.shuffle_labels
+        args.adapter_dir if args.adapter_dir
+        else cfg["output"]["shuffled_adapter_dir"] if args.shuffle_labels
         else cfg["output"]["adapter_dir"]
     )
     out_dir.mkdir(parents=True, exist_ok=True)

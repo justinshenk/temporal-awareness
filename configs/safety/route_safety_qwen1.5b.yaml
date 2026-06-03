@@ -1,0 +1,34 @@
+# Route-dependent safety on Qwen2.5-1.5B-Instruct (small-model replication of the 7B result).
+base_model: Qwen/Qwen2.5-1.5B-Instruct
+seed: 42
+
+ddxplus:
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_filler: 200
+  n_task_eval: 40
+
+direction:
+  n_harmful: 64
+  n_harmless: 64
+
+eval:
+  n_harmful: 50
+  max_new: 64
+
+extract:
+  layers: [0, 7, 14, 21, 27]   # 1.5B also has 28 layers
+  max_ctx: 16384
+  icl_fill_target: 0.90
+
+doses:
+  icl_shots: [4, 16, 48, 128]
+  lora:
+    - {cases: 25,  adapter_dir: results/safety/qwen1.5b_sweep/adapter_d25}
+    - {cases: 75,  adapter_dir: results/safety/qwen1.5b_sweep/adapter_d75}
+    - {cases: 225, adapter_dir: results/safety/qwen1.5b_sweep/adapter_d225}
+    - {cases: 600, adapter_dir: results/safety/qwen1.5b_sweep/adapter_d600}
+
+output:
+  dir: results/safety/qwen1.5b_sweep

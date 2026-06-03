@@ -1,0 +1,36 @@
+# Route-dependent safety cost on Qwen: weight (LoRA) vs activation (many-shot ICL),
+# swept over dose. See tasks/route_dependent_safety.md.
+
+base_model: Qwen/Qwen2.5-7B-Instruct
+seed: 42
+
+ddxplus:                       # DDXPlus = domain D
+  dataset: aai530-group6/ddxplus
+  split: test
+  n_options: 5
+  n_filler: 200               # pool of cases used as ICL demonstrations
+  n_task_eval: 40             # held-out cases for the DDXPlus accuracy (task-gain) x-axis
+
+direction:                     # refusal direction r (Arditi), fit on the base model
+  n_harmful: 64
+  n_harmless: 64
+
+eval:                          # fresh held-out harmful set (disjoint from the r-fit slice)
+  n_harmful: 50
+  max_new: 64
+
+extract:
+  layers: [0, 7, 14, 21, 27]   # Qwen2.5-7B has 28 layers
+  max_ctx: 16384               # caps the top ICL dose (~57 shots); records actual shots
+  icl_fill_target: 0.90
+
+doses:
+  icl_shots: [4, 16, 48, 128]                 # activation route dose
+  lora:                                        # weight route dose (adapters trained first)
+    - {cases: 25,  adapter_dir: results/safety/qwen_sweep/adapter_d25}
+    - {cases: 75,  adapter_dir: results/safety/qwen_sweep/adapter_d75}
+    - {cases: 225, adapter_dir: results/safety/qwen_sweep/adapter_d225}
+    - {cases: 600, adapter_dir: results/safety/qwen_sweep/adapter_d600}
+
+output:
+  dir: results/safety/qwen_sweep
