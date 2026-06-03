@@ -27,8 +27,8 @@ import torch
 
 from ..num_types import Num, Nums, is_tensor
 from .entropy_primitives import _EPS, probs_to_logprobs
-from .divergence import renyi_divergence
-from .entropy import shannon_entropy
+from .entropy_divergence import renyi_divergence
+from .entropy_core import shannon_entropy
 from .escort_distribution import escort_probs
 from .power_mean import weighted_power_mean
 

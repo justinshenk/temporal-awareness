@@ -11,8 +11,6 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 
-from ..analysis.analyze import analyze_token_tree
-from ..analysis.tree_as_structures_system import StructureSystemAnalysis
 from ..token_tree import TokenTrajectory, TokenTree
 from .binary_choice import BinaryChoice, LabeledBinaryChoice
 
@@ -39,8 +37,6 @@ class SimpleBinaryChoice(BinaryChoice):
         traj_a: TokenTrajectory,
         traj_b: TokenTrajectory,
         trunk: Sequence[int] | None = None,
-        W_U: Any = None,
-        b_U: Any = None,
         **kwargs: Any,
     ) -> SimpleBinaryChoice:
         """Build a SimpleBinaryChoice (or subclass) from two trajectories.
@@ -48,12 +44,12 @@ class SimpleBinaryChoice(BinaryChoice):
         Each trajectory represents a different label/choice, so they are
         placed in separate groups for cross-group fork creation.
 
+        Note: Call analyze_token_tree() separately if analysis is needed.
+
         Args:
             traj_a: First trajectory (label A)
             traj_b: Second trajectory (label B)
             trunk: Optional shared prefix token IDs
-            W_U: Optional unembedding matrix for TCB computation
-            b_U: Optional unembedding bias for TCB computation
             **kwargs: Additional arguments for the class constructor
         """
         tree = TokenTree.from_trajectories(
@@ -62,7 +58,6 @@ class SimpleBinaryChoice(BinaryChoice):
             fork_arms=[(0, 1)],
             trunk=trunk,
         )
-        analyze_token_tree(tree, W_U=W_U, b_U=b_U)  # Sets tree.analysis
         return cls(tree=tree, **kwargs)
 
     # ── Decision ─────────────────────────────────────────────────────────
@@ -138,6 +133,24 @@ class SimpleBinaryChoice(BinaryChoice):
         if not self.tree.forks:
             return None
         return self.tree.forks[0].next_token_logits
+
+    @property
+    def cache(self) -> dict[str, Any]:
+        """Get activation cache from trajectories.
+
+        Returns the internals from the first trajectory. When running with
+        with_cache=True, this contains the hook outputs captured during
+        the forward pass.
+
+        For binary choices, both trajectories share the same prompt prefix,
+        so activations up to the fork point are identical.
+        """
+        if not self.tree.trajs:
+            return {}
+        traj = self.tree.trajs[0]
+        if hasattr(traj, "internals"):
+            return traj.internals
+        return {}
 
     def pop_heavy(self):
         self.tree.pop_heavy()

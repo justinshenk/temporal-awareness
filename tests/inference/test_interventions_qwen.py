@@ -16,7 +16,6 @@ see test_interventions_toy.py which uses known weights.
 
 import numpy as np
 import pytest
-import torch
 
 from src.inference import ModelRunner
 from src.inference.model_runner import ModelBackend

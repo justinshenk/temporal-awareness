@@ -43,6 +43,12 @@ pip install -e .
 cp .env.example .env  # Add API keys
 ```
 
+For the EAP-IG workflow, install the pinned extra dependency:
+
+```bash
+pip install -e ".[eap_ig]"
+```
+
 ## Structure
 
 ```
@@ -74,6 +80,25 @@ from latents.model_adapter import get_model_config
 # Train probes
 python scripts/probes/train_temporal_probes_caa.py
 ```
+
+## Q&A EAP-IG Workflow
+
+After installing the EAP-IG extra with `pip install -e ".[eap_ig]"`, the full Q&A EAP-IG pipeline can be run from one CLI command:
+
+```bash
+temporal-awareness-eap-ig-workflow --top-n 500
+```
+
+Equivalent repo-local entrypoint:
+
+```bash
+python scripts/experiments/eap_ig/run_eap_ig_workflow.py --top-n 500
+```
+
+Useful options:
+- `--no-save-to-hf` keeps the workflow fully local.
+- `--start-at top-components --stop-after visualize` reuses existing EAP-IG outputs.
+- `--top-n 200` or `--top-n 1000` reproduces the alternate node-selection variants.
 
 ## Related Work
 

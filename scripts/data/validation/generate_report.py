@@ -92,6 +92,6 @@ if __name__ == '__main__':
                                            subset=["average"] + table_score_headers)
                 return styler
             df_styler = gradient_paint_score_rows(df.style)
-            html_table = style_html_table(df_styler, f"Validation of dataset with LLM council")
-            html_pivot_table = style_html_table(pivot_df.style, f"Pivot table", "darkgreen")
+            html_table = style_html_table(df_styler, "Validation of dataset with LLM council")
+            html_pivot_table = style_html_table(pivot_df.style, "Pivot table", "darkgreen")
             f.write(html_table + html_pivot_table)

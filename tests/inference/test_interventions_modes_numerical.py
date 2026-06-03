@@ -16,7 +16,6 @@ Tests cover:
 """
 
 import numpy as np
-import pytest
 import torch
 
 from src.inference.interventions import (

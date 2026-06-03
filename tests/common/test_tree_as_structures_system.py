@@ -8,9 +8,6 @@ import torch
 from src.common.analysis.tree_as_structures_system import (
     Structure,
     System,
-    SystemCore,
-    SystemOrientation,
-    Normativity,
     StructureSystemAnalysis,
     build_tree_as_structures_system,
     calculate_normativity,

@@ -3,14 +3,14 @@
 Tests all combinations of:
 - Modes: add, set, mul, interpolate
 - Targets: all, position
-- Backends: TransformerLens (default), NNsight, Pyvene
+- Backends: TransformerLens (default), NNsight, HuggingFace, Pyvene
 
 Ground truth tests: 4 modes × 2 targets = 8 tests
-Backend comparison tests: 4 modes × 2 targets × 3 backends = 24 tests
-Total: 32 systematic tests
+Backend comparison tests: 4 modes × 2 targets × backends = multiple tests
+Total: many systematic tests
 
 TransformerLens uses HookedTransformer.
-NNsight/Pyvene use a standard PyTorch model with equivalent weights.
+NNsight/HuggingFace/Pyvene use a standard PyTorch model with equivalent weights.
 """
 
 import numpy as np
@@ -18,11 +18,45 @@ import pytest
 import torch
 import torch.nn as nn
 
-from transformer_lens import HookedTransformer, HookedTransformerConfig
+# Guard against missing or incompatible TransformerLens
+try:
+    from transformer_lens import HookedTransformer, HookedTransformerConfig
+
+    _HAS_TRANSFORMER_LENS = True
+except (ImportError, AttributeError):
+    _HAS_TRANSFORMER_LENS = False
+
+pytestmark = pytest.mark.skipif(
+    not _HAS_TRANSFORMER_LENS, reason="TransformerLens not available or incompatible"
+)
 
 from src.inference import ModelRunner
-from src.inference.backends import ModelBackend, TransformerLensBackend, NNsightBackend, PyveneBackend
+from src.inference.backends import ModelBackend
 from src.inference.interventions import steering, ablation, scale, interpolate
+
+# Backend classes are imported lazily to avoid collection failures
+# when specific backend dependencies are unavailable
+try:
+    from src.inference.backends import TransformerLensBackend
+except ImportError:
+    TransformerLensBackend = None
+
+try:
+    from src.inference.backends import NNsightBackend
+except ImportError:
+    NNsightBackend = None
+
+try:
+    from src.inference.backends import HuggingFaceBackend
+except ImportError:
+    HuggingFaceBackend = None
+
+try:
+    from src.inference.backends import PyveneBackend
+    PYVENE_AVAILABLE = True
+except ImportError:
+    PYVENE_AVAILABLE = False
+    PyveneBackend = None
 
 
 # =============================================================================
@@ -290,7 +324,6 @@ def runner(toy_hooked_model, toy_tokenizer):
     runner.device = "cpu"
     runner.dtype = torch.float32
     runner._model = toy_hooked_model
-    runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
     runner._backend = TransformerLensBackend(runner)
     return runner
@@ -310,24 +343,38 @@ def runner_nnsight(toy_pytorch_model, toy_tokenizer):
     runner.device = "cpu"
     runner.dtype = torch.float32
     runner._model = wrapped
-    runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
     runner._backend = NNsightBackend(runner)
     return runner
 
 
 @pytest.fixture(scope="module")
+def runner_huggingface(toy_pytorch_model, toy_tokenizer):
+    """HuggingFace backend with standard PyTorch model (raw hooks)."""
+    runner = ModelRunner.__new__(ModelRunner)
+    runner.model_name = "toy"
+    runner.backend = ModelBackend.HUGGINGFACE
+    runner.device = "cpu"
+    runner.dtype = torch.float32
+    runner._model = toy_pytorch_model
+    runner._is_chat_model = False
+    runner._backend = HuggingFaceBackend(runner, toy_tokenizer)
+    return runner
+
+
+@pytest.fixture(scope="module")
 def runner_pyvene(toy_pytorch_model, toy_tokenizer):
     """Pyvene backend with standard PyTorch model."""
+    if not PYVENE_AVAILABLE:
+        pytest.skip("pyvene not installed")
     runner = ModelRunner.__new__(ModelRunner)
     runner.model_name = "toy"
     runner.backend = ModelBackend.PYVENE
     runner.device = "cpu"
     runner.dtype = torch.float32
     runner._model = toy_pytorch_model
-    runner._tokenizer = toy_tokenizer
     runner._is_chat_model = False
-    runner._backend = PyveneBackend(runner)
+    runner._backend = PyveneBackend(runner, toy_tokenizer)
     return runner
 
 

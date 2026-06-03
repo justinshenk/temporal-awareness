@@ -1,0 +1,25 @@
+# Default probe training configuration
+# Used by scripts/probes/train_temporal_probes_caa.py
+
+probe:
+  type: LogisticRegression
+  max_iter: 1000
+  C: 1.0
+  random_state: 42
+
+# Cross-validation
+cv:
+  folds: 5
+  stratified: true
+
+# Target layers (model-specific defaults are in model_registry.yaml)
+# These are fallback layers when model-specific config is unavailable
+default_layers: [0, 4, 8, 12, 16, 20, 24, 28, 31]
+
+# Evaluation
+evaluation:
+  metrics:
+    - accuracy
+    - f1
+    - auroc
+  transfer_test: true   # Test probe transfer across rep counts

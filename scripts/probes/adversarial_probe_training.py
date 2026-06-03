@@ -28,16 +28,13 @@ import numpy as np
 import json
 import pickle
 from pathlib import Path
-from typing import Dict, List, Tuple
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.model_selection import train_test_split
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from tqdm import tqdm
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 
 # Temporal scale mapping (for labeling)
@@ -468,7 +465,7 @@ def create_training_datasets(model, tokenizer, standard_data, adversarial_data):
         mixed_X[layer] = np.vstack([standard_X[layer], adversarial_X[layer]])
     mixed_y = np.concatenate([standard_y, adversarial_y])
 
-    print(f"\n✓ Dataset sizes:")
+    print("\n✓ Dataset sizes:")
     print(f"  Standard: {len(standard_y)} samples")
     print(f"  Adversarial: {len(adversarial_y)} samples")
     print(f"  Mixed: {len(mixed_y)} samples")

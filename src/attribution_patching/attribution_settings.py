@@ -6,11 +6,11 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from ..common.base_schema import BaseSchema
+from ..common.patching_types import PatchingComponent
+from .attribution_quadrature import QuadratureMethod
 
 
 Method = Literal["standard", "eap", "eap_ig"]
-Component = Literal["resid_post", "attn_out", "mlp_out"]
-GradPoint = Literal["clean", "corrupted", "both"]
 
 
 @dataclass
@@ -21,13 +21,20 @@ class AttributionSettings(BaseSchema):
         components: Components to compute attributions for
         methods: Attribution methods to use
         ig_steps: Integration steps for EAP-IG
-        grad_at: Where to compute gradients ("clean", "corrupted", or "both")
+        quadrature: Quadrature methods for EAP-IG integration
+
+    Note:
+        Gradient computation point is determined by mode:
+        - noising: grad@clean (gradients at clean/source state)
+        - denoising: grad@corrupted (gradients at corrupted/source state)
     """
 
-    components: list[Component] = field(default_factory=lambda: ["resid_post"])
+    components: list[PatchingComponent] = field(default_factory=lambda: ["resid_post"])
     methods: list[Method] = field(default_factory=lambda: ["standard", "eap"])
     ig_steps: int = 10
-    grad_at: GradPoint = "both"
+    quadrature: list[QuadratureMethod] = field(
+        default_factory=lambda: [QuadratureMethod.CHEBYSHEV]
+    )
 
     @classmethod
     def all(cls) -> "AttributionSettings":
@@ -36,10 +43,10 @@ class AttributionSettings(BaseSchema):
 
     @classmethod
     def standard_only(cls) -> "AttributionSettings":
-        """Use only standard attribution (fastest)."""
+        """Settings with only standard attribution method."""
         return cls(methods=["standard"])
 
     @classmethod
-    def with_ig(cls, steps: int = 10) -> "AttributionSettings":
-        """Include EAP-IG for more accurate attributions."""
-        return cls(methods=["standard", "eap", "eap_ig"], ig_steps=steps)
+    def with_ig(cls, steps: int) -> "AttributionSettings":
+        """Settings with EAP-IG method."""
+        return cls(methods=["eap_ig"], ig_steps=steps)

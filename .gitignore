@@ -11,12 +11,14 @@ build/
 venv/
 .venv/
 env/
+tam_env/
 
 # IDE
 .idea/
 .vscode/
 *.swp
-.claude/
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
@@ -25,7 +27,7 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Large files
+# Large model/data files
 *.npy
 *.npz
 *.pt
@@ -38,28 +40,35 @@ Thumbs.db
 # Secrets
 .env
 
-# SAE output (large data files)
-sae_out/
+# SLURM / experiment logs (regenerated per run)
+logs/
 
-# Experiments — tracked (each sub-project has its own .gitignore)
+# W&B local cache
+wandb/
+
+# Results and data (large, tracked via W&B)
+results/
+data/
+
+# Word docs (personal notes)
+*.docx
+
+# LaTeX artifacts
+texput.log
+
+# Experiments
 out/
+
+# Other
 tmp/
 temp/
+git_worktrees/
+worktrees/
+worktree/
+wrktr/
+tasks/
+paper/
 
-# Large SAE/activation tensors
-data/context_fatigue/**/*.pt
+# Claude Code local session artifacts
+.claude/
 
-# LoRA-vs-ICL: adapters + shift tensors are regenerable; keep only md/json reports
-results/lora_icl/adapter/
-results/lora_icl/adapter_shuffled/
-results/lora_icl/antonym_adapter/
-results/lora_icl/shifts/
-
-# Safety weights-vs-activations: shift/direction tensors regenerable; keep md/json
-results/safety/shifts/
-
-# Sycophancy: d_syco direction tensors regenerable; keep md/json
-results/sycophancy/shifts/
-
-# Transient run logs from the lora_icl / safety experiments
-results/**/*.log

@@ -53,8 +53,8 @@ def validate_dataset(dataset_path, agent):
         result = json.loads(response)
 
         result['pair_index'] = i
-        result["pair"] = pair    
-        
+        result["pair"] = pair
+
         avg = result['average']
         status = "✓" if float(avg) >= 3.5 else ("⚠" if float(avg) >= 2.5 else "✗")
         print()
@@ -80,7 +80,7 @@ def validate_dataset(dataset_path, agent):
         "Assessed by" : get_agent_info()
     }
 
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     for key, value in summary.items():
         print(f"{key}: {value}")
 

@@ -11,8 +11,6 @@ Run specific test class:
 import torch
 
 from src.common.token_tree import (
-    BinaryFork,
-    BranchingNode,
     TokenTrajectory,
     TokenTree,
     add_trajectory_to_tree,

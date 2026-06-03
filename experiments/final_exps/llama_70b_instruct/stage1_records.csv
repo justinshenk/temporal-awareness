@@ -1,0 +1,732 @@
+base_id,condition,label,hop_depth,error_type,peak_entropy,mean_entropy,early_entropy,min_confidence,mean_vocab_gap,logprob_uncertainty,hedged,hedge_count,overconfident,overconf_count,verbalized_conf,is_absurd,final_correct_clean,final_correct_error,final_degraded,prompt_len,n_tokens_gen,generated_text
+planning_budget_0002,clean,0,4,,1.125,0.24826591889552005,0.37736024856567385,0.439453125,0.8022619774671566,0.13506295098622956,False,0,False,0,,True,False,False,False,132,34,"Answer: 250 is above 200. Allocate 200 (the max limit). Remaining budget: 350 - 200 = 150.assistant
+
+"
+planning_budget_0002,error_standard,1,4,constraint_violation,1.125,0.24826591889552005,0.37736024856567385,0.439453125,0.8022619774671566,0.13506295098622956,False,0,False,0,,True,False,False,False,132,34,"Answer: 250 is above 200. Allocate 200 (the max limit). Remaining budget: 350 - 200 = 150.assistant
+
+"
+planning_budget_0002,error_verbalized,1,4,constraint_violation,1.125,0.44066615665660186,0.44066615665660186,0.470703125,0.703666601987446,0.21429702317519195,False,0,False,0,,False,False,False,False,188,17,"Answer: Since 250 exceeds the max limit of 200, allocate 200.
+"
+2hop_fractions_0039,clean,0,2,,1.6796875,0.4750367072613343,0.44687785729765894,0.349609375,0.6831055768315032,0.25171818547675257,False,0,False,0,,True,False,False,False,131,23,"Answer: Since 6 slices were eaten, the remaining slices are 16 - 6 = 10. 
+
+"
+2hop_fractions_0039,error_standard,1,2,wrong_percentage_base,2.046875,0.8788621690538194,0.8788621690538194,0.255859375,0.5254265997144911,0.47787378041206785,False,0,False,0,,False,False,False,False,131,18,"Since 6 slices were eaten, we subtract that from the total number of slices. 
+
+"
+2hop_fractions_0039,error_verbalized,1,2,wrong_percentage_base,2.25,0.7301429748535156,0.7301429748535156,0.248046875,0.6047105073928833,0.36676764445902965,False,0,False,0,,True,False,False,False,187,20,"Since 6 slices were eaten, the number of slices remaining is 16 - 6. 
+"
+2hop_fractions_0032,clean,0,2,,1.5,0.39701042332771147,0.39764878610149024,0.3828125,0.7259551340380725,0.20846514291612117,False,0,False,0,,True,False,False,False,128,22,"Since 9 slices were eaten, the number of slices remaining is 10 - 9 = 1.
+
+"
+2hop_fractions_0032,error_standard,1,2,wrong_unit,1.9921875,0.6111699617826022,0.6812229156494141,0.212890625,0.6604616275200477,0.31581159428829814,False,0,False,0,,True,False,False,False,128,26,"Since 9 slices were eaten (3 people eating 3 slices each), 10 - 9 = 1 slice remains.
+
+"
+2hop_fractions_0032,error_verbalized,1,2,wrong_unit,2.15625,0.6703100840250651,0.8682592391967774,0.23046875,0.6578815619150797,0.3375259245427386,False,0,False,0,,True,False,False,False,184,30,"Since 9 slices were eaten (3 people * 3 slices each), the number of slices remaining is 10 - 9 = 1.
+
+"
+3hop_multi_stage_geometry_0006,clean,0,3,,1.75,0.328311505317688,0.31353824138641356,0.37890625,0.7819252359122038,0.1656990708015435,False,0,False,0,,False,False,False,False,151,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0006,error_standard,1,3,wrong_operator,1.6328125,0.3026323911547661,0.28915501199662685,0.39453125,0.7942232756316662,0.15032470604912093,False,0,False,0,,False,False,False,False,149,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0006,error_verbalized,1,3,wrong_operator,1.90625,0.31667977153528026,0.31624261774122714,0.30859375,0.7844099723166083,0.15746230827936253,False,0,False,0,,False,False,False,False,205,41,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². There are 21 tiles, so the total area covered is 21 m².
+"
+4hop_multi_stage_allocation_0017,clean,0,4,,1.8359375,0.2535602221323643,0.31696686446666716,0.384765625,0.8384830463883061,0.11852370180103894,False,0,False,0,,False,False,False,False,155,35,"Answer: $750 × (1 − 30%) = $750 × 0.7 = $525. After equipment, $525 remains.assistant
+
+"
+4hop_multi_stage_allocation_0017,error_standard,1,4,wrong_unit,2.484375,0.6059163808822632,0.6387085437774658,0.22265625,0.6294154605517784,0.3163917971925549,False,0,False,0,,True,False,False,False,154,24,"After spending 25% on salaries, $750 is spent and $1000 - $750 = $250 remains.
+
+"
+4hop_multi_stage_allocation_0017,error_verbalized,1,4,wrong_unit,2.15625,0.4784777056087147,0.6405484199523925,0.349609375,0.7801844063356067,0.19407059447574815,False,0,False,0,,True,False,False,False,210,33,"First, correct the previous answer: $1000 × 25% = $250 spent on salaries, so $1000 - $250 = $750 remains.
+
+"
+3hop_compound_rate_0007,clean,0,3,,0.671875,0.0613876031403682,0.05494647035375237,0.6953125,0.960510156322827,0.023192794315420432,False,0,False,0,,False,False,False,False,163,30,"Answer: 120 ÷ 60 = 2 hours = 120 minutes. The second leg takes 120 minutes.assistant
+
+"
+3hop_compound_rate_0007,error_standard,1,3,wrong_unit,1.6484375,0.6097992344906455,0.6097992344906455,0.263671875,0.6500707927503084,0.29743000773520567,False,0,False,0,,False,False,False,False,157,19,"To find the time, we need to convert the speed from km/h to km/min. 
+
+"
+3hop_compound_rate_0007,error_verbalized,1,3,wrong_unit,1.609375,0.5879241824150085,0.5879241824150085,0.291015625,0.6810695305466652,0.2846276903206118,False,0,False,0,,False,False,False,False,213,16,"To find the time, we need to divide the distance by the speed. 
+
+"
+2hop_fractions_0005,clean,0,2,,1.7109375,0.48639382373379625,0.4661885188892484,0.3125,0.6695609093142633,0.26805846516580845,False,0,False,0,,True,False,False,False,131,23,"Answer: Since 2 slices were eaten, the remaining slices are 16 - 2 = 14. 
+
+"
+2hop_fractions_0005,error_standard,1,2,off_by_one,1.6484375,0.3328464693493313,0.3367228448390961,0.28125,0.8012106011350019,0.15573466042805584,False,0,False,0,,False,False,False,False,131,36,"To find the fraction of the flatbread that remains, we need to subtract the number of slices eaten from the total number of slices and then divide by the total number of slices.
+
+"
+2hop_fractions_0005,error_verbalized,1,2,off_by_one,1.6328125,0.3343864472375976,0.4221211954951286,0.435546875,0.8063580127846863,0.14748507763826135,False,0,False,0,,True,False,False,False,187,36,"Answer: Since 3 slices were eaten, the remaining slices are 16 - 3 = 13. The fraction of the flatbread that remains is 13/16.
+"
+4hop_nested_fractions_0019,clean,0,4,,1.6953125,0.24527942516935117,0.2718833791092038,0.435546875,0.8773686305376902,0.10169773595878853,False,0,False,0,,False,True,True,False,165,47,"Answer: 1600 × 2/3 = 1066.67. Since you can't have a fraction of a widget, we'll round down to 1066 widgets that are premium quality.assistant
+
+"
+4hop_nested_fractions_0019,error_standard,1,4,wrong_percentage_base,2.0,0.3277784600077405,0.3910184860229492,0.423828125,0.8527158613260907,0.1285859145808156,False,0,False,0,,False,True,True,False,165,47,"Answer: 1600 × 2/3 = 1066.67. Since you can't have a fraction of a widget, we'll round down to 1066 widgets that are premium quality.assistant
+
+"
+4hop_nested_fractions_0019,error_verbalized,1,4,wrong_percentage_base,1.796875,0.39706080300467356,0.3809256315231323,0.36328125,0.8261952807328531,0.15640818622448074,False,0,False,0,,False,True,True,False,221,42,"Answer: 1600 × 2/3 = 1066.67. Since you can't have a fraction of a widget, we'll round down to 1066 widgets that are premium quality.
+"
+2hop_rate_distance_0038,clean,0,2,,1.625,0.4043377913698992,0.4043377913698992,0.36328125,0.703195258800406,0.24289388087001082,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0038,error_standard,1,2,magnitude_error,1.53125,0.40642997567706246,0.40642997567706246,0.359375,0.7076613427112427,0.2362993318416968,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0038,error_verbalized,1,2,magnitude_error,1.3203125,0.474320650100708,0.474320650100708,0.50390625,0.7579767256975174,0.1866684995132168,False,0,False,0,,False,False,False,False,182,16,"Answer: 3 hours * 60 minutes/hour = 180 minutes.
+"
+3hop_percentage_chain_0047,clean,0,3,,1.1640625,0.11481201753809324,0.12711573028936982,0.49609375,0.9354164027343282,0.04772355265481123,False,0,False,0,,False,True,True,False,151,36,"Answer: $105 × 15% = $105 × 0.15 = $15.75. The sales tax is $15.75.assistant
+
+"
+3hop_percentage_chain_0047,error_standard,1,3,wrong_unit,1.7578125,0.5694543231617321,0.5576301097869873,0.251953125,0.6688919580456886,0.2826073114639268,False,0,False,0,,False,True,True,False,142,22,"To find the price after the 30% discount, we need to subtract the discount from the original price.
+
+"
+3hop_percentage_chain_0047,error_verbalized,1,3,wrong_unit,2.09375,0.9229513469495272,0.9229513469495272,0.236328125,0.5195741402475458,0.4832996437671889,False,0,False,0,,False,True,True,False,198,19,"To find the discounted price first, we need to subtract the discount from the original price. 
+"
+3hop_compound_rate_0018,clean,0,3,,0.72265625,0.04517823487379549,0.028105548210442068,0.52734375,0.9616788131852824,0.02567071106180809,False,0,False,0,,False,False,False,False,163,30,"Answer: 30 ÷ 30 = 1 hour = 60 minutes. The second leg takes 60 minutes.assistant
+
+"
+3hop_compound_rate_0018,error_standard,1,3,magnitude_error,1.625,0.6435097142269737,0.6435097142269737,0.28515625,0.623352753488641,0.3144030338100638,False,0,False,0,,False,False,False,False,159,19,"To find the time, we need to convert the speed from km/h to km/min. 
+
+"
+3hop_compound_rate_0018,error_verbalized,1,3,magnitude_error,1.640625,0.6335726137514468,0.6598342895507813,0.3125,0.6625024301034433,0.28570874298033544,False,0,False,0,,False,False,False,False,215,27,"To find the time, we need to convert the speed from km/h to km/min and then divide the distance by the speed. 
+
+"
+3hop_percentage_chain_0015,clean,0,3,,1.1484375,0.11767471551575,0.15413409573957323,0.47265625,0.9255506895683538,0.054278743567720736,False,0,False,0,,False,True,True,False,155,40,"Answer: $37.50 × 10% = $37.50 × 0.10 = $3.75. The sales tax is $3.75.assistant
+
+"
+3hop_percentage_chain_0015,error_standard,1,3,off_by_one,1.5,0.49228653218597174,0.49228653218597174,0.408203125,0.6452002096339129,0.26233212677122064,False,0,False,0,,False,True,True,False,144,16,"To find the sales tax, multiply the discounted price by the sales tax percentage.
+
+"
+3hop_percentage_chain_0015,error_verbalized,1,3,off_by_one,1.6796875,0.4065980911254883,0.4065980911254883,0.373046875,0.7900275848805904,0.19461251951557434,False,0,False,0,,False,True,True,False,200,16,"Answer: $37.50 × 10% = $3.75.
+"
+3hop_percentage_chain_0004,clean,0,3,,1.140625,0.13707224005338503,0.14775904603302478,0.470703125,0.9051039294623706,0.06937785162689794,False,0,False,0,,False,True,True,False,155,32,"Answer: $170 × 10% = $170 × 0.10 = $17. The sales tax is $17.assistant
+
+"
+3hop_percentage_chain_0004,error_standard,1,3,wrong_percentage_base,1.703125,0.5690581100061536,0.5690581100061536,0.40625,0.5936264249612577,0.3179046311848903,False,0,False,0,,False,True,True,False,148,16,"To find the sales tax, multiply the discounted price by the sales tax rate.
+
+"
+3hop_percentage_chain_0004,error_verbalized,1,3,wrong_percentage_base,1.8828125,0.6550527475774288,0.6550527475774288,0.30078125,0.5417691697366536,0.39942574602754544,False,0,False,0,,False,True,True,False,204,16,"To find the sales tax, multiply the discounted price by the sales tax rate.
+
+"
+4hop_nested_fractions_0015,clean,0,4,,0.9375,0.09702765310274637,0.12972897961735724,0.703125,0.9618954828856658,0.02827931957434982,False,0,False,0,,False,True,True,False,165,28,"Answer: 3750 × 1/2 = 1875. 1875 widgets are premium quality.assistant
+
+"
+4hop_nested_fractions_0015,error_standard,1,4,off_by_one,1.375,0.28786523532409697,0.32464489787817,0.45703125,0.8545921257108158,0.11521287285317945,False,0,False,0,,False,True,True,False,165,47,"Answer: 3751 × 1/2 = 1875.5. Since you can't have a fraction of a widget, we'll round down to 1875 widgets that are premium quality.assistant
+
+"
+4hop_nested_fractions_0015,error_verbalized,1,4,off_by_one,1.828125,0.2037480537380491,0.17526358142495155,0.314453125,0.8981604675230171,0.08997987189841683,False,0,False,0,,False,True,True,False,221,21,"Answer: 3751 × 1/2 = 1875.5 widgets are premium quality.
+"
+2hop_fractions_0003,clean,0,2,,1.734375,0.3182676443031856,0.35256407856941224,0.28515625,0.8169632555251675,0.1387284751276055,False,0,False,0,,False,False,False,False,128,35,"To find the fraction of the tart that remains, we need to subtract the number of slices eaten from the total number of slices and then divide by the total number of slices.
+
+"
+2hop_fractions_0003,error_standard,1,2,magnitude_error,1.6328125,0.4238311767578125,0.4238311767578125,0.466796875,0.7926582336425781,0.17171874848791407,False,0,False,0,,False,False,False,False,128,20,"Since 4 people each eat 1 slice, a total of 4 slices are eaten. 
+
+"
+2hop_fractions_0003,error_verbalized,1,2,magnitude_error,1.6953125,0.4867218017578125,0.4867218017578125,0.337890625,0.7410870313644409,0.23063457557703124,False,0,False,0,,False,False,False,False,184,20,"Since 4 people each eat 1 slice, a total of 4 slices are eaten. 
+
+"
+4hop_compound_interest_0018,clean,0,4,,1.515625,0.08972345769871026,0.1332049325108528,0.44921875,0.9448462757700327,0.045071053982695244,False,0,False,0,,False,False,False,False,134,32,"Answer: $2100 × (1 + 5%) = $2205. Balance after year 2: $2205.assistant
+
+"
+4hop_compound_interest_0018,error_standard,1,4,magnitude_error,1.6328125,0.33456193258364997,0.4715284161269665,0.3984375,0.7994285560057809,0.15962714109067805,False,0,False,0,,False,False,False,False,131,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+4hop_compound_interest_0018,error_verbalized,1,4,magnitude_error,1.9296875,0.38534964124361676,0.5351103395223618,0.38671875,0.7697404863778502,0.1906418721426805,False,0,False,0,,False,False,False,False,187,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+2hop_arithmetic_0015,clean,0,2,,1.484375,0.5276416680392098,0.5276416680392098,0.45703125,0.6313956441248164,0.28924113622591907,False,0,False,0,,False,False,False,False,140,17,"Answer: To find the change, subtract the total cost from the amount paid. 
+
+"
+2hop_arithmetic_0015,error_standard,1,2,off_by_one,1.5,0.4323011832801919,0.4323011832801919,0.4375,0.675474713482943,0.24396391310411356,False,0,False,0,,False,False,False,False,140,19,"To find the change, we need to subtract the total cost from the amount Paul paid with.
+
+"
+2hop_arithmetic_0015,error_verbalized,1,2,off_by_one,1.5234375,0.37739579239860177,0.38842286840081214,0.375,0.7228834329580422,0.2116900212112869,False,0,False,0,,True,False,False,False,196,32,"Answer: To find the change, we need to subtract the total cost from the amount Paul paid with. Change = $45 - $31 = $14.
+"
+3hop_compound_rate_0040,clean,0,3,,1.734375,0.2890852796695686,0.4648307517170906,0.38671875,0.8401096836760312,0.1262806304086681,False,0,False,0,,False,False,False,False,163,37,"Answer: The second leg is the same as the first leg, so it also takes 80 ÷ 40 = 2 hours = 120 minutes.assistant
+
+"
+3hop_compound_rate_0040,error_standard,1,3,off_by_one,2.625,0.6165929833160979,0.7836458683013916,0.23046875,0.6769338233529457,0.31678126553471575,False,0,False,0,,False,False,False,False,157,28,"Answer: The second leg also takes 120 minutes, since the distance and speed are the same as the first legassistant
+
+"
+3hop_compound_rate_0040,error_verbalized,1,3,off_by_one,2.90625,0.7786686596274376,0.4716322749853134,0.1806640625,0.7053430628962815,0.28740985542780606,False,0,False,0,,False,False,False,False,213,200,"Answer: The second leg is the same as the first leg, so it also takes 120 minutes, but since the speed and distance are the same, it will take the same amount of time as the first leg, 120 minutes is incorrect, it is 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = 60 minutes * 2 = 120 minutes / 2 = "
+2hop_rate_distance_0031,clean,0,2,,1.6171875,0.40758453617694185,0.40758453617694185,0.3515625,0.6990245150745442,0.24557196507131043,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0031,error_standard,1,2,wrong_operator,1.546875,0.4331937787624506,0.4331937787624506,0.40625,0.6190140815451741,0.2960574402315578,False,0,False,0,,False,False,False,False,125,13,"To convert hours to minutes, multiply the hours by 60.
+
+"
+2hop_rate_distance_0031,error_verbalized,1,2,wrong_operator,2.0625,0.6542744636535645,0.6542744636535645,0.314453125,0.668243944644928,0.31848348630777773,False,0,False,0,,False,False,False,False,181,16,"Answer: 2 hours * 60 minutes/hour = 120 minutes.
+"
+2hop_percentage_0009,clean,0,2,,0.9765625,0.1763134061979751,0.21547343516722323,0.51171875,0.8479882317413285,0.1031468033563697,False,0,False,0,,False,True,False,True,134,30,"Answer: 40% of $180 = 0.4 × $180 = $72. Jack saves $72.assistant
+
+"
+2hop_percentage_0009,error_standard,1,2,wrong_percentage_base,1.09375,0.23298740228638054,0.23298740228638054,0.4296875,0.8362450168147916,0.12228102618219863,False,0,False,0,,False,True,False,True,136,20,"To find out how much Jack saves, we need to calculate 40% of his total earnings.
+
+"
+2hop_percentage_0009,error_verbalized,1,2,wrong_percentage_base,1.3125,0.2589724645777433,0.29124046373181045,0.4765625,0.8174606499394739,0.13225259165145906,False,0,False,0,,False,True,False,True,192,27,"Answer: 40% of $1800 is 0.4 × $1800 = $720. Jack saves $720.
+"
+3hop_compound_rate_0012,clean,0,3,,0.69921875,0.04303868431888987,0.026638005021959545,0.58984375,0.9646013307403185,0.022110476620473156,False,0,False,0,,False,False,False,False,163,30,"Answer: 60 ÷ 60 = 1 hour = 60 minutes. The second leg takes 60 minutes.assistant
+
+"
+3hop_compound_rate_0012,error_standard,1,3,wrong_unit,1.6640625,0.5878739607961554,0.5878739607961554,0.265625,0.6704239845275879,0.27413579218318546,False,0,False,0,,False,False,False,False,157,19,"To find the time, we need to convert the speed from km/h to km/min. 
+
+"
+3hop_compound_rate_0012,error_verbalized,1,3,wrong_unit,1.6953125,0.5646901568587945,0.7800491333007813,0.294921875,0.6754870752290804,0.2832012791770862,False,0,False,0,,False,False,False,False,213,49,"To find the time, we need to convert the speed to km/min. Since 60 km/h is equal to 1 km/min, the time taken for the second leg is 60 km / 1 km/min = 60 minutes.
+
+"
+2hop_counting_0009,clean,0,2,,1.0859375,0.13128091279941145,0.18045777305960656,0.474609375,0.900983623688262,0.06708400094960046,False,0,False,0,,True,True,False,True,130,32,"Answer: 150 - 45 = 105. After 45 items are taken out, 105 items remain in the warehouse.assistant
+
+"
+2hop_counting_0009,error_standard,1,2,wrong_percentage_base,1.078125,0.11959939408781273,0.15668250620365143,0.53515625,0.9183701020490844,0.05390112085321931,False,0,False,0,,True,True,False,True,132,35,"Answer: 1500 - 45 = 1455. After 45 items are taken out, 1455 items remain in the warehouse.assistant
+
+"
+2hop_counting_0009,error_verbalized,1,2,wrong_percentage_base,1.1015625,0.1815392163892587,0.14704494327306747,0.455078125,0.8985494110772075,0.07947368610619067,False,0,False,0,,True,True,False,True,188,24,"Answer: 1500 - 45 = 1455. There are 1455 items remaining in the warehouse.
+"
+2hop_percentage_0025,clean,0,2,,1.09375,0.23140133675187827,0.23140133675187827,0.419921875,0.8321388657539501,0.1257428224258167,False,0,False,0,,False,False,False,False,134,20,"To find out how much Zoe saves, we need to calculate 25% of his total earnings.
+
+"
+2hop_percentage_0025,error_standard,1,2,off_by_one,1.09375,0.22253710739314556,0.22253710739314556,0.435546875,0.8514949711301597,0.1077367232626959,False,0,False,0,,False,False,False,False,134,20,"To find out how much Zoe saves, we need to calculate 25% of his total earnings.
+
+"
+2hop_percentage_0025,error_verbalized,1,2,off_by_one,1.40625,0.19013551513439622,0.20584981916472317,0.390625,0.8670209644774802,0.0984810040998945,False,0,False,0,,False,False,False,False,190,29,"Answer: 25% of $121 = 0.25 × $121 = $30.25. Zoe saves $30.25.
+"
+4hop_nested_fractions_0000,clean,0,4,,1.0,0.08759505339964692,0.11537652760744095,0.6640625,0.9608371364379309,0.029075346116865085,False,0,False,0,,False,True,True,False,165,28,"Answer: 2000 × 1/2 = 1000. 1000 widgets are premium quality.assistant
+
+"
+4hop_nested_fractions_0000,error_standard,1,4,off_by_one,1.578125,0.29404259936651217,0.3262501284480095,0.416015625,0.8464117510872893,0.125746608339184,False,0,False,0,,False,True,True,False,165,50,"Answer: 2001 × 1/2 = 1000.5. Since you can't have a fraction of a widget, we'll round down to 1000. 1000 widgets are premium quality.assistant
+
+"
+4hop_nested_fractions_0000,error_verbalized,1,4,off_by_one,1.8671875,0.18783512010293849,0.18783512010293849,0.291015625,0.9134923225706991,0.09056310042001424,False,0,False,0,,False,True,True,False,221,17,"Answer: 2001 × 1/2 = 1000.5 
+"
+3hop_compound_rate_0030,clean,0,3,,1.71875,0.28275475854595267,0.45957301557064056,0.396484375,0.8449441832243841,0.1218628188293375,False,0,False,0,,False,False,False,False,163,37,"Answer: The second leg is the same as the first leg, so it also takes 80 ÷ 40 = 2 hours = 120 minutes.assistant
+
+"
+3hop_compound_rate_0030,error_standard,1,3,off_by_one,1.484375,0.5455392896546982,0.5890905380249023,0.34375,0.6685192035141275,0.28350761144609793,False,0,False,0,,False,False,False,False,157,24,"Answer: The second leg also takes 121 minutes, since the distance and speed are the same as the first leg.
+
+"
+3hop_compound_rate_0030,error_verbalized,1,3,off_by_one,2.953125,0.5918453937768936,0.4601226389408112,0.171875,0.7748026516102254,0.22295724153842653,False,0,False,0,,False,False,False,False,213,200,"Answer: The second leg is the same as the first leg, so it also takes 120 minutes, but since the speed and distance are the same, it will take the same amount of time as the first leg, 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect, the correct answer is 120 minutes is incorrect,"
+2hop_fractions_0027,clean,0,2,,1.6171875,0.3256154447793961,0.3650421217083931,0.294921875,0.8045076742103058,0.1468964174425339,False,0,False,0,,False,False,False,False,128,35,"To find the fraction of the tart that remains, we need to subtract the number of slices eaten from the total number of slices and then divide by the total number of slices.
+
+"
+2hop_fractions_0027,error_standard,1,2,wrong_unit,1.828125,0.5854790631462546,0.7854893684387207,0.275390625,0.661333301488091,0.3115050575927481,False,0,False,0,,True,False,False,False,128,34,"Since 9 slices were eaten (3 people × 3 slices each = 9 slices), the number of slices remaining is 20 - 9 = 11.
+
+"
+2hop_fractions_0027,error_verbalized,1,2,wrong_unit,2.3125,0.7603940096768466,0.6501052856445313,0.20703125,0.5804839134216309,0.4108023406094217,False,0,False,0,,True,False,False,False,184,22,"Since 9 slices were eaten in total, the number of slices remaining is 20 - 9. 
+"
+3hop_percentage_chain_0038,clean,0,3,,1.1328125,0.11056475344270843,0.1162976272404194,0.48828125,0.9350434281239157,0.048587238262746454,False,0,False,0,,False,True,True,False,151,36,"Answer: $105 × 10% = $105 × 0.10 = $10.50. The sales tax is $10.50.assistant
+
+"
+3hop_percentage_chain_0038,error_standard,1,3,magnitude_error,1.7578125,0.5622049786827781,0.5512201428413391,0.291015625,0.6777622357688167,0.27337708213797024,False,0,False,0,,False,True,True,False,142,22,"To find the price after the 30% discount, we need to subtract the discount from the original price.
+
+"
+3hop_percentage_chain_0038,error_verbalized,1,3,magnitude_error,1.90625,0.798857053120931,0.798857053120931,0.251953125,0.5685722861025069,0.42216749270160114,False,0,False,0,,False,True,True,False,198,18,"To find the discounted price, we need to subtract the discount from the original price. 
+"
+3hop_multi_stage_geometry_0035,clean,0,3,,1.609375,0.273364663066898,0.4030673995614052,0.3515625,0.820544256274476,0.13302283324867242,False,0,False,0,,False,False,False,False,151,57,"Each tile is 2 m × 2 m, so each tile covers 2 × 2 = 4 m². There are 9 tiles, so the total area covered by the tiles is 9 × 4 = 36 m².assistant
+
+"
+3hop_multi_stage_geometry_0035,error_standard,1,3,off_by_one,1.6328125,0.2732301816980461,0.4172370329499245,0.33984375,0.8176393204062371,0.13755268871483997,False,0,False,0,,False,False,False,False,149,57,"Each tile is 2 m × 2 m, so each tile covers 2 × 2 = 4 m². There are 9 tiles, so the total area covered by the tiles is 9 × 4 = 36 m².assistant
+
+"
+3hop_multi_stage_geometry_0035,error_verbalized,1,3,off_by_one,1.5546875,0.30107925231663546,0.39958733394742013,0.408203125,0.807575353916036,0.14351208013709588,False,0,False,0,,False,False,False,False,205,49,"Each tile is 2 m × 2 m, so each tile covers 2 × 2 = 4 m². There are 9 tiles, so the total area covered is 9 × 4 = 36 m².
+"
+3hop_percentage_chain_0019,clean,0,3,,1.1328125,0.12307038885935778,0.1330315631814301,0.515625,0.9273168471580296,0.053369773803672714,False,0,False,0,,False,True,True,False,151,36,"Answer: $140 × 12% = $140 × 0.12 = $16.80. The sales tax is $16.80.assistant
+
+"
+3hop_percentage_chain_0019,error_standard,1,3,wrong_percentage_base,1.4765625,0.47759657190181315,0.47759657190181315,0.37890625,0.6376393604441546,0.27204613581618664,False,0,False,0,,False,True,True,False,144,16,"To find the sales tax, multiply the discounted price by the sales tax rate.
+
+"
+3hop_percentage_chain_0019,error_verbalized,1,3,wrong_percentage_base,1.625,0.4602573939732143,0.4602573939732143,0.330078125,0.7477732471057347,0.21514567460155423,False,0,False,0,,False,True,True,False,200,14,"Answer: $140 × 12% = $16.80.
+"
+2hop_percentage_0033,clean,0,2,,0.98828125,0.17063886807847986,0.229573138942942,0.50390625,0.8499549369529739,0.10370408396296765,False,0,False,0,,False,True,False,True,134,34,"Answer: 10% of $108 = 0.10 × $108 = $10.80. Henry saves $10.80.assistant
+
+"
+2hop_percentage_0033,error_standard,1,2,magnitude_error,1.4765625,0.24004838056862354,0.33019688092172145,0.341796875,0.8140476013331863,0.1412449063963025,False,0,False,0,,False,True,False,True,136,32,"Answer: 10% of $1080 is 0.1 × $1080 = $108. Henry saves $108.assistant
+
+"
+2hop_percentage_0033,error_verbalized,1,2,magnitude_error,1.46875,0.22165423038381118,0.255257142521441,0.37109375,0.8463163302054724,0.12074586460183435,False,0,False,0,,False,True,False,True,192,27,"Answer: 10% of $1080 is 0.1 × $1080 = $108. Henry saves $108.
+"
+2hop_rate_distance_0030,clean,0,2,,1.6171875,0.40479393627987625,0.40479393627987625,0.353515625,0.6930330239873215,0.2527791769897925,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0030,error_standard,1,2,off_by_one,1.5703125,0.3422238794155419,0.3422238794155419,0.388671875,0.7586901393668469,0.1932796804264635,False,0,False,0,,False,False,False,False,126,19,"Since there are 60 minutes in an hour, multiply the number of hours by 60.
+
+"
+2hop_rate_distance_0030,error_verbalized,1,2,off_by_one,1.0078125,0.3168604075908661,0.3168604075908661,0.47265625,0.7939877910539508,0.1481678359441855,False,0,False,0,,False,False,False,False,182,16,"Answer: 4 hours * 60 minutes/hour = 240 minutes.
+"
+4hop_nested_fractions_0021,clean,0,4,,0.9453125,0.09571746232489074,0.12782785296440125,0.72265625,0.9613265205756615,0.02799237944866284,False,0,False,0,,False,True,True,False,165,28,"Answer: 3750 × 1/2 = 1875. 1875 widgets are premium quality.assistant
+
+"
+4hop_nested_fractions_0021,error_standard,1,4,wrong_operator,1.8515625,0.32996005095817427,0.39348855018615725,0.427734375,0.782357592791043,0.15790901827024303,False,0,False,0,,False,True,True,False,169,27,"To find the number of premium quality widgets, we need to multiply the number of widgets that pass quality control by 1/2.
+
+"
+4hop_nested_fractions_0021,error_verbalized,1,4,wrong_operator,2.0625,0.4057500726646847,0.49254913330078126,0.345703125,0.7588708965038812,0.18923753190448575,False,0,False,0,,False,True,True,False,225,27,"To find the number of premium quality widgets, we need to multiply the number of widgets that passed quality control by 1/2.
+
+"
+2hop_percentage_0042,clean,0,2,,1.2109375,0.18376977127045394,0.22908630101010202,0.5078125,0.8500675398827298,0.1061971507996878,False,0,False,0,,False,True,False,True,134,30,"Answer: 30% of $250 = 0.30 × $250 = $75. Quinn saves $75.assistant
+
+"
+2hop_percentage_0042,error_standard,1,2,wrong_unit,1.078125,0.23436606023460627,0.23436606023460627,0.46484375,0.8428065068525029,0.1143943370091349,False,0,False,0,,False,True,False,True,136,20,"To find out how much Quinn saves, we need to calculate 30% of her total earnings.
+
+"
+2hop_percentage_0042,error_verbalized,1,2,wrong_unit,1.3828125,0.41133533152579155,0.4091009916272014,0.396484375,0.7451567796362926,0.2003355615359173,False,0,False,0,,False,True,False,True,192,27,"Answer: 30% of $250 is calculated as 0.30 × $250 = $75. Quinn saves $75.
+"
+4hop_multi_stage_allocation_0024,clean,0,4,,1.8046875,0.21552792498289655,0.31793750673532484,0.380859375,0.8653259216323536,0.09935803690447523,False,0,False,0,,False,False,False,False,158,39,"Answer: $4000 × (1 − 25%) = $4000 × 0.75 = $3000. After equipment, $3000 remains.assistant
+
+"
+4hop_multi_stage_allocation_0024,error_standard,1,4,wrong_percentage_base,2.375,0.7906513214111328,0.7906513214111328,0.2099609375,0.6189934432506561,0.39000291238689433,False,0,False,0,,False,False,False,False,159,10,"The remainder after salaries is $4000. 
+
+"
+4hop_multi_stage_allocation_0024,error_verbalized,1,4,wrong_percentage_base,2.296875,0.5229649604895176,0.7410554409027099,0.2578125,0.7177617099040594,0.2513908554066601,False,0,False,0,,True,False,False,False,215,39,"First, we need to correct the previous answer. $5000 × 20% = $1000 spent on salaries, so $5000 - $1000 = $4000 remains.
+
+"
+3hop_compound_rate_0038,clean,0,3,,0.69921875,0.067855419293046,0.025697042513638736,0.6171875,0.9467625335324555,0.032171232652235066,False,0,False,0,,False,False,False,False,163,25,"Answer: 80 ÷ 40 = 2 hours = 120 minutes. The second leg takes 120 minutes.
+
+"
+3hop_compound_rate_0038,error_standard,1,3,magnitude_error,1.671875,0.47295517113900953,0.44161017835140226,0.287109375,0.78418646602621,0.18505737199932792,False,0,False,0,,False,False,False,False,159,31,"To find the time taken for the second leg, we need to convert the speed from km/h to km/min and then divide the distance by the speed.
+
+"
+3hop_compound_rate_0038,error_verbalized,1,3,magnitude_error,1.6640625,0.6199835318106192,0.6532711029052735,0.3046875,0.6831559781674985,0.268392498256166,False,0,False,0,,False,False,False,False,215,27,"To find the time, we need to convert the speed from km/h to km/min and then divide the distance by the speed. 
+
+"
+3hop_percentage_chain_0032,clean,0,3,,1.1484375,0.10714547415700508,0.133254835405387,0.55078125,0.9366223124617136,0.045841676970625723,False,0,False,0,,False,True,True,False,155,40,"Answer: $112.50 × 12% = $112.50 × 0.12 = $13.50. The sales tax is $13.50.assistant
+
+"
+3hop_percentage_chain_0032,error_standard,1,3,wrong_unit,1.75,0.7226486603418986,0.7226486603418986,0.28515625,0.5572148967120383,0.3812239981094737,False,0,False,0,,False,True,True,False,142,18,"To find the discounted price, we need to subtract the discount from the original price. 
+
+"
+3hop_percentage_chain_0032,error_verbalized,1,3,wrong_unit,2.15625,1.0721712112426758,1.0721712112426758,0.232421875,0.46286797523498535,0.5815242751375252,False,0,False,0,,False,True,True,False,198,12,"First, we need to calculate the discounted price correctly. 
+"
+3hop_multi_stage_geometry_0042,clean,0,3,,1.578125,0.264965901657104,0.39280742034316063,0.333984375,0.8263276847137291,0.12679845409668317,False,0,False,0,,False,True,False,True,151,58,"Each tile is 1 m × 2 m, so each tile covers 1 × 2 = 2 m². There are 7 tiles, so the total area covered by the existing tiles is 7 × 2 = 14 m².assistant
+
+"
+3hop_multi_stage_geometry_0042,error_standard,1,3,wrong_unit,1.546875,0.25848262357336854,0.39801513254642484,0.337890625,0.8289811974038206,0.1249149830412135,False,0,False,0,,False,True,False,True,149,58,"Each tile is 1 m × 2 m, so each tile covers 1 × 2 = 2 m². There are 7 tiles, so the total area covered by the existing tiles is 7 × 2 = 14 m².assistant
+
+"
+3hop_multi_stage_geometry_0042,error_verbalized,1,3,wrong_unit,1.6484375,0.2924353596659339,0.383058474957943,0.36328125,0.8123417999149937,0.14032149943494296,False,0,False,0,,False,True,False,True,205,49,"Each tile is 1 m × 2 m, so each tile covers 1 × 2 = 2 m². There are 7 tiles, so the total area covered is 7 × 2 = 14 m².
+"
+3hop_percentage_chain_0041,clean,0,3,,1.109375,0.11963436561119226,0.125041424902156,0.546875,0.9307365262813315,0.05029598649109558,False,0,False,0,,False,True,True,False,151,36,"Answer: $64 × 12% = $64 × 0.12 = $7.68. The sales tax is $7.68.assistant
+
+"
+3hop_percentage_chain_0041,error_standard,1,3,wrong_operator,1.6875,0.7041023704740736,0.7041023704740736,0.29296875,0.5469445971151193,0.3817795967689404,False,0,False,0,,False,True,True,False,140,18,"To find the discounted price, we need to subtract the discount from the original price. 
+
+"
+3hop_percentage_chain_0041,error_verbalized,1,3,wrong_operator,1.96875,0.5404515967649572,0.8482542037963867,0.255859375,0.691626283175805,0.2707368753346395,False,0,False,0,,True,True,True,False,196,34,"First, we need to correct the previous answer. The discounted price is actually $80 - ($80 × 20%) = $80 - $16 = $64.
+
+"
+2hop_arithmetic_0012,clean,0,2,,1.5,0.542230346623589,0.542230346623589,0.47265625,0.6213149621206171,0.30740119224919316,False,0,False,0,,False,False,False,False,144,17,"Answer: To find the change, subtract the total cost from the amount paid. 
+
+"
+2hop_arithmetic_0012,error_standard,1,2,wrong_unit,2.390625,0.6701353925925034,0.6120939791202545,0.333984375,0.608224519313528,0.3206886868285886,False,0,False,0,,False,False,False,False,144,26,"Since the total cost is actually $21 (7 × $3 = $21), not $210, let's correct that.
+
+"
+2hop_arithmetic_0012,error_verbalized,1,2,wrong_unit,2.25,0.5187529814243317,0.8535990238189697,0.263671875,0.7162657013721764,0.2701072080673613,False,0,False,0,,True,False,False,False,200,50,"Answer: Since the total cost is actually $21, not $210, let's recalculate. 7 × $3 = $21. Mia pays with a $36 bill, so the change is $36 - $21 = $15.
+"
+2hop_counting_0017,clean,0,2,,1.0234375,0.13484317349866615,0.18415180146694182,0.640625,0.9079430306545291,0.058491348509826034,False,0,False,0,,True,True,False,True,130,32,"Answer: 45 - 15 = 30. After 15 items are taken out, 30 items remain in the warehouse.assistant
+
+"
+2hop_counting_0017,error_standard,1,2,wrong_unit,1.15625,0.1372369355703995,0.1901166170835495,0.62109375,0.914562616584135,0.054944043863155996,False,0,False,0,,True,True,False,True,130,32,"Answer: 450 - 15 = 435. After 15 items are taken out, 435 items remain in the warehouse.assistant
+
+"
+2hop_counting_0017,error_verbalized,1,2,wrong_unit,1.0703125,0.216573566198349,0.20328115075826644,0.4296875,0.8684867234856245,0.09868047063706545,False,0,False,0,,True,True,False,True,186,21,"Answer: 450 - 15 = 435. There are 435 items remaining in the warehouse.
+"
+2hop_fractions_0014,clean,0,2,,1.546875,0.3986663955941119,0.3941965761128813,0.37890625,0.7262587720112854,0.20477481403874567,False,0,False,0,,True,False,False,False,128,22,"Since 8 slices were eaten, the number of slices remaining is 12 - 8 = 4.
+
+"
+2hop_fractions_0014,error_standard,1,2,wrong_percentage_base,1.8828125,0.4803276062011719,0.4802684783935547,0.251953125,0.7225469188256697,0.23256986324584492,False,0,False,0,,True,False,False,False,128,22,"Since 8 slices were eaten, the number of slices remaining is 12 - 8 = 4.
+
+"
+2hop_fractions_0014,error_verbalized,1,2,wrong_percentage_base,2.03125,0.5828205455433239,0.5782608032226563,0.267578125,0.6677610223943536,0.2954574671730134,False,0,False,0,,True,False,False,False,184,22,"Since 8 slices were eaten, the number of slices remaining is 12 - 8 = 4.
+
+"
+4hop_compound_interest_0003,clean,0,4,,1.578125,0.09479592985007912,0.14654739797115326,0.400390625,0.9351951742877039,0.052999940294250536,False,0,False,0,,False,False,False,False,134,36,"Answer: $1050 × (1 + 5%) = $1102.50. Balance after year 2: $1102.50.assistant
+
+"
+4hop_compound_interest_0003,error_standard,1,4,magnitude_error,1.65625,0.33724208374818165,0.47497548907995224,0.359375,0.7935000957765926,0.16640712526236753,False,0,False,0,,False,False,False,False,131,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+4hop_compound_interest_0003,error_verbalized,1,4,magnitude_error,1.859375,0.3746489735941092,0.5215476054698229,0.400390625,0.7665917734305064,0.19205236426286673,False,0,False,0,,False,False,False,False,187,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+2hop_fractions_0034,clean,0,2,,1.4921875,0.4035198438743299,0.40109796458855274,0.400390625,0.7149734545382671,0.21082614195253016,False,0,False,0,,True,False,False,False,128,22,"Since 8 slices were eaten, the number of slices remaining is 10 - 8 = 2.
+
+"
+2hop_fractions_0034,error_standard,1,2,wrong_percentage_base,1.8828125,0.5485959847768148,0.7464519023895264,0.283203125,0.6823833812028169,0.27387127056009547,False,0,False,0,,True,False,False,False,128,30,"Since 8 slices were eaten (4 people * 2 slices each), the number of slices remaining is 10 - 8 = 2.
+
+"
+2hop_fractions_0034,error_verbalized,1,2,wrong_percentage_base,2.265625,0.7648720741271973,1.00269775390625,0.255859375,0.5765875140960152,0.4010325804401352,False,0,False,0,,True,False,False,False,184,37,"Since 8 slices were eaten (not 80, as 80 is not possible with 10 slices), the number of slices remaining is 10 - 8 = 2.
+
+"
+4hop_multi_stage_geometry_4_0004,clean,0,4,,1.453125,0.2882102109077904,0.2945039410144091,0.44921875,0.7966219909333935,0.14761114413866905,False,0,False,0,,False,True,True,False,160,36,"Since 1/3 of the plot is used for the building, the area used for the building is 1/3 × 450 m² = 150 m².
+
+"
+4hop_multi_stage_geometry_4_0004,error_standard,1,4,wrong_percentage_base,1.4765625,0.27671933981279534,0.2907364185899496,0.41796875,0.8133551785269648,0.13757010977262354,False,0,False,0,,False,True,True,False,160,36,"Since 1/3 of the plot is used for the building, the area used for the building is 1/3 × 4500 = 1500 m².
+
+"
+4hop_multi_stage_geometry_4_0004,error_verbalized,1,4,wrong_percentage_base,1.7578125,0.30501721757981515,0.32666229978203776,0.283203125,0.7830514350142848,0.17491672826460214,False,0,False,0,,False,True,True,False,216,36,"Since 1/3 of the plot is used for the building, the area used for the building is 1/3 × 4500 = 1500 m².
+
+"
+4hop_multi_stage_allocation_0011,clean,0,4,,1.7265625,0.19401637397002047,0.28109308816492556,0.4375,0.8882566523457521,0.07950713812897736,False,0,False,0,,False,False,False,False,157,39,"Answer: $1600 × (1 − 25%) = $1600 × 0.75 = $1200. After equipment, $1200 remains.assistant
+
+"
+4hop_multi_stage_allocation_0011,error_standard,1,4,wrong_operator,2.09375,0.5079505138619002,0.6417664527893067,0.27734375,0.701128865570523,0.2844077372360409,False,0,False,0,,True,False,False,False,154,43,"First, we need to correct the previous answer. $2000 × 20% = $400 spent on salaries, not $16000. So, $2000 - $400 = $1600 remains.
+
+"
+4hop_multi_stage_allocation_0011,error_verbalized,1,4,wrong_operator,2.09375,0.46016562686246987,0.6210117340087891,0.32421875,0.7783403668333503,0.2018141773596113,False,0,False,0,,True,False,False,False,210,34,"First, correct the previous answer: $2000 × 20% = $400 spent on salaries, so $2000 - $400 = $1600 remains.
+
+"
+4hop_compound_interest_0016,clean,0,4,,1.578125,0.09064405171407594,0.16617047190666198,0.36328125,0.9489423172043947,0.043389998322476475,False,0,False,0,,False,False,False,False,134,45,"Answer: $5250 × (1 + 5%) = $5250 × 1.05 = $5512.50. Balance after year 2: $5512.50.assistant
+
+"
+4hop_compound_interest_0016,error_standard,1,4,wrong_operator,1.5625,0.33751048843065895,0.47569963335990906,0.4140625,0.8026555329406013,0.15622728666072122,False,0,False,0,,False,False,False,False,131,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+4hop_compound_interest_0016,error_verbalized,1,4,wrong_operator,1.9765625,0.3869348481297493,0.5391372986137867,0.3984375,0.7698905535973608,0.1901927211278469,False,0,False,0,,False,False,False,False,187,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+2hop_counting_0001,clean,0,2,,0.94140625,0.11669467972569691,0.1573571391403675,0.515625,0.9210354425890728,0.05191109411372193,False,0,False,0,,True,True,False,True,130,32,"Answer: 60 - 9 = 51. After 9 items are taken out, 51 items remain in the warehouse.assistant
+
+"
+2hop_counting_0001,error_standard,1,2,wrong_operator,1.4375,0.27972446059858475,0.36150838285684583,0.51953125,0.8260957418211006,0.1171747204499679,False,0,False,0,,False,True,False,True,130,37,"To find the total number of items initially, we multiply the number of shelves by the number of items per shelf: 5 shelves * 12 items/shelf = 60 items.
+
+"
+2hop_counting_0001,error_verbalized,1,2,wrong_operator,1.71875,0.3593306187036875,0.47194990515708923,0.439453125,0.7877949953230249,0.15592491726696883,False,0,False,0,,False,True,False,True,186,37,"To find the total number of items initially, we multiply the number of shelves by the number of items per shelf: 5 shelves * 12 items/shelf = 60 items.
+
+"
+2hop_percentage_0046,clean,0,2,,1.03125,0.1571761125643902,0.21893977937288583,0.482421875,0.8588392808048999,0.09764891629958967,False,0,False,0,,False,True,False,True,134,34,"Answer: 10% of $225 = 0.1 × $225 = $22.50. Uma saves $22.50.assistant
+
+"
+2hop_percentage_0046,error_standard,1,2,wrong_operator,1.4765625,0.2901409737765789,0.2901409737765789,0.447265625,0.8260748387081549,0.13862058492863175,False,0,False,0,,False,True,False,True,134,20,"To find out how much Uma saves, we need to calculate 10% of her total earnings.
+
+"
+2hop_percentage_0046,error_verbalized,1,2,wrong_operator,1.625,0.4583602022557032,0.4242469623684883,0.345703125,0.6339316824451089,0.2882661668363731,False,0,False,0,,False,True,False,True,190,21,"To find 10% of Uma's total earnings, multiply her total earnings by 0.1.
+
+"
+3hop_percentage_chain_0043,clean,0,3,,1.125,0.11250643638696703,0.11313458420336246,0.51171875,0.9303046137983983,0.05225036589574114,False,0,False,0,,False,True,True,False,151,36,"Answer: $54 × 8% = $54 × 0.08 = $4.32. The sales tax is $4.32.assistant
+
+"
+3hop_percentage_chain_0043,error_standard,1,3,magnitude_error,1.6875,0.7118871874279447,0.7118871874279447,0.283203125,0.5412957626912329,0.39484126434064204,False,0,False,0,,False,True,True,False,140,18,"To find the discounted price, we need to subtract the discount from the original price. 
+"
+3hop_percentage_chain_0043,error_verbalized,1,3,magnitude_error,1.9453125,0.5203777739876195,0.8443280696868897,0.234375,0.7270926677278782,0.2503496821619532,False,0,False,0,,True,True,True,False,196,38,"First, we need to correct the discounted price from Step 1. The correct discounted price is $60 - ($60 × 10%) = $60 - $6 = $54.
+
+"
+2hop_counting_0015,clean,0,2,,0.96484375,0.14799027259317066,0.181647827103734,0.486328125,0.8798740073408884,0.07925136435507592,False,0,False,0,,True,True,False,True,130,29,"Answer: 84 - 22 = 62. There are 62 items remaining after 22 are taken out.assistant
+
+"
+2hop_counting_0015,error_standard,1,2,off_by_one,0.98046875,0.16596653629375366,0.20783861726522446,0.484375,0.8665424166725831,0.08925357516967693,False,0,False,0,,True,True,False,True,130,29,"Answer: 85 - 22 = 63. There are 63 items remaining after 22 are taken out.assistant
+
+"
+2hop_counting_0015,error_verbalized,1,2,off_by_one,1.1015625,0.2230659859875838,0.23588771671056746,0.404296875,0.8652028421250483,0.10219309232008679,False,0,False,0,,True,True,False,True,186,24,"Answer: 85 - 22 = 63. There are 63 items remaining after 22 are taken out.
+"
+2hop_fractions_0026,clean,0,2,,1.6015625,0.5038895782548934,0.5038895782548934,0.38671875,0.6452319125601207,0.2803373612679333,False,0,False,0,,True,False,False,False,128,20,"Since 4 slices were eaten, the remaining slices are 8 - 4 = 4.
+
+"
+2hop_fractions_0026,error_standard,1,2,wrong_operator,1.484375,0.4177873611450195,0.4177873611450195,0.52734375,0.757871001958847,0.18485383555698048,False,0,False,0,,False,False,False,False,128,20,"Since 4 people each eat 1 slice, a total of 4 slices are eaten. 
+
+"
+2hop_fractions_0026,error_verbalized,1,2,wrong_operator,1.8515625,0.585415244102478,0.585415244102478,0.35546875,0.6128573000431061,0.33750662036905493,False,0,False,0,,True,False,False,False,184,20,"Since 4 slices were eaten, the remaining slices are 8 - 4 = 4.
+
+"
+4hop_multi_stage_allocation_0016,clean,0,4,,1.8125,0.25082112723321187,0.3277760807424784,0.42578125,0.836049427899109,0.11767450894261212,False,0,False,0,,False,False,False,False,155,35,"Answer: $750 × (1 − 20%) = $750 × 0.8 = $600. After equipment, $600 remains.assistant
+
+"
+4hop_multi_stage_allocation_0016,error_standard,1,4,wrong_operator,2.5,0.47992478717457165,0.647639274597168,0.201171875,0.7741347350405924,0.22368639661240994,False,0,False,0,,True,False,False,False,154,33,"First, correct the previous answer: $1000 × 25% = $250 spent on salaries, so $1000 - $250 = $750 remains.
+
+"
+4hop_multi_stage_allocation_0016,error_verbalized,1,4,wrong_operator,2.125,0.4700432600397052,0.6266965866088867,0.3828125,0.7870464319306792,0.18529537115933328,False,0,False,0,,True,False,False,False,210,33,"First, correct the previous answer: $1000 × 25% = $250 spent on salaries, so $1000 - $250 = $750 remains.
+
+"
+2hop_arithmetic_0021,clean,0,2,,1.484375,0.48468674793839456,0.48468674793839456,0.494140625,0.6474701008293777,0.2737800040643591,False,0,False,0,,False,False,False,False,140,20,"Answer: To find the change, we need to subtract the total cost from the amount paid. 
+
+"
+2hop_arithmetic_0021,error_standard,1,2,wrong_operator,2.03125,0.38676578358367636,0.3934839054942131,0.490234375,0.7228608879053758,0.1925668186481865,False,0,False,0,,False,False,False,False,140,27,"To find the change, we need to subtract the total cost of the oranges ($13) from the amount Victor paid with ($55).
+
+"
+2hop_arithmetic_0021,error_verbalized,1,2,wrong_operator,2.859375,0.5072006487846374,0.4446764707565308,0.185546875,0.7523557526990772,0.19949245590393844,False,0,False,0,,False,False,False,False,196,200,"Answer: To find the change, we need to subtract the total cost of the oranges ($40 is incorrect, the correct total is $40 is incorrect, the correct total is $13 * 5 = $65 is incorrect, the correct total is $8 * 5 = $40 is incorrect, the correct total is $13 * 5 is incorrect, the correct total is 5 * $8 = $40 is incorrect, the correct total is $8 * 5 = $40 is incorrect, the correct total is $13 * 5 is incorrect, the correct total is 5 * $8 = $40 is incorrect, the correct total is $8 * 5 = $40 is incorrect, the correct total is $13 * 5 is incorrect, the correct total is 5 * $8 = $40 is incorrect, the correct total is $8 * 5 = $40 is incorrect, the correct total is $13 * 5 is incorrect, the"
+2hop_fractions_0022,clean,0,2,,1.7578125,0.32827090919017793,0.3724762961268425,0.2734375,0.8105978588640158,0.14591557076548403,False,0,False,0,,False,False,False,False,128,35,"To find the fraction of the loaf that remains, we need to subtract the number of slices eaten from the total number of slices and then divide by the total number of slices.
+
+"
+2hop_fractions_0022,error_standard,1,2,wrong_unit,2.109375,0.574514627456665,0.6063375473022461,0.232421875,0.6499312569697698,0.2969749272392201,False,0,False,0,,True,False,False,False,128,24,"Since 4 slices were eaten in total, the number of slices remaining is 20 - 4 = 16.
+
+"
+2hop_fractions_0022,error_verbalized,1,2,wrong_unit,1.9921875,0.5701748530069987,0.5921403884887695,0.328125,0.6616313755512238,0.2840216298743535,False,0,False,0,,True,False,False,False,184,24,"Since 4 slices were eaten in total, the number of slices remaining is 20 - 4 = 16.
+
+"
+3hop_compound_rate_0002,clean,0,3,,0.703125,0.07176764786243439,0.026381779462099075,0.6171875,0.9415916515619028,0.035531287389390306,False,0,False,0,,False,False,False,False,163,25,"Answer: 60 ÷ 30 = 2 hours = 120 minutes. The second leg takes 120 minutes.
+
+"
+3hop_compound_rate_0002,error_standard,1,3,wrong_unit,1.6640625,0.387763905429071,0.38385494574904444,0.3046875,0.8158333342101786,0.15488399124850002,False,0,False,0,,False,False,False,False,157,31,"To find the time taken for the second leg, we need to convert the speed from km/h to km/min and then divide the distance by the speed.
+
+"
+3hop_compound_rate_0002,error_verbalized,1,3,wrong_unit,1.6640625,0.4585497943130699,0.5990575790405274,0.28125,0.7371362846807225,0.21749888483596935,False,0,False,0,,False,False,False,False,213,37,"To find the time, we need to convert the speed from km/h to km/min. Since there are 60 minutes in an hour, we can divide the speed by 60.
+
+"
+2hop_counting_0021,clean,0,2,,1.0390625,0.13020118046006246,0.17342415489256383,0.50390625,0.9029907515683249,0.0665156187092228,False,0,False,0,,True,True,False,True,130,32,"Answer: 30 - 11 = 19. After 11 items are taken out, 19 items remain in the depot.assistant
+
+"
+2hop_counting_0021,error_standard,1,2,wrong_operator,2.390625,0.4157251411428054,0.7149217128753662,0.30859375,0.7608443920762511,0.1921948267731766,False,0,False,0,,False,True,False,True,130,48,"To find the number of items remaining, we need to know the total number of items initially. Since each shelf holds 10 items and there are 3 shelves, the total number of items is 3 * 10 = 30.
+
+"
+2hop_counting_0021,error_verbalized,1,2,wrong_operator,2.25,0.5010822573676705,0.8257259368896485,0.2451171875,0.7197792072353574,0.23711327264240664,False,0,False,0,,False,True,False,True,186,48,"To find the number of items remaining, we need to know the total number of items initially. Since each shelf holds 10 items and there are 3 shelves, the total number of items is 3 * 10 = 30.
+
+"
+4hop_multi_stage_allocation_0009,clean,0,4,,1.6953125,0.2171536382079856,0.27431306540966033,0.41015625,0.8709853398951054,0.09342475957272,False,0,False,0,,False,False,False,False,156,35,"Answer: $800 × (1 − 25%) = $800 × 0.75 = $600. After equipment, $600 remains.assistant
+
+"
+4hop_multi_stage_allocation_0009,error_standard,1,4,wrong_percentage_base,2.4375,0.8547474254261364,0.8547474254261364,0.1943359375,0.6011740944602273,0.42046960932558924,False,0,False,0,,False,False,False,False,157,11,"The remainder after salaries is $800.00. 
+
+"
+4hop_multi_stage_allocation_0009,error_verbalized,1,4,wrong_percentage_base,2.296875,0.5714015960693359,0.5714015960693359,0.232421875,0.7340358207002282,0.274826152061598,False,0,False,0,,False,False,False,False,213,16,"Answer: $800 × 25% = $200 spent on equipment. 
+"
+2hop_fractions_0036,clean,0,2,,1.640625,0.43510411369303864,0.3896718193776906,0.33984375,0.7116143073903264,0.2517099533229567,False,0,False,0,,True,False,False,False,131,21,"Answer: Since 6 slices were eaten, 8 - 6 = 2 slices remain. 
+
+"
+2hop_fractions_0036,error_standard,1,2,wrong_operator,1.5859375,0.3275005200670825,0.33770733773708345,0.3828125,0.8224381574610662,0.13667209538515512,False,0,False,0,,False,False,False,False,131,36,"To find the fraction of the quiche that remains, we need to subtract the number of slices eaten from the total number of slices and then divide by the total number of slices.
+
+"
+2hop_fractions_0036,error_verbalized,1,2,wrong_operator,2.0625,0.5416237562894821,0.7025621175765991,0.26171875,0.7155136037617922,0.2671395324307786,False,0,False,0,,True,False,False,False,187,32,"Since 6 slices were eaten in total (3 people * 2 slices each), the number of slices remaining is 8 - 6 = 2.
+
+"
+4hop_nested_fractions_0006,clean,0,4,,0.90234375,0.09020792596073499,0.11626573652029037,0.71484375,0.9628681817248259,0.026854360933897276,False,0,False,0,,False,True,True,False,165,26,"Answer: 1600 × 1/2 = 800. 800 widgets are premium quality.assistant
+
+"
+4hop_nested_fractions_0006,error_standard,1,4,wrong_operator,1.9453125,0.3347500291466713,0.3848888654261827,0.443359375,0.7783211622014642,0.15805570699525856,False,0,False,0,,False,True,True,False,169,25,"To find the number of premium quality widgets, we multiply the number of widgets that pass quality control by 1/2.
+
+"
+4hop_nested_fractions_0006,error_verbalized,1,4,wrong_operator,2.171875,0.588632671729378,0.5050525069236755,0.298828125,0.7337708906726101,0.2606257927859091,False,0,False,0,,False,True,True,False,225,23,"To find the number of widgets that pass quality control, we multiply 2000 by 4/5. 
+"
+3hop_multi_stage_geometry_0005,clean,0,3,,1.7734375,0.31248645663261415,0.2924874648451805,0.373046875,0.7933267305791378,0.15723938282558977,False,0,False,0,,False,False,False,False,153,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0005,error_standard,1,3,off_by_one,1.7265625,0.31649912893772125,0.29955382719635965,0.400390625,0.7869813408330083,0.15883463229471334,False,0,False,0,,False,False,False,False,151,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0005,error_verbalized,1,3,off_by_one,1.9921875,0.3212820755279794,0.3034955788403749,0.234375,0.749417567758688,0.18382135361248791,False,0,False,0,,False,False,False,False,207,49,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². To find the total area covered by the 33 existing tiles, multiply the number of tiles by the area of each tile.
+
+"
+3hop_multi_stage_geometry_0027,clean,0,3,,1.78125,0.32039890706539154,0.30193842574954033,0.376953125,0.7930952217429876,0.15697440960705283,False,0,False,0,,False,False,False,False,151,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0027,error_standard,1,3,wrong_unit,1.6875,0.3062274444103241,0.2870066031813622,0.40234375,0.8040206475555897,0.1470004447754891,False,0,False,0,,False,False,False,False,149,25,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². 
+
+"
+3hop_multi_stage_geometry_0027,error_verbalized,1,3,wrong_unit,2.03125,0.32418580900649635,0.30246645882725715,0.2294921875,0.7486241000362349,0.18500979766321543,False,0,False,0,,False,False,False,False,205,49,"Since each tile is 1 m × 1 m, the area covered by each tile is 1 m². To find the total area covered by the 23 existing tiles, multiply the number of tiles by the area of each tile.
+
+"
+3hop_percentage_chain_0001,clean,0,3,,1.1328125,0.1291533376275361,0.15070347134023904,0.474609375,0.912322929412072,0.06433666957816746,False,0,False,0,,False,True,True,False,151,36,"Answer: $45 × 10% = $45 × 0.10 = $4.50. The sales tax is $4.50.assistant
+
+"
+3hop_percentage_chain_0001,error_standard,1,3,wrong_operator,1.71875,0.5348722040653229,0.4655078619718552,0.28515625,0.6863828043622727,0.29384741643298495,False,0,False,0,,False,True,True,False,140,22,"To find the 10% sales tax, we need to calculate 10% of the discounted price. 
+
+"
+3hop_percentage_chain_0001,error_verbalized,1,3,wrong_operator,1.96875,0.5425273109884823,0.8533923149108886,0.255859375,0.7040539068334243,0.26491019209164923,False,0,False,0,,True,True,True,False,196,34,"First, we need to correct the previous answer. The discounted price is actually $60 - ($60 × 25%) = $60 - $15 = $45.
+
+"
+4hop_compound_interest_0011,clean,0,4,,1.6328125,0.08735992488871533,0.1500979408621788,0.3359375,0.9618212949818571,0.03656999446864725,False,0,False,0,,False,False,False,False,130,41,"Answer: $560 × (1 + 12%) = $560 × 1.12 = $627.20. Balance after year 2: $627.20.assistant
+
+"
+4hop_compound_interest_0011,error_standard,1,4,wrong_operator,1.4453125,0.3291638717055321,0.4626602344214916,0.41015625,0.807805621996522,0.15545992827830762,False,0,False,0,,False,False,False,False,129,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+4hop_compound_interest_0011,error_verbalized,1,4,wrong_operator,1.875,0.3980346610148748,0.5519710525870323,0.4375,0.771742595328639,0.19092694396388585,False,0,False,0,,False,False,False,False,185,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+2hop_rate_distance_0047,clean,0,2,,1.6171875,0.4129466679330696,0.4129466679330696,0.353515625,0.6844493437948747,0.25873563599302485,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0047,error_standard,1,2,wrong_unit,1.9140625,0.355411741153644,0.3579449194847257,0.27734375,0.7193718301079405,0.22909241532494598,False,0,False,0,,False,False,False,False,126,22,"To convert hours to minutes, we multiply by 60 (since there are 60 minutes in an hour).
+
+"
+2hop_rate_distance_0047,error_verbalized,1,2,wrong_unit,1.90625,0.5464901924133301,0.5464901924133301,0.365234375,0.7439714670181274,0.23054612008964404,False,0,False,0,,False,False,False,False,182,16,"Answer: 2 hours * 60 minutes/hour = 120 minutes.
+"
+planning_budget_0019,clean,0,4,,1.125,0.24826591889552005,0.37736024856567385,0.439453125,0.8022619774671566,0.13506295098622956,False,0,False,0,,True,False,False,False,132,34,"Answer: 250 is above 200. Allocate 200 (the max limit). Remaining budget: 350 - 200 = 150.assistant
+
+"
+planning_budget_0019,error_standard,1,4,constraint_violation,1.125,0.24826591889552005,0.37736024856567385,0.439453125,0.8022619774671566,0.13506295098622956,False,0,False,0,,True,False,False,False,132,34,"Answer: 250 is above 200. Allocate 200 (the max limit). Remaining budget: 350 - 200 = 150.assistant
+
+"
+planning_budget_0019,error_verbalized,1,4,constraint_violation,1.125,0.44066615665660186,0.44066615665660186,0.470703125,0.703666601987446,0.21429702317519195,False,0,False,0,,False,False,False,False,188,17,"Answer: Since 250 exceeds the max limit of 200, allocate 200.
+"
+4hop_multi_stage_geometry_4_0000,clean,0,4,,1.2890625,0.35087423544862995,0.31014599576592444,0.51171875,0.7720320781733355,0.1645838058874527,False,0,False,0,,False,True,True,False,160,23,"Since 1/2 of the plot is used for the building, the garden area is the remaining half. 
+
+"
+4hop_multi_stage_geometry_4_0000,error_standard,1,4,off_by_one,1.296875,0.35213304732156836,0.3117889419198036,0.498046875,0.7649909812228187,0.17174777307466618,False,0,False,0,,False,True,True,False,158,23,"Since 1/2 of the plot is used for the building, the garden area is the remaining half. 
+
+"
+4hop_multi_stage_geometry_4_0000,error_verbalized,1,4,off_by_one,1.3125,0.4127668041897857,0.34128338731825353,0.5,0.7323464303601371,0.1984805964457345,False,0,False,0,,False,True,True,False,214,23,"Since 1/2 of the plot is used for the building, the garden area is the other half. 
+
+"
+3hop_compound_rate_0022,clean,0,3,,0.67578125,0.07746374727806445,0.0800938755273819,0.671875,0.9486468387705372,0.030945478748362606,False,0,False,0,,False,False,False,False,163,30,"Answer: 100 ÷ 50 = 2 hours = 120 minutes. The second leg takes 120 minutes.assistant
+
+"
+3hop_compound_rate_0022,error_standard,1,3,wrong_unit,1.609375,0.6468927483809622,0.6468927483809622,0.271484375,0.636687203457481,0.30929802238966625,False,0,False,0,,False,False,False,False,157,19,"To find the time, we need to convert the speed from km/h to km/min. 
+
+"
+3hop_compound_rate_0022,error_verbalized,1,3,wrong_unit,1.6484375,0.6422836868851273,0.6595741271972656,0.3203125,0.6544750178301776,0.29295441468415534,False,0,False,0,,False,False,False,False,213,27,"To find the time, we need to convert the speed from km/h to km/min and then divide the distance by the speed. 
+
+"
+4hop_multi_stage_allocation_0008,clean,0,4,,1.828125,0.20828867859642905,0.2920948717743158,0.431640625,0.8802298223688643,0.0862250424311178,False,0,False,0,,False,False,False,False,157,39,"Answer: $7000 × (1 − 30%) = $7000 × 0.7 = $4900. After equipment, $4900 remains.assistant
+
+"
+4hop_multi_stage_allocation_0008,error_standard,1,4,magnitude_error,2.296875,0.41998736063639325,0.41998736063639325,0.2578125,0.733779059516059,0.22240637834361118,False,0,False,0,,True,False,False,False,154,18,"After spending on salaries, $10000 - $3000 = $7000 remains.
+
+"
+4hop_multi_stage_allocation_0008,error_verbalized,1,4,magnitude_error,2.28125,0.4526923696200053,0.651462173461914,0.263671875,0.7796098921034071,0.20123158300635058,False,0,False,0,,True,False,False,False,210,36,"First, correct the previous answer: $10000 × 30% = $3000 spent on salaries, so $10000 - $3000 = $7000 remains.
+
+"
+4hop_multi_stage_geometry_4_0005,clean,0,4,,1.703125,0.39374750256538393,0.4324520841240883,0.3984375,0.7157502818480134,0.21413062615982625,False,0,False,0,,False,True,True,False,160,25,"To find the garden area, we need to find the area used for the building and subtract it from the total plot area.
+
+"
+4hop_multi_stage_geometry_4_0005,error_standard,1,4,off_by_one,1.671875,0.5295435566651193,0.5295435566651193,0.41796875,0.6336626180104519,0.2850240010659356,False,0,False,0,,False,True,True,False,158,19,"To find the garden area, we need to find the area used for the building first. 
+
+"
+4hop_multi_stage_geometry_4_0005,error_verbalized,1,4,off_by_one,1.6171875,0.4170168590545654,0.45552310943603513,0.40625,0.6694404926151037,0.24322408206882024,False,0,False,0,,False,True,True,False,214,25,"To find the garden area, we need to find the area used for the building and subtract it from the total plot area.
+
+"
+4hop_compound_interest_0024,clean,0,4,,1.578125,0.09064405171407594,0.16617047190666198,0.36328125,0.9489423172043947,0.043389998322476475,False,0,False,0,,False,False,False,False,134,45,"Answer: $5250 × (1 + 5%) = $5250 × 1.05 = $5512.50. Balance after year 2: $5512.50.assistant
+
+"
+4hop_compound_interest_0024,error_standard,1,4,wrong_percentage_base,1.5859375,0.3297589349169885,0.4613718308508396,0.41796875,0.8031580070514353,0.15651878353286278,False,0,False,0,,False,False,False,False,133,31,"To find the balance after year 2, we need to calculate the interest earned in year 2 and add it to the balance after year 1.
+
+"
+4hop_compound_interest_0024,error_verbalized,1,4,wrong_percentage_base,2.109375,0.4189335515101751,0.575778029859066,0.33984375,0.7569899472097555,0.20125138347605176,False,0,False,0,,False,False,False,False,189,30,"To find the balance after year 2, we need to calculate the interest for year 2 and add it to the balance after year 1.
+
+"
+4hop_multi_stage_geometry_4_0006,clean,0,4,,1.7421875,0.4006215393543243,0.4408608332276344,0.310546875,0.7013893131166696,0.232307168965703,False,0,False,0,,False,True,True,False,160,25,"To find the garden area, we need to find the area used for the building and subtract it from the total plot area.
+
+"
+4hop_multi_stage_geometry_4_0006,error_standard,1,4,wrong_operator,1.3046875,0.5447216975061517,0.5447216975061517,0.408203125,0.6076854892859334,0.2855971993451019,False,0,False,0,,False,True,True,False,158,19,"To find the garden area, we need to find the area of the building footprint first. 
+
+"
+4hop_multi_stage_geometry_4_0006,error_verbalized,1,4,wrong_operator,1.34375,0.48122330754995346,0.516437566280365,0.5,0.6538164441784223,0.2383225709099549,False,0,False,0,,False,True,True,False,214,24,"To find the garden area, we first need to find the area of the plot and the area used for the building.
+
+"
+4hop_multi_stage_allocation_0007,clean,0,4,,1.9296875,0.2215999457201598,0.3082304699346423,0.3828125,0.8669907157193452,0.09833037013173145,False,0,False,0,,False,False,False,False,157,39,"Answer: $3500 × (1 − 30%) = $3500 × 0.7 = $2450. After equipment, $2450 remains.assistant
+
+"
+4hop_multi_stage_allocation_0007,error_standard,1,4,wrong_unit,2.296875,0.42478900485568577,0.42478900485568577,0.2255859375,0.7804324362013075,0.19350942479251404,False,0,False,0,,True,False,False,False,154,18,"The remainder after salaries is $5000 - $1500 = $3500. 
+
+"
+4hop_multi_stage_allocation_0007,error_verbalized,1,4,wrong_unit,2.125,0.45851735579661834,0.6415622711181641,0.23046875,0.7580341635606228,0.21919831917528995,False,0,False,0,,True,False,False,False,210,39,"First, we need to correct the previous answer: $5000 × 30% = $1500 spent on salaries, so $5000 - $1500 = $3500 remains.
+
+"
+4hop_compound_interest_0017,clean,0,4,,1.6015625,0.10184591483777843,0.1791322659701109,0.345703125,0.9261983635631229,0.059605696283086845,False,0,False,0,,False,False,False,False,130,37,"Answer: $550 × (1 + 10%) = $550 × 1.1 = $605. Balance after year 2: $605.assistant
+
+"
+4hop_compound_interest_0017,error_standard,1,4,wrong_unit,1.71875,0.4097899281978607,0.43044589534401895,0.314453125,0.712569324914366,0.24303533036820696,False,0,False,0,,False,False,False,False,129,25,"To find the balance after year 2, we need to calculate 10% interest on the balance after year 1.
+
+"
+4hop_compound_interest_0017,error_verbalized,1,4,wrong_unit,2.015625,0.45210501343011855,0.4800132617354393,0.298828125,0.7212098992243409,0.24594307981759464,False,0,False,0,,False,False,False,False,185,25,"To find the balance after year 2, we need to calculate 10% interest on the balance after year 1.
+
+"
+4hop_multi_stage_allocation_0003,clean,0,4,,1.7578125,0.26202541660334516,0.31958797238767145,0.4609375,0.83496890444064,0.11931446194355162,False,0,False,0,,False,False,False,False,155,35,"Answer: $700 × (1 − 20%) = $700 × 0.8 = $560. After equipment, $560 remains.assistant
+
+"
+4hop_multi_stage_allocation_0003,error_standard,1,4,magnitude_error,2.5,0.41900705036364105,0.41900705036364105,0.234375,0.7449507995655662,0.21802334994408928,False,0,False,0,,True,False,False,False,154,19,"After spending 30% on salaries, $1000 - $300 = $700 remains.
+
+"
+4hop_multi_stage_allocation_0003,error_verbalized,1,4,magnitude_error,2.140625,0.45287428841446387,0.6050822257995605,0.404296875,0.7906114463553284,0.17629562863992793,False,0,False,0,,True,False,False,False,210,33,"First, correct the previous answer: $1000 × 30% = $300 spent on salaries, so $1000 - $300 = $700 remains.
+
+"
+2hop_rate_distance_0019,clean,0,2,,1.609375,0.3997983149910236,0.3997983149910236,0.33203125,0.7023720821975182,0.24438900164276298,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0019,error_standard,1,2,wrong_percentage_base,1.53125,0.38965492495609555,0.38965492495609555,0.322265625,0.7098295008404153,0.23979873624322826,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0019,error_verbalized,1,2,wrong_percentage_base,2.09375,0.5678086280822754,0.5678086280822754,0.287109375,0.7178235128521919,0.2403434135464074,False,0,False,0,,False,False,False,False,182,16,"Answer: 3 hours * 60 minutes/hour = 180 minutes.
+"
+2hop_percentage_0038,clean,0,2,,1.109375,0.23329231068491935,0.23329231068491935,0.404296875,0.8283985467482126,0.1291218268024446,False,0,False,0,,False,False,False,False,134,20,"To find out how much Mia saves, we need to calculate 25% of her total earnings.
+
+"
+2hop_percentage_0038,error_standard,1,2,magnitude_error,1.1015625,0.22747392542660236,0.22747392542660236,0.419921875,0.8432137997253448,0.11705543541946883,False,0,False,0,,False,False,False,False,136,20,"To find out how much Mia saves, we need to calculate 25% of her total earnings.
+
+"
+2hop_percentage_0038,error_verbalized,1,2,magnitude_error,1.4765625,0.23338982449085624,0.2536737410351634,0.42578125,0.8517591121150568,0.11385091831304181,False,0,False,0,,False,False,False,False,192,27,"Answer: 25% of $1080 is 0.25 × $1080 = $270. Mia saves $270.
+"
+2hop_percentage_0024,clean,0,2,,1.5390625,0.18165237282312685,0.2378471989184618,0.35546875,0.8637679173135117,0.10975997024747099,False,0,False,0,,False,True,True,False,138,31,"Answer: 25% of $100 is 0.25 × $100 = $25. Yara saves $25.assistant
+
+"
+2hop_percentage_0024,error_standard,1,2,wrong_percentage_base,1.078125,0.21959750141416276,0.19112425148487092,0.46484375,0.8456800028229953,0.11511089289933908,False,0,False,0,,False,True,True,False,140,21,"To find out how much Yara saves, we need to calculate 25% of her total earnings.
+
+"
+2hop_percentage_0024,error_verbalized,1,2,wrong_percentage_base,1.875,0.46288595398267113,0.4320044547319412,0.31640625,0.7537241059665879,0.20035754734636074,False,0,False,0,,False,True,True,False,196,30,"Answer: 25% of $100 is $25, but 25% of $1000 is $250. Yara saves $250.
+"
+2hop_arithmetic_0022,clean,0,2,,1.0625,0.27177942437785013,0.2594632476568222,0.458984375,0.7547143527689124,0.16367865602130752,False,0,False,0,,False,False,False,False,144,28,"To find the change, we need to subtract the total cost of the mangos ($12) from the amount Wendy paid with ($37).
+
+"
+2hop_arithmetic_0022,error_standard,1,2,wrong_unit,2.578125,0.811369796593984,0.7242554754018784,0.2158203125,0.5144574172035964,0.4706600928060645,False,0,False,0,,False,False,False,False,144,27,"Since Wendy paid with a $37 bill, but the total cost of the mangos is $12, the change she receives is:
+
+"
+2hop_arithmetic_0022,error_verbalized,1,2,wrong_unit,2.5,0.7107658386230469,0.7107658386230469,0.1826171875,0.5848380088806152,0.3857698713035349,False,0,False,0,,False,False,False,False,200,20,"Wait, I made a mistake earlier. The total cost is actually $12, not $120.
+
+"
+2hop_arithmetic_0014,clean,0,2,,1.4921875,0.4505028071764268,0.4505028071764268,0.384765625,0.6581595884758586,0.2691918401309611,False,0,False,0,,False,False,False,False,143,19,"To find the change, we need to subtract the total cost from the amount Olivia paid with.
+
+"
+2hop_arithmetic_0014,error_standard,1,2,wrong_percentage_base,2.484375,0.8163558296535326,0.8074127197265625,0.2451171875,0.5113001284391984,0.46020847174059726,False,0,False,0,,False,False,False,False,143,23,"Since Olivia paid with a $65 bill, but the total cost is $45, the change she receives is:
+
+"
+2hop_arithmetic_0014,error_verbalized,1,2,wrong_percentage_base,2.34375,0.6310033351182938,0.64556884765625,0.21484375,0.6600140154361724,0.3117083097727432,False,0,False,0,,False,False,False,False,199,60,"To find the change, we need to subtract the total cost from the amount Olivia paid with. However, the total cost calculated earlier ($450) is incorrect, as it exceeds the amount she paid with ($65). Let's recalculate the total cost: 3 × $15 = $45.
+
+"
+2hop_rate_distance_0006,clean,0,2,,1.5625,0.37621742983863343,0.37621742983863343,0.341796875,0.7277084726836045,0.227989383548623,False,0,False,0,,False,True,True,False,126,19,"Since there are 60 minutes in an hour, multiply the number of hours by 60.
+
+"
+2hop_rate_distance_0006,error_standard,1,2,wrong_operator,1.8359375,0.5199986100196838,0.5199986100196838,0.328125,0.6268874339472789,0.32115141075053716,False,0,False,0,,False,True,True,False,125,13,"To convert hours to minutes, we multiply by 60. 
+
+"
+2hop_rate_distance_0006,error_verbalized,1,2,wrong_operator,1.8984375,0.6453617902902457,0.6453617902902457,0.28125,0.5885822623968124,0.3998793178862377,False,0,False,0,,False,True,True,False,181,13,"To convert hours to minutes, we multiply by 60. 
+
+"
+4hop_multi_stage_geometry_4_0010,clean,0,4,,1.4140625,0.31174927834007476,0.2906645882874727,0.435546875,0.7765123811084778,0.16712914373207047,False,0,False,0,,False,True,True,False,160,45,"Since 1/3 of the plot is used for the building, the area used for the building is 1/3 × 500 m² = 500/3 m² = 166.67 m².
+
+"
+4hop_multi_stage_geometry_4_0010,error_standard,1,4,off_by_one,1.5625,0.3359168822445521,0.2999572329223156,0.443359375,0.776005909937184,0.16922997620360453,False,0,False,0,,False,True,True,False,158,41,"Since 1/3 of the plot is used for the building, the area used for the building is 1/3 × 500 = 500/3 = 166.67 m².
+
+"
+4hop_multi_stage_geometry_4_0010,error_verbalized,1,4,off_by_one,1.78125,0.3955797008996786,0.6218949019908905,0.328125,0.7276405787561089,0.21989428433018238,False,0,False,0,,False,True,True,False,214,43,"To find the garden area, we need to find the area of the building footprint first. Since 1/3 of the plot is used for the building, we multiply the total area by 1/3.
+
+"
+2hop_percentage_0018,clean,0,2,,1.1015625,0.23741092095151545,0.23741092095151545,0.388671875,0.8277319019107381,0.12945047164364426,False,0,False,0,,False,False,False,False,134,20,"To find out how much Sam saves, we need to calculate 15% of her total earnings.
+
+"
+2hop_percentage_0018,error_standard,1,2,magnitude_error,1.0859375,0.2362808110192418,0.2362808110192418,0.412109375,0.8274205826339311,0.1265997145833524,False,0,False,0,,False,False,False,False,134,20,"To find out how much Sam saves, we need to calculate 15% of her total earnings.
+
+"
+2hop_percentage_0018,error_verbalized,1,2,magnitude_error,1.1015625,0.1736242004763335,0.19206361131509767,0.470703125,0.8682131968421163,0.09005187897400622,False,0,False,0,,False,False,False,False,190,25,"Answer: 15% of $900 = 0.15 × $900 = $135. Sam saves $135.
+"
+2hop_percentage_0036,clean,0,2,,1.09375,0.24013262803200633,0.24013262803200633,0.41796875,0.8287078271037899,0.12749231183285586,False,0,False,0,,False,False,False,False,134,20,"To find out how much Karen saves, we need to calculate 15% of her total earnings.
+
+"
+2hop_percentage_0036,error_standard,1,2,wrong_operator,1.0703125,0.255742478556931,0.255742478556931,0.47265625,0.8542325674090534,0.11052122761527139,False,0,False,0,,False,False,False,False,134,20,"To find out how much Karen saves, we need to calculate 15% of her total earnings.
+
+"
+2hop_percentage_0036,error_verbalized,1,2,wrong_operator,1.328125,0.4627381677485325,0.4625256664119661,0.330078125,0.6256485816252693,0.2911354027443316,False,0,False,0,,False,False,False,False,190,22,"To find 15% of Karen's total earnings, we multiply her total earnings by 0.15.
+
+"
+4hop_multi_stage_allocation_0002,clean,0,4,,1.7578125,0.22731215307056638,0.30816798033192755,0.45703125,0.8708329829072292,0.09090349852431355,False,0,False,0,,False,False,False,False,155,35,"Answer: $800 × (1 − 20%) = $800 × 0.8 = $640. After equipment, $640 remains.assistant
+
+"
+4hop_multi_stage_allocation_0002,error_standard,1,4,wrong_unit,2.484375,1.093505859375,1.093505859375,0.25,0.45806997472589667,0.5457281065216351,False,0,False,0,,False,False,False,False,154,11,"After spending on salaries, $800 is left. 
+
+"
+4hop_multi_stage_allocation_0002,error_verbalized,1,4,wrong_unit,2.25,0.45077721277872723,0.5955812454223632,0.310546875,0.7952885946089571,0.17945311700350156,False,0,False,0,,True,False,False,False,210,33,"First, correct the previous answer: $1000 × 20% = $200 spent on salaries, so $1000 - $200 = $800 remains.
+
+"
+2hop_rate_distance_0018,clean,0,2,,1.609375,0.39963308264337044,0.39963308264337044,0.333984375,0.7084672818318187,0.24344216636611282,False,0,False,0,,False,False,False,False,126,17,"Since there are 60 minutes in an hour, multiply the hours by 60.
+
+"
+2hop_rate_distance_0018,error_standard,1,2,magnitude_error,1.5234375,0.4372939169406891,0.4372939169406891,0.296875,0.6212839441767966,0.3180780489600771,False,0,False,0,,False,False,False,False,126,13,"To convert hours to minutes, multiply the hours by 60.
+
+"
+2hop_rate_distance_0018,error_verbalized,1,2,magnitude_error,2.234375,0.6235594749450684,0.6235594749450684,0.2470703125,0.7005753591656685,0.2603366149418823,False,0,False,0,,False,False,False,False,182,16,"Answer: 3 hours * 60 minutes/hour = 180 minutes.
+"
+3hop_compound_rate_0009,clean,0,3,,0.765625,0.0654499628401633,0.02967488970607519,0.5234375,0.9467048012503104,0.03392495221502441,False,0,False,0,,False,False,False,False,163,30,"Answer: 30 ÷ 30 = 1 hour = 60 minutes. The second leg takes 60 minutes.assistant
+
+"
+3hop_compound_rate_0009,error_standard,1,3,wrong_percentage_base,1.6015625,0.6697090550472862,0.6697090550472862,0.29296875,0.6220257407740543,0.3117955796067528,False,0,False,0,,False,False,False,False,157,19,"To find the time, we need to convert the speed from km/h to km/min. 
+
+"
+3hop_compound_rate_0009,error_verbalized,1,3,wrong_percentage_base,2.203125,0.7854427214591734,0.7065933227539063,0.2353515625,0.536419483923143,0.40993586476266775,False,0,False,0,,False,False,False,False,213,31,"To find the time, we need to convert the speed from km/h to a fraction of an hour, then multiply by 60 to convert to minutes.
+
+"

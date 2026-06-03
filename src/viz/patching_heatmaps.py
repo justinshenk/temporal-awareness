@@ -9,7 +9,7 @@ Extends the base heatmap functionality with:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -27,6 +27,7 @@ from .layer_position_heatmaps import (
     _set_title,
     _setup_position_axis,
 )
+from .plot_helpers import add_pair_label
 
 
 @dataclass
@@ -44,6 +45,10 @@ class PatchingHeatmapConfig(HeatmapConfig):
     highlight_top_n: int = 0
     highlight_color: str = "black"
     show_flip_markers: bool = False
+    show_grid: bool = True
+    grid_color: str = "white"
+    grid_alpha: float = 0.3
+    grid_linewidth: float = 0.5
 
 
 def plot_patching_heatmap(
@@ -55,6 +60,7 @@ def plot_patching_heatmap(
     config: PatchingHeatmapConfig | None = None,
     section_markers: dict[str, int] | None = None,
     save_path: Path | None = None,
+    pair_idx: int | None = None,
 ) -> None:
     """Enhanced heatmap for patching results.
 
@@ -92,9 +98,22 @@ def plot_patching_heatmap(
     cbar = plt.colorbar(im, ax=ax, shrink=0.8)
     cbar.set_label(config.cbar_label, rotation=270, labelpad=20, fontsize=10)
 
+    # Grid lines between cells
+    if config.show_grid:
+        ax.set_xticks([i - 0.5 for i in range(n_positions + 1)], minor=True)
+        ax.set_yticks([i - 0.5 for i in range(n_layers + 1)], minor=True)
+        ax.grid(
+            which="minor",
+            color=config.grid_color,
+            alpha=config.grid_alpha,
+            linewidth=config.grid_linewidth,
+        )
+        ax.tick_params(which="minor", length=0)
+
     # Y-axis: layers
     ax.set_yticks(range(n_layers))
     ax.set_yticklabels([f"L{l}" for l in layers], fontsize=9)
+    ax.set_ylim(-0.5, n_layers - 0.5)
 
     # X-axis: positions
     _setup_position_axis(ax, position_labels, config.max_labels)
@@ -110,6 +129,7 @@ def plot_patching_heatmap(
     if config.highlight_top_n > 0:
         _highlight_top_cells(ax, matrix, config.highlight_top_n, config.highlight_color)
 
+    add_pair_label(fig, pair_idx)
     _finalize_plot(save_path)
 
 
@@ -165,6 +185,12 @@ def plot_multi_metric_heatmap(
         vmin, vmax = _compute_range(plot_matrix, None, None, "RdYlGn")
         im = _draw_heatmap(ax, plot_matrix, "RdYlGn", vmin, vmax)
 
+        # Grid lines between cells
+        ax.set_xticks([i - 0.5 for i in range(n_positions + 1)], minor=True)
+        ax.set_yticks([i - 0.5 for i in range(n_layers + 1)], minor=True)
+        ax.grid(which="minor", color="white", alpha=0.3, linewidth=0.5)
+        ax.tick_params(which="minor", length=0)
+
         ax.set_title(name, fontsize=11, fontweight="bold")
         ax.set_ylabel("Layer", fontsize=10)
         ax.set_xlabel("Position", fontsize=10)
@@ -175,6 +201,7 @@ def plot_multi_metric_heatmap(
             [f"L{layers[i]}" for i in range(0, n_layers, max(1, n_layers // 10))],
             fontsize=8,
         )
+        ax.set_ylim(-0.5, n_layers - 0.5)
 
         step = max(1, n_positions // 15)
         ax.set_xticks(range(0, n_positions, step))
@@ -187,6 +214,7 @@ def plot_multi_metric_heatmap(
             rotation=45,
             ha="right",
         )
+        ax.set_xlim(-0.5, n_positions - 0.5)
 
         plt.colorbar(im, ax=ax, shrink=0.6)
 

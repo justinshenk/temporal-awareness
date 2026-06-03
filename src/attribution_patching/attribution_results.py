@@ -48,6 +48,23 @@ class LayerAttributionResult(BaseSchema):
     scores: np.ndarray
     component: str = "resid_post"
 
+    def to_dict(self) -> dict:
+        """Convert to dict with numpy array as list."""
+        return {
+            "layer": self.layer,
+            "scores": self.scores.tolist(),
+            "component": self.component,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "LayerAttributionResult":
+        """Create from dict, converting list back to numpy array."""
+        return cls(
+            layer=d["layer"],
+            scores=np.array(d["scores"]),
+            component=d.get("component", "resid_post"),
+        )
+
     @property
     def n_positions(self) -> int:
         return len(self.scores)
@@ -98,6 +115,31 @@ class AttributionPatchingResult(BaseSchema):
     layers: list[int]
     component: str = "resid_post"
     method: Literal["standard", "eap", "eap_ig"] = "standard"
+    std_scores: np.ndarray | None = None  # ±std across pairs (populated by aggregate)
+
+    def to_dict(self) -> dict:
+        """Convert to dict with numpy array as list."""
+        d = {
+            "scores": self.scores.tolist(),
+            "layers": self.layers,
+            "component": self.component,
+            "method": self.method,
+        }
+        if self.std_scores is not None:
+            d["std_scores"] = self.std_scores.tolist()
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttributionPatchingResult":
+        """Create from dict, converting list back to numpy array."""
+        std = np.array(d["std_scores"]) if "std_scores" in d else None
+        return cls(
+            scores=np.array(d["scores"]),
+            layers=d["layers"],
+            component=d.get("component", "resid_post"),
+            method=d.get("method", "standard"),
+            std_scores=std,
+        )
 
     @property
     def n_layers(self) -> int:
@@ -198,6 +240,32 @@ class AttributionSummary(BaseSchema):
     n_pairs: int = 1
     mode: PatchingMode | None = None
 
+    def to_dict(self) -> dict:
+        """Convert to dict with proper nested serialization."""
+        mode_val = None
+        if self.mode:
+            mode_val = self.mode.value if hasattr(self.mode, "value") else self.mode
+        return {
+            "results": {k: v.to_dict() for k, v in self.results.items()},
+            "n_pairs": self.n_pairs,
+            "mode": mode_val,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttributionSummary":
+        """Create from dict with proper nested deserialization."""
+        results = {
+            k: AttributionPatchingResult.from_dict(v)
+            for k, v in d.get("results", {}).items()
+        }
+        # PatchingMode is a Literal type, just use the string directly
+        mode = d.get("mode")
+        return cls(
+            results=results,
+            n_pairs=d.get("n_pairs", 1),
+            mode=mode,
+        )
+
     @property
     def methods(self) -> list[str]:
         """List of method names in results."""
@@ -207,7 +275,7 @@ class AttributionSummary(BaseSchema):
         """Get result for a specific method.
 
         Args:
-            method: Method name (e.g., "standard_resid_post", "eap_attn")
+            method: Result key (e.g., "standard_resid_post", "eap_attn_out_midpoint")
 
         Returns:
             AttributionPatchingResult or None
@@ -359,11 +427,13 @@ class AttributionSummary(BaseSchema):
                 else:
                     padded.append(a)
 
+            stacked = np.array(padded)
             aggregated_results[key] = AttributionPatchingResult(
-                scores=np.mean(padded, axis=0),
+                scores=np.mean(stacked, axis=0),
                 layers=layers,
                 component=component,
                 method=method,
+                std_scores=np.std(stacked, axis=0) if len(padded) > 1 else None,
             )
 
         return cls(results=aggregated_results, n_pairs=len(results))
@@ -395,6 +465,21 @@ class AttrPatchTargetResult(BaseSchema):
 
     denoising: AttributionSummary | None = None
     noising: AttributionSummary | None = None
+
+    def to_dict(self) -> dict:
+        """Convert to dict with proper nested serialization."""
+        return {
+            "denoising": self.denoising.to_dict() if self.denoising else None,
+            "noising": self.noising.to_dict() if self.noising else None,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttrPatchTargetResult":
+        """Create from dict with proper nested deserialization."""
+        return cls(
+            denoising=AttributionSummary.from_dict(d["denoising"]) if d.get("denoising") else None,
+            noising=AttributionSummary.from_dict(d["noising"]) if d.get("noising") else None,
+        )
 
     @property
     def mean_max_score(self) -> float:
@@ -433,6 +518,21 @@ class AttrPatchPairResult(BaseSchema):
     sample_id: int = 0
     result: AttrPatchTargetResult = field(default_factory=AttrPatchTargetResult)
 
+    def to_dict(self) -> dict:
+        """Convert to dict with proper nested serialization."""
+        return {
+            "sample_id": self.sample_id,
+            "result": self.result.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttrPatchPairResult":
+        """Create from dict with proper nested deserialization."""
+        return cls(
+            sample_id=d.get("sample_id", 0),
+            result=AttrPatchTargetResult.from_dict(d.get("result", {})),
+        )
+
     def get_top_scores(self, n: int = 10) -> list[AttributionScore]:
         return self.result.get_top_scores(n)
 
@@ -461,6 +561,21 @@ class AttrPatchAggregatedResults(BaseSchema):
     _denoising_agg: AttributionSummary | None = field(default=None, init=False)
     _noising_agg: AttributionSummary | None = field(default=None, init=False)
 
+    def to_dict(self) -> dict:
+        """Convert to dict with proper nested serialization."""
+        return {
+            "denoising": [s.to_dict() for s in self.denoising],
+            "noising": [s.to_dict() for s in self.noising],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AttrPatchAggregatedResults":
+        """Create from dict with proper nested deserialization."""
+        return cls(
+            denoising=[AttributionSummary.from_dict(s) for s in d.get("denoising", [])],
+            noising=[AttributionSummary.from_dict(s) for s in d.get("noising", [])],
+        )
+
     def add(self, pair_result: AttrPatchPairResult) -> None:
         """Add a pair result to the aggregation."""
         if pair_result.result.denoising:
@@ -488,6 +603,16 @@ class AttrPatchAggregatedResults(BaseSchema):
         """Get intervention target from aggregated results."""
         agg = self.denoising_agg or self.noising_agg
         return agg.get_target(n=n, mode=mode) if agg else None
+
+    def filter_by_indices(self, indices: list[int]) -> "AttrPatchAggregatedResults":
+        """Create a filtered copy containing only the specified pair indices."""
+        filtered = AttrPatchAggregatedResults()
+        for idx in indices:
+            if idx < len(self.denoising):
+                filtered.denoising.append(self.denoising[idx])
+            if idx < len(self.noising):
+                filtered.noising.append(self.noising[idx])
+        return filtered
 
     def print_summary(self) -> None:
         print(f"Attribution Patching ({len(self.denoising)} denoising, {len(self.noising)} noising):")

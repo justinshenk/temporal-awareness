@@ -1,4 +1,4 @@
-.PHONY: install verify verify-quick verify-probes verify-steering figures clean help
+.PHONY: install verify verify-quick verify-probes verify-steering figures eap-ig-workflow clean help
 
 # Default target
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "  make verify         Verify all claims (requires GPU)"
 	@echo "  make verify-quick   Quick verification (cached results)"
 	@echo "  make figures        Generate all figures"
+	@echo "  make eap-ig-workflow   Run the EAP-IG workflow"
 	@echo "  make clean          Remove generated files"
 	@echo ""
 
@@ -32,6 +33,9 @@ verify-steering:
 figures:
 	jupyter nbconvert --execute --to notebook notebooks/01_reproduce_main_results.ipynb
 	@echo "Figures saved to results/figures/"
+
+eap-ig-workflow:
+	python scripts/experiments/eap_ig/run_eap_ig_workflow.py --top-n 500
 
 # Clean
 clean:

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from ..common.contrastive_pair import ContrastivePair
 from ..common.patching_types import TrajectoryType
-from .palettes import TOKEN_COLORS
+from .viz_palettes import TOKEN_COLORS
 
 
 @dataclass

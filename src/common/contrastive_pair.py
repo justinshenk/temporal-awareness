@@ -9,7 +9,8 @@ from .base_schema import BaseSchema
 from .choice import LabeledSimpleBinaryChoice
 from .hook_utils import hook_name
 from .patching_types import PatchingMode
-from .token_positions import PositionMapping
+from .time_value import TimeValue
+from .token_positions import PairPositionMapping
 from .token_trajectory import TokenTrajectory
 
 DEBUG_INTERVENTIONS = False
@@ -34,7 +35,7 @@ class ContrastivePair(BaseSchema):
 
     clean_traj: TokenTrajectory
     corrupted_traj: TokenTrajectory
-    position_mapping: PositionMapping = field(default_factory=PositionMapping)
+    position_mapping: PairPositionMapping = field(default_factory=PairPositionMapping)
     full_texts: tuple[str, str] = ("", "")
     prompt_texts: tuple[str, str] = ("", "")
     clean_labels: tuple[str, str] | None = None
@@ -43,6 +44,11 @@ class ContrastivePair(BaseSchema):
     sample_id: int = 0
     prompt_token_counts: tuple[int, int] | None = None
     choice_divergent_positions: tuple[int, int] | None = None
+    time_horizons: tuple[TimeValue, TimeValue] | None = None
+    # (clean_logits, corrupted_logits) where each is (logit_a, logit_b)
+    choice_divergent_logits: tuple[tuple[float, float], tuple[float, float]] | None = (
+        None
+    )
 
     # =========================================================================
     # Text and Label Properties
@@ -77,6 +83,16 @@ class ContrastivePair(BaseSchema):
         if self.choice_divergent_positions is None:
             return None
         return self.choice_divergent_positions[1]
+
+    # =========================================================================
+    # Characteristics
+    # =========================================================================
+
+    @property
+    def same_labels(self) -> bool:
+        if self.clean_labels is None or self.corrupted_labels is None:
+            return False
+        return self.clean_labels == self.corrupted_labels
 
     # =========================================================================
     # Length Properties
@@ -119,6 +135,22 @@ class ContrastivePair(BaseSchema):
         return self.corrupted_traj
 
     # =========================================================================
+    # Memory Management
+    # =========================================================================
+
+    def pop_heavy(self) -> None:
+        """Clear heavy data from trajectories to free memory.
+
+        Called after patching operations to prevent memory accumulation
+        when processing many pairs. The trajectories may have `internals`
+        dicts containing large activation tensors.
+        """
+        if hasattr(self.clean_traj, "pop_heavy"):
+            self.clean_traj.pop_heavy()
+        if hasattr(self.corrupted_traj, "pop_heavy"):
+            self.corrupted_traj.pop_heavy()
+
+    # =========================================================================
     # Interventions
     # =========================================================================
 
@@ -150,7 +182,9 @@ class ContrastivePair(BaseSchema):
         clean_internals = self._get_choice_internals(clean_choice)
         corrupted_internals = self._get_choice_internals(corrupted_choice)
 
-        source_internals = clean_internals if mode == "denoising" else corrupted_internals
+        source_internals = (
+            clean_internals if mode == "denoising" else corrupted_internals
+        )
         if not source_internals:
             raise ValueError(f"Missing internals in source choice for {mode} mode")
 
@@ -160,16 +194,27 @@ class ContrastivePair(BaseSchema):
         component = target.component or "resid_post"
 
         if DEBUG_INTERVENTIONS:
-            print(f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}")
+            print(
+                f"[intervention] target.layers={target.layers}, available={len(available)}, resolved={layers}"
+            )
 
         interventions = []
-        for layer in layers:
+        # print(f"[intervention] Creating interventions for {len(layers)} layers, {len(target.positions) if target.positions else 'all'} positions", flush=True)
+        for i, layer in enumerate(layers):
+            if i % 10 == 0:
+                print(f"[intervention]   Layer {i}/{len(layers)}...", flush=True)
             intervention = self._make_layer_intervention(
-                layer, component, target, mode,
-                clean_internals, corrupted_internals, alpha
+                layer,
+                component,
+                target,
+                mode,
+                clean_internals,
+                corrupted_internals,
+                alpha,
             )
             if intervention:
                 interventions.append(intervention)
+        # print(f"[intervention] Created {len(interventions)} interventions", flush=True)
 
         return interventions
 
@@ -184,6 +229,7 @@ class ContrastivePair(BaseSchema):
     def _get_available_layers(self, internals: dict) -> list[int]:
         """Get available layers from internals dict."""
         from .hook_utils import parse_hook_name
+
         layers = set()
         for name in internals.keys():
             parsed = parse_hook_name(name)
@@ -201,8 +247,16 @@ class ContrastivePair(BaseSchema):
         corrupted_internals: dict,
         alpha: float,
     ) -> Intervention | None:
-        """Create intervention for a single layer."""
-        hook = hook_name(layer, component)
+        """Create intervention for a single layer.
+
+        Handles both 3D activations [batch, seq, hidden] and 4D activations
+        [batch, seq, n_heads, d_head] for attn_z head-level interventions.
+        """
+        # For attn_z, use the special hook name format
+        if component == "attn_z":
+            hook = f"blocks.{layer}.attn.hook_z"
+        else:
+            hook = hook_name(layer, component)
 
         # Get source activations (only source needs internals)
         if mode == "denoising":
@@ -215,9 +269,16 @@ class ContrastivePair(BaseSchema):
         if patch_acts is None:
             return None
 
-        # Squeeze batch dimension if present: [1, seq, hidden] -> [seq, hidden]
-        if patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
-            patch_acts = patch_acts.squeeze(0)
+        # Determine if this is a head-level intervention (4D tensor)
+        is_head_level = component == "attn_z" and target.head is not None
+
+        # Handle dimension squeezing based on tensor rank
+        # 4D: [batch, seq, n_heads, d_head] -> [seq, n_heads, d_head]
+        # 3D: [batch, seq, hidden] -> [seq, hidden]
+        if patch_acts.ndim == 4 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, n_heads, d_head]
+        elif patch_acts.ndim == 3 and patch_acts.shape[0] == 1:
+            patch_acts = patch_acts.squeeze(0)  # [seq, hidden]
 
         positions = target.positions
 
@@ -241,11 +302,21 @@ class ContrastivePair(BaseSchema):
                     self.position_mapping.get(p, p) for p in range(running_len)
                 ]
 
-        # Clamp positions to valid range
+        # Clamp positions to valid range (use first dimension for seq length)
         patch_positions = [
-            max(0, min(int(p), len(patch_acts) - 1)) for p in patch_positions
+            max(0, min(int(p), patch_acts.shape[0] - 1)) for p in patch_positions
         ]
-        patch_vals = patch_acts[patch_positions]
+
+        # Extract patch values based on tensor structure
+        if is_head_level:
+            # For head-level: extract [n_positions, d_head] for specific head
+            head_idx = target.head
+            patch_vals = patch_acts[
+                patch_positions, head_idx, :
+            ]  # [n_positions, d_head]
+        else:
+            # For standard 3D: extract [n_positions, hidden]
+            patch_vals = patch_acts[patch_positions]
 
         # Properly convert tensor to numpy array
         if hasattr(patch_vals, "detach"):
@@ -262,10 +333,16 @@ class ContrastivePair(BaseSchema):
         )
 
         if DEBUG_INTERVENTIONS and layer == 0:
-            print(f"[intervention] L{layer} mode={mode} alpha={alpha}")
+            print(
+                f"[intervention] L{layer} mode={mode} alpha={alpha} head={target.head}"
+            )
             print(f"[intervention]   patch_acts.shape={patch_acts.shape}")
-            print(f"[intervention]   running_len={running_len}, target.positions={positions}")
-            print(f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}")
+            print(
+                f"[intervention]   running_len={running_len}, target.positions={positions}"
+            )
+            print(
+                f"[intervention]   patch_positions[:5]={patch_positions[:5]}, len={len(patch_positions)}"
+            )
             print(f"[intervention]   patch_vals.shape={patch_vals.shape}")
             print(f"[intervention]   patch_target={patch_target}")
 
@@ -277,6 +354,7 @@ class ContrastivePair(BaseSchema):
                 values=patch_vals,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
         else:
             return Intervention(
@@ -287,6 +365,7 @@ class ContrastivePair(BaseSchema):
                 alpha=alpha,
                 target=patch_target,
                 component=component,
+                head=target.head,  # Pass head for head-level interventions
             )
 
     def print_summary(self) -> None:
@@ -298,9 +377,6 @@ class ContrastivePair(BaseSchema):
         print(f"{prefix} Position mapping: src_len={pm.src_len}, dst_len={pm.dst_len}")
         print(
             f"{prefix} Anchors ({len(pm.anchors)}): {list(zip(pm.anchors, pm.anchor_texts))}"
-        )
-        print(
-            f"{prefix} First interesting: {pm.first_interesting_marker} -> pos={pm.first_interesting_pos}"
         )
         if pm.anchors:
             for (src_pos, dst_pos), text in zip(pm.anchors[:3], pm.anchor_texts[:3]):

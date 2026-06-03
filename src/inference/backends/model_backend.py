@@ -3,12 +3,27 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional, Sequence
 
 import torch
 
 from ..interventions import Intervention
+
+
+@dataclass
+class BinaryChoiceResult:
+    """Result of a binary choice query from API backend.
+
+    Used by API backends (OpenAI, Anthropic) to return choice probabilities
+    without requiring full trajectory computation.
+    """
+
+    choice_idx: int  # 0 for A, 1 for B, -1 if neither
+    probs: tuple[float, float]  # (prob_a, prob_b)
+    logprobs: tuple[float, float]  # (logprob_a, logprob_b)
+    tokens: tuple[str, str]  # The actual tokens used
 
 
 class ModelBackend(Enum):
@@ -19,6 +34,8 @@ class ModelBackend(Enum):
     TRANSFORMERLENS = "transformerlens"
     HUGGINGFACE = "huggingface"
     NNSIGHT = "nnsight"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
 
 
 class Backend(ABC):
@@ -31,6 +48,11 @@ class Backend(ABC):
     supports_inference_mode: bool = (
         True  # Override to False if backend conflicts with inference_mode
     )
+
+    @property
+    def is_cloud_api(self) -> bool:
+        """Whether this is a cloud API backend (no local model weights)."""
+        return False
 
     def __init__(self, runner: Any):
         """Initialize backend with a reference to the ModelRunner.
@@ -233,3 +255,155 @@ class Backend(ABC):
         raise NotImplementedError(
             f"{self.__class__.__name__} does not support get_b_U"
         )
+
+    def get_n_heads(self) -> int:
+        """Get the number of attention heads per layer.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_n_heads"
+        )
+
+    def get_d_head(self) -> int:
+        """Get the dimension of each attention head.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_head"
+        )
+
+    def get_d_mlp(self) -> int:
+        """Get the MLP intermediate dimension.
+
+        Note: Not all backends support this. Override in subclass if supported.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_d_mlp"
+        )
+
+    def get_W_Q(self, layer: int | None = None) -> torch.Tensor:
+        """Get query weight matrix W_Q.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_Q"
+        )
+
+    def get_W_K(self, layer: int | None = None) -> torch.Tensor:
+        """Get key weight matrix W_K.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_K"
+        )
+
+    def get_W_V(self, layer: int | None = None) -> torch.Tensor:
+        """Get value weight matrix W_V.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_model, d_head]
+            If layer specified: [n_heads, d_model, d_head]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_V"
+        )
+
+    def get_W_O(self, layer: int | None = None) -> torch.Tensor:
+        """Get output weight matrix W_O.
+
+        Args:
+            layer: Layer index, or None for all layers
+
+        Returns:
+            If layer is None: [n_layers, n_heads, d_head, d_model]
+            If layer specified: [n_heads, d_head, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_O"
+        )
+
+    def get_W_OV(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined OV matrix for a specific head.
+
+        W_OV = W_V @ W_O projects input through value and output matrices.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_OV matrix of shape [d_model, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_OV"
+        )
+
+    def get_W_QK(self, layer: int, head: int) -> torch.Tensor:
+        """Get combined QK matrix for a specific head.
+
+        W_QK = W_Q @ W_K^T determines attention pattern computation.
+
+        Args:
+            layer: Layer index
+            head: Head index
+
+        Returns:
+            W_QK matrix of shape [d_model, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_W_QK"
+        )
+
+    def get_MLP_W_in(self, layer: int) -> torch.Tensor:
+        """Get MLP input projection weights.
+
+        Returns:
+            W_in of shape [d_model, d_mlp]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_MLP_W_in"
+        )
+
+    def get_MLP_W_out(self, layer: int) -> torch.Tensor:
+        """Get MLP output projection weights.
+
+        Returns:
+            W_out of shape [d_mlp, d_model]
+
+        Note: Only TransformerLens backend supports this.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not support get_MLP_W_out"
+        )
+

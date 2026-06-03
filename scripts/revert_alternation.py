@@ -13,78 +13,85 @@ Logic:
     - Long-term option -> Always (B)
 
 Output:
-Creates new files in `data/raw/temporal_scope_AB_invariant` (folder will be created if missing).
+Creates new files in `data/raw/temporal_scope_AB` (folder will be created if missing).
+
+Usage:
+  Process all files:    python scripts/revert_alternation.py
+  Process one file:     python scripts/revert_alternation.py temporal_scope_implicit_expanded_1000.json
 """
 import json
 import re
 import os
+import sys
 
-def revert_to_invariant_AB():
-    # 1. Setup Paths
+
+def process_file(input_path, output_path, label_pattern):
+    """Process a single JSON file: normalize A/B labels."""
+    print(f"Processing: {os.path.basename(input_path)}...")
+
+    with open(input_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    pairs = data.get('pairs', [])
+
+    for item in pairs:
+        immediate_raw = item.get('immediate', "")
+        long_term_raw = item.get('long_term', "")
+
+        imm_text = label_pattern.sub('', immediate_raw)
+        lt_text = label_pattern.sub('', long_term_raw)
+
+        item['immediate'] = f"(A) {imm_text}"
+        item['long_term'] = f"(B) {lt_text}"
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    print(f"  -> Saved to: {output_path} ({len(pairs)} pairs)")
+
+
+def revert_to_invariant_AB(target_file=None):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     input_dir = os.path.join(base_dir, 'data', 'raw', 'temporal_scope_AB_randomized')
-    output_dir = os.path.join(base_dir, 'data', 'raw', 'temporal_scope_AB_invariant')
+    output_dir = os.path.join(base_dir, 'data', 'raw', 'temporal_scope')
 
-    # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print(f"Created output directory: {output_dir}")
 
-    # Check input directory
     if not os.path.exists(input_dir):
         print(f"Input directory not found: {input_dir}")
         return
 
-    # Regex to strip existing labels like "(A) ", " (B) ", etc.
     label_pattern = re.compile(r'^\s*\([AB]\)\s+')
 
-    # 2. Iterate over all JSON files in the input folder
-    files_processed = 0
-    for filename in os.listdir(input_dir):
-        if not filename.endswith('.json'):
-            continue
-
-        input_path = os.path.join(input_dir, filename)
-        
-        # Construct new filename (append _invariant to avoid confusion)
-        new_filename = filename.replace('.json', '_invariant.json')
+    if target_file:
+        input_path = os.path.join(input_dir, target_file)
+        if not os.path.exists(input_path):
+            print(f"File not found: {input_path}")
+            return
+        new_filename = target_file
         output_path = os.path.join(output_dir, new_filename)
+        process_file(input_path, output_path, label_pattern)
+        print("\nDone. Processed 1 file.")
+    else:
+        files_processed = 0
+        for filename in os.listdir(input_dir):
+            if not filename.endswith('.json'):
+                continue
+            input_path = os.path.join(input_dir, filename)
+            new_filename = filename
+            output_path = os.path.join(output_dir, new_filename)
+            try:
+                process_file(input_path, output_path, label_pattern)
+                files_processed += 1
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+        print(f"\nDone. Processed {files_processed} files.")
 
-        print(f"Processing: {filename}...")
+    print(f"Output files are located in: {output_dir}")
 
-        try:
-            with open(input_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            pairs = data.get('pairs', [])
-
-            # 3. Process pairs
-            for item in pairs:
-                # Get raw content (handling potential missing keys gracefully)
-                immediate_raw = item.get('immediate', "")
-                long_term_raw = item.get('long_term', "")
-
-                # clean text (remove whatever label was there before)
-                imm_text = label_pattern.sub('', immediate_raw)
-                lt_text = label_pattern.sub('', long_term_raw)
-
-                # ENFORCE FIXED ASSIGNMENT
-                # Immediate is always (A)
-                # Long-term is always (B)
-                item['immediate'] = f"(A) {imm_text}"
-                item['long_term'] = f"(B) {lt_text}"
-
-            # 4. Save to NEW file
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            
-            files_processed += 1
-
-        except Exception as e:
-            print(f"Error processing {filename}: {e}")
-
-    print(f"\nDone. Processed {files_processed} files.")
-    print(f"New invariant files are located in: {output_dir}")
 
 if __name__ == "__main__":
-    revert_to_invariant_AB()
+    target = sys.argv[1] if len(sys.argv) > 1 else None
+    revert_to_invariant_AB(target)

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from .base_schema import BaseSchema
+from .analysis.metrics import NodeAnalysis
 
 
 @dataclass
@@ -27,4 +27,4 @@ class BranchingNode(BaseSchema):
     traj_idx: list[int] | None = None
     vocab_logits: list[list[float]] | None = None
     forks_idx: list[int] | None = None
-    analysis: Any | None = None
+    analysis: NodeAnalysis | None = None

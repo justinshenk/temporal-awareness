@@ -11,7 +11,6 @@ Skip with: pytest --skip-slow
 """
 
 import pytest
-import torch
 
 from src.inference.model_runner import ModelRunner, ModelBackend
 from src.inference.interventions import steering, random_direction

@@ -1,0 +1,26 @@
+setup:
+  model: "Qwen/Qwen3-4B-Instruct-2507"
+  seed: 0
+  batch_size: 64
+  dtype: "bfloat16"
+  granularity: "fine"
+  quadrature: "gauss-chebyshev"
+
+paths:
+  data_loc: "./data/raw/refined_datasets"
+  save_loc: "./results/node_wise/implicit/(i)"
+
+input:
+  data_file: "temporal_scope_implicit_expanded_500_debiased.json"
+  template: "{}\n\n{}\n{}"
+  option_keys: [ "(i)", "(ii)" ]
+  prompt_suffix: "("
+  horizon: [ "ST", "LT" ]
+
+output:
+  filename: "(i)_implicit"
+
+parameters:
+  system_prompt: "Recommend an approach for the given scenario. Reply only with (i) or (ii)"
+  steps: [ 20 ]
+  metric_type: "option-logit"

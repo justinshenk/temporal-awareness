@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ...base_schema import BaseSchema
-from ..base import DistributionalAnalysis
+from ..analysis_base import DistributionalAnalysis
 from ...math import (
     empirical_cross_entropy,
     inv_perplexity,

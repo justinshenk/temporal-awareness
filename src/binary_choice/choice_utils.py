@@ -49,6 +49,31 @@ def encode_into_trajectory_ids(
     return trajectory_token_ids
 
 
+def _normalize_label(label: str) -> str:
+    """Normalize a label by stripping trailing punctuation.
+
+    Handles all label formats:
+    - "a)", "b)" -> "a", "b"
+    - "a.", "b." -> "a", "b"
+    - "[a]", "[b]" -> "[a", "[b"  (only trailing)
+    - "Option A:", "Option B:" -> "Option A", "Option B"
+    - "OPTION_ONE:", "OPTION_TWO:" -> "OPTION_ONE", "OPTION_TWO"
+    """
+    return label.rstrip(".):]")
+
+
+def _get_label_variants(label: str) -> set[str]:
+    """Get all reasonable variants of a label for matching.
+
+    Returns lowercase variants including:
+    - Original label
+    - Label with trailing punctuation stripped
+    """
+    normalized = _normalize_label(label)
+    variants = {label.lower(), normalized.lower()}
+    return variants
+
+
 def parse_choice_from_generated_response(
     response: str,
     short_label: str,
@@ -63,9 +88,12 @@ def parse_choice_from_generated_response(
     response_lower = response.lower().strip()
     prefix_lower = choice_prefix.lower()
 
-    labels = [short_label, long_label]
-    labels_stripped = [label.rstrip(".)") for label in labels]
-    all_variants = set(label.lower() for label in labels + labels_stripped)
+    # Build variant sets for each label
+    short_variants = _get_label_variants(short_label)
+    long_variants = _get_label_variants(long_label)
+    all_variants = short_variants | long_variants
+
+    # Build pattern with longest variants first to avoid partial matches
     labels_pattern = "|".join(
         re.escape(label) for label in sorted(all_variants, key=len, reverse=True)
     )
@@ -75,10 +103,9 @@ def parse_choice_from_generated_response(
 
     if match:
         matched = match.group(1)
-        # short_label is labels[0], long_label is labels[1]
-        if matched in (short_label.lower(), short_label.rstrip(".)").lower()):
+        if matched in short_variants:
             return 0
-        elif matched in (long_label.lower(), long_label.rstrip(".)").lower()):
+        if matched in long_variants:
             return 1
 
     return -1
