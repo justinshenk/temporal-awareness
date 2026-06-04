@@ -1,0 +1,54 @@
+# Tiny end-to-end smoke of the graded-risk pipeline (minutes, all arms exercised).
+# Numbers here are for plumbing validation, NOT science.
+
+base_model: Qwen/Qwen2.5-7B-Instruct
+seed: 42
+
+buckets: [B0, B1, B2, B3]
+
+data:
+  n_filler: 8
+  n_fit: 8
+  n_eval: 8
+  n_train: 16
+  grad_sample: 8
+
+direction:
+  n_harmful: 8
+  n_harmless: 8
+
+eval:
+  n_harmful: 8
+  max_new: 16
+
+extract:
+  layers: [0, 14, 27]
+  max_ctx: 4096
+  icl_fill_target: 0.5
+  grad_layer: 27
+
+doses:
+  icl_shots: [4]
+
+steer:
+  lambdas: [1]
+  alphas: [0.5]
+  few: 4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, v_proj]
+
+train:
+  epochs: 1
+  lr: 2.0e-4
+  micro_batch_size: 4
+  grad_accum: 1
+  max_seq_len: 512
+  bf16: true
+
+output:
+  dir: results/safety/graded_risk_qwen_smoke
+  adapter_root: results/safety/graded_risk_qwen_smoke/adapters

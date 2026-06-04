@@ -1,0 +1,57 @@
+# Trimmed graded-risk sweep: same data splits as graded_risk_qwen.yaml (so it REUSES the
+# adapters already trained at graded_risk_qwen/adapters) but drops the two slowest knobs —
+# the 14k-token k=48 ICL forwards and the alpha=1.0 steering pass — and shortens refusal
+# generation. ~3-4x faster, less wall-clock exposure to GPU hangs. Writes to the same output
+# dir so analyze_graded_risk.py picks it up.
+
+base_model: Qwen/Qwen2.5-7B-Instruct
+seed: 42
+
+buckets: [B0, B1, B2, B3]
+
+data:                          # IDENTICAL to graded_risk_qwen.yaml (keeps eval disjoint from the trained adapters)
+  n_filler: 120
+  n_fit: 80
+  n_eval: 50
+  n_train: 150
+  grad_sample: 50
+
+direction:
+  n_harmful: 64
+  n_harmless: 64
+
+eval:
+  n_harmful: 40                # 50 -> 40
+  max_new: 24                  # 64 -> 24 (refusal is decidable early)
+
+extract:
+  layers: [0, 7, 14, 21, 27]
+  max_ctx: 16384
+  icl_fill_target: 0.90
+  grad_layer: 27
+
+doses:
+  icl_shots: [4, 16]           # dropped 48 (the ~14k-token forwards)
+
+steer:
+  lambdas: [1]
+  alphas: [0.5]                # dropped 1.0
+  few: 4
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+train:
+  epochs: 3
+  lr: 2.0e-4
+  micro_batch_size: 8
+  grad_accum: 2
+  max_seq_len: 1024
+  bf16: true
+
+output:
+  dir: results/safety/graded_risk_qwen
+  adapter_root: results/safety/graded_risk_qwen/adapters   # reuse already-trained adapters

@@ -25,8 +25,8 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from scripts.safety.extract_refusal_shifts import capture_resid, generate_reply, prompt_ids, set_seed, user_turn
-from scripts.safety.run_conditional_steer import LinearConditionalSteerHook
 from scripts.safety.run_route_safety_sweep import ddxplus_accuracy
+from src.probes.safety.steering_hook import LinearConditionalSteerHook
 from src.probes.ddxplus import DEFAULT_EVIDENCE_PATH, load_evidence_db
 from src.probes.extraction import PerTokenResidualCapture
 from src.probes.lora_icl.ddxplus_cases import build_cases, chat_messages, select_valid_indices

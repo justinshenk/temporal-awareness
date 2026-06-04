@@ -51,6 +51,44 @@ class AdditionSteeringHook:
         self._hooks = []
 
 
+class LinearConditionalSteerHook:
+    """Add ``α·(hs @ Aᵀ @ C)`` per position — an input-conditional task-shift prediction.
+
+    The map ``W = Aᵀ C`` is a per-layer closed-form ridge fit (dual form) of each case's
+    ICL task-shift from its own activation, stored factored as ``Aᵀ`` ``(d, n)`` and
+    ``C`` ``(n, d)`` so the hook is two small matmuls instead of a dense ``d×d``.
+    Unlike a fixed steering vector, the added shift depends on the input ``hs``.
+    """
+
+    def __init__(self, model, maps, alpha, last_token: bool = False):
+        self.maps = {li: (At.to(torch.float32), C.to(torch.float32)) for li, (At, C) in maps.items()}
+        self.alpha, self.last_token, self.enabled, self._hooks = alpha, last_token, True, []
+        for li in self.maps:
+            self._hooks.append(model.model.layers[li].register_forward_hook(self._make_hook(li)))
+
+    def _make_hook(self, li: int):
+        def hook_fn(module, inputs, output):
+            if not self.enabled:
+                return output
+            hs = output[0] if isinstance(output, tuple) else output
+            At, C = (t.to(hs.device, hs.dtype) for t in self.maps[li])
+            if self.last_token:
+                if hs.shape[1] <= 1:  # skip cached decode steps
+                    return output
+                hs = hs.clone()
+                hs[:, -1, :] = hs[:, -1, :] + self.alpha * ((hs[:, -1, :] @ At) @ C)
+            else:
+                hs = hs + self.alpha * ((hs @ At) @ C)
+            return (hs,) + tuple(output[1:]) if isinstance(output, tuple) else hs
+
+        return hook_fn
+
+    def remove(self) -> None:
+        for h in self._hooks:
+            h.remove()
+        self._hooks = []
+
+
 class NormPreservingSteeringHook:
     """Add ``vectors[layer]`` then rescale each position back to its original norm.
 

@@ -46,10 +46,15 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def encode_example(tokenizer, prompt_text: str, gold_letter: str, max_seq_len: int):
-    """Tokenize one case; mask the prompt so loss falls only on the answer letter."""
+def encode_example(tokenizer, prompt_text: str, gold_letter: str, max_seq_len: int,
+                   chat_fn=chat_messages):
+    """Tokenize one case; mask the prompt so loss falls only on the answer letter.
+
+    ``chat_fn`` maps the case prompt text to chat messages (``chat_messages`` for DDXPlus,
+    ``chat_mcq`` for the graded-risk MCQ buckets), so the trainer is task-agnostic.
+    """
     prompt_ids = tokenizer.apply_chat_template(
-        chat_messages(prompt_text), add_generation_prompt=True, tokenize=True,
+        chat_fn(prompt_text), add_generation_prompt=True, tokenize=True,
     )
     if not isinstance(prompt_ids, list):  # some tokenizers (Qwen) return a BatchEncoding
         prompt_ids = prompt_ids["input_ids"]
@@ -73,6 +78,56 @@ def collate(batch, pad_id: int):
         "labels": torch.tensor(labels),
         "attention_mask": torch.tensor(attn),
     }
+
+
+def fit_lora(cfg, examples, out_dir, device, tokenizer) -> None:
+    """Train a LoRA adapter on pre-encoded ``examples`` and save it to ``out_dir``.
+
+    Shared by the DDXPlus trainer and the graded-risk per-bucket trainer: identical model
+    build, optimizer, grad-accumulation loop, and save. The caller owns case construction
+    and tokenization so this stays task-agnostic.
+    """
+    model = AutoModelForCausalLM.from_pretrained(
+        cfg["base_model"],
+        torch_dtype=torch.bfloat16 if cfg["train"]["bf16"] else torch.float32,
+        device_map=device,
+    )
+    lora = LoraConfig(
+        r=cfg["lora"]["r"], lora_alpha=cfg["lora"]["alpha"],
+        lora_dropout=cfg["lora"]["dropout"], bias="none", task_type="CAUSAL_LM",
+        target_modules=cfg["lora"]["target_modules"],
+    )
+    model = get_peft_model(model, lora)
+    model.print_trainable_parameters()
+    model.train()
+
+    loader = DataLoader(
+        examples, batch_size=cfg["train"]["micro_batch_size"], shuffle=True,
+        collate_fn=lambda b: collate(b, tokenizer.pad_token_id),
+    )
+    optim = torch.optim.AdamW(
+        (p for p in model.parameters() if p.requires_grad), lr=float(cfg["train"]["lr"])
+    )
+    accum = cfg["train"]["grad_accum"]
+
+    step = 0
+    for epoch in range(cfg["train"]["epochs"]):
+        for i, batch in enumerate(loader):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            loss = model(**batch).loss / accum
+            loss.backward()
+            if (i + 1) % accum == 0:
+                optim.step()
+                optim.zero_grad()
+                step += 1
+                if step % 10 == 0:
+                    print(f"epoch {epoch} step {step} loss {loss.item() * accum:.4f}")
+        optim.step()
+        optim.zero_grad()
+
+    model.save_pretrained(out_dir)
+    tokenizer.save_pretrained(out_dir)
+    print(f"Saved adapter to {out_dir}")
 
 
 def main() -> None:
@@ -118,48 +173,7 @@ def main() -> None:
         encode_example(tokenizer, c.prompt_text, c.gold_letter, cfg["train"]["max_seq_len"])
         for c in cases
     ]
-
-    model = AutoModelForCausalLM.from_pretrained(
-        cfg["base_model"],
-        torch_dtype=torch.bfloat16 if cfg["train"]["bf16"] else torch.float32,
-        device_map=args.device,
-    )
-    lora = LoraConfig(
-        r=cfg["lora"]["r"], lora_alpha=cfg["lora"]["alpha"],
-        lora_dropout=cfg["lora"]["dropout"], bias="none", task_type="CAUSAL_LM",
-        target_modules=cfg["lora"]["target_modules"],
-    )
-    model = get_peft_model(model, lora)
-    model.print_trainable_parameters()
-    model.train()
-
-    loader = DataLoader(
-        examples, batch_size=cfg["train"]["micro_batch_size"], shuffle=True,
-        collate_fn=lambda b: collate(b, tokenizer.pad_token_id),
-    )
-    optim = torch.optim.AdamW(
-        (p for p in model.parameters() if p.requires_grad), lr=float(cfg["train"]["lr"])
-    )
-    accum = cfg["train"]["grad_accum"]
-
-    step = 0
-    for epoch in range(cfg["train"]["epochs"]):
-        for i, batch in enumerate(loader):
-            batch = {k: v.to(args.device) for k, v in batch.items()}
-            loss = model(**batch).loss / accum
-            loss.backward()
-            if (i + 1) % accum == 0:
-                optim.step()
-                optim.zero_grad()
-                step += 1
-                if step % 10 == 0:
-                    print(f"epoch {epoch} step {step} loss {loss.item() * accum:.4f}")
-        optim.step()
-        optim.zero_grad()
-
-    model.save_pretrained(out_dir)
-    tokenizer.save_pretrained(out_dir)
-    print(f"Saved adapter to {out_dir}")
+    fit_lora(cfg, examples, out_dir, args.device, tokenizer)
 
 
 if __name__ == "__main__":

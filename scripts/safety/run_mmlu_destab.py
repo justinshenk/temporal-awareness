@@ -20,9 +20,9 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from scripts.safety.extract_refusal_shifts import capture_resid, generate_reply, prompt_ids, set_seed
-from scripts.safety.run_conditional_steer import LinearConditionalSteerHook
 from scripts.safety.run_lora_distill import ridge_maps
-from scripts.safety.run_mmlu_transfer import chat_mmlu, mmlu_cases, parse4
+from src.probes.safety.steering_hook import LinearConditionalSteerHook
+from src.probes.safety.mcq_icl import chat_mcq, mcq_cases, parse4
 from src.probes.ddxplus import DEFAULT_EVIDENCE_PATH, load_evidence_db
 from src.probes.extraction import PerTokenResidualCapture
 from src.probes.lora_icl.ddxplus_cases import build_cases, chat_messages, select_valid_indices
@@ -48,7 +48,7 @@ def main():
     valid = select_valid_indices(ds, cfg["ddxplus"]["n_options"])
     fit = build_cases(ds, valid[:args.n_fit], evidence_db, cfg["ddxplus"]["n_options"], cfg["seed"])
     mm = load_dataset("cais/mmlu", "all", split="test").shuffle(seed=cfg["seed"])
-    mm_eval = mmlu_cases(mm, range(args.n_mmlu))
+    mm_eval = mcq_cases(mm, range(args.n_mmlu))
 
     print(f"Loading {cfg['base_model']} ...")
     tokenizer = AutoTokenizer.from_pretrained(cfg["base_model"])
@@ -73,7 +73,7 @@ def main():
         h = hook_factory() if hook_factory else None
         correct = n = 0
         for c in mm_eval:
-            ids = prompt_ids(tokenizer, chat_mmlu(c.prompt_text))
+            ids = prompt_ids(tokenizer, chat_mcq(c.prompt_text))
             if len(ids) > mc - max_new:
                 continue
             pred = parse4(generate_reply(base, tokenizer, ids, args.device, max_new))

@@ -1,0 +1,55 @@
+# Graded-distance-to-refusal sweep on Qwen2.5-7B: hold the MCQ task fixed, dial content
+# topic toward the refusal axis r across four buckets (MMLU neutral -> WMDP hazardous).
+# Run order: train_graded_lora.py per bucket -> run_graded_risk_sweep.py -> analyze_graded_risk.py
+
+base_model: Qwen/Qwen2.5-7B-Instruct
+seed: 42
+
+buckets: [B0, B1, B2, B3]
+
+data:                          # disjoint slices per bucket (need = filler+fit+eval+train)
+  n_filler: 120               # ICL demonstrations (B3: drawn from bio/chem, not cyber)
+  n_fit: 80                   # cases the input-conditional map W is fit on
+  n_eval: 50                  # held-out task-accuracy / steering eval
+  n_train: 150                # LoRA dose per bucket
+  grad_sample: 50             # items per bucket for the cos(a,r) gradient gate
+
+direction:                     # refusal direction r (Arditi), base model
+  n_harmful: 64
+  n_harmless: 64
+
+eval:                          # held-out harmful set, disjoint from the r-fit slice
+  n_harmful: 50
+  max_new: 64
+
+extract:
+  layers: [0, 7, 14, 21, 27]   # Qwen2.5-7B has 28 layers
+  max_ctx: 16384
+  icl_fill_target: 0.90
+  grad_layer: 27               # late layer where r lives; the monotonicity gate layer
+
+doses:
+  icl_shots: [4, 16, 48]       # activation-route dose for the erosion arm
+
+steer:
+  lambdas: [1]                 # ridge regularizer for the input-conditional map W
+  alphas: [0.5, 1.0]
+  few: 4                       # shots used to build the per-case ICL fit shifts
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+train:
+  epochs: 3
+  lr: 2.0e-4
+  micro_batch_size: 8
+  grad_accum: 2
+  max_seq_len: 1024
+  bf16: true
+
+output:
+  dir: results/safety/graded_risk_qwen
+  adapter_root: results/safety/graded_risk_qwen/adapters

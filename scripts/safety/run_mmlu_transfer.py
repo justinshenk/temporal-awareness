@@ -13,8 +13,6 @@ out-of-domain vector erode safety?).
 
 import argparse
 import json
-import re
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -27,49 +25,10 @@ from scripts.safety.extract_refusal_shifts import capture_resid, generate_reply,
 from src.probes.ddxplus import DEFAULT_EVIDENCE_PATH, load_evidence_db
 from src.probes.extraction import PerTokenResidualCapture
 from src.probes.lora_icl.ddxplus_cases import build_cases, chat_messages, icl_messages, select_valid_indices
+from src.probes.safety.mcq_icl import chat_mcq, icl_mcq, mcq_accuracy, mcq_cases
 from src.probes.safety.refusal_classifier import refusal_rate
 from src.probes.safety.safety_data import load_harmful
 from src.probes.safety.steering_hook import AdditionSteeringHook
-
-L4 = ["A", "B", "C", "D"]
-MMLU_SYS = "Answer the following multiple-choice question with the letter of the correct option."
-
-
-@dataclass
-class MQ:
-    prompt_text: str
-    gold_letter: str
-
-
-def mmlu_cases(ds, idxs):
-    out = []
-    for i in idxs:
-        row = ds[i]
-        lines = [row["question"]] + [f"{L4[j]}) {row['choices'][j]}" for j in range(4)] + ["\nAnswer:"]
-        out.append(MQ("\n".join(lines), L4[row["answer"]]))
-    return out
-
-
-def chat_mmlu(prompt_text):
-    return [{"role": "user", "content": f"{MMLU_SYS}\n\n{prompt_text}"}]
-
-
-def icl_mmlu(tokenizer, fillers, final, max_ctx, fill_target):
-    msgs, budget = [], int(max_ctx * fill_target)
-    for fc in fillers:
-        trial = msgs + chat_mmlu(fc.prompt_text) + [{"role": "assistant", "content": fc.gold_letter}]
-        if len(tokenizer.apply_chat_template(trial, add_generation_prompt=False, tokenize=True)) > budget:
-            break
-        msgs = trial
-    return msgs + list(final)
-
-
-def parse4(text):
-    t = text.strip().upper()
-    if t and t[0] in "ABCD":
-        return t[0]
-    m = re.findall(r"\b([A-D])\b", t)
-    return m[-1] if m else None
 
 
 def main():
@@ -93,9 +52,9 @@ def main():
 
     # MMLU cases
     mm = load_dataset("cais/mmlu", "all", split="test").shuffle(seed=cfg["seed"])
-    mm_fill = mmlu_cases(mm, range(args.n_filler))
-    mm_fit = mmlu_cases(mm, range(args.n_filler, args.n_filler + args.n_fit))
-    mm_eval = mmlu_cases(mm, range(args.n_filler + args.n_fit, args.n_filler + args.n_fit + args.n_eval))
+    mm_fill = mcq_cases(mm, range(args.n_filler))
+    mm_fit = mcq_cases(mm, range(args.n_filler, args.n_filler + args.n_fit))
+    mm_eval = mcq_cases(mm, range(args.n_filler + args.n_fit, args.n_filler + args.n_fit + args.n_eval))
 
     # DDXPlus cases (for the cross-domain medical vector)
     evidence_db = load_evidence_db(DEFAULT_EVIDENCE_PATH)
@@ -121,26 +80,18 @@ def main():
         icl_r = [resid(icl_fn(tokenizer, fillers[:args.few], chat_fn(c.prompt_text), mc, ft)) for c in cases]
         return {L: np.mean([i[L] - b[L] for i, b in zip(icl_r, base_r)], axis=0) for L in layers}
 
-    d_mmlu = mean_shift(mm_fit, chat_mmlu, icl_mmlu, mm_fill)
+    d_mmlu = mean_shift(mm_fit, chat_mcq, icl_mcq, mm_fill)
     d_ddx = mean_shift(dd_fit, chat_messages, icl_messages, dd_fill)
     capture.remove()
 
     def mmlu_acc(k=0, hook_factory=None):
         hook = hook_factory() if hook_factory else None
-        correct = n = 0
-        for c in mm_eval:
-            final = chat_mmlu(c.prompt_text)
-            msgs = icl_mmlu(tokenizer, mm_fill[:k], final, mc, ft) if k else final
-            ids = prompt_ids(tokenizer, msgs)
-            if len(ids) > mc - max_new:
-                continue
-            pred = parse4(generate_reply(base, tokenizer, ids, args.device, max_new))
-            if pred:
-                n += 1
-                correct += int(pred == c.gold_letter)
+        acc, _ = mcq_accuracy(tokenizer, mm_eval,
+                              lambda ids: generate_reply(base, tokenizer, ids, args.device, max_new),
+                              mc, max_new, fillers=mm_fill, k=k, fill_target=ft)
         if hook:
             hook.remove()
-        return correct / n if n else float("nan")
+        return acc
 
     def refusal_now(hook_factory=None):
         hook = hook_factory() if hook_factory else None

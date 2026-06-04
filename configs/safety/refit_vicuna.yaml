@@ -1,0 +1,19 @@
+# Documented low-refusal model: Vicuna-7B-v1.5 (Llama-2-7B base, 32 layers) — the canonical
+# AdvBench/GCG permissive target. Used to test whether OOD-luck + the δ=0 refit hold when the
+# base model has a genuinely low (non-saturated) refusal rate.
+
+base_model: lmsys/vicuna-7b-v1.5
+seed: 42
+chat_template: vicuna           # tokenizer ships none; the probe supplies the official template
+
+extract:
+  layers: [0, 8, 16, 24, 31]    # Llama-2-7B has 32 layers
+  max_ctx: 4096
+  icl_fill_target: 0.85
+
+direction:
+  n_harmful: 64
+  n_harmless: 64
+
+eval:
+  max_new: 32

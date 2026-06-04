@@ -32,37 +32,7 @@ from src.probes.extraction import PerTokenResidualCapture
 from src.probes.lora_icl.ddxplus_cases import build_cases, chat_messages, icl_messages, select_valid_indices
 from src.probes.safety.refusal_classifier import refusal_rate
 from src.probes.safety.safety_data import load_harmful
-from src.probes.safety.steering_hook import AdditionSteeringHook
-
-
-class LinearConditionalSteerHook:
-    """Add α·(hs @ Aᵀ @ C) per position — an input-conditional task-shift prediction."""
-
-    def __init__(self, model, maps, alpha, last_token=False):
-        self.maps = {li: (At.to(torch.float32), C.to(torch.float32)) for li, (At, C) in maps.items()}
-        self.alpha, self.last_token, self.enabled, self._hooks = alpha, last_token, True, []
-        for li in self.maps:
-            self._hooks.append(model.model.layers[li].register_forward_hook(self._mk(li)))
-
-    def _mk(self, li):
-        def hook(module, inp, out):
-            if not self.enabled:
-                return out
-            hs = out[0] if isinstance(out, tuple) else out
-            At, C = (t.to(hs.device, hs.dtype) for t in self.maps[li])
-            if self.last_token:
-                if hs.shape[1] <= 1:
-                    return out
-                hs = hs.clone()
-                hs[:, -1, :] = hs[:, -1, :] + self.alpha * ((hs[:, -1, :] @ At) @ C)
-            else:
-                hs = hs + self.alpha * ((hs @ At) @ C)
-            return (hs,) + tuple(out[1:]) if isinstance(out, tuple) else hs
-        return hook
-
-    def remove(self):
-        for h in self._hooks:
-            h.remove()
+from src.probes.safety.steering_hook import AdditionSteeringHook, LinearConditionalSteerHook
 
 
 def main():
