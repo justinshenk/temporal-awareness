@@ -75,6 +75,21 @@ def test_primal_hook_steers_single_decode_step():
     assert torch.allclose(out, x + alpha * (x @ W.T), atol=1e-5)
 
 
+def test_primal_hook_norm_preserve_keeps_per_position_norm():
+    # norm_preserve must rescale each steered position back to its original residual norm
+    torch.manual_seed(0)
+    d, alpha = 8, 1.0
+    model = _StubModel(1, d)
+    W = torch.randn(d, d)
+    x = torch.randn(1, 5, d)
+    hook = LinearPrimalSteerHook(model, {0: W}, alpha, norm_preserve=True)
+    out = model(x)
+    hook.remove()
+    assert torch.allclose(out.norm(dim=-1), x.norm(dim=-1), atol=1e-4)
+    # direction must still have moved (not a no-op)
+    assert not torch.allclose(out, x, atol=1e-3)
+
+
 def test_primal_hook_last_token_skips_decode_step():
     d = 4
     model = _StubModel(1, d)

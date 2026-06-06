@@ -32,6 +32,12 @@ def main() -> None:
     ap.add_argument("--alphas", default=None, help="comma list of alpha values, e.g. 0.5,1.0")
     ap.add_argument("--joint", action="store_true",
                     help="inject ALL --layers maps simultaneously in one hook (full-adapter test)")
+    ap.add_argument("--norm-preserve", action="store_true",
+                    help="rescale each steered position back to its original norm (magnitude-vs-direction probe)")
+    ap.add_argument("--base-acc", type=float, default=None,
+                    help="skip base reference recompute and use this value (deterministic refs)")
+    ap.add_argument("--lora-acc", type=float, default=None,
+                    help="skip LoRA reference recompute and use this value (deterministic refs)")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
@@ -48,14 +54,19 @@ def main() -> None:
     problems = gsm8k_problems(cfg["eval"]["split"], n_eval, skip=0)
     print(f"Evaluating on {len(problems)} GSM8K {cfg['eval']['split']} problems (max_new={max_new})", flush=True)
 
-    with lora.disable_adapter():
-        base_acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
-    lora_acc = gsm8k_accuracy(lora, tokenizer, problems, device, max_new)
-    print(f"\nREFERENCE  base={base_acc:.3f} (gate 0.00-0.08)  LoRA={lora_acc:.3f} (gate 0.36-0.46)", flush=True)
+    if args.base_acc is not None and args.lora_acc is not None:
+        base_acc, lora_acc = args.base_acc, args.lora_acc
+        print(f"\nREFERENCE (supplied) base={base_acc:.3f}  LoRA={lora_acc:.3f}", flush=True)
+    else:
+        with lora.disable_adapter():
+            base_acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
+        lora_acc = gsm8k_accuracy(lora, tokenizer, problems, device, max_new)
+        print(f"\nREFERENCE  base={base_acc:.3f} (gate 0.00-0.08)  LoRA={lora_acc:.3f} (gate 0.36-0.46)", flush=True)
 
     maps_dir = Path(cfg["output"]["maps_dir"] + args.maps_suffix)
     results = {"base_acc": base_acc, "lora_acc": lora_acc, "budget": lora_acc - base_acc,
-               "n_eval": len(problems), "alphas": alphas, "joint": None, "per_layer": {}}
+               "n_eval": len(problems), "alphas": alphas, "norm_preserve": args.norm_preserve,
+               "joint": None, "per_layer": {}}
 
     def recovery(acc: float) -> float:
         return (acc - base_acc) / (lora_acc - base_acc) if lora_acc > base_acc else 0.0
@@ -69,7 +80,7 @@ def main() -> None:
         results["joint"] = {"layers": sorted(maps), "lam_star": lam_by_layer, "alpha": {}}
         for alpha in alphas:
             with lora.disable_adapter():
-                hook = LinearPrimalSteerHook(base, maps, alpha)
+                hook = LinearPrimalSteerHook(base, maps, alpha, norm_preserve=args.norm_preserve)
                 acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
                 hook.remove()
             results["joint"]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
@@ -81,13 +92,13 @@ def main() -> None:
             results["per_layer"][l] = {"lam_star": lam_star, "alpha": {}}
             for alpha in alphas:
                 with lora.disable_adapter():
-                    hook = LinearPrimalSteerHook(base, {l: W}, alpha)
+                    hook = LinearPrimalSteerHook(base, {l: W}, alpha, norm_preserve=args.norm_preserve)
                     acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
                     hook.remove()
                 results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
                 print(f"  L{l:2d} a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}  (lambda*={lam_star:.2e})", flush=True)
 
-    suffix = args.maps_suffix + ("_joint" if args.joint else "")
+    suffix = args.maps_suffix + ("_joint" if args.joint else "") + ("_normpreserve" if args.norm_preserve else "")
     Path(cfg["output"]["steer_json"].replace(".json", f"{suffix}.json")).write_text(
         json.dumps(results, indent=2, default=float))
     print(f"\nSaved {cfg['output']['steer_json'].replace('.json', f'{suffix}.json')}")

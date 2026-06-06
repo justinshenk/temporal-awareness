@@ -96,15 +96,26 @@ class LinearPrimalSteerHook:
     this carries a dense ``d×d`` map ``W`` fit by streamed primal ridge over CoT tokens
     (``W·a ≈ δ``). The shift is applied at every position by default (``last_token=False``),
     matching how ``W`` was fit — including single-position decode steps under a KV cache.
+
+    ``norm_preserve=True`` rescales each steered position back to its original residual norm
+    (``a' = ‖a‖ · (a+α·Wᵀa)/‖a+α·Wᵀa‖``) — isolates whether an injection failure is a
+    magnitude blowup (fixed by renorming) or a directional/off-manifold one (still broken).
     """
 
-    def __init__(self, model, maps: dict[int, torch.Tensor], alpha: float, last_token: bool = False):
+    def __init__(self, model, maps: dict[int, torch.Tensor], alpha: float,
+                 last_token: bool = False, norm_preserve: bool = False):
         param = next(model.parameters(), None)
         self.maps = {li: W.to(device=param.device if param is not None else W.device, dtype=torch.float32)
                      for li, W in maps.items()}
-        self.alpha, self.last_token, self.enabled, self._hooks = alpha, last_token, True, []
+        self.alpha, self.last_token, self.norm_preserve = alpha, last_token, norm_preserve
+        self.enabled, self._hooks = True, []
         for li in self.maps:
             self._hooks.append(model.model.layers[li].register_forward_hook(self._make_hook(li)))
+
+    def _renorm(self, steered, orig):
+        if not self.norm_preserve:
+            return steered
+        return steered / (steered.norm(dim=-1, keepdim=True) + 1e-6) * orig.norm(dim=-1, keepdim=True)
 
     def _make_hook(self, li: int):
         def hook_fn(module, inputs, output):
@@ -116,9 +127,10 @@ class LinearPrimalSteerHook:
                 if hs.shape[1] <= 1:  # skip cached decode steps in function-vector mode
                     return output
                 hs = hs.clone()
-                hs[:, -1, :] = hs[:, -1, :] + self.alpha * (hs[:, -1, :] @ W.T)
+                last = hs[:, -1, :]
+                hs[:, -1, :] = self._renorm(last + self.alpha * (last @ W.T), last)
             else:
-                hs = hs + self.alpha * (hs @ W.T)
+                hs = self._renorm(hs + self.alpha * (hs @ W.T), hs)
             return (hs,) + tuple(output[1:]) if isinstance(output, tuple) else hs
 
         return hook_fn
