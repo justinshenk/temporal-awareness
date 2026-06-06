@@ -1,0 +1,36 @@
+# Primal per-token ridge attribution of the TMLR-2024 MetaMath LoRA's GSM8K reasoning.
+#
+# Base is the ungated, byte-identical NousResearch mirror of meta-llama/Llama-2-7b-hf
+# (the adapter was trained on the meta-llama weights; PeftModel applies to the object we
+# pass, and the mirror's weights are identical). Adapter is public.
+
+base_model: NousResearch/Llama-2-7b-hf
+adapter: LoRA-TMLR-2024/metamath-lora-rank-16-alpha-32
+seed: 42
+hidden_dim: 4096
+num_layers: 32            # Llama-2-7B decoder layers (0..31); attribute all
+device: cuda
+accum_device: cuda        # GramAccumulators live here (64 x 4096^2 f64 ~ 8.6 GB; fits 80GB)
+
+collect:
+  split: train
+  n_fit: 200              # ~10k CoT tokens at ~50 tok/problem
+  n_te: 60               # held-out problems (disjoint index range)
+  max_new: 512           # CoT generation budget (greedy, LoRA)
+
+sweep:
+  lambdas_logspace: [-1, 7, 17]   # np.logspace(-1, 7, 17)
+  crosscheck_rtol: 1.0e-6         # assert crosscheck_abs_err < rtol * s per (layer, lambda)
+
+eval:
+  split: test
+  n_eval: 200
+  alphas: [1.0]
+  max_new: 512
+
+output:
+  acc_dir: results/attribution/accumulators
+  maps_dir: results/attribution/maps
+  sweep_json: results/attribution/sweep.json
+  steer_json: results/attribution/steer_results.json
+  report: results/attribution/2026-06-06-primal-ridge-attribution.md

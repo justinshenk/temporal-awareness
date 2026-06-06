@@ -89,6 +89,44 @@ class LinearConditionalSteerHook:
         self._hooks = []
 
 
+class LinearPrimalSteerHook:
+    """Add ``α·(hs @ Wᵀ)`` per position — a dense primal-ridge task-shift prediction.
+
+    Unlike :class:`LinearConditionalSteerHook` (dual form, stored factored as ``Aᵀ``, ``C``),
+    this carries a dense ``d×d`` map ``W`` fit by streamed primal ridge over CoT tokens
+    (``W·a ≈ δ``). The shift is applied at every position by default (``last_token=False``),
+    matching how ``W`` was fit — including single-position decode steps under a KV cache.
+    """
+
+    def __init__(self, model, maps: dict[int, torch.Tensor], alpha: float, last_token: bool = False):
+        self.maps = {li: W.to(torch.float32) for li, W in maps.items()}
+        self.alpha, self.last_token, self.enabled, self._hooks = alpha, last_token, True, []
+        for li in self.maps:
+            self._hooks.append(model.model.layers[li].register_forward_hook(self._make_hook(li)))
+
+    def _make_hook(self, li: int):
+        def hook_fn(module, inputs, output):
+            if not self.enabled:
+                return output
+            hs = output[0] if isinstance(output, tuple) else output
+            W = self.maps[li].to(hs.device, hs.dtype)
+            if self.last_token:
+                if hs.shape[1] <= 1:  # skip cached decode steps in function-vector mode
+                    return output
+                hs = hs.clone()
+                hs[:, -1, :] = hs[:, -1, :] + self.alpha * (hs[:, -1, :] @ W.T)
+            else:
+                hs = hs + self.alpha * (hs @ W.T)
+            return (hs,) + tuple(output[1:]) if isinstance(output, tuple) else hs
+
+        return hook_fn
+
+    def remove(self) -> None:
+        for h in self._hooks:
+            h.remove()
+        self._hooks = []
+
+
 class NormPreservingSteeringHook:
     """Add ``vectors[layer]`` then rescale each position back to its original norm.
 
