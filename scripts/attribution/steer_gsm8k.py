@@ -30,6 +30,8 @@ def main() -> None:
     ap.add_argument("--n-eval", type=int, default=None)
     ap.add_argument("--layers", default=None, help="comma list to restrict (default all)")
     ap.add_argument("--alphas", default=None, help="comma list of alpha values, e.g. 0.5,1.0")
+    ap.add_argument("--joint", action="store_true",
+                    help="inject ALL --layers maps simultaneously in one hook (full-adapter test)")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
@@ -53,23 +55,42 @@ def main() -> None:
 
     maps_dir = Path(cfg["output"]["maps_dir"] + args.maps_suffix)
     results = {"base_acc": base_acc, "lora_acc": lora_acc, "budget": lora_acc - base_acc,
-               "n_eval": len(problems), "alphas": alphas, "per_layer": {}}
-    for l in layers:
-        rec = torch.load(maps_dir / f"W_L{l}.pt")
-        W, lam_star = rec["W"], rec["lam"]
-        results["per_layer"][l] = {"lam_star": lam_star, "alpha": {}}
+               "n_eval": len(problems), "alphas": alphas, "joint": None, "per_layer": {}}
+
+    def recovery(acc: float) -> float:
+        return (acc - base_acc) / (lora_acc - base_acc) if lora_acc > base_acc else 0.0
+
+    if args.joint:
+        maps, lam_by_layer = {}, {}
+        for l in layers:
+            rec = torch.load(maps_dir / f"W_L{l}.pt")
+            maps[l], lam_by_layer[l] = rec["W"], rec["lam"]
+        print(f"\nJOINT all-layer injection over {len(maps)} layers: {sorted(maps)}", flush=True)
+        results["joint"] = {"layers": sorted(maps), "lam_star": lam_by_layer, "alpha": {}}
         for alpha in alphas:
             with lora.disable_adapter():
-                hook = LinearPrimalSteerHook(base, {l: W}, alpha)
+                hook = LinearPrimalSteerHook(base, maps, alpha)
                 acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
                 hook.remove()
-            recov = (acc - base_acc) / (lora_acc - base_acc) if lora_acc > base_acc else 0.0
-            results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc, "recovery": recov}
-            print(f"  L{l:2d} a={alpha}: steer_acc={acc:.3f}  recovery={recov:+.2f}  (lambda*={lam_star:.2e})", flush=True)
+            results["joint"]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
+            print(f"  JOINT a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}", flush=True)
+    else:
+        for l in layers:
+            rec = torch.load(maps_dir / f"W_L{l}.pt")
+            W, lam_star = rec["W"], rec["lam"]
+            results["per_layer"][l] = {"lam_star": lam_star, "alpha": {}}
+            for alpha in alphas:
+                with lora.disable_adapter():
+                    hook = LinearPrimalSteerHook(base, {l: W}, alpha)
+                    acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
+                    hook.remove()
+                results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
+                print(f"  L{l:2d} a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}  (lambda*={lam_star:.2e})", flush=True)
 
-    Path(cfg["output"]["steer_json"].replace(".json", f"{args.maps_suffix}.json")).write_text(
+    suffix = args.maps_suffix + ("_joint" if args.joint else "")
+    Path(cfg["output"]["steer_json"].replace(".json", f"{suffix}.json")).write_text(
         json.dumps(results, indent=2, default=float))
-    print(f"\nSaved {cfg['output']['steer_json']}")
+    print(f"\nSaved {cfg['output']['steer_json'].replace('.json', f'{suffix}.json')}")
 
 
 if __name__ == "__main__":

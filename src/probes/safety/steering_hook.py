@@ -99,7 +99,9 @@ class LinearPrimalSteerHook:
     """
 
     def __init__(self, model, maps: dict[int, torch.Tensor], alpha: float, last_token: bool = False):
-        self.maps = {li: W.to(torch.float32) for li, W in maps.items()}
+        param = next(model.parameters(), None)
+        self.maps = {li: W.to(device=param.device if param is not None else W.device, dtype=torch.float32)
+                     for li, W in maps.items()}
         self.alpha, self.last_token, self.enabled, self._hooks = alpha, last_token, True, []
         for li in self.maps:
             self._hooks.append(model.model.layers[li].register_forward_hook(self._make_hook(li)))
