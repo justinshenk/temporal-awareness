@@ -90,6 +90,40 @@ def test_primal_hook_norm_preserve_keeps_per_position_norm():
     assert not torch.allclose(out, x, atol=1e-3)
 
 
+def test_primal_hook_projection_restricts_delta_to_subspace():
+    # the injected delta (out - input) must lie in span(V); base residual is left intact
+    torch.manual_seed(0)
+    d, k, alpha = 8, 3, 1.0
+    model = _StubModel(1, d)
+    W = torch.randn(d, d)
+    V, _ = torch.linalg.qr(torch.randn(d, k))  # orthonormal (d, k)
+    x = torch.randn(1, 5, d)
+    hook = LinearPrimalSteerHook(model, {0: W}, alpha, project_bases={0: V})
+    out = model(x)
+    hook.remove()
+    delta = out - x
+    assert torch.allclose(delta, (delta @ V) @ V.T, atol=1e-4)   # delta in span(V)
+    assert torch.allclose(delta, (alpha * (x @ W.T) @ V) @ V.T, atol=1e-4)  # exactly Π_V(α Wᵀx)
+    assert not torch.allclose(out, x, atol=1e-3)
+
+
+def test_primal_hook_prefill_only_steers_prompt_skips_decode():
+    torch.manual_seed(0)
+    d, alpha = 4, 1.0
+    model = _StubModel(1, d)
+    W = torch.randn(d, d)
+    # prompt pass (seq>1): all positions steered
+    prompt = torch.randn(1, 6, d)
+    hook = LinearPrimalSteerHook(model, {0: W}, alpha, prefill_only=True)
+    out_prompt = model(prompt)
+    assert torch.allclose(out_prompt, prompt + alpha * (prompt @ W.T), atol=1e-5)
+    # decode step (seq==1): skipped (un-reinjected)
+    step = torch.randn(1, 1, d)
+    out_step = model(step)
+    hook.remove()
+    assert torch.allclose(out_step, step, atol=1e-6)
+
+
 def test_primal_hook_last_token_skips_decode_step():
     d = 4
     model = _StubModel(1, d)

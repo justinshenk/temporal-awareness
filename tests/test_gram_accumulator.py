@@ -51,6 +51,38 @@ def test_G_and_P_streaming_match_bruteforce():
     assert torch.allclose(acc.P, A.T @ D, rtol=1e-12, atol=1e-12)
 
 
+def test_Gd_streaming_matches_bruteforce():
+    A, D = make_synthetic(d=8, n=40, seed=7)
+    acc = GramAccumulator(8, device=DEV, dtype=DT)
+    feed_in_blocks(acc, A, D, [10, 20, 10])
+    assert torch.allclose(acc.Gd, D.T @ D, rtol=1e-12, atol=1e-12)
+    assert torch.allclose(acc.s, torch.trace(D.T @ D), rtol=1e-12)  # s = tr(Gd)
+
+
+def test_delta_survival_full_basis_is_one_and_partial_matches_bruteforce():
+    A, D = make_synthetic(d=10, n=50, seed=8)
+    acc = GramAccumulator(10, device=DEV, dtype=DT)
+    acc.update(A, D)
+    # full orthonormal basis captures all δ energy
+    full = torch.eye(10, dtype=DT)
+    assert abs(acc.delta_survival(full) - 1.0) < 1e-10
+    # partial basis: tr(Vᵀ Gd V)/s equals Σ‖VVᵀδ‖²/Σ‖δ‖²
+    V = acc.manifold_basis(k=3, which="base")
+    proj = (D @ V) @ V.T
+    expected = float((proj * proj).sum() / (D * D).sum())
+    assert abs(acc.delta_survival(V) - expected) < 1e-9
+
+
+def test_manifold_basis_lora_matches_lora_gram_eig():
+    A, D = make_synthetic(d=8, n=40, seed=9)
+    acc = GramAccumulator(8, device=DEV, dtype=DT)
+    acc.update(A, D)
+    Alora = A + D
+    V = acc.manifold_basis(k=4, which="lora")
+    _ev, evec = torch.linalg.eigh(Alora.T @ Alora)
+    assert torch.allclose(V.abs(), evec[:, -4:].abs(), atol=1e-8)  # same span (sign-free)
+
+
 def test_blockwise_equals_single_update():
     A, D = make_synthetic(d=6, n=30, seed=3)
     one = GramAccumulator(6, device=DEV, dtype=DT)

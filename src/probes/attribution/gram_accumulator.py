@@ -43,6 +43,7 @@ class GramAccumulator:
         self.layer = layer
         self.G = torch.zeros(dim, dim, dtype=dtype, device=self.device)
         self.P = torch.zeros(dim, dim, dtype=dtype, device=self.device)
+        self.Gd = torch.zeros(dim, dim, dtype=dtype, device=self.device)
         self.s = torch.zeros((), dtype=dtype, device=self.device)
         self.n_tokens = 0
 
@@ -56,8 +57,35 @@ class GramAccumulator:
         D = D_block.to(self.device, self.dtype)
         self.G += A.T @ A
         self.P += A.T @ D
+        self.Gd += D.T @ D
         self.s += (D * D).sum()
         self.n_tokens += A.shape[0]
+
+    def manifold_basis(self, k: int, which: str = "base") -> torch.Tensor:
+        """Top-``k`` eigenvectors (d, k) of a token-second-moment manifold.
+
+        ``base`` → ``G = Σaaᵀ``; ``lora`` → ``Σ(a+δ)(a+δ)ᵀ = G + P + Pᵀ + Gd``;
+        ``union`` → top-k of the base⊕lora span (concatenate both bases, re-orthonormalize).
+        """
+        if which == "base":
+            M = self.G
+        elif which == "lora":
+            M = self.G + self.P + self.P.T + self.Gd
+        elif which == "union":
+            Vb = self.manifold_basis(k, "base")
+            Vl = self.manifold_basis(k, "lora")
+            Q, R = torch.linalg.qr(torch.cat([Vb, Vl], dim=1))
+            indep = R.diagonal().abs() > 1e-6      # drop directions already in V_base
+            return Q[:, indep].contiguous()        # genuine base⊕lora span (≤ 2k dims)
+        else:
+            raise ValueError(f"unknown manifold {which!r}")
+        _evals, evecs = torch.linalg.eigh(M)
+        return evecs[:, -k:].contiguous()
+
+    def delta_survival(self, V: torch.Tensor) -> float:
+        """Fraction of δ energy captured by projecting onto span(V): ``tr(Vᵀ Gd V)/Σ‖δ‖²``."""
+        Vd = V.to(self.device, self.dtype)
+        return float(((self.Gd @ Vd) * Vd).sum() / self.s) if float(self.s) > 0 else 0.0
 
     def _chol(self, lam: float) -> torch.Tensor:
         eye = torch.eye(self.dim, dtype=self.dtype, device=self.device)
@@ -104,18 +132,20 @@ class GramAccumulator:
             raise ValueError(f"dim mismatch {other.dim} != {self.dim}")
         self.G += other.G.to(self.device, self.dtype)
         self.P += other.P.to(self.device, self.dtype)
+        self.Gd += other.Gd.to(self.device, self.dtype)
         self.s += other.s.to(self.device, self.dtype)
         self.n_tokens += other.n_tokens
 
     def state_dict(self) -> dict:
         return {"dim": self.dim, "layer": self.layer, "n_tokens": self.n_tokens,
-                "G": self.G.cpu(), "P": self.P.cpu(), "s": self.s.cpu()}
+                "G": self.G.cpu(), "P": self.P.cpu(), "Gd": self.Gd.cpu(), "s": self.s.cpu()}
 
     @classmethod
     def from_state_dict(cls, d: dict, device: str | torch.device = "cuda") -> "GramAccumulator":
         acc = cls(dim=d["dim"], device=device, dtype=d["G"].dtype, layer=d.get("layer", -1))
         acc.G = d["G"].to(acc.device, acc.dtype)
         acc.P = d["P"].to(acc.device, acc.dtype)
+        acc.Gd = d["Gd"].to(acc.device, acc.dtype)
         acc.s = d["s"].to(acc.device, acc.dtype)
         acc.n_tokens = int(d["n_tokens"])
         return acc

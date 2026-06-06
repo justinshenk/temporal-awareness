@@ -100,22 +100,47 @@ class LinearPrimalSteerHook:
     ``norm_preserve=True`` rescales each steered position back to its original residual norm
     (``a' = ‖a‖ · (a+α·Wᵀa)/‖a+α·Wᵀa‖``) — isolates whether an injection failure is a
     magnitude blowup (fixed by renorming) or a directional/off-manifold one (still broken).
+
+    ``project_bases[li] = V (d, k)`` (orthonormal columns) projects the injected *delta*
+    ``α·Wᵀa`` onto ``span(V)`` — the base-activation manifold (e.g. top-k eigenvectors of
+    the layer's uncentered Gram ``G``) — and adds only that on-manifold component, leaving
+    the base residual ``hs`` intact: ``a' = hs + Π_V(α·Wᵀa)``. Tests whether the injection's
+    *direction* leaves the manifold: if restricting the steer to the manifold restores
+    coherence/recovery, the failure was off-manifold. Applied before ``norm_preserve``.
+
+    Injection scope (temporal axis): default steers every position including every cached
+    decode step (``hs.shape[1] == 1``), so the map is re-applied at each generated token.
+    ``prefill_only=True`` steers all prompt positions once but skips decode steps — generation
+    then runs un-reinjected, isolating whether per-decode-step re-injection is what compounds
+    into loops over a long CoT. ``last_token=True`` is the function-vector variant (only the
+    final prompt position, decode steps skipped).
     """
 
     def __init__(self, model, maps: dict[int, torch.Tensor], alpha: float,
-                 last_token: bool = False, norm_preserve: bool = False):
+                 last_token: bool = False, norm_preserve: bool = False,
+                 project_bases: dict[int, torch.Tensor] | None = None,
+                 prefill_only: bool = False):
         param = next(model.parameters(), None)
-        self.maps = {li: W.to(device=param.device if param is not None else W.device, dtype=torch.float32)
-                     for li, W in maps.items()}
+        dev = param.device if param is not None else next(iter(maps.values())).device
+        self.maps = {li: W.to(device=dev, dtype=torch.float32) for li, W in maps.items()}
+        self.project_bases = ({li: V.to(device=dev, dtype=torch.float32) for li, V in project_bases.items()}
+                              if project_bases is not None else None)
         self.alpha, self.last_token, self.norm_preserve = alpha, last_token, norm_preserve
+        self.prefill_only = prefill_only
         self.enabled, self._hooks = True, []
         for li in self.maps:
             self._hooks.append(model.model.layers[li].register_forward_hook(self._make_hook(li)))
 
-    def _renorm(self, steered, orig):
-        if not self.norm_preserve:
-            return steered
-        return steered / (steered.norm(dim=-1, keepdim=True) + 1e-6) * orig.norm(dim=-1, keepdim=True)
+    def _steered(self, a, W, li):
+        """``a + Π_V(α·Wᵀa)`` then optional renorm — delta projected onto the manifold."""
+        delta = self.alpha * (a @ W.T)
+        if self.project_bases is not None and li in self.project_bases:
+            V = self.project_bases[li].to(a.device, a.dtype)
+            delta = (delta @ V) @ V.T
+        out = a + delta
+        if self.norm_preserve:
+            out = out / (out.norm(dim=-1, keepdim=True) + 1e-6) * a.norm(dim=-1, keepdim=True)
+        return out
 
     def _make_hook(self, li: int):
         def hook_fn(module, inputs, output):
@@ -127,10 +152,13 @@ class LinearPrimalSteerHook:
                 if hs.shape[1] <= 1:  # skip cached decode steps in function-vector mode
                     return output
                 hs = hs.clone()
-                last = hs[:, -1, :]
-                hs[:, -1, :] = self._renorm(last + self.alpha * (last @ W.T), last)
+                hs[:, -1, :] = self._steered(hs[:, -1, :], W, li)
+            elif self.prefill_only:
+                if hs.shape[1] <= 1:  # skip decode steps; steer the prompt pass only
+                    return output
+                hs = self._steered(hs, W, li)
             else:
-                hs = self._renorm(hs + self.alpha * (hs @ W.T), hs)
+                hs = self._steered(hs, W, li)
             return (hs,) + tuple(output[1:]) if isinstance(output, tuple) else hs
 
         return hook_fn

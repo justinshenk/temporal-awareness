@@ -3,11 +3,14 @@ primal-ridge attribution scripts (collect / fit / steer)."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
 from datasets import load_dataset
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from src.probes.attribution.gram_accumulator import GramAccumulator
 from src.probes.attribution.gsm8k_prompts import (
     extract_pred_number,
     gsm8k_gold_answer,
@@ -52,6 +55,21 @@ def generate_cot_ids(model, tokenizer, question: str, device, max_new: int) -> t
     out = model.generate(prompt_ids, max_new_tokens=max_new, do_sample=False,
                          pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id)
     return out, prompt_ids.shape[1]
+
+
+@torch.no_grad()
+def manifold_bases(acc_dir, layers, k: int, device, which: str = "base") -> dict[int, torch.Tensor]:
+    """Top-``k`` manifold basis per layer from the stored accumulators (float32 columns).
+
+    ``which`` selects the token-second-moment manifold: ``base`` (Σaaᵀ), ``lora``
+    (Σ(a+δ)(a+δ)ᵀ), or ``union`` (top-k of base⊕lora). Used as the projection subspace for
+    the steering manifold probes. Returns ``{layer: V (d, k)}``.
+    """
+    bases = {}
+    for l in layers:
+        acc = GramAccumulator.from_state_dict(torch.load(Path(acc_dir) / f"train_L{l}.pt"), device=device)
+        bases[l] = acc.manifold_basis(k, which).to(torch.float32)
+    return bases
 
 
 @torch.no_grad()
