@@ -6,10 +6,28 @@ import pytest
 
 from src.probes.attribution.gsm8k_prompts import (
     extract_pred_number,
+    format_gsm8k_solution,
     gsm8k_gold_answer,
+    metamath_fewshot_prompt,
     metamath_prompt,
     numeric_match,
 )
+
+
+def test_format_gsm8k_solution():
+    sol = format_gsm8k_solution("She has 16-3 = <<16-3=13>>13 left.\n#### 13")
+    assert sol == "She has 16-3 = <<16-3=13>>13 left.\nThe answer is: 13"
+
+
+def test_metamath_fewshot_prompt_structure():
+    shots = [("Q1?", "work one\n#### 5"), ("Q2?", "work two\n#### 9")]
+    p = metamath_fewshot_prompt("TargetQ?", shots)
+    assert p.count("### Instruction:") == 3                 # 2 shots + target
+    assert "The answer is: 5" in p and "The answer is: 9" in p
+    assert "### Instruction:\nTargetQ?" in p
+    assert p.endswith("### Response: Let's think step by step.")  # target left open
+    # the target's own answer is NOT leaked into the prompt
+    assert p.rstrip().count("The answer is:") == 2
 
 
 def test_metamath_prompt_format():

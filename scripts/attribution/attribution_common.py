@@ -43,6 +43,12 @@ def gsm8k_problems(split: str, n: int, skip: int = 0) -> list[tuple[str, float]]
     return out
 
 
+def gsm8k_demos(n: int, split: str = "train", skip: int = 0) -> list[tuple[str, str]]:
+    """Return ``n`` (question, raw_answer_field) demonstration pairs for few-shot ICL prompts."""
+    ds = load_dataset("gsm8k", "main", split=split)
+    return [(ds[i]["question"], ds[i]["answer"]) for i in range(skip, min(skip + n, len(ds)))]
+
+
 def prompt_token_ids(tokenizer, question: str, device) -> torch.Tensor:
     ids = tokenizer(metamath_prompt(question), return_tensors="pt").input_ids
     return ids.to(device)

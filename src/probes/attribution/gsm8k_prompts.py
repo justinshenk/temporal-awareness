@@ -25,6 +25,21 @@ def metamath_prompt(question: str) -> str:
     return METAMATH_TEMPLATE.format(instruction=question)
 
 
+def format_gsm8k_solution(answer_field: str) -> str:
+    """Render a GSM8K ``answer`` field as a worked CoT ending in ``The answer is: N``."""
+    body, _, tail = answer_field.partition("#### ")
+    return f"{body.strip()}\nThe answer is: {tail.strip().replace(',', '')}"
+
+
+def metamath_fewshot_prompt(question: str, shots: list[tuple[str, str]]) -> str:
+    """K-shot ICL prompt: each ``(question, answer_field)`` shot rendered as a complete
+    instruction+worked-solution block, then the target question left open for completion.
+    """
+    blocks = [METAMATH_TEMPLATE.format(instruction=q) + "\n" + format_gsm8k_solution(a)
+              for q, a in shots]
+    return "\n\n".join(blocks + [METAMATH_TEMPLATE.format(instruction=question)])
+
+
 def gsm8k_gold_answer(answer_field: str) -> float:
     """Parse the gold final answer from a GSM8K ``answer`` field (text after ``####``)."""
     tail = answer_field.split("#### ")[1].strip()
