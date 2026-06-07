@@ -8,10 +8,20 @@ from src.probes.attribution.gsm8k_prompts import (
     extract_pred_number,
     format_gsm8k_solution,
     gsm8k_gold_answer,
+    metamath_direct_prompt,
     metamath_fewshot_prompt,
     metamath_prompt,
     numeric_match,
 )
+
+
+def test_metamath_direct_prompt():
+    p = metamath_direct_prompt("What is 23 times 47?")
+    assert "### Instruction:\nWhat is 23 times 47?" in p
+    assert p.endswith("### Response: The answer is: ")   # no CoT; answer comes next
+    assert "Let's think step by step" not in p
+    for tok in ("<|im_start|>", "[INST]", "<<SYS>>", "<|user|>"):
+        assert tok not in p
 
 
 def test_format_gsm8k_solution():

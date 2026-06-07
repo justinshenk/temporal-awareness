@@ -17,12 +17,25 @@ METAMATH_TEMPLATE = (
     "### Instruction:\n{instruction}\n\n### Response: Let's think step by step."
 )
 
+# Direct-answer variant: the response is forced to begin with the answer marker, so the model
+# must emit the number immediately with no self-maintained CoT (the single-step compute probe).
+METAMATH_DIRECT_TEMPLATE = (
+    "Below is an instruction that describes a task. "
+    "Write a response that appropriately completes the request.\n\n"
+    "### Instruction:\n{instruction}\n\n### Response: The answer is: "
+)
+
 _NUM_RE = re.compile(r"[\-+]?\d*[\.,/]?\d+")
 
 
 def metamath_prompt(question: str) -> str:
     """The exact MetaMath GSM8K eval prompt for one question (CoT tokens follow this prefix)."""
     return METAMATH_TEMPLATE.format(instruction=question)
+
+
+def metamath_direct_prompt(question: str) -> str:
+    """MetaMath prompt whose response is forced to start with ``The answer is: `` (no CoT)."""
+    return METAMATH_DIRECT_TEMPLATE.format(instruction=question)
 
 
 def format_gsm8k_solution(answer_field: str) -> str:
