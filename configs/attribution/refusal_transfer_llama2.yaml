@@ -30,13 +30,15 @@ eval:
   alphas: [0.5, 1.0, 2.0, 4.0]
   max_new: 64
   # Pareto frontier: each install method swept over its own strength grid (alpha=0 = the
-  # un-steered base anchor). Grids differ because the methods live on different scales
-  # (CAA per-layer vectors ~0.3 norm; Arditi unit direction added at all layers; ridge map).
+  # un-steered base anchor). Grids CALIBRATED by a fine low-α probe + per-layer injected norm:
+  # CAA's mean per-layer vector norm is ~49, so its α is ~100x smaller than the unit-direction
+  # methods. Each grid spans no-effect -> working window -> just into the gibberish cliff;
+  # the coherence score flags the broken points so gibberish ≠ "perfect over-refusal".
   frontier:
     over_refusal_budget: 0.10   # report each method's max harmful-refusal at benign-refusal <= this
-    caa_alphas: [0.0, 2.0, 4.0, 8.0, 16.0, 32.0]      # also reused as the gate's vector grid
-    arditi_alphas: [0.0, 2.0, 4.0, 8.0, 16.0, 24.0]
-    map_alphas: [0.0, 0.5, 1.0, 2.0, 4.0, 8.0]
+    caa_alphas: [0.0, 0.005, 0.01, 0.015, 0.02, 0.03, 0.05]   # also reused as the gate's vector grid
+    arditi_alphas: [0.0, 0.5, 1.0, 1.5, 2.0, 3.0]
+    map_alphas: [0.0, 0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.3]
     gate_layer: null            # null -> auto-select the best harmful/benign-separating layer
 
 output:
