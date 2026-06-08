@@ -1,0 +1,47 @@
+# Refusal-transfer: latent-vs-weight-born discriminator in the safety domain.
+#
+# Identical primal-ridge pipeline to metamath_llama2_gsm8k.yaml, but the (a, δ) pairs are
+# (base, chat-expert) residuals over the refusal-decision window of a MIXED harmful+benign
+# prompt set. Base is the SAME ungated NousResearch mirror used for the GSM8K null
+# (apples-to-apples); the "expert" is the full RLHF chat finetune of that base. Both ungated.
+
+base_model: NousResearch/Llama-2-7b-hf
+expert_model: NousResearch/Llama-2-7b-chat-hf
+harm_judge: cais/HarmBench-Llama-2-13b-cls   # ungated content-harmfulness judge: did the generation carry out the behavior?
+seed: 42
+hidden_dim: 4096
+num_layers: 32            # Llama-2-7B decoder layers (0..31); attribute all
+device: cuda
+accum_device: cuda        # GramAccumulators live here (64 x 4096^2 f64 ~ 8.6 GB; fits 80GB)
+
+collect:
+  n_harmful_fit: 200      # harmful prompts for the fit split (AdvBench mirror, 520 total)
+  n_benign_fit: 200       # benign prompts (Alpaca) — teaches harm-conditionality for free
+  k_decode: 16            # expert-greedy decode budget; the refusal-decision window depth
+  heldout_frac: 0.2       # fraction of the mixed fit set held out for the lambda sweep
+
+sweep:
+  lambdas_logspace: [-1, 7, 17]   # np.logspace(-1, 7, 17)
+  crosscheck_rtol: 1.0e-6         # assert crosscheck_abs_err < rtol * s per (layer, lambda)
+
+eval:
+  n_eval_harmful: 60      # held-out harmful prompts (disjoint from fit), behavior eval
+  n_eval_benign: 60       # benign control (over-refusal / Guard-safe retention)
+  alphas: [0.5, 1.0, 2.0, 4.0]
+  max_new: 64
+  # Pareto frontier: each install method swept over its own strength grid (alpha=0 = the
+  # un-steered base anchor). Grids differ because the methods live on different scales
+  # (CAA per-layer vectors ~0.3 norm; Arditi unit direction added at all layers; ridge map).
+  frontier:
+    over_refusal_budget: 0.10   # report each method's max harmful-refusal at benign-refusal <= this
+    caa_alphas: [0.0, 2.0, 4.0, 8.0, 16.0, 32.0]      # also reused as the gate's vector grid
+    arditi_alphas: [0.0, 2.0, 4.0, 8.0, 16.0, 24.0]
+    map_alphas: [0.0, 0.5, 1.0, 2.0, 4.0, 8.0]
+    gate_layer: null            # null -> auto-select the best harmful/benign-separating layer
+
+output:
+  acc_dir: results/attribution/refusal_accumulators
+  maps_dir: results/attribution/refusal_maps
+  sweep_json: results/attribution/refusal_sweep.json
+  steer_json: results/attribution/refusal_transfer.json
+  report: results/attribution/2026-06-08-refusal-transfer.md
