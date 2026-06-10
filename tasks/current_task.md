@@ -1,92 +1,84 @@
-# Lockstep dual-forward residual oracle (Step 0 + Step 1, the linchpin)
+# DAS: task-loss-trained δ-subspace vs PCA bands (oracle-subspace contrast)
 
 ## 1. Problem statement
-Steering (`LinearPrimalSteerHook`, inject `α·Wᵀa` at layer L every decode step) recovered
-**0%** of the LoRA's GSM8K capability. We don't yet know if that null is **fundamental**
-(residual *values* at a site can't carry the multi-step procedure) or **estimator-driven**
-(the fitted `W` is just a bad map). Step 1 settles it with the *oracle* version of the same
-intervention: inject the LoRA's **true** residual (not a fitted `W·a`) at layer L, every
-decode step, and measure capability recovery. If even the oracle recovers nothing at any L,
-the steering null was fundamental. That retroactively licenses Steps 2–5.
+PCA bands pick the injected δ-subspace by **variance**; the capability is invisible to that
+objective (top-64 = 0% recovery at 55% of δ-energy; recovery only switches on at top-512 = 0.45).
+Complement test settled it: δ−top64 (`tail64`, 4032 dirs, 45% energy) = **0.00** → the low-variance
+tail is not causally sufficient; it's a fidelity/wide-band requirement, and PCA-by-variance can't
+*find* the causal directions. Question DAS answers: **are the causal directions low-RANK but
+low-VARIANCE — findable by a task-loss subspace search at a rank where PCA recovers nothing?**
 
-## 2. Agreed solution approach — lockstep dual-forward
-At each decode step `t`, context `S_t = [prompt, b_1…b_{t-1}]` is **base's own** emitted tokens.
-1. Forward **LoRA** (adapter on) on `S_t`; capture residual at the target layer(s), all positions.
-2. Forward **base** (adapter off) on `S_t`; **overwrite** the target layer(s) residual with LoRA's.
-3. Base emits `b_t` from the patched stream; append; repeat.
+## 2. Approach — the clean one-variable contrast
+The DAS intervention is *identical* to the PCA-band injection `a + Π_R(δ_true)` at L20 every decode
+step (literally `projected_injection` with `V = R`). Only the subspace differs:
+- **PCA**: `V` = top-r eigenvectors of δδᵀ (variance; already run: top8/64/256/512 = 0/0/0.05/0.45).
+- **DAS**: `R` = orthonormal d×r learned by **gradient descent on a behavioral loss** — make
+  base+`Π_R(δ)` reproduce LoRA's per-step greedy next-token decisions on the base trajectory.
 
-Both passes run on the *same base-generated tokens* → positions aligned; context is base's own
-→ no in-context-correctness leak; re-applied every step → exact oracle of all-step steering.
-Faithful + efficient: the steering hook patches each position **once when first computed**, which
-is KV-cache compatible (two caches: one LoRA, one base), so this is **O(T)** per problem.
+Same injection mechanism, same oracle δ, same closed-loop lockstep eval → DAS-R@r vs PCA-top-r at
+matched rank isolates **subspace-selection objective**. If DAS-R@64 ≫ PCA-top64 (=0), the directions
+are low-rank, just low-variance → task-loss/whitened fit is the salvage with a real prior on success.
+If DAS-R needs r≈512 too, it's a genuine wide-band fidelity floor → the LoReFT map (learn the value,
+exp. 2) is the honest next move.
 
-**Confirmed design call:** copying **all layers** is degenerate-to-LoRA (final-layer residual
-overwrite ⇒ base logits = LoRA logits ⇒ trajectory = LoRA greedy). So:
+**Decisions (locked):** oracle-subspace contrast (not full map yet); ranks **8, 64, 256, 512**
+(match PCA bands); layer L20; PCA anchor = existing `lockstep_pca_band_L20.json` (same train-split δ,
+n=100, so directly comparable).
 
-| Run | Inject layers | Role |
-|---|---|---|
-| Positive control | all (0..N-1) | MUST recover ≈ lora_acc → validates wiring/alignment |
-| **Headline** | single L, sweep L | recovery-vs-L curve = the real signal |
-| Cumulative | ≤ L, sweep L | sharp vs smeared depth transition (Step 2 preview) |
-| Cheap bracket | single-input, answer-pos, teacher-forced | fast per-layer logprob screen to narrow L |
-
-## 3. Metric (Step 0)
-- Contrast set: GSM8K, `NousResearch/Llama-2-7b-hf` + `metamath-lora-rank-16-alpha-32`.
-  Restrict to **base-fails / LoRA-solves** problems (the recoverable budget). base 0.0 → LoRA 0.6
-  on the 50-problem eval (`results/attribution/icl_gsm8k.json`); denominator = the ~30 solved.
-- Readout: exact-match accuracy (`extract_pred_number` + `numeric_match`).
-- Continuous companion: log-prob of the gold-answer tokens at the answer position.
-- recovery(acc) = (acc − base_acc) / (lora_acc − base_acc).
+## 3. Training signal (matches the eval distribution)
+Per train problem (train split, disjoint from test contrast set): generate **base** CoT (adapter off)
+→ `full_ids, plen` (same trajectory dist as eval). Teacher-force base → `a_L (seq,d)`; teacher-force
+LoRA → `lora_L (seq,d)` + `lora_logits`. `δ_L = lora_L − a_L`; **target[t] = argmax(lora_logits[t])**
+(LoRA's greedy next-token given *base* context — exactly what the oracle injects to reproduce).
+Train R: inject `a + Π_R(δ)` at L20 (all positions), base upper layers → patched logits, CE vs target
+over CoT positions. Only R trains (orthonormal via reduced-QR of a raw param); δ cached/detached.
+Eval = closed-loop lockstep recovery on the 34-problem contrast set (honest re: closed-loop drift).
 
 ## 4. Files
-- NEW `src/probes/attribution/lockstep_oracle.py` — `OverwriteResidualHook`, `lockstep_generate`,
-  `run_lockstep_recovery` (control / single / cumulative via a layer-set arg).
-- NEW `scripts/attribution/lockstep_patch_gsm8k.py` — CLI: load, build contrast set, run control +
-  sweep, write JSON + short report.
-- NEW `tests/attribution/test_lockstep_oracle.py` — pure-logic tests on a CPU fake model.
-- REUSE `attribution_common.py` (load/data/accuracy), `extraction.PerTokenResidualCapture`,
-  `gsm8k_prompts` (templates/scoring). No edits to existing modules expected.
+- NEW `src/probes/attribution/das_subspace.py` — `OrthoSubspace` (QR-orthonormal R), `inject_value`
+  (`a+Π_R(δ)`, differentiable), `subspace_lm_loss` (CE over CoT positions). Pure/testable.
+- NEW `scripts/attribution/das_subspace_gsm8k.py` — CLI: build train cache, `train_subspace` per rank,
+  eval via `eval_band` (reused), load PCA anchor, write JSON + table.
+- NEW `tests/attribution/test_das_subspace.py` — fake CPU model: R orthonormal; r=d ⇒ inject=lora_resid;
+  trainer reduces loss + R stays orthonormal; loss indexing correct.
+- REUSE `lockstep_oracle.{OverwriteResidualHook,projected_injection,lockstep_generate}`,
+  `lockstep_pca_band.eval_band`, `nonlinear_delta_gsm8k.collect_base_traj`/`load_contrast`,
+  `cot_collection`, `delta_subspace.pca_bands`.
 
-## 5. Non-goals (do NOT change)
-- No edits to `steering_hook.py`, `gram_accumulator.py`, the existing steer/refit scripts, or
-  the main experiment pipeline. No new deps. Not implementing Steps 2–5 yet (gated on Step 1).
-- Not re-deriving `W`; the oracle uses captured residuals directly.
+## 5. Non-goals
+No edits to oracle/PCA modules or existing scripts. Not learning the injected *value* (LoReFT = exp. 2,
+gated on this). Single layer L20. No heavy deps (hand-rolled QR, not geotorch).
 
-## 6. Operational constraints
-- Single GPU, 7B bf16; two KV caches + adapter toggle per step. Start no-cache (obviously correct)
-  to pass the control test, then add KV cache for the sweep. Greedy/deterministic throughout.
-- max_new bounded (≤256; GSM8K CoT is short). Layer sweep may stage via the cheap bracket if the
-  full 32-layer lockstep is too slow — log any narrowing, never silently cap.
+## 6. Constraints
+Single GPU 7B bf16; R is d×r f32 (tiny). Train teacher-forced batch=1 (hooks assert batch=1),
+full base forward with grad-enabled overwrite hook (upper-layer activations only in grad path).
+Eval = slow lockstep (~7 min/rank). Deterministic seed. Measure epoch time on rank-8 first; cap
+epochs/n-train if too slow — log any narrowing.
 
 ## 7. Acceptance criteria
-- **AC1 (linchpin):** positive control (all-layers lockstep) reproduces LoRA greedy tokens
-  exactly on a sample → control_acc == lora_acc. If not, the apparatus is wrong; stop.
-- **AC2:** single-layer + cumulative sweeps produce a recovery curve over L on the contrast set.
-- **AC3:** result JSON has base_acc, lora_acc, per-L {single, cumulative} acc + recovery, control.
-- **AC4:** unit tests (fake CPU model) green: hook overwrite fires, all-layers ⇒ identical logits
-  to the reference forward, decode loop + two-cache bookkeeping correct.
+- AC1: r=d (full rotation) ⇒ eval recovery ≈ full-oracle (~0.75) — wiring/alignment check.
+- AC2: per-rank table {DAS-R recovery vs PCA-top-r recovery} over 8/64/256/512.
+- AC3: trained R verified orthonormal (RᵀR≈I) post-train; result JSON has both curves + train loss.
+- AC4: fake-model unit tests green.
 
-## RESULTS (2026-06-09) — complete; writeup at results/attribution/2026-06-09-lockstep-oracle.md
-- AC1 PASS: all-layers control reproduces LoRA exactly.
-- Single-layer recovery (contrast acc): L0-12=0, L16=.20, L20=.75, L24=.75, L28/31=.95 (28/31 ~degenerate).
-  → null is ESTIMATOR-DRIVEN, residual values carry the procedure (oracle works through 11 base layers @L20).
-- Geometry @L20 (base-traj): cos(W·a,δ_true)=0.61, ‖W·a‖/‖δ_true‖=0.80, R²=0.31 (vs R²_te=0.61 on LoRA-CoT).
-- Fidelity sweep @L20: recovery(t=0/.5/.8/.9/1)=.05/.40/.70/.70/.75 → graceful, saturates by t≈0.8;
-  procedure TOLERATES shift error; ridge map sits below the recovery onset (under-fit, not perfection-needed).
-- Nonlinear MLP estimator @L20: val cos 0.63→0.80, R² 0.33→0.64 (better fit) but recovery STILL 0% (ridge 0.05).
-  Diagnosis (diagnose_nonlinear_steer.py): generations COHERENT (not off-manifold) but loop/restate w/o computing
-  → MSE captures format not computation; closed-loop compounding/distribution-shift. Lever does NOT work feed-forward.
-  Strong claim: LoRA capability is patchable by exact residual (oracle) but NOT reproducible by any layer-local
-  feed-forward map (carrying signal low-variance + closed-loop-fragile). Next levers: on-policy nonlinear DAgger,
-  variance-whitened objective, or multi-layer injection.
-- Files: src/probes/attribution/{lockstep_oracle,shift_geometry}.py;
-  scripts/attribution/{lockstep_patch_gsm8k,compare_map_vs_oracle,lockstep_fidelity_sweep}.py;
-  tests/test_{lockstep_oracle,shift_geometry}.py (14 passing). Note: on branch context-fatigue-datasets (unrelated) — not committed.
+## 8. TDD (test-forward)
+Fake model with `.model.layers` + `lm_head`: (a) `OrthoSubspace().forward()` orthonormal; (b)
+`inject_value` with R=I (r=d) equals `a+δ`; (c) one Adam step on a differentiable fake forward lowers
+loss and R stays orthonormal; (d) `subspace_lm_loss` selects the right CoT positions/targets. GPU
+(script, not pytest): AC1 r=d ≈ oracle before trusting any rank number.
 
-## 8. TDD / test expectations (test-forward)
-1. Fake model with `.model.layers` (ModuleList) + `lm_head`; deterministic. Test: `OverwriteResidualHook`
-   overwrites layer output at given positions; all-layers injection makes the "base" forward's logits
-   equal the "lora" forward's logits (the degeneracy = positive control, asserted in miniature).
-2. Test `lockstep_generate` decode loop on the fake model: all-layers ⇒ token-for-token == reference
-   greedy; single-layer ⇒ runs, returns ids of expected length, stops on eos.
-3. GPU validation (script, not pytest): AC1 on 3 real problems before trusting any sweep number.
+## Prior result (this branch, uncommitted) — PCA band sweep @L20
+top8/64/256/512/1024/full recovery = 0/0/0.05/0.45/0.65/0.75; energy 0.36/0.55/0.71/0.80/0.88/1.0.
+δ−top64 (tail64) = 0.00 @ 45% energy; δ−top8 (tail8) = 0.00 @ 64% energy → fidelity threshold (strong
+Reading B). Figure: results/figures/pca_band_recovery_L20.png. Writeup: 2026-06-10-pca-band-complement.md.
+
+## RESULT (2026-06-10) — DAS subspace vs PCA: salvage REFUTED
+DAS-R recovery @ r=8/64/256/512 = 0/0/0/0 (PCA top-r = 0/0/0.05/0.45) despite teacher-forced CE
+2.67/0.96/0.16/0.038. Task-loss subspace selection is strictly ≤ variance and collapses to 0 closed-loop
+even at near-zero CE. Mechanism: teacher-forced CE is anti-aligned with closed-loop δ-fidelity — DAS
+overfits the on-policy trajectory / picks a low-energy 512-subspace; PCA captures 80% of δ-energy and
+generalizes. Wall = VALUE-fidelity in a wide variance band, not subspace choice. Subspace search ruled
+out as salvage. Files: src/probes/attribution/das_subspace.py, scripts/attribution/{das_subspace_gsm8k,
+plot_das_subspace}.py, tests/test_das_subspace.py (5 passing). Figure: results/figures/das_vs_pca_L20.png.
+Writeup: 2026-06-10-das-subspace.md. Next fork: (a) energy-capture diagnostic (confirm mechanism) or
+(b) LoReFT value-map on-policy (the upper bound; note DAgger map already failed 2026-06-07).
