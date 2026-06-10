@@ -1,0 +1,195 @@
+"""Lockstep dual-forward residual oracle on GSM8K (Step 1, the linchpin).
+
+For each problem in the base-fails / LoRA-solves contrast set, greedily decode the BASE model
+while, at every step, overwriting its residual at a chosen layer set with the LoRA model's true
+residual on the same base-generated context (see ``src/probes/attribution/lockstep_oracle.py``).
+
+    # validate the apparatus (AC1): all-layers control must reproduce LoRA exactly
+    uv run python -m scripts.attribution.lockstep_patch_gsm8k \
+        --config configs/attribution/metamath_llama2_gsm8k.yaml --validate --n-contrast 3
+
+    # single-layer recovery sweep (the headline) + cumulative (depth transition)
+    uv run python -m scripts.attribution.lockstep_patch_gsm8k \
+        --config configs/attribution/metamath_llama2_gsm8k.yaml \
+        --mode single --layers 0,4,8,12,16,20,24,28,31
+
+Modes: ``control`` (all layers; positive control), ``single`` (inject layer L alone, sweep),
+``cumulative`` (inject layers 0..L, sweep). recovery = (acc-base)/(lora-base).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+
+import yaml
+
+from scripts.attribution.attribution_common import (
+    generate_cot_ids,
+    gsm8k_accuracy,
+    gsm8k_problems,
+    load_base_and_lora,
+    prompt_token_ids,
+)
+from scripts.safety.extract_refusal_shifts import set_seed
+from src.probes.attribution.gsm8k_prompts import extract_pred_number, numeric_match
+from src.probes.attribution.lockstep_oracle import OverwriteResidualHook, lockstep_generate
+from src.probes.extraction import PerTokenResidualCapture
+
+
+def make_lockstep_fns(base, lora, capture, inject, inject_layers):
+    """Wire the shared base/adapter into the two callables ``lockstep_generate`` consumes."""
+    def capture_residuals(S):
+        capture.clear()
+        with capture.capturing():
+            base(S, use_cache=False)  # adapter ON → LoRA residuals on base's context
+        return {li: capture.captured[li] for li in inject_layers}
+
+    def base_logits(S):
+        with inject.injecting(), lora.disable_adapter():
+            return base(S, use_cache=False).logits
+
+    return capture_residuals, base_logits
+
+
+def lockstep_eval(base, lora, tok, problems, device, inject_layers, max_new):
+    """Lockstep-decode every problem; return (accuracy, per-problem correctness list)."""
+    capture = PerTokenResidualCapture(base, inject_layers)
+    inject = OverwriteResidualHook(base, inject_layers)
+    cap_fn, logit_fn = make_lockstep_fns(base, lora, capture, inject, inject_layers)
+    eos = tok.eos_token_id
+    per = []
+    for i, (q, gold) in enumerate(problems):
+        prompt_ids = prompt_token_ids(tok, q, device)
+        out = lockstep_generate(prompt_ids, cap_fn, logit_fn, inject,
+                                inject_layers, max_new, eos, device)
+        text = tok.decode(out[0][prompt_ids.shape[1]:], skip_special_tokens=True)
+        ok = bool(numeric_match(extract_pred_number(text), gold))
+        per.append(ok)
+        print(f"    [{i+1}/{len(problems)}] gold={gold:g} ok={ok}", flush=True)
+    capture.remove()
+    inject.remove()
+    return sum(per) / len(per), per
+
+
+def build_contrast_set(base, lora, tok, problems, device, max_new, cache_path: Path):
+    """Greedy-eval base and LoRA; keep base-wrong / LoRA-right problems (the recoverable budget)."""
+    if cache_path.exists():
+        cached = json.loads(cache_path.read_text())
+        print(f"[contrast] loaded {len(cached['indices'])} problems from {cache_path}", flush=True)
+        contrast = [tuple(problems[i]) for i in cached["indices"]]
+        return contrast, cached["base_acc"], cached["lora_acc"], cached["indices"]
+
+    indices, base_ok, lora_ok = [], 0, 0
+    for i, (q, gold) in enumerate(problems):
+        prompt_ids = prompt_token_ids(tok, q, device)
+        with lora.disable_adapter():
+            b_out = base.generate(prompt_ids, max_new_tokens=max_new, do_sample=False,
+                                  pad_token_id=tok.pad_token_id or tok.eos_token_id)
+        l_out = lora.generate(prompt_ids, max_new_tokens=max_new, do_sample=False,
+                              pad_token_id=tok.pad_token_id or tok.eos_token_id)
+        b_txt = tok.decode(b_out[0][prompt_ids.shape[1]:], skip_special_tokens=True)
+        l_txt = tok.decode(l_out[0][prompt_ids.shape[1]:], skip_special_tokens=True)
+        b_ok = bool(numeric_match(extract_pred_number(b_txt), gold))
+        l_ok = bool(numeric_match(extract_pred_number(l_txt), gold))
+        base_ok += b_ok
+        lora_ok += l_ok
+        if l_ok and not b_ok:
+            indices.append(i)
+        print(f"  [{i+1}/{len(problems)}] base_ok={b_ok} lora_ok={l_ok} "
+              f"({'KEEP' if (l_ok and not b_ok) else 'skip'})", flush=True)
+
+    base_acc, lora_acc = base_ok / len(problems), lora_ok / len(problems)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(
+        {"indices": indices, "base_acc": base_acc, "lora_acc": lora_acc, "n_eval": len(problems)},
+        indent=2))
+    print(f"[contrast] {len(indices)} base-fail/LoRA-solve; base={base_acc:.3f} lora={lora_acc:.3f}",
+          flush=True)
+    return [tuple(problems[i]) for i in indices], base_acc, lora_acc, indices
+
+
+def run_validate(base, lora, tok, problems, device, num_layers, max_new, n):
+    """AC1: all-layers lockstep must reproduce LoRA's greedy answers exactly."""
+    sample = problems[:n]
+    print(f"\n[validate] all-layers lockstep vs LoRA greedy on {len(sample)} problems", flush=True)
+    lora_ok = []
+    for q, gold in sample:
+        ids, plen = generate_cot_ids(lora, tok, q, device, max_new)
+        txt = tok.decode(ids[0][plen:], skip_special_tokens=True)
+        lora_ok.append(bool(numeric_match(extract_pred_number(txt), gold)))
+    ctrl_acc, ctrl_ok = lockstep_eval(base, lora, tok, sample, device, list(range(num_layers)), max_new)
+    lora_acc = sum(lora_ok) / len(lora_ok)
+    passed = ctrl_ok == lora_ok
+    print(f"[validate] lora_acc={lora_acc:.3f} control_acc={ctrl_acc:.3f} "
+          f"per-problem-match={passed}  {'PASS' if passed else 'FAIL'}", flush=True)
+    return passed
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--mode", choices=["control", "single", "cumulative"], default="single")
+    ap.add_argument("--layers", default=None, help="comma list (default: all, evenly for sweep)")
+    ap.add_argument("--n-eval", type=int, default=60, help="problems scanned to build contrast set")
+    ap.add_argument("--n-contrast", type=int, default=None, help="cap on contrast-set size used")
+    ap.add_argument("--max-new", type=int, default=256)
+    ap.add_argument("--validate", action="store_true", help="run AC1 check and exit")
+    ap.add_argument("--out", default=None, help="output JSON path")
+    args = ap.parse_args()
+
+    cfg = yaml.safe_load(Path(args.config).read_text())
+    set_seed(cfg["seed"])
+    device, num_layers = cfg["device"], cfg["num_layers"]
+
+    print(f"Loading {cfg['base_model']} + adapter ...", flush=True)
+    tok, base, lora = load_base_and_lora(cfg)
+    scan = gsm8k_problems(cfg["eval"]["split"], args.n_eval, skip=0)
+
+    out_dir = Path(cfg["output"]["steer_json"]).parent
+    contrast, base_acc, lora_acc, indices = build_contrast_set(
+        base, lora, tok, scan, device, args.max_new, out_dir / "lockstep_contrast_set.json")
+    if args.n_contrast:
+        contrast = contrast[:args.n_contrast]
+    print(f"Using {len(contrast)} contrast problems (base={base_acc:.3f} lora={lora_acc:.3f})", flush=True)
+
+    if args.validate:
+        ok = run_validate(base, lora, tok, contrast, device, num_layers, args.max_new, args.n_contrast or 3)
+        raise SystemExit(0 if ok else 1)
+
+    # The contrast set is base-fails / LoRA-solves by construction, so on it base accuracy is 0
+    # and LoRA accuracy is 1: the recoverable budget spans the full [0,1] range and recovery is
+    # simply the contrast-set accuracy. (``base_acc``/``lora_acc`` below are the full-scan numbers,
+    # kept only for context — do NOT use them as the recovery denominator.)
+    def recovery(acc: float) -> float:
+        return acc
+
+    layers = ([int(x) for x in args.layers.split(",")] if args.layers
+              else list(range(0, num_layers, 4)) + [num_layers - 1])
+
+    results = {"mode": args.mode, "scan_base_acc": base_acc, "scan_lora_acc": lora_acc,
+               "contrast_base_acc": 0.0, "contrast_lora_acc": 1.0,
+               "n_contrast": len(contrast), "max_new": args.max_new, "contrast_indices": indices,
+               "per_layer": {}}
+
+    if args.mode == "control":
+        print(f"\n[control] all {num_layers} layers (must recover ≈ lora)", flush=True)
+        acc, _ = lockstep_eval(base, lora, tok, contrast, device, list(range(num_layers)), args.max_new)
+        results["control"] = {"acc": acc, "recovery": recovery(acc)}
+        print(f"  control acc={acc:.3f} recovery={recovery(acc):+.3f}", flush=True)
+    else:
+        for L in layers:
+            inj = [L] if args.mode == "single" else list(range(L + 1))
+            print(f"\n[{args.mode}] L={L} (inject {len(inj)} layer(s))", flush=True)
+            acc, _ = lockstep_eval(base, lora, tok, contrast, device, inj, args.max_new)
+            results["per_layer"][L] = {"acc": acc, "recovery": recovery(acc)}
+            print(f"  L{L:2d} acc={acc:.3f} recovery={recovery(acc):+.3f}", flush=True)
+
+    out_path = Path(args.out) if args.out else out_dir / f"lockstep_{args.mode}.json"
+    out_path.write_text(json.dumps(results, indent=2, default=float))
+    print(f"\nSaved {out_path}", flush=True)
+
+
+if __name__ == "__main__":
+    main()
