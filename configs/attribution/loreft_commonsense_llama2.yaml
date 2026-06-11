@@ -1,0 +1,41 @@
+# LoReFT commonsense reproduction (subset-first) on Llama-2-7B.
+#
+# Paper recipe (pyreft examples/loreft, commonsense task): intervene ALL layers at the first 7 +
+# last 7 prompt tokens with weights shared across positions (one intervention per layer), rank 8,
+# lr 9e-4, 6 epochs, batch 16 x grad-accum 2, warmup 0.1, dropout 0, greedy decoding, 32 new
+# tokens, prompt template "%s\n" (no alpaca wrapper). Base is the same ungated NousResearch
+# mirror used by the GSM8K and refusal experiments.
+
+base_model: NousResearch/Llama-2-7b-hf
+seed: 42
+hidden_dim: 4096
+num_layers: 32
+device: cuda
+
+data:
+  dir: data/commonsense
+  train_file: commonsense_170k.json
+  eval_datasets: [boolq, piqa, ARC-Challenge]
+  n_train: 20000            # subset-first; the paper trains on all 170k
+  max_len: 512
+
+intervention:
+  rank: 8
+  n_prefix: 7
+  n_suffix: 7
+
+train:
+  epochs: 6
+  lr: 9.0e-4
+  batch_size: 16
+  grad_accum: 2
+  warmup_ratio: 0.1
+  log_every: 50
+
+eval:
+  batch_size: 16
+  max_new: 32
+  limit: null               # int caps items per dataset for smoke runs; null = full test split
+
+output:
+  dir: results/attribution/loreft_commonsense
