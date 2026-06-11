@@ -37,15 +37,19 @@ from src.probes.attribution.loreft_intervention import (
     PositionEditHook,
     intervention_locations,
 )
+from src.probes.attribution.crossmodel_align import TransplantEdit
 from src.probes.attribution.ridge_steering_map import RidgeEdit
 
 RIDGE_PREFIX = "ridge:"
+TRANSPLANT_PREFIX = "transplant:"
 
 
 def load_interventions(path: str, model, device) -> PositionEditHook:
-    """LoReFT checkpoint, or a ridge-steering-map file when ``path`` starts with ``ridge:``."""
+    """LoReFT checkpoint, a ridge map (``ridge:``), or a cross-model transplant (``transplant:``)."""
     if path.startswith(RIDGE_PREFIX):
         return load_ridge_maps(path[len(RIDGE_PREFIX):], model, device)
+    if path.startswith(TRANSPLANT_PREFIX):
+        return load_transplant(path[len(TRANSPLANT_PREFIX):], model, device)
     ckpt = torch.load(path, map_location=device, weights_only=True)
     meta = ckpt["meta"]
     interventions = {}
@@ -69,6 +73,30 @@ def load_ridge_maps(path: str, model, device) -> PositionEditHook:
         interventions[int(li)] = edit
     print(f"Loaded {len(interventions)} ridge steering maps (rank {meta['rank']}, "
           f"λ={meta['ridge_lambda']}, fit on {meta['n_fit']} prompts)", flush=True)
+    return PositionEditHook(model, interventions)
+
+
+def load_transplant(path: str, model, device) -> PositionEditHook:
+    """Cross-model transplant: per-layer Procrustes bridge wrapping the donor's LoReFT modules.
+
+    The transplant file stores the alignment ``{A, mean_R, mean_D}`` per layer plus the donor LoReFT
+    checkpoint path; we rebuild each donor :class:`LoReFTIntervention` and wrap it in a
+    :class:`TransplantEdit`, which the recipient model applies through :class:`PositionEditHook`.
+    """
+    ckpt = torch.load(path, map_location=device, weights_only=True)
+    meta = ckpt["meta"]
+    donor_ckpt = torch.load(meta["loreft"], map_location=device, weights_only=True)
+    lmeta = donor_ckpt["meta"]
+    interventions = {}
+    for li, al in ckpt["align"].items():
+        donor = LoReFTIntervention(lmeta["hidden_dim"], lmeta["rank"]).to(device)
+        donor.load_state_dict(donor_ckpt["state"][li])
+        donor.eval()
+        edit = TransplantEdit(donor, al["A"], al["mean_R"], al["mean_D"]).to(device)
+        edit.eval()
+        interventions[int(li)] = edit
+    print(f"Loaded {len(interventions)} transplant edits ({meta['phase']} alignment, "
+          f"fit on {meta['n_fit']} prompts; donor {lmeta['base_model']})", flush=True)
     return PositionEditHook(model, interventions)
 
 
@@ -111,18 +139,28 @@ def main() -> None:
                     help="checkpoint path from train_loreft_commonsense.py, or 'none' for base")
     ap.add_argument("--datasets", default=None, help="override data.eval_datasets (comma list)")
     ap.add_argument("--limit", type=int, default=None, help="override eval.limit")
-    ap.add_argument("--tag", default=None, help="output tag (default: base|loreft)")
+    ap.add_argument("--base-model", default=None,
+                    help="override cfg['base_model'] (e.g. the recipient chat model for transplants)")
+    ap.add_argument("--tag", default=None, help="output tag (default: base|loreft|ridge|transplant)")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text())
+    if args.base_model:
+        cfg["base_model"] = args.base_model
     set_seed(cfg["seed"])
     device = cfg["device"]
     dcfg, icfg, ecfg = cfg["data"], cfg["intervention"], cfg["eval"]
     datasets = args.datasets.split(",") if args.datasets else dcfg["eval_datasets"]
     limit = args.limit if args.limit is not None else ecfg["limit"]
     steered = args.interventions != "none"
-    default_tag = "base" if not steered else (
-        "ridge" if args.interventions.startswith(RIDGE_PREFIX) else "loreft")
+    if not steered:
+        default_tag = "base"
+    elif args.interventions.startswith(RIDGE_PREFIX):
+        default_tag = "ridge"
+    elif args.interventions.startswith(TRANSPLANT_PREFIX):
+        default_tag = "transplant"
+    else:
+        default_tag = "loreft"
     tag = args.tag or default_tag
 
     print(f"Loading {cfg['base_model']} ...", flush=True)

@@ -92,24 +92,35 @@ class LocationCapture:
 
 
 @torch.no_grad()
-def collect_stats(model, tok, encoded, hook, capture, layers, icfg, batch_size, device):
-    """Stream paired (clean, steered) rows into one :class:`PairStats` per layer."""
+def collect_stats(model, tok, encoded, hook, pre_capture, post_capture, layers, icfg,
+                  batch_size, device, fit_input):
+    """Stream paired (input, steered-post) rows into one :class:`PairStats` per layer.
+
+    ``fit_input='clean'`` pairs the clean residual with the steered post-edit value (the map must
+    reconstruct the steered trajectory from off-distribution clean input). ``fit_input='steered'``
+    pairs the steered *pre-edit* value (what the map actually sees at inference) with the post-edit
+    value, so the target δ is exactly LoReFT's own rank-r edit on its own input.
+    """
     stats = {li: PairStats(model.config.hidden_size, device) for li in layers}
     n_batches = (len(encoded) + batch_size - 1) // batch_size
     for bi in range(n_batches):
         batch = encoded[bi * batch_size:(bi + 1) * batch_size]
         ids, mask, locs, _ = collate_left_padded(
             batch, tok.pad_token_id, icfg["n_prefix"], icfg["n_suffix"], device)
-        capture.set_locations(locs)
+        pre_capture.set_locations(locs)
+        post_capture.set_locations(locs)
 
-        model(ids, attention_mask=mask)                    # clean: LoReFT hook disabled
-        base = {li: capture.captured[li] for li in layers}
+        clean = None
+        if fit_input == "clean":
+            model(ids, attention_mask=mask)                # clean: LoReFT hook disabled
+            clean = {li: post_capture.captured[li] for li in layers}
 
         hook.set_locations(locs)
         with hook.injecting():
-            model(ids, attention_mask=mask)                # steered: LoReFT post-edit
+            model(ids, attention_mask=mask)                # steered: pre_capture=pre-edit, post=post-edit
         for li in layers:
-            stats[li].update(base[li], capture.captured[li])
+            src = clean[li] if fit_input == "clean" else pre_capture.captured[li]
+            stats[li].update(src, post_capture.captured[li])
         print(f"  batch {bi + 1}/{n_batches}", flush=True)
     return stats
 
@@ -121,6 +132,9 @@ def main() -> None:
     ap.add_argument("--n-fit", type=int, default=None, help="prompts to fit on (default data.n_train)")
     ap.add_argument("--rank", type=int, default=8)
     ap.add_argument("--ridge-lambda", type=float, default=1.0)
+    ap.add_argument("--fit-input", choices=["clean", "steered"], default="clean",
+                    help="regress δ from the clean residual (distribution-shifted) or the steered "
+                         "pre-edit value (the input the map sees at inference)")
     ap.add_argument("--out", default=None, help="override output path")
     args = ap.parse_args()
 
@@ -132,19 +146,22 @@ def main() -> None:
 
     print(f"Loading {cfg['base_model']} (frozen bf16) ...", flush=True)
     tok, model = load_frozen_base(cfg)
+    layers = sorted(int(li) for li in
+                    torch.load(args.loreft, map_location="cpu", weights_only=True)["state"])
+    pre_capture = LocationCapture(model, layers)           # BEFORE LoReFT hook: sees pre-edit value
     hook, lmeta = load_loreft(args.loreft, model, device)
-    layers = sorted(hook.interventions)
-    capture = LocationCapture(model, layers)               # AFTER LoReFT hook: sees post-edit value
+    post_capture = LocationCapture(model, layers)          # AFTER LoReFT hook: sees post-edit value
 
     data = load_commonsense_json(Path(dcfg["dir"]) / dcfg["train_file"])
     items = subset_examples(data, n_fit, seed=cfg["seed"])
     encoded = encode_examples(tok, items, dcfg["max_len"])
     print(f"{len(encoded)} usable prompts (of {n_fit} sampled), fitting {len(layers)} layers "
-          f"at rank {args.rank}, λ={args.ridge_lambda}", flush=True)
+          f"at rank {args.rank}, λ={args.ridge_lambda}, fit-input={args.fit_input}", flush=True)
 
-    stats = collect_stats(model, tok, encoded, hook, capture, layers, icfg,
-                          cfg["eval"]["batch_size"], device)
-    capture.remove()
+    stats = collect_stats(model, tok, encoded, hook, pre_capture, post_capture, layers, icfg,
+                          cfg["eval"]["batch_size"], device, args.fit_input)
+    pre_capture.remove()
+    post_capture.remove()
     hook.remove()
 
     maps, residuals = {}, []
@@ -162,7 +179,8 @@ def main() -> None:
     out_path = Path(args.out) if args.out else out_dir / "ridge_maps.pt"
     torch.save({"meta": {"base_model": cfg["base_model"], "hidden_dim": d,
                          "num_layers": cfg["num_layers"], "rank": args.rank,
-                         "ridge_lambda": args.ridge_lambda, "n_fit": len(encoded),
+                         "ridge_lambda": args.ridge_lambda, "fit_input": args.fit_input,
+                         "n_fit": len(encoded),
                          "n_prefix": icfg["n_prefix"], "n_suffix": icfg["n_suffix"],
                          "loreft": args.loreft, "loreft_meta": lmeta},
                 "maps": maps}, out_path)
