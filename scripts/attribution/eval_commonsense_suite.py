@@ -37,9 +37,15 @@ from src.probes.attribution.loreft_intervention import (
     PositionEditHook,
     intervention_locations,
 )
+from src.probes.attribution.ridge_steering_map import RidgeEdit
+
+RIDGE_PREFIX = "ridge:"
 
 
 def load_interventions(path: str, model, device) -> PositionEditHook:
+    """LoReFT checkpoint, or a ridge-steering-map file when ``path`` starts with ``ridge:``."""
+    if path.startswith(RIDGE_PREFIX):
+        return load_ridge_maps(path[len(RIDGE_PREFIX):], model, device)
     ckpt = torch.load(path, map_location=device, weights_only=True)
     meta = ckpt["meta"]
     interventions = {}
@@ -50,6 +56,19 @@ def load_interventions(path: str, model, device) -> PositionEditHook:
         interventions[int(li)] = iv
     print(f"Loaded {len(interventions)} layer interventions (rank {meta['rank']}, "
           f"trained on {meta['n_train']} examples)", flush=True)
+    return PositionEditHook(model, interventions)
+
+
+def load_ridge_maps(path: str, model, device) -> PositionEditHook:
+    ckpt = torch.load(path, map_location=device, weights_only=True)
+    meta = ckpt["meta"]
+    interventions = {}
+    for li, m in ckpt["maps"].items():
+        edit = RidgeEdit(m["P"], m["Q"], m["mean_x"], m["mean_d"]).to(device)
+        edit.eval()
+        interventions[int(li)] = edit
+    print(f"Loaded {len(interventions)} ridge steering maps (rank {meta['rank']}, "
+          f"λ={meta['ridge_lambda']}, fit on {meta['n_fit']} prompts)", flush=True)
     return PositionEditHook(model, interventions)
 
 
@@ -102,7 +121,9 @@ def main() -> None:
     datasets = args.datasets.split(",") if args.datasets else dcfg["eval_datasets"]
     limit = args.limit if args.limit is not None else ecfg["limit"]
     steered = args.interventions != "none"
-    tag = args.tag or ("loreft" if steered else "base")
+    default_tag = "base" if not steered else (
+        "ridge" if args.interventions.startswith(RIDGE_PREFIX) else "loreft")
+    tag = args.tag or default_tag
 
     print(f"Loading {cfg['base_model']} ...", flush=True)
     tok, model = load_frozen_base(cfg)
