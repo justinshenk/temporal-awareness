@@ -50,6 +50,8 @@ from scripts.safety.extract_refusal_shifts import set_seed
 from src.probes.attribution.commonsense_data import load_commonsense_json, subset_examples
 from src.probes.attribution.crossmodel_align import (
     CrossCovStats,
+    affine_residual,
+    fit_affine_bridge,
     fit_procrustes,
     procrustes_residual,
 )
@@ -120,6 +122,67 @@ def fit_alignment(recipient_rows, donor_rows, layers, d):
     return align
 
 
+def split_stats(recipient_rows, donor_rows, layers, d, val_every):
+    """Train/val :class:`CrossCovStats` per layer; every ``val_every``-th batch is held out."""
+    train = {li: CrossCovStats(d) for li in layers}
+    val = {li: CrossCovStats(d) for li in layers}
+    for bi, (rec_batch, don_batch) in enumerate(zip(recipient_rows, donor_rows)):
+        dest = val if bi % val_every == val_every - 1 else train
+        for li in layers:
+            dest[li].update(rec_batch[li], don_batch[li])
+    return train, val
+
+
+def fit_affine_alignment(recipient_rows, donor_rows, layers, d, lam_sweep, ranks, val_every,
+                         fit_device):
+    """Affine vs Procrustes bridge on the same rows, scored on HELD-OUT batches.
+
+    Per layer: fit the orthogonal Procrustes map and full-rank affine ridge maps (one per λ in
+    ``lam_sweep``) on the train batches and score both with :func:`affine_residual` on the val
+    batches (Procrustes is the affine map ``W_F = Aᵀ``, so one residual function compares them on
+    identical footing). λ* is chosen by the median held-out residual across layers; the saved maps
+    and the rank sweep (SVD truncations of the λ* map) use λ*. Fits run on ``fit_device`` —
+    float64 ``d×d`` solves are far faster on GPU and the models are already freed.
+    """
+    train, val = split_stats(recipient_rows, donor_rows, layers, d, val_every)
+    tstates = {li: {k: v.to(fit_device) for k, v in train[li].state().items()} for li in layers}
+    vstates = {li: {k: v.to(fit_device) for k, v in val[li].state().items()} for li in layers}
+    print(f"held-out split: every {val_every}th batch; fitting on {fit_device}", flush=True)
+
+    per_lam = {lam: [] for lam in lam_sweep}                       # held-out residual per layer
+    procrustes_res = []
+    for li in layers:
+        A, mean_R, mean_D = fit_procrustes(tstates[li])
+        pres = affine_residual(vstates[li], A.T, mean_R, mean_D)
+        procrustes_res.append(pres)
+        cells = []
+        for lam in lam_sweep:
+            W_F, _, mR, mD = fit_affine_bridge(tstates[li], lam=lam)
+            per_lam[lam].append(affine_residual(vstates[li], W_F, mR, mD))
+            cells.append(f"λ={lam:g} {per_lam[lam][-1]:.4f}")
+        print(f"  layer {li:2d}  heldout: procrustes {pres:.4f} | affine " + "  ".join(cells),
+              flush=True)
+
+    medians = {lam: sorted(rs)[len(rs) // 2] for lam, rs in per_lam.items()}
+    lam_star = min(medians, key=medians.get)
+    print(f"λ* = {lam_star:g} (median held-out residual {medians[lam_star]:.4f}; "
+          f"procrustes median {sorted(procrustes_res)[len(procrustes_res) // 2]:.4f})", flush=True)
+
+    align = {}
+    for li in layers:
+        W_F, W_G, mean_R, mean_D = fit_affine_bridge(tstates[li], lam=lam_star)
+        align[li] = {"W_F": W_F.cpu(), "W_G": W_G.cpu(),
+                     "mean_R": mean_R.cpu(), "mean_D": mean_D.cpu()}
+        cells = []
+        for rank in ranks:
+            W_r, _, mR, mD = fit_affine_bridge(tstates[li], lam=lam_star, rank=rank)
+            cells.append(f"r{rank} {affine_residual(vstates[li], W_r, mR, mD):.4f}")
+        full = affine_residual(vstates[li], W_F, mean_R, mean_D)
+        print(f"  layer {li:2d}  rank sweep @λ*: " + "  ".join(cells) + f"  full {full:.4f}",
+              flush=True)
+    return align, lam_star
+
+
 def free(model) -> None:
     del model
     gc.collect()
@@ -135,6 +198,15 @@ def main() -> None:
     ap.add_argument("--clean-transplant", default=None,
                     help="phase=onpolicy: the clean transplant to run live in the recipient")
     ap.add_argument("--n-fit", type=int, default=2000, help="prompts to align on")
+    ap.add_argument("--bridge", choices=["procrustes", "affine"], default="procrustes",
+                    help="orthogonal Procrustes (in-sample residual) or ridge-fit affine maps "
+                         "(held-out residual surface vs the Procrustes baseline)")
+    ap.add_argument("--lam-sweep", default="1e-6,1e-4,1e-2,1e0",
+                    help="bridge=affine: relative ridge λ values for the held-out surface")
+    ap.add_argument("--ranks", default="8,64,512",
+                    help="bridge=affine: SVD-truncation ranks for the held-out surface at λ*")
+    ap.add_argument("--val-every", type=int, default=10,
+                    help="bridge=affine: every k-th batch is held out for residual scoring")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -195,16 +267,22 @@ def main() -> None:
     del rbatches
     free(recipient)
 
-    align = fit_alignment(recipient_rows, donor_rows, layers, d)
+    meta = {"phase": args.phase, "donor": donor_name, "recipient": args.recipient,
+            "loreft": args.loreft, "hidden_dim": d, "num_layers": cfg["num_layers"],
+            "n_fit": len(encoded), "n_prefix": icfg["n_prefix"], "n_suffix": icfg["n_suffix"],
+            "clean_transplant": args.clean_transplant, "bridge": args.bridge}
+    if args.bridge == "procrustes":
+        align = fit_alignment(recipient_rows, donor_rows, layers, d)
+    else:
+        lam_sweep = [float(x) for x in args.lam_sweep.split(",")]
+        ranks = [int(x) for x in args.ranks.split(",")]
+        align, lam_star = fit_affine_alignment(recipient_rows, donor_rows, layers, d, lam_sweep,
+                                               ranks, args.val_every, device)
+        meta.update({"lam": lam_star, "val_every": args.val_every})
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"meta": {"phase": args.phase, "donor": donor_name, "recipient": args.recipient,
-                         "loreft": args.loreft, "hidden_dim": d, "num_layers": cfg["num_layers"],
-                         "n_fit": len(encoded), "n_prefix": icfg["n_prefix"],
-                         "n_suffix": icfg["n_suffix"],
-                         "clean_transplant": args.clean_transplant},
-                "align": align}, out_path)
+    torch.save({"meta": meta, "align": align}, out_path)
     print(f"Saved {out_path}", flush=True)
 
 

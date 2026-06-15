@@ -17,7 +17,15 @@ the edit back::
 
     ĥ_D = μ_D + A (h_R − μ_R);   δ_D = LoReFT_L(ĥ_D) − ĥ_D;   h_R' = h_R + Aᵀ δ_D
 
-When the donor edit is zero the operator is the identity. Only fit/edit geometry lives here
+The **affine bridge** relaxes the orthogonality constraint: :func:`fit_affine_bridge` ridge-fits a
+general forward map ``W_F`` (``ĥ_Dᶜ = h_Rᶜ W_F``) and a reverse map ``W_G`` (``ĥ_Rᶜ = h_Dᶜ W_G``)
+from the same sufficient statistics, and :class:`AffineTransplantEdit` applies the donor edit
+through them (deltas are tangent vectors — they transform by the linear part ``W_G``, not the affine
+map). Procrustes is the special case ``W_F = Aᵀ, W_G = A``. Comparing :func:`affine_residual` with
+:func:`procrustes_residual` on the same stats asks whether a misalignment is an orthogonality
+artifact or intrinsic to the paired rows.
+
+When the donor edit is zero the operators are the identity. Only fit/edit geometry lives here
 (unit-testable on tiny ``d``); the model forwards that gather the pairs live in
 ``scripts/attribution/transplant_loreft.py``. Rows are stored as ``(n, d)`` matrices, so the linear
 maps act on the right (``A (h−μ)`` becomes ``(h−μ) @ Aᵀ`` and ``Aᵀ δ`` becomes ``δ @ A``).
@@ -30,11 +38,13 @@ from torch import nn
 
 
 class CrossCovStats:
-    """Streaming sufficient statistics for one layer's recipient→donor Procrustes fit.
+    """Streaming sufficient statistics for one layer's recipient↔donor bridge fits.
 
-    Accumulates ``n``, the row sums ``sr, sd`` and the ``d×d`` cross-product ``c = X_Dᵀ X_R`` in
-    float64, so :func:`fit_procrustes` can recover the centered cross-covariance and means without
-    ever storing raw rows. Chunked updates are exactly equivalent to a one-shot update (the
+    Accumulates ``n``, the row sums ``sr, sd``, the ``d×d`` cross-product ``c = X_Dᵀ X_R`` and the
+    two grams ``gr = X_Rᵀ X_R``, ``gd = X_Dᵀ X_D`` in float64, so :func:`fit_procrustes` and
+    :func:`fit_affine_bridge` can recover the centered (cross-)covariances and means — and the
+    residual functions the fit errors — without ever storing raw rows. The squared norms ``ssr``,
+    ``ssd`` are the gram traces. Chunked updates are exactly equivalent to a one-shot update (the
     accumulators are additive).
     """
 
@@ -44,8 +54,8 @@ class CrossCovStats:
         self.sr = torch.zeros(d, dtype=torch.float64, device=device)
         self.sd = torch.zeros(d, dtype=torch.float64, device=device)
         self.c = torch.zeros(d, d, dtype=torch.float64, device=device)
-        self.ssr = 0.0
-        self.ssd = 0.0
+        self.gr = torch.zeros(d, d, dtype=torch.float64, device=device)
+        self.gd = torch.zeros(d, d, dtype=torch.float64, device=device)
 
     def update(self, rows_recipient: torch.Tensor, rows_donor: torch.Tensor) -> None:
         xr = rows_recipient.detach().to(self.c.device, torch.float64)
@@ -56,15 +66,16 @@ class CrossCovStats:
         self.sr += xr.sum(0)
         self.sd += xd.sum(0)
         self.c += xd.T @ xr
-        self.ssr += float((xr * xr).sum())                         # Σ‖h_R‖²  (for the residual)
-        self.ssd += float((xd * xd).sum())                         # Σ‖h_D‖²
+        self.gr += xr.T @ xr
+        self.gd += xd.T @ xd
 
     def state(self) -> dict:
         """Sufficient statistics on CPU, so downstream fits are device-independent."""
         return {"n": torch.tensor(float(self.n), dtype=torch.float64),
                 "sr": self.sr.cpu(), "sd": self.sd.cpu(), "c": self.c.cpu(),
-                "ssr": torch.tensor(self.ssr, dtype=torch.float64),
-                "ssd": torch.tensor(self.ssd, dtype=torch.float64)}
+                "gr": self.gr.cpu(), "gd": self.gd.cpu(),
+                "ssr": self.gr.trace().cpu(),                       # Σ‖h_R‖²  (for the residuals)
+                "ssd": self.gd.trace().cpu()}                       # Σ‖h_D‖²
 
 
 def _stats_from_rows(rows_recipient: torch.Tensor, rows_donor: torch.Tensor) -> dict:
@@ -111,6 +122,64 @@ def procrustes_residual(stats: dict, A: torch.Tensor, mean_R: torch.Tensor,
     return (resid / var_d) ** 0.5 if var_d > 0 else 0.0
 
 
+def _truncate_rank(W: torch.Tensor, rank: int) -> torch.Tensor:
+    u, s, vh = torch.linalg.svd(W, full_matrices=False)
+    return u[:, :rank] @ torch.diag(s[:rank]) @ vh[:rank, :]
+
+
+def fit_affine_bridge(stats: dict, lam: float, rank: int | None = None):
+    """Ridge-fit both directions of a general affine bridge from sufficient stats.
+
+    Solves the centered normal equations ``(G_R + λ̃I) W_F = M̃ᵀ`` and ``(G_D + λ̃I) W_G = M̃`` with
+    ``G_R/G_D`` the centered grams, ``M̃ = c/n − μ_D μ_Rᵀ`` the centered cross-covariance and ``λ̃ =
+    lam · mean(diag(G))`` (``lam`` is *relative* to the per-side activation scale). ``rank`` SVD-
+    truncates both maps (``None`` = full rank). Returns ``W_F`` (``ĥ_Dᶜ = h_Rᶜ W_F``), ``W_G``
+    (``ĥ_Rᶜ = h_Dᶜ W_G``), ``mean_R``, ``mean_D``, all float32.
+    """
+    n = float(stats["n"])
+    mean_r = stats["sr"] / n
+    mean_d = stats["sd"] / n
+    cross = stats["c"] / n - torch.outer(mean_d, mean_r)            # M̃ = E[(h_D−μ_D)(h_R−μ_R)ᵀ]
+    cov_r = stats["gr"] / n - torch.outer(mean_r, mean_r)
+    cov_d = stats["gd"] / n - torch.outer(mean_d, mean_d)
+    d = mean_r.shape[0]
+    eye = torch.eye(d, dtype=torch.float64, device=mean_r.device)
+    W_F = torch.linalg.solve(cov_r + lam * cov_r.diagonal().mean() * eye, cross.T)
+    W_G = torch.linalg.solve(cov_d + lam * cov_d.diagonal().mean() * eye, cross)
+    if rank is not None and rank < d:
+        W_F = _truncate_rank(W_F, rank)
+        W_G = _truncate_rank(W_G, rank)
+    return (W_F.to(torch.float32), W_G.to(torch.float32),
+            mean_r.to(torch.float32), mean_d.to(torch.float32))
+
+
+def affine_residual(stats: dict, W_F: torch.Tensor, mean_R: torch.Tensor,
+                    mean_D: torch.Tensor) -> float:
+    """Relative ``‖X_Dᶜ − X_Rᶜ W_F‖ / ‖X_Dᶜ‖`` over the stats' rows, centered by the *given* means.
+
+    Unlike :func:`procrustes_residual` this stays exact when ``mean_R``/``mean_D`` come from a
+    different (training) set than ``stats`` — the held-out protocol: fit on train stats, score on
+    val stats. With ``μ`` the given means and ``K = E[h_Rᶜᵀ h_Dᶜ]``, ``S_R = E[h_Rᶜᵀ h_Rᶜ]``
+    (both expanded about ``μ``), the error is ``E‖h_Dᶜ‖² − 2 tr(W_Fᵀ K) + tr(W_Fᵀ S_R W_F)``.
+    """
+    n = float(stats["n"])
+    mu_r = mean_R.to(torch.float64)
+    mu_d = mean_D.to(torch.float64)
+    w = W_F.to(torch.float64)
+    er = stats["sr"] / n                                           # E[h_R]
+    ed = stats["sd"] / n
+    # E‖h_D − μ_D‖² and the val-rows second moments expanded about the (train) means:
+    var_d = float(stats["ssd"]) / n - 2.0 * float(mu_d @ ed) + float(mu_d @ mu_d)
+    S_R = (stats["gr"] / n - torch.outer(er, mu_r) - torch.outer(mu_r, er)
+           + torch.outer(mu_r, mu_r))                              # E[h_Rᶜᵀ h_Rᶜ]
+    K = (stats["c"].T / n - torch.outer(er, mu_d) - torch.outer(mu_r, ed)
+         + torch.outer(mu_r, mu_d))                                # E[h_Rᶜᵀ h_Dᶜ]
+    cross = float((w * K).sum())                                   # tr(W_Fᵀ K)
+    fit_energy = float((w * (S_R @ w)).sum())                      # tr(W_Fᵀ S_R W_F)
+    resid = max(var_d - 2.0 * cross + fit_energy, 0.0)
+    return (resid / var_d) ** 0.5 if var_d > 0 else 0.0
+
+
 class TransplantEdit(nn.Module):
     """Recipient-space transplant of a donor LoReFT edit through a Procrustes bridge.
 
@@ -137,3 +206,31 @@ class TransplantEdit(nn.Module):
         h_D = self.mean_D + (h_R - self.mean_R) @ self.A.T
         delta_D = self.donor(h_D) - h_D
         return h_R + delta_D @ self.A
+
+
+class AffineTransplantEdit(nn.Module):
+    """Recipient-space transplant of a donor LoReFT edit through a general affine bridge.
+
+    Like :class:`TransplantEdit` but with independent ridge-fit forward/backward linear maps
+    instead of a single rotation::
+
+        ĥ_D = mean_D + (h_R − mean_R) @ W_F
+        δ_D = donor(ĥ_D) − ĥ_D
+        return h_R + δ_D @ W_G
+
+    Drop-in for :class:`PositionEditHook`. A zero donor edit makes it the identity.
+    """
+
+    def __init__(self, donor: nn.Module, W_F: torch.Tensor, W_G: torch.Tensor,
+                 mean_R: torch.Tensor, mean_D: torch.Tensor):
+        super().__init__()
+        self.donor = donor
+        self.register_buffer("W_F", W_F)
+        self.register_buffer("W_G", W_G)
+        self.register_buffer("mean_R", mean_R)
+        self.register_buffer("mean_D", mean_D)
+
+    def forward(self, h_R: torch.Tensor) -> torch.Tensor:
+        h_D = self.mean_D + (h_R - self.mean_R) @ self.W_F
+        delta_D = self.donor(h_D) - h_D
+        return h_R + delta_D @ self.W_G

@@ -24,6 +24,22 @@ intervention:
   n_prefix: 7
   n_suffix: 7
 
+# Matched commonsense LoRA baseline (the LLM-Adapters config the ReFT paper benchmarks against),
+# trained on the SAME 20k subset + "%s\n" / "the correct answer is X" format as the LoReFT, so the
+# only difference is the adaptation method: low-rank weight delta (LoRA) vs subspace representation
+# edit (LoReFT). Used by train_lora_commonsense.py for the activation-similarity comparison.
+lora:
+  rank: 32
+  alpha: 64
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, up_proj, down_proj]
+  lr: 3.0e-4
+  epochs: 3
+  batch_size: 16
+  grad_accum: 2
+  warmup_ratio: 0.1
+  log_every: 50
+
 train:
   epochs: 6
   lr: 9.0e-4

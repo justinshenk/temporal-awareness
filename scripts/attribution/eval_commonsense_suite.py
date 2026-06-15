@@ -23,6 +23,7 @@ from pathlib import Path
 
 import torch
 import yaml
+from peft import PeftModel
 
 from scripts.attribution.train_loreft_commonsense import load_frozen_base
 from scripts.safety.extract_refusal_shifts import set_seed
@@ -37,7 +38,7 @@ from src.probes.attribution.loreft_intervention import (
     PositionEditHook,
     intervention_locations,
 )
-from src.probes.attribution.crossmodel_align import TransplantEdit
+from src.probes.attribution.crossmodel_align import AffineTransplantEdit, TransplantEdit
 from src.probes.attribution.ridge_steering_map import RidgeEdit
 
 RIDGE_PREFIX = "ridge:"
@@ -77,11 +78,12 @@ def load_ridge_maps(path: str, model, device) -> PositionEditHook:
 
 
 def load_transplant(path: str, model, device) -> PositionEditHook:
-    """Cross-model transplant: per-layer Procrustes bridge wrapping the donor's LoReFT modules.
+    """Cross-model transplant: per-layer bridge (Procrustes or affine) wrapping the donor's LoReFT.
 
-    The transplant file stores the alignment ``{A, mean_R, mean_D}`` per layer plus the donor LoReFT
-    checkpoint path; we rebuild each donor :class:`LoReFTIntervention` and wrap it in a
-    :class:`TransplantEdit`, which the recipient model applies through :class:`PositionEditHook`.
+    The transplant file stores the per-layer alignment — ``{A, mean_R, mean_D}`` (orthogonal) or
+    ``{W_F, W_G, mean_R, mean_D}`` (affine) — plus the donor LoReFT checkpoint path; we rebuild each
+    donor :class:`LoReFTIntervention` and wrap it in the matching transplant operator, which the
+    recipient model applies through :class:`PositionEditHook`.
     """
     ckpt = torch.load(path, map_location=device, weights_only=True)
     meta = ckpt["meta"]
@@ -92,11 +94,16 @@ def load_transplant(path: str, model, device) -> PositionEditHook:
         donor = LoReFTIntervention(lmeta["hidden_dim"], lmeta["rank"]).to(device)
         donor.load_state_dict(donor_ckpt["state"][li])
         donor.eval()
-        edit = TransplantEdit(donor, al["A"], al["mean_R"], al["mean_D"]).to(device)
+        if "W_F" in al:
+            edit = AffineTransplantEdit(donor, al["W_F"], al["W_G"], al["mean_R"], al["mean_D"])
+        else:
+            edit = TransplantEdit(donor, al["A"], al["mean_R"], al["mean_D"])
+        edit = edit.to(device)
         edit.eval()
         interventions[int(li)] = edit
-    print(f"Loaded {len(interventions)} transplant edits ({meta['phase']} alignment, "
-          f"fit on {meta['n_fit']} prompts; donor {lmeta['base_model']})", flush=True)
+    print(f"Loaded {len(interventions)} {meta.get('bridge', 'procrustes')} transplant edits "
+          f"({meta['phase']} alignment, fit on {meta['n_fit']} prompts; "
+          f"donor {lmeta['base_model']})", flush=True)
     return PositionEditHook(model, interventions)
 
 
@@ -137,6 +144,9 @@ def main() -> None:
     ap.add_argument("--config", required=True)
     ap.add_argument("--interventions", required=True,
                     help="checkpoint path from train_loreft_commonsense.py, or 'none' for base")
+    ap.add_argument("--lora", default=None,
+                    help="PEFT adapter dir from train_lora_commonsense.py (applied to the weights; "
+                         "use with --interventions none)")
     ap.add_argument("--datasets", default=None, help="override data.eval_datasets (comma list)")
     ap.add_argument("--limit", type=int, default=None, help="override eval.limit")
     ap.add_argument("--base-model", default=None,
@@ -152,8 +162,12 @@ def main() -> None:
     dcfg, icfg, ecfg = cfg["data"], cfg["intervention"], cfg["eval"]
     datasets = args.datasets.split(",") if args.datasets else dcfg["eval_datasets"]
     limit = args.limit if args.limit is not None else ecfg["limit"]
+    if args.lora and args.interventions != "none":
+        ap.error("--lora applies to the weights; run it with --interventions none")
     steered = args.interventions != "none"
-    if not steered:
+    if args.lora:
+        default_tag = "lora"
+    elif not steered:
         default_tag = "base"
     elif args.interventions.startswith(RIDGE_PREFIX):
         default_tag = "ridge"
@@ -165,6 +179,9 @@ def main() -> None:
 
     print(f"Loading {cfg['base_model']} ...", flush=True)
     tok, model = load_frozen_base(cfg)
+    if args.lora:
+        model = PeftModel.from_pretrained(model, args.lora).eval()
+        print(f"Applied LoRA adapter from {args.lora}", flush=True)
     hook = load_interventions(args.interventions, model, device) if steered else None
 
     results = {"tag": tag, "interventions": args.interventions, "datasets": {}}
