@@ -1,0 +1,198 @@
+% NeurIPS workshop style extended abstract.
+% Requires the NeurIPS style file in this directory:
+%   neurips_2023.sty  ->  https://media.neurips.cc/Conferences/NeurIPS2023/Styles/neurips_2023.sty
+% (any recent neurips_20XX.sty works; update the \usepackage line to match the filename.)
+% Build:  pdflatex register_vs_procedure_abstract.tex  (x2 for refs)
+
+\documentclass{article}
+
+\usepackage[final]{neurips_2023}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{caption}
+
+% compaction for a 2-page extended abstract
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+\captionsetup{skip=3pt}
+\setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
+
+\title{Register, Not Procedure: What a Conditional Linear Map\\Can and Cannot Install}
+
+\author{%
+  Ronen Raj Roy\\
+  \texttt{ronex665@gmail.com}\\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Activation steering and parameter-efficient finetuning both edit a model's behavior, and both can be
+written as an \emph{input-conditional affine map} of the residual stream, $h \mapsto h + (Wh + b)$. We
+ask where the \emph{same} map family succeeds and where it fails, holding the apparatus fixed across
+tasks. The boundary is sharp and reproducible: the map installs and transports a
+\textbf{register/disposition} (refusal \emph{tone}, a yes/no answer disposition) but never a
+multi-step \textbf{procedure} (GSM8K arithmetic). A primal-ridge conditional map dominates every
+fixed-vector steering baseline on the harm-refusal frontier, yet the identical machinery recovers
+$\approx 0$ of a reasoning LoRA's gain---and so do MLP, on-policy DAgger, per-context, and task-loss
+(DAS) variants. We trace the failure to its mechanism: the reasoning capability is a \emph{distributed,
+time-dense trajectory state} (recovery needs ${\geq}94\%$ of decode steps and ${\sim}80\%$ of the
+residual's variance band), not a low-rank pointwise function of the activation. Cross-model, even a
+\emph{trained} register edit carries only the coarse disposition off-policy; a strictly better-fitting
+affine bridge transports it \emph{worse}, because the edit lives off-manifold and regression shrinks
+exactly what must be preserved. We propose the register/procedure distinction as the organizing axis
+for ``what is steerable,'' and outline the experiments that would turn it from an empirical regularity
+into a predictive criterion. All results are on the Llama-2-7B family.
+\end{abstract}
+
+\section{Setup and question}
+
+A behavior can be controlled by adding a vector to activations (CAA, Arditi, ActAdd, CAST) or by
+finetuning a low-rank edit into the weights (LoRA) or a learned subspace (LoReFT). LoReFT's edit
+$h + (Wh + b - hR)R^{\top}$ and our primal-ridge steering map $(I + \alpha W)\,a$---fit closed-form so
+that $W a \approx \delta = a_{\text{expert}} - a_{\text{base}}$---are the \emph{same object}: an
+input-conditional affine edit in a learned subspace. We fix this object and sweep the \textbf{task},
+asking a single question---\emph{does the capability install?}---under one coherence-aware metric. Two
+behaviors anchor the extremes: refusal (a disposition) and GSM8K chain-of-thought arithmetic (a
+procedure). Commonsense QA sits between them.
+
+\section{Findings}
+
+\paragraph{(R) Register installs from the conditional map alone, dominating fixed vectors.}
+Pointing the ridge map at refusal and scoring on the harm-refusal / over-refusal Pareto frontier
+($60{+}60$ held-out prompts, refusal tone conditioned on coherence), only the \emph{input-conditional}
+map reaches the harmful-refusal axis at all (Table~\ref{tab:refusal}). The fixed vectors go straight
+from no-effect to off-manifold gibberish (their per-layer $\ell_2$ norm is ${\sim}49$); the map's
+per-input shift lands \emph{on} the chat manifold and even repairs base coherence ($0.63 \to 0.98$)
+before it refuses. Conditionality is learned, not bolted on: $W a$ is large on harmful inputs and
+$\approx 0$ on benign. The $\delta$ it regresses is near-perfectly decodable (held-out
+$R^2 \approx 0.9997$), so the open question was never ``can $\delta$ be read off'' but ``does injecting
+it steer''---and for register it does.
+
+\begin{table}[h]
+\centering
+\caption{Best harmful-refusal at benign over-refusal $\leq 0.10$. Only the conditional map reaches the
+refusal axis.}
+\label{tab:refusal}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcc}
+\toprule
+method & conditionality & harmful refusal & benign over-refusal \\
+\midrule
+CAA mean-difference vector & none & 0.00 & --- \\
+Arditi single direction & none & 0.00 & --- \\
+CAA + logistic gate (CAST) & explicit classifier & 0.00 & --- \\
+\textbf{ridge map $W a$} ($\alpha{=}0.12$) & learned, for free & \textbf{0.62} & \textbf{0.02} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{(R) Commonsense is a register both LoRA and LoReFT solve---via divergent routes.}
+A paper-faithful LoReFT (32 layers, rank 8, f7+l7) and a matched LoRA trained on the
+\emph{byte-identical} supervised signal both recover the task from a $0.00$ base (BoolQ/PIQA/ARC-C:
+LoReFT $0.667/0.798/0.602$, LoRA $0.680/0.790/0.655$). But the \emph{edits} are not the same change:
+$\mathrm{CKA}(\delta)$ collapses $0.96$ (L4) $\to 0.13$ (L28), per-token cosine stays $0.11$--$0.39$,
+and top-8 subspace overlap stays $0.16$--$0.25$. They share only an early-layer, rotation-equivalent
+skeleton (the register/format nudge); the task content is written through genuinely different
+deep-layer edits. There is no canonical ``commonsense direction.''
+
+\paragraph{(P) Procedure does not install---under any map we tried.}
+The same machinery pointed at GSM8K recovers $\approx 0$ of a MetaMath-LoRA's budget, robustly across
+the obvious salvages (Table~\ref{tab:procedure}). The map installs reasoning-\emph{shaped} tokens with
+no arithmetic underneath---``the arithmetic wall.''
+
+\begin{table}[h]
+\centering
+\caption{Procedure-null lineup: every salvage of the conditional map recovers $\approx 0$ on GSM8K.}
+\label{tab:procedure}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llc}
+\toprule
+salvage attempt & result & rules out \\
+\midrule
+global primal-ridge map & 0.00 & --- (baseline null) \\
+short-output single-operation arithmetic & 0.00 & trajectory \emph{length} as the wall \\
+per-context local refit (problem-specific map) & 0.00 & map \emph{generality} \\
+on-policy DAgger refit (${\approx}97\%$ on-policy by round 2) & 0.00 & \emph{distribution shift} \\
+DAS task-loss subspace (CE${\to}0.038$, $r{=}512$) & 0.00 & low-rank-low-variance \emph{subspace search} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{(P) The procedure is a distributed, time-dense trajectory state.}
+A \emph{lockstep oracle} that overwrites the base's L20 residual with the LoRA's every step \emph{does}
+recover GSM8K ($0.75$), which let us dissect what the map cannot supply. (i)~\textbf{Distributed, not
+transported:} identity-ablating just the top two downstream layers (30--31) craters not only the
+patched base ($0.75 \to 0.10$) but the natively-capable LoRA itself ($1.00 \to 0.10$)---L20 holds an
+\emph{intermediate}, not a finished answer. (ii)~\textbf{Compute is not the deficit:} teacher-forced
+on the correct chain, the base predicts computed-result tokens at $96.8\%$; its failure is
+\emph{trajectory control}, not per-step arithmetic. (iii)~\textbf{Dense in time and in variance:}
+recovery requires patching ${\geq}94\%$ of decode steps (every ${\leq}50\%$ gate $\to 0.00$) and
+${\sim}80\%$ of $\delta$'s variance band (top-64 $=55\%$ of energy but $0\%$ recovery; the cliff is
+top-256$\to$512). A donor-free steerer would therefore have to reproduce the LoRA's near-exact
+4096-d state at almost every step---i.e., \emph{be the donor}. The procedure is not a low-rank,
+pointwise, or time-sparse function of the activation.
+
+\paragraph{(X) Cross-model, even a trained register edit carries only the coarse disposition---and
+aiming better hurts.}
+Transplanting a trained LoReFT edit from a donor (Llama-2-7B base) to a recipient (Llama-2-7B-chat)
+through a per-layer orthogonal-Procrustes bridge transfers the \emph{disposition} off-policy (BoolQ
+boolean-commitment $32 \to 53/64$, lenient $0.33 \to 0.58$) but not the trained output template or
+answer correctness (exact-match $\approx 0$). On-policy refit is \emph{worse}; and a ridge-fit
+\textbf{affine} bridge with $12$--$45\times$ better held-out geometry transports the edit \emph{worse
+still} ($8/64$), because the LoReFT delta lives off the data manifold ($\lVert\delta\rVert >
+\lVert h \rVert$) and regression shrinks weakly-represented directions---precisely the ones that must
+be preserved. \textbf{Strength beats aim:} full-norm deltas through a crude isometry move behavior;
+well-aimed deltas at half norm do nothing. The geometric ``wall'' was real but behaviorally irrelevant.
+
+\section{Synthesis}
+
+One axis organizes all of the above. A \textbf{register/disposition}---refusal tone, an answer format,
+a yes/no commitment---is a low-rank, on-manifold, roughly \emph{pointwise} function of the activation;
+it is installable by a single conditional affine map and even survives a crude cross-model rotation. A
+\textbf{procedure}---multi-step arithmetic---is a high-rank, off-manifold, \emph{time-dense} trajectory
+state; it is invisible to variance- and task-loss-based subspace search, and recoverable only by
+transporting essentially the donor's full per-step state. Finetuning (LoRA/LoReFT) and activation
+steering are the same map family, and they inherit the same boundary: they relocate \emph{where a
+disposition points}, not \emph{how a computation unfolds}. A corollary for distillation: a trained edit
+can be ``distilled'' by the conditional map only when fit on the steered (on-policy) input---but that
+is near-tautological (the edit is affine in its own input), a positive control, not an independent
+capability-install.
+
+\section{Next steps}
+
+\begin{itemize}
+  \item \textbf{Hybrid transplant bridge}---affine forward map (better-aimed donor delta) +
+  \emph{orthogonal} back-projection (norm-preserving transport), to isolate aim from strength; our
+  transport analysis predicts it beats the rigid-rotation baseline.
+  \item \textbf{Quantify the disposition carry} beyond $n{=}64$ smoke: loosen the extractor to bare
+  \texttt{true}/\texttt{false}, re-score full BoolQ/PIQA/ARC splits.
+  \item \textbf{Same-family base$\to$base transplant} to separate ``cross-model'' from
+  ``base$\to$chat instruction-tuning shift'' as the cause of the carry failure.
+  \item \textbf{A register-vs-procedure predictor}: turn the empirical boundary into a measurable
+  criterion---e.g.\ does ($\delta$-rank, off-manifold fraction $\lVert\delta\rVert/\lVert h\rVert$,
+  temporal density of the recovery gate) predict installability \emph{a priori} on a held-out behavior
+  (tone, sentiment, sycophancy, induction)?
+  \item \textbf{Leak diagnostic for installed refusal}: the tone axis is established; run the two-axis
+  HarmBench leak test on a compliant instruction-following base (e.g.\ Vicuna) to test whether content
+  is withheld under the installed apology.
+\end{itemize}
+
+\paragraph{Evidence index.} Refusal frontier, LoRA-vs-LoReFT similarity, the procedure-null lineup
+(short-output / local-refit / DAgger / PCA-band / DAS), the L20 oracle dissection (downstream lesion,
+gold-token lens, temporal gate), and the cross-model transplant are each documented as standalone
+reports under \texttt{results/attribution/} with seeded, CPU-tested, reproducible drivers.
+
+\end{document}
