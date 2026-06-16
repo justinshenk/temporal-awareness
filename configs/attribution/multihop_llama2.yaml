@@ -1,0 +1,59 @@
+# Multi-hop QA (MuSiQue, open-book) generality test of the register-vs-procedure thesis.
+#
+# Same base as every prior strand (ungated NousResearch mirror of Llama-2-7b-hf). The "donor"
+# adapter is trained HERE by scripts/attribution/train_lora_multihop.py and written to
+# output.dir/lora_multihop; set `adapter` to that path for the attribution drivers (--task multihop).
+# Open-book: gold supporting passages are inlined into the instruction (composition over given
+# facts, not parametric recall) — see src/probes/attribution/multihop_data.py.
+
+task: multihop
+base_model: NousResearch/Llama-2-7b-hf
+adapter: results/attribution/lora_multihop          # local trained LoRA (set after Phase 0 train)
+seed: 42
+hidden_dim: 4096
+num_layers: 32
+device: cuda
+accum_device: cuda
+
+data:
+  hf_name: dgslibisey/MuSiQue
+  train_split: train
+  eval_split: validation
+  contrast_split: validation
+  n_train: 20000
+  max_len: 1024            # prompt carries the gold passages; chains are short
+
+intervention:              # kept for collate_left_padded compatibility (unused by LoRA)
+  rank: 8
+  n_prefix: 7
+  n_suffix: 7
+
+lora:                      # LLM-Adapters LoRA recipe (matches the commonsense arm)
+  rank: 32
+  alpha: 64
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, up_proj, down_proj]
+  lr: 2.0e-4
+  epochs: 3
+  batch_size: 8
+  grad_accum: 2
+  warmup_ratio: 0.1
+  log_every: 50
+
+collect:                   # ladder fit (Phase 2): donor CoT trajectory for δ capture
+  split: train
+  n_fit: 200
+  max_new: 256
+
+eval:
+  split: validation
+  n_eval: 200
+  alphas: [1.0]
+  max_new: 256
+
+output:
+  dir: results/attribution
+  lora_dir: results/attribution/lora_multihop
+  contrast_json: results/attribution/multihop_contrast_set.json
+  gap_json: results/attribution/multihop_gap.json
+  report: results/attribution/2026-06-16-multihop-generality.md
