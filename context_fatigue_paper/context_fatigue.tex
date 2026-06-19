@@ -1,0 +1,252 @@
+% NeurIPS-style extended abstract.
+% Requires neurips_2023.sty in this directory.
+% Build:  pdflatex context_fatigue.tex   (x2 for refs)
+
+\documentclass{article}
+
+\usepackage[final]{neurips_2023}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+
+% compaction for a short extended abstract
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\captionsetup{skip=3pt}
+\captionsetup[sub]{skip=1pt}
+\setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
+
+\title{Context Fatigue Is In-Context Comfort:\\Multi-Turn Confidence Signatures Without Performance Loss}
+
+\author{%
+  Ronen Raj Roy\\
+  \texttt{ronex665@gmail.com}\\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+As a multi-turn conversation accumulates, instruction-tuned LLMs show two vivid
+``context-fatigue'' signatures: output entropy collapses several-fold, and the last
+token's attention drifts off the system prompt and the current query onto recent
+context. We reproduce both across Qwen-2.5-7B, Llama-3.1-8B, Gemma-2-9B, and the full
+OLMo-2-7B post-training chain---and then show, with a design that other context-rot
+studies cannot use, that they are \emph{not} a competence decay. Our key methodological
+choice is to accumulate \textbf{individually localized tasks} (self-contained multiple-choice
+cases) rather than one long task, so the information needed for the current answer is
+always at the current query and never diluted across length. This \emph{structurally rules
+out attention dilution / lost-in-the-middle} as the cause. With dilution removed, the
+signatures persist but performance does not move: per-case accuracy is flat-to-rising with
+context fill ($r{\approx}0$ even when in-context learning is deterred with a random-subject
+stream), checkable instruction adherence stays at ceiling, and---conditioning on fill---the
+cases the model gets \emph{wrong} are the ones where it \emph{fixates} on the current query,
+while correct answers spread attention onto the accumulated context (the per-case fingerprint
+of in-context learning). The entropy collapse vanishes on organic WildChat dialogue ($0.99$
+within-conversation late/early ratio) and tracks conversation \emph{homogeneity}, not length.
+An OLMo-2 dose-response shows the collapse is a baseline-confidence \emph{level shift}
+installed mostly by supervised fine-tuning, and a causal test of the boundary-detector
+feature blamed for it does not rescue the model. We argue ``context fatigue'' as measured is
+in-context comfort, not decay; the genuine hazard is a widening confidently-wrong gap.
+\end{abstract}
+
+\section{The claim under test}
+
+A recurring worry about long conversations is \emph{context rot}: as turns accumulate, the
+model is said to degrade. The phenomenology is real and easy to elicit. On a repeating
+multiple-choice task, instruction-tuned models become dramatically more confident as context
+fills---next-token entropy drops $3$--$4\times$ on Qwen-2.5-7B and Llama-3.1-8B, in both
+question orders---and the last token's attention shifts systematically: away from the system
+prompt and the current query, toward the most recent prior cases, with the attention
+distribution diffusing. The tempting reading is that the model is being worn down: it stops
+reading its instructions, fixates on recent text, and its collapsing entropy is overconfidence
+that should translate into errors and into sycophantic capitulation when challenged.
+
+This abstract tests that reading and finds it inverted. The signatures are robust and
+replicate across four model families, but they are signatures of \emph{in-context learning},
+not of degradation. We make the case with a design that separates accumulation from the
+confound that dominates the existing literature.
+
+\section{Design: localized tasks rule out attention dilution}
+
+Most context-rot evaluations embed the answer-bearing information inside \emph{one long
+task}---a long document, a buried ``needle,'' a growing codebase. There, longer context
+mechanically \emph{dilutes} the relevant tokens among irrelevant ones, so any degradation
+conflates two things: the cost of accumulation per se and the cost of the target being
+harder to attend to (``lost in the middle,'' \citealp{liu2023lost}). These cannot be told
+apart in that setup.
+
+Our harness instead accumulates \textbf{individually localized tasks}: a stream of
+self-contained $5$-option medical cases (DDXPlus, \citealp{tchango2022ddxplus}) or discrete
+factual questions (MMLU, \citealp{hendrycks2021mmlu}). Each answer depends only on the
+\emph{current} question, which always sits at the end of the context; prior turns are never
+required to answer it. Accumulation therefore grows the context without ever diluting the
+information the current answer needs. \textbf{This structurally removes attention dilution as
+a candidate mechanism}---if performance is flat here, it cannot be rescued or explained by
+dilution---and lets us read accumulation effects cleanly. A reversed-question-order control
+additionally removes any difficulty-ordering confound (the entropy collapse is order
+invariant). Because a $4$--$32$k window holds only tens of cases, we pool many independent
+accumulation sessions (different case and option orders) to power per-case analysis.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/dose_response.pdf}\end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/random_context.pdf}\end{subfigure}
+  \\[2pt]
+  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/attention_rot.pdf}\end{subfigure}
+  \hfill
+  \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{figures/wildchat_homogeneity.pdf}\end{subfigure}
+  \caption{\textbf{The signatures are real but performance is not affected.}
+  (a) Across OLMo-2's post-training chain, early-context (baseline) entropy collapses
+  monotonically ($\sim$5$\times$); the within-context early/late ratio (annotated) falls from
+  collapse ($1.64\times$, base) to mild reversal ($0.47\times$, Instruct).
+  (b) Per-case accuracy is flat as context fills, even when in-context learning is deterred by
+  drawing each question from a random MMLU subject ($r{\approx}0$).
+  (c) At layer 24 (OLMo-2-Instruct), attention mass moves off the system prompt and onto recent
+  cases monotonically with fill, while per-case accuracy holds.
+  (d) The within-conversation entropy collapse appears only with a homogeneous repeating task
+  (DDXPlus), not on organic WildChat dialogue, and tracks homogeneity rather than length.}
+  \label{fig:main}
+\end{figure}
+
+\section{The signatures are real---and they replicate}
+
+The attention reallocation is not an artifact of our attention reconstruction: we replicate
+OLMo-2's post-RoPE last-token attention and validate it against the model's own
+\texttt{output\_attentions} to $\max|\Delta|\approx 1.4\mathrm{e}{-3}$. With context fill it
+produces strong, monotone, per-case correlations at every probed layer
+(layer 24: system$\leftrightarrow$fill $-0.93$, recent$\leftrightarrow$fill $+0.89$,
+current$\leftrightarrow$fill $-0.71$, entropy$\leftrightarrow$fill $+0.95$;
+Fig.~\ref{fig:main}c). The DPO and Instruct checkpoints are indistinguishable, so the
+reallocation is present from the SFT/DPO stage, not introduced by the final RLVR step. The
+entropy collapse likewise replicates across model families. By every visual diagnostic, this
+is a real, strongly-measurable effect that grows with context---exactly the thing one would
+report as ``context rot.''
+
+\section{...but there is no performance cost}
+
+\paragraph{Accuracy is flat, and stays flat when ICL is removed.}
+Per-case accuracy does not fall as context fills; it is worst at the cold start and warms up
+($\mathrm{corr}(\text{correct},\text{fill})=+0.11$ Instruct, $+0.07$ DPO). The obvious
+objection is that a homogeneous repeating task lets in-context learning mask a hidden decay.
+We remove that crutch: in a \emph{random-subject} stream each question is drawn uniformly from
+all 56 MMLU subjects, so prior context carries no predictive information about the next
+question---only the answer \emph{format} is learnable. Accuracy is still flat across the first
+$\sim$80\% of context ($0.57\to0.69$, $\mathrm{corr}=-0.00$), versus a coherent single-subject
+stream ($0.84$, $\mathrm{corr}=-0.01$); the lower level just reflects harder questions, not a
+slope (Fig.~\ref{fig:main}b). With dilution already excluded by design, neither accumulation
+nor the loss of ICL produces decay.
+
+\paragraph{Instruction adherence holds.}
+Looking for a competence-preserved, compliance-degraded dissociation, we add a checkable
+``canary'' system instruction (begin every reply with a marker; end with a tag) and track
+obedience versus fill across baseline, forced-history, and refresh arms. Adherence is perfect
+throughout ($\mathrm{corr}(\text{violation},\text{fill})=0$) with accuracy flat---an honest
+null: the canaries were easy enough to sit on a ceiling, so this bounds rather than proves the
+effect, but it shows no adherence decay where the degradation reading predicts one.
+
+\paragraph{The per-case mechanism inverts the story.}
+Conditioning on context fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
+current-query attention and lower, more peaked attention entropy than the ones it gets right
+(Table~\ref{tab:invert}). Errors are associated with \emph{fixating} on the query; correct
+answers spread attention onto the accumulated cases---i.e.\ onto the in-context examples. The
+``rot'' (system erosion, recency bias, diffusion) and the within-context predictor of a correct
+answer point in \emph{opposite} directions. More contextual attention is the fingerprint of
+the ICL that keeps accuracy up, not a symptom of decay.
+
+\begin{table}[t]
+  \centering\small
+  \caption{Per-case, conditioning on fill (OLMo-2-Instruct, layer 24): wrong cases
+  \emph{fixate} on the current query. Current-query attention mass by correctness.}
+  \label{tab:invert}
+  \begin{tabular}{lcccc}
+    \toprule
+    fill bin & 0--25\% & 25--50\% & 50--75\% & 75--100\% \\
+    \midrule
+    correct  & 0.307 & 0.185 & 0.169 & 0.153 \\
+    wrong    & 0.402 & 0.197 & 0.188 & 0.180 \\
+    $\Delta$ (wrong$-$correct) & $+0.095$ & $+0.011$ & $+0.019$ & $+0.027$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{The entropy collapse is in-context comfort, not depth}
+
+If the collapse were a generic depth effect it should survive on heterogeneous dialogue. It
+does not. On 150 organic WildChat conversations \citep{zhao2024wildchat} (Qwen-2.5-7B,
+teacher-forced over the real history), within-conversation entropy is flat with depth: median
+late/early ratio $0.99$, within-conversation $\mathrm{corr}(\text{entropy},\text{depth})$
+median $-0.02$, and 52\% of conversations trend down---a coin flip (Fig.~\ref{fig:main}d). The
+$3$--$4\times$ DDXPlus collapse simply does not appear once the task stops repeating.
+Partitioning WildChat by its \emph{own} inter-turn homogeneity (format and dataset held
+constant) isolates the driver: the entropy slope correlates with homogeneity
+(partial $r=-0.151$ controlling for length), homogeneous conversations collapse
+($0.897$ late/early) while heterogeneous ones are flat ($1.001$), and because homogeneous
+conversations are \emph{longer}, length works against the effect. The collapse is the model
+growing comfortable with a repeating task---in-context learning sharpening a distribution---not
+fatigue with depth.
+
+\section{It is an instruction-tuning level shift, and the proposed mechanism does not hold}
+
+Replaying one fatigue probe across OLMo-2-7B's \texttt{base}$\to$\texttt{SFT}$\to$\texttt{DPO}
+$\to$\texttt{Instruct} chain (identical cases and orders, so differences are attributable only
+to post-training) turns a single correlational base-vs-IT pair into a graded curve.
+Early-context entropy collapses monotonically, $1.06\to0.58\to0.33\to0.20$ ($\sim$5$\times$),
+with the \emph{largest single drop at base$\to$SFT}: supervised fine-tuning on assistant
+transcripts installs most of the overconfidence, before any preference optimization
+(Fig.~\ref{fig:main}a). But the ``collapses \emph{as context fills}'' framing is mostly a
+base-model ICL effect plus a floor: the within-context ratio \emph{falls} across stages
+($1.64\to0.47$), because aligned models start near a confidence floor and have nowhere left to
+drop. Within a fixed window, post-training is a downward \emph{level shift} in baseline
+entropy, not a steeper collapse slope.
+
+Finally, the mechanistic story does not survive a causal test. A boundary-detector SAE feature
+(Gemma Scope F90871, \citealp{lieberum2024gemmascope}) had been singled out as the regulator
+suppressed under fatigue. Clamping it back to its clean level on held-out fatigued cases moves
+entropy the \emph{wrong} way ($0.442\to0.465$ vs.\ clean $0.293$), leaves accuracy flat, and
+barely moves sycophancy; a random feature of similar magnitude perturbs entropy at least as
+much, and the feature's decision-token suppression is sign-unstable across configurations. The
+single-feature mechanism is a context-dependent correlate, not a lever.
+
+\section{What context fatigue actually is}
+
+Across four model families and an organic-dialogue control, with attention dilution removed by
+construction: accumulation produces a real, monotone reallocation of attention and a real
+collapse of \emph{confidence}, but no loss of accuracy, no loss of instruction adherence, and a
+within-context error signature that is the opposite of neglect. The confidence collapse is
+in-context comfort with a homogeneous task, installed by instruction tuning as a baseline
+level shift. ``Context fatigue,'' as the signatures measure it, is in-context learning, not
+decay. The genuine hazard is therefore not falling competence but \emph{calibration}: as the
+model grows confident at a flat accuracy, the confidently-wrong gap widens---most consequential
+exactly where a homogeneous high-stakes stream makes the model surest.
+
+\paragraph{Limitations.}
+Per-condition $n$ is bounded by the context window (tens of cases per session; we pool
+sessions); the OLMo sycophancy denominators are small and inconclusive; the instruction-canary
+null is a floor effect; and the WildChat figures are summary values from teacher-forced
+analyses. The accuracy claim is strongest for localized tasks---genuinely length-dependent
+single-task settings (where dilution is the point) are out of scope by design.
+
+\small
+\begin{thebibliography}{9}
+\bibitem[Hendrycks et al.(2021)]{hendrycks2021mmlu} D.~Hendrycks et al. Measuring massive multitask language understanding. \emph{ICLR}, 2021.
+\bibitem[Liu et al.(2023)]{liu2023lost} N.~F. Liu et al. Lost in the middle: how language models use long contexts. \emph{TACL}, 2023.
+\bibitem[Lieberum et al.(2024)]{lieberum2024gemmascope} T.~Lieberum et al. Gemma Scope: open sparse autoencoders everywhere all at once on Gemma 2. 2024.
+\bibitem[OLMo Team(2024)]{olmo2024} OLMo Team. OLMo 2: open language models with a full post-training recipe. 2024.
+\bibitem[Tchango et al.(2022)]{tchango2022ddxplus} A.~Fansi Tchango et al. DDXPlus: a new dataset for automatic medical diagnosis. \emph{NeurIPS Datasets and Benchmarks}, 2022.
+\bibitem[Zhao et al.(2024)]{zhao2024wildchat} W.~Zhao et al. WildChat: 1M ChatGPT interaction logs in the wild. \emph{ICLR}, 2024.
+\end{thebibliography}
+
+\end{document}
