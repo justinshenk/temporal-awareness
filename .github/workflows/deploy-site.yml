@@ -53,6 +53,10 @@ jobs:
         working-directory: site
         env:
           PUBLIC_BASE_PATH: /temporal-awareness # project page: https://OWNER.github.io/temporal-awareness
+          # Hosted geoapp URL. Set repo variable PUBLIC_GEOAPP_URL (Settings → Secrets and
+          # variables → Actions → Variables) to the deployed FastAPI URL to make the explore
+          # page embed the live explorer. Empty → the page shows the "run it locally" fallback.
+          PUBLIC_GEOAPP_URL: ${{ vars.PUBLIC_GEOAPP_URL }}
         run: npm run build
 
       - uses: actions/configure-pages@v5
