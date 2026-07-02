@@ -169,7 +169,14 @@ function App() {
   }, [streamingEmbed.positions, streamingEmbed.indices, streamingEmbed.loadedPoints]);
 
   const embeddingLoading = streamingEmbed.isStreaming && streamingEmbed.loadedPoints === 0;
-  const embeddingError = streamingEmbed.error;
+  const rawEmbeddingError = streamingEmbed.error;
+  // "No embedding data" is an expected empty selection (e.g. resid_pre at layer 0 has
+  // ~zero variance across position-aligned samples, so PCA can't be computed and none
+  // was precomputed) — surface it as a neutral notice, not a red error banner.
+  const embeddingNoData = rawEmbeddingError?.message?.startsWith('No embedding data')
+    ? rawEmbeddingError.message
+    : null;
+  const embeddingError = embeddingNoData ? null : rawEmbeddingError;
   const streamingProgress = streamingEmbed.progress;
 
   // Fetch metadata for coloring
@@ -1262,6 +1269,15 @@ function App() {
                layerTrajectory.error?.message ||
                positionTrajectory.error?.message ||
                'This position has no pre-computed embeddings'}
+            </div>
+          )}
+
+          {/* Neutral notice for expected empty selections (e.g. resid_pre @ layer 0) */}
+          {isScatterView && embeddingNoData && (
+            <div className="mb-4 p-4 bg-stone-50 dark:bg-[#2a2623] border border-stone-200 dark:border-[#3a3633] rounded-xl text-ink-soft dark:text-stone-300 text-sm">
+              No embedding data for L{layer}/{component}/{position}. This layer/component has
+              no variance to project (common for <code>resid_pre</code> at layer 0). Try a
+              different layer or component.
             </div>
           )}
 
