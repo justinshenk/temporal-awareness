@@ -183,6 +183,11 @@ function App() {
   // Fetch metadata for coloring
   const { data: metadata, isLoading: metadataLoading, error: metadataError } = useMetadata(colorBy);
 
+  // Extra per-sample fields for point tooltips (cheap, cached, independent of colorBy)
+  const { data: thMeta } = useMetadata('time_horizon');
+  const { data: tsMeta } = useMetadata('time_scale');
+  const { data: tcMeta } = useMetadata('term_chosen');
+
   // Log when waiting for metadata
   useEffect(() => {
     if (metadataLoading) {
@@ -598,11 +603,23 @@ function App() {
     return computeColors(values, numPoints);
   }, [metadata, embedding?.indices, computeColors]);
 
-  // Point data for scatter views
+  // Point data for scatter views — enrich with a few per-sample fields so the
+  // hover tooltip shows meaningful info (time horizon, scale, chosen term) instead
+  // of just the sample index.
   const scatterPointData = useMemo<PointData[]>(() => {
     if (!embedding?.indices) return [];
-    return embedding.indices.map((idx) => ({ sampleIdx: idx }));
-  }, [embedding?.indices]);
+    return embedding.indices.map((idx) => {
+      const th = thMeta?.values?.[idx];
+      const ts = tsMeta?.values?.[idx];
+      const tc = tcMeta?.values?.[idx];
+      return {
+        sampleIdx: idx,
+        timeHorizon: typeof th === 'number' && th >= 0 ? th : undefined,
+        timeScale: typeof ts === 'string' ? ts : undefined,
+        choiceType: typeof tc === 'string' ? tc : undefined,
+      };
+    });
+  }, [embedding?.indices, thMeta?.values, tsMeta?.values, tcMeta?.values]);
 
   // Colors for trajectory views - only computed when needed
   const trajectoryColors = useMemo(() => {

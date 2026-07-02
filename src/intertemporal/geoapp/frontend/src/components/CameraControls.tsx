@@ -177,11 +177,7 @@ export interface CameraControlsUIProps {
 }
 
 export function CameraControlsUI({
-  onPresetClick,
   onResetClick,
-  currentPreset,
-  center,
-  cameraDistance,
 }: CameraControlsUIProps) {
   return (
     <div
@@ -202,49 +198,7 @@ export function CameraControlsUI({
         zIndex: 100,
       }}
     >
-      {CAMERA_PRESET_NAMES.map((preset) => (
-        <button
-          key={preset.name}
-          onClick={() => onPresetClick(getPresetPosition(preset.name, center, cameraDistance), center)}
-          style={{
-            padding: '6px 12px',
-            fontSize: '12px',
-            fontWeight: 600,
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 150ms ease',
-            background:
-              currentPreset === preset.name
-                ? 'linear-gradient(135deg, #D97757 0%, #348296 100%)'
-                : 'rgba(248, 244, 255, 0.8)',
-            color: currentPreset === preset.name ? '#fff' : '#1a1613',
-            boxShadow:
-              currentPreset === preset.name
-                ? '0 2px 8px rgba(198, 120, 221, 0.3)'
-                : 'none',
-          }}
-          onMouseEnter={(e) => {
-            if (currentPreset !== preset.name) {
-              e.currentTarget.style.background = 'rgba(198, 120, 221, 0.15)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (currentPreset !== preset.name) {
-              e.currentTarget.style.background = 'rgba(248, 244, 255, 0.8)';
-            }
-          }}
-        >
-          {preset.label}
-        </button>
-      ))}
-      <div
-        style={{
-          width: '1px',
-          background: 'rgba(180, 160, 200, 0.3)',
-          margin: '0 4px',
-        }}
-      />
+      {/* Top/Front/Side camera presets removed — drag to orbit, scroll to zoom. */}
       <button
         onClick={onResetClick}
         style={{
