@@ -10,6 +10,7 @@ import {
   useStreamingEmbedding,
   useMetadata,
   useSample,
+  useSampleTokens,
   usePrefetch,
   useBackendPrefetch,
   useLayerTrajectory,
@@ -202,6 +203,21 @@ function App() {
   const { data: selectedSample, isLoading: sampleLoading } = useSample(
     selectedSampleIdx
   );
+
+  // Decoded token(s) the selected point's embedding was taken from, at the
+  // current semantic position (e.g. "response_choice" -> "I"). Positions can
+  // span multiple tokens (rel_pos 0,1,...); join them in order.
+  const { data: selectedTokens } = useSampleTokens(selectedSampleIdx);
+  const positionToken = useMemo<string | null>(() => {
+    if (!selectedTokens?.tokens || !position) return null;
+    const base = position.includes(':') ? position.split(':')[0] : position;
+    const relPos = position.includes(':') ? Number(position.split(':')[1]) : null;
+    const matches = selectedTokens.tokens
+      .filter(t => t.format_pos === base && (relPos === null || t.rel_pos === relPos))
+      .sort((a, b) => a.rel_pos - b.rel_pos);
+    if (matches.length === 0) return null;
+    return matches.map(t => t.decoded_token).join('');
+  }, [selectedTokens, position]);
 
   // Prefetch adjacent layers, positions, and all color options in background
   // Only prefetch for scatter views (trajectory views load all data anyway)
@@ -1391,7 +1407,7 @@ function App() {
                 positions={positions}
                 colors={colors}
                 pointData={pointData}
-                pointSize={5}
+                pointSize={3}
                 showAxes={false}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
@@ -1407,7 +1423,7 @@ function App() {
                 positions={positions}
                 colors={colors}
                 pointData={pointData}
-                pointSize={4}
+                pointSize={2.5}
                 showAxes={true}
                 showGrid={true}
                 onPointSelect={handlePointSelect}
@@ -1613,6 +1629,8 @@ function App() {
               onClose={handleClearSelection}
               onRandomSelect={handleRandomSelect}
               markers={config?.markers}
+              position={position}
+              positionToken={positionToken}
             />
             )}
           </div>

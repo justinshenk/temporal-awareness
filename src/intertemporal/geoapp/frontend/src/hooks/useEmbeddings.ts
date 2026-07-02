@@ -537,6 +537,28 @@ export function useSample(idx: number | null) {
   });
 }
 
+// Per-token info for a sample (from /tokens/{idx}).
+export interface SampleToken {
+  abs_pos: number;
+  decoded_token: string;
+  traj_section: string;
+  format_pos: string;
+  rel_pos: number;
+}
+
+// Hook to fetch the decoded tokens + position mapping for one sample. Lazy: only
+// fetches when a point is selected. Used to show which token a point came from.
+export function useSampleTokens(idx: number | null) {
+  const dataset = getDataset();
+  return useQuery({
+    queryKey: ['tokens', dataset, idx],
+    queryFn: () => api.get<{ sample_idx: number; tokens: SampleToken[] }>(`/tokens/${idx}`),
+    enabled: idx !== null,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
 // Hook to fetch all samples for filtering
 // CRASH BEHAVIOR: No retries - if samples data is missing, app crashes immediately
 export function useSamples() {
