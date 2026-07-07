@@ -52,7 +52,7 @@ export default function ExploreEmbed() {
           .
         </div>
       )}
-      <div className="aspect-[16/10] w-full overflow-hidden rounded-lg border border-rule bg-surface">
+      <div className="h-[85vh] min-h-[600px] w-full overflow-hidden rounded-lg border border-rule bg-surface sm:h-auto sm:min-h-0 sm:aspect-[16/10]">
         <iframe
           src={GEOAPP_URL}
           title="Temporal geometry explorer"

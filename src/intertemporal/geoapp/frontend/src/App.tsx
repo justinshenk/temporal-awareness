@@ -1249,9 +1249,9 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Controls */}
-        <aside className="w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
+        {/* Left Sidebar - Controls (stacks below the plot on mobile) */}
+        <aside className="order-2 lg:order-none w-full lg:w-72 flex-shrink-0 p-4 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm">
           <ControlPanel
             layer={layer}
             layers={layers}
@@ -1290,8 +1290,8 @@ function App() {
           />
         </aside>
 
-        {/* Main Visualization Area */}
-        <main className="flex-1 p-4 flex flex-col min-w-0 min-h-0 dark:bg-[#1a1613]">
+        {/* Main Visualization Area (first on mobile so the plot leads) */}
+        <main className="order-1 lg:order-none flex-1 p-4 flex flex-col min-w-0 min-h-0 dark:bg-[#1a1613]">
           {/* Error State */}
           {(embeddingError || metadataError || hasHorizonError || layerTrajectory.error || positionTrajectory.error) && (
             <div className="mb-4 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300">
@@ -1316,7 +1316,7 @@ function App() {
 
           {/* Visualization Toolbar - above plot (hidden for Scree/Align) */}
           {viewMode !== 'Scree' && viewMode !== 'Align' && (
-            <div className="flex items-center justify-between mb-2 px-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-2">
               {/* PCA mode toggle - only for trajectory views */}
               {isTrajectoryViewMode(viewMode) && (
                 <div className="flex items-center gap-2 bg-white/95 dark:bg-[#2a2623] backdrop-blur-sm rounded-lg shadow-sm border border-white/60 dark:border-[#3a3633] px-3 py-1.5">
@@ -1565,8 +1565,8 @@ function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Position, Color By, and Info Panel */}
-        <aside className="w-80 flex-shrink-0 p-4 overflow-y-auto border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
+        {/* Right Sidebar - Position, Color By, and Info Panel (stacks last on mobile) */}
+        <aside className="order-3 lg:order-none w-full lg:w-80 flex-shrink-0 p-4 lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
           <div className="flex flex-col gap-4">
             {/* Position Selector - hidden for position trajectory views */}
             {viewMode !== '1DxPos' && viewMode !== '2DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (
