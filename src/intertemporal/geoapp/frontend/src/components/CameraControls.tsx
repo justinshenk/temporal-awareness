@@ -182,10 +182,11 @@ export function CameraControlsUI({
   return (
     <div
       style={{
+        // Bottom-left so it never collides with the bottom-right legend on
+        // narrow (mobile) plots.
         position: 'absolute',
         bottom: '16px',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        left: '16px',
         display: 'flex',
         gap: '8px',
         padding: '8px 12px',
