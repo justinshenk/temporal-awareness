@@ -66,6 +66,8 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('3D');
   const [pcaMode, setPcaMode] = useState<PCAMode>('aligned');
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  // Mobile: collapse controls/details so the plot leads; opens on point select.
+  const [mobilePanelsOpen, setMobilePanelsOpen] = useState(false);
 
   // Control state - layer and position are initialized to -1/'', then set from config
   const [layer, setLayer] = useState<number>(-1);
@@ -106,6 +108,12 @@ function App() {
     }
     setSelectedSampleIdx(null);
   }, [layer, component, position, method, viewMode]);
+
+  // On mobile, reveal the collapsible panels when a point is selected so its
+  // details are visible without hunting for the toggle.
+  useEffect(() => {
+    if (selectedSampleIdx !== null) setMobilePanelsOpen(true);
+  }, [selectedSampleIdx]);
 
   // Fetch config
   const { data: config, isLoading: configLoading } = useConfig();
@@ -1249,9 +1257,9 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)]">
-        {/* Left Sidebar - Controls (stacks below the plot on mobile) */}
-        <aside className="order-2 lg:order-none w-full lg:w-72 flex-shrink-0 p-4 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-80px)] overflow-x-hidden">
+        {/* Left Sidebar - Controls (collapsible below the plot on mobile) */}
+        <aside className={`order-3 lg:order-none w-full lg:w-72 flex-shrink-0 p-4 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/50 backdrop-blur-sm ${mobilePanelsOpen ? '' : 'hidden'} lg:block`}>
           <ControlPanel
             layer={layer}
             layers={layers}
@@ -1565,8 +1573,18 @@ function App() {
           </div>
         </main>
 
-        {/* Right Sidebar - Position, Color By, and Info Panel (stacks last on mobile) */}
-        <aside className="order-3 lg:order-none w-full lg:w-80 flex-shrink-0 p-4 lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm">
+        {/* Mobile controls toggle - the plot leads; controls & details collapse below it */}
+        <button
+          type="button"
+          onClick={() => setMobilePanelsOpen((v) => !v)}
+          aria-expanded={mobilePanelsOpen}
+          className="order-2 lg:hidden mx-4 mb-3 rounded-xl border border-white/60 dark:border-[#3a3633] bg-white/80 dark:bg-[#2a2623] px-4 py-2.5 text-sm font-medium text-[#1a1613] dark:text-white shadow-sm"
+        >
+          {mobilePanelsOpen ? 'Hide controls & details' : 'Show controls & details'}
+        </button>
+
+        {/* Right Sidebar - Position, Color By, and Info Panel (collapsible on mobile) */}
+        <aside className={`order-4 lg:order-none w-full lg:w-80 flex-shrink-0 p-4 lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-white/40 dark:border-[#3a3633] bg-white/30 dark:bg-[#1a1613]/30 backdrop-blur-sm ${mobilePanelsOpen ? '' : 'hidden'} lg:block`}>
           <div className="flex flex-col gap-4">
             {/* Position Selector - hidden for position trajectory views */}
             {viewMode !== '1DxPos' && viewMode !== '2DxPos' && (config?.promptTemplate?.length ?? 0) > 0 && (

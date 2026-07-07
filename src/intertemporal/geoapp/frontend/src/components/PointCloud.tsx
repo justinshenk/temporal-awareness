@@ -93,9 +93,10 @@ const vertexShader = `
     // Final size
     gl_PointSize = baseSize * scale * sparsityFactor * zoomFactor;
 
-    // HARD minimum of 8 pixels - ALWAYS visible
+    // HARD minimum of 12 pixels - ALWAYS clearly visible (sparse clouds read as
+    // "empty" if points are too small, especially on phone-sized viewports)
     // Max of 100 pixels when very sparse and zoomed in
-    gl_PointSize = clamp(gl_PointSize, 8.0, 100.0);
+    gl_PointSize = clamp(gl_PointSize, 12.0, 100.0);
 
     gl_Position = projectionMatrix * mvPosition;
   }
