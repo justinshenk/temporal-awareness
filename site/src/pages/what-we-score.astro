@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ScoreCards from "../components/ScoreCards.tsx";
 import { REPO_URL, RESULTS_URL } from "../lib/site";
 
-// Illustrative only — token-level temporal scoring is open research (issue #19).
+// Illustrative only: token-level temporal scoring is open research (issue #19).
 const demoTokens: Array<{ t: string; s: number }> = [
   { t: "Take", s: 0 }, { t: "the", s: 0 }, { t: "guaranteed", s: -0.7 }, { t: "payout", s: -0.5 },
   { t: "today", s: -0.9 }, { t: "instead", s: 0 }, { t: "of", s: 0 }, { t: "investing", s: 0.6 },
@@ -22,7 +22,7 @@ const tone = (s: number) =>
     <p class="mt-4 text-[1.075rem] leading-8 text-ink-soft">
       Every number here is sourced from the project's <a class="link-accent" href={RESULTS_URL}>verified results</a>.
       The core question: can we read a model's sense of <strong class="text-ink">time-horizon</strong>
-      directly from its internal activations — and does it hold up?
+      directly from its internal activations, and does it hold up?
     </p>
   </section>
 
@@ -35,7 +35,7 @@ const tone = (s: number) =>
     <p class="mt-2 text-ink-soft">
       Like sentiment analysis colors words positive/negative, we can score each token by how much it pulls
       toward <span class="font-semibold text-rose-700">short-term</span> or <span class="font-semibold text-accent-700">long-term</span>.
-      This example is illustrative — an active research direction
+      This example is only illustrative; token-level scoring is an active research direction
       (<a class="link-accent" href={`${REPO_URL}/issues/19`}>issue #19</a>).
     </p>
     <p class="mt-4 rounded-lg border border-rule bg-surface p-5 text-lg leading-loose text-ink">
@@ -50,17 +50,17 @@ const tone = (s: number) =>
       <h2 class="font-display text-xl font-bold text-ink">Why this is a safety signal</h2>
       <p class="mt-3 text-ink-soft">
         The project's degradation experiments find that a model's safety behavior can weaken over long or
-        repetitive sessions — for example, reported drops in refusal rate across repeated turns, with some
+        repetitive sessions. For example, refusal rate drops across repeated turns, with some
         categories (like misinformation) eroding faster than others.
       </p>
       <p class="mt-3 text-ink-soft">
-        This "fatigue" isn't universal — it's specific to the model and the task. Across repeated sessions,
-        one model's accuracy steadily slipped, another actually <em>warmed up</em>, and a third held steady.
+        This fatigue isn't universal; it's specific to the model and the task. Across repeated sessions,
+        one model's accuracy slipped, another <em>warmed up</em>, and a third held steady.
         The aim is a probe that flags when a model is about to disengage, before it ever surfaces in the answers.
       </p>
       <p class="mt-3 text-ink-soft">
         Because the temporal signal is linearly readable, a lightweight probe can act as an early-warning
-        monitor — flagging drift before it surfaces in the model's outputs. See the
+        monitor, flagging drift before it surfaces in the model's outputs. See the
         <a class="link-accent" href={`${REPO_URL}/blob/main/results/experiment_results_compiled.md`}> compiled results</a>
         and the <a class="link-accent" href={`${REPO_URL}/blob/main/docs/RESEARCH_PROGRAM.md`}>research program</a>.
       </p>

@@ -13,25 +13,25 @@ const findings = [
   {
     big: "92.5%",
     lead: "We can read it.",
-    body: "In a small AI, we can tell whether it's leaning short-term or long-term just by looking inside it — right about nine times out of ten.",
+    body: "In a small AI, we can tell whether it's leaning short-term or long-term just by looking inside it, right about nine times out of ten.",
     tag: "",
   },
   {
     big: "99.2%",
     lead: "Even in bigger models.",
-    body: "In a larger, modern AI we can read that sense of time almost perfectly — even after removing every time-related word from the text.",
+    body: "In a larger, modern AI we can read that sense of time almost perfectly, even after removing every time-related word from the text.",
     tag: "",
   },
   {
     big: "~4×",
     lead: "We can nudge it.",
-    body: "Gently adjusting that inner signal makes the AI several times more likely to favour patient, long-term answers.",
+    body: "Adjusting that inner signal makes the AI several times more likely to favour patient, long-term answers.",
     tag: "early",
   },
   {
     big: "Early warning",
     lead: "Why it matters.",
-    body: "An AI's safety habits can quietly fade over long, repetitive sessions. Reading this signal could warn us before anything goes wrong in what it says.",
+    body: "An AI's safety habits can fade over long, repetitive sessions. Reading this signal could warn us before anything goes wrong in what it says.",
     tag: "",
   },
 ];
@@ -39,19 +39,19 @@ const findings = [
 const done = [
   {
     title: "We learned to read an AI's sense of time",
-    body: "Working with a small, well-studied AI, we showed that its short- versus long-term leaning can be read straight from inside it — and even gently adjusted.",
+    body: "Working with a small, well-studied AI, we showed that its short- versus long-term leaning can be read straight from inside it, and even adjusted.",
   },
   {
     title: "We checked it on bigger, modern models",
-    body: "A team of eleven researchers found the same idea holds in today's larger AIs, like Qwen and Llama — not only the small one we started with.",
+    body: "A team of eleven researchers found the same idea holds in today's larger AIs, like Qwen and Llama, not only the small one we started with.",
   },
   {
-    title: "We started watching safety “drift”",
-    body: "A larger study looked at how an AI's good behaviour can weaken over long, repetitive conversations — and which kinds of models hold up best.",
+    title: "We started watching safety drift",
+    body: "A larger study looked at how an AI's good behaviour can weaken over long, repetitive conversations, and which kinds of models hold up best.",
   },
   {
     title: "We built open tools for everyone",
-    body: "A free toolkit lets anyone create tests, read the signal, and explore its “shape” in an interactive viewer.",
+    body: "A free toolkit lets anyone create tests, read the signal, and explore its shape in an interactive viewer.",
   },
   {
     title: "We made it easy to join",
@@ -70,11 +70,11 @@ const missing = [
   },
   {
     h: "Are we measuring the real thing?",
-    body: "In one test a simple shortcut did just as well as our method — a reminder to keep checking we're reading real understanding, not a trick.",
+    body: "In one test a simple shortcut did just as well as our method, a reminder to keep checking we're reading real understanding, not a trick.",
   },
   {
     h: "Nudging is still hit-or-miss",
-    body: "Steering an AI's sense of time works only about 60% of the time so far — promising, but not yet reliable.",
+    body: "Steering an AI's sense of time works only about 60% of the time so far, so it is not yet reliable.",
   },
   {
     h: "A lot is built but unfinished",
@@ -86,11 +86,11 @@ const missing = [
   },
   {
     h: "Big-model questions remain",
-    body: "We haven't yet seen real long-range “planning” in the models small enough for us to study affordably.",
+    body: "We haven't yet seen real long-range planning in the models small enough for us to study affordably.",
   },
   {
     h: "Some data is still missing",
-    body: "A couple of key datasets aren't in the public project yet — a concrete, friendly place to start helping.",
+    body: "A couple of key datasets aren't in the public project yet, a concrete place to start helping.",
   },
 ];
 ---
@@ -104,9 +104,9 @@ const missing = [
         Can we tell what an AI is thinking about <span class="text-ombre">time</span>?
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg leading-8 text-ink-soft">
-        AIs quietly weigh “now” against “later” — and a capable one might act one way under test,
-        another once the stakes are real. We're learning to read that inner sense of time directly,
-        and to catch it drifting before it ever shows up in what the AI says.
+        AIs weigh now against later, and a capable one might act one way under test and another
+        once the stakes are real. We're learning to read that inner sense of time directly, and to
+        catch it drifting before it shows up in what the AI says.
       </p>
       <div class="mt-8 flex flex-wrap justify-center gap-3 font-sans text-sm font-semibold">
         <a href={`${BASE}understand`} class="btn-ombre rounded-full px-6 py-3 shadow-sm transition hover:opacity-90">
@@ -122,31 +122,31 @@ const missing = [
   <!-- Plain-language explainer -->
   <article class="mx-auto max-w-2xl px-4 py-12">
     <p class="dropcap text-lg leading-8 text-ink-soft">
-      Every day, AI systems make choices that play out over time — answer right now or think a
-      little longer, help with this one reply or look after the whole conversation.
-      <strong class="text-ink">Temporal awareness</strong> is simply how an AI leans in those
+      Every day, AI systems make choices that play out over time. Answer right now or think a
+      little longer; help with this one reply or look after the whole conversation.
+      <strong class="text-ink">Temporal awareness</strong> is how an AI leans in those
       moments: toward the quick payoff, or the patient one.
     </p>
     <p class="mt-5 text-lg leading-8 text-ink-soft">
-      Here's the catch that makes it a safety question: an AI's words and its inner leanings don't
+      This is what makes it a safety question: an AI's words and its inner leanings don't
       always match. It can <em>say</em> something careful and short-term while, inside, it's set on
-      a longer game — or the other way around. As AIs are trusted to run on their own for longer
-      stretches, that hidden drift is exactly what we'd like to notice early.
+      a longer game, or the other way around. As AIs are trusted to run on their own for longer
+      stretches, that hidden drift is what we want to notice early.
     </p>
     <p class="mt-5 text-lg leading-8 text-ink-soft">
       There's a sharper version of the worry. A capable AI might behave one way when it senses it's
-      being <em>watched or tested</em>, and another when it thinks the stakes are real — and "is this
-      a test, or the real thing?" is, underneath, a question about <em>where it is in time</em>. If
-      that sense leaves a trace inside the model, that's something we'd want to be able to read.
+      being <em>watched or tested</em>, and another when it thinks the stakes are real. The question
+      "is this a test, or the real thing?" is, underneath, about <em>where it is in time</em>. If
+      that sense leaves a trace inside the model, that's something we want to be able to read.
     </p>
     <p class="mt-5 text-lg leading-8 text-ink-soft">
-      The encouraging news: this inner sense of time turns out to be
-      <strong class="text-ink">surprisingly easy to read</strong> from inside the model. If that
-      holds up, a small, cheap “detector” could watch for trouble in real time — a practical safety
-      tool, not just a worry.
+      There's some encouraging news here: this inner sense of time is
+      <strong class="text-ink">easy to read</strong> from inside the model. If that holds up, a
+      small, cheap detector could watch for trouble in real time, a practical safety tool rather
+      than just a worry.
     </p>
     <p class="mt-5 text-lg leading-8 text-ink-soft">
-      What follows is an honest scorecard: what we're fairly sure of, and the much longer list of
+      What follows is a scorecard: what we're fairly sure of, and the much longer list of
       what we still don't know.
     </p>
   </article>
@@ -155,7 +155,7 @@ const missing = [
   <section class="border-t border-rule">
     <div class="mx-auto max-w-4xl px-4 py-12">
       <p class="kicker-accent">What we've found</p>
-      <h2 class="font-display mt-2 text-3xl font-bold text-ink">The story so far, in plain terms</h2>
+      <h2 class="font-display mt-2 text-3xl font-bold text-ink">The story so far</h2>
       <hr class="rule-ombre mt-3 w-28" />
       <div class="mt-8 grid gap-5 sm:grid-cols-2">
         {
@@ -206,7 +206,7 @@ const missing = [
       <h2 class="font-display mt-2 text-3xl font-bold text-ink">And what we still don't know</h2>
       <p class="mt-3 max-w-2xl text-lg leading-8 text-ink-soft">
         A safety project should be upfront about its limits. Here's what these results
-        <em>don't</em> prove yet — and where you could help.
+        <em>don't</em> prove yet, and where you could help.
       </p>
       <div class="mt-8 grid gap-x-10 gap-y-6 md:grid-cols-2">
         {
@@ -224,9 +224,9 @@ const missing = [
   <!-- Contribute -->
   <section class="mx-auto max-w-3xl px-4 py-14 text-center">
     <p class="kicker-accent">Join in</p>
-    <h2 class="font-display mt-2 text-3xl font-bold text-ink">You can help — really</h2>
+    <h2 class="font-display mt-2 text-3xl font-bold text-ink">You can help</h2>
     <p class="mx-auto mt-3 max-w-xl text-lg leading-8 text-ink-soft">
-      No PhD, no fancy hardware, and no background in AI safety required. Every task is a friendly
+      No PhD, no fancy hardware, and no background in AI safety required. Every task is a
       GitHub issue. Pick one and dive in.
     </p>
     <div class="mt-8 flex flex-wrap justify-center gap-3 font-sans text-sm font-semibold">

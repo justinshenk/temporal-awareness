@@ -45,14 +45,14 @@ export default function ExploreEmbed() {
     <div>
       {status === "timeout" && (
         <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          The explorer is taking a while — the backend may be waking up.{" "}
+          The explorer is taking a while; the backend may be waking up.{" "}
           <a className="font-medium text-accent-700 underline" href={GEOAPP_URL} target="_blank" rel="noreferrer">
             Open it in a new tab
           </a>
           .
         </div>
       )}
-      <div className="h-[85vh] min-h-[600px] w-full overflow-hidden rounded-lg border border-rule bg-surface sm:h-auto sm:min-h-0 sm:aspect-[16/10]">
+      <div className="h-[88svh] min-h-[640px] w-full overflow-hidden rounded-lg border border-rule bg-surface lg:h-auto lg:min-h-0 lg:aspect-[16/10]">
         <iframe
           src={GEOAPP_URL}
           title="Temporal geometry explorer"

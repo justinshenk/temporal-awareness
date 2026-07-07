@@ -1353,7 +1353,7 @@ function App() {
           )}
 
           {/* Visualization Area - requires min-h-[400px] for Canvas to render properly */}
-          <div ref={plotContainerRef} className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
+          <div ref={plotContainerRef} className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl shadow-purple-500/10 border border-white/60 dark:border-[#3a3633] min-h-[65svh] lg:min-h-[400px] bg-[#faf8f5] dark:bg-[#1a1613]">
             {allSamplesFiltered ? (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8f5] to-[#f5f0eb] dark:from-[#1a1613] dark:to-[#252220]">
                 <div className="text-center p-8">

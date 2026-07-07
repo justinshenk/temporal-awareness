@@ -149,8 +149,8 @@ export default function ScoreCards() {
         <h3 className="font-display text-lg font-bold text-ink">Probe accuracy by layer</h3>
         <p className="mt-1 font-sans text-sm text-ink-soft">
           Time-horizon is readable from a single layer and peaks mid-network.{" "}
-          <span className="text-accent-700">— train</span>,{" "}
-          <span className="text-stone-500">- - test</span>
+          <span className="text-accent-700">train (solid)</span>,{" "}
+          <span className="text-stone-500">test (dashed)</span>
         </p>
         <div className="mt-3">
           <ProbeChart sep={data.separability} />

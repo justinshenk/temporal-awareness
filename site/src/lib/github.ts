@@ -120,7 +120,7 @@ export async function fetchIssues(signal?: AbortSignal): Promise<Issue[]> {
   if (!res.ok) {
     throw new Error(
       res.status === 403
-        ? "GitHub rate limit reached — please try again in a few minutes."
+        ? "GitHub rate limit reached. Please try again in a few minutes."
         : `GitHub API error (${res.status}).`,
     );
   }

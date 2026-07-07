@@ -33,8 +33,14 @@ interface PointCloudProps {
   disablePointerEvents?: boolean;
 }
 
-// Reusable vector to avoid allocations
+// Reusable vectors to avoid allocations
 const tempVector = new THREE.Vector3();
+const projVector = new THREE.Vector3();
+
+// Cursor pick radius in screen pixels. Points render at a screen-space size
+// (see the vertex shader), so hit-testing is done in screen space rather than
+// with a fixed world-space raycaster threshold that never matches the visuals.
+const PICK_RADIUS_PX = 18;
 
 // Custom shader for crisp point rendering - BIG visible points
 const vertexShader = `
@@ -142,7 +148,7 @@ function PointCloudInner({
 
   const pointsRef = useRef<THREE.Points>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { raycaster, gl } = useThree();
+  const { raycaster, gl, camera } = useThree();
 
   const pointCount = positions.length / 3;
   const colorPointCount = colors.length / 3;
@@ -158,6 +164,9 @@ function PointCloudInner({
   const colorAttrRef = useRef<THREE.BufferAttribute | null>(null);
   const indexAttrRef = useRef<THREE.BufferAttribute | null>(null);
   const visibilityAttrRef = useRef<THREE.BufferAttribute | null>(null);
+  // World-space threshold so R3F's event raycast registers the points object as
+  // "hit" near the cursor. The precise point is then chosen in screen space.
+  const pickThresholdRef = useRef(0.5);
 
   // Create or update geometry - avoid full recreation
   const geometry = useMemo(() => {
@@ -232,6 +241,8 @@ function PointCloudInner({
     }
 
     geo.computeBoundingSphere();
+    const radius = geo.boundingSphere?.radius ?? 1;
+    pickThresholdRef.current = Math.max(radius * 0.5, 0.5);
     return geo;
   }, [positions, colors, pointCount, colorPointCount, visibility]);
 
@@ -242,6 +253,13 @@ function PointCloudInner({
       geometryRef.current = null;
     };
   }, []);
+
+  // Keep the R3F event raycaster's Points threshold in sync with the data scale,
+  // so pointer events near a point actually reach our handlers. The old fixed
+  // 0.1 was far smaller than the rendered points, so clicks were dropped.
+  useEffect(() => {
+    raycaster.params.Points = { threshold: pickThresholdRef.current };
+  }, [raycaster, geometry]);
 
   // Custom shader material - crisp points with proper depth
   // Note: Do NOT include selectedIndex, pointSize, or hoverScale in dependencies
@@ -288,10 +306,42 @@ function PointCloudInner({
   const lastHoverTime = useRef(0);
   const HOVER_THROTTLE_MS = 16; // ~60fps
 
-  // Raycasting for hover detection
+  // Screen-space nearest-point picking. Projects every visible point to pixels
+  // and returns the index closest to the cursor within PICK_RADIUS_PX, or null.
+  // This matches how points are actually drawn (screen-space sized), unlike a
+  // world-space raycaster threshold.
+  const pickNearest = useCallback(
+    (clientX: number, clientY: number): number | null => {
+      const rect = gl.domElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+      const cursorX = clientX - rect.left;
+      const cursorY = clientY - rect.top;
+
+      let best = -1;
+      let bestDist = PICK_RADIUS_PX;
+      for (let i = 0; i < pointCount; i++) {
+        if (visibility && visibility[i] < 0.5) continue;
+        projVector.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+        projVector.project(camera);
+        // Skip points outside the clip volume (behind camera / clipped)
+        if (projVector.z < -1 || projVector.z > 1) continue;
+        const px = (projVector.x * 0.5 + 0.5) * rect.width;
+        const py = (-projVector.y * 0.5 + 0.5) * rect.height;
+        const dist = Math.hypot(px - cursorX, py - cursorY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      }
+      return best === -1 ? null : best;
+    },
+    [gl, camera, positions, pointCount, visibility]
+  );
+
+  // Hover detection via screen-space picking
   const handlePointerMove = useCallback(
-    (_event: ThreeEvent<PointerEvent>) => {
-      // Skip raycasting during camera interaction for performance
+    (event: ThreeEvent<PointerEvent>) => {
+      // Skip during camera interaction for performance
       if (disablePointerEvents || !pointsRef.current) return;
 
       // Throttle hover detection
@@ -299,28 +349,21 @@ function PointCloudInner({
       if (now - lastHoverTime.current < HOVER_THROTTLE_MS) return;
       lastHoverTime.current = now;
 
-      // Set raycaster threshold based on point size
-      raycaster.params.Points = { threshold: 0.1 };
+      const index = pickNearest(event.clientX, event.clientY);
 
-      const intersects = raycaster.intersectObject(pointsRef.current);
-
-      if (intersects.length > 0) {
-        const index = intersects[0].index;
-        if (index !== undefined && index !== hoveredIndex) {
-          setHoveredIndex(index);
-          material.uniforms.hoveredIndex.value = index;
-
-          if (onHover) {
-            // Reuse temp vector to avoid allocation
-            tempVector.set(
-              positions[index * 3],
-              positions[index * 3 + 1],
-              positions[index * 3 + 2]
-            );
-            onHover(index, tempVector, pointData[index] ?? null);
-          }
+      if (index !== null && index !== hoveredIndex) {
+        setHoveredIndex(index);
+        material.uniforms.hoveredIndex.value = index;
+        if (onHover) {
+          // Reuse temp vector to avoid allocation
+          tempVector.set(
+            positions[index * 3],
+            positions[index * 3 + 1],
+            positions[index * 3 + 2]
+          );
+          onHover(index, tempVector, pointData[index] ?? null);
         }
-      } else if (hoveredIndex !== null) {
+      } else if (index === null && hoveredIndex !== null) {
         setHoveredIndex(null);
         material.uniforms.hoveredIndex.value = -1;
         if (onHover) {
@@ -328,7 +371,7 @@ function PointCloudInner({
         }
       }
     },
-    [raycaster, positions, pointData, onHover, hoveredIndex, material, disablePointerEvents]
+    [pickNearest, positions, pointData, onHover, hoveredIndex, material, disablePointerEvents]
   );
 
   const handlePointerOut = useCallback(() => {
@@ -340,28 +383,23 @@ function PointCloudInner({
   }, [material, onHover]);
 
   const handleClick = useCallback(
-    (_event: ThreeEvent<MouseEvent>) => {
+    (event: ThreeEvent<MouseEvent>) => {
       if (!pointsRef.current || !onSelect) return;
 
-      raycaster.params.Points = { threshold: 0.1 };
-      const intersects = raycaster.intersectObject(pointsRef.current);
-
-      if (intersects.length > 0) {
-        const index = intersects[0].index;
-        if (index !== undefined) {
-          // Reuse temp vector
-          tempVector.set(
-            positions[index * 3],
-            positions[index * 3 + 1],
-            positions[index * 3 + 2]
-          );
-          onSelect(index, tempVector, pointData[index] ?? null);
-        }
+      const index = pickNearest(event.clientX, event.clientY);
+      if (index !== null) {
+        // Reuse temp vector
+        tempVector.set(
+          positions[index * 3],
+          positions[index * 3 + 1],
+          positions[index * 3 + 2]
+        );
+        onSelect(index, tempVector, pointData[index] ?? null);
       } else {
         onSelect(null, null, null);
       }
     },
-    [raycaster, positions, pointData, onSelect]
+    [pickNearest, positions, pointData, onSelect]
   );
 
   // Update cursor style based on hover

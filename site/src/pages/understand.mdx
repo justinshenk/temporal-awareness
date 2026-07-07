@@ -1,7 +1,7 @@
 ---
 layout: ../layouts/BaseLayout.astro
 title: Understand
-description: What temporal awareness is, and why it matters for AI safety — in plain language.
+description: What temporal awareness is, and why it matters for AI safety, in plain language.
 prose: true
 ---
 
@@ -13,24 +13,24 @@ Large language models constantly make decisions that play out over **time**. *An
 think longer? Optimize for this turn, or the whole conversation? Take the sure thing today, or
 the bigger payoff later?*
 
-**Temporal awareness** is how a model internally represents these *time horizons* — whether
-it's leaning short-term or long-term — and whether that internal sense matches what it actually
-says out loud.
+**Temporal awareness** is how a model internally represents these *time horizons*, whether
+it's leaning short-term or long-term, and whether that internal sense matches what it says out
+loud.
 
 ## Internal vs. stated horizon
 
-Here's the key distinction this project is built around.
+This is the key distinction the project is built around.
 
 - A model's **stated** horizon is what it *tells* you: "I'd recommend the long-term plan."
 - Its **internal** horizon is what its *activations* imply as it computes the answer.
 
 These don't always agree. A model might *say* something short-term and harmless while its
-internal state is oriented toward long-horizon planning — or vice versa. **That gap is the
+internal state is oriented toward long-horizon planning, or vice versa. **That gap is the
 safety-relevant signal.** If we can measure it, we can notice when a model's words and its
-internal "intentions" come apart.
+internal intentions come apart.
 
 > Formally, the project grounds this in *intertemporal preference*: a value function that
-> weighs a reward by how far away in time it is, and an "internal horizon" — the point where
+> weighs a reward by how far away in time it is, and an internal horizon, the point where
 > the model stops caring about the future. The question is whether that internal horizon
 > matches the one the model states. See the <a href={REPO_URL + "/blob/main/docs/RESEARCH_PROGRAM.md"}>research program</a>.
 
@@ -38,8 +38,8 @@ internal "intentions" come apart.
 
 Three reasons this is more than a curiosity:
 
-1. **Agents now run for a long time.** As models are deployed in long, autonomous loops —
-   dozens of conversational turns, hundreds of documents — their behavior can *drift*. The
+1. **Agents now run for a long time.** As models are deployed in long, autonomous loops
+   (dozens of conversational turns, hundreds of documents), their behavior can *drift*. The
    project finds that **safety behavior in particular can degrade** over repetitive sessions,
    with some safeguards weakening faster than others.
 
@@ -47,18 +47,18 @@ Three reasons this is more than a curiosity:
    shifts until they surface as bad outputs. Reading the internal time-horizon gives us an
    **earlier** signal.
 
-3. **It's measurable today.** A model's temporal scope turns out to be **linearly readable**
-   from a single layer of activations. That makes a cheap, real-time *probe* possible — the
-   kind of concrete, deployable monitor that safety work needs.
+3. **It's measurable today.** A model's temporal scope is **linearly readable** from a single
+   layer of activations. That makes a cheap, real-time *probe* possible: the kind of concrete,
+   deployable monitor that safety work needs.
 
-## This isn't a lone bet
+## We're not the first to try this
 
 Reading a safety-relevant property straight from a model's activations is already a working
 idea, not a hope. Independent researchers have used simple linear probes to spot hidden
-"sleeper-agent" backdoors, and to catch a 70-billion-parameter model being strategically
-deceptive — concealing insider trading, or quietly underperforming on a safety test —
-*nearly perfectly* (detection scores up to 0.999). We're pointing that same well-tested
-playbook at a new target: a model's sense of **time**.
+sleeper-agent backdoors, and to catch a 70-billion-parameter model being strategically
+deceptive, concealing insider trading or underperforming on a safety test, *nearly perfectly*
+(detection scores up to 0.999). We're pointing that same well-tested approach at a new target:
+a model's sense of **time**.
 
 ## What this project actually does
 
@@ -67,18 +67,18 @@ playbook at a new target: a model's sense of **time**.
 - **Locate** the circuits that compute temporal decisions (activation patching).
 - **Stress-test** all of the above: when do these representations fail?
 
-## Early signs, honestly held
+## Early signs, and a caveat
 
-Two early findings hint at why this is worth doing — and one keeps us honest:
+Two early findings hint at why this is worth doing, and one keeps us honest:
 
-- **A model may "know" when it's unsure.** Its internal uncertainty shows up most strongly at
-  the *very first step* of its reasoning, then fades as it keeps going — exactly when a
+- **A model may know when it's unsure.** Its internal uncertainty shows up most strongly at
+  the *very first step* of its reasoning, then fades as it keeps going, exactly when a
   long-running agent would most need that self-check.
-- **"Planning" can be a mirage.** When a model looks like it's planning ahead, that can be one
-  of two things: genuinely setting up a future step, or just leaving *breadcrumbs* a probe
-  picks up after the fact. In one code-writing test, a dead-simple shortcut — the function's
-  name and inputs alone — predicted just as well as reading the model's internals. So we now
-  run a "baseline staircase" on every probe, to be sure we're reading real understanding and
+- **Planning can be a mirage.** When a model looks like it's planning ahead, that can be one
+  of two things: genuinely setting up a future step, or just leaving *breadcrumbs* that a probe
+  picks up after the fact. In one code-writing test, a dead-simple shortcut (the function's
+  name and inputs alone) predicted just as well as reading the model's internals. So we now
+  run a baseline staircase on every probe, to be sure we're reading real understanding and
   not a trick.
 
 See the verified numbers on <a href={BASE + "what-we-score"}>What we score</a>, poke at the
