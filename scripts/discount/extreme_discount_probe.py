@@ -347,6 +347,8 @@ def main():
     parser.add_argument("--out-dir", default=str(REPO_ROOT / "out" / "extreme_discount"))
     parser.add_argument("--stub", action="store_true",
                         help="Validate prompts and search logic with a deterministic chooser.")
+    parser.add_argument("--aggregate", action="store_true",
+                        help="Skip inference; rebuild CSV and figure from per-model JSONs in out-dir.")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -354,7 +356,11 @@ def main():
     models = ["stub"] if args.stub else args.models
 
     results = []
-    for model_name in models:
+    if args.aggregate:
+        for path in sorted(out_dir.glob("*.json")):
+            results.append(json.loads(path.read_text()))
+        print(f"Aggregating {len(results)} model JSONs from {out_dir}")
+    for model_name in [] if args.aggregate else models:
         print(f"\n=== {model_name} ===", flush=True)
         res = run_model(model_name, args.steps, args.device)
         json_path = out_dir / f"{model_name.replace('/', '_')}.json"
