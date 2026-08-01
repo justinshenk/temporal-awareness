@@ -297,3 +297,51 @@
    - Incident: gemma-2-9b via TransformerLens was OOM-killed during weight processing (cgroup oom_kill=1, 113GB limit); rerouted gemma to the HuggingFace hook backend (identical blocks.{L}.hook_resid_post keys), commit 701f61e. Mistral-7B-v0.3 is not in TL's registry and also ran on HF hooks. Qwen/Llama ran on TransformerLens.
    - Box not destroyed; full run log captured to out/probing/turn_preference/box_probe_run.log (17,115 bytes).
    - **Result**: VERIFIED
+
+39. **Output** (2026-08-01): HF upload behavioral/extreme_discount/meta-llama_Llama-3.1-8B-Instruct.json (from box 38.29.145.24:40138, pre-existing on-box result of the earlier phase-1 run).
+   - **How verified**: scp'd to local scratchpad (136858 bytes, byte-identical to on-box `ls -la`); opened the JSON and confirmed keys (model, backend, cells, inconsistency, choices, elapsed_sec); uploaded via `hf upload` (commit 43d66d83) and independently confirmed via get_paths_info: remote size 136858 matches local.
+   - **Result**: VERIFIED
+
+40. **Output** (2026-08-01): extreme-discount probe rerun, Qwen3-4B-Instruct-2507, as its own process (`/root/run_one_model.sh`, box 38.29.145.24:40138, log /root/qwen_probe.log).
+   - **How verified**: MODEL_EXIT=0 in log plus direct inspection: pulled Qwen_Qwen3-4B-Instruct-2507.json (29512 bytes, matches box), opened it (21 cells, 42 queries, backend TRANSFORMERLENS; every cell early-exited at the lo/hi probes, all no_boundary/always_delayed — an extreme-rate result, not a truncation); ran --aggregate on box; pulled summary CSV (21 rows per model for llama+qwen) and VIEWED extreme_discount_k_vs_delay.png with image tokens (two panels). HF upload commit 1dcd1f62; get_paths_info sizes 29512/4368/84562 match local byte-for-byte.
+   - **Result**: VERIFIED
+
+41. **Output** (2026-08-01): extreme-discount probe rerun, Mistral-7B-Instruct-v0.3, own process (log /root/mistral_probe.log).
+   - **How verified**: MODEL_EXIT=0; pulled mistralai_Mistral-7B-Instruct-v0.3.json (121088 bytes, matches box), opened it (21 cells, 234 queries, 129 reversals, backend HUGGINGFACE); re-aggregated (3 models), pulled summary CSV (6375) and figure (118983), VIEWED the three-panel PNG with image tokens; HF upload commit dec5e81c; get_paths_info sizes 121088/6375/118983 match local byte-for-byte.
+   - **Result**: VERIFIED
+
+42. **Note** (2026-08-01): gemma-2-9b-it via TransformerLens OOM-killed AGAIN even as a fresh single-model process (RSS ramped 6%->44% of 188GB then SIGKILL, MODEL_EXIT=137, log /root/gemma_probe.log) — same failure mode as entry 36/38. Fallback per plan: /root/run_gemma_hf.py overrides select_backend to ModelBackend.HUGGINGFACE (loads reduced-precision straight to GPU, 18.3GB VRAM, negligible host RSS). Llama HF cache dropped (re-downloadable) to free disk for qwen+mistral downloads, as the original run script itself planned. No instance destroyed or created.
+
+43. **Output** (2026-08-01): extreme-discount probe, gemma-2-9b-it on the HuggingFace backend (`/root/run_gemma_hf.py` wrapper overriding select_backend, box 38.29.145.24:40138, log /root/gemma_hf_probe.log).
+   - **How verified**: GEMMA_HF_EXIT=0 plus direct inspection: pulled google_gemma-2-9b-it.json (142537 bytes, matches box), opened it (21 cells, 270 queries, 200 reversals, backend HUGGINGFACE, elapsed 159.4s); ran the 4-model --aggregate on box; pulled final summary CSV (7896 bytes, 21 rows for each of the 4 models) and figure (148993 bytes); VIEWED the four-panel PNG with image tokens (Qwen/gemma/Llama/Mistral panels, R=$50/$500/$5000 lines, flagged-extreme markers).
+   - **Result**: VERIFIED
+
+44. **Output** (2026-08-01): HF upload behavioral/extreme_discount/ complete set (commits 43d66d83 llama, 1dcd1f62 qwen, dec5e81c mistral, b8ea4325 gemma+final summary).
+   - **How verified**: get_paths_info on all six paths returned sizes 136858 (llama json), 29512 (qwen json), 121088 (mistral json), 142537 (gemma json), 7896 (summary csv), 148993 (figure png) — each byte-identical to the local copies, which in turn byte-match the box (diff of sorted size listings printed ALL_BYTES_MATCH). All four run logs and the wrapper scripts captured to local scratchpad.
+   - **Result**: VERIFIED
+
+45. **Note** (2026-08-01): box cache restored to as-found state: qwen and mistral caches (downloaded for this task) removed; llama cache re-downloaded (first restore attempt filled the disk by pulling original/consolidated weights and crashed; cleaned and retried with ignore_patterns=["original/*"], LLAMA_RESTORED, disk back to 6.3G free vs 5.8G as found). Final caches: gemma 18G + llama 15G. No processes left running, GPU at 2 MiB. NO instance destroyed, stopped, or created. fig7_final for mistral/qwen35: no such plots exist on this box (only /root/fig7.log from a prior completed upload), so per instruction this item was skipped.
+
+## 2026-08-01 — Behavioral coherence: 4 local models + gpt-4o-mini on vast box 50.35.34.14:13065
+
+1. **Output**: `coherent_behavior.py` (960-prompt investment_behave_full) run per model on the RTX 4090 box; per-model dirs `out/behavioral/coh_{qwen3-4b-i,llama31-8b,gemma2-9b,mistral-7b,gpt-4o-mini}` + patched-viz figures + `coherence_summary.csv`, all uploaded to HF dataset `unrulyabstractions/temporal-awareness` under `behavioral/coherence/`.
+   - **How verified**: re-opened every `responses.json` via `summarize_coherence.py` on the box (each 960 rows, 0 unparseable for all five models). Headline 1-5y reasoning-zone coherence (%ST on {1y,2y,5y} horizons, paired ST-first/LT-first denominator, n=288 each): gpt-4o-mini 100.0, gemma-2-9b-it 95.1, Llama-3.1-8B-Instruct 52.4, Mistral-7B-Instruct-v0.3 51.0, Qwen3-4B-Instruct-2507 50.3. Anchor check: box Qwen3-4B-Instruct-2507 = 50.3% vs 50.0% in the local reference run `out/behavioral/investment_behave_full` (same metric, same code) — instrument reproduces across backends.
+   - **Figures viewed with image tokens**: qwen 01+15, llama 01, gemma 15, mistral 15, gpt-4o-mini 15 — all render correctly and match the CSV numbers.
+   - **HF upload verified byte-for-byte**: `get_paths_info` on all 96 paths — 96/96 present, 0 size mismatches, 23,968,363 bytes both sides (`VERIFY_OK`).
+   - **Model registry**: 4 of 5 keys were absent from `coherent_behavior_viz.py`'s MODEL_REGISTRY; viz ran from a patched copy (uploaded to `behavioral/coherence/tools/`), repo file untouched.
+   - **Not destroyed**: box left running (task forbids vastai destroy/stop); shared with a concurrent steering subagent whose files/processes were left untouched.
+   - **Result**: VERIFIED
+
+## 2026-08-01 — Mistral double-BOS fix + within-cell flip A/B (box 50.35.34.14:13065)
+
+1. **Output**: commit 341b870 on `exp/turn-geometry-llama-gemma` — `encode_without_duplicate_bos()` guard in `src/inference/backends/backend_huggingface.py` (single point all runner encode paths funnel through) + regression test `tests/inference/test_single_bos_encoding.py`.
+   - **How verified**: ran the test locally (`uv run python -m pytest tests/inference/test_single_bos_encoding.py -v`): 5 passed (mistral single-BOS, gemma single-BOS, qwen no-op, plain-text BOS retained x2). `ruff check` clean. Push verified with `git ls-tree origin/exp/turn-geometry-llama-gemma` (both blobs present) and `git show origin/...:...backend_huggingface.py | grep encode_without_duplicate_bos` (lines 13, 118). Box pulled to 341b870 and grep confirmed the function on-box.
+   - **Result**: VERIFIED
+
+2. **Output**: A/B flip-rate comparison, `/workspace/ab_bos_flips.py` → `/workspace/ab_bos_flips.log` on box. 10 matched option cells x 4 horizons (40 prompts) from `load_preference_data("2aaa")` (1701 cached double-BOS Mistral education_local samples), re-run with fresh `choose()` under the single-BOS fix.
+   - **How verified**: read the full log. Sanity: templated prompt encodes to ids `[1, 3, 1086]` = `'<s>[INST] S'`, BOS count 1. CACHED double-BOS: adjacent flips 16/30 = 0.533, cells with >=1 flip 9/10. FRESH single-BOS: adjacent flips 16/30 = 0.533, cells with >=1 flip 9/10. All 10 per-cell choice sequences identical between conditions.
+   - **Result**: VERIFIED — the double BOS did NOT change Mistral's choices; flips did not improve.
+
+3. **Finding**: the earlier "only 1 contrastive pair" for loc_mistral_education was a cache artifact, not flip scarcity: `/root/loc_mistral_run.log` shows `[contrastive] 1135 short, 557 long -> 632195 candidates -> 471045 passed -> 63 final`, `[ctx] Built 24 valid pairs`, then crash in pair 1 with `TypeError: Got unsupported ScalarType BFloat16` (contrastive_pair.py:327), fixed by box commit 2ca4211; the 14:02 `--cache` rerun then ran with the 1 saved pair dir.
+   - **How verified**: read both run logs and the crash traceback directly on the box.
+   - **Result**: VERIFIED
