@@ -1,4 +1,4 @@
-# version: 1
+# version: 2
 
 # New results for the rebuttal — live document
 
@@ -68,40 +68,75 @@ loc_qwen35_startup → `localization/loc_*.tar.gz` (each includes
 note the JSON ranks by recovery alone while the paper's figure ranked by
 recovery+disruption — use recovery+disruption for comparability).
 
-## 3. Probing (paper App. G)
+## 3. Probing (paper App. G) — VERIFIED, all four models
 
-Per-layer logistic probes at the last prompt token, implicit 300-pair set,
-pair-aware 80/20 split, 10x shuffled-label control, zero-shot transfer to
-the explicit set. Output: per-model CSV + one accuracy-vs-fractional-depth
-figure overlaying all four models (directly comparable to Qwen's 99.2% @
-L26). **PENDING** → `probing/turn_preference/`.
+Per-layer logistic probes, implicit 300-pair set, pair-aware 80/20 split,
+10x shuffled-label control, zero-shot transfer to the explicit set.
+
+| Model | Best layer (frac) | Acc | Shuffled | Transfer |
+|---|---|---|---|---|
+| Qwen3-4B | L17 (0.47) | 95.0% | 52.8% | 74.2% (L20 ties, 84.0%) |
+| Llama-3.1-8B | L29 (0.91) | 95.8% | 47.4% | 70.1% |
+| Gemma-2-9B | L23 (0.55) | 95.8% | 49.8% | 85.8% |
+| Mistral-7B | L14 (0.44) | 96.7% | 53.0% | 85.8% |
+
+Temporal preference is >=95% linearly decodable in every family; controls
+at chance. `probing/turn_preference/` (9 files, sizes verified twice).
+Caveat: Gemma and Mistral ran on the HF-hook backend (TL OOM / no registry
+entry), identical resid_post hook points.
 
 ## 4. Steering — CAA with improvements (paper §5.3 / App. S)
 
-Improvements over the paper's protocol, worth naming in the rebuttal:
-(a) **random-direction control** at matched norm (the paper had none);
-(b) label-order counterbalanced forced-choice scoring; (c) sweep at
-fractional depths {0.50-0.65} so layers are comparable across models.
-Output: per-model CSV (layer_frac, alpha, S, S_ctrl, lift) + heatmaps.
-**PENDING** → `steering/extreme_sweep/`.
+VERIFIED, all four models. Improvements over the paper's protocol:
+(a) random-direction control at matched norm (paper had none); (b)
+label-order counterbalanced scoring; (c) fractional-depth sweep
+{0.50-0.65} for cross-model comparability.
+
+| Model | Best | S steer | S control | Baseline | Beats ctrl |
+|---|---|---|---|---|---|
+| Llama-3.1-8B | L18 a35 | 17.38 | 6.37 | 2.25 | 18/20 |
+| Mistral-7B | L19 a20 | 12.12 | 2.59 | -2.17 | 19/20 |
+| Qwen3-4B | L18 a20 | 5.87 | 2.85 | 0.86 | 20/20 |
+| Gemma-2-9B | L21 a50 | 3.86 | 1.44 | 1.42 | 20/20 |
+
+Steering beats the random-vector control in 77/80 configs; the steerable
+band sits at 0.50-0.59 fractional depth in every family, matching the
+paper's L19-22/36 sweet spot. `steering/extreme_sweep/` (26 files, md5 +
+size verified; heatmaps viewed). Caveats: process_weights=False loading
+(TL-advised at reduced precision; CAA is invariant); Mistral-v0.3 via a
+corrected v0.1 TL mapping (rope_theta=1e6, no sliding window).
 
 ## 5. Behavioral: extreme/inconsistent discounting (paper App. O)
 
-New from-scratch probe focused on the paper's headline pathology: titrated
-indifference points (binary search, 20x cap), hyperbolic k at boundary,
-flags for no-boundary/extreme-k, magnitude-effect reversals,
-non-monotonicity, label-swap preference reversals. Four models.
-**PENDING** → `behavioral/extreme_discount/`.
+ON HF, all four models (JSONs 29-143 KB + summary CSV + k-vs-delay
+figure at `behavioral/extreme_discount/`). From-scratch probe: titrated
+indifference points (binary search, 20x cap), hyperbolic k, extreme-k
+flags, magnitude reversals, non-monotonicity, label-swap reversals.
+Numbers not yet extracted into this file; open
+`extreme_discount_summary.csv` for per-cell k values. UNVERIFIED at the
+number level (files listed on HF, contents not yet read).
 
 ## 6. Behavioral: coherence / Fig-8 rows (paper App. P)
 
-Full 960-prompt investment instrument (identical grid to the paper's
-30-model panel — deliberately NOT subsampled so the new rows are exactly
-comparable). Per model: **temporal reasoning** (1-5y zone deliverable-option
-rate), **order stability**, **label stability** — formatted as drop-in rows
-for Figure 8. Note the published figure already has Mistral-7B and
-Qwen3.5-4B rows = sanity anchors for our re-runs.
-**PENDING** → `behavioral/coherence/`.
+VERIFIED — five runs on the full 960-prompt grid (not subsampled), zero
+unparseable responses anywhere. Zone coherence (%ST in the 1-5y reasoning
+zone, paired denominator n=288):
+
+| Model | Zone coherence | %LT overall |
+|---|---|---|
+| gpt-4o-mini (API row) | 100.0% | 31% |
+| Gemma-2-9B | 95.1% | 40% |
+| Llama-3.1-8B | 52.4% | 52% |
+| Mistral-7B | 51.0% | 54% |
+| Qwen3-4B-Inst-2507 | 50.3% | 59% |
+
+**Anchor check passed**: our Qwen re-run gives 50.3% vs 50.0% recomputed
+from the paper's own reference run — the instrument reproduces. Notable:
+Gemma-2-9B is near-coherent (95.1%) while the other three local models sit
+at chance, refining the paper's "only frontier API models are coherent"
+claim. Order/label stability per model are in each run's heatmap figures
+(`behavioral/coherence/coh_*/`); Fig-8-format rows still to be extracted
+into one table.
 
 ## Known caveats to carry into any text
 
