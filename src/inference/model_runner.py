@@ -67,7 +67,15 @@ class ModelRunner:
             device = get_device()
         self.device = device
         if dtype is None:
-            dtype = torch.float16 if device in ["mps", "cuda"] else torch.float32
+            # bf16 on cuda: Llama-3.1 and Gemma-2 are bf16-trained, and Gemma-2
+            # overflows fp16 in the deeper residual stream, corrupting cached
+            # activations. mps keeps fp16 (no bf16 support on older Metal).
+            if device == "cuda" and torch.cuda.is_bf16_supported():
+                dtype = torch.bfloat16
+            elif device in ["mps", "cuda"]:
+                dtype = torch.float16
+            else:
+                dtype = torch.float32
         self.dtype = dtype
 
         # IMPORTANT: self._model should never be used outside ModelRunner + Children + Backends

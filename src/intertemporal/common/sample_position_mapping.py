@@ -20,6 +20,7 @@ from ..data.default_datasets import BASE_CONTEXT
 from ..formatting.configs.default_prompt_format import DefaultPromptFormat
 from ..prompt.prompt_dataset_config import ContextConfig
 from ..prompt.prompt_dataset_generator import TIME_HORIZON_MIN_LENGTH
+from .chat_template_boundaries import get_chat_boundaries
 
 if TYPE_CHECKING:
     from .preference_types import PreferenceSample, PromptSample
@@ -96,7 +97,7 @@ class SamplePositionMapping(SamplePositionMappingBase):
 
         # Build named positions using BOTH PromptSample (structured) and PreferenceSample (actual tokens)
         named_positions = _build_named_positions(
-            sample, pref, decoded_tokens, prompt_len, full_len
+            sample, pref, decoded_tokens, prompt_len, full_len, tokenizer
         )
 
         # Build reverse mapping: abs_pos -> (format_pos, rel_pos)
@@ -312,12 +313,49 @@ def _find_reward_value_positions(
     return _find_substring_token_range(tokens, text, formatted, occurrence=occurrence)
 
 
+def _find_chat_suffix_start(
+    tokenizer: Any, prompt_tokens_decoded: list[str]
+) -> int | None:
+    """Index of the first token of the chat template's generation suffix.
+
+    The suffix string is asked of the tokenizer, so this holds for any chat
+    family. Matching a hardcoded token list instead finds nothing on a family it
+    was not written for: Gemma-2 ends a turn with <end_of_turn> and names the
+    assistant "model", so a <|...|> heuristic labels zero suffix tokens and the
+    turn-window extraction silently produces an empty dataset.
+
+    Returns None when the tokenizer has no usable chat template, or when no
+    token boundary lines up with the start of the suffix.
+    """
+    if tokenizer is None:
+        return None
+
+    try:
+        suffix = get_chat_boundaries(tokenizer).suffix
+    except (ValueError, AttributeError):
+        return None
+    if not suffix:
+        return None
+
+    # Walk back from the end of the prompt until the tokens seen reconstruct the
+    # suffix exactly. Growing past its length means no boundary matches.
+    tail = ""
+    for i in range(len(prompt_tokens_decoded) - 1, -1, -1):
+        tail = prompt_tokens_decoded[i] + tail
+        if tail == suffix:
+            return i
+        if len(tail) >= len(suffix):
+            return None
+    return None
+
+
 def _build_named_positions(
     sample: "PromptSample",
     pref: "PreferenceSample | None",
     decoded_tokens: list[str],
     prompt_len: int,
     full_len: int,
+    tokenizer: Any = None,
 ) -> dict[str, list[int]]:
     """Build named positions dictionary using BOTH PromptSample and PreferenceSample.
 
@@ -628,38 +666,7 @@ def _build_named_positions(
             named_positions["chat_prefix"] = chat_prefix_positions
             assigned_positions.update(chat_prefix_positions)
 
-    # Detect chat template suffix at end of prompt
-    # Look for common chat template patterns: <|im_end|>, <|im_start|>, assistant, etc.
-    chat_template_tokens = {
-        "<|im_end|>",
-        "<|im_start|>",
-        "assistant",
-        "<|eot_id|>",
-        "<|start_header_id|>",
-    }
-    chat_suffix_start_pos = None
-
-    # Scan from end of prompt to find where chat suffix begins
-    for i in range(prompt_len - 1, -1, -1):
-        tok = prompt_tokens_decoded[i]
-        tok_stripped = tok.strip()
-
-        # Skip whitespace-only tokens (newlines, spaces) - they're part of chat suffix
-        if not tok_stripped:
-            if chat_suffix_start_pos is not None:
-                # Include whitespace that follows chat template tokens
-                chat_suffix_start_pos = i
-            continue
-
-        if (
-            tok_stripped in chat_template_tokens
-            or tok_stripped.startswith("<|")
-            or tok_stripped.endswith("|>")
-        ):
-            chat_suffix_start_pos = i
-        else:
-            # Stop scanning once we hit non-chat-template token
-            break
+    chat_suffix_start_pos = _find_chat_suffix_start(tokenizer, prompt_tokens_decoded)
 
     # Calculate character position where chat suffix starts
     chat_suffix_start_char = len(prompt_text)  # default: end of prompt

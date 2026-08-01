@@ -58,6 +58,12 @@ PROMPT_SECTION_TAILS = [
 # Response positions
 RESPONSE_POSITIONS = ["response_choice_prefix", "response_choice"]
 
+# The change-of-turn window: the chat-template generation suffix and its last
+# token. Extracting only these is what keeps a geometry run affordable, and the
+# two names cover the whole suffix for every chat family (SamplePositionMapping
+# splits the final suffix token off into chat_suffix_tail).
+TURN_POSITIONS = ["chat_suffix", "chat_suffix_tail"]
+
 # Prompt positions
 PROMPT_POSITIONS = PROMPT_SRC_POSITIONS + PROMPT_SECTION_TAILS
 

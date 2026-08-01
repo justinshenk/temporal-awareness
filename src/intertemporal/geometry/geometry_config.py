@@ -5,6 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
+from src.common.base_schema import BaseSchema
+
 
 # =============================================================================
 # Memory Optimization Constants
@@ -12,6 +14,15 @@ import numpy as np
 
 # Data type for activations (float32 = 50% memory savings vs float64)
 ACTIVATION_DTYPE = np.float32
+
+# Storage dtypes a run may pick for the activations it writes to disk. float16
+# halves the run's disk footprint and is enough for geometry, but every analysis
+# artifact stays float32 (see ACTIVATION_DTYPE).
+STORAGE_DTYPES: dict[str, type] = {"float32": np.float32, "float16": np.float16}
+DEFAULT_STORAGE_DTYPE = "float32"
+
+# Components a target may name, in TransformerLens hook terms.
+VALID_COMPONENTS = ("resid_pre", "resid_mid", "resid_post", "mlp_out", "attn_out")
 
 # Buffer size for streaming extraction (samples to accumulate before flushing to disk)
 # Higher = fewer disk writes but more memory; Lower = more disk writes but less memory
@@ -62,9 +73,7 @@ class TargetSpec:
     position: str
 
     def __post_init__(self):
-        valid_components = {"resid_pre", "resid_mid", "resid_post", "mlp_out", "attn_out"}
-
-        if self.component not in valid_components:
+        if self.component not in VALID_COMPONENTS:
             raise ValueError(f"Invalid component: {self.component}")
 
     @property
@@ -93,6 +102,64 @@ class TargetSpec:
 
 
 # =============================================================================
+# Run Scope
+# =============================================================================
+
+
+@dataclass
+class RunScope(BaseSchema):
+    """What one run extracts: the layers, components and positions it targets.
+
+    A run used to inherit the module constants in geometry_utils, which were
+    written for a 36-layer model and for the full position schema. Carrying the
+    scope on the config instead lets a run be projected onto another model depth
+    and restricted to the change-of-turn window, and lets downstream analysis
+    read the actual target set out of config.json.
+
+    Attributes:
+        layers: Transformer layer indices to extract
+        components: Component names (see TargetSpec for the valid set)
+        positions: Semantic position names
+        dtype: Storage dtype for the activation files this run writes
+    """
+
+    layers: list[int] = field(default_factory=list)
+    components: list[str] = field(default_factory=list)
+    positions: list[str] = field(default_factory=list)
+    dtype: str = DEFAULT_STORAGE_DTYPE
+
+    def __post_init__(self):
+        if self.dtype not in STORAGE_DTYPES:
+            raise ValueError(
+                f"Invalid storage dtype: {self.dtype} "
+                f"(valid: {sorted(STORAGE_DTYPES)})"
+            )
+        invalid = [c for c in self.components if c not in VALID_COMPONENTS]
+        if invalid:
+            raise ValueError(
+                f"Invalid components: {invalid} (valid: {list(VALID_COMPONENTS)})"
+            )
+
+    @property
+    def numpy_dtype(self) -> type:
+        """Numpy dtype the extractor casts activations to before saving."""
+        return STORAGE_DTYPES[self.dtype]
+
+    @property
+    def n_targets(self) -> int:
+        return len(self.layers) * len(self.components) * len(self.positions)
+
+    def targets(self) -> list[TargetSpec]:
+        """Expand the scope into one target per layer/component/position."""
+        return [
+            TargetSpec(layer=layer, component=component, position=position)
+            for layer in self.layers
+            for component in self.components
+            for position in self.positions
+        ]
+
+
+# =============================================================================
 # Pipeline Configuration
 # =============================================================================
 
@@ -101,7 +168,9 @@ class GeometryConfig:
     """Configuration for geometric visualization pipeline.
 
     Attributes:
-        targets: List of activation extraction targets
+        scope: Layers, components, positions and storage dtype of this run
+        targets: List of activation extraction targets (derived from scope
+            when not given explicitly)
         output_dir: Output directory for results
         model: Model identifier
         seed: Random seed for reproducibility
@@ -114,6 +183,7 @@ class GeometryConfig:
         use_compressed_storage: Use compressed .npz files (slower but smaller)
     """
 
+    scope: RunScope = field(default_factory=RunScope)
     targets: list[TargetSpec] = field(default_factory=list)
     output_dir: Path = field(default_factory=lambda: Path("out/geometry"))
     model: str = ""
@@ -129,6 +199,10 @@ class GeometryConfig:
     def __post_init__(self):
         if isinstance(self.output_dir, str):
             self.output_dir = Path(self.output_dir)
+        # A scope is the compact form of a target list, so expand it here and
+        # keep one source of truth for what the run extracts.
+        if not self.targets:
+            self.targets = self.scope.targets()
 
     @classmethod
     def from_dict(cls, d: dict) -> "GeometryConfig":
@@ -140,6 +214,7 @@ class GeometryConfig:
             TargetSpec(**t) if isinstance(t, dict) else t for t in d["targets"]
         ]
         return cls(
+            scope=RunScope.from_dict(d["scope"]),
             targets=targets,
             output_dir=Path(d["output_dir"]),
             model=d["model"],
@@ -154,6 +229,7 @@ class GeometryConfig:
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
+            "scope": self.scope.to_dict(),
             "targets": [
                 {"layer": t.layer, "component": t.component, "position": t.position}
                 for t in self.targets

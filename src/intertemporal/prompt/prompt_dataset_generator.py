@@ -34,6 +34,33 @@ from ..common.preference_types import (
 TIME_HORIZON_MIN_LENGTH = 20
 
 
+def normalize_reward(value: float) -> float:
+    """Snap floating-point noise to the integer it is trying to be.
+
+    Logarithmic stepping produces values like 30000.000000000007. An
+    unconditional round() used to hide that, at the cost of destroying genuinely
+    fractional rewards. Snapping only near-integers keeps both correct.
+    """
+    nearest = round(value)
+    if abs(value - nearest) < 1e-9 * max(1.0, abs(value)):
+        return nearest
+    return value
+
+
+def format_reward(value: float) -> str:
+    """Render a reward for display, keeping fractional values intact.
+
+    Whole numbers render as integers with thousands separators ("1,000"), so
+    integer-reward domains are unaffected. Fractional values keep their decimal
+    part: rounding them to int made a 0.5 reward print as "0", which offered the
+    model a worthless option.
+    """
+    if float(value) == int(value):
+        return f"{int(value):,}"
+    # normalize() strips trailing zeros; :,f would pad to 6 decimals.
+    return f"{value:,}".rstrip("0").rstrip(".")
+
+
 class PromptDatasetGenerator:
     """
     Generator for intertemporal preference prompt datasets.
@@ -191,8 +218,18 @@ class PromptDatasetGenerator:
         return grid
 
     def _round_reward(self, value: float) -> float:
-        """Round reward to a nice integer value."""
-        return round(value)
+        """Round reward to a nice integer, never collapsing a positive reward to zero.
+
+        Mirrors the guarantee `_round_time` makes for durations. A reward that
+        rounds to 0 would offer the model a worthless option, which measures
+        arithmetic rather than temporal preference.
+        """
+        rounded = round(value)
+        if rounded >= 1 or value <= 0:
+            return rounded
+        # Keep enough decimal places that a small positive reward stays positive.
+        precision = max(2, int(math.ceil(-math.log10(value))) + 1)
+        return round(value, precision)
 
     def _round_time(self, time: TimeValue) -> TimeValue:
         """Round time to a nice whole number, rescaling to a smaller unit if rounding would yield 0."""
@@ -267,10 +304,10 @@ class PromptDatasetGenerator:
         var_values = {
             "time_horizon": horizon_str,
             "left_term_label": labels[0],
-            "left_term_reward": f"{round(left_option.reward.value):,}",
+            "left_term_reward": format_reward(left_option.reward.value),
             "left_term_time": left_time,
             "right_term_label": labels[1],
-            "right_term_reward": f"{round(right_option.reward.value):,}",
+            "right_term_reward": format_reward(right_option.reward.value),
             "right_term_time": right_time,
         }
 
@@ -416,16 +453,20 @@ class PromptDatasetGenerator:
             left_label, right_label = labels[0], labels[1]
             short_term_label, long_term_label = right_label, left_label
 
+        # Rewards are already rounded in _generate_option_grid when
+        # round_reward_units is set. Rounding again here ignored that flag and
+        # destroyed intentionally fractional rewards, turning a 0.5 reward into a
+        # worthless "0" option.
         short_term = IntertemporalOption(
             label=short_term_label,
             time=short_term_data[1],
-            reward=RewardValue(value=round(short_term_data[0]), unit=ctx.reward_unit),
+            reward=RewardValue(value=normalize_reward(short_term_data[0]), unit=ctx.reward_unit),
         )
 
         long_term = IntertemporalOption(
             label=long_term_label,
             time=long_term_data[1],
-            reward=RewardValue(value=round(long_term_data[0]), unit=ctx.reward_unit),
+            reward=RewardValue(value=normalize_reward(long_term_data[0]), unit=ctx.reward_unit),
         )
 
         pair = PreferencePair(short_term=short_term, long_term=long_term)

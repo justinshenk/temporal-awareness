@@ -34,7 +34,7 @@ from ..common.sample_position_mapping import (
     DatasetPositionMapping,
     SamplePositionMapping,
 )
-from .geometry_config import GeometryConfig, TargetSpec, ACTIVATION_DTYPE
+from .geometry_config import GeometryConfig, TargetSpec
 
 if TYPE_CHECKING:
     from ..prompt import PromptDataset
@@ -597,6 +597,7 @@ def extract_activations(
     samples_dir.mkdir(parents=True, exist_ok=True)
 
     compressed = config.use_compressed_storage
+    storage_dtype = config.scope.numpy_dtype
 
     valid_samples = []
     valid_preferences = []
@@ -605,7 +606,10 @@ def extract_activations(
     skipped = 0
     valid_idx = 0
 
-    logger.info(f"Extracting activations (per-sample, compressed={compressed})...")
+    logger.info(
+        f"Extracting activations (per-sample, compressed={compressed}, "
+        f"dtype={config.scope.dtype})..."
+    )
 
     # Build set of already-processed sample indices for resume
     processed_sample_indices: set[int] = set()
@@ -683,7 +687,7 @@ def extract_activations(
             for abs_pos in abs_positions:
                 try:
                     act = pref.internals.activations[target.hook_name][abs_pos, :]
-                    act_np = act.numpy().astype(ACTIVATION_DTYPE)
+                    act_np = act.numpy().astype(storage_dtype)
 
                     filename = f"{target.component}_{abs_pos}"
                     _save_array(layer_dir / filename, act_np, compressed=compressed)

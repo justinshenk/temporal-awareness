@@ -35,6 +35,14 @@ Usage:
 
     # Use cached model data if available
     uv run python scripts/intertemporal/generate_geometry_samples.py --cache
+
+    # Extract only the change-of-turn window, two components, half-precision
+    uv run python scripts/intertemporal/generate_geometry_samples.py \\
+        --model meta-llama/Llama-3.1-8B-Instruct \\
+        --turn-only --components resid_post,attn_out --dtype float16
+
+    # Resolve and print the run scope without loading the model
+    uv run python scripts/intertemporal/generate_geometry_samples.py --turn-only --dry-run
 """
 
 import argparse
@@ -48,15 +56,21 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.common.file_io import parse_file_path
+from src.intertemporal.common.model_layers import fetch_n_layers
 from src.intertemporal.common.project_paths import get_prompt_dataset_configs_dir
-from src.intertemporal.common.semantic_positions import (
-    PROMPT_POSITIONS,
-    RESPONSE_POSITIONS,
-)
 from src.intertemporal.data.default_configs import DEFAULT_MODEL, FULL_EXPERIMENT_CONFIG
-from src.intertemporal.geometry import GeometryConfig, TargetSpec
+from src.intertemporal.geometry import GeometryConfig, RunScope, TargetSpec
+from src.intertemporal.geometry.geometry_config import (
+    DEFAULT_STORAGE_DTYPE,
+    STORAGE_DTYPES,
+)
 from src.intertemporal.geometry.geometry_pipeline import generate_geo_samples
-from src.intertemporal.geometry.geometry_utils import COMPONENTS, LAYERS, POSITIONS
+from src.intertemporal.geometry.geometry_scope import (
+    parse_int_list,
+    parse_str_list,
+    resolve_scope,
+)
+from src.intertemporal.geometry.geometry_utils import COMPONENTS
 from src.intertemporal.prompt import PromptDatasetConfig
 
 logging.basicConfig(
@@ -77,17 +91,14 @@ def build_targets(
     positions: list[str],
 ) -> list[TargetSpec]:
     """Build target specifications for all layer/component/position combinations."""
-    return [
-        TargetSpec(layer=layer, component=component, position=position)
-        for layer in layers
-        for component in components
-        for position in positions
-    ]
+    return RunScope(
+        layers=layers, components=components, positions=positions
+    ).targets()
 
 
-# Default configuration
+# Default configuration. Targets are not listed here: they depend on the model's
+# depth and on the run scope, so they are resolved per run in build_scope().
 DEFAULT_CONFIG = {
-    "targets": build_targets(LAYERS, COMPONENTS, POSITIONS),
     "base_dir": "out/geo",
     "model": DEFAULT_MODEL,
     "seed": 42,
@@ -99,8 +110,8 @@ DEFAULT_CONFIG = {
 # =============================================================================
 
 
-def get_args() -> argparse.Namespace:
-    """Parse command line arguments."""
+def get_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command line arguments (argv defaults to sys.argv)."""
     parser = argparse.ArgumentParser(
         description="Generate geometry samples and extract activations",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -150,7 +161,96 @@ def get_args() -> argparse.Namespace:
         help="Resume from existing output directory (e.g., out/geo/cityhousing_geometry_20260401_182424)",
     )
 
-    return parser.parse_args()
+    scope_group = parser.add_argument_group("run scope")
+    layer_choice = scope_group.add_mutually_exclusive_group()
+    layer_choice.add_argument(
+        "--layers",
+        nargs="+",
+        metavar="L",
+        default=None,
+        help="Explicit layer indices, comma or space separated (e.g. 0,12,31). "
+        "Default: the standard layers projected onto the model's depth.",
+    )
+    layer_choice.add_argument(
+        "--n-layers",
+        type=int,
+        default=None,
+        help="Use N layers evenly spaced across the model's depth "
+        "(alternative to --layers)",
+    )
+    scope_group.add_argument(
+        "--components",
+        nargs="+",
+        metavar="C",
+        default=None,
+        help="Components to extract, comma or space separated "
+        f"(default: {','.join(COMPONENTS)})",
+    )
+    position_choice = scope_group.add_mutually_exclusive_group()
+    position_choice.add_argument(
+        "--positions",
+        nargs="+",
+        metavar="P",
+        default=None,
+        help="Explicit semantic positions, comma or space separated "
+        "(default: all positions)",
+    )
+    position_choice.add_argument(
+        "--turn-only",
+        action="store_true",
+        help="Restrict positions to the change-of-turn window "
+        "(chat_suffix, chat_suffix_tail)",
+    )
+    scope_group.add_argument(
+        "--dtype",
+        type=str,
+        choices=sorted(STORAGE_DTYPES),
+        default=DEFAULT_STORAGE_DTYPE,
+        help=f"Storage dtype for saved activations (default: {DEFAULT_STORAGE_DTYPE})",
+    )
+    scope_group.add_argument(
+        "--n-model-layers",
+        type=int,
+        default=None,
+        help="Model depth to project layers onto. Default: read num_hidden_layers "
+        "from the model's hub config.json (no weights are downloaded).",
+    )
+    scope_group.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Resolve and print the run scope, then exit without loading the model",
+    )
+
+    return parser.parse_args(argv)
+
+
+def build_scope(args: argparse.Namespace) -> RunScope:
+    """Resolve the run scope from CLI arguments.
+
+    Layer indices are checked against the model's real depth here, before any
+    weights are loaded, so an impossible layer fails immediately instead of
+    being dropped during extraction.
+
+    List options accept either "0,12,31" or "0 12 31", because callers that
+    build the argument list in a shell get one word per value.
+    """
+    n_model_layers = (
+        args.n_model_layers
+        if args.n_model_layers is not None
+        else fetch_n_layers(args.model)
+    )
+
+    return resolve_scope(
+        n_model_layers=n_model_layers,
+        layers=parse_int_list(",".join(args.layers)) if args.layers else None,
+        n_layers=args.n_layers,
+        components=(
+            parse_str_list(",".join(args.components)) if args.components else None
+        ),
+        positions=parse_str_list(",".join(args.positions)) if args.positions else None,
+        turn_only=args.turn_only,
+        dtype=args.dtype,
+    )
 
 
 def parse_config(args: argparse.Namespace) -> PromptDatasetConfig:
@@ -187,32 +287,32 @@ def parse_config(args: argparse.Namespace) -> PromptDatasetConfig:
 def create_summary_json(
     output_dir: Path,
     n_samples: int,
-    layers: list[int],
-    components: list[str],
-    all_positions: list[str],
+    scope: RunScope,
     sparse_positions: list[str],
     dataset_name: str,
 ) -> None:
     """Create summary.json with metadata about generated data.
 
+    The scope is written out verbatim so downstream analysis reads the target
+    set this run actually extracted, rather than re-importing module constants.
+
     Args:
         output_dir: Output directory
         n_samples: Number of samples
-        layers: List of layers extracted
-        components: List of components extracted
-        all_positions: All positions that were requested for extraction
+        scope: Resolved layers, components, positions and storage dtype
         sparse_positions: Positions that only exist in some samples (not all)
         dataset_name: Name of the dataset config used
     """
     summary = {
         "n_samples": n_samples,
-        "layers": layers,
-        "components": components,
-        "positions": all_positions,
-        "n_layers": len(layers),
-        "n_components": len(components),
-        "n_positions": len(all_positions),
-        "n_targets": len(layers) * len(components) * len(all_positions),
+        "layers": scope.layers,
+        "components": scope.components,
+        "positions": scope.positions,
+        "dtype": scope.dtype,
+        "n_layers": len(scope.layers),
+        "n_components": len(scope.components),
+        "n_positions": len(scope.positions),
+        "n_targets": scope.n_targets,
         "dataset_config": {
             "name": dataset_name,
         },
@@ -250,6 +350,14 @@ def main() -> int:
     """Run sample generation and activation extraction."""
     args = get_args()
 
+    # Resolve the run scope first: it validates layers against the model's real
+    # depth, which is cheap to get wrong and expensive to discover mid-run.
+    scope = build_scope(args)
+
+    if args.dry_run:
+        print(json.dumps({**scope.to_dict(), "n_targets": scope.n_targets}, indent=2))
+        return 0
+
     # Parse dataset config (like generate_prompt_dataset.py)
     dataset_config = parse_config(args)
     dataset_name = dataset_config.name
@@ -267,7 +375,7 @@ def main() -> int:
 
     # Build geometry config with dataset_cfg dict for collect_samples
     config = GeometryConfig(
-        targets=DEFAULT_CONFIG["targets"],
+        scope=scope,
         output_dir=output_dir,
         model=args.model,
         seed=args.seed,
@@ -282,11 +390,10 @@ def main() -> int:
     logger.info(f"Dataset: {dataset_name}")
     logger.info(f"Model: {config.model}")
     logger.info(f"Output: {config.output_dir}")
-    logger.info(f"Layers: {LAYERS}")
-    logger.info(f"Components: {COMPONENTS}")
-    logger.info(
-        f"Positions: {len(POSITIONS)} ({len(PROMPT_POSITIONS)} prompt + {len(RESPONSE_POSITIONS)} response)"
-    )
+    logger.info(f"Layers: {scope.layers}")
+    logger.info(f"Components: {scope.components}")
+    logger.info(f"Positions: {len(scope.positions)} {scope.positions}")
+    logger.info(f"Storage dtype: {scope.dtype}")
     logger.info(f"Total targets: {len(config.targets)}")
 
     # Run sample generation
@@ -300,7 +407,7 @@ def main() -> int:
         # Parse: L0_resid_pre_response_choice -> response_choice
         parts = key.split("_")
         # Skip layer (L0) and component (resid_pre, attn_out, mlp_out, resid_post)
-        for comp in COMPONENTS:
+        for comp in scope.components:
             comp_parts = comp.split("_")
             comp_len = len(comp_parts)
             if "_".join(parts[1 : 1 + comp_len]) == comp:
@@ -309,15 +416,13 @@ def main() -> int:
                 break
 
     # Sparse positions: positions that were requested but only exist in some samples
-    sparse_positions = [p for p in POSITIONS if p not in positions_with_data]
+    sparse_positions = [p for p in scope.positions if p not in positions_with_data]
 
     # Create summary.json
     create_summary_json(
         output_dir=output_dir,
         n_samples=len(data.samples),
-        layers=LAYERS,
-        components=COMPONENTS,
-        all_positions=POSITIONS,
+        scope=scope,
         sparse_positions=sparse_positions,
         dataset_name=dataset_name,
     )

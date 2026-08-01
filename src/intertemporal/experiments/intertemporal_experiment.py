@@ -273,6 +273,8 @@ def process_coarse(
             component=component,
             layer_step_sizes=config.layer_steps,
             pos_step_sizes=config.pos_steps,
+            min_layer_depth=config.min_layer_depth,
+            max_layer_depth=config.max_layer_depth,
         )
         result.sample_id = pair_idx
         ctx.coarse_patching[(pair_idx, component)] = result

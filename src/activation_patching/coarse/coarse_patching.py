@@ -14,7 +14,7 @@ from .sweep_runners import run_sanity_check, run_layer_sweep, run_position_sweep
 def run_coarse_act_patching(
     runner: BinaryChoiceRunner,
     pair: ContrastivePair,
-    min_layer_depth: float = 0.45,
+    min_layer_depth: float = 0.0,
     max_layer_depth: float = 1.0,
     component: str | None = None,
     layer_step_sizes: list[int] | None = None,
@@ -26,7 +26,9 @@ def run_coarse_act_patching(
     Args:
         runner: BinaryChoiceRunner for inference
         pair: ContrastivePair to patch
-        min_layer_depth: Start layer as fraction of total layers
+        min_layer_depth: Start layer as fraction of total layers. Defaults to 0.0
+            (every layer). Narrowing this bounds the localization result, so any
+            non-zero value must be a deliberate, recorded choice.
         max_layer_depth: End layer as fraction of total layers
         component: Component to patch
         layer_step_sizes: List of step sizes for layer sweeps
