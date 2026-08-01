@@ -192,12 +192,23 @@ class ExperimentContext(ExperimentMixin):
                     f"prompt_dataset required but missing PromptSample for sample_idx {pref.short_term.sample_idx} or {pref.long_term.sample_idx}"
                 )
 
-            short_term_mapping = SamplePositionMapping.build(
-                short_prompt_sample, self.runner, pref=pref.short_term
-            )
-            long_term_mapping = SamplePositionMapping.build(
-                long_prompt_sample, self.runner, pref=pref.long_term
-            )
+            # Ambiguous prompts (one reward a substring of the other, "0.5" vs
+            # "5") make left/right value search claim the same tokens and the
+            # mapping validator raises. Skip the pair rather than kill the run;
+            # the same guard exists in geometry extraction.
+            try:
+                short_term_mapping = SamplePositionMapping.build(
+                    short_prompt_sample, self.runner, pref=pref.short_term
+                )
+                long_term_mapping = SamplePositionMapping.build(
+                    long_prompt_sample, self.runner, pref=pref.long_term
+                )
+            except AssertionError as exc:
+                log(
+                    f"[ctx] Skipping pair {i}: position mapping invalid "
+                    f"({str(exc).splitlines()[0]})"
+                )
+                continue
 
             pair = pref.get_contrastive_pair(
                 self.runner,
