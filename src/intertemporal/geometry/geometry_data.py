@@ -687,7 +687,8 @@ def extract_activations(
             for abs_pos in abs_positions:
                 try:
                     act = pref.internals.activations[target.hook_name][abs_pos, :]
-                    act_np = act.numpy().astype(storage_dtype)
+                    # numpy has no bfloat16; route through float32 first.
+                    act_np = act.float().numpy().astype(storage_dtype)
 
                     filename = f"{target.component}_{abs_pos}"
                     _save_array(layer_dir / filename, act_np, compressed=compressed)
