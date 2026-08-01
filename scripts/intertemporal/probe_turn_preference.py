@@ -109,6 +109,10 @@ def select_backend(model_name: str) -> ModelBackend:
     """
     if model_name == "Qwen/Qwen3-4B-Instruct-2507":
         return ModelBackend.TRANSFORMERLENS  # mapped to the Qwen3-4B config inside ModelRunner
+    if model_name == "google/gemma-2-9b-it":
+        # TransformerLens weight processing for gemma-2-9b exceeds the 113GB
+        # container RAM limit (observed cgroup oom_kill); HF hooks are exact.
+        return ModelBackend.HUGGINGFACE
     try:
         get_official_model_name(model_name)
         return ModelBackend.TRANSFORMERLENS
