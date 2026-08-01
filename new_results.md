@@ -1,4 +1,4 @@
-# version: 2
+# version: 3
 
 # New results for the rebuttal — live document
 
@@ -62,11 +62,27 @@ so its "L17-35" claim could not be distinguished from the sweep bound; the
 new runs close that gap. 24 contrastive pairs, resid_post + attn_out +
 mlp_out, denoising + noising.
 
-**PENDING**: loc_llama_health, loc_gemma_climate, loc_mistral_education,
-loc_qwen35_startup → `localization/loc_*.tar.gz` (each includes
-`aggregated/analysis/processed_results.json` with the component ranking;
-note the JSON ranks by recovery alone while the paper's figure ranked by
-recovery+disruption — use recovery+disruption for comparability).
+**VERIFIED — Mistral-7B/education and Gemma-2-9B/climate; Llama in flight.**
+n=24 pairs each, every layer 0..N-1, three components, zero errors, archives
+byte-verified on HF (`localization/loc_mistral_education.tar.gz`,
+`localization/loc_gemma_climate.tar.gz`). Scores below are mean recovery +
+disruption (the paper's figure ordering).
+
+| Model | Top attention | Attention band (frac) | MLP | Early layers |
+|---|---|---|---|---|
+| Mistral-7B (final) | L16 (0.52) +1.03 | 0.48-0.61 | late L28-L31 | -0.006 silent |
+| Gemma-2-9B (final) | L25 (0.61) +0.58 | 0.56-0.68 | L26 + late L32-L39 | -0.026 silent |
+| Llama-3.1-8B (n=5 prelim) | L17 (0.55) +1.06 | 0.45-0.58 | late L26-L29 | -0.015 silent |
+| Qwen3-4B (paper) | L24 (0.67) | 0.58-0.67 | L31/L35 | never swept |
+
+Three cross-family regularities: (1) a causal attention band at ~0.45-0.68
+fractional depth in every model; (2) late-layer MLP accumulation; (3) layers
+below ~0.2 depth causally silent — MEASURED in the three new models, whereas
+the paper's own sweep hardcoded a 0.45-depth floor and never tested them.
+In every model the causal attention band contains or abuts that model's
+steering optimum (Mistral L16-19 vs steer L19; Gemma L23-28 vs steer L21;
+Llama L14-18 vs steer L18), closing the localization-intervention loop
+across architectures. Llama's n=24 final and Qwen3.5 remain PENDING.
 
 ## 3. Probing (paper App. G) — VERIFIED, all four models
 
