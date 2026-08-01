@@ -659,8 +659,19 @@ def extract_activations(
             continue
 
         # Build position mapping (this gives us abs_pos -> format_pos)
-        # NOTE: This MUST NOT fail - position mapping validation will crash if there are issues
-        pos_mapping = SamplePositionMapping.build(sample, runner, pref=pref)
+        # A known ambiguity: when one reward renders as a substring of the other
+        # ("0.5" vs "5"), left/right value search can claim the same tokens and
+        # the mapping validator raises. Those samples are unusable for
+        # position-keyed extraction; skip them rather than kill the whole run.
+        try:
+            pos_mapping = SamplePositionMapping.build(sample, runner, pref=pref)
+        except AssertionError as exc:
+            logger.warning(
+                f"  !!! SKIPPED SAMPLE {i}/{len(samples)} !!! "
+                f"Reason: position mapping invalid ({exc})".split("\n")[0]
+            )
+            skipped += 1
+            continue
 
         # CRITICAL: Override sample_idx to match the output directory index (valid_idx)
         # The original sample.sample_idx is from the source dataset, but we need
