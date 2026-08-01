@@ -1,4 +1,4 @@
-# version: 3
+# version: 4
 
 # New results for the rebuttal — live document
 
@@ -19,10 +19,21 @@ effects never confound:
 | Llama-3.1-8B-Instruct | health (QALYs, patient/doctor) | geometry VERIFIED |
 | gemma-2-9b-it | climate (tCO2 prevented, policy maker) | geometry VERIFIED |
 | Mistral-7B-Instruct-v0.3 | education ($k lifetime earnings, student) | running |
-| Qwen3.5-4B | startup ($k revenue, founder) | running |
+| ~~Qwen3.5-4B~~ Qwen3-4B-Inst-2507 | startup ($k revenue, founder) | geometry VERIFIED (see note) |
 
 All runs: 3,000 samples, turn-transition positions only (`chat_suffix` +
 tail), resid_post + attn_out, fp16 storage, bf16 inference, TransformerLens.
+
+## IMPORTANT NAMING NOTE (v4)
+
+Qwen3.5-4B is architecturally incompatible with TransformerLens (hybrid
+linear attention, Qwen3_5ForConditionalGeneration; not in the TL registry).
+The HF artifacts named `qwen35_4b_startup` are therefore
+**Qwen3-4B-Instruct-2507 — the paper's own model — on the STARTUP domain**;
+the substitution is stated in their caption.md. Cite them as a
+DOMAIN-generalization result (investment -> startup) for the target model,
+never as a newer-Qwen result. A true Qwen3.5 run would need the HF backend
+end to end.
 
 ## 1. Geometry — turn-transition PCA (paper Fig. 7 / Appendix M)
 
@@ -51,8 +62,21 @@ sits at ~0.6–0.8 fractional depth in all three models measured so far
 (Qwen L31/36 = 0.86 readout, Llama L21/32, Gemma L33/42), echoing the
 fractional-depth invariance the paper found for patching (Appendix Q).
 
-**PENDING**: Mistral-7B/education geometry; Qwen3.5-4B/startup geometry
-(each auto-produces plots + a visually-selected fig7_final panel).
+**VERIFIED — Mistral-7B/education**: 2,984/3,000 valid (16 skips, 0.5% —
+no ambiguity epidemic in education), archive 1.2 GB byte-verified, fig7
+winner **L19 (0.59)** viewed: full ordinal manifold, clean split, no-horizon
+off-manifold. Note Mistral's template yields two turn tokens ([/INST], 'I').
+`geometry/mistral7b_education.tar.gz`, `_plots/`, `fig7_final/`.
+
+**VERIFIED — Qwen3-4B-Inst-2507/startup** (see naming note): 2,992/3,000
+valid, archive 1.86 GB byte-verified, fig7 winner **L19 resid_post** viewed
+(monotonic seconds->millennia gradient at <|im_end|>, No-Horizon separate).
+With investment (paper) + startup (new), the geometry story now holds for
+the SAME model on two domains and for four model families overall.
+`geometry/qwen35_4b_startup.tar.gz` (name retained; content is Qwen3-4B).
+
+Fig-7 final panels on HF: Qwen3-4B/startup L19, Llama L21, Gemma L33,
+Mistral L19 — all selected by visual inspection with image tokens.
 
 ## 2. Causal localization — coarse activation patching (paper §5.1 / App. J)
 
@@ -153,6 +177,14 @@ at chance, refining the paper's "only frontier API models are coherent"
 claim. Order/label stability per model are in each run's heatmap figures
 (`behavioral/coherence/coh_*/`); Fig-8-format rows still to be extracted
 into one table.
+
+## Reproducibility flag (discount probe)
+
+Two independent Qwen3-4B discount runs disagree: the A6000 run terminated
+every cell at the probe caps (no_boundary/always_delayed, 42 queries) while
+the eval-box rerun found boundaries with 19 label-swap reversals (21 cells,
+31.5 s). Same script, different box/backend. Do not quote Qwen discount
+numbers until this is reconciled; the other three models have single runs.
 
 ## Known caveats to carry into any text
 
