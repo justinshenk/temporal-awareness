@@ -857,6 +857,7 @@ class ModelRunner:
                 self.model_name,
                 torch_dtype=self.dtype,
                 trust_remote_code=True,
+                low_cpu_mem_usage=True,
             )
             tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name, trust_remote_code=True
@@ -870,7 +871,12 @@ class ModelRunner:
                 **config_overrides,
             )
         else:
-            self._model = load_fn(self.model_name, device=self.device, dtype=self.dtype)
+            self._model = load_fn(
+                self.model_name,
+                device=self.device,
+                dtype=self.dtype,
+                low_cpu_mem_usage=True,
+            )
         self._model.eval()
         self._backend = TransformerLensBackend(self)
 
