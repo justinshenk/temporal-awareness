@@ -329,7 +329,12 @@ def main() -> int:
     caa_pairs = load_pairs(caa_path)
     eval_pairs = sorted(load_pairs(EVAL_DATA), key=lambda p: p["id"])[: args.n_eval]
 
-    runner = ModelRunner(args.model, backend=ModelBackend.TRANSFORMERLENS)
+    # process_weights=False: TransformerLens advises no_processing at reduced
+    # precision, and the fp32 processing pass peaks at 4-5x model size in host
+    # RAM. CAA mean differences are invariant to the skipped reparametrization.
+    runner = ModelRunner(
+        args.model, backend=ModelBackend.TRANSFORMERLENS, process_weights=False
+    )
     n_layers = runner.n_layers
     layer_fracs = list(LAYER_FRACS)
     frac_to_layer = {
@@ -415,6 +420,7 @@ def main() -> int:
     summary = {
         "model": args.model,
         "backend": "transformerlens",
+        "process_weights": False,
         "dtype": str(runner.dtype),
         "n_layers": n_layers,
         "d_model": runner.d_model,

@@ -28,6 +28,7 @@ class ModelRunner:
         device: Optional[str] = None,
         dtype: Optional[torch.dtype] = None,
         backend: ModelBackend = get_recommended_backend_inference(),
+        process_weights: bool = True,
     ):
         # Parse cloud API model specs (e.g., "openai:gpt-4o", "anthropic:claude-sonnet-4-20250514")
         if model_name.startswith("openai:"):
@@ -84,7 +85,7 @@ class ModelRunner:
         # IMPORTANT: self._backend should never be used outside ModelRunner + Children
         self._backend = backend
         if backend == ModelBackend.TRANSFORMERLENS:
-            self._init_transformerlens()
+            self._init_transformerlens(process_weights=process_weights)
         elif backend == ModelBackend.NNSIGHT:
             self._init_nnsight()
         elif backend == ModelBackend.PYVENE:
