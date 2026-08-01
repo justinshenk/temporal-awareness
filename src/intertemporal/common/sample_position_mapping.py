@@ -338,14 +338,30 @@ def _find_chat_suffix_start(
         return None
 
     # Walk back from the end of the prompt until the tokens seen reconstruct the
-    # suffix exactly. Growing past its length means no boundary matches.
+    # suffix exactly.
     tail = ""
     for i in range(len(prompt_tokens_decoded) - 1, -1, -1):
         tail = prompt_tokens_decoded[i] + tail
         if tail == suffix:
             return i
         if len(tail) >= len(suffix):
-            return None
+            break
+
+    # Exact reconstruction fails when a plain-text edge of the suffix merges
+    # into a neighbouring token at the prompt/response junction (the trajectory
+    # is tokenized as one string, so boundaries there differ from prompt-only
+    # tokenization). The suffix's FIRST token is a turn-end control token
+    # (<|im_end|>, <|eot_id|>, <end_of_turn>): special tokens are atomic and
+    # never merge, so its last literal occurrence marks the suffix start.
+    ids = tokenizer.encode(suffix, add_special_tokens=False)
+    if not ids:
+        return None
+    first_tok = tokenizer.decode([ids[0]])
+    if not first_tok.strip():
+        return None
+    for i in range(len(prompt_tokens_decoded) - 1, -1, -1):
+        if prompt_tokens_decoded[i] == first_tok:
+            return i
     return None
 
 
