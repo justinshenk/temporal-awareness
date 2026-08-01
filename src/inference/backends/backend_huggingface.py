@@ -10,6 +10,26 @@ from .model_backend import Backend
 from ..interventions import Intervention
 
 
+def encode_without_duplicate_bos(
+    tokenizer: Any, text: str, add_special_tokens: bool = True
+) -> torch.Tensor:
+    """Encode text, avoiding a duplicate BOS when the text already embeds one.
+
+    Chat templates for Mistral/Gemma/Llama embed the BOS string in the templated
+    text. Encoding that text with add_special_tokens=True prepends a second BOS
+    id, so the model sees e.g. "<s><s>[INST]". When the text already starts with
+    the BOS string, encode without special tokens; the embedded BOS string still
+    tokenizes to exactly one BOS id. Templates without an embedded BOS (e.g.
+    Qwen) are unaffected.
+    """
+    bos_token = tokenizer.bos_token
+    if add_special_tokens and bos_token and text.startswith(bos_token):
+        add_special_tokens = False
+    return tokenizer(
+        text, return_tensors="pt", add_special_tokens=add_special_tokens
+    ).input_ids
+
+
 class HuggingFaceBackend(Backend):
     """Backend using HuggingFace Transformers for model inference and interventions.
 
@@ -95,9 +115,9 @@ class HuggingFaceBackend(Backend):
         self, text: str, add_special_tokens: bool = True, prepend_bos: bool = False
     ) -> torch.Tensor:
         """Encode text into token IDs tensor."""
-        ids = self._tokenizer(
-            text, return_tensors="pt", add_special_tokens=add_special_tokens
-        ).input_ids
+        ids = encode_without_duplicate_bos(
+            self._tokenizer, text, add_special_tokens=add_special_tokens
+        )
         if prepend_bos:
             bos_id = self._tokenizer.bos_token_id
             if bos_id is not None and (ids.shape[1] == 0 or ids[0, 0].item() != bos_id):
