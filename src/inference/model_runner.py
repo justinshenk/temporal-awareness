@@ -846,7 +846,9 @@ class ModelRunner:
             else HookedTransformer.from_pretrained_no_processing
         )
 
-        base_model_name = self._get_transformerlens_base_model(self.model_name)
+        base_model_name, config_overrides = self._get_transformerlens_base_model(
+            self.model_name
+        )
         if base_model_name and base_model_name != self.model_name:
             print(f"  Using HF wrapper: {self.model_name} -> {base_model_name} config")
             from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -865,27 +867,40 @@ class ModelRunner:
                 tokenizer=tokenizer,
                 device=self.device,
                 dtype=self.dtype,
+                **config_overrides,
             )
         else:
             self._model = load_fn(self.model_name, device=self.device, dtype=self.dtype)
         self._model.eval()
         self._backend = TransformerLensBackend(self)
 
-    def _get_transformerlens_base_model(self, model_name: str) -> str | None:
+    def _get_transformerlens_base_model(
+        self, model_name: str
+    ) -> tuple[str | None, dict]:
         """Get the TransformerLens-compatible base model name for a given model.
 
         For models not directly supported by TransformerLens but with compatible
-        architecture (e.g., instruct variants), returns the base model name.
+        architecture (e.g., instruct variants), returns the base model name plus
+        AutoConfig overrides that restore the real model's config values where
+        they differ from the base model's.
 
         Returns:
-            Base model name if mapping exists, original name if directly supported,
-            None if not supported at all.
+            Tuple of (base model name, config override kwargs). The name is the
+            original name if directly supported, None if not supported at all.
         """
-        # Mapping from unsupported model names to their compatible base models
-        # These models share the same architecture, just different weights
+        # Mapping from unsupported model names to compatible base models with
+        # config overrides. These models share the same architecture class;
+        # overrides fix config values that differ from the base model
+        # (d_vocab is taken from the wrapped hf_model's config automatically).
         MODEL_MAPPINGS = {
             # Qwen3 instruct variants -> base models
-            "Qwen/Qwen3-4B-Instruct-2507": "Qwen/Qwen3-4B",
+            "Qwen/Qwen3-4B-Instruct-2507": ("Qwen/Qwen3-4B", {}),
+            # Mistral v0.3: same architecture as v0.1 but no sliding window
+            # and a larger rotary base
+            "mistralai/Mistral-7B-Instruct-v0.3": (
+                "mistralai/Mistral-7B-Instruct-v0.1",
+                {"rope_theta": 1000000.0, "sliding_window": None},
+            ),
         }
 
         if model_name in MODEL_MAPPINGS:
@@ -896,9 +911,9 @@ class ModelRunner:
             from transformer_lens.loading_from_pretrained import get_official_model_name
 
             get_official_model_name(model_name)
-            return model_name  # Directly supported
+            return model_name, {}  # Directly supported
         except ValueError:
-            return None  # Not supported
+            return None, {}  # Not supported
 
     def _init_nnsight(self) -> None:
         from .backends import NNsightBackend
