@@ -324,6 +324,9 @@ class ContrastivePair(BaseSchema):
         if hasattr(patch_vals, "cpu"):
             patch_vals = patch_vals.cpu()
         if hasattr(patch_vals, "numpy"):
+            # numpy has no bfloat16; HF-backend caches are bf16 on cuda.
+            if hasattr(patch_vals, "float") and str(patch_vals.dtype) == "torch.bfloat16":
+                patch_vals = patch_vals.float()
             patch_vals = patch_vals.numpy()
 
         patch_target = (
