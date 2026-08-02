@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from ..num_types import Num, Nums, is_numpy, is_tensor
 from .core_impl import (
-    _EPS,
+    _EPS,  # noqa: F401  re-exported for entropy_diversity/__init__.py; removing it breaks the import chain
     _log_sum_exp_native,
     _log_sum_exp_numpy,
     _log_sum_exp_torch,

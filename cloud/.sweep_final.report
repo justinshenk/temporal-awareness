@@ -1,0 +1,91 @@
+# Fleet capture report — written 2026-08-02 (UTC) by the sweep-capture session
+#
+# MANDATE: sweep the filesystems of the 11 running boxes, pull every uncaptured
+# file, and prove zero-loss capture before teardown.
+#
+# OUTCOME: THE SWEEP NEVER RAN. All 11 instances were destroyed by ANOTHER
+# session at 2026-08-02T02:05:28-37Z, roughly 4 minutes after this session
+# started and before any box could be enumerated. No per-box file sweep is
+# possible retroactively; per-box "remaining-uncaptured = 0" can NOT be
+# claimed for any box and is not claimed here.
+#
+# Evidence for the destroy event (all checked directly):
+#   - vast audit-logs: api.instance_DELETE for exactly these 11 ids, in
+#     ascending id order, one per ~0.9 s, 02:05:28Z..02:05:37Z, from IP
+#     24.130.153.44 (the same IP as every legitimate campaign operation)
+#     using account api key 18183466. A scripted teardown from this
+#     machine/user, not vast-side reclamation.
+#   - This session issued zero destroy/stop/state-changing commands (its
+#     command history is read-only: show instances/user/audit-logs, curl GETs,
+#     ssh probes).
+#   - cloud/.fleet_audit.log contains no DESTROY lines for these ids, so the
+#     destroyer was not cloud/reap.sh from this checkout.
+#   - All direct SSH endpoints now refuse or time out; the API lists 0
+#     instances (confirmed repeatedly over ~10 minutes).
+#
+# Last HF upload before destruction: localization/loc_llama_health.tar.gz at
+# 2026-08-01T19:37:05Z. Anything created on any box between its last verified
+# upload and 02:05Z is LOST unless it was already on HF. That window is up to
+# ~2.5 h. The campaign's deliverable set (new_results.md v6) was complete and
+# verified on HF before the window, so the known loss is bounded to on-box
+# logs/scratch and any unfinished reconciliation runs.
+#
+# Per-box accounting (id, label -> durable artifacts, status):
+#   46479509 ta-tp-gemma2-9b-climate   -> geometry/gemma2_9b_climate.tar.gz (3102145559 B)
+#                                         + geometry/llama31_8b_health.tar.gz (2947682262 B)
+#                                         + both *_plots/ (30 each) + fig7_final panels
+#                                         + behavioral/extreme_discount JSONs (llama, gemma,
+#                                         qwen phase-1) + summary CSV + figure. All on HF,
+#                                         byte-verified (VERIFICATION_LOG entries 30, 36,
+#                                         39-44). On-box run logs LOST.
+#   46486763 ta-tp-loc-gemma-climate   -> localization/loc_gemma_climate.tar.gz. Recovered
+#                                         locally, gate-VERIFIED (24 pairs, 42 layers x 3
+#                                         components).
+#   46486764 ta-tp-loc-llama-health    -> localization/loc_llama_health.tar.gz. Recovered
+#                                         locally, gate-VERIFIED (23 pairs, 32 layers x 3).
+#   46489016 ta-tp-geo-mistral-education -> geometry/mistral7b_education.tar.gz (1201524758 B)
+#                                         + plots + fig7. Recovered locally, extracted: 2984
+#                                         samples, per-sample JSON complete, activations load.
+#   46490088 ta-tp-steer-all           -> steering/extreme_sweep/ (26 files, 26/26 sizes
+#                                         verified, heatmaps viewed) + behavioral/coherence/
+#                                         coh_* 5 runs + summary (96/96 paths byte-verified).
+#   46490671 ta-tp-qwen35-suite        -> geometry/qwen35_4b_startup.tar.gz (1864620734 B)
+#                                         + plots + fig7 (content = Qwen3-4B on startup).
+#                                         Recovered locally, extracted: 2992 samples.
+#   46494261 ta-tp-qwen35-loc          -> NO KNOWN HF ARTIFACT. new_results.md v6 uses the
+#                                         paper's own Qwen localization row instead. Whatever
+#                                         this box held is LOST/UNPROVEN. This is the one box
+#                                         with no durable output.
+#   46494262 ta-tp-qwen35-eval         -> probing qwen files, behavioral/extreme_discount/
+#                                         qwen3_4b_instruct_2507/ rerun, behavioral/coherence/
+#                                         investment_behave_full/. All on HF, byte-verified
+#                                         (VERIFICATION_LOG qwen35-eval entry, ALL_VERIFIED).
+#   46494263 ta-tp-mistral-loc         -> localization/loc_mistral_education.tar.gz. Recovered
+#                                         locally, gate-VERIFIED (24 pairs, 32 layers x 3).
+#   46499991 ta-tp-disc-split          -> extreme_discount mistral + qwen JSONs on HF
+#                                         (entries 40-41). Any in-flight Qwen-discount
+#                                         reconciliation rerun is LOST (the qwen discount
+#                                         discrepancy flagged in new_results.md v6 remains
+#                                         open and can no longer be settled from these boxes).
+#   46499992 ta-tp-coh-mistral         -> behavioral/coherence/coh_mistral-7b/ on HF
+#                                         (in the 96/96 verified set).
+#
+# Local recovery performed by this session (2026-08-02):
+#   - Downloaded all 7 run archives (4 geometry + 3 localization) from HF to
+#     cloud/pulled/hf/; every file byte-identical to the Hub listing:
+#     3102145559 / 2947682262 / 1864620734 / 1201524758 / 29628558 / 29882606 /
+#     28038914 bytes.
+#   - Extracted all 7 to cloud/pulled/hf/extracted/. Sample counts match the
+#     on-box counts recorded at run time: gemma 2992, llama 2517, mistral 2984,
+#     qwen-startup 2992. One activation .npy per run opened: correct d_model
+#     (3584/4096/4096/2560), float16, all finite, nonzero std.
+#   - scripts/verify_experiment_output.py: the 3 localization runs pass
+#     verify_patching fully and are recorded in cloud/.pulled_runs
+#     (gate result: VERIFIED, 3 targets). The 4 geometry runs pass every
+#     content check except analysis/pca/, which turn-only runs do not produce
+#     (they carry analysis/turn_plots/ instead), so they are documented here
+#     rather than forced into the manifest.
+#
+# NOT CAPTURED, permanently: per-box filesystems (run logs under /root and
+# /workspace, scratch, any artifact never uploaded), and box 46494261 in its
+# entirety. No sweep enumerated any box, so no zero-loss claim is made.

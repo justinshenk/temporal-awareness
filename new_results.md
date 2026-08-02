@@ -1,4 +1,4 @@
-# version: 5
+# version: 6
 
 # New results for the rebuttal — live document
 
@@ -176,9 +176,21 @@ zone, paired denominator n=288):
 from the paper's own reference run — the instrument reproduces. Notable:
 Gemma-2-9B is near-coherent (95.1%) while the other three local models sit
 at chance, refining the paper's "only frontier API models are coherent"
-claim. Order/label stability per model are in each run's heatmap figures
-(`behavioral/coherence/coh_*/`); Fig-8-format rows still to be extracted
-into one table.
+claim. Fig-8-format rows, extracted from the run responses via the
+metric functions in `scripts/intertemporal/coherent_behavior_viz.py`
+(independently re-derived by a verifier agent, all rows reproduce):
+
+| Model | Temporal reasoning | Order stability | Label stability |
+|---|---|---|---|
+| gpt-4o-mini | 100.0% | 95.0% | 96.2% |
+| Gemma-2-9B | 95.1% | 94.8% | 95.2% |
+| Llama-3.1-8B | 52.4% | 51.5% | 92.7% |
+| Mistral-7B | 51.0% | 65.4% | 95.0% |
+| Qwen3-4B-Inst-2507 (reference run) | 50.0% | 61.9% | 96.0% |
+
+Qwen stability values are from the submission's reference run; the
+campaign re-run's raw responses (`coh_qwen3-4b-i`) are on HF only, its
+50.3% zone coherence comes from `coherence_summary.csv`. VERIFIED.
 
 ## Reproducibility flag (discount probe)
 
