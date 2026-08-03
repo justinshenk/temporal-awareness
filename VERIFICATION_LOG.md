@@ -453,3 +453,58 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
 5. **Finding**: while deleting upload staging (scratchpad only, absolute quoted path), a concurrent deletion from OUTSIDE this session removed repo artifacts: `out/geo` and 6 `out/experiments/investment_qwen3*` dirs moved to `~/.Trash` (recoverable until emptied), while `out/experiments/investment` (27 GB flagship run), `investment_qwen3_8b`, `investment_qwen3_14b`, `cloud/pulled/` (25 GB HF re-downloads), and `rebuttal_RESCUED_from_trash/` were removed without appearing in the Trash (~56 GB freed while observed). This session issued no command touching any of these paths (its only deletions: `$SCRATCHPAD/hfstage`, verified before running). Of the hard-removed items, `investment`, `investment_qwen3_8b`, `investment_qwen3_14b`, and `rebuttal_RESCUED_from_trash` have NO HF or git copy; `cloud/pulled` content still exists on HF (it was a download cache). `out/zipped/investment_geometry_analysis.zip` (cmp-identical to the trashed `out/geo` copy) survives on disk.
    - **How verified**: `ls out/`, `ls ~/.Trash`, `df` deltas, `pgrep` (no rm in session), never-delete list spot-check (`paper/` and `old_paper_tree_snapshot.tar.gz` still present).
    - **Result**: BROKEN (data loss outside this session's control; reported to the user)
+
+## 2026-08-03 (UTC) — Confidence intervals from existing data (scratchpad ci_work; no repo/paper writes, no forward passes)
+
+1. **Output**: `<scratchpad>/ci_work/ci_results.json` + `ci_report.md` (scratchpad session 4d13a432, dir `ci_work/`): probe Wilson CIs, localization pair-bootstrap CIs, steering CI availability audit.
+   - **How verified**: re-opened `ci_results.json` after writing and printed every headline number; all matched the script stdout. Scripts (`probe_cis.py`, `loc_bootstrap.py`, `build_ci_results.py`) kept alongside for rerun.
+   - **Result**: VERIFIED
+2. **Output**: steering CIs.
+   - **How verified**: opened all four `out/hf_new/steering/extreme_sweep/<model>/steering_summary.json` + one `steering_sweep.csv`, the full HF `steering/extreme_sweep` file listing, the Qwen run log on HF, and `steer_turn_preference.py score_items()` — per-prompt forced-choice scores are computed transiently and never written; only per-cell means exist.
+   - **Result**: UNVERIFIABLE-BY-DESIGN → reported UNAVAILABLE (no fabrication); finest granularity documented in ci_results.json.
+3. **Output**: localization bootstrap (gemma L25, llama L17, mistral L16 attention scores).
+   - **How verified**: downloaded the three HF tarballs fresh (byte sizes equal to HF listing: 29628558 / 29882606 / 28038914), extracted 213 coarse_results.json (24+23+24 pairs x 3 components), recomputed per-layer mean recovery+disruption and reproduced new_results.md values exactly (0.58 / 0.98 / 1.03; early -0.026 / -0.010 / -0.006) before bootstrapping (10k resamples, seed 0). Reported top layer stays argmax in 100.0% of resamples for all three models.
+   - **Result**: VERIFIED
+4. **Output**: probe Wilson CIs (n=120 test examples).
+   - **How verified**: read `probe_turn_preference.py` (pair-aware split, round(0.2*300)=60 pairs x 2 prompts), opened all four `*_meta.json`, asserted acc*n integral for every accuracy used (e.g. 0.95*120=114).
+   - **Result**: VERIFIED (as Wilson intervals; per-example predictions do not exist, so bootstrap/per-fold CIs are UNAVAILABLE)
+
+## 2026-08-03 (UTC) — Collapse-panel selection metric (scratchpad collapse_metric; one paper write: images/characterize/collapse_metric_curves.pdf)
+
+1. **Output**: `<scratchpad>/collapse_metric/results.json` — per-run per-layer silhouette (top-2 PCA of resid_post at the final turn-transition token, Long vs Short, euclidean) and 80/20 holdout logistic-regression accuracy, for the 4 campaign runs (raw activations, scratchpad `fanplots/runs/`) and the original investment run.
+   - **How verified**: re-opened and parsed the JSON (5 runs, 12/15 layers each, argmax + tie lists present); independent verifier agent recomputed startup L19 silhouette from raw files with its own code path (0.8398416042327881, diff 0.0) and investment L31 from stored embeddings + choice.json labels (0.8653809428215027, diff 0.0).
+   - **Result**: VERIFIED
+2. **Output**: investment run substitution. The prompt's source `~/.Trash/geo/investment_geometry` no longer exists (Trash now contains only PDFs; see 2026-08-02 entry 5 — out/geo was trashed by an outside process and the Trash has since been emptied of it). Used `out/zipped/investment_geometry_analysis.zip` instead, which that entry records as cmp-identical to the trashed copy. The zip holds sample JSONs + per-layer 3-PC PCA embeddings at resid_post/chat_suffix_r3 (the 'assistant' token, confirmed from sample_0 position_mapping.json), but NO raw activations, so investment holdout accuracy is on the stored top-2 PCA projection only; full-dim holdout is null.
+   - **How verified**: enumerated zip contents; all 12 embedding files opened, each (4588,3) float32; read compute_geometry_analysis.py + geometry_utils.load_target to confirm embedding row i = sample_i (ascending index, all 4588 valid).
+   - **Result**: VERIFIED (with the stated data limitation)
+3. **Output**: figure `<scratchpad>/collapse_metric/collapse_metric_curves.{pdf,png}` and the paper copy `/Users/unrulyabstractions/work/papers/paper/images/characterize/collapse_metric_curves.pdf`.
+   - **How verified**: viewed the PNG and a pdftoppm raster of the PDF with image tokens (5 panels, open-circle visual picks at 31/21/33/19/19, filled argmax dots at 0/21/4/17/0, serif fonts, true-layer-index ticks, legend clear of curves); `cmp` shows paper copy byte-identical to scratch PDF; verifier agent independently viewed both and cross-checked marker y-values against results.json.
+   - **Result**: VERIFIED
+
+4. **Output**: extended 3-row collapse-metric figure (curves + argmax scatter + visual-pick scatter) deployed to `/Users/unrulyabstractions/work/papers/temporal-awareness/images/characterize/collapse_metric_curves.pdf` and `/Users/unrulyabstractions/work/papers/temporal-awareness/neurreps/images/collapse_metric_curves.pdf`; prior single-row version preserved as `collapse_metric_curves_v1.pdf` (main images dir); inputs `<scratchpad>/collapse_metric/scatter_projections.npz`.
+   - **How verified**: viewed PNG and pdftoppm raster of the PDF with image tokens (15 panels, row-2 titles argmax L0/L21/L4/L17/L0, row-3 shown L31/L21/L33/L19/L19, both classes visible in every scatter); `cmp` both deployed copies byte-identical to scratch (405505 bytes) and v1 = 19560 bytes single-row (raster viewed); verifier agent independently recomputed silhouettes from the npz projections (startup L19 = 0.8398416042327881, investment L0 = 0.9966087341308594, both exactly matching results.json) and viewed all deployed PDFs.
+   - **Result**: VERIFIED
+
+## 2026-08-03 (UTC) — Local MacBook runs: Exp A/B/C session (scratchpad 4d13a432, logs in scratchpad/newruns/)
+
+1. **Output**: `data/intertemporal/investment/investment_local.json` (new config, investment theme, 21-horizon local structure).
+   - **How verified**: rendered via generate_prompt_dataset.py -> 1,512 samples; opened samples 0/700 and read full prompt text (SITUATION/TASK/OBJECTIVE/CONSTRAINT/ACTION/FORMAT sections, "a) 1,000 dollars in 1 day." option lines, comma-separated rewards, padded horizon).
+   - **Result**: VERIFIED
+2. **Output**: `data/intertemporal/risk/{risk_local,risk_geometry}.json` (new certain-vs-50%-gamble configs).
+   - **How verified**: rendered risk_local -> 576 samples; read samples 0/100/575 in full (probability framing in SITUATION, constant "1 hour"/"2 hours" option times, constant "1 year" horizon); checked all 24 reward strings pairwise for substring collisions (none).
+   - **Result**: VERIFIED
+3. **Output**: Llama-3.1-8B/investment preference dataset `out/preference_datasets/27e330d8..._Llama-3.1-8B-Instruct_investment_local.json` (MLX backend, per repo default for inference).
+   - **How verified**: run log shows 1512/1512 queried; choice split 1294 short / 192 long; file present with expected prefix.
+   - **Result**: VERIFIED
+4. **Output**: smoke gate `out/experiments/loc_llama_investment_smoke` (24 pairs, L16-L17, 3 components).
+   - **How verified**: opened all 72 coarse_results.json: sanity full-patch recovery=1.000 and disruption=1.000 on all 24 pairs; clean baseline logit diff 2.39-6.20 (mean 4.71), corrupted -3.52..-2.25, signs correct on every pair; 0 ambiguity skips; swept layers exactly {16,17}.
+   - **Result**: VERIFIED (gate PASS -> full run launched)
+5. **Change**: `src/inference/model_runner.py` TA_TL_NO_PROCESS env guard (from_pretrained_no_processing). Reason: TL fp32 weight-processing pass OOM-killed 8B loads twice on this 48 GB machine (silent SIGKILL right after weight load, reproduced 2x). TL advises no_processing at reduced precision; campaign steering runs already used process_weights=False.
+   - **How verified**: re-read edited section; import test passes; attempt-4 log shows the guard message and the load surviving; smoke run completed end to end.
+   - **Result**: VERIFIED (deviation from campaign localization runs' process_weights=True is documented and must be carried into any text)
+6. **Change**: `scripts/intertemporal/steer_turn_preference.py` score_items now returns per-prompt diffs (OrderScores.per_prompt); means computed from the same lists.
+   - **How verified**: re-read both edited hunks in file.
+   - **Result**: VERIFIED (code change only; no rescore run yet)
+7. **Output**: steering vector npz mirrors `out/hf_new/steering/extreme_sweep/<model>/{caa,control}_vectors.npz` (8 files).
+   - **How verified**: byte sizes equal to HF tree listing for all 8; np.load on each best layer; unit norms (1.0) confirmed; best cells match spec (Qwen L18 a20, Llama L18 a35, Gemma L21 a50, Mistral L19 a20).
+   - **Result**: VERIFIED

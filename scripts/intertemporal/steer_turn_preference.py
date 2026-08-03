@@ -118,11 +118,17 @@ class SweepRow(BaseSchema):
 
 @dataclass
 class OrderScores:
-    """Forced-choice score, overall and per label order."""
+    """Forced-choice score, overall and per label order.
+
+    per_prompt holds the raw per-prompt logp differences behind each mean,
+    keyed by label order, in eval-item order. Means are computed from these
+    same lists, so downstream bootstrap CIs use exactly the scored values.
+    """
 
     S: float
     long_A: float
     long_B: float
+    per_prompt: dict[str, list[float]] | None = None
 
 
 def load_pairs(path: Path) -> list[dict]:
@@ -260,7 +266,12 @@ def score_items(
         diffs_by_order[item.order].append(diff)
     long_a = float(np.mean(diffs_by_order["long_A"]))
     long_b = float(np.mean(diffs_by_order["long_B"]))
-    return OrderScores(S=(long_a + long_b) / 2.0, long_A=long_a, long_B=long_b)
+    return OrderScores(
+        S=(long_a + long_b) / 2.0,
+        long_A=long_a,
+        long_B=long_b,
+        per_prompt=diffs_by_order,
+    )
 
 
 def plot_heatmap(
