@@ -43,7 +43,12 @@ lora:                      # LLM-Adapters LoRA recipe (matches the commonsense a
 collect:                   # ladder fit (Phase 2): donor CoT trajectory for δ capture
   split: train
   n_fit: 200
+  n_te: 60                 # held-out problems (disjoint slice of the seeded shuffle)
   max_new: 256
+
+sweep:
+  lambdas_logspace: [-1, 7, 17]   # np.logspace(-1, 7, 17), matches the GSM8K arm
+  crosscheck_rtol: 1.0e-6
 
 eval:
   split: validation
@@ -56,4 +61,8 @@ output:
   lora_dir: results/attribution/lora_multihop
   contrast_json: results/attribution/multihop_contrast_set.json
   gap_json: results/attribution/multihop_gap.json
+  acc_dir: results/attribution/accumulators_multihop
+  maps_dir: results/attribution/maps_multihop
+  sweep_json: results/attribution/sweep_multihop.json
+  steer_json: results/attribution/steer_multihop.json
   report: results/attribution/2026-06-16-multihop-generality.md

@@ -19,10 +19,10 @@ import torch
 import yaml
 
 from scripts.attribution.attribution_common import (
-    gsm8k_accuracy,
-    gsm8k_problems,
+    get_task,
     load_base_and_lora,
     manifold_bases,
+    task_accuracy,
 )
 from scripts.safety.extract_refusal_shifts import set_seed
 from src.probes.safety.steering_hook import LinearPrimalSteerHook
@@ -49,9 +49,11 @@ def main() -> None:
                     help="skip base reference recompute and use this value (deterministic refs)")
     ap.add_argument("--lora-acc", type=float, default=None,
                     help="skip LoRA reference recompute and use this value (deterministic refs)")
+    ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
+    task = get_task(args.task or cfg.get("task", "gsm8k"))
     device = cfg["device"]
     n_eval = args.n_eval or cfg["eval"]["n_eval"]
     max_new = cfg["eval"]["max_new"]
@@ -62,16 +64,16 @@ def main() -> None:
 
     print(f"Loading {cfg['base_model']} + adapter ...", flush=True)
     tokenizer, base, lora = load_base_and_lora(cfg)
-    problems = gsm8k_problems(cfg["eval"]["split"], n_eval, skip=0)
-    print(f"Evaluating on {len(problems)} GSM8K {cfg['eval']['split']} problems (max_new={max_new})", flush=True)
+    problems = task.problems(cfg["eval"]["split"], n_eval, skip=0, seed=cfg["seed"])
+    print(f"Evaluating on {len(problems)} {task.name} {cfg['eval']['split']} problems (max_new={max_new})", flush=True)
 
     if args.base_acc is not None and args.lora_acc is not None:
         base_acc, lora_acc = args.base_acc, args.lora_acc
         print(f"\nREFERENCE (supplied) base={base_acc:.3f}  LoRA={lora_acc:.3f}", flush=True)
     else:
         with lora.disable_adapter():
-            base_acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
-        lora_acc = gsm8k_accuracy(lora, tokenizer, problems, device, max_new)
+            base_acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
+        lora_acc = task_accuracy(lora, tokenizer, problems, device, max_new, task)
         print(f"\nREFERENCE  base={base_acc:.3f} (gate 0.00-0.08)  LoRA={lora_acc:.3f} (gate 0.36-0.46)", flush=True)
 
     maps_dir = Path(cfg["output"]["maps_dir"] + args.maps_suffix)
@@ -97,7 +99,7 @@ def main() -> None:
         for alpha in alphas:
             with lora.disable_adapter():
                 hook = LinearPrimalSteerHook(base, maps, alpha, **hook_kw)
-                acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
+                acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
                 hook.remove()
             results["joint"]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
             print(f"  JOINT a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}", flush=True)
@@ -109,7 +111,7 @@ def main() -> None:
             for alpha in alphas:
                 with lora.disable_adapter():
                     hook = LinearPrimalSteerHook(base, {l: W}, alpha, **hook_kw)
-                    acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
+                    acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
                     hook.remove()
                 results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
                 print(f"  L{l:2d} a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}  (lambda*={lam_star:.2e})", flush=True)

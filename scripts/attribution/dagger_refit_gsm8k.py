@@ -29,10 +29,10 @@ import torch
 import yaml
 
 from scripts.attribution.attribution_common import (
-    gsm8k_accuracy,
-    gsm8k_problems,
+    get_task,
     load_base_and_lora,
     prompt_token_ids,
+    task_accuracy,
 )
 from scripts.attribution.collect_cot_residuals import teacher_force_capture
 from scripts.safety.extract_refusal_shifts import set_seed
@@ -44,11 +44,11 @@ from src.probes.safety.steering_hook import LinearPrimalSteerHook
 
 @torch.no_grad()
 def rollout_and_label(base, lora, capture, tokenizer, problems, maps, alpha, layers, device,
-                      accs, rollout_max) -> tuple[int, int]:
+                      accs, rollout_max, task) -> tuple[int, int]:
     """Steer base with ``maps``, generate on-policy CoT, label with LoRA δ, accumulate into ``accs``."""
     n_seq = n_tok = 0
     for question, _gold in problems:
-        pid = prompt_token_ids(tokenizer, question, device)
+        pid = prompt_token_ids(tokenizer, question, device, task)
         with lora.disable_adapter():
             hook = LinearPrimalSteerHook(base, maps, alpha)
             full_ids = base.generate(pid, max_new_tokens=rollout_max, do_sample=False,
@@ -70,10 +70,10 @@ def rollout_and_label(base, lora, capture, tokenizer, problems, maps, alpha, lay
 
 
 @torch.no_grad()
-def steered_eval(base, lora, tokenizer, problems, maps, alpha, device, max_new) -> float:
+def steered_eval(base, lora, tokenizer, problems, maps, alpha, device, max_new, task) -> float:
     with lora.disable_adapter():
         hook = LinearPrimalSteerHook(base, maps, alpha)
-        acc = gsm8k_accuracy(base, tokenizer, problems, device, max_new)
+        acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
         hook.remove()
     return acc
 
@@ -88,18 +88,20 @@ def main() -> None:
     ap.add_argument("--alpha", type=float, default=1.0)
     ap.add_argument("--rollout-max", type=int, default=256)
     ap.add_argument("--eval-max", type=int, default=256)
+    ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
+    task = get_task(args.task or cfg.get("task", "gsm8k"))
     device, accum_dev, dim = cfg["device"], cfg["accum_device"], cfg["hidden_dim"]
     layers = list(range(cfg["num_layers"]))
 
     print(f"Loading {cfg['base_model']} + adapter ...", flush=True)
     tokenizer, base, lora = load_base_and_lora(cfg)
     capture = PerTokenResidualCapture(base, layers)
-    train_problems = gsm8k_problems(cfg["collect"]["split"], args.n_fit, skip=0)
-    eval_problems = gsm8k_problems(cfg["eval"]["split"], args.n_eval, skip=0)
+    train_problems = task.problems(cfg["collect"]["split"], args.n_fit, skip=0, seed=cfg["seed"])
+    eval_problems = task.problems(cfg["eval"]["split"], args.n_eval, skip=0, seed=cfg["seed"])
 
     acc_dir = Path(cfg["output"]["acc_dir"] + args.maps_suffix)
     maps_dir = Path(cfg["output"]["maps_dir"] + args.maps_suffix)
@@ -111,8 +113,8 @@ def main() -> None:
     maps = {l: recs[l]["W"].to(torch.float32) for l in layers}
 
     with lora.disable_adapter():
-        base_acc = gsm8k_accuracy(base, tokenizer, eval_problems, device, args.eval_max)
-    lora_acc = gsm8k_accuracy(lora, tokenizer, eval_problems, device, args.eval_max)
+        base_acc = task_accuracy(base, tokenizer, eval_problems, device, args.eval_max, task)
+    lora_acc = task_accuracy(lora, tokenizer, eval_problems, device, args.eval_max, task)
     budget = lora_acc - base_acc
     print(f"REFERENCE base={base_acc:.3f}  LoRA={lora_acc:.3f}  budget={budget:+.3f}  "
           f"(n_eval={len(eval_problems)}, eval_max={args.eval_max})", flush=True)
@@ -125,7 +127,7 @@ def main() -> None:
         return f"{r:+.2f}" if r is not None else "n/a"
 
     seed_tokens = sum(accs[l].n_tokens for l in layers) // len(layers)
-    acc0 = steered_eval(base, lora, tokenizer, eval_problems, maps, args.alpha, device, args.eval_max)
+    acc0 = steered_eval(base, lora, tokenizer, eval_problems, maps, args.alpha, device, args.eval_max, task)
     print(f"\n[round 0]  seed=off-policy global map  acc={acc0:.3f}  recovery={rec_str(acc0)}  "
           f"(agg tokens/layer={seed_tokens})", flush=True)
     rounds = [{"round": 0, "source": "off-policy-global", "agg_tokens_per_layer": seed_tokens,
@@ -133,10 +135,10 @@ def main() -> None:
 
     for k in range(1, args.rounds + 1):
         n_seq, n_tok = rollout_and_label(base, lora, capture, tokenizer, train_problems, maps,
-                                         args.alpha, layers, device, accs, args.rollout_max)
+                                         args.alpha, layers, device, accs, args.rollout_max, task)
         maps = {l: accs[l].solve(global_lam[l]).W.to(torch.float32) for l in layers}
         agg_tokens = sum(accs[l].n_tokens for l in layers) // len(layers)
-        acc = steered_eval(base, lora, tokenizer, eval_problems, maps, args.alpha, device, args.eval_max)
+        acc = steered_eval(base, lora, tokenizer, eval_problems, maps, args.alpha, device, args.eval_max, task)
         print(f"[round {k}]  +{n_seq} on-policy seqs ({n_tok} tok)  agg tokens/layer={agg_tokens}  "
               f"acc={acc:.3f}  recovery={rec_str(acc)}", flush=True)
         rounds.append({"round": k, "source": "on-policy-aggregated", "on_policy_seqs": n_seq,
@@ -146,7 +148,7 @@ def main() -> None:
     results = {"base_acc": base_acc, "lora_acc": lora_acc, "budget": budget, "alpha": args.alpha,
                "n_fit": args.n_fit, "n_eval": len(eval_problems), "rollout_max": args.rollout_max,
                "eval_max": args.eval_max, "rounds": rounds}
-    out = Path(cfg["output"]["steer_json"].replace("steer_results.json", "dagger_refit_gsm8k.json"))
+    out = Path(cfg["output"]["steer_json"]).parent / f"dagger_refit_{task.name}.json"
     out.write_text(json.dumps(results, indent=2, default=float))
     print(f"\nSaved {out}")
 

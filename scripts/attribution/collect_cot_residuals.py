@@ -19,7 +19,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from scripts.attribution.attribution_common import generate_cot_ids, gsm8k_problems, load_base_and_lora
+from scripts.attribution.attribution_common import generate_cot_ids, get_task, load_base_and_lora
 from scripts.safety.extract_refusal_shifts import set_seed
 from src.probes.attribution.cot_collection import assemble_blocks, cot_token_slice
 from src.probes.attribution.gram_accumulator import GramAccumulator
@@ -34,11 +34,11 @@ def teacher_force_capture(model, capture, full_ids) -> dict[int, torch.Tensor]:
     return {l: t.clone() for l, t in capture.captured.items()}
 
 
-def collect_split(problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, tag):
+def collect_split(problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, tag, task):
     accs = {l: GramAccumulator(dim, device=accum_dev, layer=l) for l in layers}
     n_tok_total = 0
     for i, (question, _gold) in enumerate(problems):
-        full_ids, prompt_len = generate_cot_ids(lora, tokenizer, question, device, max_new)
+        full_ids, prompt_len = generate_cot_ids(lora, tokenizer, question, device, max_new, task)
         cot_len = full_ids.shape[1] - prompt_len
         if cot_len <= 0:
             continue
@@ -62,9 +62,11 @@ def main() -> None:
     ap.add_argument("--n-te", type=int, default=None)
     ap.add_argument("--max-new", type=int, default=None)
     ap.add_argument("--out-suffix", default="", help="subdir suffix for smoke runs, e.g. _smoke")
+    ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
+    task = get_task(args.task or cfg.get("task", "gsm8k"))
     n_fit = args.n_fit or cfg["collect"]["n_fit"]
     n_te = args.n_te or cfg["collect"]["n_te"]
     max_new = args.max_new or cfg["collect"]["max_new"]
@@ -77,12 +79,12 @@ def main() -> None:
     capture = PerTokenResidualCapture(base, layers)
 
     split = cfg["collect"]["split"]
-    fit_problems = gsm8k_problems(split, n_fit, skip=0)
-    te_problems = gsm8k_problems(split, n_te, skip=n_fit)  # disjoint
+    fit_problems = task.problems(split, n_fit, skip=0, seed=cfg["seed"])
+    te_problems = task.problems(split, n_te, skip=n_fit, seed=cfg["seed"])  # disjoint
     print(f"fit={len(fit_problems)} held-out={len(te_problems)} problems (max_new={max_new})", flush=True)
 
-    acc_tr, ntr = collect_split(fit_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "train")
-    acc_te, nte = collect_split(te_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "heldout")
+    acc_tr, ntr = collect_split(fit_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "train", task)
+    acc_te, nte = collect_split(te_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "heldout", task)
     capture.remove()
 
     out_dir = Path(cfg["output"]["acc_dir"] + args.out_suffix)

@@ -21,10 +21,9 @@ from pathlib import Path
 import torch
 import yaml
 
-from scripts.attribution.attribution_common import generate_cot_ids, gsm8k_problems, load_base_and_lora
+from scripts.attribution.attribution_common import generate_cot_ids, gsm8k_problems, load_base_and_lora, load_contrast
 from scripts.attribution.collect_cot_residuals import teacher_force_capture
 from scripts.attribution.lockstep_pca_band import eval_band
-from scripts.attribution.nonlinear_delta_gsm8k import load_contrast
 from scripts.safety.extract_refusal_shifts import set_seed
 from src.probes.attribution.cot_collection import cot_token_slice
 from src.probes.attribution.das_subspace import OrthoSubspace, inject_value, subspace_lm_loss

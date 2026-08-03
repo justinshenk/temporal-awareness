@@ -29,11 +29,10 @@ from pathlib import Path
 
 import yaml
 
-from scripts.attribution.attribution_common import load_base_and_lora, prompt_token_ids
-from scripts.attribution.nonlinear_delta_gsm8k import load_contrast
+from scripts.attribution.attribution_common import get_task, load_base_and_lora, load_contrast, prompt_token_ids
 from scripts.safety.extract_refusal_shifts import set_seed
-from src.probes.attribution.gsm8k_prompts import extract_pred_number, numeric_match
 from src.probes.attribution.lockstep_oracle import OverwriteResidualHook
+from src.probes.attribution.multihop_prompts import answer_span_gate
 from src.probes.attribution.temporal_gate import (
     gated_lockstep_generate,
     periodic,
@@ -45,10 +44,17 @@ from src.probes.extraction import PerTokenResidualCapture
 
 
 def build_gates(specs):
-    """Parse CLI gate specs into ``[(name, gate), ...]``. ``periodic:1,2,4`` expands per period."""
+    """Parse CLI gate specs into ``[(name, gate), ...]``. ``periodic:1,2,4`` expands per period.
+
+    ``result_only``/``planning_only`` partition GSM8K CoT by computed-result spans;
+    ``answer_only``/``reasoning_only`` are the multi-hop structural analogue (final-answer span
+    vs the hop chain before it).
+    """
     gates = []
     named = {"result_only": result_only, "planning_only": planning_only,
-             "step_boundary": step_boundary}
+             "step_boundary": step_boundary,
+             "answer_only": answer_span_gate(),
+             "reasoning_only": answer_span_gate(complement=True)}
     for spec in specs:
         if spec.startswith("periodic:"):
             for k in spec.split(":", 1)[1].split(","):
@@ -75,7 +81,7 @@ def make_oracle_fns(base, lora, capture, inject, L):
     return capture_residuals, base_logits
 
 
-def run_gate(base, lora, tok, problems, device, L, inject, gate, max_new):
+def run_gate(base, lora, tok, problems, device, L, inject, gate, max_new, task):
     """Gated lockstep-decode every problem; return (recovery, frac_patched, per_problem)."""
     capture = PerTokenResidualCapture(base, [L])
     cap_fn, logit_fn = make_oracle_fns(base, lora, capture, inject, L)
@@ -86,11 +92,11 @@ def run_gate(base, lora, tok, problems, device, L, inject, gate, max_new):
     eos = tok.eos_token_id
     per, patched, steps = [], 0, 0
     for q, gold in problems:
-        pid = prompt_token_ids(tok, q, device)
+        pid = prompt_token_ids(tok, q, device, task)
         out, mask = gated_lockstep_generate(pid, cap_fn, logit_fn, inject, [L], gate,
                                              decode_token, max_new, eos, device)
         text = tok.decode(out[0][pid.shape[1]:], skip_special_tokens=True)
-        per.append(bool(numeric_match(extract_pred_number(text), gold)))
+        per.append(task.score(text, gold))
         patched += sum(mask)
         steps += len(mask)
     capture.remove()
@@ -105,29 +111,33 @@ def main() -> None:
     ap.add_argument("--max-new", type=int, default=256)
     ap.add_argument("--gates", nargs="+",
                     default=["periodic:1,2,3,4,6,8", "result_only", "planning_only", "step_boundary"])
+    ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
+    task = get_task(args.task or cfg.get("task", "gsm8k"))
     device, L = cfg["device"], args.layer
 
     print(f"Loading {cfg['base_model']} + adapter ...", flush=True)
     tok, base, lora = load_base_and_lora(cfg)
-    contrast = load_contrast(cfg)[:args.n_contrast]
+    contrast = load_contrast(cfg, task)[:args.n_contrast]
     gates = build_gates(args.gates)
     inject = OverwriteResidualHook(base, [L])
 
-    results = {"layer": L, "n_contrast": len(contrast), "max_new": args.max_new, "gates": {}}
+    results = {"task": task.name, "layer": L, "n_contrast": len(contrast),
+               "max_new": args.max_new, "gates": {}}
     print(f"\n{'gate':16s} {'frac_patched':>12s} {'recovery':>9s}", flush=True)
     for name, gate in gates:
-        rec, frac, per = run_gate(base, lora, tok, contrast, device, L, inject, gate, args.max_new)
+        rec, frac, per = run_gate(base, lora, tok, contrast, device, L, inject, gate, args.max_new, task)
         results["gates"][name] = {"recovery": rec, "frac_patched": frac, "per_problem": per}
         print(f"{name:16s} {frac:>12.3f} {rec:>9.3f}", flush=True)
 
     inject.remove()
+    stem = f"temporal_oracle_L{L}" if task.name == "gsm8k" else f"temporal_oracle_{task.name}_L{L}"
     out_path = (Path(args.out) if args.out
-                else Path(cfg["output"]["steer_json"]).parent / f"temporal_oracle_L{L}.json")
+                else Path(cfg["output"]["steer_json"]).parent / f"{stem}.json")
     out_path.write_text(json.dumps(results, indent=2, default=float))
     print(f"\nSaved {out_path}", flush=True)
 

@@ -30,8 +30,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from scripts.attribution.attribution_common import generate_cot_ids, load_base_and_lora
-from scripts.attribution.nonlinear_delta_gsm8k import load_contrast
+from scripts.attribution.attribution_common import generate_cot_ids, load_base_and_lora, load_contrast
 from scripts.safety.extract_refusal_shifts import set_seed
 from src.probes.attribution.gsm8k_prompts import extract_pred_number, numeric_match
 from src.probes.attribution.logit_lens import LogitLens

@@ -50,7 +50,39 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
 
 ## Progress
 - [x] Recon: GPU, dataset (MuSiQue verified), trainer/driver contract mapped, decisions locked.
-- [ ] P0 code (data module, config, trainer) + CPU test + data-pipeline smoke.
-- [ ] P0 run: train LoRA, base-vs-donor gap, build contrast set.
+- [x] P0 code (data module, config, trainer) + CPU test + data-pipeline smoke.
+- [x] P0 run: LoRA trained (`results/attribution/lora_multihop`), gate PASSED — base 0.000 /
+      donor 0.634 on 500-scan, 317 contrast problems cached (`multihop_contrast_set.json`).
 - [ ] P1 driver task-registry refactor + oracle + L*.
-- [ ] P2 ladder. [ ] P3 temporal. [ ] writeup + commit.
+  - [x] Task registry in `attribution_common.py` (TaskSpec/get_task/task_accuracy/build_contrast_set);
+        lockstep driver task-parameterized; 37 CPU tests pass.
+  - [x] AC1 validate: all-layers lockstep == donor greedy, 3/3 per-problem match (`.run_logs/p1_validate.log`).
+  - [x] Control (all-layers, n-contrast 100): acc=1.000, recovery=+1.000
+        (`results/attribution/lockstep_multihop_control.json`) — positive control exact, as GSM8K.
+  - [x] All 5 drivers task-parameterized (collect/steer/dagger/temporal-oracle too); shared
+        task-aware `load_contrast` moved into `attribution_common`; multihop P3 gates
+        (`answer_only`/`reasoning_only` via `answer_span_gate`) wired into the oracle driver;
+        multihop config got P2/P3 keys (n_te, sweep, acc/maps/sweep/steer paths);
+        `tests/test_attribution_tasks.py` added — 16 tests pass.
+  - [x] Single-layer sweep {0,4,…,28,31} DONE (`lockstep_multihop_single.json`, n-contrast 100):
+        0/4=+0.000, 8=+0.070, 12/16=+0.020, **20=+0.760**, 24=+0.780, 28=+0.890†, 31=+1.000†
+        († degenerate: hook overwrites layer *output*, so L31 = all-layers control; GSM8K's 28/31
+        were flagged ~degenerate the same way). **L\* = 20** — same layer, same magnitude as
+        GSM8K's 0.75 → oracle axis REPLICATES. NOTE: always pass `--n-eval 500` for multihop so
+        the scan aligns with the cached 317 indices (driver default is 60 → would misindex).
+- [x] P2 ladder @L20 DONE: ridge R²_te@L20=+0.71 (λ*=3.16e3); ridge steer **+0.26 scan / +0.35
+      contrast** (DIVERGES from GSM8K's ≈0.05 — partial linear transport); MLP **+0.00** despite
+      better geometry (cos .822/R² .675 vs ridge .636/.270 — GSM8K paradox replicates); DAgger
+      joint all-layer **0.00** all rounds (replicates). Oracle still beats all rungs by ≥0.4.
+- [x] P3 temporal @L20 DONE (`temporal_oracle_multihop_L20.json`, 20 contrast): periodic_1=0.750
+      (=oracle), periodic_2=0.050, k≥4=0.000; step_boundary(7%)=0.050; **reasoning_only=0.750 @
+      frac 1.000** (skipping the answer span is free — mirrors GSM8K planning_only). NOTE:
+      answer_only VACUOUS (frac 0.000 — unpatched base never emits "The answer is:", gate never
+      fires) — not evidence, flagged in writeup.
+- [x] Writeup complete (`2026-06-16-multihop-generality.md`): verdict = H_general on oracle +
+      temporal axes (exact); ladder PARTIAL (MLP/DAgger replicate at 0, ridge diverges:
+      +0.26 scan / +0.35 contrast vs GSM8K ≈0.05 — the wall is lower, not absent).
+- [x] Committed on `context-fatigue-datasets`.
+- Remaining (next session): optional P4 plan-vs-execute; fold verdict into
+  `results/activation_weight_investigation.md`; consider ridge-divergence follow-ups
+  (α sweep / other layers / n larger than 20 for the contrast eval).
