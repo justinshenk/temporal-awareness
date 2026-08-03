@@ -32,6 +32,10 @@ cd "$REPO_ROOT" || { echo "repo not found at $REPO_ROOT" >&2; exit 1; }
 MODELS="${MODELS:-Qwen/Qwen3-4B-Instruct-2507 meta-llama/Llama-3.1-8B-Instruct google/gemma-2-9b-it mistralai/Mistral-7B-Instruct-v0.3}"
 HF_REPO="${HF_REPO:-unrulyabstractions/temporal-awareness}"
 HF_PREFIX="${HF_PREFIX:-steering/ci_bootstrap}"
+# The stored campaign sweep scored with steer_turn_preference.py's own default
+# of 16. Batch composition changes padding, and padding changes bfloat16
+# reduction order, so a re-score at another batch size is not the same setup.
+BATCH_SIZE="${BATCH_SIZE:-16}"
 PY="${PY:-/venv/main/bin/python}"
 
 OUT_DIR="$REPO_ROOT/out/steering_ci"
@@ -49,7 +53,7 @@ push() {  # push <label> — one upload pass over everything written so far
   phase PUSHED "after=$1 rc=$?"
 }
 
-phase START "models=$MODELS"
+phase START "models=$MODELS batch_size=$BATCH_SIZE"
 "$PY" -c 'import sys, torch; sys.exit(0 if torch.cuda.is_available() else 1)' \
   || { phase FAILED "no_gpu_visible_to_torch"; exit 1; }
 phase GPU_OK ""
@@ -71,7 +75,7 @@ FAILED=""
 for model in $MODELS; do
   short="${model##*/}"
   phase RESCORE_START "model=$model"
-  "$PY" scripts/scratch/steer_ci_rescore.py --model "$model" >>"$LOG" 2>&1
+  "$PY" scripts/scratch/steer_ci_rescore.py --model "$model" --batch-size "$BATCH_SIZE" >>"$LOG" 2>&1
   rc=$?
   if [ "$rc" != "0" ]; then
     phase RESCORE_FAILED "model=$model rc=$rc (gate or load); see $LOG"
