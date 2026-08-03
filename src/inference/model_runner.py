@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 
 import torch
@@ -840,6 +841,15 @@ class ModelRunner:
         from transformer_lens import HookedTransformer
 
         print(f"Loading {self.model_name} on {self.device} (TransformerLens)...")
+
+        # TA_TL_NO_PROCESS=1 forces from_pretrained_no_processing. The weight
+        # processing pass materializes fp32 copies and peaks at several times
+        # the model size in host RAM, which OOM-kills 7-8B loads on 48 GB
+        # machines. TransformerLens itself advises no_processing at reduced
+        # precision; hook_resid_post/attn_out/mlp_out compute the same values.
+        if process_weights and os.environ.get("TA_TL_NO_PROCESS"):
+            print("  TA_TL_NO_PROCESS set: using from_pretrained_no_processing")
+            process_weights = False
 
         load_fn = (
             HookedTransformer.from_pretrained

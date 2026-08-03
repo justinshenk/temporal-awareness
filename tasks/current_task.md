@@ -1,47 +1,50 @@
-# Current Task: Attention Visualization Overhaul
+# Current Task: Local MacBook runs — Experiments A, B, C (2026-08-03)
 
-## Status: In progress — iterating on quality
+DURABLE LOCATIONS (a machine OOM crash at 15:39:55 wiped /tmp — never put scripts there):
+- session scripts: `scripts/scratch/` (gitignored)
+- run logs: `out/logs/`
+- run outputs: `out/experiments/`, `out/geo/`, `out/steering_ci/`
 
-## What was done
+## Memory rule (crash root cause)
+Crash: swap 58.4/59.4 GB, a foreign `ollama` process at 20.8 GB RSS beside a ~16 GB
+Llama. Before EVERY model load run `bash scripts/scratch/mem_gate.sh`; if it exits
+nonzero, WAIT and report. Never kill another person's process. One model resident
+at a time, always.
 
-### Architecture rewrite (attn analysis + visualization)
-- **Data layer**: `AttnPairResult` now stores `dst_group_attention: dict[str, DstGroupAttention]` — label-aligned attention matrices for EVERY format_pos group as destination, with clean and corrupted sides properly aligned by canonical label (union of both frames).
-- **Analysis** (`attn_analysis_run.py`): `run_attn_analysis` accepts both clean and corrupted mappings, uses ALL model layers (not just configured subset), builds per-dst-group attention for every format_pos present in either frame.
-- **Per-pair viz** (`attn_pair_viz.py`): Clean module generating per-dst subfolders with 11 plot types each.
-- **Aggregated viz** (`attn_viz.py`): Stream-loads per-pair JSONs from disk, averages by canonical label, generates same plot types as per-pair.
-- **Memory**: `pop_heavy()` called after per-pair viz to drop heavy patterns.
+## Experiment A — break model-by-domain confound (INVESTMENT domain)
+- Config `data/intertemporal/investment/investment_local.json` -> 1,512 samples.
+- Llama-3.1-8B-Instruct + Mistral-7B-Instruct-v0.3, TransformerLens on MPS,
+  `TA_TL_NO_PROCESS=1` (fp32 weight processing OOM-kills 7-8B loads here),
+  n_pairs 24, all layers, resid_post+attn_out+mlp_out.
+- Smoke gate PASSED (L16-17): 24/24 pairs, 0 skips, sanity recovery/disruption
+  1.000 on every pair, clean baseline logit diff 2.39-6.20.
+- Llama full run RESTARTED CLEAN after the crash — `--cache` cannot resume
+  (`_use_cached_pairs` forces n_select = cached pair count, so it would have run
+  10 pairs, not 24). Pair selection verified deterministic, so the rerun rebuilds
+  the identical pairs. Crashed run's 10 pairs preserved at
+  `out/experiments/loc_llama_investment_20260803_154638`.
+- Verify each with `scripts/verify_experiment_output.py --patching <dir>`.
 
-### Plot types per dst format_pos group
-- `attn_heatmaps/<dst>.png` — layer × position, mean over heads, per-layer normalized
-- `attn_sidebyside/<dst>.png` — clean | corrupted layer-level
-- `attn_diff/<dst>.png` — clean - corrupted layer-level
-- `attn_consistency/<dst>.png` — per-(head, label) cosine similarity
-- `attn_heads/<dst>.png` — heatmap: y=(layer.head), x=source format_pos groups
-- `attn_flow/<dst>.png` — all-layer flow figure
-- `source_bars/<dst>.png` — rows = src format_pos groups, top heads paired bars
-- `top_attended/<dst>.png` — top-8 heads, y = group ticks
-- `head_heatmaps/<dst>/L<layer>.png` — per-(dst, layer) clean head heatmap
-- `head_diff/<dst>/L<layer>.png` — per-(dst, layer) clean - corrupted
-- `heads_sidebyside/<dst>/L<layer>.png` — per-(dst, layer) clean | corrupted
+## Experiment B — specificity null on Qwen3-4B-Instruct-2507 (RISK contrast)
+- Configs `data/intertemporal/risk/{risk_local,risk_geometry}.json` survived the
+  crash. risk_local -> 576 samples, verified: same SITUATION/TASK/OBJECTIVE/
+  CONSTRAINT/ACTION/FORMAT markers as investment, certain (a, "1 hour") vs
+  50%-gamble (b, "2 hours"), horizon constant "1 year", 24 unique reward strings
+  with no substring collisions.
+- Coarse sweep -> `out/experiments/loc_qwen_risk`; then turn-token PCA via
+  generate_geometry_samples.py --turn-only --components resid_post.
+- Deliverable: risk attention peak/band vs the temporal band 0.58-0.67, and a
+  per-layer silhouette verdict at the assistant token.
 
-### Coarse plot fixes (investment)
-- `layer_position_heatmap.png`: densest position sweep, format_pos:rel_pos labels
-- `noise_vs_denoise_per_component_layer.png`: single row of resid_post/attn_out/mlp_out, AND-like/NECESSARY + OR-like/SUFFICIENT labels
-- `layer_component_interaction.png`: integer x-ticks, only attn_out/mlp_out/resid_post
-- `position_component_interaction.png`: grouped by format_pos (mean across rel_pos), only attn_out/mlp_out/resid_post, attn_out drawn on top with dashed+x markers
-- `marginal_contribution.png`: no L23 annotations, only resid_post on secondary axis (alpha 0.35), no y=0 line
-- `marginal_contribution_var.png`: new — mean ± std across pairs
-- `cumulative_recovery.png`: resid_post as filled area (absolute recovery, not cumsum), no Full Recovery line
-- `attn_vs_mlp_paired.png`: only significant-movement layers plotted, simplified title
-- `component_importance_ranked.png`: top 20, sorted by recovery + disruption combined
+## Experiment C — steering per-prompt scores + 10k bootstrap CIs
+- `scripts/intertemporal/steer_turn_preference.py` already patched: score_items
+  returns per-prompt diffs (means unchanged).
+- Scripts recreated durably: `scripts/scratch/steer_ci_rescore.py`,
+  `scripts/scratch/steer_ci_bootstrap.py`. Outputs -> `out/steering_ci/`.
+- Inputs verified: 8 vector .npz mirrors, unit norms, best cells Qwen L18 a20,
+  Llama L18 a35, Gemma L21 a50, Mistral L19 a20; all stored runs used bfloat16.
+- Gate: recomputed S / S_ctrl / baseline must reproduce the stored values before
+  any CI is quoted.
 
-## Iterations completed (nano attn)
-1. Initial rewrite — 38 dst groups, 4112 PNGs, clean≠corrupted verified
-2. Sparse group x-ticks — 10/11 PASS
-3. attn_heads → compact heatmap, source_bars height cap — 11/11 PASS
-4. Union layer keys + zero-fill for one-frame-only dst groups
-5. Aggregated attn plots added (stream from per-pair JSON, same plot types)
-
-## Remaining
-- Investment per-pair attn: only 11/71 pairs have attn/ (rest were from killed run). Aggregation is done from the old cached JSONs.
-- Need to finish the remaining 60 per-pair investment attn runs when time allows.
+## Queue order (one model resident at a time)
+1. Llama investment (running) 2. Mistral investment 3. Qwen risk + PCA 4. Steering CIs.

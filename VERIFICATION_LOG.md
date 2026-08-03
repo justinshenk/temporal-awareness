@@ -508,3 +508,15 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
 7. **Output**: steering vector npz mirrors `out/hf_new/steering/extreme_sweep/<model>/{caa,control}_vectors.npz` (8 files).
    - **How verified**: byte sizes equal to HF tree listing for all 8; np.load on each best layer; unit norms (1.0) confirmed; best cells match spec (Qwen L18 a20, Llama L18 a35, Gemma L21 a50, Mistral L19 a20).
    - **Result**: VERIFIED
+
+## 2026-08-03 (UTC) — machine OOM crash + queue restart
+
+8. **Event**: machine crashed and rebooted at 15:39:55 local (out-of-memory; at crash time swap 58.4/59.4 GB used, a foreign `ollama` process held 20.8 GB RSS beside this session's ~16 GB Llama). The running Llama sweep died and `/tmp` scratchpad was wiped (run logs + two steering scripts lost).
+   - **How verified**: post-reboot inventory — `out/experiments/loc_llama_investment/pairs` held 10 dirs, of which pair_0..pair_8 have 3/3 `coarse_results.json` and pair_9 has 2/3 (killed mid-component). Repo-tracked inputs all survived: `investment_local.json`, `risk/{risk_local,risk_geometry}.json`, rendered prompt datasets, the Llama preference dataset, the `TA_TL_NO_PROCESS` guard, the `per_prompt` patch, and the 8 steering `.npz` mirrors (sizes re-listed, unchanged).
+   - **Result**: VERIFIED (damage scoped; no repo data lost)
+9. **Decision**: Llama investment sweep RESTARTED CLEAN, not resumed.
+   - **How verified**: read `ExperimentContext.enable_cached_pairs` / `_build_pairs` — when any `pair_*` dirs exist, `_use_cached_pairs` forces `n_select = cached_count`, so `--cache` would have produced a 10-pair run, not continued to 24. Resume is therefore not supported by the harness. Separately confirmed pair selection IS deterministic: recomputed `get_contrastive_preferences` offline from the cached preference dataset and the first 10 `(short_idx, long_idx)` tuples matched the 10 saved `contrastive_preference.json` files exactly and in order, so the clean rerun reproduces the same pairs. The 10 crashed-run pairs were preserved by `--out` at `out/experiments/loc_llama_investment_20260803_154638`.
+   - **Result**: VERIFIED (clean rerun chosen over a half-cached mixture)
+10. **Change**: added `scripts/scratch/mem_gate.sh` (pre-load memory gate) and moved session scripts to the durable `scripts/scratch/`; `.gitignore` updated.
+   - **How verified**: ran the gate (`GATE: CLEAR`, exit 0; no ollama, swap 0.00M/0.00M, 22.78 GB free); `git check-ignore -v` confirms `scripts/scratch/` is ignored at `.gitignore:90`; both recreated steering scripts parse and the bootstrap script runs end to end (skips absent inputs, writes its JSON). Gate output for the launch saved to `out/logs/llama_investment_gate.txt`.
+   - **Result**: VERIFIED
