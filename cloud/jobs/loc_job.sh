@@ -60,6 +60,11 @@ phase GPU_OK ""
 
 COARSE_JSON="{\"enabled\": true, \"components\": $COMPONENTS, \"layer_steps\": [1], \"pos_steps\": []}"
 phase SWEEP_START "coarse=$COARSE_JSON"
+# TransformerLens weight processing materializes fp32 copies and peaks at
+# several times model size in host RAM, which SIGKILLs 4-8B loads. The stored
+# campaign runs used process_weights=False, so matching it also keeps this
+# sweep comparable to them.
+export TA_TL_NO_PROCESS=1
 "$PY" scripts/intertemporal/run_intertemporal_experiment.py \
   --dataset "$DATASET" \
   --model "$MODEL" \
@@ -101,9 +106,20 @@ wait "$EXP_PID"
 RC=$?
 phase SWEEP_END "rc=$RC dir=$RUN_DIR"
 
-# The marker tells the watcher the run is over; it exits after the pass that
-# finds nothing left to push.
+# A sweep that dies still has to release the watcher, so the marker is written
+# either way. It means "no more data is coming", never "the run succeeded".
 touch "$RUN_DIR/RUN_COMPLETE"
+
+# rc=137 is a SIGKILL, which on these boxes means the loader was OOM-killed.
+# Such a run leaves configs and logs and no pairs at all, and publishing that
+# under the normal name puts a 5 KB archive on the Hub that reads as a result.
+NPAIRS_DONE=$(ls "$RUN_DIR/pairs" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$RC" != "0" ] || [ "${NPAIRS_DONE:-0}" -eq 0 ]; then
+  phase RUN_FAILED "rc=$RC pairs=$NPAIRS_DONE — publishing diagnostics only"
+  ARCHIVE_PREFIX="FAILED_"
+else
+  ARCHIVE_PREFIX=""
+fi
 if [ -n "$HF_PID" ]; then
   for _ in $(seq 1 180); do
     kill -0 "$HF_PID" 2>/dev/null || break
@@ -118,9 +134,9 @@ phase HF_FINAL_PASS ""
 VERIFY_RC=$?
 phase HF_VERIFY "rc=$VERIFY_RC log=$HF_LOG"
 
-ARCHIVE="$REPO_ROOT/out/${RUN_NAME}.tar.gz"
+ARCHIVE="$REPO_ROOT/out/${ARCHIVE_PREFIX}${RUN_NAME}.tar.gz"
 tar czf "$ARCHIVE" -C "$REPO_ROOT/out/experiments" "$RUN_NAME"
-ARCHIVE="$ARCHIVE" REPO_ID="$HF_REPO" RUN_NAME="$RUN_NAME" "$PY" - <<'PY' >>"$LOG" 2>&1
+ARCHIVE="$ARCHIVE" REPO_ID="$HF_REPO" RUN_NAME="${ARCHIVE_PREFIX}${RUN_NAME}" "$PY" - <<'PY' >>"$LOG" 2>&1
 import os
 from huggingface_hub import HfApi
 api = HfApi()
