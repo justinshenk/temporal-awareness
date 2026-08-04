@@ -1,4 +1,4 @@
-# version: 6
+# version: 7
 
 # New results for the rebuttal — live document
 
@@ -15,14 +15,16 @@ effects never confound:
 
 | Model | Domain | Status |
 |---|---|---|
-| Qwen3-4B-Instruct-2507 | investment | paper baseline (existing) |
-| Llama-3.1-8B-Instruct | health (QALYs, patient/doctor) | geometry VERIFIED |
-| gemma-2-9b-it | climate (tCO2 prevented, policy maker) | geometry VERIFIED |
-| Mistral-7B-Instruct-v0.3 | education ($k lifetime earnings, student) | running |
-| ~~Qwen3.5-4B~~ Qwen3-4B-Inst-2507 | startup ($k revenue, founder) | geometry VERIFIED (see note) |
+| Qwen3-4B-Instruct-2507 | investment | paper baseline; geometry RETRACTED, v2 running |
+| Llama-3.1-8B-Instruct | health (QALYs, patient/doctor) | geometry RETRACTED, v2 running |
+| gemma-2-9b-it | climate (tCO2 prevented, policy maker) | geometry RETRACTED, v2 running |
+| Mistral-7B-Instruct-v0.3 | education ($k lifetime earnings, student) | geometry RETRACTED, v2 running |
+| ~~Qwen3.5-4B~~ Qwen3-4B-Inst-2507 | startup ($k revenue, founder) | geometry RETRACTED, v2 running (see note) |
 
-All runs: 3,000 samples, turn-transition positions only (`chat_suffix` +
-tail), resid_post + attn_out, fp16 storage, bf16 inference, TransformerLens.
+All runs: 3,000 samples (investment uses its full 4,590-prompt bank),
+turn-transition positions only (`chat_suffix` + tail), resid_post + attn_out,
+fp16 storage, bf16 inference. The backend is the HuggingFace hook backend,
+not TransformerLens; the gate reports record it per run.
 
 ## IMPORTANT NAMING NOTE (v4)
 
@@ -37,7 +39,29 @@ end to end.
 
 ## 1. Geometry — turn-transition PCA (paper Fig. 7 / Appendix M)
 
-**VERIFIED — Gemma-2-9B-it, climate.** 2,943 valid samples. The paper's
+> **RETRACTED (v7). Do not cite anything in this section.** Activation
+> capture re-applied the chat template to prompt plus response, which put the
+> response inside the user turn and moved the chat suffix after it, while the
+> position mapping indexes the trajectory, where the suffix comes first. Same
+> length, different order, so nothing errored. Every position labelled
+> `chat_suffix` or `chat_suffix_tail` held a response token instead. Every
+> turn-transition panel, PC1 fan and silhouette curve below is invalid.
+> Proof and root cause: `VERIFICATION_LOG.md` entries 23 and 28.
+>
+> **Replacement runs are in flight (v2).** Five boxes, one per model/domain,
+> each gated on embedding ground truth before it may write data: for every
+> named position the cached activation must equal `W_E[token_ids[i]]`. All
+> five gates passed with zero mismatches; reports are on the Hub at
+> `geometry/<run>_v2_gate.json`. Artifacts will land at
+> `geometry/<run>_v2.tar.gz`. The v1 archives are kept for the record and
+> must not be overwritten. Entries 29 to 33.
+>
+> **Correction to carry forward**: Mistral's turn window is ONE token.
+> `chat_suffix` is empty and `[/INST]` sits alone in `chat_suffix_tail`. The
+> claim below that Mistral yields two turn tokens (`[/INST]`, `I`) is wrong;
+> `I` is the first response token, outside the prompt.
+
+**RETRACTED — Gemma-2-9B-it, climate.** 2,943 valid samples. The paper's
 story replicates on a different family and a non-financial domain: at
 `<end_of_turn>` preference classes overlap and no-horizon prompts sit off
 the horizon manifold; horizon forms a clean seconds-to-millennia ordinal
@@ -48,7 +72,7 @@ progression begins ~L21 ≈ 0.5). Figure + paper-style caption:
 All 30 per-layer figures: `geometry/gemma2_9b_climate_plots/`. Raw
 activations: `geometry/gemma2_9b_climate.tar.gz` (3.10 GB).
 
-**VERIFIED — Llama-3.1-8B-Instruct, health.** 2,517 valid of 3,000 (the
+**RETRACTED — Llama-3.1-8B-Instruct, health.** 2,517 valid of 3,000 (the
 0.5-vs-5 reward-string ambiguity skips ~16%, logged, non-biasing: skips are
 a formatting collision, not a choice-dependent filter). Same progression at
 Llama's own turn tokens: overlap at `<|eot_id|>`, short-cluster detaches at
@@ -57,18 +81,18 @@ Llama's own turn tokens: overlap at `<|eot_id|>`, short-cluster detaches at
 plots `geometry/llama31_8b_health_plots/`, archive
 `geometry/llama31_8b_health.tar.gz`.
 
-**Cross-model regularity worth stating in the rebuttal**: the collapse site
+**RETRACTED cross-model regularity**: the collapse site
 sits at ~0.6–0.8 fractional depth in all three models measured so far
 (Qwen L31/36 = 0.86 readout, Llama L21/32, Gemma L33/42), echoing the
 fractional-depth invariance the paper found for patching (Appendix Q).
 
-**VERIFIED — Mistral-7B/education**: 2,984/3,000 valid (16 skips, 0.5% —
+**RETRACTED — Mistral-7B/education**: 2,984/3,000 valid (16 skips, 0.5% —
 no ambiguity epidemic in education), archive 1.2 GB byte-verified, fig7
 winner **L19 (0.59)** viewed: full ordinal manifold, clean split, no-horizon
 off-manifold. Note Mistral's template yields two turn tokens ([/INST], 'I').
 `geometry/mistral7b_education.tar.gz`, `_plots/`, `fig7_final/`.
 
-**VERIFIED — Qwen3-4B-Inst-2507/startup** (see naming note): 2,992/3,000
+**RETRACTED — Qwen3-4B-Inst-2507/startup** (see naming note): 2,992/3,000
 valid, archive 1.86 GB byte-verified, fig7 winner **L19 resid_post** viewed
 (monotonic seconds->millennia gradient at <|im_end|>, No-Horizon separate).
 With investment (paper) + startup (new), the geometry story now holds for
