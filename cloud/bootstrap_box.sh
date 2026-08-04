@@ -70,7 +70,9 @@ import sys, torch, transformers, transformer_lens
 print(f"python              {sys.version.split()[0]}")
 print(f"torch               {torch.__version__}")
 print(f"transformers        {transformers.__version__}")
-print(f"transformer_lens    {transformer_lens.__version__}")
+# transformer_lens dropped __version__ in its 3.x line, and reading it
+# unconditionally turns a working box into a failed bootstrap.
+print(f"transformer_lens    {getattr(transformer_lens, '__version__', 'unknown')}")
 print(f"cuda available      {torch.cuda.is_available()}")
 if not torch.cuda.is_available():
     raise SystemExit("NO GPU VISIBLE TO TORCH")
