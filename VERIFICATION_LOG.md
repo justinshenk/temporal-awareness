@@ -674,3 +674,22 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
       is wrong: `I` is the first RESPONSE token, outside the prompt. Mistral therefore cannot show a
       within-window progression the way the other three families can.
     - **Result**: VERIFIED (all five PASS)
+34. **Check**: the five geometry v2 boxes cloned `be14e81`, which predates the capture refactor
+    `c9dac21`. Do they need restarting?
+    - **How verified**: read each box's `git rev-parse HEAD` (all five `be14e81`) and each box's
+      log (all five past `PHASE EXTRACT_START` and extracting). Then diffed the capture path
+      between the two commits rather than taking the equivalence on trust.
+      `be14e81` calls `run_with_cache(text, token_ids=traj.token_ids)`, which builds
+      `torch.as_tensor(token_ids, dtype=long).unsqueeze(0).to(self.device)`.
+      `c9dac21` calls `compute_trajectory_with_cache(traj.token_ids)`, which builds
+      `torch.tensor([token_ids], device=self.device)`. Both then call the same
+      `_backend.run_with_cache(input_ids, names_filter, past_kv_cache)`. Same ids, same device,
+      same backend call, so the cached tensors are identical. The refactor removes a dead text
+      argument; it changes no activation.
+    - The `hook_embed` hook the gate depends on is present in `c9dac21`, so the gate is unchanged.
+    - Each box's gate PASSED on the code that box is actually running, which is direct evidence
+      rather than equivalence inherited from another commit.
+    - `cloud/bringup_geo2.sh` compares a box's HEAD against `origin/<branch>` at bring-up time and
+      refuses to continue on a mismatch, so any box launched from now on must be at or after
+      `c9dac21`.
+    - **Result**: VERIFIED — no restart needed; no data produced by these boxes is affected.
