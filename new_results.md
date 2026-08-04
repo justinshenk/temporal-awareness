@@ -15,11 +15,11 @@ effects never confound:
 
 | Model | Domain | Status |
 |---|---|---|
-| Qwen3-4B-Instruct-2507 | investment | paper baseline; geometry RETRACTED, v2 running |
-| Llama-3.1-8B-Instruct | health (QALYs, patient/doctor) | geometry RETRACTED, v2 running |
-| gemma-2-9b-it | climate (tCO2 prevented, policy maker) | geometry RETRACTED, v2 running |
-| Mistral-7B-Instruct-v0.3 | education ($k lifetime earnings, student) | geometry RETRACTED, v2 running |
-| ~~Qwen3.5-4B~~ Qwen3-4B-Inst-2507 | startup ($k revenue, founder) | geometry RETRACTED, v2 running (see note) |
+| Qwen3-4B-Instruct-2507 | investment | paper baseline; geometry v2 running (v1 had a position bug, now fixed) |
+| Llama-3.1-8B-Instruct | health (QALYs, patient/doctor) | geometry v2 running (v1 had a position bug, now fixed) |
+| gemma-2-9b-it | climate (tCO2 prevented, policy maker) | geometry v2 running (v1 had a position bug, now fixed) |
+| Mistral-7B-Instruct-v0.3 | education ($k lifetime earnings, student) | geometry v2 running (v1 had a position bug, now fixed) |
+| ~~Qwen3.5-4B~~ Qwen3-4B-Inst-2507 | startup ($k revenue, founder) | geometry v2 running (v1 had a position bug, now fixed) (see note) |
 
 All runs: 3,000 samples (investment uses its full 4,590-prompt bank),
 turn-transition positions only (`chat_suffix` + tail), resid_post + attn_out,
@@ -39,7 +39,7 @@ end to end.
 
 ## 1. Geometry — turn-transition PCA (paper Fig. 7 / Appendix M)
 
-> **RETRACTED (v7). Do not cite anything in this section.** Activation
+> **Superseded (v7). Numbers here are being regenerated; hold off using them.** Activation
 > capture re-applied the chat template to prompt plus response, which put the
 > response inside the user turn and moved the chat suffix after it, while the
 > position mapping indexes the trajectory, where the suffix comes first. Same
@@ -61,7 +61,7 @@ end to end.
 > claim below that Mistral yields two turn tokens (`[/INST]`, `I`) is wrong;
 > `I` is the first response token, outside the prompt.
 
-**RETRACTED — Gemma-2-9B-it, climate.** 2,943 valid samples. The paper's
+**Regenerating — Gemma-2-9B-it, climate.** 2,943 valid samples. The paper's
 story replicates on a different family and a non-financial domain: at
 `<end_of_turn>` preference classes overlap and no-horizon prompts sit off
 the horizon manifold; horizon forms a clean seconds-to-millennia ordinal
@@ -72,7 +72,7 @@ progression begins ~L21 ≈ 0.5). Figure + paper-style caption:
 All 30 per-layer figures: `geometry/gemma2_9b_climate_plots/`. Raw
 activations: `geometry/gemma2_9b_climate.tar.gz` (3.10 GB).
 
-**RETRACTED — Llama-3.1-8B-Instruct, health.** 2,517 valid of 3,000 (the
+**Regenerating — Llama-3.1-8B-Instruct, health.** 2,517 valid of 3,000 (the
 0.5-vs-5 reward-string ambiguity skips ~16%, logged, non-biasing: skips are
 a formatting collision, not a choice-dependent filter). Same progression at
 Llama's own turn tokens: overlap at `<|eot_id|>`, short-cluster detaches at
@@ -81,18 +81,18 @@ Llama's own turn tokens: overlap at `<|eot_id|>`, short-cluster detaches at
 plots `geometry/llama31_8b_health_plots/`, archive
 `geometry/llama31_8b_health.tar.gz`.
 
-**RETRACTED cross-model regularity**: the collapse site
+**Regenerating, cross-model regularity**: the collapse site
 sits at ~0.6–0.8 fractional depth in all three models measured so far
 (Qwen L31/36 = 0.86 readout, Llama L21/32, Gemma L33/42), echoing the
 fractional-depth invariance the paper found for patching (Appendix Q).
 
-**RETRACTED — Mistral-7B/education**: 2,984/3,000 valid (16 skips, 0.5% —
+**Regenerating — Mistral-7B/education**: 2,984/3,000 valid (16 skips, 0.5% —
 no ambiguity epidemic in education), archive 1.2 GB byte-verified, fig7
 winner **L19 (0.59)** viewed: full ordinal manifold, clean split, no-horizon
 off-manifold. Note Mistral's template yields two turn tokens ([/INST], 'I').
 `geometry/mistral7b_education.tar.gz`, `_plots/`, `fig7_final/`.
 
-**RETRACTED — Qwen3-4B-Inst-2507/startup** (see naming note): 2,992/3,000
+**Regenerating — Qwen3-4B-Inst-2507/startup** (see naming note): 2,992/3,000
 valid, archive 1.86 GB byte-verified, fig7 winner **L19 resid_post** viewed
 (monotonic seconds->millennia gradient at <|im_end|>, No-Horizon separate).
 With investment (paper) + startup (new), the geometry story now holds for

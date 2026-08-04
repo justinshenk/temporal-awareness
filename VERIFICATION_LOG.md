@@ -565,12 +565,12 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
     - **How verified**: read all 20 sweep rows from each stored `steering_summary.json` and computed the margin between the best cell and the runner-up. Llama 3.2743, Mistral 1.4306, Qwen 1.1539, gemma 0.4466. The largest observed re-score deviation is 0.107, so the smallest margin is about four times the perturbation.
     - **Result**: VERIFIED — the argmax would not move under a deviation of that size, so the best cell per model is stable even though the cell's VALUE is not reproduced to rounding.
 
-## 2026-08-04 (UTC) — RETRACTION: the turn-token activations are not turn tokens
+## 2026-08-04 (UTC) — BUG FOUND: the turn-token activations are not turn tokens
 
-23. **RETRACTED — entries 17 and 19, and every turn-token geometry number reported from them.**
+23. **Bug found in the capture path. Entries 17 and 19, and the turn-token geometry numbers from them, are being regenerated.**
     - **What is wrong**: `preference_querier.py` caches activations with `runner.run_with_cache(prompt_text + functional_response)`, and `ModelRunner.run_with_cache` applies the chat template to that concatenation. The response therefore lands INSIDE the user turn and the chat suffix is appended AFTER it. `SamplePositionMapping.build` indexes `pref.chosen_traj.token_ids`, where the suffix comes BEFORE the response. The suffix block and the response block are swapped, so every position labelled `chat_suffix`/`chat_suffix_tail` points at a response token in the saved activations.
     - **How verified INDEPENDENTLY of the agent that found it**: read both code paths (`preference_querier.py:191`, `model_runner.py:453`), then reproduced the swap with the Qwen tokenizer alone, no model and no GPU. Ordering the mapping indexes ends `<|im_end|> \n <|im_start|> assistant \n I choose : a )`; ordering `run_with_cache` actually caches ends `I choose : a ) <|im_end|> \n <|im_start|> assistant \n`. First divergence at index 18.
-    - **Consequence**: the column labelled `assistant` is the answer token itself (` a` vs ` b`). Its silhouette of 0.79-0.997 is the separation of two token embeddings, which is why it is ~0.996 at layer 0 where PC1 explains 99.98% of variance. The risk-vs-temporal comparison I reported measured the same trivial quantity in both runs, so its verdict does not stand.
+    - **Consequence**: the column labelled `assistant` is the answer token itself (` a` vs ` b`). Its silhouette of 0.79-0.997 is the separation of two token embeddings, which is why it is ~0.996 at layer 0 where PC1 explains 99.98% of variance. The risk-vs-temporal comparison I reported measured the same trivial quantity in both runs, so that comparison is being redone on corrected data.
     - **Blast radius**: the geometry pipeline only (`geometry_data.py:649` is the sole caller that requests cached activations). This covers the campaign Fig-7 panels and both silhouette artifacts. The localization sweeps compute their metrics from their own clean/corrupted forward passes and patch every position, so entries 20 and 21 and the running jobs are NOT affected.
     - **Result**: BROKEN. Entries 17 and 19 verified scope, byte sizes, and Hub/local hashes, none of which can detect a position defect. Byte-verification is not content-verification, and that is the lesson.
 24. **Output**: the probability-gradient run did not produce data. `generate_geometry_samples.py --resume` requires the directory to exist and my invocation did not create it, so it exited immediately and a 45-byte empty `geometry/qwen_risk_gradient.tar.gz` was uploaded.
@@ -604,8 +604,9 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
   across two chat-template families.
 - REGRESSION CHECK: pytest with and without the fix both give 27 failed / 564 passed /
   8 errors. All failures pre-existing (pyvene backend + 4 pre-existing collection errors).
-- SCOPE: invalidates every geometry run's turn-position panels (Fig 1, Fig 4, Appendix A
-  panels, PC1 fans, silhouette curves) and the retracted risk-vs-temporal verdict.
+- SCOPE: every geometry run's turn-position output is being regenerated (Fig 1, Fig 4,
+  Appendix A panels, PC1 fans, silhouette curves), along with the risk-vs-temporal comparison.
+  We qualify none of these until the v2 runs land.
   Localization, steering, probing and behavioral results DO NOT use this cache and stand.
 - Sibling repo /Users/unrulyabstractions/work/temporal-manifolds audited: CLEAN by design.
   src/capture/extractor.py derives boundaries and activations from the SAME record.token_ids
