@@ -204,13 +204,12 @@ class PreferenceQuerier:
                     "skipping activation capture."
                 )
             else:
-                _, cache = runner.run_with_cache(
-                    prompt_text + functional_response,
+                cached_traj = runner.compute_trajectory_with_cache(
+                    traj.token_ids,
                     names_filter=lambda name: name in activation_names,
-                    token_ids=traj.token_ids,
                 )
                 captured_internals = CapturedInternals.from_activation_names(
-                    activation_names, cache
+                    activation_names, cached_traj.internals
                 )
 
         # Extract divergent_logits before clearing heavy data
