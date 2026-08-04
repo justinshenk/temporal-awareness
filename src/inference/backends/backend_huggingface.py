@@ -640,6 +640,14 @@ class HuggingFaceBackend(Backend):
         hooks = []
 
         hooks_to_capture = []
+
+        # hook_embed, TransformerLens's name for the token embedding output.
+        # Its value at position i is exactly W_E[input_ids[i]], which is what
+        # lets a caller prove that a cache and a position mapping index the same
+        # sequence. Without it that check is impossible on this backend.
+        if names_filter is None or names_filter("hook_embed"):
+            hooks_to_capture.append((-1, "embed", "hook_embed"))
+
         for i in range(self._n_layers):
             # Standard component hooks
             for component in ["resid_pre", "resid_mid", "resid_post", "attn_out", "mlp_out"]:

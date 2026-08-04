@@ -459,9 +459,13 @@ class ModelRunner:
             Tuple of (logits, cache) where cache maps hook names to activation tensors
         """
         if token_ids is not None:
-            input_ids = torch.as_tensor(token_ids)
+            # encode() puts its ids on the model's device; this path has to do
+            # the same. The HuggingFace backend calls the model directly, so a
+            # CPU tensor here raises a device mismatch on every GPU box.
+            input_ids = torch.as_tensor(token_ids, dtype=torch.long)
             if input_ids.ndim == 1:
                 input_ids = input_ids.unsqueeze(0)
+            input_ids = input_ids.to(self.device)
         else:
             formatted = self.apply_chat_template(prompt)
             input_ids = self.encode(formatted, prepend_bos=prepend_bos)
