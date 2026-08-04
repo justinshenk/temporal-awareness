@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from src.common import BaseSchema, TimeValue
@@ -79,6 +79,13 @@ class PromptDatasetConfig(BaseSchema):
     do_formatting_variation_grid: bool = False
     do_full_formatting_variation_grid: bool = False
     do_context_variations: bool = False
+    # Partial context overrides, one per swept level. Each entry is merged on
+    # top of `context`, so a level states only the fields it changes and every
+    # other field stays byte-identical across levels. This is what lets a
+    # dataset sweep a quantity that lives in the context text, such as the
+    # probability attached to a gamble, the way `time_horizons` sweeps time.
+    # Left empty, nothing about generation changes.
+    context_variants: list[dict] = field(default_factory=list)
     prompt_format: str = "default_prompt_format"
     round_time_units: bool = False
     round_reward_units: bool = False

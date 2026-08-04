@@ -542,6 +542,16 @@ class PromptDatasetGenerator:
         all variations applied to it. Otherwise, returns just the base context.
         """
         base_context = self.dataset_config.context
+
+        # Explicit variants win: each one is the base context with a few fields
+        # replaced, so the swept quantity is the only thing that differs.
+        if self.dataset_config.context_variants:
+            base_fields = base_context.to_dict()
+            return [
+                ContextConfig.from_dict(base_fields | variant)
+                for variant in self.dataset_config.context_variants
+            ]
+
         if not self.dataset_config.do_context_variations:
             return [base_context]
 
