@@ -170,11 +170,100 @@ def verify_geometry(run_dir: Path) -> Report:
             "complete" if not bad else f"{len(bad)} incomplete e.g. {bad[:3]}",
         )
 
+    if samples and isinstance(summary, dict):
+        _check_turn_positions(samples, summary, rep)
+
     analysis = run_dir / "analysis"
     pca = sorted((analysis / "pca").glob("*")) if (analysis / "pca").is_dir() else []
-    rep.add("analysis/pca/", bool(pca), f"{len(pca)} target dir(s)")
+    # An extraction-only bundle carries raw activations and no analysis, which is
+    # a legitimate shape: analysis runs later, off the box. Calling that BROKEN
+    # would block teardown on every extraction run, so it is reported and not
+    # failed. The mirror case, an analysis-only bundle with no .npy, is already
+    # handled above.
+    extraction_only = bool(samples) and any(
+        next(s.rglob("*.npy"), None) is not None for s in samples[:5]
+    )
+    rep.add(
+        "analysis/pca/",
+        bool(pca),
+        f"{len(pca)} target dir(s)"
+        + (" (extraction-only bundle, analysis runs off the box)" if extraction_only else ""),
+        soft=extraction_only,
+    )
 
     return rep
+
+
+# Tokens a chat template uses to end a turn and open the next one, per family.
+# A turn window that decodes to none of these is not a turn window, whatever the
+# mapping calls it.
+TURN_TOKEN_MARKS = (
+    "<|im_end|>", "<|im_start|>", "assistant",          # Qwen
+    "<|eot_id|>", "<|start_header_id|>", "<|end_header_id|>",  # Llama
+    "<end_of_turn>", "<start_of_turn>", "model",        # Gemma
+    "[/INST]",                                          # Mistral
+)
+
+
+def _check_turn_positions(samples: list[Path], summary: dict, rep: Report) -> None:
+    """The turn window holds turn tokens, and every one of them has activations.
+
+    A whole campaign of turn-transition figures was produced from activations
+    that sat at response tokens while the mapping called them chat_suffix. The
+    orderings had the same length, so every structural check passed. This reads
+    the decoded token the mapping recorded at each turn position and refuses a
+    run whose turn window contains no chat-control token at all.
+    """
+    turn_names = [
+        p for p in (summary.get("positions") or [])
+        if p.startswith("chat_suffix")
+    ]
+    if not turn_names:
+        return
+
+    checked = sorted(samples)[:50]
+    windows: set[tuple[str, ...]] = set()
+    missing_npy: list[str] = []
+    layers = summary.get("layers") or []
+    components = summary.get("components") or []
+
+    for sample_dir in checked:
+        mapping = _load_json(sample_dir / "position_mapping.json")
+        if not isinstance(mapping, dict):
+            rep.add("turn positions", False, f"{sample_dir.name}: unreadable mapping")
+            return
+        by_abs = {p["abs_pos"]: p for p in mapping.get("positions", [])}
+        window: list[str] = []
+        for name in turn_names:
+            for abs_pos in mapping.get("named_positions", {}).get(name, []):
+                info = by_abs.get(abs_pos)
+                window.append(info["decoded_token"] if info else "<unmapped>")
+                for layer in layers:
+                    for comp in components:
+                        npy = sample_dir / f"L{layer}" / f"{comp}_{abs_pos}.npy"
+                        npz = npy.with_suffix(".npz")
+                        if not npy.exists() and not npz.exists():
+                            missing_npy.append(f"{sample_dir.name}/{npy.parent.name}/{npy.name}")
+        windows.add(tuple(window))
+
+    flat = {t for w in windows for t in w}
+    marks = sorted(t for t in flat if t.strip() in TURN_TOKEN_MARKS)
+    rep.add(
+        "turn window holds turn tokens",
+        bool(marks),
+        f"{sorted(flat)} over {len(checked)} sample(s); recognised {marks}",
+    )
+    rep.add(
+        "turn window identical across samples",
+        len(windows) == 1,
+        f"{len(windows)} distinct window(s)",
+    )
+    rep.add(
+        "activations at every turn position",
+        not missing_npy,
+        "all present" if not missing_npy
+        else f"{len(missing_npy)} missing e.g. {missing_npy[:3]}",
+    )
 
 
 def verify_pulled() -> list[Report]:
