@@ -656,3 +656,21 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
       matching labels; each box reports `git rev-parse HEAD` equal to the pushed branch tip, and
       bringup refuses to continue if it does not.
     - **Result**: VERIFIED (fleet state), runs in progress
+33. **Output**: the per-box sanity gate, all five boxes. Every one PASSED before any extraction ran.
+    - **How verified, not from the boxes**: downloaded all five `geometry/<run>_v2_gate.json` from the
+      Hub to this machine and read them here. Each records `backend=HuggingFaceBackend`,
+      `dtype=torch.bfloat16`, `result=PASS`, zero mismatches and zero missing turn tokens.
+      Named positions checked against `W_E[chosen_traj.token_ids[i]]`, two samples per box:
+      qwen investment 300, qwen startup 298, llama health 350, gemma climate 330,
+      mistral education 335. `max|W_E[tok] - hook_embed| = 0.000e+00` in every case.
+    - **Decoded turn window per family, which is the thing that was wrong before**:
+      Qwen `['<|im_end|>', '\n', '<|im_start|>', 'assistant']` + tail `['\n']`;
+      Llama `['<|eot_id|>', '<|start_header_id|>', 'assistant', '<|end_header_id|>']` + tail `['\n\n']`;
+      Gemma `['<end_of_turn>', '\n', '<start_of_turn>', 'model']` + tail `['\n']`;
+      Mistral `[]` + tail `['[/INST]']`.
+    - **Finding to carry into the text**: Mistral's turn window is ONE token. `chat_suffix` is empty
+      and `[/INST]` sits alone in `chat_suffix_tail`, because that template has no assistant-role
+      tokens before the response. The v1 note that Mistral yields two turn tokens (`[/INST]`, `I`)
+      is wrong: `I` is the first RESPONSE token, outside the prompt. Mistral therefore cannot show a
+      within-window progression the way the other three families can.
+    - **Result**: VERIFIED (all five PASS)
