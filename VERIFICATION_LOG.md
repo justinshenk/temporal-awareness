@@ -610,3 +610,49 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
 - Sibling repo /Users/unrulyabstractions/work/temporal-manifolds audited: CLEAN by design.
   src/capture/extractor.py derives boundaries and activations from the SAME record.token_ids
   and the engine runs those ids verbatim, so the two cannot diverge.
+
+## 2026-08-04 (UTC) — geometry v2: five re-runs behind an embedding-ground-truth gate
+
+29. **Output**: `scripts/intertemporal/verify_turn_positions.py`, the per-box gate. It runs the
+    real pipeline (PreferenceQuerier + SamplePositionMapping), caches `hook_embed`, and compares
+    every named position against `W_E[chosen_traj.token_ids[i]]` with `torch.allclose(atol=1e-4)`.
+    It also decodes the turn window and requires that model's own turn tokens.
+    - **How verified, positive**: ran it on Qwen3-0.6B / investment_nano through the HuggingFace
+      backend (the backend the boxes use). 2 samples, 146 and 170 named positions, 0 mismatches,
+      max|W_E[tok] - hook_embed| = 0.000e+00. chat_suffix decoded to
+      `['<|im_end|>', '\n', '<|im_start|>', 'assistant']`, tail `['\n']`. GATE PASS.
+    - **How verified, negative (this is the part that makes it a gate)**: repeated the same
+      comparison against a cache built the OLD way (templated prompt+response). 13 of 146 named
+      positions mismatched, and the tokens actually cached at chat_suffix were
+      `['<think>', '\n', '</think>', '\n\n']` with `'I'` at chat_suffix_tail — reproducing entry 28
+      exactly. The gate fails on the defective code and passes on the fixed code.
+    - **Result**: VERIFIED
+30. **Change**: two fixes the gate exposed, both in the path the extraction actually runs.
+    `ModelRunner.run_with_cache` now moves a caller's `token_ids` to the model's device; the
+    HuggingFace backend calls the model directly, so entry 28's fix would have raised a device
+    mismatch on every GPU box. That backend also gains `hook_embed` under TransformerLens's name,
+    without which embedding ground truth is unreachable there. `cloud/bootstrap_box.sh` no longer
+    reads `transformer_lens.__version__`, which 3.x dropped; it was reporting a working A6000 as
+    "no GPU".
+    - **How verified**: gate PASS above exercises both changes end to end on the HuggingFace
+      backend; `bash -n` on the shell scripts, `py_compile` on the Python; box bootstrap now
+      prints `cuda available True` and `NVIDIA RTX A6000 44.4 GB`.
+    - **Result**: VERIFIED
+31. **Output**: `cloud/jobs/geo2_job.sh` part-upload logic (each pass archives only the samples
+    finished since the last one, so nothing older than SNAP_INTERVAL lives only on a rented disk).
+    - **How verified**: harness against a fake run directory with `hub_put` stubbed, pulling the
+      real `flush_part` out of the job script so the test cannot drift from it. Cursor advanced
+      0 -> 4 -> 9 -> 10; "nothing new" returned 2, not a failure; 10 sample directories covered
+      exactly once across three parts with no overlap; `config.json` in the first part only.
+    - **Why not file-level streaming**: the dataset repo already carries 92,897 files under
+      `geometry/`, 88,730 of them a leftover file tree. Five more full trees would add ~2M files.
+    - **Result**: VERIFIED
+32. **Output**: five boxes, all labelled `ta-tp-geo2-*` and recorded in `.instances_ours`.
+    46752164 qwen-investment, 46752208 qwen-startup, 46752289 llama-health, 46752350 gemma-climate,
+    46752390 mistral-education. 1x RTX A6000 (46 GB, cc 8.6, bf16) each, $0.467/hr each.
+    - The five `ta-tp-loc-*` / `ta-tp-risk-*` / `ta-tp-steer-*` boxes are another workstream's and
+      were not touched.
+    - **How verified**: `bash cloud/fleet_status.sh` lists exactly these ten under OURS with
+      matching labels; each box reports `git rev-parse HEAD` equal to the pushed branch tip, and
+      bringup refuses to continue if it does not.
+    - **Result**: VERIFIED (fleet state), runs in progress
