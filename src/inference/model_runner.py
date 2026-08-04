@@ -438,6 +438,7 @@ class ModelRunner:
         names_filter: Optional[callable] = None,
         past_kv_cache: Any = None,
         prepend_bos: bool = False,
+        token_ids: Any = None,
     ) -> tuple[torch.Tensor, dict]:
         """Run forward pass and return activation cache.
 
@@ -446,12 +447,24 @@ class ModelRunner:
             names_filter: Function to filter which hooks to cache
             past_kv_cache: Optional past key-value cache for continuation
             prepend_bos: Whether to prepend BOS token (default False)
+            token_ids: Pre-tokenized sequence to run verbatim. When given, the
+                chat template is not applied and the text is ignored. Position
+                indices computed against this sequence then address the cache
+                directly. Callers that cache a prompt together with a response
+                must use this, because applying the template to their
+                concatenation places the response inside the user turn and
+                moves the chat suffix after it.
 
         Returns:
             Tuple of (logits, cache) where cache maps hook names to activation tensors
         """
-        formatted = self.apply_chat_template(prompt)
-        input_ids = self.encode(formatted, prepend_bos=prepend_bos)
+        if token_ids is not None:
+            input_ids = torch.as_tensor(token_ids)
+            if input_ids.ndim == 1:
+                input_ids = input_ids.unsqueeze(0)
+        else:
+            formatted = self.apply_chat_template(prompt)
+            input_ids = self.encode(formatted, prepend_bos=prepend_bos)
         return self._backend.run_with_cache(input_ids, names_filter, past_kv_cache)
 
     @profile

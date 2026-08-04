@@ -129,11 +129,13 @@ def main() -> int:
             "top5": [[layer, means[layer]] for layer in top5],
             "per_layer": {str(layer): value for layer, value in means.items()},
         }
+        early_mean = report["components"][comp]["early_mean"]
+        early_text = f"{early_mean:+.3f}" if early_mean is not None else "not swept"
         print(
-            f"\n{comp}: {len(means)} layers, peak L{peak_layer} "
+            f"\n{comp}: {len(means)} layers L{min(means)}-L{max(means)}, peak L{peak_layer} "
             f"({peak_layer / n_layers:.2f}) {peak:+.3f}, band L{min(band)}-L{max(band)} "
             f"({min(band) / n_layers:.2f}-{max(band) / n_layers:.2f}), "
-            f"early<{EARLY_DEPTH} mean {report['components'][comp]['early_mean']:+.3f}"
+            f"early<{EARLY_DEPTH} mean {early_text}"
         )
         print("  top5: " + ", ".join(f"L{layer} {means[layer]:+.3f}" for layer in top5))
 

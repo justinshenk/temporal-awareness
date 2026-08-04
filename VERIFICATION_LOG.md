@@ -520,3 +520,93 @@ Independent verifier agent re-rendered and VIEWED all four PDFs (plus two 300-dp
 10. **Change**: added `scripts/scratch/mem_gate.sh` (pre-load memory gate) and moved session scripts to the durable `scripts/scratch/`; `.gitignore` updated.
    - **How verified**: ran the gate (`GATE: CLEAR`, exit 0; no ollama, swap 0.00M/0.00M, 22.78 GB free); `git check-ignore -v` confirms `scripts/scratch/` is ignored at `.gitignore:90`; both recreated steering scripts parse and the bootstrap script runs end to end (skips absent inputs, writes its JSON). Gate output for the launch saved to `out/logs/llama_investment_gate.txt`.
    - **Result**: VERIFIED
+
+## 2026-08-03 (UTC) — vast.ai fleet, four parallel jobs replacing the dead local queue
+
+11. **Output**: four rented boxes, ledger `cloud/.instances_ours`, label prefix `ta-tp-`.
+    - 46742505 `ta-tp-loc-llama-investment` 1x A40 $0.302/hr; 46742515 `ta-tp-loc-mistral-investment` 1x A40 $0.302/hr; 46742541 `ta-tp-risk-qwen` 1x RTX A6000 $0.456/hr; 46742573 `ta-tp-steer-rescore` 1x A40 $0.321/hr.
+    - **How verified**: `bash cloud/fleet_status.sh` lists exactly these four under OURS with matching labels; the two other account instances (46742327, 46742401 `prism-gen`) are recorded FOREIGN and untouched.
+    - **Result**: VERIFIED
+12. **Change**: `cloud/jobs/loc_job.sh`, `cloud/jobs/steer_job.sh`, `scripts/intertemporal/turn_class_silhouette.py` (commit 15a95bf).
+    - **How verified**: `bash -n` on both shell scripts, `py_compile` on the python script, then `git ls-tree origin/exp/turn-geometry-llama-gemma` showed all three blobs on the remote; each box reports `git rev-parse --short HEAD` = 15a95bf.
+    - **Result**: VERIFIED
+13. **Output**: incremental box->Hub streaming for the three localization runs.
+    - **How verified**: from this machine, `HfApi.list_repo_tree` returned files under `localization/loc_llama_investment`, `localization/loc_mistral_investment`, `localization/loc_qwen_risk` (experiment_config.json / working_config.json / original_config.json / log.txt with sizes) within minutes of launch, so nothing waits for the end of a run.
+    - **Result**: VERIFIED
+14. **Output**: `scripts/intertemporal/summarize_coarse_localization.py` (layer profile: mean over pairs of denoising recovery + noising disruption, per layer and component).
+    - **How verified**: downloaded `localization/loc_llama_health.tar.gz` (29,882,606 B) and `localization/loc_gemma_climate.tar.gz` from the Hub, extracted, and ran the script. It reproduces the two published campaign rows: Llama-3.1-8B/health peak L17 (0.53) +0.977 with early-layer mean -0.010 (new_results v6 says L17 0.55 +0.98, early -0.010), Gemma-2-9B/climate peak L25 (0.60) +0.575 with early mean -0.025 (v6 says L25 0.61 +0.58, early -0.026). Sanity blocks break down as attn_out 24/24 and resid_post 24/24 clean, mlp_out 0/24 — patching every MLP is not a complete intervention, so that is expected and is now reported per sweep rather than pooled.
+    - **Result**: VERIFIED (metric definition is the one behind the published table)
+15. **Output**: steering re-score + 10k bootstrap CIs, box 46742573, HF `steering/ci_bootstrap/` (bs16, primary), `steering/ci_bootstrap_bs8/`, `steering/ci_bootstrap_repeat/`.
+    - **Sanity gate FAILS the "within rounding" standard and is reported, not worked around.** Re-scored at the stored sweep's own batch size (16) the recomputed means differ from the stored campaign values by: Qwen3-4B S -0.0903 / ctrl +0.0058 / baseline -0.1065; Llama-3.1-8B -0.0311 / -0.1116 / +0.0020; Mistral-7B -0.0436 / -0.0505 / +0.0605; gemma-2-9b +0.0005 / -0.0028 / -0.0054.
+    - **How verified**: pulled every rescore.json from the Hub to this machine and recomputed the deltas here, rather than trusting the box log. Each file records layer/alpha matching the stored best cell (Qwen L18 a20, Llama L18 a35, Gemma L21 a50, Mistral L19 a20), 40 scored prompts (20 held-out pairs x 2 label orders), torch.bfloat16, process_weights=False, cuda; the re-score script asserts unit-norm vectors, matching n_layers/d_model, and identical eval pair ids before scoring.
+    - **Cause established, not assumed**: batch size was a real setup difference (the re-score script defaulted to 8, the stored sweep to 16) and was corrected, but it does not close the gap. Running the same model twice on the same box at batch 16 gives BIT-IDENTICAL per-prompt values (Qwen baseline 0.7496793866157532 both times, per-prompt lists equal), so the pipeline is deterministic here and the residual comes from the hardware the stored numbers were produced on. Magnitude context: the largest delta (0.107) is ~3% of the narrowest bootstrap CI width.
+    - **Result**: VERIFIED as a measurement; the stored means are NOT reproduced to rounding, so the CIs describe the re-scored run, not the stored one.
+16. **Output**: run configuration of all four localization sweeps, read back from the Hub (not from the boxes).
+    - **How verified**: downloaded `localization/<run>/working_config.json` for loc_llama_investment, loc_mistral_investment, loc_qwen_risk, loc_qwen_investment. Each shows the intended model, n_pairs=24, coarse components [resid_post, attn_out, mlp_out], layer_steps [1], and no min/max layer depth, so the sweep covers every layer 0..N-1 as the campaign requires.
+    - **Result**: VERIFIED
+17. **Output**: turn-token class-separation reference for the temporal case, `geometry/qwen35_4b_startup_turn_silhouette.json` (22,315 B on the Hub, byte-matched locally).
+    - **How verified**: ran `turn_class_silhouette.py` on the campaign's Qwen3-4B-Instruct-2507 startup geometry run (config.json confirms the model; 2,992 samples, 15 layers, turn-only positions), then pulled the JSON back and re-read it. The silhouette reproduces the Fig-7 story numerically: at the turn boundary `<|im_end|>` the two preference classes stay unseparated at every layer (+0.05 to +0.27), while at the role token `assistant` they are separated throughout (+0.81 to +0.997), with the mid-depth minimum at L21.
+    - **Result**: VERIFIED
+18. **Repair**: `cloud/.pulled_runs` listed `loc_mistral_education2`, whose extracted copy was missing, so the reap gate reported BROKEN.
+    - **How verified**: re-downloaded `localization/loc_mistral_education.tar.gz` (28,038,914 B remote and local, byte-match asserted) and extracted it; the archive's own top directory is `loc_mistral_education2`, so the manifest path was correct all along. `verify_experiment_output.py --pulled` now reports VERIFIED for all 3 targets.
+    - **Result**: VERIFIED
+19. **Output**: risk geometry run + turn-token silhouette, box 46742573. HF `geometry/qwen_risk_geometry.tar.gz` (557,983,184 B), `geometry/qwen_risk_geometry_turn_silhouette.json` (22,390 B), `geometry/qwen_risk_geometry_summary.json` (1,410 B).
+    - **How verified**: box-side upload printed hub size == local size for all three; independently re-listed all three with `get_paths_info` from this machine and re-downloaded the two JSONs, byte sizes matching. summary.json reports n_samples=1484 (16 skipped of 1500, 1.1%), the 15 standard layers, resid_post, positions [chat_suffix, chat_suffix_tail] — the same scope as the temporal reference run, so the two are comparable.
+    - **Note on delivery**: the run produced 111,300 .npy files (1.5 GB). File-level streaming was stopped after the extraction completed and summary.json existed, and the run was delivered as a single archive instead, matching the campaign convention. A partial file tree remains under `geometry/qwen_risk_geometry/` in the dataset and should be deleted once the archive is accepted.
+    - **Result**: VERIFIED
+20. **Output**: risk pair bank, box 46742541. 569 valid preference samples of 576; choice split 438 certain (77.0%) / 131 gamble (23.0%); contrastive selection 57,378 candidates -> 42,120 passed -> **12 final pairs**, and the sweep runs on 12 pairs rather than the requested 24.
+    - **How verified**: read the lines directly from the box's run log.
+    - **Result**: VERIFIED as a measurement, and flagged: the risk sweep is half the pair count of the temporal sweeps, so its localization numbers are underpowered relative to them.
+21. **Output**: sanity gate for the risk localization sweep, read from HF (`localization/loc_qwen_risk/pairs/pair_0/coarse/sweep_{attn_out,resid_post}/coarse_results.json`, 336,788 and 337,023 B).
+    - **How verified**: downloaded both files and read the sanity block. Full-patch recovery = 1.000 and disruption = 1.000 on both sweeps; swept layers = 36, spanning 0..35, so the all-layer sweep is real. Clean baseline logprobs [0.0, -23.75], giving a clean logit difference of +23.75 and a corrupted difference of -6.999, signs correct.
+    - **Flag**: +23.75 is an order of magnitude larger than the temporal runs' clean baseline logit differences (2.39-6.20 on Llama/investment, 1.99-3.63 on Llama/health). The model's risk preference is close to saturated, so patching "recovery" on the risk run is measured against a far larger gap than on the temporal runs. Recovery magnitudes are NOT directly comparable between the two; only the layer positions are.
+    - **Result**: VERIFIED (gate PASS), with the comparability flag recorded.
+22. **Check**: is the stored best-cell selection robust to the cross-hardware deviation found in entry 15?
+    - **How verified**: read all 20 sweep rows from each stored `steering_summary.json` and computed the margin between the best cell and the runner-up. Llama 3.2743, Mistral 1.4306, Qwen 1.1539, gemma 0.4466. The largest observed re-score deviation is 0.107, so the smallest margin is about four times the perturbation.
+    - **Result**: VERIFIED — the argmax would not move under a deviation of that size, so the best cell per model is stable even though the cell's VALUE is not reproduced to rounding.
+
+## 2026-08-04 (UTC) — RETRACTION: the turn-token activations are not turn tokens
+
+23. **RETRACTED — entries 17 and 19, and every turn-token geometry number reported from them.**
+    - **What is wrong**: `preference_querier.py` caches activations with `runner.run_with_cache(prompt_text + functional_response)`, and `ModelRunner.run_with_cache` applies the chat template to that concatenation. The response therefore lands INSIDE the user turn and the chat suffix is appended AFTER it. `SamplePositionMapping.build` indexes `pref.chosen_traj.token_ids`, where the suffix comes BEFORE the response. The suffix block and the response block are swapped, so every position labelled `chat_suffix`/`chat_suffix_tail` points at a response token in the saved activations.
+    - **How verified INDEPENDENTLY of the agent that found it**: read both code paths (`preference_querier.py:191`, `model_runner.py:453`), then reproduced the swap with the Qwen tokenizer alone, no model and no GPU. Ordering the mapping indexes ends `<|im_end|> \n <|im_start|> assistant \n I choose : a )`; ordering `run_with_cache` actually caches ends `I choose : a ) <|im_end|> \n <|im_start|> assistant \n`. First divergence at index 18.
+    - **Consequence**: the column labelled `assistant` is the answer token itself (` a` vs ` b`). Its silhouette of 0.79-0.997 is the separation of two token embeddings, which is why it is ~0.996 at layer 0 where PC1 explains 99.98% of variance. The risk-vs-temporal comparison I reported measured the same trivial quantity in both runs, so its verdict does not stand.
+    - **Blast radius**: the geometry pipeline only (`geometry_data.py:649` is the sole caller that requests cached activations). This covers the campaign Fig-7 panels and both silhouette artifacts. The localization sweeps compute their metrics from their own clean/corrupted forward passes and patch every position, so entries 20 and 21 and the running jobs are NOT affected.
+    - **Result**: BROKEN. Entries 17 and 19 verified scope, byte sizes, and Hub/local hashes, none of which can detect a position defect. Byte-verification is not content-verification, and that is the lesson.
+24. **Output**: the probability-gradient run did not produce data. `generate_geometry_samples.py --resume` requires the directory to exist and my invocation did not create it, so it exited immediately and a 45-byte empty `geometry/qwen_risk_gradient.tar.gz` was uploaded.
+    - **How verified**: read the run log (`Resume directory does not exist`), then deleted the empty archive and confirmed `get_paths_info` returns `[]` for that path.
+    - **Result**: BROKEN and cleaned up; the run is blocked on the position defect above and must not be re-run until extraction is fixed.
+25. **Output**: llama investment pair bank, box 46742505. 1,498 valid preference samples of 1,512; choice split 1,305 short (87.1%) / 193 long (12.9%); contrastive selection 251,865 candidates -> 94,775 passed -> 55 available, 24 selected; `[ctx] Built 24 valid pairs`.
+    - **How verified**: read directly from the box run log.
+    - **Result**: VERIFIED (full 24 pairs, unlike the risk run's 12)
+26. **State at handoff**: five boxes running, all in `cloud/.instances_ours` with the `ta-tp-` label prefix, $1.792/hr combined. 46742505 loc-llama-investment (sweeping pair 1/24), 46742515 loc-mistral-investment (query 1450/1512), 46742541 risk-qwen (sweeping pair 4/12), 46742573 steer-rescore (idle, steering done, gradient run blocked), 46743982 loc-qwen-investment (query 970/1512). One FOREIGN box (46744488, 4x H200) recorded and untouched.
+    - **NONE are ready to reap.** Three sweeps have not finished and their archives do not exist yet. `cloud/reap.sh` Gate 2 would refuse anyway; do not pass SKIP_VERIFY for these.
+    - **Result**: recorded, not verified complete
+27. **Output**: mistral investment pair bank, box 46742515. 1,505 valid preference samples; choice split 1,214 short / 291 long (19.3% long); contrastive selection 353,274 candidates -> 290,250 passed -> 95 available, 24 selected; `[ctx] Built 24 valid pairs`.
+    - **How verified**: read directly from the box run log.
+    - **Result**: VERIFIED. With Llama (24 of 55 available) and Mistral (24 of 95 available) both reaching the full 24, the risk run's 12 pairs is a property of the risk contrast itself, not a harness limit. The risk dataset simply offers fewer usable contrastive pairs (12 of 201 after the per-sample cap).
+
+## 2026-08-03: Turn-position defect CONFIRMED and FIXED (entry 28)
+- MECHANISTIC PROOF, real pipeline, Qwen3-0.6B via collect_samples + PreferenceQuerier:
+  traj tail = ['<|im_end|>','\n','<|im_start|>','assistant','\n','I',' choose',':',' b',')']
+  old-cache tail = [':',' b',')','<|im_end|>','\n','<|im_start|>','assistant','\n']
+  Both length 142; order differs, so nothing ever errored. Mapping label vs actual token in
+  the OLD cache: chat_suffix[128-131] held '<think>','\n','</think>','\n\n';
+  chat_suffix_tail[132] held 'I'; response_choice[140-141] held 'assistant','\n'.
+- ROOT CAUSE: apply_chat_template is not idempotent; run_with_cache templated
+  (prompt + response), placing the response inside the user turn and the chat suffix after it,
+  while SamplePositionMapping indexes chosen_traj.token_ids (suffix before response).
+- FIX: run_with_cache accepts token_ids= and runs them verbatim; preference_querier passes
+  choice.chosen_traj.token_ids. No-trajectory case now skips capture loudly instead of
+  silently falling back to the templated path.
+- FIX VERIFIED at embedding ground truth (hook_embed vs W_E[token]), ALL named positions:
+  Qwen3-0.6B 976/976 aligned, Llama-3.2-1B-Instruct 1090/1090 aligned, 0 mismatches
+  across two chat-template families.
+- REGRESSION CHECK: pytest with and without the fix both give 27 failed / 564 passed /
+  8 errors. All failures pre-existing (pyvene backend + 4 pre-existing collection errors).
+- SCOPE: invalidates every geometry run's turn-position panels (Fig 1, Fig 4, Appendix A
+  panels, PC1 fans, silhouette curves) and the retracted risk-vs-temporal verdict.
+  Localization, steering, probing and behavioral results DO NOT use this cache and stand.
+- Sibling repo /Users/unrulyabstractions/work/temporal-manifolds audited: CLEAN by design.
+  src/capture/extractor.py derives boundaries and activations from the SAME record.token_ids
+  and the engine runs those ids verbatim, so the two cannot diverge.

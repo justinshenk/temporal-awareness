@@ -188,13 +188,30 @@ class PreferenceQuerier:
         # Step 3: Capture internals (only if requested)
         captured_internals = None
         if activation_names:
-            _, cache = runner.run_with_cache(
-                prompt_text + functional_response,
-                names_filter=lambda name: name in activation_names,
-            )
-            captured_internals = CapturedInternals.from_activation_names(
-                activation_names, cache
-            )
+            # Cache over the chosen trajectory's own tokens. SamplePositionMapping
+            # indexes chosen_traj.token_ids, where the chat suffix precedes the
+            # response. Passing text here instead would re-apply the chat
+            # template to prompt+response, which puts the response inside the
+            # user turn and moves the suffix after it, so every position index
+            # would address the wrong token.
+            traj = choice.chosen_traj
+            if traj is None:
+                # Without a trajectory there is nothing to index the cache
+                # against, and callers skip these samples anyway. Capturing
+                # from re-templated text here would reintroduce that mismatch.
+                log(
+                    f"[query] Sample {sample_idx}: no chosen trajectory, "
+                    "skipping activation capture."
+                )
+            else:
+                _, cache = runner.run_with_cache(
+                    prompt_text + functional_response,
+                    names_filter=lambda name: name in activation_names,
+                    token_ids=traj.token_ids,
+                )
+                captured_internals = CapturedInternals.from_activation_names(
+                    activation_names, cache
+                )
 
         # Extract divergent_logits before clearing heavy data
         stored_logits = choice.divergent_logits
