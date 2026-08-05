@@ -1,7 +1,8 @@
 # Manipulating LLM behavior: activations vs weights — investigation overview
 
-A consolidated index of one investigation on `google/gemma-2-9b-it` (branch
-`context-fatigue-datasets`): **what can you change by manipulating activations vs weights, and where
+A consolidated index of one investigation (branch `context-fatigue-datasets`; strands 1–4 on
+`google/gemma-2-9b-it`, strand 5 on `Llama-2-7b`): **what can you change by manipulating
+activations vs weights, and where
 do in-context learning (ICL) and finetuning converge or diverge** — stress-tested under long context
 and many-shot. Each strand has a detailed report; this doc is the map and the unifying thesis.
 
@@ -61,6 +62,20 @@ component), even when they differ on side-effects and on sparse mechanism.
   inert). The first antonym FV null was a *zero-shot-corruption artifact* (single-head AIE ≈ 0 by
   construction); with Todd-faithful shuffled-label corruption, FV heads appear (early-middle layers,
   AIE up to +0.94 nats). The "distributed across heads" claim was retracted.
+
+### 5. Register vs procedure: what a conditional affine map can install
+[`attribution/2026-06-16-multihop-generality.md`](attribution/2026-06-16-multihop-generality.md) ·
+[`../register_vs_procedure_abstract.md`](../register_vs_procedure_abstract.md)
+- The ridge map `W·a` (the same object as a LoReFT edit) installs a **register/disposition**
+  (refusal tone dominates fixed-vector baselines) but not a **procedure** (GSM8K: ≈0 under every
+  salvage — MLP, DAgger, local refit, DAS); the procedure is a distributed, temporally dense
+  trajectory state (lockstep oracle 0.75 @L20, needs ~every decode step).
+- **The thesis generalizes beyond arithmetic (n=2 procedures):** on MuSiQue open-book multi-hop QA
+  the oracle axis replicates exactly (+0.76 @L20, same layer/magnitude) and so does temporal
+  density; the pointwise ladder is PARTIAL — MLP/DAgger stay 0, but the *linear* rung leaks
+  ~¼ of the budget @L20 and ~half @L24 (α=1.0-resonant, layer-humped over the plateau) vs ~5%
+  anywhere on GSM8K. Sharpened claim: the *procedure core* does not install; its size is
+  task-dependent.
 
 ## Cross-cutting taxonomy (where our two behaviors land)
 
