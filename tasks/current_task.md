@@ -86,3 +86,14 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
 - Remaining (next session): optional P4 plan-vs-execute; fold verdict into
   `results/activation_weight_investigation.md`; consider ridge-divergence follow-ups
   (α sweep / other layers / n larger than 20 for the contrast eval).
+
+## Side thread — context-fatigue null statistics (DONE, committed)
+Interval estimates for the extended abstract's nulls (`null_statistics.py` + analysis script;
+outputs in gitignored `results/context_fatigue/NULL_STATISTICS.md` / `.json`, regenerate with
+`uv run python scripts/context_fatigue/analyze_null_statistics.py`). Headlines folded into
+`context_fatigue_paper/context_fatigue.tex` (rebuilt with tectonic; body 4 pp + refs p5):
+flat-accuracy null bounded (declines >7.3/9.2 pts excluded at 95%, coherent/random); Table 2
+redone per-case (pooled Δ=+0.045 [−0.003,+0.097] — marginal, stated honestly; sign positive
+in every bin/layer); confidently-wrong gap quantified + new Fig. 2 (confidence 0.85→0.95 with
+fill, r=+0.72, wrong answers alike, accuracy flat). 7 CPU tests in
+`tests/probes/context_fatigue/test_null_statistics.py`.

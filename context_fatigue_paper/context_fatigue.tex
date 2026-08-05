@@ -58,7 +58,9 @@ within-conversation late/early ratio) and tracks conversation \emph{homogeneity}
 An OLMo-2 dose-response shows the collapse is a baseline-confidence \emph{level shift}
 installed mostly by supervised fine-tuning, and a causal test of the boundary-detector
 feature blamed for it does not rescue the model. We argue ``context fatigue'' as measured is
-in-context comfort, not decay; the genuine hazard is a widening confidently-wrong gap.
+in-context comfort, not decay; the genuine hazard is a widening confidently-wrong gap:
+confidence climbs $0.85\to0.95$ with fill ($r{=}+0.72$), on wrong answers as much as right,
+at flat accuracy.
 \end{abstract}
 
 \section{The claim under test}
@@ -146,8 +148,11 @@ all 56 MMLU subjects, so prior context carries no predictive information about t
 question---only the answer \emph{format} is learnable. Accuracy is still flat across the first
 $\sim$80\% of context ($0.57\to0.69$, $\mathrm{corr}=-0.00$), versus a coherent single-subject
 stream ($0.84$, $\mathrm{corr}=-0.01$); the lower level just reflects harder questions, not a
-slope (Fig.~\ref{fig:main}b). With dilution already excluded by design, neither accumulation
-nor the loss of ICL produces decay.
+slope (Fig.~\ref{fig:main}b). These nulls are \emph{bounded}: the 95\% interval on
+upper-minus-lower-half accuracy excludes declines beyond $7.3$ points (coherent, $n{=}483$)
+and $9.2$ (random, $n{=}344$). The ${\sim}80\%$ restriction reflects a real top-bin dip on
+the random stream ($-0.19$ $[-0.37,-0.00]$, $n{=}31$). With dilution already excluded by
+design, neither accumulation nor the loss of ICL produces decay.
 
 \paragraph{Instruction adherence holds.}
 Looking for a competence-preserved, compliance-degraded dissociation, we add a checkable
@@ -160,24 +165,30 @@ effect, but it shows no adherence decay where the degradation reading predicts o
 \paragraph{The per-case mechanism inverts the story.}
 Conditioning on context fill, the cases OLMo-2 answers \emph{wrong} have \emph{higher}
 current-query attention and lower, more peaked attention entropy than the ones it gets right
-(Table~\ref{tab:invert}). Errors are associated with \emph{fixating} on the query; correct
-answers spread attention onto the accumulated cases---i.e.\ onto the in-context examples. The
-``rot'' (system erosion, recency bias, diffusion) and the within-context predictor of a correct
-answer point in \emph{opposite} directions. More contextual attention is the fingerprint of
-the ICL that keeps accuracy up, not a symptom of decay.
+(Table~\ref{tab:invert}). The effect is small (pooled $\Delta=+0.045$
+$[-0.003,+0.097]$, $n{=}115$, significant only in the fullest bin), but its sign is positive
+in every fill bin and at every probed layer ($8/16/24/31$): nowhere do wrong answers
+\emph{under}-attend the current query, as the degradation reading predicts. Errors are
+associated with \emph{fixating} on the query; correct answers spread attention onto the
+accumulated cases---i.e.\ onto the in-context examples. The ``rot'' (system erosion, recency
+bias, diffusion) and the within-context predictor of a correct answer point in \emph{opposite}
+directions. More contextual attention is the fingerprint of the ICL that keeps accuracy up,
+not a symptom of decay.
 
 \begin{table}[t]
   \centering\small
   \caption{Per-case, conditioning on fill (OLMo-2-Instruct, layer 24): wrong cases
-  \emph{fixate} on the current query. Current-query attention mass by correctness.}
+  \emph{fixate} on the current query. Current-query attention mass by correctness, heads
+  averaged within case (no head-level pseudo-replication); seeded bootstrap 95\% CIs.}
   \label{tab:invert}
   \begin{tabular}{lcccc}
     \toprule
-    fill bin & 0--25\% & 25--50\% & 50--75\% & 75--100\% \\
+    fill bin & 0--25\% ($n{=}36$) & 25--50\% ($n{=}32$) & 50--75\% ($n{=}31$) & 75--100\% ($n{=}16$) \\
     \midrule
-    correct  & 0.307 & 0.185 & 0.169 & 0.153 \\
-    wrong    & 0.402 & 0.197 & 0.188 & 0.180 \\
-    $\Delta$ (wrong$-$correct) & $+0.095$ & $+0.011$ & $+0.019$ & $+0.027$ \\
+    correct  & 0.349 & 0.193 & 0.168 & 0.153 \\
+    wrong    & 0.377 & 0.197 & 0.179 & 0.182 \\
+    $\Delta$ (wrong$-$correct) & $+0.028$ & $+0.005$ & $+0.010$ & $+0.029$ \\
+    95\% CI & $[-.08,+.13]$ & $[-.01,+.02]$ & $[-.00,+.02]$ & $[+.01,+.05]$ \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -197,6 +208,14 @@ constant) isolates the driver: the entropy slope correlates with homogeneity
 conversations are \emph{longer}, length works against the effect. The collapse is the model
 growing comfortable with a repeating task---in-context learning sharpening a distribution---not
 fatigue with depth.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.38\textwidth]{figures/calibration_gap.pdf}
+  \caption{\textbf{The confidently-wrong gap widens with fill} (pooled DDXPlus MCQ,
+  $n{=}154$). Shaded area: calibration gap; error bars: bootstrap 95\% CIs.}
+  \label{fig:calibration}
+\end{figure}
 
 \section{It is an instruction-tuning level shift, and the proposed mechanism does not hold}
 
@@ -228,15 +247,19 @@ collapse of \emph{confidence}, but no loss of accuracy, no loss of instruction a
 within-context error signature that is the opposite of neglect. The confidence collapse is
 in-context comfort with a homogeneous task, installed by instruction tuning as a baseline
 level shift. ``Context fatigue,'' as the signatures measure it, is in-context learning, not
-decay. The genuine hazard is therefore not falling competence but \emph{calibration}: as the
-model grows confident at a flat accuracy, the confidently-wrong gap widens---most consequential
-exactly where a homogeneous high-stakes stream makes the model surest.
+decay. The genuine hazard is therefore not falling competence but \emph{calibration}, and it is
+directly measurable (Fig.~\ref{fig:calibration}): on the DDXPlus streams logging per-token
+confidence ($n{=}154$ pooled cases, two models, both question orders), answer confidence
+rises $0.85\to0.95$ with fill ($r=+0.72$ $[+0.64,+0.79]$) at flat accuracy---and equally on
+\emph{wrong} answers ($0.86\to0.95$; $r=+0.69$ $[+0.57,+0.78]$)---so the already-large
+confidently-wrong gap widens by ${\sim}10$ points over a session, most consequential exactly
+where a homogeneous high-stakes stream makes the model surest.
+
 
 \paragraph{Limitations.}
 Per-condition $n$ is bounded by the context window (tens of cases per session; we pool
-sessions); the OLMo sycophancy denominators are small and inconclusive; the instruction-canary
-null is a floor effect; and the WildChat figures are summary values from teacher-forced
-analyses. The accuracy claim is strongest for localized tasks---genuinely length-dependent
+sessions); the OLMo sycophancy denominators are small and inconclusive; the instruction-canary null is a floor effect; and the WildChat
+figures are summary values from teacher-forced analyses. The accuracy claim is strongest for localized tasks---genuinely length-dependent
 single-task settings (where dilution is the point) are out of scope by design.
 
 \small
