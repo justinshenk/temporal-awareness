@@ -21,9 +21,9 @@ from typing import List, Tuple
 
 from datasets import load_dataset
 
+from src.probes.attribution.chain_token_roles import multihop_chain_spans
 from src.probes.attribution.multihop_prompts import (
     build_instruction,
-    format_multihop_solution,
     multihop_prompt_from_instruction,
 )
 
@@ -40,14 +40,24 @@ def problem_instruction(item: dict) -> str:
     return build_instruction(item["question"], supporting_passages(item))
 
 
-def gold_target(item: dict) -> str:
+def gold_chain(decomposition: List[dict]) -> str:
     """Supervised CoT response: leading newline + worked chain + answer marker.
 
     The leading ``"\\n"`` is the join separator (prompt ends at ``Let's think step by step.``), so the
     supervised continuation matches what the model generates at inference (cf.
     ``gsm8k_prompts.metamath_fewshot_prompt``, which joins template and solution with ``"\\n"``).
+
+    Rendered by :func:`chain_token_roles.multihop_chain_spans`, which emits this exact string
+    alongside its per-character role spans — so the trained target and the P4 lens labels cannot
+    drift apart.
     """
-    return "\n" + format_multihop_solution(item["question_decomposition"])
+    text, _spans = multihop_chain_spans(decomposition)
+    return text
+
+
+def gold_target(item: dict) -> str:
+    """The supervised response for a raw MuSiQue item."""
+    return gold_chain(item["question_decomposition"])
 
 
 def load_musique(split: str, n: int | None = None, skip: int = 0,
@@ -81,13 +91,15 @@ def encode_multihop(tok, items: List[dict], max_len: int) -> List[dict]:
 
 def multihop_problems(split: str, n: int, skip: int = 0,
                       seed: int | None = None) -> List[Tuple[str, dict]]:
-    """``(instruction_string, gold)`` pairs for the drivers; ``gold = {"answer", "aliases"}``.
+    """``(instruction_string, gold)`` pairs for the drivers.
 
     ``instruction_string`` is the open-book instruction (passages inlined); the driver wraps it with
     ``multihop_prompt_from_instruction``. Gold is a dict (not a float) so ``answer_match`` can use the
-    MuSiQue answer aliases.
+    MuSiQue answer aliases, and it carries the raw ``decomposition`` so the gold-token lens (P4) can
+    rebuild the supervised chain and its per-token roles.
     """
     items = load_musique(split, n, skip, answerable_only=True, seed=seed)
     return [(problem_instruction(it),
-             {"answer": it["answer"], "aliases": list(it.get("answer_aliases", []))})
+             {"answer": it["answer"], "aliases": list(it.get("answer_aliases", [])),
+              "decomposition": it["question_decomposition"]})
             for it in items]

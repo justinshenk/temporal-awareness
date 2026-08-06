@@ -87,6 +87,11 @@ N`` restatement). `scripts/attribution/gold_token_lens_gsm8k.py`; n=20 problems 
 | **computed (result of `=`)** | 95 | **0.968** | 0 | **18 → 7 → 0** (L20/22/24) |
 | copied digit (not computed) | 503 | 0.895 | 0 | 0 0 0 0 0 0 0 |
 
+Tokens are dependent within a chain, so the two decisive gaps are also reported as 95% bootstrap
+intervals resampling **problems** (20 clusters): computed − all **+0.133 [+0.096, +0.173]**,
+computed − copied digit **+0.074 [+0.035, +0.120]**. Both clear of zero at the problem level, not
+just the token level.
+
 **Reading — base can compute the steps; its deficit is trajectory generation, not arithmetic.**
 Given the correct working, base predicts genuine computed-result tokens at **96.8%** — *higher* than
 copied digits (89.5%) or overall (83.5%). So base's 0/20 free-generation failure is **not** a per-step

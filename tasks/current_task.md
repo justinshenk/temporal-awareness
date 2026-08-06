@@ -83,9 +83,46 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
       temporal axes (exact); ladder PARTIAL (MLP/DAgger replicate at 0, ridge diverges:
       +0.26 scan / +0.35 contrast vs GSM8K ≈0.05 — the wall is lower, not absent).
 - [x] Committed on `context-fatigue-datasets`.
-- Remaining (next session): optional P4 plan-vs-execute; fold verdict into
-  `results/activation_weight_investigation.md`; consider ridge-divergence follow-ups
-  (α sweep / other layers / n larger than 20 for the contrast eval).
+- [x] P2b/P3b follow-ups DONE (all four caveat-closers, scan refs base 0.000/donor 0.630):
+  - α sweep @L20 (`steer_multihop_alpha_L20.json`): narrow resonance at α=1.0 —
+    {0.25:+0.01, 0.5:+0.01, 0.75:+0.02, 1.0:+0.26, 1.25:+0.05, 1.5:0, 2.0:0}.
+  - Layer sweep @α=1.0 (`steer_multihop_layers.json`): {8/12/16:0, 20:+0.26, **24:+0.45**,
+    28:+0.38, 31:+0.24} — leak humps over the oracle plateau, peaks L24 (GSM8K ≈0 everywhere).
+  - Contrast n=100 (`nonlinear_delta_multihop_L20_n100.json`): ridge +0.21 / MLP +0.01 —
+    the n=20 read of +0.35 was small-n inflation; scan and contrast now agree ~0.21–0.26.
+  - Temporal n=100 (`temporal_oracle_multihop_L20_n100.json`): periodic_2 0.060,
+    reasoning_only 0.760 — n=20 reads confirmed.
+  - Writeup P2b section + verdict updated; strand-5 entry added to
+    `results/activation_weight_investigation.md`.
+- [x] **P4 plan-vs-execute DONE** (`gold_token_lens_multihop_L20.json`, n=317 contrast, 19,970
+      tokens, LoRA-TF sanity 0.950 — lower than GSM8K's 0.997 *by design*: GSM8K forces the donor's
+      own greedy CoT, multihop forces the gold training target). Decisions taken: gold chain only,
+      all 317 problems, GSM8K arm re-run as a regression check.
+  - Roles built **by construction**, not by search: `src/probes/attribution/chain_token_roles.py`
+    renders the chain and its role spans in one pass, and `multihop_data.gold_chain` now delegates
+    to it so the supervised target and the lens labels cannot drift. Token roles via fast-tokenizer
+    char offsets; teacher-forced ids asserted to round-trip. Span boundaries fall on the space that
+    *opens* a role so leading-space tokens (`▁Danny`) can't straddle two roles.
+  - Result: execute 0.725 > plan 0.671 (**+0.055 [+0.040,+0.069]**, bootstrap over problems) —
+    H_plan in sign; but execute − all = +0.001 (spans 0) vs GSM8K's +0.133, and **nothing
+    crystallizes** with depth (GSM8K computed digits went 18→7→0; every multihop role starts near
+    rank 0). `final_answer` 0.933, lens rank 0 at every layer = pure copy. hop ≥2 − hop 1 =
+    **+0.130** — the *inverse* of the naive composition prediction, because teacher-forcing supplies
+    the earlier hops; so this contrast cannot test composition, only that supplying the trajectory
+    makes the nominally-hard part easy.
+  - GSM8K regression: reproduces the committed `gold_token_lens_L20.json` **exactly** (identical on
+    every key), so the `computed_flags` → `chain_token_roles` refactor is behaviour-preserving; a
+    20k-random-sequence parity check against the deleted legacy function also passed before removal.
+  - Interval machinery extracted to `src/common/bootstrap_stats.py` (`clustered_rate_gap`) and
+    re-used by `null_statistics.py` — tokens are dependent within a chain, so the resampling unit is
+    the problem. New CPU tests: `tests/test_chain_token_roles.py` (19), `tests/common/test_bootstrap_stats.py` (7),
+    plus contrast-interval + role-class-name tests in `tests/test_attribution_tasks.py`.
+  - Writeup: P4 section + fourth verdict row + P4 caveats in `2026-06-16-multihop-generality.md`;
+    strand-5 entry extended in `results/activation_weight_investigation.md`.
+- Remaining (next session): consider a same-day GSM8K per-layer steer rerun for a strictly
+  apples-to-apples layer curve (GSM8K maps must be refit — the old `results/attribution/maps`
+  accumulators are gone locally). NOTE: `lockstep_contrast_set.json` for GSM8K was deleted at some
+  point and rebuilt deterministically this session (113/200 KEEP, matching the original).
 
 ## Side thread — context-fatigue null statistics (DONE, committed)
 Interval estimates for the extended abstract's nulls (`null_statistics.py` + analysis script;

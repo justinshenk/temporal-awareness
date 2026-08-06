@@ -24,21 +24,17 @@ Bootstrap intervals are seeded (:data:`SEED`) so every reported number is reprod
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-from src.common.base_schema import BaseSchema
+from src.common.bootstrap_stats import N_BOOT, SEED, Interval, bootstrap_interval  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESULTS = REPO_ROOT / "results"
 DATA = REPO_ROOT / "data" / "context_fatigue"
-
-SEED = 42
-N_BOOT = 10000
 
 # Quarter-width fill bins, matching paper_figures.FILL_EDGES / the Table 2 binning.
 FILL_EDGES = [0.0, 0.25, 0.50, 0.75, 1.01]
@@ -51,38 +47,6 @@ MCQ_STREAMS = {
     "qwen7b_reversed": DATA / "ddxplus_mcq_qwen7b_reversed" / "ddxplus_mcq_turns.csv",
     "qwen7b_verbose": DATA / "ddxplus_mcq_verbose" / "ddxplus_mcq_turns.csv",
 }
-
-
-@dataclass
-class Interval(BaseSchema):
-    """A point estimate with a 95% interval and the n it rests on."""
-
-    estimate: float
-    lo: float
-    hi: float
-    n: int
-
-    def excludes_zero(self) -> bool:
-        return (self.lo > 0) or (self.hi < 0)
-
-    def render(self, digits: int = 3) -> str:
-        return f"{self.estimate:+.{digits}f} [{self.lo:+.{digits}f}, {self.hi:+.{digits}f}] (n={self.n})"
-
-
-def _rng() -> np.random.Generator:
-    return np.random.default_rng(SEED)
-
-
-def bootstrap_interval(values: np.ndarray, statistic, alpha: float = 0.05) -> Interval:
-    """Percentile bootstrap interval for ``statistic`` over rows of ``values``."""
-    rng = _rng()
-    n = len(values)
-    draws = np.empty(N_BOOT)
-    for b in range(N_BOOT):
-        idx = rng.integers(0, n, n)
-        draws[b] = statistic(values[idx])
-    lo, hi = np.nanpercentile(draws, [100 * alpha / 2, 100 * (1 - alpha / 2)])
-    return Interval(float(statistic(values)), float(lo), float(hi), n)
 
 
 def fisher_z_interval(r: float, n: int, alpha: float = 0.05) -> Interval:

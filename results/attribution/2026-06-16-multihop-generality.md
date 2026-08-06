@@ -154,6 +154,89 @@ the full 100-problem contrast eval reproduce the n=20 reads — `periodic_2` 0.0
 `reasoning_only` 0.760 (vs 0.750, = the single-layer oracle's +0.760 at the same n). The knee and
 the structural-complement signature are not small-n artifacts.
 
+## P4 — plan vs execute (the E1b analogue)
+
+P3 says the trajectory state is temporally dense, but not *what* the dense thing is doing. E1b
+answered that on GSM8K by teacher-forcing base on a correct chain and lensing the **gold** next
+token by its role: base predicted genuinely computed results at 0.968 — better than the chain at
+large (0.835) — so its deficit was trajectory control, not per-step arithmetic. P4 runs the same
+lens on MuSiQue (`gold_token_lens_multihop_L20.json`).
+
+Two differences from the GSM8K arm, both in multihop's favour. The chain is the **gold** chain,
+teacher-forced verbatim: MuSiQue's donor was trained on `format_multihop_solution`, so the
+supervised target is already in-format (GSM8K's dataset CoT is not in MetaMath format, so E1b had
+to generate the donor's own CoT and verify it). And the roles are built **by construction** —
+`chain_token_roles.multihop_chain_spans` renders the chain and its role spans in one pass, and the
+same function produces the training target, so labels cannot drift from the text; token roles come
+from fast-tokenizer character offsets, with the teacher-forced ids asserted to round-trip. There is
+no anchoring step and no drop rate, and the "hop answer repeated inside its own sub-question" case
+is right by design rather than by search. This is also why P4 is a lens and not a causal gate:
+unlike GSM8K's `=`, MuSiQue's `Step i: <sub-question> <answer>.` has no delimiter, so "am I inside
+the answer span" is not decidable online — which is exactly what made P3's `answer_only` gate
+vacuous. Teacher-forcing removes that failure mode by construction; every class below is non-empty.
+
+n = 317 contrast problems (all of them), 19,970 scored tokens, **LoRA-TF sanity 0.950**. That is
+lower than GSM8K's 0.997 by design, not by defect: GSM8K forces the donor's *own greedy* CoT, whose
+TF-accuracy is ≈1 by construction, whereas here the donor is forced on the gold target it was
+trained to approximate but does not reproduce greedily. 0.950 confirms the prompt and chain join
+are right.
+
+| role | n | TF-acc | final rank | lens rank L20→L31 |
+|---|--:|--:|--:|---|
+| all | 19970 | 0.725 | 0 | 2 1 1 0 0 0 0 |
+| sub_question (plan) | 8334 | **0.671** | 0 | 2 1 0 0 0 0 0 |
+| hop_answer (execute) | 3004 | **0.725** | 0 | 3 1 0 0 0 0 0 |
+| — hop 1 | 956 | 0.637 | 0 | 4 1 0 0 0 0 0 |
+| — hop ≥ 2 | 2048 | 0.767 | 0 | 3 1 0 0 0 0 0 |
+| final_answer (copy) | 1586 | **0.933** | 0 | 0 0 0 0 0 0 0 |
+| scaffold (format) | 7046 | 0.742 | 0 | 4 3 2 3 1 0 0 |
+
+Tokens are not independent within a chain, so the decisive differences carry a 95% bootstrap
+interval resampling **problems**, not tokens (317 clusters):
+
+| contrast | Δ TF-acc [95%] |
+|---|---|
+| execute − plan | **+0.055 [+0.040, +0.069]** |
+| execute − all | +0.001 [−0.010, +0.011] (spans 0) |
+| hop ≥ 2 − hop 1 | **+0.130 [+0.106, +0.154]** |
+| copy − execute | **+0.207 [+0.193, +0.222]** |
+
+**Reading — the ordering replicates, the elevation does not.** Base agrees with execution tokens
+more than with planning tokens, and the gap survives problem-level clustering (+0.055, interval
+clear of 0). Directionally that is E1b's result: given the working, the harder part for base is
+deciding *what to ask next*, not resolving the hop. But the effect here is that **planning tokens
+are the worst class, not that execution tokens are exceptional** — `execute − all` is +0.001 with
+an interval spanning 0, against GSM8K's **+0.133 [+0.096, +0.173]** elevation of computed results
+over the chain at large. So the replication is of the *sign*, not the magnitude or the shape.
+
+The lens columns say why the shape differs, and this is the cleaner structural finding. GSM8K's
+computed digits were rank 18 at L20 and crystallized to 0 only by L24 — the signature of a result
+being *computed* across the upper stack. **No multihop class shows that.** Every role starts within
+a few ranks of 0 at L20 and is resolved by L24; `final_answer` is rank 0 at every layer including
+L20, the pure-copy signature, and its 0.933 is the highest class by +0.207 over execution. Under
+open-book framing the hop answer is present verbatim in the prompt, so multihop "execution" is
+retrieval-under-a-pointer rather than computation — there is nothing here that is late-computed the
+way an arithmetic result is. The procedure thesis survives, but the per-step work it leaves to base
+is of a different kind on this task.
+
+The hop-index split is the one place where the naive prediction inverts, and it should not be
+over-read. Composition-deficit reasoning predicts hop ≥ 2 (which must consume hop 1's answer) to be
+*harder*; measured, it is **easier** by +0.130 [+0.106, +0.154]. Teacher-forcing is the reason: it
+hands base every earlier hop for free, which is precisely what base cannot produce on its own, and
+by hop ≥ 2 the format, the entities in play and the prior answer are all fixed in context, while
+hop 1 is the least constrained token in the chain. So this contrast does **not** test composition —
+under teacher forcing it cannot. What it does show is that supplying the trajectory converts the
+nominally hard part into the easy part, which is what a trajectory-control deficit predicts and a
+per-step-composition deficit does not.
+
+**Verdict on this axis: H_plan, weakly.** Base's multihop deficit is not per-step hop resolution;
+plan tokens are its worst class and given-context makes later hops easier. But "weakly" is load-
+bearing: the plan/execute gap is 5.5 points where GSM8K's compute elevation was 13.3, and the
+sub-question class is the one most deflated by *surface-form entropy* — a sub-question is free-form
+natural language with many acceptable paraphrases, so low TF-agreement there partly measures
+wording choice rather than planning failure. That artifact pushes in the same direction as H_plan
+and cannot be separated from it with this design.
+
 ## Verdict
 
 | axis | GSM8K | multihop | replicates? |
@@ -161,8 +244,9 @@ the structural-complement signature are not small-n artifacts.
 | oracle recovers | 0.75 @L20 (all-layers ≈1) | **+0.760 @L20** (all-layers +1.000) | **YES** |
 | pointwise ladder | ≈0 (ridge/MLP/DAgger/DAS) | MLP +0.00, DAgger +0.00 — but **ridge +0.21–0.26 @L20, peaking +0.45 @L24** (α=1.0-resonant) | **PARTIAL** |
 | temporal density | sharp knee; planning-heavy | knee at k=2 (0.05); reasoning_only = oracle @100% | **YES** |
+| plan vs execute (P4) | execute (computed) 0.968 ≫ all 0.835 (**+0.133 [+0.096,+0.173]**); computed crystallizes L20→L24 | execute 0.725 > plan 0.671 (**+0.055 [+0.040,+0.069]**) but = all (+0.001, spans 0); nothing crystallizes | **SIGN ONLY** |
 
-**H_general holds on two of three axes exactly** — the full-δ oracle concentrates at the same layer
+**H_general holds on two of three structural axes exactly** — the full-δ oracle concentrates at the same layer
 with the same magnitude, and the trajectory state is temporally dense with the same
 structural-complement signature. The one divergence is *quantitative, not qualitative*: the pointwise
 wall exists (oracle beats every map by ≥0.3 of the budget at every layer; better-fitting nonlinear
@@ -175,9 +259,25 @@ arithmetic — consistent with the thesis's own register-vs-procedure split rath
 but it sharpens the claim: "procedures do not install" should be "the *procedure core* does not
 install; its size is task-dependent."
 
+P4 adds a fourth axis and lands softer than the other three. The plan-before-execute ordering
+replicates in sign — planning tokens are base's worst class, and handing base the trajectory makes
+the later, nominally-composed hops *easier* — so "the deficit is trajectory control" survives the
+task change. What does not replicate is E1b's positive elevation of execution above the chain at
+large, and with it the layer-wise crystallization that made GSM8K's claim causal-looking: nothing
+in the multihop chain is computed late in the stack, because open-book hop answers are copies from
+context. The sharper way to state the thesis after two procedures: **the trajectory-control deficit
+is general; the per-step work that base retains is task-specific, and only on arithmetic is it
+computation rather than retrieval.**
+
 Honest caveats: n = 2 procedures; the GSM8K per-layer steering reference is the committed phase-3
 result (its maps are no longer cached locally, so the comparison is cross-run, not same-day);
-`answer_only` gate vacuous on this contrast set (see P3 †).
+`answer_only` gate vacuous on this contrast set (see P3 †). P4-specific: open-book framing means
+hop answers are verbatim in the prompt, so "execute" here is retrieval, not computation;
+teacher-forcing isolates execution from planning *by construction*, so P4 cannot show base could
+plan the chain, and the hop-index split cannot test composition (it supplies the earlier hops);
+sub-question TF-agreement is deflated by paraphrase entropy in a direction that flatters H_plan;
+and P4 is a lens, not an intervention — unlike the oracle and density axes it carries no causal
+claim.
 
 ## Repro
 
@@ -193,6 +293,12 @@ uv run python -m scripts.attribution.steer_gsm8k --config configs/attribution/mu
 uv run python -m scripts.attribution.steer_gsm8k --config configs/attribution/multihop_llama2.yaml --layers 8,12,16,24,28,31 --alphas 1.0 --base-acc 0.000 --lora-acc 0.630
 uv run python -m scripts.attribution.nonlinear_delta_gsm8k --config configs/attribution/multihop_llama2.yaml --layer 20 --n-contrast 100 --out results/attribution/nonlinear_delta_multihop_L20_n100.json
 uv run python -m scripts.attribution.temporal_oracle_gsm8k --config configs/attribution/multihop_llama2.yaml --layer 20 --n-contrast 100 --gates periodic:2 reasoning_only --out results/attribution/temporal_oracle_multihop_L20_n100.json
+# P4 gold-token lens (multihop teacher-forces the gold chain; GSM8K generates + verifies the donor's own CoT):
+uv run python -m scripts.attribution.gold_token_lens_gsm8k --config configs/attribution/multihop_llama2.yaml --task multihop --layer 20 --n-contrast 317
+uv run python -m scripts.attribution.gold_token_lens_gsm8k --config configs/attribution/metamath_llama2_gsm8k.yaml --task gsm8k --layer 20 --n-contrast 20
 ```
 
-All seeded (42); CPU tests: `tests/test_multihop_{data,prompts}.py`, `tests/test_attribution_tasks.py`.
+All seeded (42); CPU tests: `tests/test_multihop_{data,prompts}.py`, `tests/test_attribution_tasks.py`,
+`tests/test_chain_token_roles.py` (role construction + offset mapping), `tests/common/test_bootstrap_stats.py`
+(the problem-clustered intervals). The GSM8K arm is also the refactor's regression check: it reproduces
+the committed E1b table exactly (0.968 / 0.895 / 0.906 / 0.835, LoRA-TF 0.997, every lens-rank median).

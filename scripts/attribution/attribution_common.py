@@ -13,13 +13,23 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import torch
 from datasets import load_dataset
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from src.probes.attribution.chain_token_roles import (
+    ROLE_COMPUTED,
+    ROLE_COPIED_DIGIT,
+    ROLE_FINAL_ANSWER,
+    ROLE_HOP_ANSWER,
+    ROLE_SCAFFOLD,
+    ROLE_SUB_QUESTION,
+    gsm8k_token_roles,
+    multihop_token_roles,
+)
 from src.probes.attribution.gram_accumulator import GramAccumulator
 from src.probes.attribution.gsm8k_prompts import (
     extract_pred_number,
@@ -27,7 +37,7 @@ from src.probes.attribution.gsm8k_prompts import (
     metamath_prompt,
     numeric_match,
 )
-from src.probes.attribution.multihop_data import multihop_problems
+from src.probes.attribution.multihop_data import gold_chain, multihop_problems
 from src.probes.attribution.multihop_prompts import (
     answer_match,
     extract_pred_answer,
@@ -66,8 +76,31 @@ def gsm8k_demos(n: int, split: str = "train", skip: int = 0) -> list[tuple[str, 
 
 
 @dataclass(frozen=True)
+class GoldLensSpec:
+    """How a task feeds the gold-token teacher-forced lens (plan-vs-execute, P4).
+
+    ``gold_chain(gold)`` returns the supervised continuation to teacher-force (joined to the prompt
+    verbatim, leading separator included), or is ``None`` when the task has no in-format gold chain
+    and the lens must teacher-force the *donor's own* generated CoT instead — GSM8K's case, since
+    its dataset CoT is not in MetaMath format. ``token_roles(tok, ids, prompt_len, gold)`` labels
+    every token of the teacher-forced sequence, and ``role_classes`` names the reported groupings
+    over those labels.
+
+    ``contrasts`` lists the ``(label, class_a, class_b)`` role-class differences the verdict rests
+    on. They are reported as problem-clustered bootstrap intervals rather than bare point
+    estimates: tokens are not independent within a problem, so a token-level interval would badly
+    overstate the evidence for a gap.
+    """
+
+    token_roles: Callable[[Any, Sequence[int], int, Any], list[dict]]
+    role_classes: dict[str, Callable[[dict], bool]]
+    gold_chain: Callable[[Any], str] | None = None
+    contrasts: tuple[tuple[str, str, str], ...] = ()
+
+
+@dataclass(frozen=True)
 class TaskSpec:
-    """The four seams by which a multi-step procedure enters the attribution apparatus.
+    """The seams by which a multi-step procedure enters the attribution apparatus.
 
     ``problems(split, n, skip, seed)`` returns ``(question, gold)`` pairs, where ``question`` is
     whatever ``prompt`` consumes (a bare GSM8K question; a MuSiQue open-book instruction with the
@@ -80,6 +113,7 @@ class TaskSpec:
     prompt: Callable[[str], str]
     score: Callable[[str, Any], bool]
     format_gold: Callable[[Any], str]
+    lens: GoldLensSpec | None = None      # only the gold-token lens (P4) needs this seam
 
 
 def _gsm8k_score(completion: str, gold: float) -> bool:
@@ -100,6 +134,44 @@ def _gsm8k_problems_seeded(split: str, n: int, skip: int = 0, seed: int | None =
     return gsm8k_problems(split, n, skip=skip)
 
 
+# Reported groupings for the gold-token lens. GSM8K's four reproduce the committed E1b table
+# (``digit`` is the union of the two digit roles); multi-hop's split the chain into plan
+# (sub-question), execution (hop answer, also split by hop index since hop >= 2 is the one that
+# needs composition), the copied restatement, and format scaffold.
+_GSM8K_ROLE_CLASSES: dict[str, Callable[[dict], bool]] = {
+    "all": lambda r: True,
+    "digit": lambda r: r["role"] in (ROLE_COMPUTED, ROLE_COPIED_DIGIT),
+    "computed (result of =)": lambda r: r["role"] == ROLE_COMPUTED,
+    "copied digit (not computed)": lambda r: r["role"] == ROLE_COPIED_DIGIT,
+}
+
+_MULTIHOP_ROLE_CLASSES: dict[str, Callable[[dict], bool]] = {
+    "all": lambda r: True,
+    "sub_question (plan)": lambda r: r["role"] == ROLE_SUB_QUESTION,
+    "hop_answer (execute)": lambda r: r["role"] == ROLE_HOP_ANSWER,
+    "hop_answer hop 1": lambda r: r["role"] == ROLE_HOP_ANSWER and r["hop"] == 1,
+    "hop_answer hop >= 2": lambda r: r["role"] == ROLE_HOP_ANSWER and (r["hop"] or 0) >= 2,
+    "final_answer (copy)": lambda r: r["role"] == ROLE_FINAL_ANSWER,
+    "scaffold (format)": lambda r: r["role"] == ROLE_SCAFFOLD,
+}
+
+# The differences each task's verdict rests on, interval-estimated with problems as the
+# resampling unit. GSM8K asks whether base is *better* on the tokens it must compute than on the
+# chain at large (E1b's claim); multi-hop asks whether execution beats planning (H_plan vs
+# H_exec), and whether the later, composed hops are harder than the first.
+_GSM8K_CONTRASTS = (
+    ("computed - all", "computed (result of =)", "all"),
+    ("computed - copied digit", "computed (result of =)", "copied digit (not computed)"),
+)
+
+_MULTIHOP_CONTRASTS = (
+    ("execute - plan", "hop_answer (execute)", "sub_question (plan)"),
+    ("execute - all", "hop_answer (execute)", "all"),
+    ("hop >= 2 - hop 1", "hop_answer hop >= 2", "hop_answer hop 1"),
+    ("copy - execute", "final_answer (copy)", "hop_answer (execute)"),
+)
+
+
 TASKS: dict[str, TaskSpec] = {
     "gsm8k": TaskSpec(
         name="gsm8k",
@@ -107,6 +179,8 @@ TASKS: dict[str, TaskSpec] = {
         prompt=metamath_prompt,
         score=_gsm8k_score,
         format_gold=lambda g: f"{g:g}",
+        lens=GoldLensSpec(token_roles=gsm8k_token_roles, role_classes=_GSM8K_ROLE_CLASSES,
+                          contrasts=_GSM8K_CONTRASTS),
     ),
     "multihop": TaskSpec(
         name="multihop",
@@ -114,6 +188,10 @@ TASKS: dict[str, TaskSpec] = {
         prompt=multihop_prompt_from_instruction,
         score=_multihop_score,
         format_gold=lambda g: str(g["answer"]),
+        lens=GoldLensSpec(token_roles=multihop_token_roles,
+                          role_classes=_MULTIHOP_ROLE_CLASSES,
+                          gold_chain=lambda g: gold_chain(g["decomposition"]),
+                          contrasts=_MULTIHOP_CONTRASTS),
     ),
 }
 
@@ -139,6 +217,23 @@ def generate_cot_ids(model, tokenizer, question: str, device, max_new: int,
     out = model.generate(prompt_ids, max_new_tokens=max_new, do_sample=False,
                          pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id)
     return out, prompt_ids.shape[1]
+
+
+def gold_chain_ids(tokenizer, question: str, gold: Any, device,
+                   task: str | TaskSpec = "gsm8k") -> tuple[torch.Tensor, int]:
+    """Build ``prompt + gold chain + eos`` ids for teacher-forcing; return ``(full_ids, prompt_len)``.
+
+    The join reproduces training (``multihop_data.encode_multihop``) exactly: the prompt is tokenized
+    with its BOS, the chain without special tokens, and EOS is appended — so the teacher-forced
+    sequence is the one the donor was supervised on.
+    """
+    spec = task if isinstance(task, TaskSpec) else get_task(task)
+    if spec.lens.gold_chain is None:
+        raise ValueError(f"task {spec.name!r} has no in-format gold chain to teacher-force")
+    prompt_ids = prompt_token_ids(tokenizer, question, device, spec)
+    chain_ids = tokenizer(spec.lens.gold_chain(gold), add_special_tokens=False).input_ids
+    tail = torch.tensor([chain_ids + [tokenizer.eos_token_id]], device=device)
+    return torch.cat([prompt_ids, tail], dim=1), prompt_ids.shape[1]
 
 
 @torch.no_grad()

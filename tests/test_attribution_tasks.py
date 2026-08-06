@@ -13,6 +13,7 @@ import json
 import pytest
 
 from scripts.attribution.attribution_common import TASKS, TaskSpec, get_task, load_contrast
+from scripts.attribution.gold_token_lens_gsm8k import contrast_intervals
 
 
 def test_get_task_known_and_unknown():
@@ -27,6 +28,34 @@ def test_every_task_spec_is_complete():
         assert spec.name == name
         for fn in (spec.problems, spec.prompt, spec.score, spec.format_gold):
             assert callable(fn)
+
+
+def test_every_lens_contrast_names_a_declared_role_class():
+    """A typo here would otherwise surface only after the model is loaded, mid-run."""
+    for name, spec in TASKS.items():
+        if spec.lens is None:
+            continue
+        for label, a, b in spec.lens.contrasts:
+            assert a in spec.lens.role_classes, f"{name}: {label!r} references unknown class {a!r}"
+            assert b in spec.lens.role_classes, f"{name}: {label!r} references unknown class {b!r}"
+
+
+def test_contrast_intervals_pool_tokens_but_resample_problems():
+    """Two problems, 4 'a' tokens each: the estimate is the pooled gap, the n is the problem count."""
+    records = ([{"problem": p, "role": "a", "top1": t}
+                for p in (0, 1) for t in (True, True, True, False)]
+               + [{"problem": p, "role": "b", "top1": False} for p in (0, 1) for _ in range(2)])
+    role_classes = {"a": lambda r: r["role"] == "a", "b": lambda r: r["role"] == "b"}
+    out = contrast_intervals(records, role_classes, (("a - b", "a", "b"),))
+    assert out["a - b"]["estimate"] == pytest.approx(0.75)
+    assert out["a - b"]["n"] == 2
+    assert out["a - b"]["lo"] <= 0.75 <= out["a - b"]["hi"]
+
+
+def test_contrast_intervals_report_none_for_an_empty_class():
+    records = [{"problem": 0, "role": "a", "top1": True}]
+    role_classes = {"a": lambda r: True, "empty": lambda r: False}
+    assert contrast_intervals(records, role_classes, (("a - empty", "a", "empty"),)) == {"a - empty": None}
 
 
 def test_gsm8k_score_and_format_gold():

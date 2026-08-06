@@ -76,6 +76,17 @@ component), even when they differ on side-effects and on sparse mechanism.
   ~¼ of the budget @L20 and ~half @L24 (α=1.0-resonant, layer-humped over the plateau) vs ~5%
   anywhere on GSM8K. Sharpened claim: the *procedure core* does not install; its size is
   task-dependent.
+- **What the dense state is doing (gold-token lens, teacher-forced):** on GSM8K, base given the
+  correct working predicts computed results at 0.968 vs 0.835 for the chain at large
+  (**+0.133 [+0.096, +0.173]**), and those
+  results crystallize with depth (lens rank 18→7→0 over L20–24) — real layer-wise computation, so
+  the deficit is trajectory control, not arithmetic. On MuSiQue the *ordering* replicates (execute
+  0.725 > plan 0.671, **+0.055 [+0.040, +0.069]**, bootstrap over 317 problems) and supplying the
+  trajectory makes the composed hops **easier** (hop ≥2 − hop 1 = +0.130) — but the elevation does
+  not: execution equals the chain average (+0.001, spans 0) and *nothing* crystallizes, because
+  open-book hop answers are copies from context (final restatement 0.933, lens rank 0 at every
+  layer). Sharpened again: **the trajectory-control deficit is general; the per-step work base
+  retains is task-specific, and only on arithmetic is it computation rather than retrieval.**
 
 ## Cross-cutting taxonomy (where our two behaviors land)
 
