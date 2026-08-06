@@ -41,13 +41,20 @@ Activation steering and parameter-efficient finetuning both edit a model's behav
 written as an \emph{input-conditional affine map} of the residual stream, $h \mapsto h + (Wh + b)$. We
 ask where the \emph{same} map family succeeds and where it fails, holding the apparatus fixed across
 tasks. The boundary is sharp and reproducible: the map installs and transports a
-\textbf{register/disposition} (refusal \emph{tone}, a yes/no answer disposition) but never a
-multi-step \textbf{procedure} (GSM8K arithmetic). A primal-ridge conditional map dominates every
+\textbf{register/disposition} (refusal \emph{tone}, a yes/no answer disposition) but never the
+trajectory scaffold of a multi-step \textbf{procedure}---on either procedure we test, GSM8K
+arithmetic and open-book multi-hop QA. A primal-ridge conditional map dominates every
 fixed-vector steering baseline on the harm-refusal frontier, yet the identical machinery recovers
 $\approx 0$ of a reasoning LoRA's gain---and so do MLP, on-policy DAgger, per-context, and task-loss
 (DAS) variants. We trace the failure to its mechanism: the reasoning capability is a \emph{distributed,
 time-dense trajectory state} (recovery needs ${\geq}94\%$ of decode steps and ${\sim}80\%$ of the
-residual's variance band), not a low-rank pointwise function of the activation. Cross-model, even a
+residual's variance band), not a low-rank pointwise function of the activation. That mechanism is not
+arithmetic-specific: on the multi-hop procedure the same
+layer-20 lockstep oracle recovers the same fraction of the budget ($+0.76$ vs $0.75$) with the same
+temporal-density signature, and a teacher-forced gold-token lens reproduces the \emph{ordering} of the
+deficit (planning tokens are the base's worst class) while showing that what the base retains per step
+is task-specific: multi-hop ``execution'' is retrieval from context, not computation, and nothing in
+its chain crystallizes late in the stack the way an arithmetic result does. Cross-model, even a
 \emph{trained} register edit carries only the coarse disposition off-policy; a strictly better-fitting
 affine bridge transports it \emph{worse}, because the edit lives off-manifold and regression shrinks
 exactly what must be preserved. We propose the register/procedure distinction as the organizing axis
@@ -64,7 +71,11 @@ that $W a \approx \delta = a_{\text{expert}} - a_{\text{base}}$---are the \emph{
 input-conditional affine edit in a learned subspace. We fix this object and sweep the \textbf{task},
 asking a single question---\emph{does the capability install?}---under one coherence-aware metric. Two
 behaviors anchor the extremes: refusal (a disposition) and GSM8K chain-of-thought arithmetic (a
-procedure). Commonsense QA sits between them.
+procedure). Commonsense QA sits between them. Because a single procedure cannot distinguish
+``procedures do not install'' from ``arithmetic does not install,'' we then re-run the entire
+procedure apparatus on a second one: open-book multi-hop QA over MuSiQue, where a matched LoRA takes
+the base from $0.000$ to $0.63$ and the model must \emph{compose} facts laid out in the prompt rather
+than compute over numbers in it.
 
 \section{Findings}
 
@@ -110,7 +121,12 @@ deep-layer edits. There is no canonical ``commonsense direction.''
 \paragraph{(P) Procedure does not install---under any map we tried.}
 The same machinery pointed at GSM8K recovers $\approx 0$ of a MetaMath-LoRA's budget, robustly across
 the obvious salvages (Table~\ref{tab:procedure}). The map installs reasoning-\emph{shaped} tokens with
-no arithmetic underneath---``the arithmetic wall.''
+no arithmetic underneath---``the arithmetic wall.'' On the second procedure the wall is present but
+\textbf{lower}: the nonlinear and on-policy rungs still collapse to 0, yet the \emph{linear} rung
+recovers ${\sim}\frac{1}{4}$ of the multi-hop budget at L20 and ${\sim}\frac{1}{2}$ at L24 (a narrow
+$\alpha = 1.0$ resonance). Whether that is a genuine task difference is being measured directly:
+GSM8K's ridge map was never probed per-layer at L20 or L24, so the two curves are not yet matched
+(Section~\ref{sec:next}).
 
 \begin{table}[h]
 \centering
@@ -145,6 +161,27 @@ top-256$\to$512). A donor-free steerer would therefore have to reproduce the LoR
 4096-d state at almost every step---i.e., \emph{be the donor}. The procedure is not a low-rank,
 pointwise, or time-sparse function of the activation.
 
+\paragraph{(G) The procedure findings are structural, not arithmetic-specific.}
+One procedure cannot separate ``procedures do not install'' from ``arithmetic does not install,'' so
+we re-ran the apparatus end-to-end on MuSiQue open-book multi-hop QA (matched LoRA $0.000 \to 0.63$;
+317 base-fail/donor-solve contrast problems). The two structural axes replicate exactly.
+\emph{Oracle:} the lockstep oracle at the same layer recovers $\mathbf{+0.76}$ (GSM8K $0.75$),
+all-layer control $+1.00$. \emph{Temporal density:} patching every other step collapses recovery to
+$0.05$, every sparser periodic gate is $\approx 0$, and the structural complement---patch everything
+except the answer span---equals the full oracle while firing at ${\sim}100\%$ of steps, the same
+signature GSM8K gives. \emph{Plan vs execute:} teacher-forcing the base on the gold chain and lensing
+the gold token by its role, the base agrees with \textbf{execution} tokens more than \textbf{planning}
+tokens ($+0.055$ $[+0.040, +0.069]$, bootstrapped over problems), so the trajectory-control reading
+survives the task change---and supplying the trajectory makes the \emph{later}, nominally-composed
+hops \textbf{easier} than the first ($+0.130$), which is what a trajectory deficit predicts and a
+per-step composition deficit does not. What does \emph{not} carry over is the shape: where GSM8K's
+computed results sit $+0.133$ $[+0.096, +0.173]$ above the chain average and crystallize with depth
+(lens rank $18 \to 7 \to 0$ over L20--24), multi-hop execution merely \emph{matches} the chain average
+($+0.001$, interval spanning 0) and no role crystallizes at all---its hop answers are copies from the
+in-context passages (the final restatement scores $0.933$ at lens rank 0 in every layer).
+\textbf{The trajectory-control deficit is general; the per-step work the base retains is
+task-specific, and only on arithmetic is it computation rather than retrieval.}
+
 \paragraph{(X) Cross-model, even a trained register edit carries only the coarse disposition---and
 aiming better hurts.}
 Transplanting a trained LoReFT edit from a donor (Llama-2-7B base) to a recipient (Llama-2-7B-chat)
@@ -166,14 +203,32 @@ it is installable by a single conditional affine map and even survives a crude c
 state; it is invisible to variance- and task-loss-based subspace search, and recoverable only by
 transporting essentially the donor's full per-step state. Finetuning (LoRA/LoReFT) and activation
 steering are the same map family, and they inherit the same boundary: they relocate \emph{where a
-disposition points}, not \emph{how a computation unfolds}. A corollary for distillation: a trained edit
+disposition points}, not \emph{how a computation unfolds}. The second procedure sharpens which half of
+that is general. What transfers unchanged is the \emph{trajectory} claim: the recoverable state sits at
+the same layer, is dense in the same way, and the base's deficit is again control of the chain rather
+than the work inside a step. What does not transfer is the \emph{content} of a step---arithmetic makes
+the base compute a result late in the stack, multi-hop only makes it copy one from context---and,
+correspondingly, how much of the edit a linear map can carry. So ``procedure'' is not one thing: it is
+a trajectory scaffold, which the map family never installs, wrapped around per-step work whose nature
+(and installability) is task-dependent. A corollary for distillation: a trained edit
 can be ``distilled'' by the conditional map only when fit on the steered (on-policy) input---but that
 is near-tautological (the edit is affine in its own input), a positive control, not an independent
 capability-install.
 
 \section{Next steps}
+\label{sec:next}
 
 \begin{itemize}
+  \item \textbf{Match the ladder axis across tasks (in progress).} The one place the two procedures
+  appear to differ is the linear rung, and that comparison is not yet matched: GSM8K's ridge map was
+  probed per-layer only at L0/L1/L14/L16/L31 (all $0.00$) and under all-layer joint injection, never at
+  L20 or L24---the two layers where the multi-hop leak appears. We are refitting the GSM8K maps and
+  running the identical per-layer protocol. If GSM8K reads $\approx 0$ there, the task-dependent-core
+  claim stands; if it also leaks, the divergence collapses and the linear rung replicates like the
+  others.
+  \item \textbf{A third procedure} to move beyond $n{=}2$, ideally one whose per-step work is neither
+  arithmetic nor retrieval, to test whether ``trajectory general, per-step task-specific'' holds as
+  stated.
   \item \textbf{Hybrid transplant bridge}---affine forward map (better-aimed donor delta) +
   \emph{orthogonal} back-projection (norm-preserving transport), to isolate aim from strength; our
   transport analysis predicts it beats the rigid-rotation baseline.
@@ -192,7 +247,8 @@ capability-install.
 
 \paragraph{Evidence index.} Refusal frontier, LoRA-vs-LoReFT similarity, the procedure-null lineup
 (short-output / local-refit / DAgger / PCA-band / DAS), the L20 oracle dissection (downstream lesion,
-gold-token lens, temporal gate), and the cross-model transplant are each documented as standalone
-reports under \texttt{results/attribution/} with seeded, CPU-tested, reproducible drivers.
+gold-token lens, temporal gate), the cross-model transplant, and the multi-hop generality study
+(oracle, ladder, temporal density, plan-vs-execute) are each documented as standalone reports under
+\texttt{results/attribution/} with seeded, CPU-tested, reproducible drivers.
 
 \end{document}
