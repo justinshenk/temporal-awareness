@@ -35,6 +35,15 @@ steering protocol multihop got, so the two curves are matched layer-for-layer.
 3. **Layer sweep @ α=1.0** — `steer_gsm8k --layers 8,12,16,20,24,28,31 --alphas 1.0 --n-eval 200`.
    This is the matched comparison and the decisive run.
 4. **α grid @ the leak layers** — only after step 3, and scoped by what it shows (see §6).
+5. **GSM8K nonlinear (MLP) rung** — `nonlinear_delta_gsm8k --layer 20 --n-contrast 20`, the same
+   driver that produced multihop's `nonlinear_delta_multihop_L20.json`, so the comparison is
+   apples-to-apples by construction. It needs only `maps_dir/W_L20.pt` from step 2 and collects its
+   own residuals. This closes the **third** unsourced cell found in the audit: the multihop report
+   asserts "GSM8K MLP 0.00, same paradox" with no artifact, and — more seriously — the paper's own
+   abstract claims the ridge null holds "and so do **MLP**, on-policy DAgger, per-context, and
+   task-loss (DAS) variants". DAgger, local-refit and DAS all have committed artifacts; **MLP does
+   not**. If this run returns ≈0 the paper's sentence is vindicated; if it does not, the abstract
+   must be corrected.
 
 **References:** the first steer run measures base/LoRA itself at max_new=512 and those values are
 then supplied verbatim to later runs. Do *not* reuse the contrast-set numbers (base 0.000 /
@@ -82,7 +91,9 @@ block carries the same warning. **Rename between runs** or the second overwrites
    references measured under the same protocol — i.e. **L20 and L24 finally measured**.
 3. The multihop P2b layer table gains a real GSM8K row; the ‡ footnote is replaced by the
    measurement or, if the result is unexpected, by the corrected reading.
-4. **Whichever way it lands, it is reported as found**:
+4. `nonlinear_delta_gsm8k_L20.json` exists, giving the GSM8K MLP rung a first artifact — and with
+   it either backing or refuting the paper abstract's "and so do MLP …" clause.
+5. **Whichever way it lands, it is reported as found**:
    - GSM8K ≈0.00 at L20/L24 → the divergence is confirmed and the paper's sharpened claim stands.
    - GSM8K also leaks at L20/L24 → the divergence **collapses**, the "task-dependent core size"
      revision is withdrawn, and the P2 axis becomes a *replication* rather than a divergence.

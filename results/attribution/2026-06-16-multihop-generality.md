@@ -80,9 +80,32 @@ survives closed-loop decoding.
 | rung | recovery | GSM8K analogue |
 |---|--:|--:|
 | ridge steer @L20 | **+0.26** scan / **+0.21** contrast at n=100 (the first-pass n=20 contrast read of +0.35 was small-n inflation; `nonlinear_delta_multihop_L20_n100.json`) | 0.00 — but **never probed at L20** ‡ |
-| nonlinear MLP @L20 | **+0.00** (val cos +0.822 / R² +0.675 vs ridge +0.636 / +0.270 — better fit, zero closed-loop; +0.01 at n=100 contrast) | 0.00 (same paradox) |
+| nonlinear MLP @L20 | **+0.00** (val cos +0.822 / R² +0.675 vs ridge +0.636 / +0.270 — better fit, zero closed-loop; +0.01 at n=100 contrast) | 0.00 asserted, **no artifact** ‡ |
 | on-policy DAgger (joint all-layer) | **+0.00 / +0.00 / +0.00** (rounds 0–2, `dagger_refit_multihop.json`) | 0.00 all rounds |
 | full-δ oracle @L20 | **+0.760** | 0.75 |
+
+### Provenance of the GSM8K comparison column (audit, 2026-08-06)
+
+Two cited GSM8K numbers turned out to have no artifact behind them, so every cross-task cell in this
+report was traced to a file. Result:
+
+| comparison cell | GSM8K value cited | artifact | verdict |
+|---|---|---|---|
+| full-δ oracle @L20 | 0.75 | `temporal_oracle_L20.json` (`periodic_1`) | **sourced** |
+| temporal-density column (all 9 gates) | 0.750 / 0.000 ×5 / 0.000 @2.9% / 0.700 @94.4% / 0.000 @9.4% | `temporal_oracle_L20.json` — exact match on every cell | **sourced** |
+| DAgger, all rounds | 0.00 | `dagger_refit_gsm8k.json` (rounds 0–2, joint) | **sourced** |
+| plan-vs-execute (P4) | 0.968 / 0.895 / 0.835 | `gold_token_lens_L20.json`, re-run and reproduced exactly today | **sourced** |
+| ridge steer @L20 | "≈0.05" | none — L20 never probed | **unsourced** ‡ |
+| ridge "≈0 at every layer" | ≈0 | per-layer only L0/L1/L14/L16/L31 | **overstated** ‡ |
+| held-out R²_te @L20 | "≈0.61" | `sweep_smoke.json` gives 0.367 | **unsourced** |
+| nonlinear MLP @L20 | 0.00, "same paradox" | none — no GSM8K nonlinear run was ever committed | **unsourced** |
+
+The three structural axes (oracle, temporal density, plan-vs-execute) are fully backed; **every
+unsourced cell is in the P2 ladder row** — the one axis this report calls a divergence. P5 closes
+the ridge and R²_te cells. The MLP cell needs a GSM8K nonlinear run to say anything at all; until
+then "GSM8K's MLP shows the same better-geometry/zero-recovery paradox" is an expectation carried
+over from the GSM8K-era prose (`2026-06-10-das-subspace.md` summarizes "any learned feed-forward
+map ≈0" as *prior results*, without a measurement of its own), not a measurement.
 
 ‡ **The GSM8K ridge column is weaker than it looks, and weaker than this report first claimed**
 (corrected 2026-08-06). Every committed GSM8K ridge-steering measurement reads 0.00, but the
