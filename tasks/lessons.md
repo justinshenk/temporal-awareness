@@ -56,3 +56,17 @@ model load, with `IndexError: too many indices for tensor of dimension 1`.
 **Rule:** when a name means two different things in one scope (`gold` the label dict vs `gold` the
 token ids), rename the one you do not need to `_gtok` at the unpack site. And for any driver whose
 first useful output is minutes away, run one problem end-to-end before launching the full set.
+
+## A comparison cell needs an artifact, not a recollection
+
+**What happened (2026-08-06):** the multihop writeup's ridge-divergence claim cited "GSM8K ≈0.05,
+≈0 at every layer" as the baseline. Tracing it found **no artifact**: the only committed GSM8K
+per-layer ridge steering covers L0/L1/L14/L16/L31 (smoke, n=12/50, all 0.00); L20 and L24 — the
+exact layers where multihop leaks — were never probed. The "0.05" appears to have been absorbed
+from the PCA-band oracle and lesion-control tables, different experiments entirely. The claim had
+already propagated into two results docs and two commit messages.
+
+**Rule:** every cell in a cross-run comparison table names the JSON it came from. Before asserting
+"X diverges from Y", open Y's artifact and confirm it was measured *at the same setting* — same
+layer, same α, same injection mode. If it wasn't, the cell reads "not measured", not a number. A
+number you cannot open a file for is a memory, not a result.

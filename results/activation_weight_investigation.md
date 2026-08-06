@@ -73,9 +73,11 @@ component), even when they differ on side-effects and on sparse mechanism.
 - **The thesis generalizes beyond arithmetic (n=2 procedures):** on MuSiQue open-book multi-hop QA
   the oracle axis replicates exactly (+0.76 @L20, same layer/magnitude) and so does temporal
   density; the pointwise ladder is PARTIAL — MLP/DAgger stay 0, but the *linear* rung leaks
-  ~¼ of the budget @L20 and ~half @L24 (α=1.0-resonant, layer-humped over the plateau) vs ~5%
-  anywhere on GSM8K. Sharpened claim: the *procedure core* does not install; its size is
-  task-dependent.
+  ~¼ of the budget @L20 and ~half @L24 (α=1.0-resonant, layer-humped over the plateau) where every
+  GSM8K ridge measurement is 0.00. **Unmatched comparison (flagged 2026-08-06):** GSM8K ridge
+  steering was probed per-layer only at L0/L1/L14/L16/L31 — never at L20 or L24 — so this axis
+  awaits a same-layer GSM8K run. Provisional claim: the *procedure core* does not install; its size
+  is task-dependent.
 - **What the dense state is doing (gold-token lens, teacher-forced):** on GSM8K, base given the
   correct working predicts computed results at 0.968 vs 0.835 for the chain at large
   (**+0.133 [+0.096, +0.173]**), and those
