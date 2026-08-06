@@ -72,9 +72,12 @@ block carries the same warning. **Rename between runs** or the second overwrites
 
 ## 6. Acceptance criteria
 
-1. `sweep.json` exists with a per-layer λ\* and R²_te; **L20 R²_te ≈ 0.61** (sanity that the refit
-   reproduces the object the old claim referenced). A large departure invalidates the comparison
-   and must be reported, not smoothed over.
+1. `sweep.json` exists with a per-layer λ\* and R²_te at L20. **Do not gate on "≈0.61"** — that
+   number was in the multihop report but has no artifact either (found 2026-08-06, same class of
+   error as the 0.05). The only committed GSM8K sweep, `sweep_smoke.json`, gives L20 R²_te =
+   **0.367** at λ\* = 3.16e3; being a smaller fit, that is a floor. The refit should land at or
+   above it, and *it* becomes the citable GSM8K number — replacing a figure the report asserted
+   without a source. Multihop's L20 is 0.714 (verified in `sweep_multihop.json`).
 2. A GSM8K per-layer steering curve at α=1.0 over {8,12,16,20,24,28,31}, n_eval=200, with base/LoRA
    references measured under the same protocol — i.e. **L20 and L24 finally measured**.
 3. The multihop P2b layer table gains a real GSM8K row; the ‡ footnote is replaced by the

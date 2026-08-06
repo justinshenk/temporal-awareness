@@ -119,10 +119,25 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
     plus contrast-interval + role-class-name tests in `tests/test_attribution_tasks.py`.
   - Writeup: P4 section + fourth verdict row + P4 caveats in `2026-06-16-multihop-generality.md`;
     strand-5 entry extended in `results/activation_weight_investigation.md`.
-- Remaining (next session): consider a same-day GSM8K per-layer steer rerun for a strictly
-  apples-to-apples layer curve (GSM8K maps must be refit — the old `results/attribution/maps`
-  accumulators are gone locally). NOTE: `lockstep_contrast_set.json` for GSM8K was deleted at some
-  point and rebuilt deterministically this session (113/200 KEEP, matching the original).
+- [ ] **P5 — the missing GSM8K ridge layer probe (IN FLIGHT)**. Brief: `tasks/gsm8k_ridge_layer_probe.md`.
+      Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
+      — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
+      all-layer joint injections; **L20 and L24 were never probed**, which are exactly the layers
+      where multihop leaks. Docs corrected in `600b5f7`; this run closes the measurement gap.
+  - Pipeline: `collect_cot_residuals` (running, `.run_logs/p5_gsm8k_collect.log`) →
+    `fit_ridge_sweep` → `steer_gsm8k --layers 8,12,16,20,24,28,31 --alphas 1.0 --n-eval 200`.
+  - **Output-name hazard**: `steer_gsm8k` always writes `cfg.output.steer_json`
+    (`steer_results.json`) regardless of `--layers`/`--alphas` — rename between runs.
+  - **References**: let the first steer run measure base/LoRA at max_new=512 and supply those to
+    later runs. Do NOT reuse the contrast set's 0.000/0.565 — those were measured at max_new=256.
+  - Sanity gate: L20 R²_te should land ≈0.61 (the value the multihop report cites for GSM8K).
+  - Either outcome is publishable and must be reported as found: GSM8K ≈0 at L20/L24 confirms the
+    divergence; GSM8K also leaking **collapses** it and turns the ladder into a fourth replication.
+- [x] Paper updated (`fad12a8`): multihop folded into `register_vs_procedure_abstract.{md,tex,pdf}`
+      as finding (G); synthesis sharpened to "trajectory scaffold general, per-step work
+      task-specific"; ladder axis stated as pending, with the P5 run named in Next steps. 3→4 pages.
+- NOTE: `lockstep_contrast_set.json` for GSM8K was deleted at some point and rebuilt
+  deterministically this session (113/200 KEEP, matching the original).
 
 ## Side thread — context-fatigue null statistics (DONE, committed)
 Interval estimates for the extended abstract's nulls (`null_statistics.py` + analysis script;

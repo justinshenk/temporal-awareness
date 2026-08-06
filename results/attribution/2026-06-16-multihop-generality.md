@@ -69,9 +69,13 @@ selected by the same earliest-plateau rule, so the P2/P3 GSM8K configs port unch
 
 Residuals collected on the donor's CoT (200 fit / 60 held-out problems; 11,901 / 3,444 CoT tokens —
 multihop chains are ~60 tokens, shorter than GSM8K's ~250). Ridge maps fit per layer over
-λ ∈ logspace(−1, 7, 17) (`sweep_multihop.json`): at L20, λ\* = 3.16e3, **held-out R²_te = +0.71**
-(GSM8K L20: ≈0.61). As in GSM8K, the *open-loop geometry is good* — the ladder question is whether
-it survives closed-loop decoding.
+λ ∈ logspace(−1, 7, 17) (`sweep_multihop.json`): at L20, λ\* = 3.16e3, **held-out R²_te = +0.71**.
+The GSM8K comparison here was also unsourced (corrected 2026-08-06): an earlier draft cited "≈0.61",
+but the only committed GSM8K sweep is `sweep_smoke.json`, whose L20 gives **R²_te = 0.367** at the
+same λ\*; the full-run `sweep.json` was never committed. The smoke fit uses fewer problems, so 0.367
+is a floor rather than the GSM8K value — either way, the number to compare against will come from
+the P5 refit. As in GSM8K, the *open-loop geometry is good* — the ladder question is whether it
+survives closed-loop decoding.
 
 | rung | recovery | GSM8K analogue |
 |---|--:|--:|
