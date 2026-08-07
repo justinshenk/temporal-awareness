@@ -76,16 +76,24 @@ def main() -> None:
     args = parser.parse_args()
 
     rows = []
-    print(f"{'rung':<34} {'recovery':>8}  {'95% interval':>18}  {'n':>4}")
-    print("-" * 72)
+    header = (f"{'rung':<34} {'steer':>7} {'donor':>7} {'n':>4} | "
+              f"{'acc @95%':>9} {'solved':>8} | {'recovery':>8} {'@95%':>7}")
+    print(header)
+    print("-" * len(header))
     for label, acc, n, base, lora in collect_rungs():
         bound = bounded_null_from_rate(acc, n, base_acc=base, lora_acc=lora)
-        rows.append({"rung": label, **asdict(bound)})
-        interval = f"[{bound.recovery_lo:+.3f}, {bound.recovery_hi:+.3f}]"
-        print(f"{label:<34} {bound.recovery:>+8.3f}  {interval:>18}  {n:>4}")
+        rows.append({"rung": label, "base_acc": base, "lora_acc": lora,
+                     "lora_hits": round(lora * n), "acc_hi_hits": bound.rate_hi * n,
+                     **asdict(bound)})
+        print(f"{label:<34} {acc:>7.3f} {lora:>7.3f} {n:>4} | "
+              f"{bound.rate_hi:>9.3f} {bound.rate_hi * n:>4.1f}/{n:<3} | "
+              f"{bound.recovery:>+8.3f} {bound.recovery_hi:>+7.3f}")
 
     args.out.write_text(json.dumps(rows, indent=2) + "\n")
     print(f"\nwrote {args.out}")
+    print("\nReading: 'steer' and 'donor' are absolute accuracies; 'acc @95%' is the highest "
+          "steered\naccuracy consistent with having solved none, and 'solved' expresses it as "
+          "problems out of n.\n'recovery' normalises by the donor's headroom over base.")
     print("\nNOTE: intervals treat the base and donor accuracies as known constants, so they "
           "cover\nsampling error in the steered run only. State that wherever these appear.")
 
