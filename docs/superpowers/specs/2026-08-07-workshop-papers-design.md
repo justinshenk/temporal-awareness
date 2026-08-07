@@ -101,6 +101,41 @@ not exist). **Ship first and park it** — it protects against Paper A slipping.
   3 measured coordinates (δ-rank, ‖δ‖/‖h‖, temporal density) → binary installability, with the
   coordinates ordering the outcome. Turns §10 from a proposal into a predictor.
 
+- **S5 — a held-out fifth behaviour, pre-registered (GPU, last).** Four rows fit in-sample prove
+  nothing about prediction. Add a **fifth register held out of the criterion's construction**, on the
+  **existing Llama-2 `base → chat` donor** already built for refusal — a different chat-tuned
+  disposition (base fails / chat succeeds, e.g. instruction-following: base continues text where chat
+  answers). No new donor, no new training; `collect_refusal_residuals` runs unchanged, only the
+  prompt set and eval change.
+
+  **Protocol — the order is the point, and it must be honoured literally:**
+  1. Fix the criterion on the four in-sample behaviours.
+  2. Measure the three coordinates on the held-out behaviour.
+  3. **Write the predicted installability into the repo and commit it** — before running the install
+     test. A prediction recorded after the fact is not a prediction.
+  4. Run the install test.
+  5. Report agreement or disagreement as found. A missed prediction is a publishable calibration of
+     the criterion and must not be quietly dropped or re-fit.
+
+  **Sycophancy is corroboration, not a row.** `results/sycophancy/2026-06-02-sycophancy-steering.md`
+  already reports the intermediate signature the criterion predicts for a diffuse disposition —
+  additive steering gives a *partial* rescue (0.51→0.38) versus refusal's near-total one, read there
+  as "a more distributed mechanism than one added vector." It cannot enter the table: it is
+  **Gemma-2-9b-it**, not Llama-2-7b, and it is a **base disposition with no donor**, so there is no δ
+  to measure and nothing to transport. Cite it in §10's discussion as an independent intermediate
+  case; do not force it into the criterion.
+
+### S6 — reframe §4 (CPU, writing only)
+
+`docs/related_work_register_vs_procedure.md` §2 records that ACE (Marshall, Scherlis & Belrose,
+arXiv:2411.09003) anticipates two §4 claims — refusal steering wants an affine object rather than a
+single direction, and directional methods produce incoherent output where affine ones do not — across
+ten models to our one. **§4 must therefore stop claiming "our map beats the baselines"** and instead
+present the frontier as *the positive control for the register side of the boundary*. Same
+experiment, same numbers, a claim ACE cannot scoop because they never ask the procedure question.
+Cite ACE as independent confirmation that registers are affine-installable; that is a stronger
+position than being the sole source.
+
 ### S4 — §2 related work, restructured (CPU, first in the writing queue)
 
 Full findings in **`docs/related_work_register_vs_procedure.md`** (literature check, 2026-08-07).
