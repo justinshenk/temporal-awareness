@@ -51,7 +51,7 @@ Spine: register installs, procedure does not, here is the mechanism, here is the
 | § | content | state |
 |---|---|---|
 | 1 Intro | steering and PEFT are one map `h ↦ h+(Wh+b)`; "is X steerable" is not one question | rewrite |
-| 2 Related work | CAA, Arditi, ActAdd, CAST, LoRA, LoReFT, DAS, patching | **from scratch** |
+| 2 Related work | 4-part adversarial structure; see `docs/related_work_register_vs_procedure.md` | **from scratch — highest risk** |
 | 3 Setup | ridge map, coherence-aware metric, contrast-set protocol | expand |
 | 4 (R) Register installs | refusal Pareto: map 0.62 vs CAA/Arditi/CAST 0.00 | have |
 | 5 (R) Divergent routes | LoRA vs LoReFT on commonsense; CKA 0.96→0.13 | have |
@@ -88,6 +88,35 @@ not exist). **Ship first and park it** — it protects against Paper A slipping.
 - **S3 — the criterion table.** With S2 done: 4 behaviours (refusal, commonsense, GSM8K, MuSiQue) ×
   3 measured coordinates (δ-rank, ‖δ‖/‖h‖, temporal density) → binary installability, with the
   coordinates ordering the outcome. Turns §10 from a proposal into a predictor.
+
+### S4 — §2 related work, restructured (CPU, first in the writing queue)
+
+Full findings in **`docs/related_work_register_vs_procedure.md`** (literature check, 2026-08-07).
+Two results drive the paper, not just the citations:
+
+- **The map's form is not novel.** Input-conditional, matrix-valued affine steering is occupied
+  ground as of 2026: conceptors (Postmus & Abreu), CLAS (Hsu et al., Apr 2026), INNSteer (Nguyen &
+  Le, Jun 2026). CLAS is closest and is **rank-1 conditional** (fixed direction, learned magnitude)
+  where ours is full-rank. Position the map as the **instrument, not the claim** — a scoped sentence
+  in §3, promotable if no prior art for the closed-form donor-regression recipe turns up.
+- **One contender must be rebutted explicitly.** *Weight Updates as Activation Shifts*
+  (Adila et al., arXiv:2603.00425, Feb 2026) unifies weight updates with activation shifts, defines
+  the same `δh_oracle = h_FT − h_base`, evaluates on GSM8K, and reports **within 0.2–0.9% of full
+  finetuning**. It does not refute us — it trains an adapter on task loss over 8,790 GSM8K problems
+  with **no donor**, intervening at **every block**, and uses its oracle only analytically. But the
+  distinction (transport vs learn) must be argued in §2 and §6 or the null reads as refuted.
+
+**Required scoping of the headline claim.** The abstract's "recovers ≈0 … and so do MLP, on-policy
+DAgger, per-context, and task-loss (DAS) variants" implies *no* activation-space method installs
+reasoning, which Adila et al. falsify. DAS is the exposed rung: task-loss-trained, yet rank-512 at a
+**single layer** where their adapter spans every block. Reword to: *a procedure does not transport
+through a fitted pointwise map at a layer; installing it requires distributed, temporally dense
+intervention trained on the task* — which our own density measurements independently predict, making
+their positive result our **confirming case** rather than a counterexample.
+
+§2 order: (1) fixed-vector steering; (2) conditional/matrix steering — state the CLAS distinction;
+(3) PEFT-as-activation-edit incl. Adila — the unification is not ours to claim; (4) the rebuttal
+paragraph. All four contenders are concurrent (Feb–Jun 2026); say so where it matters.
 
 ### P5 — the pending GPU correction (mandatory, unchanged)
 
@@ -168,7 +197,7 @@ audit sweep across `results/activation_weight_investigation.md` (line 71 repeats
 
 | days | resource | work |
 |---|---|---|
-| Aug 7–9 | CPU | template migration (both papers), anonymization, **S1 null intervals**, six figures, provenance sweep |
+| Aug 7–9 | CPU | **S4 §2 related work + §6 rebuttal draft (first)**, template migration, anonymization, **S1 null intervals**, six figures, provenance sweep |
 | Aug 10–12 | CPU | Paper B to submittable 5 pp → parked |
 | Aug 10–12 | GPU | **P5** (collect → fit → layer sweep → MLP); retrieve P2b JSONs |
 | Aug 12–14 | GPU | **S2** register battery (commonsense TaskSpec → oracle / temporal / PCA-band) |
@@ -193,7 +222,10 @@ audit sweep across `results/activation_weight_investigation.md` (line 71 repeats
 7. §9 reports the register battery and §10 the 4×3 criterion table — including if S2 refutes the
    expected pattern.
 8. Full attribution + context-fatigue CPU suites pass unchanged.
-9. Submitted by Aug 27 AoE.
+9. §2 engages Adila et al., CLAS, INNSteer and conceptors explicitly; §6 carries the transport-vs-learn
+   rebuttal; the headline null is scoped to pointwise single-layer transport rather than to activation
+   space in general. No novelty claim for the map's *form* appears anywhere.
+10. Submitted by Aug 27 AoE.
 
 ## 9. Development process — test-forward
 
