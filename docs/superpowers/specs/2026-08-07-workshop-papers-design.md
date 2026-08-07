@@ -81,10 +81,22 @@ not exist). **Ship first and park it** — it protects against Paper A slipping.
   `scripts/attribution/attribution_common.py`. The seam is five callables (`problems`, `prompt`,
   `score`, `format_gold`, `lens`), and `src/probes/attribution/commonsense_data.py` already exposes
   load/format/extract/score. Then run the **unmodified** drivers — `lockstep_patch_gsm8k`,
-  `temporal_oracle_gsm8k`, `lockstep_pca_band` — against the existing commonsense donor LoRA
+  `temporal_oracle_gsm8k`, `lockstep_pca_band` — against the commonsense donor LoRA
   (base 0.00 → 0.68). Hypothesis: recovery survives sparse temporal gating and low-rank truncation
   where GSM8K collapses. **Either outcome is reported as found**; a negative result here reshapes the
   paper and is more interesting than the expected one, not less.
+
+  **Split the axes across two registers — commonsense cannot carry the temporal one.** The
+  commonsense supervised span is exactly `"the correct answer is X</s>"`, ~7 tokens. On a 7-step
+  trajectory `periodic:2` and `periodic:4` are nearly the same intervention, so the density axis is
+  **degenerate by construction** and would return a number that looks like a result. Therefore:
+  - **commonsense** → δ-rank and off-manifold fraction (per-token, unaffected by chain length);
+  - **refusal** → temporal density. Refusal generations are long (full apology paragraphs), the
+    base-complies/chat-refuses pairs already exist, and `refusal_frontier.py` has the coherence
+    scorer. Two registers agreeing also strengthens the §10 table over one carrying it alone.
+
+  The **leak diagnostic** (does content survive under an installed apology?) rides on the same
+  steered generations, read a second way — ~10 min GPU. Its cost is defining "leaked", ~1 day CPU.
 - **S3 — the criterion table.** With S2 done: 4 behaviours (refusal, commonsense, GSM8K, MuSiQue) ×
   3 measured coordinates (δ-rank, ‖δ‖/‖h‖, temporal density) → binary installability, with the
   coordinates ordering the outcome. Turns §10 from a proposal into a predictor.
@@ -183,7 +195,41 @@ audit sweep across `results/activation_weight_investigation.md` (line 71 repeats
 ## 6. Operational constraints
 
 - **No GPU until ~Aug 10**, then available near-continuously. All CPU work front-loaded.
-- GPU order is fixed: **P5 first** (it corrects a live overclaim), **then S2**. ~1–2 days each.
+- GPU order is fixed: **P5 first** (it corrects a live overclaim), **then S2**, then the leak read.
+
+### GPU budget (estimated 2026-08-07; calibrate before trusting)
+
+**Generation is unbatched everywhere** — `task_accuracy` loops `model.generate` at batch size 1 and
+all five drivers go through it. Single-stream 7B decode is memory-bandwidth bound (~14 GB/token
+against ~1.8 TB/s), so throughput sits at **35–70 tok/s** and *a faster GPU buys ~30%, not 3×*.
+
+| task | dominant cost | estimate |
+|---|---|---|
+| P5 collect (260 probs × ~250 tok) | 65k tok | 0.5–2 h |
+| P5 ridge sweep (32 layers × 17 λ, f64) | f64 solves | 10–30 min |
+| **P5 layer sweep** (7 cells × 200 × ~350 tok) | **490k tok — the pole** | **3–5 h** |
+| P5 base/LoRA refs @ max_new 512 | 120k tok | ~1 h |
+| P5 nonlinear MLP rung | small | ~1 h |
+| S2 commonsense (contrast + oracle + bands) | ~30k tok — answers are ~7 tok | < 1 h |
+| S2 commonsense LoRA **if retrain needed** | 20k examples × 3 ep ÷ batch 32 ≈ 1,875 steps | 30–60 min |
+| refusal temporal axis + leak read | ~20k tok | ~30 min |
+| **total** | | **~9 h — one GPU day** |
+
+Note the LoRA figure: the config pins `n_train: 20000` (a subset; the paper's recipe is 170k) at
+3 epochs, batch 16 × grad-accum 2, and `collate_left_padded` pads to longest-in-batch, not to
+`max_len: 512`. Only the **LoRA** donor is needed for S2 — LoReFT (6 epochs) is not in the path.
+
+Two things can inflate this: steered generations that go off-manifold never emit EOS and run to the
+512 cap (seen in the refusal α-calibration), pushing the layer sweep to its upper bound; and a
+missing commonsense donor on the box.
+
+**Before launching anything, time one steered generation and one collect step** — per
+`tasks/lessons.md:58`, written after a 40-minute failure. That converts this table from estimate to
+measurement for ~15 minutes of cost.
+
+**Do not batch `task_accuracy` to save time.** It would cut the pole from ~5 h to ~30 min, but it
+sits under all five verified drivers, and perturbing a validated apparatus three weeks out to save
+hours that are already available is a bad trade. GPU time is not the bottleneck; §2 and writing are.
 - Long jobs run under `nohup` with a log in `.run_logs/` and are **actively monitored to completion**;
   on error, fix and restart immediately — never left unattended, never assumed successful.
 - Seeded (42) throughout. `steer_gsm8k` ignores `--layers`/`--alphas` when naming output — **rename
