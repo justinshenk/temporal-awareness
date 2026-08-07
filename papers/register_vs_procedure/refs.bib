@@ -1,9 +1,9 @@
 % Bibliography for "Register, Not Procedure".
 %
 % Provenance discipline (same rule as numbers.md): every entry below was verified against a
-% primary source on 2026-08-07 unless marked % UNVERIFIED. Do not add an entry from memory.
-% Fields marked % CHECK are ones the search returned incompletely and must be confirmed
-% against the arXiv listing or proceedings page before submission.
+% primary source on 2026-08-07. Do not add an entry from memory.
+% Status: ALL fields verified -- no % CHECK or % UNVERIFIED markers remain.
+% Caution: ActAdd (turner2023actadd) was RETITLED on arXiv; cite the current title.
 
 % ---------------------------------------------------------------------------
 % 1. Fixed-vector activation steering -- the baselines we compare against in S4
@@ -32,13 +32,15 @@
 }
 
 @article{turner2023actadd,
-  title   = {Activation Addition: Steering Language Models Without Optimization},
+  title   = {Steering Language Models With Activation Engineering},
   author  = {Turner, Alexander Matt and Thiergart, Lisa and Leech, Gavin and Udell, David and
              Vazquez, Juan J. and Mini, Ulisse and MacDiarmid, Monte},
   journal = {arXiv preprint},
   year    = {2023},
-  eprint  = {2308.10248},   % CHECK -- arXiv id and full author list not confirmed by search
+  eprint  = {2308.10248},
   archivePrefix = {arXiv},
+  note    = {ActAdd. NB: retitled -- v1 was "Activation Addition: Steering Language Models
+             Without Optimization"; cite the current title.},
 }
 
 @article{zou2023repe,
@@ -69,13 +71,14 @@
 
 @inproceedings{lee2025cast,
   title     = {Programming Refusal with Conditional Activation Steering},
-  author    = {Lee, Bruce W. and others},   % CHECK -- full author list (7 authors)
+  author    = {Lee, Bruce W. and Padhi, Inkit and Ramamurthy, Karthikeyan Natesan and
+               Miehling, Erik and Dognin, Pierre and Nagireddy, Manish and Dhurandhar, Amit},
   booktitle = {International Conference on Learning Representations (ICLR)},
   year      = {2025},
   eprint    = {2409.05907},
   archivePrefix = {arXiv},
-  note      = {Conditionality via an explicit logistic classifier -- the gate our map
-               obtains for free.},
+  note      = {ICLR 2025 Spotlight. Conditionality via an explicit logistic classifier --
+               the gate our map obtains for free.},
 }
 
 @inproceedings{postmus2024conceptors,
@@ -87,7 +90,12 @@
   eprint    = {2410.16314},
   archivePrefix = {arXiv},
   note      = {Steering MATRICES as soft projections -- prior art for "matrix, not vector".
-               Fit as an ellipsoid over an activation set, not regressed onto a donor delta.},
+               VERIFIED input-conditional: h' = beta_c C h, so the shift depends on the current
+               activation. Also closed-form, C(R,a) = R(R + a^-2 I)^-1 with R = X^T X / n.
+               The distinction from ours is the TARGET, not the form or the fitting style:
+               conceptors use a second moment of ONE activation set (no regression target,
+               a shrinkage projection onto that set's ellipsoid); we use the CROSS moment
+               X^T delta of PAIRED base/donor activations, i.e. supervision by a second model.},
 }
 
 @article{marshall2024ace,
@@ -185,14 +193,16 @@
   note      = {Distributed Alignment Search (DAS) -- our task-loss subspace rung.},
 }
 
-@article{transfer2025activation,
+@article{oozeer2025transfer,
   title   = {Activation Space Interventions Can Be Transferred Between Large Language Models},
+  author  = {Oozeer, Narmeen and Nathawani, Dhruv and Prakash, Nirmalendu and Lan, Michael and
+             Harrasse, Abir and Abdullah, Amirali},
   journal = {arXiv preprint},
   year    = {2025},
   eprint  = {2503.04429},
   archivePrefix = {arXiv},
-  note    = {UNVERIFIED author list. Autoencoder mappings between base and finetuned
-             counterparts; nearest neighbour to our cross-model transplant (S9).},
+  note    = {Autoencoder mappings between base and finetuned counterparts; nearest neighbour
+             to our cross-model transplant (§9).},
 }
 
 % ---------------------------------------------------------------------------
@@ -217,7 +227,7 @@
   journal = {Transactions of the Association for Computational Linguistics},
   volume  = {10},
   year    = {2022},
-  eprint  = {2108.00573},   % CHECK
+  eprint  = {2108.00573},
   archivePrefix = {arXiv},
 }
 
@@ -238,6 +248,6 @@
              Hilton, Jacob and Nakano, Reiichiro and Hesse, Christopher and Schulman, John},
   journal = {arXiv preprint},
   year    = {2021},
-  eprint  = {2110.14168},   % CHECK
+  eprint  = {2110.14168},
   archivePrefix = {arXiv},
 }
