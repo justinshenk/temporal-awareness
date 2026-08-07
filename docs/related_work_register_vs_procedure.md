@@ -29,6 +29,35 @@ LoRA and ReFT.
 - First-order analysis shows activation steering misses a `(ΔW_d)m` term that weight updates capture,
   so the two are related but **not equivalent**.
 
+### Their actual numbers (Table 1, v2; retrieved 2026-08-07)
+
+Every column below is **trained on the task's own training split**. There is no frozen-base,
+donor-transport column anywhere in the paper.
+
+| | | SFT | LoRA | ReFT | post-block |
+|---|---|---:|---:|---:|---:|
+| **GSM8K** | Llama-3.2-1B | 32.2 | 31.8 | 31.6 | 31.5 |
+| | Gemma-3-1B | 23.4 | 22.6 | **11.6** | 21.6 |
+| | Qwen3-4B | 37.0 | 37.6 | 37.7 | 37.4 |
+| | Llama-3.1-8B | 44.0 | 43.8 | 40.1 | 43.4 |
+| **AQuA** | Llama-3.2-1B | 36.2 | 33.6 | 30.2 | 36.5 |
+| | Gemma-3-1B | 32.7 | 31.6 | 24.6 | 32.1 |
+| | Llama-3.1-8B | 47.7 | 45.4 | 45.4 | 47.6 |
+| **ARC-C** | Gemma-3-1B | 48.2 | 50.6 | **27.8** | 48.9 |
+| **Winogrande** | Qwen3-4B | 83.0 | 84.6 | **64.9** | 80.6 |
+
+Two things to take from this, both in our favour:
+
+1. **No Llama-2-7B, no MetaMath, and no donor.** Their "within 0.2–0.9% of full-parameter tuning" is
+   parity with *SFT on the same data*, not recovery of another model's capability. Different axis.
+2. **ReFT — the same object as our ridge map — is the weakest column in their own table**, and
+   collapses hardest exactly where the task is hard for the model (Gemma-3-1B GSM8K 11.6 vs SFT 23.4;
+   ARC-C 27.8 vs 48.2; Winogrande 64.9 vs 83.0). Their fix is to stop intervening at a **single site
+   in a subspace** and instead intervene **post-block at every layer**.
+
+That ordering — single-site subspace edit ≪ distributed post-block edit ≈ weight updates — is our
+distributedness claim, measured independently, on four models we never touched. Use it in §7.
+
 ### Why it does not refute our null
 
 | | Adila et al. | ours |
@@ -82,6 +111,29 @@ map at a layer; installing it demands distributed, temporally dense intervention
   follow-up (OpenReview `0Yu0eNdHyV`). Steering *matrices* as soft projections, with a claimed
   provably-optimal affine steering function. Prior art for "matrix, not vector"; fit as an ellipsoid
   over an activation set rather than regressed onto a donor delta.
+- **Refusal in LLMs is an Affine Function (ACE).** Marshall, Scherlis, Belrose (EleutherAI).
+  arXiv:2411.09003, Nov 2024. **This is the closest prior art to our §4 and it was not on the radar.**
+  Affine concept editing: an affine decomposition of activation vectors, of which prior steering
+  methods are shown to be *subsets of terms*; combines affine subspace projection with activation
+  addition; controls refusal on **ten models including Llama-3-70B**, LLM-scored on harmful and
+  harmless prompts.
+
+  Two of our §4 claims are theirs first: that refusal steering wants an **affine** object rather
+  than a single direction, and that directional methods **produce incoherent output** where the
+  affine one does not — our "fixed vectors go straight from no-effect to off-manifold gibberish"
+  observation. They also cover 10 models to our 1.
+
+  What remains ours in §4: the object is **fit by regression onto a donor's delta** (base → chat)
+  rather than derived from a decomposition of the activation; the comparison is a two-axis
+  harm-refusal / over-refusal **Pareto frontier** against CAA, Arditi and CAST under
+  coherence-conditioned scoring; and — decisively — §4's *role* in this paper is a **positive
+  control for the register side of the boundary**, not a standalone refusal-steering contribution.
+
+  **Consequence:** stop framing §4 as "our map beats the baselines." That claim is contested and
+  partly anticipated. Frame it as "refusal is a register, and here is the control that shows this
+  apparatus installs registers." The novelty burden moves entirely off §4 and onto the boundary
+  plus the oracle-anchored nulls — which is where §3 already puts it.
+
 - **Beyond Linear Activation Steering (INNSteer).** Nguyen & Le (Indiana). arXiv:2606.08454, Jun
   2026. Invertible nonlinear transforms giving input-dependent updates; within **3.64% of LoRA**.
   **Tests alignment traits, refusal, hallucination — explicitly not GSM8K or any reasoning install.**
