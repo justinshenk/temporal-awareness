@@ -1,0 +1,139 @@
+PHASE START              ts=2026-08-03T23:39:49Z run=qwen_risk_geometry model=Qwen/Qwen3-4B-Instruct-2507 domain=risk dir=/root/temporal-awareness/out/geo/qwen_risk_geometry
+PHASE LAYERS_RESOLVED    ts=2026-08-03T23:39:59Z model=Qwen/Qwen3-4B-Instruct-2507 layers=[0,1,3,12,18,19,20,21,23,24,25,28,31,34,35] positions=[chat_suffix,chat_suffix_tail]
+PHASE GPU_OK             ts=2026-08-03T23:40:11Z 
+PHASE HF_WATCH_STARTED   ts=2026-08-03T23:40:16Z pid=5809 repo=unrulyabstractions/temporal-awareness log=/root/temporal-awareness/out/logs/hf_sync_qwen_risk_geometry.log
+PHASE EXTRACT_START      ts=2026-08-03T23:40:16Z cmd=scripts/intertemporal/generate_geometry_samples.py
+2026-08-03T23:40:16Z args: --config data/intertemporal/risk/risk_geometry.json --model Qwen/Qwen3-4B-Instruct-2507 --resume /root/temporal-awareness/out/geo/qwen_risk_geometry --layers 0 1 3 12 18 19 20 21 23 24 25 28 31 34 35 --positions chat_suffix chat_suffix_tail --components resid_post --max-samples 1500
+2026-08-03 23:40:25,056 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-03 23:40:25,089 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/config.json "HTTP/1.1 200 OK"
+Loaded config: risk_geometry from data/intertemporal/risk/risk_geometry.json
+2026-08-03 23:40:25,092 - __main__ - INFO - RESUMING from existing directory: /root/temporal-awareness/out/geo/qwen_risk_geometry
+2026-08-03 23:40:25,093 - __main__ - INFO - ============================================================
+2026-08-03 23:40:25,093 - __main__ - INFO - GENERATE GEOMETRY SAMPLES
+2026-08-03 23:40:25,093 - __main__ - INFO - ============================================================
+2026-08-03 23:40:25,093 - __main__ - INFO - Dataset: risk_geometry
+2026-08-03 23:40:25,093 - __main__ - INFO - Model: Qwen/Qwen3-4B-Instruct-2507
+2026-08-03 23:40:25,093 - __main__ - INFO - Output: /root/temporal-awareness/out/geo/qwen_risk_geometry
+2026-08-03 23:40:25,093 - __main__ - INFO - Layers: [0, 1, 3, 12, 18, 19, 20, 21, 23, 24, 25, 28, 31, 34, 35]
+2026-08-03 23:40:25,093 - __main__ - INFO - Components: ['resid_post']
+2026-08-03 23:40:25,093 - __main__ - INFO - Positions: 2 ['chat_suffix', 'chat_suffix_tail']
+2026-08-03 23:40:25,093 - __main__ - INFO - Storage dtype: float32
+2026-08-03 23:40:25,093 - __main__ - INFO - Total targets: 30
+2026-08-03 23:40:25,093 - src.intertemporal.geometry.geometry_pipeline - INFO - ============================================================
+2026-08-03 23:40:25,093 - src.intertemporal.geometry.geometry_pipeline - INFO - Geometry Pipeline - Phase 1: Sample Generation
+2026-08-03 23:40:25,093 - src.intertemporal.geometry.geometry_pipeline - INFO - ============================================================
+2026-08-03 23:40:25,094 - src.intertemporal.geometry.geometry_pipeline - INFO - 
+============================================================
+2026-08-03 23:40:25,094 - src.intertemporal.geometry.geometry_pipeline - INFO - Generating Samples
+2026-08-03 23:40:25,094 - src.intertemporal.geometry.geometry_pipeline - INFO - ============================================================
+2026-08-03 23:40:25,095 - src.intertemporal.geometry.geometry_data - INFO - Generating new prompt dataset using config: risk_geometry
+2026-08-03 23:40:25,179 - src.intertemporal.geometry.geometry_data - INFO - Generated 1521 samples
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO - Saved prompt dataset to /root/temporal-awareness/out/geo/qwen_risk_geometry/data/prompt_dataset.json
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO - First 5 prompt samples:
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   idx=0 | short=1,000 in 1 hour | long=1,000 in 2 hours | horizon=1 year
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   idx=1 | short=1,000 in 1 hour | long=1,129 in 2 hours | horizon=1 year
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   idx=2 | short=1,000 in 1 hour | long=1,274 in 2 hours | horizon=1 year
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   idx=3 | short=1,000 in 1 hour | long=1,438 in 2 hours | horizon=1 year
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   idx=4 | short=1,000 in 1 hour | long=1,624 in 2 hours | horizon=1 year
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   ... and 1516 more
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO - First sample prompt text:
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | SITUATION: Plan for the future of the household based on the stated objectives and constraints. Option a) pays its amount with certainty. Option b) pays its amount with a probability of 50 percent, and otherwise pays nothing.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | TASK: You, the head of the household, are tasked to choose the best investment:
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | a) 1,000 dollars in 1 hour.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | b) 1,000 dollars in 2 hours.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | OBJECTIVE: Think deeply about which option is preferable.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | CONSTRAINT: You must select the option that provides the greatest benefit for this time horizon:    1 year.          
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | 
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | ACTION: Select one of the two options. Provide reasoning on why this choice was made.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | 
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | FORMAT: Respond in this format:
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | I choose: <a) or b)>.
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | My reasoning: <reasoning in 1-3 sentences>
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO -   | 
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_pipeline - INFO - 
+============================================================
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_pipeline - INFO - Extracting Activations (Streaming)
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_pipeline - INFO - ============================================================
+2026-08-03 23:40:25,299 - src.intertemporal.geometry.geometry_data - INFO - Loading model Qwen/Qwen3-4B-Instruct-2507...
+Loading Qwen/Qwen3-4B-Instruct-2507 on cuda (HuggingFace)...
+2026-08-03 23:40:25,628 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-03 23:40:25,660 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:  91%|█████████▏| 364/398 [00:00<00:00, 3635.47it/s]Loading weights: 100%|██████████| 398/398 [00:00<00:00, 3662.36it/s]
+2026-08-03 23:40:26,046 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/generation_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-03 23:40:26,078 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/generation_config.json "HTTP/1.1 200 OK"
+2026-08-03 23:40:26,158 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/custom_generate/generate.py "HTTP/1.1 404 Not Found"
+2026-08-03 23:40:27,877 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-03 23:40:27,909 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/config.json "HTTP/1.1 200 OK"
+2026-08-03 23:40:27,986 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-03 23:40:28,018 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-08-03 23:40:28,103 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen3-4B-Instruct-2507/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-08-03 23:40:28,197 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen3-4B-Instruct-2507/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-08-03 23:40:29,050 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Qwen/Qwen3-4B-Instruct-2507 "HTTP/1.1 200 OK"
+Model loaded: ModelBackend.HUGGINGFACE Qwen/Qwen3-4B-Instruct-2507 (chat=True)
+  n_layers=36, d_model=2560
+
+2026-08-03 23:40:29,273 - src.intertemporal.geometry.geometry_data - INFO - Limited to 1500 samples
+2026-08-03 23:40:29,274 - src.intertemporal.geometry.geometry_data - INFO - Extracting activations (per-sample, compressed=False, dtype=float32)...
+2026-08-03 23:40:29,274 - src.intertemporal.geometry.geometry_data - INFO -   Sample 0/1500 | valid: 0 | skipped: 0
+2026-08-03 23:40:30,632 - src.intertemporal.geometry.geometry_data - INFO -   Preference sample 0: chose=short_term (100.00%) | reward=1,000 in 0.0mo
+2026-08-03 23:40:31,309 - src.intertemporal.geometry.geometry_data - INFO -   Preference sample 1: chose=short_term (99.48%) | reward=1,000 in 0.0mo
+2026-08-03 23:40:31,954 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 2/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:40:32,634 - src.intertemporal.geometry.geometry_data - INFO -   Preference sample 2: chose=long_term (56.31%) | reward=1,438 in 0.0mo
+2026-08-03 23:40:33,646 - src.intertemporal.geometry.geometry_data - INFO -   Preference sample 3: chose=long_term (67.93%) | reward=1,624 in 0.0mo
+2026-08-03 23:40:34,342 - src.intertemporal.geometry.geometry_data - INFO -   Preference sample 4: chose=long_term (99.33%) | reward=1,833 in 0.0mo
+2026-08-03 23:41:05,379 - src.intertemporal.geometry.geometry_data - INFO -   Sample 50/1500 | valid: 49 | skipped: 1
+2026-08-03 23:41:15,714 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 63/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:41:32,861 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 87/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:41:41,595 - src.intertemporal.geometry.geometry_data - INFO -   Sample 100/1500 | valid: 97 | skipped: 3
+2026-08-03 23:42:12,716 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 141/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:42:18,515 - src.intertemporal.geometry.geometry_data - INFO -   Sample 150/1500 | valid: 146 | skipped: 4
+2026-08-03 23:42:56,171 - src.intertemporal.geometry.geometry_data - INFO -   Sample 200/1500 | valid: 196 | skipped: 4
+2026-08-03 23:43:30,012 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 244/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:43:33,968 - src.intertemporal.geometry.geometry_data - INFO -   Sample 250/1500 | valid: 245 | skipped: 5
+2026-08-03 23:44:13,121 - src.intertemporal.geometry.geometry_data - INFO -   Sample 300/1500 | valid: 295 | skipped: 5
+2026-08-03 23:44:49,690 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 346/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:44:52,114 - src.intertemporal.geometry.geometry_data - INFO -   Sample 350/1500 | valid: 344 | skipped: 6
+2026-08-03 23:45:32,149 - src.intertemporal.geometry.geometry_data - INFO -   Sample 400/1500 | valid: 394 | skipped: 6
+2026-08-03 23:45:43,140 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 413/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:46:05,880 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 442/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:46:11,324 - src.intertemporal.geometry.geometry_data - INFO -   Sample 450/1500 | valid: 442 | skipped: 8
+2026-08-03 23:46:50,403 - src.intertemporal.geometry.geometry_data - INFO -   Sample 500/1500 | valid: 492 | skipped: 8
+2026-08-03 23:47:30,188 - src.intertemporal.geometry.geometry_data - INFO -   Sample 550/1500 | valid: 542 | skipped: 8
+2026-08-03 23:48:09,075 - src.intertemporal.geometry.geometry_data - INFO -   Sample 600/1500 | valid: 592 | skipped: 8
+2026-08-03 23:48:18,805 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 611/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:48:48,168 - src.intertemporal.geometry.geometry_data - INFO -   Sample 650/1500 | valid: 641 | skipped: 9
+2026-08-03 23:49:27,224 - src.intertemporal.geometry.geometry_data - INFO -   Sample 700/1500 | valid: 691 | skipped: 9
+2026-08-03 23:50:07,010 - src.intertemporal.geometry.geometry_data - INFO -   Sample 750/1500 | valid: 741 | skipped: 9
+2026-08-03 23:50:45,952 - src.intertemporal.geometry.geometry_data - INFO -   Sample 800/1500 | valid: 791 | skipped: 9
+2026-08-03 23:50:49,164 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 803/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:51:25,799 - src.intertemporal.geometry.geometry_data - INFO -   Sample 850/1500 | valid: 840 | skipped: 10
+2026-08-03 23:52:01,703 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 895/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:52:04,784 - src.intertemporal.geometry.geometry_data - INFO -   Sample 900/1500 | valid: 889 | skipped: 11
+2026-08-03 23:52:44,528 - src.intertemporal.geometry.geometry_data - INFO -   Sample 950/1500 | valid: 939 | skipped: 11
+2026-08-03 23:53:23,526 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1000/1500 | valid: 989 | skipped: 11
+2026-08-03 23:54:03,289 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1050/1500 | valid: 1039 | skipped: 11
+2026-08-03 23:54:33,666 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 1088/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:54:42,199 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1100/1500 | valid: 1088 | skipped: 12
+2026-08-03 23:55:21,858 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1150/1500 | valid: 1138 | skipped: 12
+2026-08-03 23:56:00,866 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1200/1500 | valid: 1188 | skipped: 12
+2026-08-03 23:56:05,533 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 1205/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:56:40,807 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1250/1500 | valid: 1237 | skipped: 13
+2026-08-03 23:57:08,287 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 1284/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:57:20,443 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1300/1500 | valid: 1286 | skipped: 14
+2026-08-03 23:57:39,363 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 1322/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:57:40,921 - src.intertemporal.geometry.geometry_data - WARNING -   !!! SKIPPED SAMPLE 1324/1500 !!! Reason: chosen_traj is None (model failed to make a valid choice). Sample formatting_id=default_prompt_format
+2026-08-03 23:58:00,994 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1350/1500 | valid: 1334 | skipped: 16
+2026-08-03 23:58:41,096 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1400/1500 | valid: 1384 | skipped: 16
+2026-08-03 23:59:22,243 - src.intertemporal.geometry.geometry_data - INFO -   Sample 1450/1500 | valid: 1434 | skipped: 16
+2026-08-04 00:00:03,770 - src.intertemporal.geometry.geometry_data - INFO - Extracted 1484 valid samples (skipped 16)
+2026-08-04 00:00:03,771 - src.intertemporal.geometry.geometry_data - INFO - Saved metadata for 1484 samples to /root/temporal-awareness/out/geo/qwen_risk_geometry/data
+2026-08-04 00:00:04,524 - __main__ - INFO - Created summary.json: /root/temporal-awareness/out/geo/qwen_risk_geometry/summary.json
+2026-08-04 00:00:04,525 - __main__ - INFO - ============================================================
+2026-08-04 00:00:04,525 - __main__ - INFO - SAMPLE GENERATION COMPLETE
+2026-08-04 00:00:04,525 - __main__ - INFO - ============================================================
+2026-08-04 00:00:04,525 - __main__ - INFO - Samples: 1484
+2026-08-04 00:00:04,525 - __main__ - INFO - Targets available: 0
+2026-08-04 00:00:04,525 - __main__ - INFO - Positions with data: 0
+2026-08-04 00:00:04,525 - __main__ - INFO - Output directory: /root/temporal-awareness/out/geo/qwen_risk_geometry/data
+PHASE EXTRACT_DONE       ts=2026-08-04T00:00:08Z rc=0 npy=111300 size=1.5G dir=/root/temporal-awareness/out/geo/qwen_risk_geometry
+PHASE HF_DRAIN           ts=2026-08-04T00:00:08Z pid=5809 seconds=180

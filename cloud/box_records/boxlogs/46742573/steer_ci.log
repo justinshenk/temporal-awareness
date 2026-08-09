@@ -1,0 +1,236 @@
+PHASE START            ts=2026-08-03T23:04:17Z models=Qwen/Qwen3-4B-Instruct-2507 meta-llama/Llama-3.1-8B-Instruct google/gemma-2-9b-it mistralai/Mistral-7B-Instruct-v0.3
+PHASE GPU_OK           ts=2026-08-03T23:04:19Z 
+Fetching ... files: 0it [00:00, ?it/s]Fetching ... files: 1it [00:00,  1.42it/s]Fetching ... files: 3it [00:00,  4.51it/s]Fetching ... files: 10it [00:01, 14.35it/s]Fetching ... files: 14it [00:01, 19.13it/s]Fetching ... files: 18it [00:01, 19.87it/s]Fetching ... files: 22it [00:01, 23.65it/s]Fetching ... files: 26it [00:01, 23.20it/s]Fetching ... files: 26it [00:01, 16.42it/s]
+MIRROR_AT /root/temporal-awareness/out/hf_new
+PHASE MIRROR_READY     ts=2026-08-03T23:07:29Z 26 files
+PHASE RESCORE_START    ts=2026-08-03T23:07:29Z model=Qwen/Qwen3-4B-Instruct-2507
+Loading Qwen/Qwen3-4B-Instruct-2507 on cuda (TransformerLens)...
+  Using HF wrapper: Qwen/Qwen3-4B-Instruct-2507 -> Qwen/Qwen3-4B config
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [01:40<03:21, 100.86s/it]Fetching 3 files:  67%|██████▋   | 2/3 [01:50<00:47, 47.17s/it] Fetching 3 files: 100%|██████████| 3/3 [01:50<00:00, 36.81s/it]
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:  91%|█████████ | 361/398 [00:00<00:00, 3602.93it/s]Loading weights: 100%|██████████| 398/398 [00:00<00:00, 3667.63it/s]
+WARNING:root:Loading model Qwen/Qwen3-4B requires setting trust_remote_code=True
+WARNING:root:Loading model Qwen/Qwen3-4B state dict requires setting trust_remote_code=True
+Loaded pretrained model Qwen/Qwen3-4B into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS Qwen/Qwen3-4B-Instruct-2507 (chat=True)
+  n_layers=36, d_model=2560
+
+Scoring baseline for Qwen3-4B-Instruct-2507...
+Scoring steering L18 alpha=20...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Qwen3-4B-Instruct-2507/rescore.json
+GATE Qwen3-4B-Instruct-2507: S 5.7505 (stored 5.8657) | S_ctrl 2.8653 (stored 2.8530) | baseline 0.7033 (stored 0.8562)
+PHASE RESCORE_OK       ts=2026-08-03T23:10:01Z model=Qwen/Qwen3-4B-Instruct-2507 GATE Qwen3-4B-Instruct-2507: S 5.7505 (stored 5.8657) | S_ctrl 2.8653 (stored 2.8530) | baseline 0.7033 (stored 0.8562)
+2026-08-03 23:10:01,929 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:10:02,166 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:10:02,166 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 1 files on disk, 1 to upload (5.1 KB)
+2026-08-03 23:10:02,252 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:10:14,908 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:10:14,909 - INFO - [commit 1/1] 1 files, 5.1 KB in 12.7s (413.0 B/s) | pass total 1/1 files, 5.1 KB, 12.7s
+2026-08-03 23:10:14,909 - INFO - Done: 1 files, 5.1 KB in 12.7s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:10:14Z after=Qwen3-4B-Instruct-2507 rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:10:14Z model=meta-llama/Llama-3.1-8B-Instruct
+Loading meta-llama/Llama-3.1-8B-Instruct on cuda (TransformerLens)...
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  25%|██▌       | 1/4 [02:26<07:18, 146.09s/it]Fetching 4 files: 100%|██████████| 4/4 [02:26<00:00, 36.52s/it] 
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 3643.38it/s]
+Loaded pretrained model meta-llama/Llama-3.1-8B-Instruct into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS meta-llama/Llama-3.1-8B-Instruct (chat=True)
+  n_layers=32, d_model=4096
+
+Scoring baseline for Llama-3.1-8B-Instruct...
+Scoring steering L18 alpha=35...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Llama-3.1-8B-Instruct/rescore.json
+GATE Llama-3.1-8B-Instruct: S 17.3669 (stored 17.3815) | S_ctrl 6.2766 (stored 6.3726) | baseline 2.2332 (stored 2.2477)
+PHASE RESCORE_OK       ts=2026-08-03T23:13:38Z model=meta-llama/Llama-3.1-8B-Instruct GATE Llama-3.1-8B-Instruct: S 17.3669 (stored 17.3815) | S_ctrl 6.2766 (stored 6.3726) | baseline 2.2332 (stored 2.2477)
+2026-08-03 23:13:39,032 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:13:39,323 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:13:39,324 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 2 files on disk, 1 to upload (4.7 KB)
+2026-08-03 23:13:39,447 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:13:47,762 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:13:47,763 - INFO - [commit 1/1] 1 files, 4.7 KB in 8.4s (569.0 B/s) | pass total 1/1 files, 4.7 KB, 8.4s
+2026-08-03 23:13:47,763 - INFO - Done: 1 files, 4.7 KB in 8.4s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:13:47Z after=Llama-3.1-8B-Instruct rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:13:47Z model=google/gemma-2-9b-it
+Loading google/gemma-2-9b-it on cuda (TransformerLens)...
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  25%|██▌       | 1/4 [03:55<11:47, 235.78s/it]Fetching 4 files:  75%|███████▌  | 3/4 [04:35<01:15, 75.98s/it] Fetching 4 files: 100%|██████████| 4/4 [04:35<00:00, 68.97s/it]
+Loading weights:   0%|          | 0/464 [00:00<?, ?it/s]Loading weights:  56%|█████▌    | 258/464 [00:00<00:00, 2573.52it/s]Loading weights: 100%|██████████| 464/464 [00:00<00:00, 2667.54it/s]
+Loaded pretrained model google/gemma-2-9b-it into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS google/gemma-2-9b-it (chat=True)
+  n_layers=42, d_model=3584
+
+Scoring baseline for gemma-2-9b-it...
+Scoring steering L21 alpha=50...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/gemma-2-9b-it/rescore.json
+GATE gemma-2-9b-it: S 3.8552 (stored 3.8582) | S_ctrl 1.4652 (stored 1.4449) | baseline 1.4049 (stored 1.4219)
+PHASE RESCORE_OK       ts=2026-08-03T23:19:36Z model=google/gemma-2-9b-it GATE gemma-2-9b-it: S 3.8552 (stored 3.8582) | S_ctrl 1.4652 (stored 1.4449) | baseline 1.4049 (stored 1.4219)
+2026-08-03 23:19:37,054 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:19:37,719 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:19:37,720 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 3 files on disk, 1 to upload (5.1 KB)
+2026-08-03 23:19:37,895 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:19:56,572 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:19:56,574 - INFO - [commit 1/1] 1 files, 5.1 KB in 18.9s (276.0 B/s) | pass total 1/1 files, 5.1 KB, 18.9s
+2026-08-03 23:19:56,575 - INFO - Done: 1 files, 5.1 KB in 18.9s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:19:56Z after=gemma-2-9b-it rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:19:56Z model=mistralai/Mistral-7B-Instruct-v0.3
+Loading mistralai/Mistral-7B-Instruct-v0.3 on cuda (TransformerLens)...
+  Using HF wrapper: mistralai/Mistral-7B-Instruct-v0.3 -> mistralai/Mistral-7B-Instruct-v0.1 config
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [02:32<05:05, 152.50s/it]Fetching 3 files: 100%|██████████| 3/3 [02:32<00:00, 50.83s/it] 
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 3278.45it/s]
+Loaded pretrained model mistralai/Mistral-7B-Instruct-v0.1 into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS mistralai/Mistral-7B-Instruct-v0.3 (chat=True)
+  n_layers=32, d_model=4096
+
+Scoring baseline for Mistral-7B-Instruct-v0.3...
+Scoring steering L19 alpha=20...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Mistral-7B-Instruct-v0.3/rescore.json
+GATE Mistral-7B-Instruct-v0.3: S 12.1737 (stored 12.1154) | S_ctrl 2.5977 (stored 2.5852) | baseline -2.0577 (stored -2.1712)
+PHASE RESCORE_OK       ts=2026-08-03T23:23:27Z model=mistralai/Mistral-7B-Instruct-v0.3 GATE Mistral-7B-Instruct-v0.3: S 12.1737 (stored 12.1154) | S_ctrl 2.5977 (stored 2.5852) | baseline -2.0577 (stored -2.1712)
+2026-08-03 23:23:28,196 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:23:28,488 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:23:28,488 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 4 files on disk, 1 to upload (4.9 KB)
+2026-08-03 23:23:28,594 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:23:40,691 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:23:40,692 - INFO - [commit 1/1] 1 files, 4.9 KB in 12.2s (413.0 B/s) | pass total 1/1 files, 4.9 KB, 12.2s
+2026-08-03 23:23:40,693 - INFO - Done: 1 files, 4.9 KB in 12.2s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:23:40Z after=Mistral-7B-Instruct-v0.3 rc=0
+PHASE BOOTSTRAP_START  ts=2026-08-03T23:23:40Z 
+Qwen3-4B-Instruct-2507: S=5.751 CI[2.176,9.041] | ctrl=2.865 CI[-0.866,6.319] | diff CI[1.289,4.661] P(diff>0)=1.0000
+Llama-3.1-8B-Instruct: S=17.367 CI[13.317,21.560] | ctrl=6.277 CI[1.817,10.383] | diff CI[7.185,15.044] P(diff>0)=1.0000
+gemma-2-9b-it: S=3.855 CI[2.501,5.095] | ctrl=1.465 CI[-0.058,2.886] | diff CI[1.660,3.206] P(diff>0)=1.0000
+Mistral-7B-Instruct-v0.3: S=12.174 CI[8.838,15.578] | ctrl=2.598 CI[0.020,5.150] | diff CI[6.775,12.540] P(diff>0)=1.0000
+Wrote /root/temporal-awareness/out/steering_ci/steering_bootstrap_cis.json
+PHASE BOOTSTRAP_END    ts=2026-08-03T23:23:43Z rc=0
+2026-08-03 23:23:43,625 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:23:43,904 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:23:43,905 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 5 files on disk, 1 to upload (3.5 KB)
+2026-08-03 23:23:44,067 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:23:50,676 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:23:50,677 - INFO - [commit 1/1] 1 files, 3.5 KB in 6.8s (526.0 B/s) | pass total 1/1 files, 3.5 KB, 6.8s
+2026-08-03 23:23:50,677 - INFO - Done: 1 files, 3.5 KB in 6.8s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:23:50Z after=bootstrap rc=0
+2026-08-03 23:23:51,259 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:23:51,540 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:23:51,540 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 5 files on disk, 0 to upload (0.0 B)
+2026-08-03 23:23:51,540 - INFO - Done: 0 files, 0.0 B in 0.0s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+2026-08-03 23:23:51,704 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/tree/main/steering%2Fci_bootstrap?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-08-03 23:23:51,705 - INFO - Verify unrulyabstractions/temporal-awareness/steering/ci_bootstrap: 5 local, 5 remote, 0 missing, 0 size-mismatched
+PHASE HF_VERIFY        ts=2026-08-03T23:23:51Z rc=0 log=/root/temporal-awareness/out/logs/steer_ci.log
+PHASE DONE             ts=2026-08-03T23:23:51Z 
+PHASE START            ts=2026-08-03T23:24:29Z models=Qwen/Qwen3-4B-Instruct-2507 meta-llama/Llama-3.1-8B-Instruct google/gemma-2-9b-it mistralai/Mistral-7B-Instruct-v0.3 batch_size=16
+PHASE GPU_OK           ts=2026-08-03T23:24:31Z 
+Fetching ... files: 0it [00:00, ?it/s]Fetching ... files: 1it [00:00,  5.33it/s]Fetching ... files: 9it [00:00, 34.33it/s]Fetching ... files: 19it [00:00, 54.80it/s]Fetching ... files: 26it [00:00, 58.33it/s]Fetching ... files: 26it [00:00, 48.72it/s]
+MIRROR_AT /root/temporal-awareness/out/hf_new
+PHASE MIRROR_READY     ts=2026-08-03T23:27:32Z 26 files
+PHASE RESCORE_START    ts=2026-08-03T23:27:32Z model=Qwen/Qwen3-4B-Instruct-2507
+Loading Qwen/Qwen3-4B-Instruct-2507 on cuda (TransformerLens)...
+  Using HF wrapper: Qwen/Qwen3-4B-Instruct-2507 -> Qwen/Qwen3-4B config
+Loading weights:   0%|          | 0/398 [00:00<?, ?it/s]Loading weights:  94%|█████████▍| 374/398 [00:00<00:00, 3730.61it/s]Loading weights: 100%|██████████| 398/398 [00:00<00:00, 3716.03it/s]
+WARNING:root:Loading model Qwen/Qwen3-4B requires setting trust_remote_code=True
+WARNING:root:Loading model Qwen/Qwen3-4B state dict requires setting trust_remote_code=True
+Loaded pretrained model Qwen/Qwen3-4B into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS Qwen/Qwen3-4B-Instruct-2507 (chat=True)
+  n_layers=36, d_model=2560
+
+Scoring baseline for Qwen3-4B-Instruct-2507...
+Scoring steering L18 alpha=20...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Qwen3-4B-Instruct-2507/rescore.json
+GATE Qwen3-4B-Instruct-2507: S 5.7754 (stored 5.8657) | S_ctrl 2.8588 (stored 2.8530) | baseline 0.7497 (stored 0.8562)
+PHASE RESCORE_OK       ts=2026-08-03T23:28:10Z model=Qwen/Qwen3-4B-Instruct-2507 GATE Qwen3-4B-Instruct-2507: S 5.7754 (stored 5.8657) | S_ctrl 2.8588 (stored 2.8530) | baseline 0.7497 (stored 0.8562)
+2026-08-03 23:28:12,558 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:28:12,785 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:28:12,786 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 1 files on disk, 1 to upload (5.1 KB)
+2026-08-03 23:28:12,871 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:28:21,652 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:28:21,654 - INFO - [commit 1/1] 1 files, 5.1 KB in 8.9s (592.0 B/s) | pass total 1/1 files, 5.1 KB, 8.9s
+2026-08-03 23:28:21,654 - INFO - Done: 1 files, 5.1 KB in 8.9s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:28:21Z after=Qwen3-4B-Instruct-2507 rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:28:21Z model=meta-llama/Llama-3.1-8B-Instruct
+Loading meta-llama/Llama-3.1-8B-Instruct on cuda (TransformerLens)...
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights:  88%|████████▊ | 256/291 [00:00<00:00, 2511.93it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 2390.13it/s]
+Loaded pretrained model meta-llama/Llama-3.1-8B-Instruct into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS meta-llama/Llama-3.1-8B-Instruct (chat=True)
+  n_layers=32, d_model=4096
+
+Scoring baseline for Llama-3.1-8B-Instruct...
+Scoring steering L18 alpha=35...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Llama-3.1-8B-Instruct/rescore.json
+GATE Llama-3.1-8B-Instruct: S 17.3504 (stored 17.3815) | S_ctrl 6.2610 (stored 6.3726) | baseline 2.2497 (stored 2.2477)
+PHASE RESCORE_OK       ts=2026-08-03T23:29:17Z model=meta-llama/Llama-3.1-8B-Instruct GATE Llama-3.1-8B-Instruct: S 17.3504 (stored 17.3815) | S_ctrl 6.2610 (stored 6.3726) | baseline 2.2497 (stored 2.2477)
+2026-08-03 23:29:17,867 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:29:18,156 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:29:18,157 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 2 files on disk, 1 to upload (4.7 KB)
+2026-08-03 23:29:18,288 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:29:26,818 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:29:26,819 - INFO - [commit 1/1] 1 files, 4.7 KB in 8.7s (554.0 B/s) | pass total 1/1 files, 4.7 KB, 8.7s
+2026-08-03 23:29:26,819 - INFO - Done: 1 files, 4.7 KB in 8.7s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:29:26Z after=Llama-3.1-8B-Instruct rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:29:26Z model=google/gemma-2-9b-it
+Loading google/gemma-2-9b-it on cuda (TransformerLens)...
+Loading weights:   0%|          | 0/464 [00:00<?, ?it/s]Loading weights:  56%|█████▋    | 262/464 [00:00<00:00, 2616.50it/s]Loading weights: 100%|██████████| 464/464 [00:00<00:00, 2976.31it/s]
+Loaded pretrained model google/gemma-2-9b-it into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS google/gemma-2-9b-it (chat=True)
+  n_layers=42, d_model=3584
+
+Scoring baseline for gemma-2-9b-it...
+Scoring steering L21 alpha=50...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/gemma-2-9b-it/rescore.json
+GATE gemma-2-9b-it: S 3.8587 (stored 3.8582) | S_ctrl 1.4421 (stored 1.4449) | baseline 1.4165 (stored 1.4219)
+PHASE RESCORE_OK       ts=2026-08-03T23:30:34Z model=google/gemma-2-9b-it GATE gemma-2-9b-it: S 3.8587 (stored 3.8582) | S_ctrl 1.4421 (stored 1.4449) | baseline 1.4165 (stored 1.4219)
+2026-08-03 23:30:34,723 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:30:34,945 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:30:34,945 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 3 files on disk, 1 to upload (5.1 KB)
+2026-08-03 23:30:35,031 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:30:42,798 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:30:42,799 - INFO - [commit 1/1] 1 files, 5.1 KB in 7.9s (663.0 B/s) | pass total 1/1 files, 5.1 KB, 7.9s
+2026-08-03 23:30:42,799 - INFO - Done: 1 files, 5.1 KB in 7.9s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:30:42Z after=gemma-2-9b-it rc=0
+PHASE RESCORE_START    ts=2026-08-03T23:30:42Z model=mistralai/Mistral-7B-Instruct-v0.3
+Loading mistralai/Mistral-7B-Instruct-v0.3 on cuda (TransformerLens)...
+  Using HF wrapper: mistralai/Mistral-7B-Instruct-v0.3 -> mistralai/Mistral-7B-Instruct-v0.1 config
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 3756.66it/s]
+Loaded pretrained model mistralai/Mistral-7B-Instruct-v0.1 into HookedTransformer
+Model loaded: ModelBackend.TRANSFORMERLENS mistralai/Mistral-7B-Instruct-v0.3 (chat=True)
+  n_layers=32, d_model=4096
+
+Scoring baseline for Mistral-7B-Instruct-v0.3...
+Scoring steering L19 alpha=20...
+Scoring matched-norm random control...
+Wrote /root/temporal-awareness/out/steering_ci/Mistral-7B-Instruct-v0.3/rescore.json
+GATE Mistral-7B-Instruct-v0.3: S 12.0717 (stored 12.1154) | S_ctrl 2.5347 (stored 2.5852) | baseline -2.1108 (stored -2.1712)
+PHASE RESCORE_OK       ts=2026-08-03T23:31:34Z model=mistralai/Mistral-7B-Instruct-v0.3 GATE Mistral-7B-Instruct-v0.3: S 12.0717 (stored 12.1154) | S_ctrl 2.5347 (stored 2.5852) | baseline -2.1108 (stored -2.1712)
+2026-08-03 23:31:34,560 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:31:34,844 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:31:34,845 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 4 files on disk, 1 to upload (4.9 KB)
+2026-08-03 23:31:34,953 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:31:44,638 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:31:44,639 - INFO - [commit 1/1] 1 files, 4.9 KB in 9.8s (514.0 B/s) | pass total 1/1 files, 4.9 KB, 9.8s
+2026-08-03 23:31:44,640 - INFO - Done: 1 files, 4.9 KB in 9.8s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:31:44Z after=Mistral-7B-Instruct-v0.3 rc=0
+PHASE BOOTSTRAP_START  ts=2026-08-03T23:31:44Z 
+Qwen3-4B-Instruct-2507: S=5.775 CI[2.179,9.084] | ctrl=2.859 CI[-0.851,6.299] | diff CI[1.332,4.675] P(diff>0)=1.0000
+Llama-3.1-8B-Instruct: S=17.350 CI[13.304,21.559] | ctrl=6.261 CI[1.811,10.368] | diff CI[7.157,15.067] P(diff>0)=1.0000
+gemma-2-9b-it: S=3.859 CI[2.499,5.106] | ctrl=1.442 CI[-0.085,2.858] | diff CI[1.687,3.236] P(diff>0)=1.0000
+Mistral-7B-Instruct-v0.3: S=12.072 CI[8.736,15.461] | ctrl=2.535 CI[-0.054,5.087] | diff CI[6.761,12.479] P(diff>0)=1.0000
+Wrote /root/temporal-awareness/out/steering_ci/steering_bootstrap_cis.json
+PHASE BOOTSTRAP_END    ts=2026-08-03T23:31:47Z rc=0
+2026-08-03 23:31:47,434 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:31:47,692 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:31:47,693 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 5 files on disk, 1 to upload (3.5 KB)
+2026-08-03 23:31:47,804 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/preupload/main "HTTP/1.1 200 OK"
+2026-08-03 23:31:52,196 - INFO - HTTP Request: POST https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/commit/main "HTTP/1.1 200 OK"
+2026-08-03 23:31:52,197 - INFO - [commit 1/1] 1 files, 3.5 KB in 4.5s (791.0 B/s) | pass total 1/1 files, 3.5 KB, 4.5s
+2026-08-03 23:31:52,197 - INFO - Done: 1 files, 3.5 KB in 4.5s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+PHASE PUSHED           ts=2026-08-03T23:31:52Z after=bootstrap rc=0
+2026-08-03 23:31:54,221 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness "HTTP/1.1 200 OK"
+2026-08-03 23:31:54,454 - INFO - Syncing /root/temporal-awareness/out/steering_ci -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap (dataset)
+2026-08-03 23:31:54,454 - INFO - Scanned /root/temporal-awareness/out/steering_ci: 5 files on disk, 0 to upload (0.0 B)
+2026-08-03 23:31:54,454 - INFO - Done: 0 files, 0.0 B in 0.0s -> unrulyabstractions/temporal-awareness/steering/ci_bootstrap
+2026-08-03 23:31:54,586 - INFO - HTTP Request: GET https://huggingface.co/api/datasets/unrulyabstractions/temporal-awareness/tree/main/steering%2Fci_bootstrap?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-08-03 23:31:54,586 - INFO - Verify unrulyabstractions/temporal-awareness/steering/ci_bootstrap: 5 local, 5 remote, 0 missing, 0 size-mismatched
+PHASE HF_VERIFY        ts=2026-08-03T23:31:54Z rc=0 log=/root/temporal-awareness/out/logs/steer_ci.log
+PHASE DONE             ts=2026-08-03T23:31:54Z 

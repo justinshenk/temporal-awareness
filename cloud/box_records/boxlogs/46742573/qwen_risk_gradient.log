@@ -1,0 +1,30 @@
+PHASE EXTRACT_START 2026-08-04T00:25:08Z
+2026-08-04 00:25:16,688 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-04 00:25:16,705 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qwen/Qwen3-4B-Instruct-2507/cdbee75f17c01a7cc42f958dc650907174af0554/config.json "HTTP/1.1 200 OK"
+Loaded config: risk_gradient_geometry from data/intertemporal/risk/risk_gradient_geometry.json
+2026-08-04 00:25:16,708 - __main__ - ERROR - Resume directory does not exist: out/geo/qwen_risk_gradient
+PHASE EXTRACT_DONE rc=1 2026-08-04T00:25:17Z
+Traceback (most recent call last):
+  File "/root/temporal-awareness/scripts/intertemporal/turn_ordinality.py", line 209, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/root/temporal-awareness/scripts/intertemporal/turn_ordinality.py", line 142, in main
+    summary = json.load(open(run_dir / "summary.json"))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'out/geo/qwen_risk_gradient/summary.json'
+PHASE ORDINALITY_DONE rc=1 2026-08-04T00:25:19Z
+Traceback (most recent call last):
+  File "/root/temporal-awareness/scripts/intertemporal/turn_class_silhouette.py", line 145, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/root/temporal-awareness/scripts/intertemporal/turn_class_silhouette.py", line 85, in main
+    summary = json.load(open(run_dir / "summary.json"))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'out/geo/qwen_risk_gradient/summary.json'
+PHASE SILHOUETTE_DONE rc=1 2026-08-04T00:25:22Z
+qwen_risk_gradient.tar.gz:   0%|          | 0.00/45.0 [00:00<?, ?B/s]qwen_risk_gradient.tar.gz: 100%|██████████| 45.0/45.0 [00:00<00:00, 282B/s]
+UPLOADED geometry/qwen_risk_gradient.tar.gz hub 45 local 45 match True
+MISSING out/geo/qwen_risk_gradient/analysis/turn_ordinality_probability.json
+MISSING out/geo/qwen_risk_gradient/analysis/turn_silhouette.json
+MISSING out/geo/qwen_risk_gradient/summary.json
+GRADIENT_CHAIN_DONE 2026-08-04T00:25:28Z
