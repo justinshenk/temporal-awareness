@@ -161,11 +161,21 @@ def main() -> int:
                 Line2D([], [], marker="s", ls="", color=c, label=n)
                 for n, _, c in HORIZON_BINS
             ] + [Line2D([], [], marker="s", ls="", color=NO_HORIZON_COLOR, label="No Horizon")]
-            axes[0][0].legend(handles=pref_handles, fontsize=8, loc="upper left",
-                              bbox_to_anchor=(-0.42, 1.0), frameon=False)
-            axes[min(1, len(rows) - 1)][0].legend(
+            pref_legend = axes[0][0].legend(
+                handles=pref_handles, fontsize=8, loc="upper left",
+                bbox_to_anchor=(-0.42, 1.0), frameon=False,
+            )
+            # A single-row run (Mistral) has no second row to hold the horizon
+            # key, so both legends share the first axis and the preference one
+            # is re-attached to survive the second legend call.
+            if len(rows) == 1:
+                axes[0][0].add_artist(pref_legend)
+                hor_ax, hor_anchor = axes[0][0], (-0.42, 0.78)
+            else:
+                hor_ax, hor_anchor = axes[1][0], (-0.42, 1.0)
+            hor_ax.legend(
                 handles=hor_handles, fontsize=6.5, loc="upper left",
-                bbox_to_anchor=(-0.42, 1.0), frameon=False, markerscale=0.8,
+                bbox_to_anchor=hor_anchor, frameon=False, markerscale=0.8,
             )
             fig.suptitle(f"Layer-{layer} {comp} PCA at the turn-transition tokens",
                          fontsize=12)
