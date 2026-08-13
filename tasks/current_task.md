@@ -119,7 +119,46 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
     plus contrast-interval + role-class-name tests in `tests/test_attribution_tasks.py`.
   - Writeup: P4 section + fourth verdict row + P4 caveats in `2026-06-16-multihop-generality.md`;
     strand-5 entry extended in `results/activation_weight_investigation.md`.
-- [ ] **P5 — the missing GSM8K ridge layer probe (IN FLIGHT)**. Brief: `tasks/gsm8k_ridge_layer_probe.md`.
+- [x] **P5 — the missing GSM8K ridge layer probe — DONE 2026-08-10** (updated brief:
+      `tasks/p5_execution_brief.md`; report `results/attribution/2026-08-10-gsm8k-ridge-layer-probe.md`).
+      Preflight 146/146 (§8 scope — the brief's full-`tests/` command shows ~49 unrelated stale
+      failures; scoped suite is the contract). Collect 24 min (token-identical to the aborted 08-06
+      run; old partial accumulators deleted first, 20 G). Fit 3 min: **L20 R²_te = 0.610** @λ*
+      3.16e3 (gate ≥0.367 passed; the "≈0.61" the audit flagged unsourced was *right*). Decisive
+      sweep 160 min, n=200, α=1.0, refs base 0.000 / LoRA 0.650 (outside the stale 0.36–0.46 gate —
+      max_new=512 protocol; recorded). **Result: GSM8K leaks late** — L8/12 0.00 [0,.03], L16 0.05,
+      L20 0.03 [.01,.08], **L24 0.12 [.07,.19]**, L28 0.13, L31 0.12 — vs multihop 0.45 [.35,.56]
+      @L24 (disjoint CIs). Verdict: **shape replication, task-dependent amplitude (~3.75× @peak)**;
+      "every GSM8K ridge number is 0.00" (600b5f7) refuted; divergence survives as degree. MLP rung:
+      **0.00 [0,.17]** n=20 with cos .806/R² .651 vs ridge .631/.330 — paradox replicates; power at
+      n=100 + L24 before the abstract clause is final. Docs updated (multihop report P2/P2b/verdict/
+      caveats, strand 5); `steer_results_layers.json` renamed per output hazard; papers/ untouched
+      per brief. Analysis artifact: claude.ai/code/artifact/70d09622-6746-4067-b517-0c35f3019bff
+- [ ] **P5b — sharpening follow-ups** (register-share hypothesis):
+  - [x] **Cross-task transplant DONE — the leak is task-agnostic.** Multihop-fit maps on GSM8K
+        (`steer_transplant_multihop_maps_on_gsm8k.json`, n=200, refs supplied): L20 0.01, L24
+        **0.09 [.05,.16]** (native 0.12), L28 **0.13** (= native exactly, 17/200 both). Foreign map
+        delivers 75–100% of the native leak → the task-fitted component transports ≤0.03 (noise);
+        the leak is a task-agnostic late-stack register push. Lead finding for the paper.
+  - [x] **MLP @L24 n=100 DONE — paradox is an inversion with disjoint CIs**
+        (`nonlinear_delta_gsm8k_L24_n100.json`): MLP cos .815/R² .675 → recovery **0.00 [0,.04]**;
+        ridge cos .656/R² .354 → **0.10 [.05,.18]**. Better fit ⇒ *less* transport. Joint with the
+        transplant: the transportable component is the *unconditional* one. Abstract MLP clause now
+        powered at the live layer.
+  - [ ] α grid @L24/28 **DIED, NO ARTIFACT — deferred** (checked 2026-08-13: process gone, GPU
+        idle, log's last write 2026-08-10 17:48). Reached 9 of 12 cells and stopped before
+        L28 α∈{1.25,1.5,2.0}; `steer_gsm8k` writes its JSON only at the end, so
+        `steer_results.json` was never created and the 9 measured cells exist **only** in
+        `.run_logs/p5b_alpha_grid.log` — unciteable under the provenance rule. Log reads (n=200,
+        refs base 0.000 / LoRA 0.650): L24 {.25:0.000, .5:0.005, **.75:0.095 (+0.15)**, 1.25:0.000,
+        1.5:0.000, 2.0:0.000}; L28 {.25:0.000, .5:0.000, .75:0.040 (+0.06)}. Note the peak sits at
+        **α=0.75, not the α=1.0 of the headline sweep** (which read L24 +0.12) — so a re-run would
+        likely *raise* GSM8K's leak, narrowing the multihop gap further. Resuming means re-running
+        all 12 cells (~4–5 h); not an acceptance criterion, so it yields to S2. If revived: rename
+        the output on completion.
+  - [ ] Transcript check of leak cells (native/transplant L28 both 17/200 — same problems?);
+        mean-δ fixed-vector control (needs small driver flag, TDD).
+- [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
       all-layer joint injections; **L20 and L24 were never probed**, which are exactly the layers

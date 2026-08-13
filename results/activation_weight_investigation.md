@@ -67,17 +67,23 @@ component), even when they differ on side-effects and on sparse mechanism.
 [`attribution/2026-06-16-multihop-generality.md`](attribution/2026-06-16-multihop-generality.md) ·
 [`../register_vs_procedure_abstract.md`](../register_vs_procedure_abstract.md)
 - The ridge map `W·a` (the same object as a LoReFT edit) installs a **register/disposition**
-  (refusal tone dominates fixed-vector baselines) but not a **procedure** (GSM8K: ≈0 under every
-  salvage — MLP, DAgger, local refit, DAS); the procedure is a distributed, temporally dense
-  trajectory state (lockstep oracle 0.75 @L20, needs ~every decode step).
+  (refusal tone dominates fixed-vector baselines) but not a **procedure** (GSM8K: ≤0.13 of budget at
+  any single layer, ≈0 mid-stack — DAgger, local refit and DAS have committed 0.00 artifacts; the
+  MLP artifact is landing via P5); the procedure is a distributed, temporally dense trajectory state
+  (lockstep oracle 0.75 @L20, needs ~every decode step).
 - **The thesis generalizes beyond arithmetic (n=2 procedures):** on MuSiQue open-book multi-hop QA
   the oracle axis replicates exactly (+0.76 @L20, same layer/magnitude) and so does temporal
-  density; the pointwise ladder is PARTIAL — MLP/DAgger stay 0, but the *linear* rung leaks
-  ~¼ of the budget @L20 and ~half @L24 (α=1.0-resonant, layer-humped over the plateau) where every
-  GSM8K ridge measurement is 0.00. **Unmatched comparison (flagged 2026-08-06):** GSM8K ridge
-  steering was probed per-layer only at L0/L1/L14/L16/L31 — never at L20 or L24 — so this axis
-  awaits a same-layer GSM8K run. Provisional claim: the *procedure core* does not install; its size
-  is task-dependent.
+  density; the pointwise ladder, **now matched layer-for-layer (P5 run, 2026-08-10,
+  `attribution/2026-08-10-gsm8k-ridge-layer-probe.md`)**, is a *shape replication with
+  task-dependent amplitude*: both tasks are ≈0 mid-stack and leak late — GSM8K
+  +0.03 [0.01, 0.08] @L20 rising to +0.12–0.13 @L24–L31, multihop +0.26 @L20 peaking
+  +0.45 [0.35, 0.56] @L24 (n=200 both, disjoint CIs at L24/L28). The earlier "every GSM8K ridge
+  measurement is 0.00" (600b5f7) is **refuted by measurement** — it rested on five layers that
+  excluded exactly the late stack where the leak lives. MLP/DAgger stay 0 on multihop; GSM8K's MLP
+  rung is getting its first artifact now. Sharpened claim: the *procedure core* does not install
+  anywhere; a late-stack register-like component transports on **both** tasks, and its share of the
+  budget — not its existence — is what is task-dependent (~3.75× larger on scaffold-limited
+  open-book composition than on computation-limited arithmetic).
 - **What the dense state is doing (gold-token lens, teacher-forced):** on GSM8K, base given the
   correct working predicts computed results at 0.968 vs 0.835 for the chain at large
   (**+0.133 [+0.096, +0.173]**), and those

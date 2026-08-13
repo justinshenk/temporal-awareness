@@ -70,17 +70,18 @@ selected by the same earliest-plateau rule, so the P2/P3 GSM8K configs port unch
 Residuals collected on the donor's CoT (200 fit / 60 held-out problems; 11,901 / 3,444 CoT tokens —
 multihop chains are ~60 tokens, shorter than GSM8K's ~250). Ridge maps fit per layer over
 λ ∈ logspace(−1, 7, 17) (`sweep_multihop.json`): at L20, λ\* = 3.16e3, **held-out R²_te = +0.71**.
-The GSM8K comparison here was also unsourced (corrected 2026-08-06): an earlier draft cited "≈0.61",
-but the only committed GSM8K sweep is `sweep_smoke.json`, whose L20 gives **R²_te = 0.367** at the
-same λ\*; the full-run `sweep.json` was never committed. The smoke fit uses fewer problems, so 0.367
-is a floor rather than the GSM8K value — either way, the number to compare against will come from
-the P5 refit. As in GSM8K, the *open-loop geometry is good* — the ladder question is whether it
-survives closed-loop decoding.
+The GSM8K comparison here was unsourced when first written (corrected 2026-08-06): an earlier draft
+cited "≈0.61" with no artifact; the only committed sweep, `sweep_smoke.json`, gave a floor of 0.367.
+**The P5 refit (2026-08-10, `sweep.json`, full n_fit 200 / n_te 60) measured it: GSM8K L20
+R²_te = 0.610 at λ\* = 3.16e3** — the unsourced figure was accurate, and now has an artifact behind
+it; GSM8K L24 fits slightly better still (0.636). Multihop L20 remains the stronger fit at 0.714.
+As in GSM8K, the *open-loop geometry is good* — the ladder question is whether it survives
+closed-loop decoding.
 
 | rung | recovery | GSM8K analogue |
 |---|--:|--:|
-| ridge steer @L20 | **+0.26** scan / **+0.21** contrast at n=100 (the first-pass n=20 contrast read of +0.35 was small-n inflation; `nonlinear_delta_multihop_L20_n100.json`) | 0.00 — but **never probed at L20** ‡ |
-| nonlinear MLP @L20 | **+0.00** (val cos +0.822 / R² +0.675 vs ridge +0.636 / +0.270 — better fit, zero closed-loop; +0.01 at n=100 contrast) | 0.00 asserted, **no artifact** ‡ |
+| ridge steer @L20 | **+0.26** scan / **+0.21** contrast at n=100 (the first-pass n=20 contrast read of +0.35 was small-n inflation; `nonlinear_delta_multihop_L20_n100.json`) | **+0.03 [0.01, 0.08]** measured 2026-08-10 (P5, n=200) ‡ |
+| nonlinear MLP @L20 | **+0.00** (val cos +0.822 / R² +0.675 vs ridge +0.636 / +0.270 — better fit, zero closed-loop; +0.01 at n=100 contrast) | **+0.00 [0, 0.17]** measured 2026-08-10 (n=20; cos 0.806 / R² 0.651 vs ridge 0.631 / 0.330 — **same paradox**) |
 | on-policy DAgger (joint all-layer) | **+0.00 / +0.00 / +0.00** (rounds 0–2, `dagger_refit_multihop.json`) | 0.00 all rounds |
 | full-δ oracle @L20 | **+0.760** | 0.75 |
 
@@ -95,38 +96,46 @@ report was traced to a file. Result:
 | temporal-density column (all 9 gates) | 0.750 / 0.000 ×5 / 0.000 @2.9% / 0.700 @94.4% / 0.000 @9.4% | `temporal_oracle_L20.json` — exact match on every cell | **sourced** |
 | DAgger, all rounds | 0.00 | `dagger_refit_gsm8k.json` (rounds 0–2, joint) | **sourced** |
 | plan-vs-execute (P4) | 0.968 / 0.895 / 0.835 | `gold_token_lens_L20.json`, re-run and reproduced exactly today | **sourced** |
-| ridge steer @L20 | "≈0.05" | none — L20 never probed | **unsourced** ‡ |
-| ridge "≈0 at every layer" | ≈0 | per-layer only L0/L1/L14/L16/L31 | **overstated** ‡ |
-| held-out R²_te @L20 | "≈0.61" | `sweep_smoke.json` gives 0.367 | **unsourced** |
-| nonlinear MLP @L20 | 0.00, "same paradox" | none — no GSM8K nonlinear run was ever committed | **unsourced** |
+| ridge steer @L20 | "≈0.05" | none at audit; **P5 measured +0.03 [0.01, 0.08]** (`steer_results_layers.json`, n=200) | **closed 2026-08-10** — the unsourced figure was nearly right ‡ |
+| ridge "≈0 at every layer" | ≈0 | per-layer only L0/L1/L14/L16/L31 at audit; **P5 measured the full curve — false**: L24 +0.12, L28 +0.13, L31 +0.12, intervals exclude 0 | **refuted by measurement** ‡ |
+| held-out R²_te @L20 | "≈0.61" | `sweep_smoke.json` gave 0.367; **P5 full refit: 0.610** (`sweep.json`) | **closed 2026-08-10** — figure vindicated |
+| nonlinear MLP @L20 | 0.00, "same paradox" | **P5 measured 0.00 [0, 0.17] with better geometry than ridge** (`nonlinear_delta_gsm8k_L20.json`) | **closed 2026-08-10** — paradox confirmed (n=20 power caveat) |
 
 The three structural axes (oracle, temporal density, plan-vs-execute) are fully backed; **every
-unsourced cell is in the P2 ladder row** — the one axis this report calls a divergence. P5 closes
-the ridge and R²_te cells. The MLP cell needs a GSM8K nonlinear run to say anything at all; until
-then "GSM8K's MLP shows the same better-geometry/zero-recovery paradox" is an expectation carried
-over from the GSM8K-era prose (`2026-06-10-das-subspace.md` summarizes "any learned feed-forward
-map ≈0" as *prior results*, without a measurement of its own), not a measurement.
+unsourced cell was in the P2 ladder row** — the one axis this report called a divergence. The P5 run
+(2026-08-10, `2026-08-10-gsm8k-ridge-layer-probe.md`) closed all four: R²_te and the MLP paradox
+were vindicated, the "≈0.05" point value was nearly right, and the "≈0 at every layer" claim was
+refuted — the leak the audit's five layers happened to miss lives at L24–L31.
 
-‡ **The GSM8K ridge column is weaker than it looks, and weaker than this report first claimed**
-(corrected 2026-08-06). Every committed GSM8K ridge-steering measurement reads 0.00, but the
-*per-layer* ones cover only L0/L1/L14/L16/L31 at α ≤ 1.0 (`steer_results_smoke.json`, n=12/50);
-the rest are all-layer **joint** injections (`short_arithmetic.json`, `local_refit_gsm8k.json`,
-`dagger_refit_gsm8k.json`). **L20 and L24 — the two layers where the multihop leak appears — were
-never probed per-layer on GSM8K.** The full-run output the config names
-(`results/attribution/steer_results.json`) was never committed and no longer exists on disk. An
-earlier draft of this report cited "≈0.05" for this cell; no artifact backs that number (the 0.05s
-in the GSM8K corpus belong to the PCA-band oracle and the lesion control, different experiments).
-The honest statement is below.
+‡ **Closed by measurement 2026-08-10** (P5 run, `steer_results_layers.json`; the history of the gap
+is kept for the record). At audit time (2026-08-06) every committed GSM8K ridge-steering measurement
+read 0.00, but the *per-layer* ones covered only L0/L1/L14/L16/L31 at α ≤ 1.0
+(`steer_results_smoke.json`, n=12/50); the rest were all-layer **joint** injections
+(`short_arithmetic.json`, `local_refit_gsm8k.json`, `dagger_refit_gsm8k.json`), and L20/L24 had
+never been probed. The P5 refit + per-layer sweep (n_eval=200, α=1.0, max_new=512, base 0.000 /
+LoRA 0.650 measured under the same protocol) filled the curve — see the P2b table. Headline:
+**GSM8K is 0.03 [0.01, 0.08] at L20 but 0.12 [0.07, 0.19] at L24** — small, late, and *non-zero*.
+The audit-era correction "every GSM8K ridge number really is 0.00" (600b5f7) is itself refuted; the
+original unsourced "≈0.05" was closer to the truth than the correction that replaced it. Note the
+historical joint-injection nulls coexist with the single-layer L24 leak only if mid-stack injections
+actively corrupt the trajectory and swamp the late-layer gain — itself informative about the map's
+off-manifold behaviour.
 
-**Reading.** Two of three rungs replicate exactly (MLP's better-geometry/zero-recovery paradox; DAgger
-flat at 0 with on-policy data). The ridge rung *appears to diverge*: multihop's L20 edit is partially
-linearly transportable (~¼ of the budget) where every GSM8K ridge measurement is 0.00. The wall
-exists — the oracle still beats every pointwise map by ≥0.5 of the budget — but it looks *lower* for
-multihop: hop composition over given passages plausibly has a larger register-like (linearly
-mappable) component than arithmetic. **This comparison is not yet matched**: multihop's leak is
-measured at L20/L24, GSM8K's null is measured at other layers and under joint injection, so a
-same-layer GSM8K probe at L20/L24 (α grid) is required before the divergence can be asserted as a
-fact rather than an inference.
+**Reading (rewritten 2026-08-10, matched comparison).** Two rungs replicate exactly (MLP pending its
+first GSM8K artifact; DAgger flat at 0 with on-policy data). The ridge rung is now measured on both
+tasks at every layer, same n, α, and generation budget, and the honest statement is: **both tasks
+leak, with the same shape and different amplitude.** Both curves are ≈0 through mid-stack and
+develop their leak late (GSM8K: 0/0/.05/.03/.12/.13/.12 over L8…L31; multihop: 0/0/0/.26/.45/.38/.24).
+At the matched layers the separation is clean — L24 0.12 [0.07, 0.19] vs 0.45 [0.35, 0.56],
+intervals disjoint — so the *amplitude* is task-dependent by ~3.75× at the peak. The wall exists on
+both tasks (oracle beats the best map by ≥0.5 of budget on GSM8K, ≥0.3 on multihop), but "the
+GSM8K rung is 0.00" is no longer available as a statement of the divergence; the correct statement
+is a shape replication with task-dependent leak size, consistent with the register-vs-procedure
+split: the late-stack, output-adjacent (register-like) component of the delta transports through a
+pointwise map on both tasks, and its share of the budget is what differs — small on arithmetic
+(computation-limited), large on open-book hop composition (scaffold-limited). One reversal to keep
+honest: at L16 GSM8K reads 0.05 [0.02, 0.10] where multihop is 0.00 [0.00, 0.03], so neither task
+dominates the other everywhere.
 
 ### P2b — characterizing the ridge divergence (follow-up)
 
@@ -149,16 +158,23 @@ the oracle plateau and peaks *later* than the oracle onset —
 
 | L | 8 | 12 | 16 | 20 | 24 | 28 | 31 |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| ridge steer | 0.00 | 0.00 | 0.00 | +0.26 | **+0.45** | +0.38 | +0.24 |
-| oracle | +0.07 | +0.02 | +0.02 | +0.76 | +0.78 | +0.89† | +1.00† |
+| multihop ridge steer | 0.00 | 0.00 | 0.00 | +0.26 | **+0.45** | +0.38 | +0.24 |
+| multihop oracle | +0.07 | +0.02 | +0.02 | +0.76 | +0.78 | +0.89† | +1.00† |
+| **GSM8K ridge steer** (P5, 2026-08-10) | 0.00 | 0.00 | +0.05 | +0.03 | **+0.12** | +0.13 | +0.12 |
 
-So on the multihop side the leak is a *curve*, not a point: the linearly transportable fraction of
-the edit grows through the plateau to nearly half the budget at L24 before decaying toward the
-readout. (No † on the steering rows — steering adds `W·a` to base's own state, so nothing is
-degenerate about late layers here.) The matching GSM8K curve **does not exist** (see ‡): GSM8K
-ridge steering was probed per-layer only at L0/L1/L14/L16/L31, all 0.00, so the claim that this
-curve is multihop-specific rests on those five layers plus the joint-injection nulls, none of them
-at L20 or L24.
+GSM8K row: `steer_results_layers.json`, n_eval=200, α=1.0, max_new=512, base 0.000 / LoRA 0.650
+measured under the same protocol; 95% intervals in the P5 report
+(`2026-08-10-gsm8k-ridge-layer-probe.md`) — the non-zero cells exclude 0, the zero cells bound at
+[0, 0.03].
+
+So the leak is a *curve* on **both** tasks, not a point and not one task's property: on multihop the
+linearly transportable fraction grows through the plateau to nearly half the budget at L24 before
+decaying toward the readout; on GSM8K the same late-onset shape appears at roughly a quarter of the
+amplitude (peak +0.13 at L28) and without the late decay. (No † on the steering rows — steering adds
+`W·a` to base's own state, so nothing is degenerate about late layers here.) At the matched layers
+the amplitude separation is clean (L24 and L28 intervals disjoint); at L16 the ordering reverses
+(GSM8K +0.05, multihop 0.00). The former reading — that the curve is multihop-specific — was an
+artifact of GSM8K never having been probed where its own leak lives.
 
 **Contrast-set check at n=100** (`nonlinear_delta_multihop_L20_n100.json`): ridge +0.21 / MLP +0.01
 — the scan and contrast estimates of the L20 leak now agree at ~0.2–0.26, and the
@@ -286,24 +302,26 @@ and cannot be separated from it with this design.
 | axis | GSM8K | multihop | replicates? |
 |---|---|---|---|
 | oracle recovers | 0.75 @L20 (all-layers ≈1) | **+0.760 @L20** (all-layers +1.000) | **YES** |
-| pointwise ladder | ≈0 (ridge/MLP/DAgger/DAS) | MLP +0.00, DAgger +0.00 — but **ridge +0.21–0.26 @L20, peaking +0.45 @L24** (α=1.0-resonant) | **PARTIAL** |
+| pointwise ladder | mid-stack ≈0; **late-stack leak +0.12–0.13 @L24–L31** (P5, n=200, intervals exclude 0); MLP pending; DAgger/DAS 0 | MLP +0.00, DAgger +0.00 — ridge **same shape**, larger: +0.21–0.26 @L20, peaking +0.45 @L24 (α=1.0-resonant) | **SHAPE YES, amplitude task-dependent (~3.75× @L24, disjoint CIs)** |
 | temporal density | sharp knee; planning-heavy | knee at k=2 (0.05); reasoning_only = oracle @100% | **YES** |
 | plan vs execute (P4) | execute (computed) 0.968 ≫ all 0.835 (**+0.133 [+0.096,+0.173]**); computed crystallizes L20→L24 | execute 0.725 > plan 0.671 (**+0.055 [+0.040,+0.069]**) but = all (+0.001, spans 0); nothing crystallizes | **SIGN ONLY** |
 
 **H_general holds on two of three structural axes exactly** — the full-δ oracle concentrates at the same layer
 with the same magnitude, and the trajectory state is temporally dense with the same
-structural-complement signature. The one divergence is *quantitative, not qualitative*: the pointwise
-wall exists (oracle beats every map by ≥0.3 of the budget at every layer; better-fitting nonlinear
-and on-policy estimators still collapse to 0) but the *linear* rung leaks ~¼ of the budget at L20
-and nearly half at L24, where every GSM8K ridge measurement is 0.00 — with the important caveat (‡)
-that GSM8K was never probed per-layer at L20 or L24, so this axis is an *unmatched* comparison
-pending that run. The follow-up sweeps (P2b) sharpen the
-character of that leak: it is α = 1.0-resonant (±25% mis-scale forfeits it) and layer-humped over
-the oracle plateau rather than tied to the oracle's onset layer. Reading: hop composition over
-passages given in-context has a larger register-like (linearly transportable) component than
-arithmetic — consistent with the thesis's own register-vs-procedure split rather than against it,
-but it sharpens the claim: "procedures do not install" should be "the *procedure core* does not
-install; its size is task-dependent."
+structural-complement signature. The ladder axis, now measured on both tasks at matched layers and n
+(P5, 2026-08-10), lands as a **shape replication with task-dependent amplitude** rather than the
+divergence earlier drafts claimed: both tasks are ≈0 through mid-stack and leak late, GSM8K peaking
+at +0.13 [0.08, 0.20] where multihop reaches +0.45 [0.35, 0.56], intervals disjoint. The pointwise
+wall exists on both (oracle beats the best map by ≥0.5 of budget on GSM8K, ≥0.3 on multihop; on-policy
+and joint estimators still collapse to 0), but its height is a task property, not a constant. The
+follow-up sweeps (P2b) sharpen the character of the multihop leak: α = 1.0-resonant (±25% mis-scale
+forfeits it) and layer-humped over the oracle plateau; the matching GSM8K resonance test has not yet
+run. Reading: the late-stack, output-adjacent (register-like) component of the delta transports on
+both tasks; its share of the budget is what differs — hop composition over passages given in-context
+is scaffold-limited, arithmetic is computation-limited. This sharpens the claim the same way as
+before, minus the overstated null: "procedures do not install" should be "the *procedure core* does
+not install; the transportable register share is task-dependent, and it is nowhere zero in the late
+stack."
 
 P4 adds a fourth axis and lands softer than the other three. The plan-before-execute ordering
 replicates in sign — planning tokens are base's worst class, and handing base the trajectory makes
@@ -315,9 +333,12 @@ context. The sharper way to state the thesis after two procedures: **the traject
 is general; the per-step work that base retains is task-specific, and only on arithmetic is it
 computation rather than retrieval.**
 
-Honest caveats: n = 2 procedures; **the GSM8K per-layer steering reference does not cover L20/L24**
-(‡ — the ridge-divergence axis is an unmatched comparison until GSM8K is probed at those layers,
-which needs its maps refit since they are no longer cached locally);
+Honest caveats: n = 2 procedures; the GSM8K/multihop maps were fit on different days (identical
+driver, seed, protocol) and on corpora of different token counts (GSM8K CoTs ~175 tokens vs
+multihop's ~60 at equal problem counts); the GSM8K recovery denominator is 0.650 (max_new=512
+protocol) vs multihop's 0.630, so equal accuracy gains convert to slightly smaller GSM8K recoveries;
+GSM8K's 4–6-hit cells at L16/L20 have not been transcript-checked against numeric-match coincidence;
+the GSM8K α-resonance test at the leak layers has not run, so α=1.0 may not be GSM8K's peak;
 `answer_only` gate vacuous on this contrast set (see P3 †). P4-specific: open-book framing means
 hop answers are verbatim in the prompt, so "execute" here is retrieval, not computation;
 teacher-forcing isolates execution from planning *by construction*, so P4 cannot show base could
