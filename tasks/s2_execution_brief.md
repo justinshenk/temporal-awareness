@@ -169,6 +169,35 @@ a driver edit, and the δ-rank/off-manifold axis (acceptance criterion 5) cannot
    arm of the ladder that both procedures already have.
 9. Writeup `results/attribution/2026-08-13-register-battery.md`; `tasks/current_task.md` updated.
 
+## 6b. Measured floors (ARC-Challenge, n=500 scan, verified 2026-08-13 on CPU)
+
+Gold distribution over the 500-problem scan: answer2 144 / answer3 137 / answer1 117 / answer4 102.
+So the two floors any commonsense cell must clear are **chance = 0.25** and, more demandingly,
+**majority-class = 0.288** — a degenerate policy that always emits `answer2` scores 0.288 while
+being perfectly format-compliant. Conditional accuracy is read against 0.288, not 0.25.
+
+## 6c. Run plan (fixed order; each gates the next)
+
+All runs `nohup` + `.run_logs/s2_*.log`, actively monitored. `--max-new 32` everywhere (config
+`eval.max_new`); the driver default of 256 would waste ~8× the budget on ~7-token answers.
+
+1. **Gap gate + contrast set** — `lockstep_patch_gsm8k --task commonsense --validate --n-eval 500`.
+   Builds and caches `commonsense_contrast_set.json` and prints base/donor on the scan. GATE:
+   base ≈0.00, donor ≥~0.60, ≥80 contrast problems. Also runs AC1 (all-layers lockstep reproduces
+   the donor per-problem). If the gate fails, STOP and report.
+2. **Oracle sweep** — `--mode single --layers 0,4,8,12,16,20,24,28,31 --n-eval 500 --n-contrast 100`.
+   Compare `L*` and its magnitude against GSM8K 0.75 @L20 and multihop 0.76 @L20.
+3. **Floors at `L*`** — the same command twice more with `--control mean_delta` and
+   `--control shuffle_positions`. `mean_delta` is the register hypothesis stated as an
+   intervention: if it holds up where the procedures collapsed, that is the result.
+4. **PCA band** — `lockstep_pca_band --task commonsense --layer L* --n-pca 100 --n-contrast 100`.
+   Against GSM8K's cliff (top-64 = 55% energy, 0% recovery).
+5. **S2c ridge arm** — `collect_cot_residuals --task commonsense` → `fit_ridge_sweep` →
+   `steer_gsm8k --task commonsense`, then the same steer under `--task commonsense_format` for the
+   decomposition. **Rename outputs between runs** (`steer_json` is fixed in the config).
+6. **S2c transplant (optional, cheap)** — commonsense-fit maps steered onto the GSM8K contrast set
+   at L24, against P5b's native 0.12 and multihop-transplant 0.09.
+
 ## 7. Development process — test-forward
 
 1. Write `tests/test_attribution_tasks.py` commonsense cases **first**: registry returns the spec;

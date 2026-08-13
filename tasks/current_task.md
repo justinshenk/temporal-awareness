@@ -158,6 +158,24 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         the output on completion.
   - [ ] Transcript check of leak cells (native/transplant L28 both 17/200 — same problems?);
         mean-δ fixed-vector control (needs small driver flag, TDD).
+- [ ] **S2 — the register battery (IN PROGRESS 2026-08-13)**. Brief: `tasks/s2_execution_brief.md`;
+      parent spec `docs/superpowers/specs/2026-08-07-workshop-papers-design.md` §3. Closes the
+      paper's substantive hole: the register half of a two-sided contrast was never measured.
+  - [x] Prereqs (both were missing on this box): `data/commonsense/` downloaded (170,420 train +
+        boolq/piqa/ARC-Challenge test, schema verified); **no commonsense LoRA donor existed** —
+        training now (`.run_logs/s2_train_donor.log`, 20k subset, r32/α64, 3 ep, seed 42).
+  - [x] Seams committed (`62fda47`, 93 CPU tests): `commonsense` + `commonsense_format` TaskSpecs
+        (the pair decomposes recovery into format installation vs answer selection — exact, since
+        both share problems/prompt by identity and decoding is greedy); `commonsense_problems` in
+        `commonsense_data.py`; `control_injection` (mean_delta / shuffle_positions) + `--control`
+        on the oracle driver, giving a k-way task the empirical floor a procedure never needed;
+        `configs/attribution/commonsense_llama2.yaml`.
+  - [x] `lockstep_pca_band` task-parameterized — it was the ONE driver P1 missed (multihop's P3
+        never used it). GSM8K path behaviour-preserving by construction (same loader, same score
+        composition, same filename); user approved the driver edit.
+  - [x] Floors measured on the ARC-Challenge scan: chance 0.25, **majority-class 0.288** (gold
+        spread 144/137/117/102 over n=500) — conditional accuracy is read against 0.288.
+  - [ ] Runs: gap gate → oracle sweep → floors @L* → PCA band → S2c ridge arm (see brief §6c).
 - [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
