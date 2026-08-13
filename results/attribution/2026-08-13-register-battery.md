@@ -200,6 +200,35 @@ added), re-run at L20, n=100:
 | `random_matched` — same per-token norms, random directions | **0.000** | byte-identical to base |
 | unpatched base | 0.000 | `\nAnswer1: Planetary density will decrease.\n\nAnswer2: …` |
 
+> ## CORRECTION — `mean_delta` is a per-step ORACLE statistic, not a fixed vector
+>
+> `lockstep_generate` calls `capture_residuals(S)` **at every decode step**, and `mean_delta`
+> computes its mean from *that step's* freshly captured donor residuals. It therefore still needs a
+> live donor forward at every step. It collapses variation across **positions**, not across
+> **time**. Reading 0.820 as "one constant vector installs the register" was wrong.
+>
+> The test of an actual fixed vector — estimated once, no donor at inference — is
+> `global_register_vector.py`, and it reads **0.000**:
+>
+> | intervention at L20 | donor at inference? | recovery |
+> |---|---|--:|
+> | oracle, per-token δ | every step | **0.990** |
+> | `mean_delta`, δ averaged over positions, recomputed per step | every step | **0.820** |
+> | fixed vector, **per-problem** (`per_problem_vector_commonsense_L20.json`) | no | **0.000** |
+> | fixed vector, **pooled** over 100 disjoint problems (`global_register_vector_commonsense_L20.json`) | no | **0.000** at α ∈ {0.5, 1, 1.5, 2} |
+>
+> The per-problem and pooled fixed vectors were delivered through the *same* additive hook, so the
+> gap between 0.820 and 0.000 is the **injection mechanism** (per-step oracle vs one-shot vector),
+> not the choice of vector. That control is why the claim did not survive: the pooled vector's
+> per-problem cosines are tightly clustered (mean 0.883, min 0.820), so vector *disagreement* cannot
+> explain a collapse to zero.
+>
+> **What is established:** collapsing the shift across positions is nearly free (0.99 → 0.82);
+> collapsing it across **time** — which is what any deployable steering vector does — destroys it
+> (→ 0.000). The register needs temporally dense information at L20 just as the procedures do. The
+> register/procedure difference measured today lives in the oracle's **ceiling and onset**
+> (0.99 from L16 vs 0.75 from L20), **not** in the shift being a single direction.
+
 **The direction carries everything; the magnitude carries nothing.** A random shift at the *same*
 per-token norms (28–43, i.e. 30–45% of the ~90 residual norm) leaves greedy decoding
 **byte-identical** to base, while the mean-δ direction at that magnitude installs both the response

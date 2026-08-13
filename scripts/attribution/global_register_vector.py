@@ -88,6 +88,9 @@ def main() -> None:
     ap.add_argument("--n-contrast", type=int, default=100)
     ap.add_argument("--alphas", default="0.5,1.0,1.5")
     ap.add_argument("--max-new", type=int, default=32)
+    ap.add_argument("--per-problem", action="store_true",
+                    help="estimate each eval problem's OWN vector and inject it through the same "
+                         "additive hook — isolates vector choice from injection mechanism")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -110,6 +113,31 @@ def main() -> None:
 
     vec, stats = estimate_global_vector(base, lora, tok, estimation, device, L, args.max_new, task)
     print(f"[vector] {stats}", flush=True)
+
+    if args.per_problem:
+        # The mechanism control. The pooled vector scoring 0 while the per-problem vector scores
+        # 0.82 is only attributable to the VECTOR if both are delivered the same way; the 0.82 was
+        # measured through lockstep overwrite, this is the additive hook used above.
+        results = {"task": task.name, "layer": L, "mode": "per_problem_via_additive_hook",
+                   "n_contrast": len(evaluated), "max_new": args.max_new, "per_alpha": {}}
+        for alpha in alphas:
+            correct = 0
+            for question, gold in evaluated:
+                own, _ = estimate_global_vector(base, lora, tok, [(question, gold)], device, L,
+                                                args.max_new, task)
+                with lora.disable_adapter():
+                    hook = AdditionSteeringHook(base, {L: own * alpha})
+                    ok = task_accuracy(base, tok, [(question, gold)], device, args.max_new, task)
+                    hook.remove()
+                correct += ok
+            acc = correct / len(evaluated)
+            results["per_alpha"][alpha] = {"acc": acc, "recovery": acc}
+            print(f"  [per-problem] alpha={alpha:<5} acc={acc:.3f}", flush=True)
+        out_dir = Path(cfg["output"].get("dir") or Path(cfg["output"]["steer_json"]).parent)
+        out_path = Path(args.out) if args.out else out_dir / f"per_problem_vector_{task.name}_L{L}.json"
+        out_path.write_text(json.dumps(results, indent=2, default=float))
+        print(f"\nSaved {out_path}", flush=True)
+        return
 
     results = {"task": task.name, "layer": L, "n_contrast": len(evaluated), "max_new": args.max_new,
                "vector_stats": stats, "per_alpha": {}}
