@@ -100,7 +100,8 @@ def projected_injection(a: torch.Tensor, lora_resid: torch.Tensor, V: torch.Tens
 
 
 def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
-                      generator: torch.Generator | None = None) -> torch.Tensor:
+                      generator: torch.Generator | None = None,
+                      alpha: float = 1.0) -> torch.Tensor:
     """Inject a *content-destroyed* shift of the same magnitude: the oracle's empirical floor.
 
     On a procedure a broken injection scores ~0 — it cannot emit the right integer by accident — so
@@ -115,13 +116,20 @@ def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
       procedure is what installs, it should collapse.
     - ``shuffle_positions`` — apply the true per-token shifts in a permuted order, destroying
       time alignment while preserving the exact multiset of shifts.
+
+    ``alpha`` scales the injected shift. It exists because a control at the donor's own magnitude
+    can fail for the wrong reason: a full-scale constant offset lands off-manifold and destroys
+    generation, which bounds the floor but does not test whether a *fixed direction* installs the
+    behaviour. Sweeping alpha separates "this direction cannot install it" from "this magnitude
+    breaks the model" — the α-resonance already measured on the multi-hop ridge leak. ``alpha=0``
+    is exactly the unpatched base, and ``alpha=1.0`` reproduces the committed floor runs.
     """
     delta = lora_resid - a
     if mode == "mean_delta":
-        return a + delta.mean(dim=0, keepdim=True).expand_as(delta)
+        return a + alpha * delta.mean(dim=0, keepdim=True).expand_as(delta)
     if mode == "shuffle_positions":
         perm = torch.randperm(delta.shape[0], generator=generator).to(delta.device)
-        return a + delta[perm]
+        return a + alpha * delta[perm]
     raise ValueError(f"unknown control mode: {mode!r} (want 'mean_delta' or 'shuffle_positions')")
 
 

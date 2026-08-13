@@ -42,7 +42,8 @@ from src.probes.attribution.lockstep_oracle import (
 from src.probes.extraction import PerTokenResidualCapture
 
 
-def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, generator=None):
+def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, generator=None,
+                      control_alpha=1.0):
     """Wire the shared base/adapter into the two callables ``lockstep_generate`` consumes.
 
     With ``control`` set the oracle's true residual is replaced by a content-destroyed shift of the
@@ -60,7 +61,8 @@ def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, 
         capture.clear()
         with lora.disable_adapter(), capture.capturing():
             base(S, use_cache=False)  # adapter OFF → base residual a, on the same context
-        return {li: control_injection(capture.captured[li], lora_resid[li], control, generator)
+        return {li: control_injection(capture.captured[li], lora_resid[li], control, generator,
+                                     control_alpha)
                 for li in inject_layers}
 
     def base_logits(S):
@@ -71,12 +73,12 @@ def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, 
 
 
 def lockstep_eval(base, lora, tok, problems, device, inject_layers, max_new, task,
-                  control=None, generator=None):
+                  control=None, generator=None, control_alpha=1.0):
     """Lockstep-decode every problem; return (accuracy, per-problem correctness list)."""
     capture = PerTokenResidualCapture(base, inject_layers)
     inject = OverwriteResidualHook(base, inject_layers)
     cap_fn, logit_fn = make_lockstep_fns(base, lora, capture, inject, inject_layers,
-                                         control, generator)
+                                         control, generator, control_alpha)
     eos = tok.eos_token_id
     per = []
     for i, (q, gold) in enumerate(problems):
@@ -122,6 +124,8 @@ def main() -> None:
     ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
     ap.add_argument("--control", choices=["mean_delta", "shuffle_positions"], default=None,
                     help="replace the true residual with a content-destroyed shift (empirical floor)")
+    ap.add_argument("--control-alpha", type=float, default=1.0,
+                    help="scale the control shift; separates a bad direction from a bad magnitude")
     ap.add_argument("--out", default=None, help="output JSON path")
     args = ap.parse_args()
 
@@ -165,6 +169,7 @@ def main() -> None:
     generator = torch.Generator().manual_seed(cfg["seed"]) if args.control else None
 
     results = {"task": task.name, "mode": args.mode, "control_mode": args.control,
+               "control_alpha": args.control_alpha if args.control else None,
                "scan_base_acc": base_acc, "scan_lora_acc": lora_acc,
                "contrast_base_acc": 0.0, "contrast_lora_acc": 1.0,
                "n_contrast": len(contrast), "max_new": args.max_new, "contrast_indices": indices,
@@ -173,7 +178,7 @@ def main() -> None:
     if args.mode == "control":
         print(f"\n[control] all {num_layers} layers (must recover ≈ lora)", flush=True)
         acc, _ = lockstep_eval(base, lora, tok, contrast, device, list(range(num_layers)),
-                               args.max_new, task, args.control, generator)
+                               args.max_new, task, args.control, generator, args.control_alpha)
         results["control"] = {"acc": acc, "recovery": recovery(acc)}
         print(f"  control acc={acc:.3f} recovery={recovery(acc):+.3f}", flush=True)
     else:
@@ -181,7 +186,7 @@ def main() -> None:
             inj = [L] if args.mode == "single" else list(range(L + 1))
             print(f"\n[{args.mode}] L={L} (inject {len(inj)} layer(s))", flush=True)
             acc, _ = lockstep_eval(base, lora, tok, contrast, device, inj, args.max_new, task,
-                                   args.control, generator)
+                                   args.control, generator, args.control_alpha)
             results["per_layer"][L] = {"acc": acc, "recovery": recovery(acc)}
             print(f"  L{L:2d} acc={acc:.3f} recovery={recovery(acc):+.3f}", flush=True)
 
@@ -191,6 +196,8 @@ def main() -> None:
     stem = f"lockstep_{args.mode}" if task.name == "gsm8k" else f"lockstep_{task.name}_{args.mode}"
     if args.control:
         stem = f"{stem}_{args.control}"
+        if args.control_alpha != 1.0:
+            stem = f"{stem}_a{args.control_alpha:g}"
     out_path = Path(args.out) if args.out else out_dir / f"{stem}.json"
     out_path.write_text(json.dumps(results, indent=2, default=float))
     print(f"\nSaved {out_path}", flush=True)

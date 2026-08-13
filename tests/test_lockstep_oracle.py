@@ -240,6 +240,34 @@ def test_controls_preserve_shape_and_dtype():
         assert out.shape == a.shape and out.dtype == a.dtype
 
 
+def test_control_alpha_scales_the_shift_and_defaults_to_one():
+    """alpha=1.0 must reproduce the committed floor runs exactly — it is a regression guard."""
+    a = torch.zeros(3, 2)
+    delta = torch.tensor([[2.0, 4.0], [2.0, 4.0], [2.0, 4.0]])
+    full = control_injection(a, a + delta, "mean_delta")
+    half = control_injection(a, a + delta, "mean_delta", alpha=0.5)
+    assert torch.allclose(full, delta)
+    assert torch.allclose(half, delta * 0.5)
+
+
+def test_control_alpha_zero_is_the_unpatched_base():
+    """The alpha sweep's left endpoint must be exactly 'no intervention', not 'small intervention'."""
+    a = torch.randn(4, 3)
+    lora_resid = torch.randn(4, 3)
+    for mode in ("mean_delta", "shuffle_positions"):
+        out = control_injection(a, lora_resid, mode, generator=torch.Generator().manual_seed(0),
+                                alpha=0.0)
+        assert torch.allclose(out, a, atol=1e-6)
+
+
+def test_control_alpha_applies_to_shuffle_too():
+    a = torch.zeros(4, 2)
+    delta = torch.tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0]])
+    out = control_injection(a, a + delta, "shuffle_positions",
+                            generator=torch.Generator().manual_seed(0), alpha=0.5)
+    assert sorted(out[:, 0].tolist()) == [0.5, 1.0, 1.5, 2.0]
+
+
 def test_control_injection_rejects_an_unknown_mode():
     a = torch.randn(2, 2)
     with pytest.raises(ValueError, match="unknown control"):
