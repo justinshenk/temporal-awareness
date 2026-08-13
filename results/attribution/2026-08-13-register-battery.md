@@ -131,12 +131,44 @@ already measured on MuSiQue's ridge leak (≈0.26 at α=1.0, ≈0 at α=1.5). Th
 therefore: **the best fixed vector at the donor's own scale fails completely**, not that no fixed
 vector can install a register.
 
-Deciding which of those it is needs one cheap measurement, and it is exactly what the
-`commonsense_format` registry entry exists for: re-score the *same* floor generations asking only
-whether the response format was adopted. Format ≈ 0 ⇒ the injection destroyed generation and the
-controls bound the floor but do not test the pointwise hypothesis; format high with answers at ≈0.25
-⇒ the format installed and only answer selection was lost, which *would* be a real test.
-**Running now** (`.run_logs/s2_fmt_{mean,shuffle}.log`.)
+**The format re-score settles it: the controls are destructive.** Re-scoring the *same* floor
+generations under `commonsense_format` — which asks only whether the response format was adopted,
+right answer or not:
+
+| control at L20 (n=100) | answer accuracy | format compliance |
+|---|--:|--:|
+| `mean_delta` | 0.000 | **0.000** (0/100) |
+| `shuffle_positions` | 0.000 | **0.010** (1/100) |
+
+Neither control emits `"the correct answer is …"` at all. So the zeros are **not** "installed the
+format, chose badly" — they are "nothing coherent came out". Two consequences, and they point in
+opposite directions:
+
+1. **The oracle result stands, and is strengthened.** The objection was that a 4-way answer space
+   might let any large perturbation score well by luck. The measured answer is that a perturbation
+   of the *same magnitude as the true shift* yields 0.000, not the 0.25 a fluent-but-random policy
+   would get. The floor is the floor. **0.990 is real.**
+2. **These controls cannot test pointwise-ness**, and must not be reported as if they did. At full
+   donor magnitude a constant offset is off-manifold; the model is broken before the hypothesis is
+   reached. "A fixed vector fails to install the register" is **not** established by this table —
+   only "a fixed vector at the donor's own scale destroys generation".
+
+That is what the α sweep below exists to fix, and note it is now motivated by a measurement rather
+than by suspicion.
+
+### α sweep on the mean vector — IN FLIGHT
+
+`mean_delta` at L20, n=100, α ∈ {0.1, 0.25, 0.5, 0.75} (α=1.0 = 0.000 above), each to its own
+artifact (`lockstep_commonsense_format_single_mean_delta_a{α}.json`).
+
+**Scored on format, not answers, deliberately.** The `commonsense` score requires the trigger
+phrase, so answer accuracy is bounded above by format compliance; where format is 0 an answer run is
+redundant. Format is therefore the gating question and costs half the grid.
+
+Readings: **format high, answers ≈0.288** ⇒ the fixed direction installs the *register* but carries
+none of the *selection* — the shape §10 predicts and has never measured. **Format ≈0 at every α** ⇒
+the direction installs nothing at any scale, a stronger claim than the paper currently makes, and
+§1's "roughly pointwise" clause needs rewriting rather than softening.
 
 ### PCA band (δ-rank / off-manifold) — pending
 
