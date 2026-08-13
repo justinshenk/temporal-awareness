@@ -1,0 +1,58 @@
+# S2 — the REGISTER side of the register-vs-procedure boundary (commonsense, LLM-Adapters).
+#
+# The procedure apparatus (GSM8K, MuSiQue) has an oracle sweep, a PCA-band cliff and a null ladder;
+# the register side had none of them, and was inferred from the single fact that a map installs
+# refusal tone. This config points the SAME unmodified drivers at a register donor.
+#
+# Donor: trained here by scripts/attribution/train_lora_commonsense.py on the 20k subset of
+# commonsense_170k with the pyreft prompt template ("%s\n") and "the correct answer is X" targets —
+# the same subset/recipe as the LoReFT arm, so the committed LoRA-vs-LoReFT comparison stays
+# addressable. Data comes from scripts.attribution.download_commonsense_data.
+#
+# Two registry keys share this config: `commonsense` scores the answer, `commonsense_format` scores
+# only whether the donor's response format was adopted. Greedy decoding is deterministic, so
+# running both over the same problems decomposes recovery into format installation vs answer
+# selection — a split a procedure task cannot offer.
+#
+# Eval split is ARC-Challenge deliberately: it is 4-way (chance 0.25) where boolq and piqa are
+# binary, and on a k-way task a merely garbled intervention still scores at chance. Every cell
+# therefore also needs its floor — see --control on lockstep_patch_gsm8k.
+
+task: commonsense
+base_model: NousResearch/Llama-2-7b-hf
+adapter: results/attribution/loreft_commonsense/lora_commonsense
+seed: 42
+hidden_dim: 4096
+num_layers: 32
+device: cuda
+accum_device: cuda
+
+data:
+  dir: data/commonsense
+  train_file: commonsense_170k.json
+
+collect:                   # ladder fit (S2c): donor trajectory for δ capture
+  split: train
+  n_fit: 200
+  n_te: 60                 # held-out problems (disjoint index range)
+  max_new: 32              # answers are ~7 tokens; 32 matches the LoReFT eval budget
+
+sweep:
+  lambdas_logspace: [-1, 7, 17]   # np.logspace(-1, 7, 17), matches both procedure arms
+  crosscheck_rtol: 1.0e-6
+
+eval:
+  split: ARC-Challenge     # 4-way; boolq/piqa are secondary and binary (chance 0.5)
+  n_eval: 500
+  alphas: [1.0]
+  max_new: 32
+
+output:
+  dir: results/attribution
+  lora_dir: results/attribution/loreft_commonsense/lora_commonsense
+  contrast_json: results/attribution/commonsense_contrast_set.json
+  acc_dir: results/attribution/accumulators_commonsense
+  maps_dir: results/attribution/maps_commonsense
+  sweep_json: results/attribution/sweep_commonsense.json
+  steer_json: results/attribution/steer_commonsense.json
+  report: results/attribution/2026-08-13-register-battery.md

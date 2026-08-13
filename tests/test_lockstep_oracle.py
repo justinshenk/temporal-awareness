@@ -18,9 +18,12 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+import pytest
+
 from src.probes.attribution.lockstep_oracle import (
     OverwriteResidualHook,
     blended_injection,
+    control_injection,
     lockstep_generate,
 )
 from src.probes.extraction import PerTokenResidualCapture
@@ -188,6 +191,59 @@ def test_blend_t0_is_steering_t1_is_oracle():
     W = torch.randn(d, d)
     assert torch.allclose(blended_injection(a, lora_resid, W, 0.0), a + a @ W.T, atol=1e-5)
     assert torch.allclose(blended_injection(a, lora_resid, W, 1.0), lora_resid, atol=1e-5)
+
+
+# --- control_injection (empirical floors for the oracle) ---------------------
+#
+# On a procedure a broken injection scores ~0: it cannot produce the right integer by accident.
+# On a k-way register task it scores ~chance, so a partial recovery cannot be told from a garbled
+# one without a floor. These two controls supply it — same δ magnitude, destroyed content.
+
+
+def test_mean_delta_replaces_every_position_with_the_average_shift():
+    a = torch.tensor([[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]])
+    lora_resid = torch.tensor([[1.0, 3.0], [3.0, 3.0], [5.0, 6.0]])   # δ column means: 3.0, 4.0
+    out = control_injection(a, lora_resid, "mean_delta")
+    assert torch.allclose(out, torch.tensor([[3.0, 4.0]]).expand(3, 2))
+
+
+def test_mean_delta_is_a_noop_when_the_shift_is_already_constant():
+    """The control only destroys *per-token* structure; a genuinely pointwise δ survives it."""
+    a = torch.randn(4, 3)
+    delta = torch.tensor([[1.0, -2.0, 0.5]]).expand(4, 3)
+    out = control_injection(a, a + delta, "mean_delta")
+    assert torch.allclose(out, a + delta, atol=1e-6)
+
+
+def test_shuffle_positions_permutes_the_shift_across_tokens():
+    a = torch.zeros(4, 2)
+    delta = torch.tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0]])
+    out = control_injection(a, a + delta, "shuffle_positions",
+                            generator=torch.Generator().manual_seed(0))
+    assert sorted(out[:, 0].tolist()) == [1.0, 2.0, 3.0, 4.0]   # same multiset of shifts...
+    assert not torch.allclose(out, delta)                        # ...in a different order
+
+
+def test_shuffle_positions_is_seeded():
+    a, delta = torch.zeros(8, 2), torch.arange(16.0).reshape(8, 2)
+    def run(seed):
+        return control_injection(a, a + delta, "shuffle_positions",
+                                 generator=torch.Generator().manual_seed(seed))
+    assert torch.equal(run(0), run(0))
+    assert not torch.equal(run(0), run(1))
+
+
+def test_controls_preserve_shape_and_dtype():
+    a, lora_resid = torch.randn(5, 3), torch.randn(5, 3)
+    for mode in ("mean_delta", "shuffle_positions"):
+        out = control_injection(a, lora_resid, mode, generator=torch.Generator().manual_seed(0))
+        assert out.shape == a.shape and out.dtype == a.dtype
+
+
+def test_control_injection_rejects_an_unknown_mode():
+    a = torch.randn(2, 2)
+    with pytest.raises(ValueError, match="unknown control"):
+        control_injection(a, a, "nonsense")
 
 
 # --- lockstep_generate decode loop -------------------------------------------

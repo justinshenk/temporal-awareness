@@ -30,6 +30,11 @@ from src.probes.attribution.chain_token_roles import (
     gsm8k_token_roles,
     multihop_token_roles,
 )
+from src.probes.attribution.commonsense_data import (
+    commonsense_problems,
+    extract_answer,
+    format_prompt,
+)
 from src.probes.attribution.gram_accumulator import GramAccumulator
 from src.probes.attribution.gsm8k_prompts import (
     extract_pred_number,
@@ -124,6 +129,36 @@ def _multihop_score(completion: str, gold: dict) -> bool:
     return bool(answer_match(extract_pred_answer(completion), gold["answer"], gold.get("aliases", ())))
 
 
+def _commonsense_score(completion: str, gold: str) -> bool:
+    """Exact match on the choice following the trigger phrase (LLM-Adapters scoring)."""
+    return extract_answer(completion) == gold.lower()
+
+
+def _commonsense_format_score(completion: str, gold: str) -> bool:
+    """Did the generation adopt the donor's *response format*, right answer or not?
+
+    The register side splits an outcome a procedure cannot: a steered base can install the format
+    (`"the correct answer is X"`) while choosing X at chance. Scoring the identical greedy
+    generations twice — once for the answer, once for compliance — makes that an exact
+    decomposition rather than two approximations, and needs no driver change.
+    """
+    return extract_answer(completion) != ""
+
+
+def _commonsense_problems(split: str, n: int, skip: int = 0, seed: int | None = None):
+    """Commonsense problems in the driver contract; ``seed`` is ignored (deterministic file order)."""
+    return commonsense_problems(split, n, skip=skip, seed=seed)
+
+
+def _commonsense_prompt(question: str) -> str:
+    """The pyreft commonsense template, ``"%s\\n"`` — no alpaca wrapper.
+
+    Shared *by identity* between the two commonsense specs: the format/answer decomposition is
+    only exact if both read the same greedy generations, which requires the same prompt.
+    """
+    return format_prompt({"instruction": question})
+
+
 def _multihop_problems(split: str, n: int, skip: int = 0, seed: int | None = None):
     """MuSiQue problems in the driver contract; ``seed`` must match the contrast-set build."""
     return multihop_problems(split, n, skip=skip, seed=seed)
@@ -181,6 +216,23 @@ TASKS: dict[str, TaskSpec] = {
         format_gold=lambda g: f"{g:g}",
         lens=GoldLensSpec(token_roles=gsm8k_token_roles, role_classes=_GSM8K_ROLE_CLASSES,
                           contrasts=_GSM8K_CONTRASTS),
+    ),
+    # The register side of the boundary (S2). Same four seams, no lens: there is no reasoning
+    # chain to label, which is precisely the property under test. ``commonsense_format`` is the
+    # same task read for format compliance instead of correctness — see _commonsense_format_score.
+    "commonsense": TaskSpec(
+        name="commonsense",
+        problems=_commonsense_problems,
+        prompt=_commonsense_prompt,
+        score=_commonsense_score,
+        format_gold=str,
+    ),
+    "commonsense_format": TaskSpec(
+        name="commonsense_format",
+        problems=_commonsense_problems,
+        prompt=_commonsense_prompt,
+        score=_commonsense_format_score,
+        format_gold=str,
     ),
     "multihop": TaskSpec(
         name="multihop",

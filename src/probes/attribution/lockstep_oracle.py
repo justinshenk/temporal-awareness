@@ -99,6 +99,32 @@ def projected_injection(a: torch.Tensor, lora_resid: torch.Tensor, V: torch.Tens
     return a + (delta @ V) @ V.T
 
 
+def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
+                      generator: torch.Generator | None = None) -> torch.Tensor:
+    """Inject a *content-destroyed* shift of the same magnitude: the oracle's empirical floor.
+
+    On a procedure a broken injection scores ~0 — it cannot emit the right integer by accident — so
+    the oracle needs no floor. On a k-way register task (commonsense: 2–4 choices) a merely garbled
+    intervention still scores at chance, and a partial recovery cannot be distinguished from a
+    destroyed one without measuring what "destroyed" looks like. Both modes keep δ's magnitude and
+    direction statistics and destroy only its *content*:
+
+    - ``mean_delta`` — replace every position's shift with the trajectory mean, i.e. the best
+      possible *fixed vector*. This is the pointwise/register hypothesis stated as an intervention:
+      if a register is what installs, averaging over time should cost little; if a temporally dense
+      procedure is what installs, it should collapse.
+    - ``shuffle_positions`` — apply the true per-token shifts in a permuted order, destroying
+      time alignment while preserving the exact multiset of shifts.
+    """
+    delta = lora_resid - a
+    if mode == "mean_delta":
+        return a + delta.mean(dim=0, keepdim=True).expand_as(delta)
+    if mode == "shuffle_positions":
+        perm = torch.randperm(delta.shape[0], generator=generator).to(delta.device)
+        return a + delta[perm]
+    raise ValueError(f"unknown control mode: {mode!r} (want 'mean_delta' or 'shuffle_positions')")
+
+
 @torch.no_grad()
 def lockstep_generate(
     input_ids: torch.Tensor,

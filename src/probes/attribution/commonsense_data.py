@@ -16,6 +16,9 @@ from pathlib import Path
 PROMPT_TEMPLATE = "%s\n"
 ANSWER_TRIGGER = "the correct answer is"
 
+COMMONSENSE_DIR = Path("data/commonsense")
+TRAIN_FILE = "commonsense_170k.json"
+
 
 def load_commonsense_json(path: str | Path) -> list[dict]:
     """The LLM-Adapters files are a single JSON list of items."""
@@ -35,6 +38,27 @@ def subset_examples(data: list[dict], n: int, seed: int) -> list[dict]:
     shuffled = list(data)
     random.Random(seed).shuffle(shuffled)
     return shuffled[:n]
+
+
+def commonsense_problems(split: str, n: int, skip: int = 0, seed: int | None = None,
+                         data_dir: str | Path = COMMONSENSE_DIR) -> list[tuple[str, str]]:
+    """Return ``n`` ``(instruction, answer)`` pairs from a commonsense split, skipping ``skip``.
+
+    ``split`` names an eval set (``boolq`` / ``piqa`` / ``ARC-Challenge`` / … → ``{split}_test.json``)
+    or ``train`` (the commonsense-170k file the donor was fitted on). ``seed`` is accepted for task
+    registry signature parity and deliberately **ignored**: the files are read in order, and the
+    contrast cache stores *indices* into this scan, so a seed-dependent order would misindex every
+    later phase.
+    """
+    directory = Path(data_dir)
+    path = directory / (TRAIN_FILE if split == "train" else f"{split}_test.json")
+    if not path.exists():
+        available = sorted(p.name for p in directory.glob("*.json")) if directory.exists() else []
+        raise FileNotFoundError(
+            f"no commonsense split {split!r} at {path} (available in {directory}: {available}); "
+            f"run scripts.attribution.download_commonsense_data")
+    data = load_commonsense_json(path)
+    return [(item["instruction"], item["answer"]) for item in data[skip:skip + n]]
 
 
 def extract_answer(text: str) -> str:

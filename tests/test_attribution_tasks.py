@@ -74,6 +74,43 @@ def test_multihop_score_uses_aliases_and_format_gold():
     assert spec.format_gold(gold) == "Thomas Bach"
 
 
+def test_commonsense_score_reads_the_trigger_phrase():
+    spec = get_task("commonsense")
+    assert spec.score("the correct answer is answer3", "answer3") is True
+    assert spec.score("The correct answer is Answer3.", "answer3") is True      # case/punctuation
+    assert spec.score("the correct answer is answer1", "answer3") is False
+    assert spec.score("answer3", "answer3") is False        # bare token: no format, no credit
+    assert spec.format_gold("answer3") == "answer3"
+
+
+def test_commonsense_format_spec_scores_compliance_not_correctness():
+    """S2c's decomposition: the same generations, read for format instead of for the answer.
+
+    A wrong answer in the right format counts as compliant; the right answer without the trigger
+    does not. That is what separates 'installed the register' from 'got the question right'.
+    """
+    spec = get_task("commonsense_format")
+    assert spec.score("the correct answer is answer1", "answer3") is True       # wrong but compliant
+    assert spec.score("the correct answer is answer3", "answer3") is True
+    assert spec.score("answer3", "answer3") is False                            # right but no format
+    assert spec.score("the correct answer is", "answer3") is False              # trigger, no choice
+    assert spec.score("I'd guess the planet spins faster.", "answer3") is False
+
+
+def test_commonsense_specs_share_problems_and_prompt():
+    """The decomposition is only exact if both specs decode the identical generations."""
+    a, b = get_task("commonsense"), get_task("commonsense_format")
+    assert a.problems is b.problems
+    assert a.prompt is b.prompt
+    assert a.prompt("Q") == "Q\n"          # pyreft commonsense template, no alpaca wrapper
+
+
+def test_register_tasks_declare_no_lens():
+    """The gold-token lens is the P4 plan-vs-execute seam; a register has no chain to label."""
+    for name in ("commonsense", "commonsense_format"):
+        assert get_task(name).lens is None
+
+
 def test_task_prompts_wrap_the_question():
     for name in TASKS:
         prompt = get_task(name).prompt("QUESTION-SENTINEL")
