@@ -163,7 +163,18 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
       paper's substantive hole: the register half of a two-sided contrast was never measured.
   - [x] Prereqs (both were missing on this box): `data/commonsense/` downloaded (170,420 train +
         boolq/piqa/ARC-Challenge test, schema verified); **no commonsense LoRA donor existed** —
-        training now (`.run_logs/s2_train_donor.log`, 20k subset, r32/α64, 3 ep, seed 42).
+        trained here, r32/α64, 20k subset, 3 ep, seed 42, final CE 0.0074.
+  - [x] **Donor trained TWICE — the first save was destroyed by a disk quota.** Run 1
+        (`.run_logs/s2_train_donor.log`) completed all 3 epochs (CE 0.0074) and then died mid-save:
+        `adapter_model.safetensors` truncated at exactly 192 MiB (vs 224,395,264 B for 56,098,816
+        fp32 params) and `adapter_config.json` never written. Detected because a small PNG write
+        failed with `Errno 122` at the same moment. **My watcher could not have caught it**: it used
+        `pgrep -f "train_lora_commonsense"`, a pattern matching its OWN command line, so it would
+        never exit — replaced with a PID-based watch (`kill -0 <pid>`). Freed 48 G by deleting
+        `accumulators/` + `accumulators_multihop/` (50 G; they feed only `fit_ridge_sweep` and
+        `--project-k` steering — both `maps/` trees intact, multihop frozen by spec). 53G → 4.7G.
+        Run 2 (`.run_logs/s2_train_donor2.log`) verified complete: 224,438,280 B, config present,
+        r=32/α=64/{q,k,v,up,down}_proj.
   - [x] Seams committed (`62fda47`, 93 CPU tests): `commonsense` + `commonsense_format` TaskSpecs
         (the pair decomposes recovery into format installation vs answer selection — exact, since
         both share problems/prompt by identity and decoding is greedy); `commonsense_problems` in

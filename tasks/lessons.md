@@ -57,6 +57,35 @@ model load, with `IndexError: too many indices for tensor of dimension 1`.
 token ids), rename the one you do not need to `_gtok` at the unpack site. And for any driver whose
 first useful output is minutes away, run one problem end-to-end before launching the full set.
 
+## A watcher whose pattern matches its own command line never fires
+
+**What happened (S2, 2026-08-13):** armed `until ! pgrep -f "train_lora_commonsense"; do sleep 30;
+done` to wait for a training job. `pgrep -f` matches against full command lines — including the
+watcher's own, which contains that exact string. The watcher therefore always found "a match",
+never exited, and sent no notification. Two of them span for an hour while the job they were
+watching finished *and failed to save*. The failure was found by accident, from an unrelated
+`Errno 122` on a small file write.
+
+**Rule:** never wait on a process by grepping for a string that appears in the waiting command.
+Capture the PID at launch (`cmd & PID=$!`) and poll `kill -0 "$PID"`. If only a pattern is
+available, break the literal with a character class (`pgrep -f "[t]rain_foo"`). And a watcher that
+has produced no output for longer than the job's expected runtime is itself suspect — check it,
+rather than reading its silence as "still running".
+
+## Check free space before a long job, not after
+
+**What happened (S2, 2026-08-13):** a 55-minute LoRA training run completed all three epochs, then
+was truncated mid-`save_pretrained` by a disk quota: `adapter_model.safetensors` stopped at exactly
+192 MiB against 224,395,264 B expected, and `adapter_config.json` was never written. `results/` had
+been sitting at 53 G, of which 50 G was two Gram-accumulator trees that nothing in the current plan
+reads. The GPU time was spent twice for want of a one-second check.
+
+**Rule:** before launching any job that ends in a large write, verify free space against the size of
+what it will write (`du -sh` the output's siblings). A round file size — exactly 192 MiB, exactly
+2 GB — is the signature of a truncated write, not a coincidence; verify the *expected* byte count
+from parameter counts, and confirm every sidecar file (config/tokenizer/index) exists before
+treating a save as done. Training completing is not the same as the artifact existing.
+
 ## A comparison cell needs an artifact, not a recollection
 
 **What happened (2026-08-06):** the multihop writeup's ridge-divergence claim cited "GSM8K ≈0.05,
