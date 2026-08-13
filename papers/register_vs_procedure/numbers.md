@@ -76,6 +76,20 @@ What is safe and what is not:
   filename**. Until then F2 is a MuSiQue-only figure and the cross-task "same layer" sentence must
   be softened to the L20 point comparison, which is sourced.
 
+### VOID — measured, but measuring a bug (2026-08-13)
+
+The S2 floor controls (`mean_delta`, `shuffle_positions`) at L20, and the α ∈ {0.1, 0.25, 0.5} grid
+built on `mean_delta`, all read 0.000 — because the controls are **no-ops**. `mean_delta` averaged δ
+over *all* positions, and with ~150 prompt tokens against ~7–32 generated ones the mean is dominated
+by near-zero prompt shifts; decoded generations are character-for-character identical to unpatched
+base. Since the contrast set is defined as base-fails/donor-solves, base scores 0.000 on it by
+construction, so a no-op scores 0.000 automatically.
+
+**Nothing from these runs may enter the paper**, including the appealing sentence "the floor is
+0.000, not chance". The oracle numbers they were meant to defend are unaffected, but the defence
+itself has to be re-earned with controls restricted to generated positions plus a matched-norm
+random direction.
+
 ### Known gaps — do not quote until closed
 
 - **α grid @L24/28**: 9 of 12 cells exist **only in `.run_logs/p5b_alpha_grid.log`**; the run died

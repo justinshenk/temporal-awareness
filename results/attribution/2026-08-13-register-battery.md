@@ -188,7 +188,20 @@ Two consequences, and they point in opposite directions:
 That is what the α sweep below exists to fix, and note it is now motivated by a measurement rather
 than by suspicion.
 
-### α sweep on the mean vector — IN FLIGHT
+### α sweep on the mean vector — STOPPED, and its completed cells are VOID
+
+Ran α ∈ {0.1, 0.25, 0.5} to completion (format 0.000 at all three, n=100 each) and was stopped
+during α=0.75 once the generation dump showed the underlying control is a **no-op**. Scaling a shift
+that was already ~0 tells us nothing, so **these cells must not be cited** — they measure the
+dilution bug, not the model. Artifacts:
+`lockstep_commonsense_format_single_mean_delta_a{0.1,0.25,0.5}.json`, retained only so the void
+result is traceable.
+
+The sweep is worth re-running **after** the control is fixed (average over generated positions
+only, plus a matched-norm random-direction arm). Design below, unchanged and still correct in
+intent:
+
+### α sweep — original design, to re-run against a fixed control
 
 `mean_delta` at L20, n=100, α ∈ {0.1, 0.25, 0.5, 0.75} (α=1.0 = 0.000 above), each to its own
 artifact (`lockstep_commonsense_format_single_mean_delta_a{α}.json`).
