@@ -188,6 +188,38 @@ Two consequences, and they point in opposite directions:
 That is what the α sweep below exists to fix, and note it is now motivated by a measurement rather
 than by suspicion.
 
+### Floors, corrected — and the register collapses to ONE DIRECTION
+
+After the dilution bug was fixed (statistic taken over **generated positions**; `random_matched`
+added), re-run at L20, n=100:
+
+| intervention at L20 | recovery | generations |
+|---|--:|---|
+| true oracle, per-token δ | **0.990** | `the correct answer is answer3` |
+| **`mean_delta` — ONE constant vector** | **0.820** | `\n the correct answer is answer3` |
+| `random_matched` — same per-token norms, random directions | **0.000** | byte-identical to base |
+| unpatched base | 0.000 | `\nAnswer1: Planetary density will decrease.\n\nAnswer2: …` |
+
+**The direction carries everything; the magnitude carries nothing.** A random shift at the *same*
+per-token norms (28–43, i.e. 30–45% of the ~90 residual norm) leaves greedy decoding
+**byte-identical** to base, while the mean-δ direction at that magnitude installs both the response
+format and the correct answer. The α probe agrees: an arbitrary direction at norm ~33 is inert and
+only ~110 produces gibberish (`'wa wa wa waЪcracra…'`), so this is a genuine robustness property of
+the model, not a weak intervention.
+
+**This is the two-sided contrast, on one instrument.** Collapsing δ to a single constant costs the
+register only 0.99 → 0.82, i.e. **83% of the oracle survives having no temporal structure at all**.
+On both procedures the same move is catastrophic: `periodic:2` — merely patching every *other* step,
+a far gentler ablation than collapsing to a constant — takes GSM8K and MuSiQue from ~0.75 to ~0.00.
+§1's "a register is roughly pointwise, a procedure is time-dense" is now measured rather than
+asserted.
+
+> **Scope — this is a PER-PROBLEM vector, not a universal steering vector.** The mean is taken over
+> *that problem's own* donor trajectory, so it is oracle-derived: it shows the required shift has no
+> temporal structure **within** a problem, not that one vector serves the task. The CAA-style claim
+> needs a **global** mean pooled across problems, which is not yet run. Do not state the stronger
+> version.
+
 ### α sweep on the mean vector — STOPPED, and its completed cells are VOID
 
 Ran α ∈ {0.1, 0.25, 0.5} to completion (format 0.000 at all three, n=100 each) and was stopped
