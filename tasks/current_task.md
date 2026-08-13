@@ -192,9 +192,19 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         `commonsense_contrast_set.json`. AC1 PASS: all-layers lockstep reproduced the donor
         per-problem (3/3). NOTE: always pass `--n-eval 500` for commonsense so the scan aligns
         with the cached 338 indices (driver default 60 would misindex) — same hazard as multihop's 317.
-  - [ ] Oracle layer sweep IN FLIGHT (`.run_logs/s2_oracle_sweep.log`, pid-watched,
-        layers 0,4,…,28,31, n-contrast 100, max_new 32).
-  - [ ] Then: floors @L* (`--control mean_delta` / `shuffle_positions`) → PCA band → S2c ridge arm.
+  - [x] **Oracle layer sweep DONE** (`lockstep_commonsense_single.json`, n-contrast 100,
+        max_new 32): L0/4/8 = 0.000, L12 = 0.050, **L16 = 0.830**, **L20 = 0.990**, L24 = 0.990,
+        L28/31 = 1.000 (degenerate tail as always). **L\* = 20** by the same earliest-plateau rule,
+        but the curve is NOT the procedures': onset is earlier and far sharper (L16 0.830 vs
+        multihop's 0.02) and the plateau is essentially total (0.990 vs GSM8K 0.75 / multihop 0.76).
+        First quantitative separation between register and procedure **on the oracle axis itself** —
+        previously the two sides were only compared on the ladder.
+  - [ ] Floors @L20 IN FLIGHT (`--control mean_delta`, then `shuffle_positions`; logs
+        `.run_logs/s2_floor_{mean,shuffle}.log`). These decide how to read the 0.990: if mean_delta
+        (the best possible FIXED vector) also lands high, the register is pointwise in the strong
+        sense the paper claims; if it collapses toward the 0.288 majority-class floor, even a
+        register needs per-token content and §9/§10 must be rewritten.
+  - [ ] Then: PCA band → S2c ridge arm (format vs answer decomposition).
 - [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
