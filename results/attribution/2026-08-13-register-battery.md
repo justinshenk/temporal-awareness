@@ -179,8 +179,26 @@ redundant. Format is therefore the gating question and costs half the grid.
 
 Readings: **format high, answers ≈0.288** ⇒ the fixed direction installs the *register* but carries
 none of the *selection* — the shape §10 predicts and has never measured. **Format ≈0 at every α** ⇒
-the direction installs nothing at any scale, a stronger claim than the paper currently makes, and
-§1's "roughly pointwise" clause needs rewriting rather than softening.
+no *fixed vector* installs this register at any scale.
+
+> **Scope — do not overreach here (noted 2026-08-13).** An earlier draft said a null across the α
+> grid would force a rewrite of §1's "roughly pointwise" clause. **It would not**, and the
+> distinction is the crux of the whole paper:
+>
+> | object | form | varies per token? |
+> |---|---|---|
+> | `mean_delta` (this sweep) | a single constant shift | **no** |
+> | the ridge map (§4, and S2c below) | `h ↦ h + (Wh + b)` | **yes** — input-conditional |
+>
+> Both are *pointwise* in the paper's sense — memoryless, a function of the current position alone.
+> But the map has a degree of freedom `mean_delta` discards, so it is strictly stronger. A fixed
+> vector failing therefore bounds **fixed vectors**, not maps.
+>
+> **Every commonsense number in this report is oracle-derived** — the true δ, or an averaged,
+> shuffled or scaled version of it. **No fitted map has been run on commonsense yet.** The
+> register-side map evidence remains what it was: refusal, where the map reaches 0.62 against 0.00
+> for CAA/Arditi/CAST. S2c is the run that tests it here, and until it lands the pointwise
+> coordinate for commonsense is **not measured**, in either direction.
 
 ### PCA band (δ-rank / off-manifold) — pending
 
