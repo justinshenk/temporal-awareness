@@ -15,7 +15,7 @@ GPU box; the reports that quote them are committed.
 | # | figure | file | source artifact(s) | status |
 |---|---|---|---|---|
 | F1 | temporal-density knee, GSM8K + MuSiQue overlaid | `figures/f1_temporal_density.png` | `temporal_oracle_L20.json`, `temporal_oracle_multihop_L20.json` | **built 2026-08-13** |
-| F2 | oracle layer sweep, L20 peak | — | `lockstep_multihop_single.json`, `lockstep_single.json` | pending |
+| F2 | oracle layer sweep, L20 peak | — | `lockstep_multihop_single.json` (n=100) — **GSM8K arm has no artifact, see below** | **blocked** |
 | F3 | null ladder vs oracle, with S1 intervals | — | `short_arithmetic.json`, `local_refit_gsm8k.json`, `dagger_refit_gsm8k.json`, `das_subspace_L20.json` | pending |
 | F4 | variance-band cliff | — | `lockstep_pca_band_L20.json` | pending |
 | F5 | gold-token lens by role | — | `gold_token_lens_L20.json`, `gold_token_lens_multihop_L20.json` | pending |
@@ -53,6 +53,28 @@ GPU box; the reports that quote them are committed.
 | GSM8K MLP rung @L24, n=100 | 0.00 [0, 0.04] vs ridge 0.10 [0.05, 0.18] | `nonlinear_delta_gsm8k_L24_n100.json` | P5b |
 | cross-task transplant @L28 | 0.13 (= native exactly) | `steer_transplant_multihop_maps_on_gsm8k.json` | P5b |
 | ARC-Challenge chance / majority floor | 0.25 / **0.288** | `data/commonsense/ARC-Challenge_test.json`, n=500 scan | 2026-08-13 |
+
+### F2 — a fifth unsourced comparison, found 2026-08-13
+
+`2026-06-16-multihop-generality.md:50-66` prints a GSM8K oracle **layer sweep** column — L16 0.20,
+L20 0.75, L24 0.75, L28 0.95, L31 0.95 — and rests the claim "**L\* = 20, the same layer**, selected
+by the same earliest-plateau rule" on it. That column has **no artifact in the tree**:
+
+- `lockstep_single.json` is `task=gsm8k` with **`n_contrast=1` and a single layer, 20** — a smoke run.
+- No file anywhere references `lockstep_single`, and no other report contains the L16=0.20 figure.
+- The likely cause is the **same output-name hazard that cost the α grid its JSON**:
+  `lockstep_patch_gsm8k` names GSM8K output `lockstep_{mode}.json` regardless of `--layers` or
+  `--n-contrast`, so a later 1-problem smoke overwrote the real sweep in place.
+
+What is safe and what is not:
+
+- **Safe** — "the GSM8K L20 oracle recovers 0.75 (n=20)". Doubly sourced: `temporal_oracle_L20.json`
+  `periodic_1` = 0.750 and `downstream_lesion_L20.json` level 0 `recovery_patch` = 0.75.
+- **Not safe** — "L20 is GSM8K's earliest plateau" / "the same layer" / any GSM8K value at
+  L16/L24/L28/L31 in an oracle sweep. Those need a re-run of
+  `lockstep_patch_gsm8k --mode single --layers 0,4,…,31` at real n, written to a **non-colliding
+  filename**. Until then F2 is a MuSiQue-only figure and the cross-task "same layer" sentence must
+  be softened to the L20 point comparison, which is sourced.
 
 ### Known gaps — do not quote until closed
 
