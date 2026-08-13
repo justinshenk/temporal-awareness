@@ -116,11 +116,31 @@ Two controls, both keeping δ's magnitude and destroying only its content
 | `mean_delta` | **0.000** |
 | `shuffle_positions` | **0.000** |
 
-**What this settles.** The empirical floor at L20 is **0.000, not 0.25**. A perturbation of the same
-magnitude as the true shift does not score at chance on this 4-way task — it scores nothing. So the
-0.990 above is *not* an artifact of a small answer space, which was the one outcome that would have
-invalidated the oracle result. The register's oracle is real, and it needs the **per-token** shift:
-neither averaging it nor misaligning it survives.
+> ## RETRACTED — both floor controls are no-ops, and the floor argument with them
+>
+> Decoding the actual generations (`.run_logs/s2_dump_gen.log`) shows the control outputs are
+> **character-for-character identical to unpatched base**, at α=1.0 and α=0.25 alike. Base is not
+> incoherent either — it fluently continues the prompt by re-listing the options instead of
+> answering, which *is* the format non-compliance that makes base score 0.
+>
+> **Why the controls do nothing.** `mean_delta` averages δ over *all* positions, but the prompt is
+> ~150 tokens against ~7–32 generated ones, and the donor barely perturbs the prompt encoding. The
+> mean is therefore dominated by near-zero prompt-position shifts. `shuffle_positions` fails the
+> same way: with ~150 prompt positions, almost every swap is prompt↔prompt, small↔small.
+>
+> **Why that voids the floor argument.** The contrast set is *defined* as base-fails/donor-solves,
+> so **base scores exactly 0.000 on it by construction**. A no-op therefore scores 0.000
+> automatically, and "the floor is 0.000, not 0.25" is a tautology about an intervention that never
+> intervened — not evidence about what a real perturbation does. The claim that the oracle's 0.990
+> is not chance-inflated is **currently unsupported**.
+>
+> **The oracle measurement itself is unaffected** — the dumped generations show it emitting exact,
+> clean answers where base emits none. What is missing is the control that rules out chance
+> inflation.
+>
+> **The fix**, for a later run: restrict both controls to **generated positions only**, and add a
+> matched-norm random-direction control so "a perturbation this size" is actually tested. The
+> per-token δ norms below say how much dilution there was.
 
 **What this does NOT settle, and an overclaim corrected.** An earlier draft of this section said
 `mean_delta` "upper-bounds the entire fixed-vector class". That is wrong: the class includes
