@@ -222,6 +222,42 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         fitted *input-conditional* map install what a fixed vector cannot? Then the
         `commonsense_format` re-score for the format-vs-answer split.
   - [ ] Then: PCA band; `shuffle_positions` corrected; then STOP experimenting and assemble the paper.
+  - [ ] **PUSHBACK — local review session, 2026-08-13, after pulling `820788f`. Address before
+        paper assembly; items 1–3 gate drafting, 4–5 gate specific sentences.**
+    1. **S2c is load-bearing for §1, not a caveat-closer.** With fixed vectors at 0.000 per-problem
+       AND pooled, the register is time-dense at the trajectory level too — on the temporal axis,
+       register and procedures now MATCH (fixed vector → 0.000 is the register's analogue of
+       periodic:2 → 0.00). The measured separation is the oracle's onset/ceiling only. If the
+       commonsense ridge map reads ≈0, the register side of the two-sided contrast rests on refusal
+       alone and §1 must be rewritten as graded rather than categorical — not softened.
+    2. **`2026-08-13-register-battery.md` has stale blocks that contradict its own corrections.**
+       The "two-sided contrast, on one instrument" paragraph still claims "83% of the oracle
+       survives having no temporal structure at all" — refuted by the CORRECTION block directly
+       above it (`mean_delta` re-captures every decode step; it has temporal structure). It also
+       compares a position-ablation (`mean_delta`) to the procedures' time-ablation (`periodic:2`),
+       which is not the same axis. And the scope note below it still says the pooled vector is "not
+       yet run" — it ran, 0.000. Do ONE consolidation rewrite of this file before drafting from it.
+    3. **`numbers.md` has NO rows for the corrected S2 results** (oracle 0.990, `mean_delta` 0.820,
+       `random_matched` 0.000, fixed vectors 0.000 per-problem/pooled). Under the provenance rule,
+       none of today's headline numbers may enter the tex until rows exist.
+    4. **Generation-length confound on the oracle-ceiling comparison.** Commonsense target ~7 tokens
+       at max_new=32 vs procedure chains at 256–512: a 0.99-vs-0.75 ceiling gap could partly be
+       "fewer tokens to preserve", not register-ness. NOTE the *onset* claim is immune (L16 0.830 vs
+       MuSiQue 0.020 is within-task-across-layer, length held constant) — lead with onset, caveat
+       the ceiling. First reviewer objection otherwise.
+    5. **`mean_delta`'s 0.820 may be a short-target artifact.** It averages over generated positions
+       of the CURRENT sequence, so at the first generated steps the "mean" over 1–2 positions ≈ the
+       true per-token δ — and those early tokens are exactly the trigger phrase, i.e. the register.
+       Cheap discriminator before "collapsing across positions is nearly free" becomes a paper
+       sentence: apply the FINAL-trajectory mean at every step (still live-donor), or exclude the
+       current position from the running mean. If either still reads ~0.8, the claim stands.
+    6. **The GSM8K oracle layer-sweep re-run (the F2 blocker) is missing from the remaining-work
+       list above.** It is cheap, on the critical path for F2 and every "same layer" sentence — the
+       S2 report itself repeats "the same layer as both procedures", unsourced for GSM8K per
+       `numbers.md` — and it shares the box with everything else. Slot it before "STOP
+       experimenting"; write to a non-colliding filename per the known output hazard.
+    7. **Priority if time runs short:** S2c and the GSM8K sweep are load-bearing; the corrected
+       `shuffle_positions` and the PCA band are the first cuts.
 - [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
