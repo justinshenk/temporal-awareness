@@ -396,3 +396,15 @@ def test_lockstep_stops_on_eos():
     cap.remove()
     inject.remove()
     assert out.shape == (1, 3) and out[0, -1].item() == first
+
+
+# --- generated_rows: the statistic window both the controls and the global vector share ---
+
+
+def test_generated_rows_selects_the_generation_and_falls_back():
+    from src.probes.attribution.lockstep_oracle import generated_rows
+    rows = torch.arange(10.0).reshape(5, 2)
+    assert torch.equal(generated_rows(rows, 3), rows[3:])
+    assert torch.equal(generated_rows(rows, 0), rows)
+    assert torch.equal(generated_rows(rows, 5), rows)    # nothing generated yet -> all rows
+    assert torch.equal(generated_rows(rows, 99), rows)   # never return an empty statistic window

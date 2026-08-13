@@ -99,6 +99,17 @@ def projected_injection(a: torch.Tensor, lora_resid: torch.Tensor, V: torch.Tens
     return a + (delta @ V) @ V.T
 
 
+def generated_rows(rows: torch.Tensor, prompt_len: int) -> torch.Tensor:
+    """The generated-token rows of a per-position tensor, falling back to all rows.
+
+    Shared by the floor controls and by the global register-vector estimator so the two cannot
+    drift: both must summarize δ over *generated* positions. Summarizing over all positions is the
+    dilution that made an earlier control a no-op — at L20 on commonsense the prompt outnumbers the
+    generation ~15:1 and the per-token shifts cancel, taking ‖mean δ‖ from 29 down to 11.
+    """
+    return rows[prompt_len:] if rows.shape[0] > prompt_len else rows
+
+
 def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
                       generator: torch.Generator | None = None,
                       alpha: float = 1.0, prompt_len: int = 0) -> torch.Tensor:
@@ -133,7 +144,7 @@ def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
     unpatched base.
     """
     delta = lora_resid - a
-    gen = delta[prompt_len:] if delta.shape[0] > prompt_len else delta
+    gen = generated_rows(delta, prompt_len)
     if mode == "mean_delta":
         return a + alpha * gen.mean(dim=0, keepdim=True).expand_as(delta)
     if mode == "shuffle_positions":
