@@ -57,6 +57,38 @@ model load, with `IndexError: too many indices for tensor of dimension 1`.
 token ids), rename the one you do not need to `_gtok` at the unpack site. And for any driver whose
 first useful output is minutes away, run one problem end-to-end before launching the full set.
 
+## Read the generations before arguing from the number
+
+**What happened (S2, 2026-08-13):** two floor controls at L20 both scored 0.000, and I built an
+argument on it — "a perturbation the size of the true shift yields nothing, so the oracle's 0.990 is
+not chance-inflated." Then I decoded the actual text. The control generations were
+**character-for-character identical to unpatched base**. The controls were **no-ops**: `mean_delta`
+averaged δ over *all* positions, and with ~150 prompt tokens against ~7–32 generated ones the mean
+was dominated by near-zero prompt shifts. Worse, the contrast set is *defined* as
+base-fails/donor-solves, so **base scores exactly 0.000 on it by construction** — meaning any no-op
+scores 0.000 automatically and my "floor" was a tautology about an intervention that never
+intervened. Three claims were committed before six lines of decoded text refuted them. In the same
+session I had also read 0% format compliance as "generation destroyed", when base is 0% compliant
+too — a metric whose floor and whose failure mode are the same number cannot tell them apart.
+
+**Rule:** before an aggregate becomes an argument, **decode a handful of generations and look at
+them** — for the intervention, for the unpatched baseline, and for the positive control side by
+side. Specifically:
+
+1. **Ask what a no-op would score.** If a do-nothing intervention produces the same number as the
+   result you are attributing to a mechanism, the metric cannot support the claim. On a
+   base-fails/donor-solves contrast set that number is always 0.000.
+2. **Verify an intervention intervened at all.** Diff its output against the unpatched baseline. An
+   ablation that changes nothing is a bug in the ablation, not a finding about the model.
+3. **Never infer *why* from a scalar.** "Destroyed", "ignored", "degraded" and "unchanged" can all
+   read 0.00. Only the text distinguishes them, and it takes one short script.
+4. Prefer controls whose *magnitude is matched by construction* (matched-norm random direction at
+   the same positions) over ones assumed to be comparable.
+
+The generations also carry free information the metric discards: base here was not incoherent but
+fluently re-listing the answer options, which named the failure mode (format non-compliance) that
+the accuracy number could only report as a zero.
+
 ## A watcher whose pattern matches its own command line never fires
 
 **What happened (S2, 2026-08-13):** armed `until ! pgrep -f "train_lora_commonsense"; do sleep 30;
