@@ -43,7 +43,7 @@ from src.probes.extraction import PerTokenResidualCapture
 
 
 def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, generator=None,
-                      control_alpha=1.0):
+                      control_alpha=1.0, prompt_len=0):
     """Wire the shared base/adapter into the two callables ``lockstep_generate`` consumes.
 
     With ``control`` set the oracle's true residual is replaced by a content-destroyed shift of the
@@ -62,7 +62,7 @@ def make_lockstep_fns(base, lora, capture, inject, inject_layers, control=None, 
         with lora.disable_adapter(), capture.capturing():
             base(S, use_cache=False)  # adapter OFF → base residual a, on the same context
         return {li: control_injection(capture.captured[li], lora_resid[li], control, generator,
-                                     control_alpha)
+                                     control_alpha, prompt_len)
                 for li in inject_layers}
 
     def base_logits(S):
@@ -83,6 +83,13 @@ def lockstep_eval(base, lora, tok, problems, device, inject_layers, max_new, tas
     per = []
     for i, (q, gold) in enumerate(problems):
         prompt_ids = prompt_token_ids(tok, q, device, task)
+        if control:
+            # Rebuilt per problem: the control statistic is taken over GENERATED positions, so it
+            # needs this problem's prompt length. Averaging over all positions dilutes it ~2.7x
+            # and yields an intervention that leaves decoding byte-identical to base.
+            cap_fn, logit_fn = make_lockstep_fns(base, lora, capture, inject, inject_layers,
+                                                 control, generator, control_alpha,
+                                                 prompt_ids.shape[1])
         out = lockstep_generate(prompt_ids, cap_fn, logit_fn, inject,
                                 inject_layers, max_new, eos, device)
         text = tok.decode(out[0][prompt_ids.shape[1]:], skip_special_tokens=True)
@@ -122,7 +129,8 @@ def main() -> None:
     ap.add_argument("--max-new", type=int, default=256)
     ap.add_argument("--validate", action="store_true", help="run AC1 check and exit")
     ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
-    ap.add_argument("--control", choices=["mean_delta", "shuffle_positions"], default=None,
+    ap.add_argument("--control", choices=["mean_delta", "shuffle_positions", "random_matched"],
+                    default=None,
                     help="replace the true residual with a content-destroyed shift (empirical floor)")
     ap.add_argument("--control-alpha", type=float, default=1.0,
                     help="scale the control shift; separates a bad direction from a bad magnitude")

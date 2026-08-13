@@ -101,7 +101,7 @@ def projected_injection(a: torch.Tensor, lora_resid: torch.Tensor, V: torch.Tens
 
 def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
                       generator: torch.Generator | None = None,
-                      alpha: float = 1.0) -> torch.Tensor:
+                      alpha: float = 1.0, prompt_len: int = 0) -> torch.Tensor:
     """Inject a *content-destroyed* shift of the same magnitude: the oracle's empirical floor.
 
     On a procedure a broken injection scores ~0 — it cannot emit the right integer by accident — so
@@ -116,21 +116,37 @@ def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
       procedure is what installs, it should collapse.
     - ``shuffle_positions`` — apply the true per-token shifts in a permuted order, destroying
       time alignment while preserving the exact multiset of shifts.
+    - ``random_matched`` — random directions with the **per-token norms of the true δ**. This is
+      the floor an oracle claim actually needs: it answers "would any perturbation of this size do
+      as well?", which on a k-way task is a live worry and on GSM8K is not.
 
-    ``alpha`` scales the injected shift. It exists because a control at the donor's own magnitude
-    can fail for the wrong reason: a full-scale constant offset lands off-manifold and destroys
-    generation, which bounds the floor but does not test whether a *fixed direction* installs the
-    behaviour. Sweeping alpha separates "this direction cannot install it" from "this magnitude
-    breaks the model" — the α-resonance already measured on the multi-hop ridge leak. ``alpha=0``
-    is exactly the unpatched base, and ``alpha=1.0`` reproduces the committed floor runs.
+    ``prompt_len`` marks where the generated tokens start, and it is **load-bearing**. Statistics
+    taken over *all* positions are dominated by the prompt: measured at L20 on commonsense, prompt
+    positions outnumber generated ones ~15:1 and their diverse directions cancel, so ‖mean δ‖ over
+    all positions is 11 where over generated positions it is 29 — a 2.7× dilution that turned an
+    intended control into a no-op. Shuffling has the same defect: with ~100 prompt rows almost every
+    swap is prompt↔prompt.
+
+    ``alpha`` scales the injected shift, separating "this direction cannot install the behaviour"
+    from "this magnitude breaks the model". Measured on commonsense at L20: α ≤ 3 leaves greedy
+    decoding **byte-identical to base**, α ≥ 10 produces gibberish. ``alpha=0`` is exactly the
+    unpatched base.
     """
     delta = lora_resid - a
+    gen = delta[prompt_len:] if delta.shape[0] > prompt_len else delta
     if mode == "mean_delta":
-        return a + alpha * delta.mean(dim=0, keepdim=True).expand_as(delta)
+        return a + alpha * gen.mean(dim=0, keepdim=True).expand_as(delta)
     if mode == "shuffle_positions":
-        perm = torch.randperm(delta.shape[0], generator=generator).to(delta.device)
-        return a + alpha * delta[perm]
-    raise ValueError(f"unknown control mode: {mode!r} (want 'mean_delta' or 'shuffle_positions')")
+        out = delta.clone()
+        perm = torch.randperm(gen.shape[0], generator=generator).to(delta.device)
+        out[delta.shape[0] - gen.shape[0]:] = gen[perm]
+        return a + alpha * out
+    if mode == "random_matched":
+        noise = torch.randn(delta.shape, generator=generator, dtype=torch.float32).to(delta.device)
+        noise = noise / noise.norm(dim=1, keepdim=True).clamp_min(1e-8)
+        return a + alpha * noise.to(delta.dtype) * delta.norm(dim=1, keepdim=True)
+    raise ValueError(f"unknown control mode: {mode!r} "
+                     f"(want 'mean_delta', 'shuffle_positions' or 'random_matched')")
 
 
 @torch.no_grad()

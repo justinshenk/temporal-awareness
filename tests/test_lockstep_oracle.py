@@ -268,6 +268,79 @@ def test_control_alpha_applies_to_shuffle_too():
     assert sorted(out[:, 0].tolist()) == [0.5, 1.0, 1.5, 2.0]
 
 
+def test_mean_delta_uses_generated_positions_only():
+    """The statistic must come from generated rows; prompt rows outnumber them ~15:1 and their
+    diverse directions cancel the mean down to a third of its per-token norm (measured: 30 -> 11)."""
+    a = torch.zeros(5, 2)
+    delta = torch.cat([torch.tensor([[9.0, 0.0], [-9.0, 0.0], [9.0, 0.0]]),   # prompt: cancels
+                       torch.tensor([[0.0, 4.0], [0.0, 6.0]])])              # generated: mean (0,5)
+    out = control_injection(a, a + delta, "mean_delta", prompt_len=3)
+    assert torch.allclose(out, torch.tensor([[0.0, 5.0]]).expand(5, 2))
+
+
+def test_shuffle_permutes_only_generated_rows():
+    """Prompt<->prompt swaps are nearly harmless, so a shuffle over all rows barely intervenes."""
+    a = torch.zeros(5, 2)
+    delta = torch.tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [7.0, 7.0], [8.0, 8.0]])
+    out = control_injection(a, a + delta, "shuffle_positions",
+                            generator=torch.Generator().manual_seed(0), prompt_len=3)
+    assert torch.allclose(out[:3], delta[:3])                      # prompt rows untouched
+    assert sorted(out[3:, 0].tolist()) == [7.0, 8.0]               # generated rows permuted
+
+
+def test_random_matched_keeps_per_token_norms_but_not_directions():
+    """The floor the oracle's 0.990 actually needs: same magnitudes, random directions."""
+    a = torch.zeros(6, 8)
+    delta = torch.randn(6, 8) * 3.0
+    out = control_injection(a, a + delta, "random_matched",
+                            generator=torch.Generator().manual_seed(0))
+    assert torch.allclose(out.norm(dim=1), delta.norm(dim=1), atol=1e-4)   # norms matched
+    cos = torch.nn.functional.cosine_similarity(out, delta, dim=1).abs()
+    assert (cos < 0.95).all()                                              # directions destroyed
+
+
+def test_random_matched_is_seeded():
+    a, delta = torch.zeros(4, 6), torch.randn(4, 6)
+    def run(seed):
+        return control_injection(a, a + delta, "random_matched",
+                                 generator=torch.Generator().manual_seed(seed))
+    assert torch.equal(run(0), run(0))
+    assert not torch.equal(run(0), run(1))
+
+
+def test_a_control_actually_perturbs_the_decode():
+    """The test today's bug demanded: assert the intervention INTERVENES.
+
+    Every prior control test asserts tensor algebra, and all of them pass on a control that never
+    reaches the model. This one drives the real decode loop and requires the tokens to move.
+    """
+    stub = _StubLM(3, 4, 7)
+    ids = torch.tensor([[1, 2]])
+    def decode(control, alpha):
+        cap = PerTokenResidualCapture(stub, [1])
+        inject = OverwriteResidualHook(stub, [1])
+        def capture_residuals(S):
+            cap.clear()
+            stub.set_mode("lora")
+            with cap.capturing(), torch.no_grad():
+                stub(S)
+            lora_resid = {1: cap.captured[1]}
+            if control is None:
+                return lora_resid
+            cap.clear()
+            stub.set_mode("base")
+            with cap.capturing(), torch.no_grad():
+                stub(S)
+            return {1: control_injection(cap.captured[1], lora_resid[1], control,
+                                         torch.Generator().manual_seed(0), alpha)}
+        out = lockstep_generate(ids, capture_residuals, _base_logits_fn(stub, inject), inject,
+                                [1], max_new=6, eos_id=None, device="cpu")
+        cap.remove(); inject.remove()
+        return out
+    plain = _greedy(stub, ids, "base", max_new=6)
+    assert not torch.equal(decode("random_matched", 8.0), plain), "control did not perturb the decode"
+
+
 def test_control_injection_rejects_an_unknown_mode():
     a = torch.randn(2, 2)
     with pytest.raises(ValueError, match="unknown control"):
