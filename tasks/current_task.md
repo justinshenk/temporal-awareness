@@ -186,7 +186,15 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         composition, same filename); user approved the driver edit.
   - [x] Floors measured on the ARC-Challenge scan: chance 0.25, **majority-class 0.288** (gold
         spread 144/137/117/102 over n=500) — conditional accuracy is read against 0.288.
-  - [ ] Runs: gap gate → oracle sweep → floors @L* → PCA band → S2c ridge arm (see brief §6c).
+  - [x] **Gap gate PASSED 2026-08-13** (`.run_logs/s2_gate.log`, ARC-Challenge scan n=500,
+        max_new=32): **base 0.000 / donor 0.676** — the spec predicted 0.68 — with **338
+        base-fail/donor-solve** contrast problems (floor was 80), cached to
+        `commonsense_contrast_set.json`. AC1 PASS: all-layers lockstep reproduced the donor
+        per-problem (3/3). NOTE: always pass `--n-eval 500` for commonsense so the scan aligns
+        with the cached 338 indices (driver default 60 would misindex) — same hazard as multihop's 317.
+  - [ ] Oracle layer sweep IN FLIGHT (`.run_logs/s2_oracle_sweep.log`, pid-watched,
+        layers 0,4,…,28,31, n-contrast 100, max_new 32).
+  - [ ] Then: floors @L* (`--control mean_delta` / `shuffle_positions`) → PCA band → S2c ridge arm.
 - [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
