@@ -105,17 +105,38 @@ control the two sides were assumed to share. Here the control itself distinguish
 Two controls, both keeping δ's magnitude and destroying only its content
 (`lockstep_oracle.control_injection`, seeded):
 
-- **`mean_delta`** — every position gets the trajectory-average shift. A *simplification*, not a
-  corruption: it is the best possible **fixed vector**, chosen per problem with oracle knowledge of
-  the donor's own trajectory, so it upper-bounds the entire fixed-vector class. This is the
-  pointwise/register hypothesis stated directly as an intervention.
+- **`mean_delta`** — every position gets the trajectory-average shift: the best fixed vector **at
+  the donor's own scale**, chosen per problem with oracle knowledge of its trajectory.
 - **`shuffle_positions`** — the true per-token shifts applied in permuted order. Same multiset, same
-  norms; only the alignment between shift and token is destroyed. This is the empirical floor.
+  norms; only the alignment between shift and token is destroyed.
 
-Readings: `mean` high / `shuffle` low ⇒ the register is one direction, and the paper's pointwise
-claim is established. Both low ⇒ even a register needs per-token content, and §9/§10 need rewriting.
-Both high ⇒ almost any push of that size scores well and the 0.990 is about the answer space rather
-than about installation — the outcome that would invalidate the headline.
+| intervention at L20 | recovery (n=100) |
+|---|--:|
+| true oracle, per-token δ | **0.990** |
+| `mean_delta` | **0.000** |
+| `shuffle_positions` | **0.000** |
+
+**What this settles.** The empirical floor at L20 is **0.000, not 0.25**. A perturbation of the same
+magnitude as the true shift does not score at chance on this 4-way task — it scores nothing. So the
+0.990 above is *not* an artifact of a small answer space, which was the one outcome that would have
+invalidated the oracle result. The register's oracle is real, and it needs the **per-token** shift:
+neither averaging it nor misaligning it survives.
+
+**What this does NOT settle, and an overclaim corrected.** An earlier draft of this section said
+`mean_delta` "upper-bounds the entire fixed-vector class". That is wrong: the class includes
+*scaled* vectors α·δ̄, and this run applies the average at full magnitude (α=1.0) at **every
+position, prompt tokens included**. Landing *below chance* is the signature of an off-manifold,
+destructive injection rather than of a merely uninformative one — the same α-resonance this work
+already measured on MuSiQue's ridge leak (≈0.26 at α=1.0, ≈0 at α=1.5). The supported claim is
+therefore: **the best fixed vector at the donor's own scale fails completely**, not that no fixed
+vector can install a register.
+
+Deciding which of those it is needs one cheap measurement, and it is exactly what the
+`commonsense_format` registry entry exists for: re-score the *same* floor generations asking only
+whether the response format was adopted. Format ≈ 0 ⇒ the injection destroyed generation and the
+controls bound the floor but do not test the pointwise hypothesis; format high with answers at ≈0.25
+⇒ the format installed and only answer selection was lost, which *would* be a real test.
+**Running now** (`.run_logs/s2_fmt_{mean,shuffle}.log`.)
 
 ### PCA band (δ-rank / off-manifold) — pending
 
