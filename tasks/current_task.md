@@ -199,12 +199,29 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         multihop's 0.02) and the plateau is essentially total (0.990 vs GSM8K 0.75 / multihop 0.76).
         First quantitative separation between register and procedure **on the oracle axis itself** —
         previously the two sides were only compared on the ladder.
-  - [ ] Floors @L20 IN FLIGHT (`--control mean_delta`, then `shuffle_positions`; logs
-        `.run_logs/s2_floor_{mean,shuffle}.log`). These decide how to read the 0.990: if mean_delta
-        (the best possible FIXED vector) also lands high, the register is pointwise in the strong
-        sense the paper claims; if it collapses toward the 0.288 majority-class floor, even a
-        register needs per-token content and §9/§10 must be rewritten.
-  - [ ] Then: PCA band → S2c ridge arm (format vs answer decomposition).
+  - [x] **Floors DONE, after two rounds of correction.** First round was VOID: the controls averaged
+        δ over *all* positions, and with prompt ~15:1 over generation the diverse per-token shifts
+        cancel (‖mean δ‖ 29 → 11), so the injection was a **no-op** — decoded generations were
+        byte-identical to base. Because the contrast set is base-fails/donor-solves, base scores
+        0.000 on it by construction, so a no-op scores 0.000 automatically and "the floor is 0.000
+        not 0.25" was a tautology. Fixed (`generated_rows`, threaded `prompt_len`), plus a
+        `random_matched` control (random directions at the true per-token norms). Final at L20,
+        n=100: oracle **0.990**, `mean_delta` **0.820**, `random_matched` **0.000** (byte-identical
+        to base — a random shift at 30–45% of residual norm does not move the model, while the
+        mean-δ direction at that magnitude installs format *and* answer).
+  - [x] **`mean_delta` is a per-step ORACLE statistic, NOT a fixed vector** (corrected same day).
+        `lockstep_generate` re-runs `capture_residuals` every step, so the 0.820 still needs a live
+        donor forward per step; it collapses *positional* variation only. The real fixed-vector test
+        (`global_register_vector.py`, estimate once / no donor at inference) reads **0.000**
+        per-problem AND pooled over 100 disjoint problems, at α ∈ {0.5, 1, 1.5, 2} — and the
+        per-problem vector through the *same* additive hook also reads 0.000, so the gap is the
+        **injection mechanism**, not the vector (per-problem cosines to pooled: mean .883, min .820).
+        **Net: collapsing across positions is nearly free (0.99→0.82); collapsing across TIME
+        destroys it (→0.000).** A CAA-style fixed vector installs nothing on this register.
+  - [ ] **S2c ridge arm IN FLIGHT** (`.run_logs/s2c_collect.log`) — the load-bearing one: does a
+        fitted *input-conditional* map install what a fixed vector cannot? Then the
+        `commonsense_format` re-score for the format-vs-answer split.
+  - [ ] Then: PCA band; `shuffle_positions` corrected; then STOP experimenting and assemble the paper.
 - [ ] OLD BRIEF (superseded, kept for context): `tasks/gsm8k_ridge_layer_probe.md`.
       Trigger: the "GSM8K ridge ≈0.05, ≈0 at every layer" baseline turned out to have **no artifact**
       — per-layer GSM8K ridge steering was only ever run at L0/L1/L14/L16/L31 (smoke, all 0.00) plus
