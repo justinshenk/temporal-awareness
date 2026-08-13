@@ -140,18 +140,30 @@ right answer or not:
 | `mean_delta` | 0.000 | **0.000** (0/100) |
 | `shuffle_positions` | 0.000 | **0.010** (1/100) |
 
-Neither control emits `"the correct answer is …"` at all. So the zeros are **not** "installed the
-format, chose badly" — they are "nothing coherent came out". Two consequences, and they point in
-opposite directions:
+Neither control emits `"the correct answer is …"` at all.
+
+> **Correction (2026-08-13, same day).** An earlier version of this section read those zeros as
+> "nothing coherent came out". **That does not follow, and the error is instructive.** *Base itself
+> is 0% format-compliant* — declining to emit the trigger is exactly why base scores 0.000 on this
+> task. So format compliance runs from 0 (base) to ~1 (donor): it measures **register
+> installation**, and a reading of 0 is equally consistent with "the model was destroyed" and "the
+> injection did nothing, leaving base-like behaviour". The α sweep makes the point concrete — at
+> α=0.1 the injection is a tenth of the donor's magnitude and should be nearly a no-op, yet format
+> is still 0.000. A metric whose floor and whose failure mode are the same number cannot separate
+> them. Raw generations are inspected below to settle it.
+
+Two consequences, and they point in opposite directions:
 
 1. **The oracle result stands, and is strengthened.** The objection was that a 4-way answer space
    might let any large perturbation score well by luck. The measured answer is that a perturbation
    of the *same magnitude as the true shift* yields 0.000, not the 0.25 a fluent-but-random policy
    would get. The floor is the floor. **0.990 is real.**
-2. **These controls cannot test pointwise-ness**, and must not be reported as if they did. At full
-   donor magnitude a constant offset is off-manifold; the model is broken before the hypothesis is
-   reached. "A fixed vector fails to install the register" is **not** established by this table —
-   only "a fixed vector at the donor's own scale destroys generation".
+2. **These controls do not, on their own, test pointwise-ness.** What the table establishes is
+   narrow and worth stating exactly: *neither the trajectory-average shift nor the time-shuffled
+   shift installs the register at the donor's own magnitude.* Whether that is because the direction
+   is wrong or because the magnitude breaks the model is **not** decidable from a metric that reads
+   0 for base and 0 for a destroyed model alike. The α sweep plus the raw generations below are what
+   separate those two.
 
 That is what the α sweep below exists to fix, and note it is now motivated by a measurement rather
 than by suspicion.
