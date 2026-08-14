@@ -45,10 +45,11 @@ GPU box; the reports that quote them are committed.
 |---|---|---|---|
 | GSM8K oracle @L20 | 0.75 | `temporal_oracle_L20.json` (periodic_1) | 2026-08-13 |
 | MuSiQue oracle @L20 | 0.75 / +0.76 sweep | `temporal_oracle_multihop_L20.json`, `lockstep_multihop_single.json` | 2026-08-13 |
-| GSM8K ridge steer @L20 | +0.03 [0.01, 0.08], n=200 | `steer_results_layers.json` | P5, 2026-08-10 |
-| GSM8K ridge steer @L24 | +0.12 [0.07, 0.19], n=200 | `steer_results_layers.json` | P5, 2026-08-10 |
+| GSM8K ridge steer @L20 | +0.03 [0.01, 0.08] CoT-window map — **revised to +0.09**, see below | `steer_results_layers.json`, `steer_results_allpos.json` | P5 / S2d |
+| GSM8K ridge steer @L24 | +0.12 [0.07, 0.19], n=200 — **reproduced at +0.12** by the all-positions map | `steer_results_layers.json`, `steer_results_allpos.json` | P5 / S2d |
 | MuSiQue ridge steer @L24 | +0.45 [0.35, 0.56] | `steer_multihop_layers.json` | P2b |
-| GSM8K L20 held-out R²_te | 0.610 @ λ*=3.16e3 | `sweep.json` | P5, 2026-08-10 |
+| GSM8K L20 held-out R²_te (CoT window) | 0.610 @ λ*=3.16e3 | `sweep.json` | P5, 2026-08-10 |
+| GSM8K L20 held-out R²_te (**all positions**) | **0.686** @ λ*=3.16e3, const 0.096, centred **0.653** | `sweep_allpos.json` | S2d, 2026-08-14 |
 | MuSiQue L20 held-out R²_te | 0.714 | `sweep_multihop.json` | P2 |
 | GSM8K MLP rung @L24, n=100 | 0.00 [0, 0.04] vs ridge 0.10 [0.05, 0.18] | `nonlinear_delta_gsm8k_L24_n100.json` | P5b |
 | cross-task transplant @L28 | 0.13 (= native exactly) | `steer_transplant_multihop_maps_on_gsm8k.json` | P5b |
@@ -241,6 +242,67 @@ What is safe and what is not:
   `lockstep_patch_gsm8k --mode single --layers 0,4,…,31` at real n, written to a **non-colliding
   filename**. Until then F2 is a MuSiQue-only figure and the cross-task "same layer" sentence must
   be softened to the L20 point comparison, which is sourced.
+
+### GSM8K re-fit over all positions, and the α the committed sweep should have used (2026-08-14)
+
+Prompted by the S2c void below: the committed GSM8K ridge numbers were also fitted on the CoT
+window and applied at every position. The mismatch is much milder here — the chain is ~174 of ~290
+positions, so the CoT window covered **60%** of the applied positions against commonsense's **15%**
+— and the fit set grows only 1.63× (34,893 → **56,978** train tokens, 17,223 held-out).
+
+`sweep_allpos.json`, maps in `maps_allpos`; the committed `sweep.json` / `maps/` are untouched.
+
+| layer | R²_te allpos | R²_te committed | `const` | R²_te centred |
+|---|--:|--:|--:|--:|
+| 16 | 0.706 | 0.572 | 0.074 | 0.682 |
+| **20** | **0.686** | 0.610 | 0.096 | **0.653** |
+| 24 | 0.690 | 0.636 | 0.119 | 0.648 |
+| 28 | 0.698 | 0.660 | 0.129 | 0.653 |
+
+**The constant baseline does NOT separate register from procedure** — 0.096 (GSM8K) against 0.106
+(commonsense) at L20, indistinguishable. An earlier version of `constant_r2`'s docstring proposed it
+as a §10 criterion coordinate; that is retracted. What separates them is the **centred** R² it
+licenses: **0.653 (procedure) against 0.921 (register)**. The register's shift is far more linearly
+predictable from base's own state once the constant's free share is removed from both — and unlike
+raw R², that comparison is not confounded by the property under study.
+
+**Magnitude diagnostic** (`.run_logs/p5_map_magnitude.log`, n=10, prompt positions), the check that
+today's void says must precede any α choice:
+
+| map | L20 ‖Wa‖/‖a‖ | L20 α_match | L24 ‖Wa‖/‖a‖ | L24 α_match |
+|---|--:|--:|--:|--:|
+| CoT-window (**the committed sweep's map**) | 0.404 | **0.85** | 0.468 | **0.85** |
+| all-positions | 0.306 | 1.13 | 0.344 | 1.15 |
+
+The published **0.03 @L20 / 0.12 @L24 were measured at α=1.0, ~18% above the magnitude-matched
+0.85.** That corroborates the dead α grid's log-only hint that L24 peaks at α=0.75 rather than 1.0,
+and it means the committed leak may be an **underestimate for a magnitude reason**. The
+all-positions map is more conservative still (α_match ≈ 1.13), so α=1.0 would under-inject it.
+**Result** (`steer_results_allpos.json`, n=200, refs base 0.000 / LoRA 0.650 at max_new 512 —
+the committed protocol exactly):
+
+| layer | α=0.85 | α=1.0 | α=1.15 | committed (CoT map, α=1.0) |
+|---|--:|--:|--:|--:|
+| L20 | 0.03 | 0.07 | **0.09** | 0.031 [0.01, 0.08] |
+| L24 | 0.08 | 0.10 | **0.12** | 0.123 [0.07, 0.19] |
+
+**L24 reproduces exactly** — 0.12 at the all-positions map's magnitude-matched α, against the
+committed 0.123. The headline GSM8K leak survives a real attempt to break it, and now holds across
+two fit windows and two α choices.
+
+**L20 was an underestimate: 0.03 → 0.09 (~3×), above the committed interval's upper bound.** What
+this revises is not the leak's amplitude but its **shape**: the committed profile rose 4× from L20
+to L24 (0.03 → 0.12), which is what "**GSM8K leaks late**" rests on; corrected, it rises 1.3×
+(0.09 → 0.12). §8's late-onset framing is the claim that weakens, not the amplitude.
+
+**Two limits on the above, both load-bearing:**
+
+1. **Neither peak is located.** Both curves are still rising at α=1.15, the top of the range run.
+   0.09 and 0.12 are lower bounds on the properly-scaled leak, not maxima.
+2. **The cross-task ratio now compares differently-fitted maps.** MuSiQue's 0.45 @L24 is still a
+   CoT-window fit. Its chains are long like GSM8K's so the effect is probably small, but
+   "GSM8K 0.12 vs MuSiQue 0.45, ~3.75×" currently rests on one re-fitted map and one not. Close it
+   or disclose it before §8 quotes the ratio.
 
 ### VOID — the S2c commonsense ridge arm, first attempt (2026-08-14)
 

@@ -78,8 +78,12 @@ class GramAccumulator:
         The floor every fitted map must beat to have shown anything input-conditional. ``r2_te``
         measures energy about **zero**, not variance about δ's mean, so on a task whose δ points
         mostly one way this number is already large and most of a high R² is "predict the constant".
-        Reported per layer, it is also a task coordinate in its own right: how close the required
-        shift is to being pointwise, measured without generating a single token.
+
+        **It is not a register/procedure coordinate**, though an earlier version of this docstring
+        proposed it as one. Measured at L20 over all positions it is 0.096 on GSM8K (a procedure)
+        against 0.106 on commonsense (a register) — indistinguishable. What separates them is the
+        *centred* R² it licenses, 0.65 against 0.92: the register's shift is far more linearly
+        predictable from base's own state once the constant's free share is removed from both.
         """
         if self.d_sum is None:
             raise ValueError("this accumulator carries no first moment (Σδ); it predates `d_sum` "

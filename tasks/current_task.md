@@ -299,6 +299,34 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
       written **after each cell** — the α grid reached 9 of 12 and left no artifact because the
       write was at the end.
   - [ ] Then: PCA band; `shuffle_positions` corrected; then STOP experimenting and assemble the paper.
+- [x] **GSM8K re-fit over all positions DONE 2026-08-14** — triggered by S2c's void, since the
+      committed GSM8K ridge numbers were fitted on the CoT window and applied at every position too.
+      Milder mismatch here (the chain is ~174 of ~290 positions = **60%** coverage against
+      commonsense's 15%), fit set 34,893 → **56,978** train tokens. `maps/` and `sweep.json`
+      untouched; new artifacts `accumulators_allpos` / `maps_allpos` / `sweep_allpos.json` /
+      `steer_results_allpos.json`.
+  - **Magnitude diagnostic first** (`.run_logs/p5_map_magnitude.log`) — the step S2c's failure says
+    must precede any α choice. CoT map α_match **0.85** at L20/L24; all-positions **1.13/1.15**. So
+    the committed sweep ran at α=1.0, ~18% *above* magnitude-match, corroborating the dead α grid's
+    log-only hint that L24 peaks at α=0.75.
+  - **Steer, n=200, refs base 0.000 / LoRA 0.650 (committed protocol):**
+
+    | layer | α=0.85 | α=1.0 | α=1.15 | committed |
+    |---|--:|--:|--:|--:|
+    | L20 | 0.03 | 0.07 | **0.09** | 0.031 [0.01, 0.08] |
+    | L24 | 0.08 | 0.10 | **0.12** | 0.123 [0.07, 0.19] |
+
+  - **L24 reproduces exactly (0.12).** The headline leak survives across two fit windows and two α
+    choices. **L20 was an underestimate (0.03 → 0.09, ~3×, above its CI).** What this revises is the
+    leak's *shape*, not its amplitude: the committed L20→L24 rise of 4× becomes 1.3×, so **§8's
+    "GSM8K leaks late" is the claim that weakens.**
+  - **Two open limits.** (a) Neither peak is located — both curves still rise at α=1.15, so 0.09 and
+    0.12 are lower bounds. (b) MuSiQue's 0.45 @L24 is **still a CoT-window fit**, so the "3.75×"
+    cross-task ratio compares a re-fitted map against a non-re-fitted one; close or disclose before
+    §8 quotes it.
+  - **`constant_r2` is NOT a register/procedure coordinate** (0.096 GSM8K vs 0.106 commonsense at
+    L20). Proposed as a §10 criterion coordinate this morning; retracted in the docstring and
+    `numbers.md`. The discriminator is the **centred** R² it licenses: **0.653 vs 0.921**.
 - [ ] **FUTURE — cross-model replication (deferred 2026-08-14, not for this session).** Answers the
       "n=1 model" objection, which no amount of extra Llama-2 measurement can.
   - **Zero code change required.** The only architectural assumption in the whole apparatus is
