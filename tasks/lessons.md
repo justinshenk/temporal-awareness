@@ -89,6 +89,47 @@ The generations also carry free information the metric discards: base here was n
 fluently re-listing the answer options, which named the failure mode (format non-compliance) that
 the accuracy number could only report as a zero.
 
+## Fit the map on the positions you will apply it to
+
+**What happened (S2c, 2026-08-14):** the commonsense ridge arm read **0.000 at every layer** and was
+one write-up away from entering the paper as "a register does not transport through a pointwise
+map" — a result the local pushback had already flagged as forcing a §1 rewrite. The generations said
+otherwise: at α=1.0 the output was `\n\end​​​​…`, degenerate zero-width-space repetition, and at
+α=0.5 it was **byte-identical to base**. It was a *destroyed* model, not a null.
+
+The cause was a window mismatch nobody had reason to notice for three strands.
+`collect_cot_residuals` fits on `cot_token_slice` — **generated positions only** — while
+`LinearPrimalSteerHook` applies the map at **every** position. On GSM8K the chain is ~250 of ~400
+positions, so the map mostly saw what it would be applied to. On commonsense the target is ~6 tokens
+against a ~97-token prompt, so **~94% of the positions it was applied to lay off its fit
+distribution**, and it extrapolated there to about double the correct magnitude: `‖Wa‖/‖a‖ = 0.551`
+where the true δ ratio is ~0.3–0.45. Refitting with `--fit-positions all` brought the ratio to
+**0.224**, and the map then installed the donor's format cleanly.
+
+**Rule:** before fitting any map, write down the set of positions it will be *applied* at and the
+set it is *fit* on, and make them the same set — or justify the gap explicitly. A design inherited
+from one task is not neutral on another; the thing that changed here was the prompt-to-target ratio,
+which no line of code mentions. Two cheap diagnostics catch it before a sweep runs: compare
+`‖Wa‖/‖a‖` against the measured per-token `‖δ‖/‖a‖`, and check whether the same fit set is a
+sensible sample of the application set.
+
+## Do not read R² without its constant baseline
+
+**What happened (S2c, 2026-08-14):** the commonsense map's `R²_te = 0.89` was about to be compared
+against GSM8K's 0.61 as "the register's shift is far more linearly predictable". But `r2_te` divides
+by the **uncentred** `Σ‖δ‖²` (`gram_accumulator.py`), so it credits a map for merely reproducing δ's
+constant component — and *how constant δ is* happens to be the exact property the register/procedure
+contrast is about. The comparison was confounded by the thing under study. I also mis-estimated the
+baseline at ~0.48 by computing it over generated positions when the fit spans all of them; measured,
+it is **0.106**.
+
+**Rule:** whenever an R² is used to compare *tasks*, report the best-fixed-vector baseline beside
+it. `constant_r2 = ‖Σδ‖²/(n·Σ‖δ‖²)` needs only a first moment, and
+`R²_centred = (R² − R²_const)/(1 − R²_const)` is an identity, so no refit is required. And state the
+**window** any "the shift is one direction" claim holds on: commonsense δ is near-constant over its
+~6 generated positions and strongly conditional over the full sequence, so the same task supports
+opposite-sounding sentences depending on which positions were summarized.
+
 ## A watcher whose pattern matches its own command line never fires
 
 **What happened (S2, 2026-08-13):** armed `until ! pgrep -f "train_lora_commonsense"; do sleep 30;

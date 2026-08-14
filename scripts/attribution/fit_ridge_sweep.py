@@ -55,21 +55,31 @@ def main() -> None:
             cc_err.append(fit.crosscheck_abs_err)
             if ho.r2_te > best_r2_te:
                 best_r2_te, best_lam, best_W = ho.r2_te, lam, fit.W
+        # What the best FIXED vector already explains, on the same held-out tokens. A map only
+        # demonstrates input-conditional structure to the extent it beats this.
+        r2_const = te.constant_r2() if te.has_first_moment else None
+        r2_centred = ((best_r2_te - r2_const) / (1.0 - r2_const)
+                      if r2_const is not None and r2_const < 1.0 else None)
         sw = LayerSweep(layer=l, lambdas=lambdas, r2_insample=r2_in, r2_te=r2_te,
-                        crosscheck_abs_err=cc_err, lam_star=best_lam, r2_te_star=best_r2_te)
+                        crosscheck_abs_err=cc_err, lam_star=best_lam, r2_te_star=best_r2_te,
+                        r2_const_te=r2_const, r2_te_centred=r2_centred)
         sweeps.append(sw)
         torch.save({"layer": l, "lam": best_lam, "W": best_W.to(torch.float32).cpu()},
                    maps_dir / f"W_L{l}.pt")
+        const_note = ("  const=n/a (tree predates first moments)" if r2_const is None else
+                      f"  const={r2_const:+.4f}  R2_te_centred={r2_centred:+.4f}")
         print(f"  L{l:2d}: lambda*={best_lam:.2e}  R2_te*={best_r2_te:+.4f}  "
-              f"R2_in@lambda*={r2_in[lambdas.index(best_lam)]:+.4f}", flush=True)
+              f"R2_in@lambda*={r2_in[lambdas.index(best_lam)]:+.4f}{const_note}", flush=True)
 
     out = {"lambdas": lambdas, "layers": [sw.to_dict() for sw in sweeps]}
-    Path(cfg["output"]["sweep_json"].replace(".json", f"{args.acc_suffix}.json")).write_text(
-        json.dumps(out, indent=2, default=float))
+    # Name the file actually written: printing the unsuffixed config path invites citing the wrong
+    # arm when several suffixes coexist (e.g. the CoT-window vs all-positions commonsense fits).
+    sweep_path = Path(cfg["output"]["sweep_json"].replace(".json", f"{args.acc_suffix}.json"))
+    sweep_path.write_text(json.dumps(out, indent=2, default=float))
     best = max(sweeps, key=lambda s: s.r2_te_star)
     print(f"\nPeak held-out R²_te = {best.r2_te_star:+.4f} at layer {best.layer} "
           f"(lambda*={best.lam_star:.2e})")
-    print(f"Saved per-layer W to {maps_dir} and sweep to {cfg['output']['sweep_json']}")
+    print(f"Saved per-layer W to {maps_dir} and sweep to {sweep_path}")
 
 
 if __name__ == "__main__":

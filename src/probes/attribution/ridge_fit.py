@@ -58,3 +58,11 @@ class LayerSweep(BaseSchema):
     crosscheck_abs_err: list[float] = field(default_factory=list)
     lam_star: float = 0.0
     r2_te_star: float = 0.0
+    # The constant baseline: the share of δ's energy the single best FIXED vector already explains.
+    # `r2_te` divides by the uncentred Σ‖δ‖², so wherever δ points mostly one way a map scores high
+    # without capturing anything input-conditional — and how constant δ is happens to be the exact
+    # property the register/procedure contrast is about, so cross-task `r2_te` comparisons are
+    # confounded by it. `r2_te_centred = (r2_te − r2_const)/(1 − r2_const)` is that confound removed;
+    # it needs no refit. None on trees collected before first moments were recorded.
+    r2_const_te: float | None = None
+    r2_te_centred: float | None = None

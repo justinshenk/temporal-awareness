@@ -347,6 +347,142 @@ def test_control_injection_rejects_an_unknown_mode():
         control_injection(a, a, "nonsense")
 
 
+# --- random_constant: the floor `random_matched` cannot supply -----------------
+#
+# `mean_delta` injects the SAME direction at every position; `random_matched` draws an INDEPENDENT
+# direction per position. Independent draws partially cancel downstream where a coherent shift
+# accumulates, so `random_matched` does not floor a constant-vector claim. This mode does: one
+# random direction, held constant across positions, at the norm `mean_delta` actually injects.
+
+
+def test_random_constant_uses_one_direction_at_every_position():
+    a = torch.zeros(6, 8)
+    delta = torch.randn(6, 8) * 3.0
+    out = control_injection(a, a + delta, "random_constant",
+                            generator=torch.Generator().manual_seed(0), prompt_len=3)
+    assert torch.allclose(out, out[0].expand_as(out), atol=1e-6)
+
+
+def test_random_constant_matches_the_norm_mean_delta_injects():
+    """Matched by construction: the floor must carry exactly the magnitude it is flooring."""
+    a = torch.zeros(6, 8)
+    delta = torch.randn(6, 8) * 3.0
+    ref = control_injection(a, a + delta, "mean_delta", prompt_len=3)
+    out = control_injection(a, a + delta, "random_constant",
+                            generator=torch.Generator().manual_seed(0), prompt_len=3)
+    assert torch.allclose(out.norm(dim=1), ref.norm(dim=1), atol=1e-4)
+    cos = torch.nn.functional.cosine_similarity(out, ref, dim=1).abs()
+    assert (cos < 0.95).all()                                    # direction destroyed, norm kept
+
+
+def test_random_constant_is_seeded_and_scales_with_alpha():
+    a, delta = torch.zeros(4, 6), torch.randn(4, 6)
+    def run(seed, alpha=1.0):
+        return control_injection(a, a + delta, "random_constant",
+                                 generator=torch.Generator().manual_seed(seed), alpha=alpha)
+    assert torch.equal(run(0), run(0))
+    assert not torch.equal(run(0), run(1))
+    assert torch.allclose(run(0, 0.5), run(0) * 0.5, atol=1e-6)
+
+
+# --- fixed_vector: the mechanism control --------------------------------------
+#
+# `mean_delta` recovers 0.82 but is recomputed every decode step from a live donor forward, so it
+# is an oracle statistic, not a deployable vector. The same constant pushed through the ordinary
+# additive hook reads 0.000. Those two differ in the delivery path AND in being closed- vs
+# open-loop. This mode freezes a precomputed vector and sends it down the *lockstep* path, so the
+# delivery path is held fixed and only the loop varies.
+
+
+def test_fixed_vector_injects_the_supplied_constant_everywhere():
+    a = torch.randn(5, 3)
+    v = torch.tensor([1.0, -2.0, 0.5])
+    out = control_injection(a, a + torch.randn(5, 3), "fixed_vector", vector=v)
+    assert torch.allclose(out, a + v.expand(5, 3), atol=1e-6)
+
+
+def test_fixed_vector_ignores_the_donor_residual_entirely():
+    """The whole point: no per-step donor statistic may leak into the injected shift."""
+    a = torch.randn(5, 3)
+    v = torch.tensor([1.0, -2.0, 0.5])
+    one = control_injection(a, a + torch.randn(5, 3), "fixed_vector", vector=v)
+    two = control_injection(a, a + torch.randn(5, 3) * 100.0, "fixed_vector", vector=v)
+    assert torch.equal(one, two)
+
+
+def test_fixed_vector_scales_with_alpha():
+    a = torch.zeros(3, 2)
+    v = torch.tensor([2.0, 4.0])
+    assert torch.allclose(control_injection(a, a, "fixed_vector", vector=v, alpha=0.5),
+                          torch.tensor([[1.0, 2.0]]).expand(3, 2))
+
+
+def test_fixed_vector_without_a_vector_fails_loudly():
+    a = torch.randn(2, 2)
+    with pytest.raises(ValueError, match="fixed_vector"):
+        control_injection(a, a, "fixed_vector")
+
+
+# --- control positions: prompt re-encoding vs steering the generation ----------
+#
+# Every control today injects at ALL positions, prompt included — ~100 prompt tokens against ~7
+# generated ones. So nothing yet separates "the register is installed by re-encoding the question"
+# from "by steering the generation". Scoping the injection answers it; rows outside the scope are
+# left at exactly the unpatched base residual.
+
+
+@pytest.mark.parametrize("mode", ["mean_delta", "shuffle_positions", "random_matched",
+                                  "random_constant"])
+def test_positions_all_is_todays_behaviour(mode):
+    """Regression guard: the committed floor runs must stay reproducible bit-for-bit."""
+    a, delta = torch.randn(6, 4), torch.randn(6, 4)
+    def run(**kw):
+        return control_injection(a, a + delta, mode, generator=torch.Generator().manual_seed(0),
+                                 prompt_len=4, **kw)
+    assert torch.equal(run(), run(positions="all"))
+
+
+def test_positions_generated_leaves_prompt_rows_unpatched():
+    a = torch.randn(6, 4)
+    delta = torch.randn(6, 4)
+    out = control_injection(a, a + delta, "mean_delta", prompt_len=4, positions="generated")
+    assert torch.allclose(out[:4], a[:4], atol=1e-6)             # prompt: exactly base
+    assert not torch.allclose(out[4:], a[4:], atol=1e-6)         # generation: shifted
+
+
+def test_positions_prompt_leaves_generated_rows_unpatched():
+    a = torch.randn(6, 4)
+    delta = torch.randn(6, 4)
+    out = control_injection(a, a + delta, "mean_delta", prompt_len=4, positions="prompt")
+    assert not torch.allclose(out[:4], a[:4], atol=1e-6)
+    assert torch.allclose(out[4:], a[4:], atol=1e-6)
+
+
+def test_positions_generated_is_a_noop_before_anything_is_generated():
+    """At decode step 1 the sequence is the prompt, so a generated-only control must not fire."""
+    a = torch.randn(4, 3)
+    out = control_injection(a, a + torch.randn(4, 3), "mean_delta", prompt_len=4,
+                            positions="generated")
+    assert torch.allclose(out, a, atol=1e-6)
+
+
+def test_positions_scoping_splits_the_shift_additively():
+    """prompt-scoped + generated-scoped shifts must sum back to the all-positions shift."""
+    a = torch.zeros(6, 4)
+    delta = torch.randn(6, 4)
+    kw = dict(prompt_len=4)
+    whole = control_injection(a, a + delta, "mean_delta", **kw)
+    head = control_injection(a, a + delta, "mean_delta", positions="prompt", **kw)
+    tail = control_injection(a, a + delta, "mean_delta", positions="generated", **kw)
+    assert torch.allclose(whole, head + tail, atol=1e-6)
+
+
+def test_control_injection_rejects_an_unknown_position_scope():
+    a = torch.randn(2, 2)
+    with pytest.raises(ValueError, match="unknown position scope"):
+        control_injection(a, a, "mean_delta", positions="middle")
+
+
 # --- lockstep_generate decode loop -------------------------------------------
 
 

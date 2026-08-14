@@ -218,10 +218,107 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         **injection mechanism**, not the vector (per-problem cosines to pooled: mean .883, min .820).
         **Net: collapsing across positions is nearly free (0.99→0.82); collapsing across TIME
         destroys it (→0.000).** A CAA-style fixed vector installs nothing on this register.
-  - [ ] **S2c ridge arm IN FLIGHT** (`.run_logs/s2c_collect.log`) — the load-bearing one: does a
-        fitted *input-conditional* map install what a fixed vector cannot? Then the
-        `commonsense_format` re-score for the format-vs-answer split.
+  - [x] **S2c collect + fit DONE 2026-08-14** (brief: `tasks/s2d_execution_brief.md`). The
+        2026-08-13 run marked "IN FLIGHT" had **died leaving nothing** — its log stopped at
+        `fit=200 held-out=60` before the first `[train] 10/200` line, and neither
+        `accumulators_commonsense/` nor `maps_commonsense/` existed. Third silent loss in a week.
+        Relaunched with a disk preflight (a `--n-fit 2` smoke writes the *full-size* 25 G tree, so
+        it doubles as the quota test that the truncated donor save needed) and a PID watcher.
+    - Collect: 1,200 train / 360 held-out CoT tokens, 64 accumulators + meta.json
+      (`.run_logs/s2c_collect2.log`).
+    - Fit: **L20 R²_te = 0.8934 @ λ*=1.00e2** (`sweep_commonsense.json`), peak 0.9946 at L0.
+    - **Why this gate mattered:** the fit uses **1,200** tokens where GSM8K's used **34,893** — same
+      4096² map, 29× less data — so a steering null had to be shown not to be an underdetermined
+      fit. R²_te 0.89 settles that: the map is not data-starved.
+    - **But 0.89 is NOT comparable to GSM8K's 0.610.** `r2_te` divides by the *uncentred* Σ‖δ‖²
+      (`gram_accumulator.py:61`), so it credits a map for merely reproducing δ's constant component
+      — and commonsense δ is constant-dominated (per-problem means cosine 0.883 to pooled). From the
+      measured norms the constant alone explains ≈29²/42² ≈ **0.48**, leaving ≈0.80 conditional.
+      Fixed: `GramAccumulator` now streams the first moment `d_sum`, exposes `constant_r2()`, and
+      `fit_ridge_sweep` records `r2_const_te` + `r2_te_centred` per layer, where
+      `r2_te_centred = (r2_te − r2_const)/(1 − r2_const)` — an identity, so no refit is needed
+      (verified in `tests/test_gram_accumulator.py`). **Both commonsense and GSM8K need a re-collect
+      to populate it**; until then the cross-task R² comparison stays confounded.
+  - [x] **S2c steer DONE 2026-08-14 — and it is the paper's register arm.** First attempt read
+        0.000 at every layer and was **VOID**: the generations showed a destroyed model
+        (`\end​​​​` repetition at α=1.0, byte-identical to base at α=0.5), caused by the fit-window
+        mismatch above. After `--fit-positions all`:
+    - **Format compliance** (`steer_commonsense_allpos.json`, n=500, α=0.75, refs base 0.004 /
+      donor 1.000): L8 0.010, L12 0.016, L16 0.140, **L20 0.972**, L24 0.998, L28/31 1.000. Against
+      GSM8K 0.03/0.12 and MuSiQue 0.26/0.45 on the same instrument, this is the two-sided contrast
+      measured on one axis: **a register transports through a fitted pointwise map; a procedure
+      does not.**
+    - **Answer selection: none.** n=60 contrast, L20, α=0.75: accuracy 0.267 with `answer1` on
+      45/60 — and gold `answer1` is 16/60 = 0.267, i.e. accuracy equals the constant's base rate
+      exactly (replicated at n=40: 0.200 with gold-`answer1` 8/40).
+    - **Magnitude-controlled** (`.run_logs/s2_alpha_selection{,2}.log`, n=60): α 0.75/0.90/1.00 →
+      format 0.85/0.85/0.77 with the constant policy throughout; **α=1.24, which magnitude-matches
+      the donor (‖δ_donor‖ 45.60 vs ‖W·a‖ 36.88), collapses format to 0.083**; α=1.5 → 0.000. There
+      is no α that installs the register *and* selects.
+    - **Geometry** (`.run_logs/s2_geometry.log`, n=30, last prompt position): cos(map, donor)
+      **+0.788** (sd 0.013) at 62% of the donor's norm; cos(few-shot, donor) 0.380; cos(few-shot,
+      map) 0.332. Two different routes into the same surface behaviour. **Confound open:** the
+      few-shot prompt is 324 tokens longer, so `δ_few` needs a length-matched no-format preamble
+      subtracted before it can be called a format direction.
+  - [x] **The contrast set is ~two-thirds FORMAT, not capability** (`.run_logs/s2_format_rescue*.log`,
+        n=100). Tests the brief's judgment call (c), which asserted this and never measured it:
+        base zero-shot **0.000** (0/100 format) → base 4-shot **0.630** (100/100 format) → donor
+        1.000. **Scrambled-label control: also exactly 0.630**, so the exemplars supply format and
+        nothing about the task. Consequence: the oracle's 0.990, the L16 0.830 onset and
+        `mean_delta`'s 0.820 substantially measure **format installation**, and §9 may not describe
+        them as recovering a capability base lacks.
+  - [x] **S2d `fixed_vector` DONE — PUSHBACK item 5 only PARTIALLY answered.** Frozen per-problem
+        vector through the lockstep path, L20, n=100:
+        **0.000** (`lockstep_commonsense_single_fixed_vector_per_problem.json`), generations
+        base-like rather than destroyed. But the run's own cosine diagnostic reads **0.544** (min
+        0.304, max 0.803, 3,023 steps) between the frozen vector and the live running mean, so
+        direction *and* loop both varied — not the single-variable contrast intended. The
+        deployable claim is solid (three independent nulls); the narrow "is 0.820 an early-step
+        artifact" question still needs the pushback's construction: record `mean_delta`'s
+        **final-step** vector, re-inject it from step 1. Side finding: cosine as low as 0.304
+        between successive running means means the required shift **rotates within a 7-token
+        generation** — measured evidence against "the register is one direction".
+  - [ ] **S2d controls — built and tested 2026-08-14, awaiting the GPU** (80 CPU tests pass):
+    - `--control fixed_vector` — **the discriminator PUSHBACK item 5 asks for.** `mean_delta`'s
+      0.820 is recomputed from a live donor forward every decode step, and the early steps are
+      near-oracle *by construction*: at step 1 there are no generated rows so the statistic falls
+      back to the whole sequence; at step 2 the "mean" **is** the true δ of the first generated
+      token; at step 3 the mean of two. Those tokens are the trigger phrase, i.e. the span that
+      decides the score. This mode freezes the donor's whole-trajectory mean and injects it through
+      the *identical* delivery path, so only the loop varies. `per_problem` is the direct comparison
+      to 0.820; `pooled` is the CAA claim, estimated off a disjoint slice.
+    - `--control random_constant` — **the floor `random_matched` never supplied.** `random_matched`
+      draws an *independent* direction per position where `mean_delta` injects one *coherent*
+      constant; independent draws partly cancel downstream where a coherent shift accumulates. This
+      is one random direction at ‖mean generated δ‖, matched by construction.
+    - `--control-positions {all,generated,prompt}` — separates re-encoding the prompt (~150 tokens)
+      from steering the generation (~7). `mean_delta` is *sub-oracle* at generated positions (norm
+      29 vs the true 42) yet scores 0.820, so the prompt is a live suspect. Also bears on PUSHBACK
+      item 4's length confound.
+    - Harness: every driver JSON now carries the first 8 decoded generations, and sweep JSONs are
+      written **after each cell** — the α grid reached 9 of 12 and left no artifact because the
+      write was at the end.
   - [ ] Then: PCA band; `shuffle_positions` corrected; then STOP experimenting and assemble the paper.
+- [ ] **FUTURE — cross-model replication (deferred 2026-08-14, not for this session).** Answers the
+      "n=1 model" objection, which no amount of extra Llama-2 measurement can.
+  - **Zero code change required.** The only architectural assumption in the whole apparatus is
+      `model.model.layers[i]` (the Llama layout), which holds unchanged for Llama-3.x, Mistral and
+      Qwen2/2.5. A second model is **one new YAML + a trained donor**. Every existing config is
+      Llama-2-7b.
+  - **Recommended: Llama-3.2-3B** (d=3072 × 28 layers). Changes family *and* scale — a stronger
+      generality test than a size-matched swap — and the Gram accumulator tree is 12.7 G against
+      Llama-2-7b's 25 G (the pole scales as d²). Qwen2.5-3B is cheaper still (2048 × 36 → 7.2 G).
+      Mistral-7B-v0.1 is the weakest use of GPU time: same cost as work already done, and it only
+      rules out Llama-2 idiosyncrasies.
+  - **Budget:** donor ~30 min; gate+contrast ~15 min; oracle sweep ~20 min; floors ~20 min;
+      collect/fit/steer ~30 min → **~2 h for the register arm**. A procedure arm (MetaMath donor +
+      256–512-token generations) is ~5–6 h more.
+  - **Two traps to write into the brief.** (a) **Sweep at relative depth, not absolute layer** —
+      L*=20 of 32 is 62.5% depth, i.e. L17–18 on a 28-layer model and L22–23 on a 36-layer one; the
+      literal `{0,4,…,28,31}` grid would miss the plateau onset and read as a failed replication.
+      (b) **Use base weights, not `-Instruct`** — the contrast-set protocol needs base ≈ 0.00, which
+      holds because no base model emits `"the correct answer is X"` unprompted; an instruct
+      checkpoint may partially comply and collapse the contrast set.
   - [ ] **PUSHBACK — local review session, 2026-08-13, after pulling `820788f`. Address before
         paper assembly; items 1–3 gate drafting, 4–5 gate specific sentences.**
     1. **S2c is load-bearing for §1, not a caveat-closer.** With fixed vectors at 0.000 per-problem

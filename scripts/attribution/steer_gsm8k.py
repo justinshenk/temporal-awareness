@@ -89,6 +89,15 @@ def main() -> None:
     def recovery(acc: float) -> float:
         return (acc - base_acc) / (lora_acc - base_acc) if lora_acc > base_acc else 0.0
 
+    suffix = (args.maps_suffix + ("_joint" if args.joint else "")
+              + ("_normpreserve" if args.norm_preserve else "")
+              + (f"_projk{args.project_k}{args.project_manifold}" if args.project_k else "")
+              + ("_prefill" if args.prefill_only else ""))
+    out_path = Path(cfg["output"]["steer_json"].replace(".json", f"{suffix}.json"))
+
+    def save() -> None:
+        out_path.write_text(json.dumps(results, indent=2, default=float))
+
     if args.joint:
         maps, lam_by_layer = {}, {}
         for l in layers:
@@ -97,31 +106,37 @@ def main() -> None:
         print(f"\nJOINT all-layer injection over {len(maps)} layers: {sorted(maps)}", flush=True)
         results["joint"] = {"layers": sorted(maps), "lam_star": lam_by_layer, "alpha": {}}
         for alpha in alphas:
+            gens = []
             with lora.disable_adapter():
                 hook = LinearPrimalSteerHook(base, maps, alpha, **hook_kw)
-                acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
+                acc = task_accuracy(base, tokenizer, problems, device, max_new, task, records=gens)
                 hook.remove()
-            results["joint"]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
+            results["joint"]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc),
+                                               "generations": gens}
             print(f"  JOINT a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}", flush=True)
+            save()
     else:
         for l in layers:
             rec = torch.load(maps_dir / f"W_L{l}.pt")
             W, lam_star = rec["W"], rec["lam"]
             results["per_layer"][l] = {"lam_star": lam_star, "alpha": {}}
             for alpha in alphas:
+                gens = []
                 with lora.disable_adapter():
                     hook = LinearPrimalSteerHook(base, {l: W}, alpha, **hook_kw)
-                    acc = task_accuracy(base, tokenizer, problems, device, max_new, task)
+                    acc = task_accuracy(base, tokenizer, problems, device, max_new, task,
+                                        records=gens)
                     hook.remove()
-                results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc, "recovery": recovery(acc)}
+                results["per_layer"][l]["alpha"][alpha] = {"steer_acc": acc,
+                                                           "recovery": recovery(acc),
+                                                           "generations": gens}
                 print(f"  L{l:2d} a={alpha}: steer_acc={acc:.3f}  recovery={recovery(acc):+.2f}  (lambda*={lam_star:.2e})", flush=True)
+                # A steer sweep is hours long; write after every cell so a death leaves an artifact
+                # rather than the log-only cells that cost the alpha grid its JSON.
+                save()
 
-    suffix = (args.maps_suffix + ("_joint" if args.joint else "") + ("_normpreserve" if args.norm_preserve else "")
-              + (f"_projk{args.project_k}{args.project_manifold}" if args.project_k else "")
-              + ("_prefill" if args.prefill_only else ""))
-    Path(cfg["output"]["steer_json"].replace(".json", f"{suffix}.json")).write_text(
-        json.dumps(results, indent=2, default=float))
-    print(f"\nSaved {cfg['output']['steer_json'].replace('.json', f'{suffix}.json')}")
+    save()
+    print(f"\nSaved {out_path}")
 
 
 if __name__ == "__main__":

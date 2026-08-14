@@ -298,14 +298,230 @@ no *fixed vector* installs this register at any scale.
 
 Against GSM8K's cliff (top-64 = 55% of energy, 0% recovery).
 
-### S2c — the ridge map on base, and the format/answer split — pending
+### S2c — the ridge map on base: the register installs, and it carries nothing else
 
 `collect_cot_residuals` → `fit_ridge_sweep` → `steer_gsm8k`, all `--task commonsense`, then the same
-steered generations re-scored under `commonsense_format`, whose `score` asks only whether the
-donor's response format was adopted. Greedy decoding is deterministic and both specs share
-`problems` and `prompt` by identity, so the pair is an **exact** decomposition of one eval into
-*format installation* vs *answer selection* — a split no procedure task can offer, and the
-measurement that replaces caveat (2) above.
+steer re-scored under `commonsense_format`, whose `score` asks only whether the donor's response
+format was adopted. Greedy decoding is deterministic and both specs share `problems` and `prompt` by
+identity, so the pair is an **exact** decomposition of one eval into *format installation* vs
+*answer selection* — a split no procedure task can offer.
+
+#### The first attempt was VOID, and the accuracy could not have told us
+
+The 2026-08-13 run had died leaving no artifact at all. Relaunched 2026-08-14, it produced
+`steer_commonsense.json`: **0.000 at every layer** (8/12/16/20/24/28/31, α=1.0, n=500). Reading the
+generations — per the rule this project keeps re-learning — shows that is a **destruction** result,
+not a transport null:
+
+| condition @L20 | generation |
+|---|---|
+| unpatched base | `\nAnswer1: Planetary density will decrease.\n\nAnswer2: …` |
+| steered α=0.5 | **byte-identical to base** — a no-op |
+| steered α=1.0 | `\n\end​​​​​​…` — degenerate zero-width-space repetition, every problem |
+
+**Cause: the fit window did not match the application window.** `collect_cot_residuals` used
+`cot_token_slice`, which keeps *generated positions only* — **6 tokens per problem** here — while
+`LinearPrimalSteerHook` applies the map at **every** position. So ~94% of the positions the map was
+applied to lay off its fit distribution, and it extrapolated there to roughly double the correct
+magnitude: `mean‖Wa‖ = 53.6` against `mean‖a‖ = 97.2` (ratio **0.551**) where the true δ ratio is
+~0.3–0.45. On GSM8K the same mismatch is mild — the chain is ~250 of ~400 positions — which is why
+it never surfaced in three prior strands. Fixed by `--fit-positions all`.
+
+#### The all-positions arm
+
+Fit on all ~41 positions per problem: **8,046 train / 2,393 held-out tokens** against the CoT
+window's 1,200 / 360. `sweep_commonsense_allpos.json`, maps in `maps_commonsense_allpos`.
+
+| layer | R²_te | constant baseline | R²_te centred |
+|---|--:|--:|--:|
+| 12 | 0.9785 | 0.0345 | 0.9777 |
+| 16 | 0.9489 | 0.0599 | 0.9457 |
+| **20** | **0.9293** | **0.1064** | **0.9209** |
+| 24 | 0.9176 | 0.1431 | 0.9038 |
+| 28 | 0.9136 | 0.1771 | 0.8950 |
+| 31 | 0.9311 | 0.1216 | 0.9215 |
+
+`r2_te` divides by the **uncentred** Σ‖δ‖², so it credits a map for merely reproducing δ's constant
+component — and how constant δ is happens to be the exact property this paper contrasts. The
+constant baseline (`GramAccumulator.constant_r2`, streamed as a first moment) removes that
+confound, and `R²_te_centred = (R²_te − const)/(1 − const)` is an identity requiring no refit.
+
+**The constant explains only 0.106 at L20**, so over the full sequence the required shift is
+strongly input-conditional. That is *consistent with* `mean_delta`'s 0.820 rather than in tension
+with it: over the ~6 **generated** positions the shift is close to one direction (‖mean gen δ‖ 29
+against per-token 42), while over the ~97 **prompt** positions it is diverse and cancels. Every
+"the register is one direction" sentence must therefore name the window it holds on — the earlier
+controls looked only at the generated window, which is the window where it is true.
+
+#### Installation is real, narrow, and format-only
+
+Generation dump at L20 (`.run_logs/s2c_gens_allpos.log`), `‖Wa‖/‖a‖ = 0.224`:
+
+| α | steered generation | reading |
+|---|---|---|
+| 0.25 | byte-identical to base | no-op |
+| 0.5 | byte-identical to base | no-op |
+| **0.75** | **`the correct answer is answer1`** | **the donor's format, installed** |
+| donor | `the correct answer is answer3` | correct per problem |
+
+At α=0.75 the map emits the register format and answers **`answer1` almost every time**. Over
+n=40 contrast problems (`.run_logs/s2c_answer_hist.log`, L20, α=0.75):
+
+| | |
+|---|--:|
+| format compliance | **34/40 = 0.850** (base 0.004) |
+| accuracy | **0.200** |
+| predicted `answer1` | **31/40** |
+| other predictions | one each of `answer2`, `answer3`, `answer4`, and six junk strings (`0`, `13`, `41°`, `43°f`, `respiratory`, `true`) |
+| gold distribution | `answer1` 8 / `answer2` 8 / `answer3` 19 / `answer4` 5 |
+
+**Every one of the 8 correct answers is a problem whose gold happened to be `answer1`.** The
+accuracy is exactly the base rate of the constant the map emits, and it sits *below* both the 0.25
+chance floor and the 0.288 majority-class floor. So this is a degenerate constant policy, not weak
+selection — the discriminator being the *distribution*, which a 5-problem dump could not have
+supplied.
+
+**Replicated at n=60 on a disjoint-sized sample** (`.run_logs/s2_alpha_selection.log`, same layer
+and α): accuracy **0.267**, format 0.850, `answer1` on **45/60**, and gold `answer1` is **16/60 =
+0.267**. The accuracy equals the constant's base rate to three decimals a second time, which is the
+signature the reading predicts and chance would not reproduce. This is row 1 of the S2c prediction table: *the map installs the register and nothing
+else.* It also retro-explains the procedure leak as a pure register push, and it is the cleanest
+available statement of the paper's thesis.
+
+#### The register installs almost completely — the ladder's register arm
+
+`commonsense_format` sweep, n=500 scan, α=0.75, `maps_commonsense_allpos`, references measured on
+the same 500 problems: **base 0.004 / donor 1.000**.
+
+| layer | 8 | 12 | 16 | **20** | **24** |
+|---|--:|--:|--:|--:|--:|
+| format compliance | 0.010 | 0.016 | 0.140 | **0.972** | **0.998** |
+
+A fitted pointwise map installs the donor's register **essentially completely** from L20 onward,
+against base's 0.004. Set beside the same instrument on the procedures — GSM8K 0.03 @L20 / 0.12
+@L24, MuSiQue 0.26 @L20 / 0.45 @L24 — this is the two-sided contrast the paper has so far asserted
+from one side only:
+
+> **a register transports through a fitted pointwise map at a single layer; a procedure does not.**
+
+Note the populations differ and must not be conflated: the 0.972 is over the **500-problem scan**,
+while the 0.850 compliance quoted with the answer histogram is n=40 over the **contrast set**
+(base-fails/donor-solves). The contrast-set figure is the one that pairs with the 0.200 accuracy.
+
+#### There is no α at which the map both installs the register and selects
+
+The geometry (below) says the map's shift points near the donor's but is only ~62% of its norm at
+α=0.75, so the obvious objection is that selection was lost to **under-scaling** rather than absent
+from the map. Tested directly (`.run_logs/s2_alpha_selection{,2}.log`, L20, n=60 contrast; the
+magnitude-matching α computed from ‖δ_donor‖=45.60 against ‖W·a‖=36.88 is **1.24**):
+
+| α | accuracy | format | `answer1` | reading |
+|---|--:|--:|--:|---|
+| 0.75 | 0.267 | 0.850 | 45/60 | format installed, constant answer |
+| 0.90 | 0.283 | 0.850 | 45/60 | same |
+| 1.00 | 0.233 | 0.767 | 41/60 | same, degrading |
+| **1.24 — magnitude-matched to the donor** | **0.033** | **0.083** | 4/60 | **format collapses too** |
+| 1.50 | 0.000 | 0.000 | 0/60 | fully destroyed |
+
+Scaling to the donor's own magnitude does **not** recover selection — it loses the format as well.
+The installation window is roughly α ∈ [0.75, 1.0] and the policy is a degenerate constant
+throughout it. So the map works only where it is *deliberately undersized*: at 60–80% of the
+donor's norm it installs the surface form, and at the donor's actual norm it breaks the model.
+Whatever the donor does with the remaining ~40% of that shift, this map cannot reproduce. The
+objection is answered and the claim is now magnitude-controlled.
+
+This also retro-explains the CoT-window disaster: that map sat at ratio **0.551** against this one's
+**0.224**, i.e. permanently above the top of the window — which is why its α=0.5 was a no-op and its
+α=1.0 produced `\end​​​​` garbage, with no usable cell in between. Same α-resonance already measured
+on MuSiQue's ridge leak, but here the band's location is set by the fit window.
+
+### Base knew the answers — what the contrast set actually measures
+
+Judgment call (c) of the brief asserted that base scores 0.000 "by format non-compliance, not
+incapacity — the base model plainly knows some of these answers", and said §9 must *disclose* it.
+It was never measured. It is now (`.run_logs/s2_format_rescue.log`, n=100 contrast problems), and
+the assertion is correct and larger than expected:
+
+| arm | accuracy | format compliance |
+|---|--:|--:|
+| base, zero-shot (the contrast protocol's own prompt) | **0.000** | 0/100 |
+| **base, 4-shot — format supplied by demonstration** | **0.630** | **100/100** |
+| **base, 4-shot with WRONG exemplar labels** | **0.630** | **100/100** |
+| donor LoRA, zero-shot | 1.000 | 100/100 |
+
+The scrambled-label arm is the control that makes this readable: 4-shot demonstrates the *task* as
+well as the format, so a high few-shot score could have meant either. Relabelling the exemplars
+wrongly (3 of the 4 actually changed) leaves accuracy at **exactly 0.630** and the prediction spread
+essentially unchanged (23/17/23/37 against 23/16/28/33). The demonstrations therefore supply
+**format and nothing else** — a replication of the standard random-label ICL finding, cited here as
+a control rather than a result.
+
+Base scores **0.630 on problems the contrast set defines as base-failures**, with predictions spread
+over all four options (23/16/28/33) rather than pinned to one. Note the zero-shot prompt *already
+states* `Answer format: answer1/answer2/answer3/answer4` and base still complies 0/100 — so the
+deficit is not ignorance of the format but the ordinary fact that a base model follows a
+demonstration and not an instruction.
+
+**Consequence for everything upstream.** The commonsense base→donor gap is roughly two-thirds
+*format*, so the oracle's 0.990, the L16 0.830 onset and `mean_delta`'s 0.820 are substantially
+measuring **format installation** rather than capability transfer. This does not void them — a
+format register is a register, and installing one is exactly the claim — but §9 cannot describe the
+0.990 as recovering a capability base lacks.
+
+**And it sharpens what the map does.** Placing the four interventions side by side:
+
+| intervention | format | selection | accuracy |
+|---|---|---|--:|
+| fixed vector (CAA-style, pooled or per-problem) | ✗ | — | 0.000 |
+| ridge map @L20, α=0.75 | ✓ 0.85 | **✗ constant `answer1`** | 0.200 |
+| 4-shot prompt | ✓ 1.00 | **✓ base's own** | **0.630** |
+| donor LoRA | ✓ 1.00 | ✓ donor's | 1.000 |
+
+The map does not merely fail to *add* selection — it **destroys selection base already had**, while
+a prompt that installs the same format leaves it intact. That is a stronger and more interesting
+statement of the register/procedure boundary than "installs the register and nothing else".
+
+**Caveat, stated not buried.** The few-shot arm changes the prompt, so it is not the contrast
+protocol's "base"; it answers "does base know?", which is the question, but it is a separate control
+rather than a cell of the same table. (The in-context-learning caveat — that exemplars demonstrate
+the task as well as the format — is closed by the scrambled-label arm above.)
+
+#### Do demonstration and the map move the model the same way?
+
+Both reach ~full format compliance but differ completely in what survives, so the geometry is worth
+asking directly. Measured at the **last prompt position** — the generation site, where both prompts
+end with the same question text — as three shifts from one common reference state `a_zero`
+(`.run_logs/s2_geometry.log`, L20, α=0.75, n=30):
+
+| pair | mean cosine | sd |
+|---|--:|--:|
+| **map ~ donor** | **+0.788** | 0.013 |
+| few-shot ~ donor | +0.380 | 0.021 |
+| **few-shot ~ map** | **+0.332** | 0.016 |
+
+| shift | mean norm |
+|---|--:|
+| `‖a_zero‖` (the state itself) | 48.68 |
+| `‖δ_few‖` | 53.50 |
+| `‖δ_donor‖` | 44.75 |
+| `‖δ_map‖` | 27.92 |
+
+**The map tracks the donor's direction but undershoots its magnitude** — cosine 0.788, remarkably
+tight, at 62% of the donor's norm. **In-context demonstration reaches the same behaviour by a
+substantially different route**: ~0.38 from the donor, ~0.33 from the map. In 4096 dimensions random
+pairs sit near 0, so these are far from orthogonal and real shared structure exists — but nothing
+like the map's 0.788. So "install the format" is not a single direction: the weight-edit route and
+the ICL route are roughly 70° apart, and only the ICL route leaves selection intact.
+
+> **Confound, open.** The few-shot prompt is 324 tokens longer, so `δ_few` contains whatever a
+> longer context does to the residual generically, not only the format demonstration. Until a
+> length-matched preamble that demonstrates *no* format is subtracted, `δ_few` names a "few-shot
+> context effect", not a "format direction". **Do not quote the cosines as a format-direction claim
+> before that control runs.**
+
+> **Do not mix two different norms.** `‖Wa‖/‖a‖ = 0.224` earlier is averaged over *all* prompt
+> positions (where `‖a‖ ≈ 97`); `‖a_zero‖ = 48.68` here is the single last position. Both are
+> correct and they are different quantities.
 
 ## Provenance
 

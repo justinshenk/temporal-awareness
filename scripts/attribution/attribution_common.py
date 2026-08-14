@@ -199,6 +199,10 @@ _GSM8K_CONTRASTS = (
     ("computed - copied digit", "computed (result of =)", "copied digit (not computed)"),
 )
 
+# Enough decoded text to see what an intervention did, small enough to keep a sweep JSON readable.
+# Shared by every driver so "read the generations before the verdict" is structural, not a habit.
+N_GENERATION_RECORDS = 8
+
 _MULTIHOP_CONTRASTS = (
     ("execute - plan", "hop_answer (execute)", "sub_question (plan)"),
     ("execute - all", "hop_answer (execute)", "all"),
@@ -305,8 +309,15 @@ def manifold_bases(acc_dir, layers, k: int, device, which: str = "base") -> dict
 
 @torch.no_grad()
 def task_accuracy(model, tokenizer, problems: list[tuple[str, Any]], device, max_new: int,
-                  task: str | TaskSpec = "gsm8k") -> float:
-    """Greedy-generate from the task's prompt and score parsed answers against gold."""
+                  task: str | TaskSpec = "gsm8k", records: list | None = None,
+                  n_records: int = N_GENERATION_RECORDS) -> float:
+    """Greedy-generate from the task's prompt and score parsed answers against gold.
+
+    Pass ``records`` to also collect the first ``n_records`` decoded generations. An accuracy alone
+    cannot tell "the model was destroyed" from "the intervention did nothing" from "it complied but
+    chose wrong" — on a base-fails/donor-solves contrast set all three read 0.000 — so any number
+    that will be argued from needs its text alongside it.
+    """
     spec = task if isinstance(task, TaskSpec) else get_task(task)
     correct = 0
     for question, gold in problems:
@@ -314,7 +325,13 @@ def task_accuracy(model, tokenizer, problems: list[tuple[str, Any]], device, max
         out = model.generate(prompt_ids, max_new_tokens=max_new, do_sample=False,
                              pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id)
         text = tokenizer.decode(out[0][prompt_ids.shape[1]:], skip_special_tokens=True)
-        correct += spec.score(text, gold)
+        ok = spec.score(text, gold)
+        correct += ok
+        if records is not None and len(records) < n_records:
+            records.append({"gold": spec.format_gold(gold), "ok": int(ok),
+                            "prompt_len": int(prompt_ids.shape[1]),
+                            "n_generated": int(out.shape[1] - prompt_ids.shape[1]),
+                            "generation": text})
     return correct / len(problems)
 
 

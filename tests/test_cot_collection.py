@@ -13,6 +13,25 @@ def test_cot_token_slice():
     assert cot_token_slice(0, 5) == slice(0, 5)
 
 
+def test_cot_token_slice_all_positions_keeps_the_prompt():
+    """The fit window must be able to match where the map is APPLIED.
+
+    `LinearPrimalSteerHook` steers every position, but the default window fits only generated ones.
+    On GSM8K the chain is ~250 of ~400 positions so the mismatch is mild; on commonsense the target
+    is ~6 tokens against a ~97-token prompt, so ~94% of the positions the map is applied to are off
+    its fit distribution — and prompt δ is not negligible there (measured per-token ‖δ‖ 27.6–30.0
+    against 41.5–43.1 on generated positions).
+    """
+    assert cot_token_slice(97, 103, positions="all") == slice(0, 103)
+    assert cot_token_slice(97, 103, positions="cot") == slice(97, 103)
+    assert cot_token_slice(97, 103) == slice(97, 103)          # default is unchanged
+
+
+def test_cot_token_slice_rejects_an_unknown_window():
+    with pytest.raises(ValueError, match="unknown fit window"):
+        cot_token_slice(2, 5, positions="middle")
+
+
 def test_cot_token_slice_invalid_raises():
     with pytest.raises(ValueError):
         cot_token_slice(30, 10)

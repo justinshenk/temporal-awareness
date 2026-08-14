@@ -45,6 +45,10 @@ class GramAccumulator:
         self.P = torch.zeros(dim, dim, dtype=dtype, device=self.device)
         self.Gd = torch.zeros(dim, dim, dtype=dtype, device=self.device)
         self.s = torch.zeros((), dtype=dtype, device=self.device)
+        # First moment Σδ. `r2` divides by the UNCENTRED s = Σ‖δ‖², so a map that only reproduces
+        # δ's constant component already scores well wherever δ is dominated by one shared
+        # direction. This is what makes that share exactly computable (see `constant_r2`).
+        self.d_sum = torch.zeros(dim, dtype=dtype, device=self.device)
         self.n_tokens = 0
 
     def update(self, A_block: torch.Tensor, D_block: torch.Tensor) -> None:
@@ -59,7 +63,29 @@ class GramAccumulator:
         self.P += A.T @ D
         self.Gd += D.T @ D
         self.s += (D * D).sum()
+        self.d_sum += D.sum(dim=0)
         self.n_tokens += A.shape[0]
+
+    @property
+    def has_first_moment(self) -> bool:
+        """False for trees collected before ``d_sum`` was recorded, so callers can report the
+        constant baseline as *not measured* rather than guess at it."""
+        return self.d_sum is not None
+
+    def constant_r2(self) -> float:
+        """Share of δ's energy explained by the single best **fixed vector**, ``1 − Σ‖δ−δ̄‖²/Σ‖δ‖²``.
+
+        The floor every fitted map must beat to have shown anything input-conditional. ``r2_te``
+        measures energy about **zero**, not variance about δ's mean, so on a task whose δ points
+        mostly one way this number is already large and most of a high R² is "predict the constant".
+        Reported per layer, it is also a task coordinate in its own right: how close the required
+        shift is to being pointwise, measured without generating a single token.
+        """
+        if self.d_sum is None:
+            raise ValueError("this accumulator carries no first moment (Σδ); it predates `d_sum` "
+                             "— re-run collect_cot_residuals to record it")
+        s = float(self.s)
+        return float((self.d_sum @ self.d_sum) / (self.n_tokens * s)) if s > 0 else 0.0
 
     def manifold_basis(self, k: int, which: str = "base") -> torch.Tensor:
         """Top-``k`` eigenvectors (d, k) of a token-second-moment manifold.
@@ -134,11 +160,13 @@ class GramAccumulator:
         self.P += other.P.to(self.device, self.dtype)
         self.Gd += other.Gd.to(self.device, self.dtype)
         self.s += other.s.to(self.device, self.dtype)
+        self.d_sum += other.d_sum.to(self.device, self.dtype)
         self.n_tokens += other.n_tokens
 
     def state_dict(self) -> dict:
         return {"dim": self.dim, "layer": self.layer, "n_tokens": self.n_tokens,
-                "G": self.G.cpu(), "P": self.P.cpu(), "Gd": self.Gd.cpu(), "s": self.s.cpu()}
+                "G": self.G.cpu(), "P": self.P.cpu(), "Gd": self.Gd.cpu(), "s": self.s.cpu(),
+                "d_sum": self.d_sum.cpu()}
 
     @classmethod
     def from_state_dict(cls, d: dict, device: str | torch.device = "cuda") -> "GramAccumulator":
@@ -147,5 +175,8 @@ class GramAccumulator:
         acc.P = d["P"].to(acc.device, acc.dtype)
         acc.Gd = d["Gd"].to(acc.device, acc.dtype)
         acc.s = d["s"].to(acc.device, acc.dtype)
+        # Absent only in trees collected before first moments were recorded; `constant_r2` says so
+        # rather than silently returning a baseline computed from zeros.
+        acc.d_sum = d["d_sum"].to(acc.device, acc.dtype) if "d_sum" in d else None
         acc.n_tokens = int(d["n_tokens"])
         return acc

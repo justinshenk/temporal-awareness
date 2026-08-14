@@ -210,6 +210,90 @@ def test_merge_equals_concatenation():
     assert torch.allclose(merged.s, concat.s) and merged.n_tokens == 36
 
 
+# --- the constant baseline: how much of δ is just one fixed vector? -------------------
+#
+# `r2_te` divides by s = Σ‖δ‖², an UNCENTRED total, so a map that merely reproduces δ's constant
+# component already scores well when δ is dominated by one shared direction. That is exactly the
+# register case, so "R² = 0.89" cannot be read as "the map captured input-conditional structure"
+# until the constant's own share is subtracted. `d_sum` is the first moment that makes it exact.
+
+
+def test_d_sum_streaming_matches_bruteforce():
+    A, D = make_synthetic(d=8, n=37, seed=1)
+    acc = GramAccumulator(8, device=DEV, dtype=DT)
+    feed_in_blocks(acc, A, D, [10, 7, 1, 19])
+    assert torch.allclose(acc.d_sum, D.sum(dim=0).to(DT), rtol=1e-12, atol=1e-12)
+
+
+def test_constant_r2_matches_the_best_fixed_vector_bruteforce():
+    """R²_const = 1 − Σ‖δ−δ̄‖²/Σ‖δ‖², with δ̄ the least-squares-optimal constant."""
+    A, D = make_synthetic(d=6, n=41, seed=3)
+    acc = GramAccumulator(6, device=DEV, dtype=DT)
+    feed_in_blocks(acc, A, D, [20, 21])
+    expected = 1.0 - float(((D - D.mean(dim=0)) ** 2).sum() / (D * D).sum())
+    assert acc.constant_r2() == pytest.approx(expected, rel=1e-10)
+
+
+def test_constant_r2_is_one_when_the_shift_really_is_constant():
+    """A genuinely pointwise δ is fully explained by its own mean — the register limit."""
+    acc = GramAccumulator(4, device=DEV, dtype=DT)
+    acc.update(torch.randn(9, 4, dtype=DT), torch.tensor([[1.0, -2.0, 0.5, 3.0]]).repeat(9, 1))
+    assert acc.constant_r2() == pytest.approx(1.0, abs=1e-12)
+
+
+def test_constant_r2_is_zero_when_the_shift_has_no_mean():
+    """Antipodal shifts cancel: no fixed vector explains any of this δ."""
+    acc = GramAccumulator(3, device=DEV, dtype=DT)
+    d = torch.tensor([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+    acc.update(torch.randn(2, 3, dtype=DT), d)
+    assert acc.constant_r2() == pytest.approx(0.0, abs=1e-12)
+
+
+def test_centred_r2_is_recoverable_from_the_uncentred_pair():
+    """(R²_unc − R²_const)/(1 − R²_const) == 1 − RSS/Σ‖δ−δ̄‖², so no refit is needed to report
+    conditional structure separately from the constant's free share."""
+    A, D = make_synthetic(d=5, n=50, seed=11, noise=0.4)
+    acc = GramAccumulator(5, device=DEV, dtype=DT)
+    acc.update(A, D)
+    fit = acc.solve(1e-3)
+    r2_unc, r2_const = fit.r2_insample, acc.constant_r2()
+    derived = (r2_unc - r2_const) / (1.0 - r2_const)
+    direct = 1.0 - fit.rss / float(((D - D.mean(dim=0)) ** 2).sum())
+    assert derived == pytest.approx(direct, rel=1e-9)
+
+
+def test_merge_carries_the_first_moment():
+    A, D = make_synthetic(d=4, n=20, seed=5)
+    whole = GramAccumulator(4, device=DEV, dtype=DT)
+    whole.update(A, D)
+    part, rest = GramAccumulator(4, device=DEV, dtype=DT), GramAccumulator(4, device=DEV, dtype=DT)
+    part.update(A[:8], D[:8])
+    rest.update(A[8:], D[8:])
+    part.merge(rest)
+    assert torch.allclose(part.d_sum, whole.d_sum, rtol=1e-12, atol=1e-12)
+    assert part.constant_r2() == pytest.approx(whole.constant_r2(), rel=1e-12)
+
+
+def test_constant_r2_never_exceeds_the_fitted_map(monkeypatch):
+    """The map can emulate a constant, so it must do at least as well — a sanity ordering."""
+    A, D = make_synthetic(d=5, n=60, seed=7, noise=0.05)
+    acc = GramAccumulator(5, device=DEV, dtype=DT)
+    acc.update(A, D)
+    assert acc.constant_r2() <= acc.solve(1e-6).r2_insample + 1e-9
+
+
+def test_constant_r2_on_an_accumulator_without_first_moments_fails_loudly():
+    """Artifacts collected before d_sum existed must not silently return a wrong baseline."""
+    A, D = make_synthetic(d=4, n=10, seed=2)
+    acc = GramAccumulator(4, device=DEV, dtype=DT)
+    acc.update(A, D)
+    state = acc.state_dict()
+    del state["d_sum"]
+    revived = GramAccumulator.from_state_dict(state, device=DEV)
+    with pytest.raises(ValueError, match="first moment"):
+        revived.constant_r2()
+
+
 def test_update_shape_mismatch_raises():
     acc = GramAccumulator(8, device=DEV, dtype=DT)
     with pytest.raises(ValueError):

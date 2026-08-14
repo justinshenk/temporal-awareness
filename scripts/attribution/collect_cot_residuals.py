@@ -34,7 +34,8 @@ def teacher_force_capture(model, capture, full_ids) -> dict[int, torch.Tensor]:
     return {l: t.clone() for l, t in capture.captured.items()}
 
 
-def collect_split(problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, tag, task):
+def collect_split(problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new,
+                  tag, task, fit_positions="cot"):
     accs = {l: GramAccumulator(dim, device=accum_dev, layer=l) for l in layers}
     n_tok_total = 0
     for i, (question, _gold) in enumerate(problems):
@@ -42,14 +43,14 @@ def collect_split(problems, lora, base, capture, tokenizer, layers, dim, device,
         cot_len = full_ids.shape[1] - prompt_len
         if cot_len <= 0:
             continue
-        sl = cot_token_slice(prompt_len, full_ids.shape[1])
+        sl = cot_token_slice(prompt_len, full_ids.shape[1], fit_positions)
         with lora.disable_adapter():
             base_cap = teacher_force_capture(base, capture, full_ids)
         lora_cap = teacher_force_capture(lora, capture, full_ids)
         for l in layers:
             a, d = assemble_blocks(base_cap, lora_cap, l, sl)
             accs[l].update(a, d)
-        n_tok_total += cot_len
+        n_tok_total += sl.stop - sl.start
         if (i + 1) % 10 == 0 or i == len(problems) - 1:
             print(f"  [{tag}] {i+1}/{len(problems)} problems, {n_tok_total} CoT tokens", flush=True)
     return accs, n_tok_total
@@ -63,6 +64,9 @@ def main() -> None:
     ap.add_argument("--max-new", type=int, default=None)
     ap.add_argument("--out-suffix", default="", help="subdir suffix for smoke runs, e.g. _smoke")
     ap.add_argument("--task", default=None, help="task registry key (default: config 'task' or gsm8k)")
+    ap.add_argument("--fit-positions", choices=["cot", "all"], default="cot",
+                    help="window the map is fit on: generated tokens only (the GSM8K default), or "
+                         "every position, matching where LinearPrimalSteerHook applies it")
     args = ap.parse_args()
     cfg = yaml.safe_load(Path(args.config).read_text())
     set_seed(cfg["seed"])
@@ -81,10 +85,13 @@ def main() -> None:
     split = cfg["collect"]["split"]
     fit_problems = task.problems(split, n_fit, skip=0, seed=cfg["seed"])
     te_problems = task.problems(split, n_te, skip=n_fit, seed=cfg["seed"])  # disjoint
-    print(f"fit={len(fit_problems)} held-out={len(te_problems)} problems (max_new={max_new})", flush=True)
+    print(f"fit={len(fit_problems)} held-out={len(te_problems)} problems (max_new={max_new}, "
+          f"fit_positions={args.fit_positions})", flush=True)
 
-    acc_tr, ntr = collect_split(fit_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "train", task)
-    acc_te, nte = collect_split(te_problems, lora, base, capture, tokenizer, layers, dim, device, accum_dev, max_new, "heldout", task)
+    acc_tr, ntr = collect_split(fit_problems, lora, base, capture, tokenizer, layers, dim, device,
+                                accum_dev, max_new, "train", task, args.fit_positions)
+    acc_te, nte = collect_split(te_problems, lora, base, capture, tokenizer, layers, dim, device,
+                                accum_dev, max_new, "heldout", task, args.fit_positions)
     capture.remove()
 
     out_dir = Path(cfg["output"]["acc_dir"] + args.out_suffix)
@@ -94,6 +101,7 @@ def main() -> None:
         torch.save(acc_te[l].state_dict(), out_dir / f"heldout_L{l}.pt")
     meta = {"base_model": cfg["base_model"], "adapter": cfg["adapter"], "n_fit": len(fit_problems),
             "n_te": len(te_problems), "max_new": max_new, "layers": layers, "hidden_dim": dim,
+            "fit_positions": args.fit_positions,
             "train_cot_tokens": ntr, "heldout_cot_tokens": nte,
             "train_tokens_per_layer": acc_tr[layers[0]].n_tokens}
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))

@@ -110,9 +110,35 @@ def generated_rows(rows: torch.Tensor, prompt_len: int) -> torch.Tensor:
     return rows[prompt_len:] if rows.shape[0] > prompt_len else rows
 
 
+def scope_rows(shift: torch.Tensor, positions: str, prompt_len: int) -> torch.Tensor:
+    """Zero the rows of a per-position shift that fall outside ``positions``.
+
+    Every control injects at *all* positions by default, prompt included — on commonsense that is
+    ~100 prompt tokens against ~7 generated ones, so nothing in the default separates "the register
+    is installed by re-encoding the question" from "by steering the generation". Scoping answers it:
+    rows outside the scope receive no shift at all, i.e. they stay at the unpatched base residual.
+
+    ``"all"`` returns the shift untouched, so every committed floor run stays reproducible.
+    """
+    if positions == "all":
+        return shift
+    if positions not in ("generated", "prompt"):
+        raise ValueError(f"unknown position scope: {positions!r} "
+                         f"(want 'all', 'generated' or 'prompt')")
+    out = torch.zeros_like(shift)
+    cut = min(prompt_len, shift.shape[0])
+    if positions == "generated":
+        out[cut:] = shift[cut:]
+    else:
+        out[:cut] = shift[:cut]
+    return out
+
+
 def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
                       generator: torch.Generator | None = None,
-                      alpha: float = 1.0, prompt_len: int = 0) -> torch.Tensor:
+                      alpha: float = 1.0, prompt_len: int = 0,
+                      positions: str = "all",
+                      vector: torch.Tensor | None = None) -> torch.Tensor:
     """Inject a *content-destroyed* shift of the same magnitude: the oracle's empirical floor.
 
     On a procedure a broken injection scores ~0 — it cannot emit the right integer by accident — so
@@ -130,6 +156,18 @@ def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
     - ``random_matched`` — random directions with the **per-token norms of the true δ**. This is
       the floor an oracle claim actually needs: it answers "would any perturbation of this size do
       as well?", which on a k-way task is a live worry and on GSM8K is not.
+    - ``random_constant`` — **one** random direction held constant across positions, at the norm
+      ``mean_delta`` injects. ``random_matched`` cannot floor a constant-vector claim: it draws an
+      *independent* direction per position, and independent draws partially cancel downstream where
+      a coherent shift accumulates. This mode is matched by construction to what it floors.
+    - ``fixed_vector`` — inject a **supplied** constant and ignore ``lora_resid`` entirely. The
+      mechanism control: ``mean_delta`` reads 0.820 but is recomputed every decode step from a live
+      donor forward (an oracle statistic), while the same kind of constant through the ordinary
+      additive hook reads 0.000. Those two differ both in delivery path and in being closed- vs
+      open-loop; this mode holds the delivery path fixed so only the loop varies.
+
+    ``positions`` scopes *where* the shift lands (see ``scope_rows``); ``"all"`` — the default —
+    reproduces the committed runs exactly.
 
     ``prompt_len`` marks where the generated tokens start, and it is **load-bearing**. Statistics
     taken over *all* positions are dominated by the prompt: measured at L20 on commonsense, prompt
@@ -146,18 +184,28 @@ def control_injection(a: torch.Tensor, lora_resid: torch.Tensor, mode: str,
     delta = lora_resid - a
     gen = generated_rows(delta, prompt_len)
     if mode == "mean_delta":
-        return a + alpha * gen.mean(dim=0, keepdim=True).expand_as(delta)
-    if mode == "shuffle_positions":
-        out = delta.clone()
+        shift = gen.mean(dim=0, keepdim=True).expand_as(delta)
+    elif mode == "shuffle_positions":
+        shift = delta.clone()
         perm = torch.randperm(gen.shape[0], generator=generator).to(delta.device)
-        out[delta.shape[0] - gen.shape[0]:] = gen[perm]
-        return a + alpha * out
-    if mode == "random_matched":
+        shift[delta.shape[0] - gen.shape[0]:] = gen[perm]
+    elif mode == "random_matched":
         noise = torch.randn(delta.shape, generator=generator, dtype=torch.float32).to(delta.device)
         noise = noise / noise.norm(dim=1, keepdim=True).clamp_min(1e-8)
-        return a + alpha * noise.to(delta.dtype) * delta.norm(dim=1, keepdim=True)
-    raise ValueError(f"unknown control mode: {mode!r} "
-                     f"(want 'mean_delta', 'shuffle_positions' or 'random_matched')")
+        shift = noise.to(delta.dtype) * delta.norm(dim=1, keepdim=True)
+    elif mode == "random_constant":
+        direction = torch.randn(delta.shape[1], generator=generator, dtype=torch.float32)
+        direction = (direction / direction.norm().clamp_min(1e-8)).to(delta.device, delta.dtype)
+        shift = (direction * gen.mean(dim=0).norm()).unsqueeze(0).expand_as(delta)
+    elif mode == "fixed_vector":
+        if vector is None:
+            raise ValueError("control mode 'fixed_vector' needs a vector to inject")
+        shift = vector.to(device=delta.device, dtype=delta.dtype).reshape(1, -1).expand_as(delta)
+    else:
+        raise ValueError(f"unknown control mode: {mode!r} (want 'mean_delta', "
+                         f"'shuffle_positions', 'random_matched', 'random_constant' or "
+                         f"'fixed_vector')")
+    return a + alpha * scope_rows(shift, positions, prompt_len)
 
 
 @torch.no_grad()

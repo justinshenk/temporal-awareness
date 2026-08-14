@@ -14,11 +14,28 @@ from __future__ import annotations
 import torch
 
 
-def cot_token_slice(prompt_len: int, full_len: int) -> slice:
-    """Positions of the generated CoT tokens within the teacher-forced sequence."""
+def cot_token_slice(prompt_len: int, full_len: int, positions: str = "cot") -> slice:
+    """The window of positions the ridge map is fit on, within the teacher-forced sequence.
+
+    ``"cot"`` (default) keeps only the generated tokens — the original GSM8K choice, where the CoT
+    is both the thing being installed and the bulk of the sequence (~250 of ~400 positions).
+
+    ``"all"`` keeps the prompt too, so the fit distribution matches where the map is **applied**:
+    ``LinearPrimalSteerHook`` steers every position, prompt included. That mismatch is mild on
+    GSM8K and severe on a task whose supervised target is ~6 tokens against a ~97-token prompt,
+    where ~94% of the steered positions are off the fit distribution. It also multiplies the fit
+    set by ~17× there. The prompt is not a free ride: measured per-token ‖δ‖ at L20 on commonsense
+    is 27.6–30.0 on prompt positions against 41.5–43.1 on generated ones, so those positions carry
+    real shift — the earlier "dilution" result (‖mean δ‖ 29 → 11) is about prompt directions
+    cancelling one another, not about their being small.
+    """
     if not 0 <= prompt_len <= full_len:
         raise ValueError(f"need 0 <= prompt_len <= full_len, got {prompt_len}, {full_len}")
-    return slice(prompt_len, full_len)
+    if positions == "cot":
+        return slice(prompt_len, full_len)
+    if positions == "all":
+        return slice(0, full_len)
+    raise ValueError(f"unknown fit window: {positions!r} (want 'cot' or 'all')")
 
 
 def assemble_blocks(base_capture: dict[int, torch.Tensor],
