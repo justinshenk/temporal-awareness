@@ -288,23 +288,22 @@ installs reasoning-\emph{shaped} tokens with no arithmetic underneath.
 \begin{table}[t]
 \centering
 \caption{The procedure-null ladder on GSM8K. Every rung is fit to reproduce the donor's $\delta$
-(or, for DAS, trained under task loss at one site) and acts pointwise at a single layer. Intervals
-are clustered bootstrap over problems.
-% TODO(S1): fill the interval column for rungs 1–3 and 5 from the null_intervals artifacts;
-% do not quote this table until every cell carries its interval and n.
-}
+(or, for DAS, trained under task loss at one site) and acts pointwise at a single layer. Bracketed
+values are 95\% bounds on the recovery scale: exact binomial for the zero rungs (treating base and
+donor accuracies as known constants, so they cover sampling error in the steered run only),
+clustered bootstrap over problems for the measured rungs.}
 \label{tab:ladder}
 \small
 \begin{tabular}{llc}
 \toprule
-salvage attempt & result & rules out \\
+salvage attempt & recovery @95\% & rules out \\
 \midrule
-global primal-ridge map (per-layer, incl.\ L20/L24; \S\ref{sec:multihop}) & $\leq 0.12$ (see text) & --- (baseline) \\
-short-output single-operation arithmetic & 0.00 & trajectory \emph{length} \\
-per-context local refit (problem-specific map) & 0.00 & map \emph{generality} \\
-on-policy DAgger refit (${\approx}97\%$ on-policy by round 2) \citep{ross2011dagger} & 0.00 & \emph{distribution shift} \\
-MLP head ($\cos 0.815$, $R^2\ 0.675$ at L24) & 0.00 \ci{0}{0.04} & \emph{linearity} of the estimator \\
-DAS task-loss subspace (CE${\to}0.038$, $r{=}512$) \citep{geiger2024das} & 0.00 & subspace \emph{search} \\
+global primal-ridge map ($n{=}30$; per-layer at L20/L24: \S\ref{sec:multihop}) & 0.00 \ci{0}{0.22} & --- (baseline) \\
+short-output single-operation arithmetic ($n{=}30$) & 0.00 \ci{0}{0.16} & trajectory \emph{length} \\
+per-context local refit (problem-specific map, $n{=}30$) & 0.00 \ci{0}{0.22} & map \emph{generality} \\
+on-policy DAgger refit (${\approx}97\%$ on-policy by round 2, $n{=}30$) \citep{ross2011dagger} & 0.00 \ci{0}{0.23} & \emph{distribution shift} \\
+MLP head ($\cos 0.815$, $R^2\ 0.675$ at L24, $n{=}100$) & 0.00 \ci{0}{0.04} & \emph{linearity} of the estimator \\
+DAS task-loss subspace (CE${\to}0.038$, $r{\in}\{8,\dots,512\}$, $n{=}20$) \citep{geiger2024das} & 0.00 \ci{0}{0.17} & subspace \emph{search} \\
 \bottomrule
 \end{tabular}
 \end{table}

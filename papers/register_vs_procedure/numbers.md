@@ -16,7 +16,7 @@ GPU box; the reports that quote them are committed.
 |---|---|---|---|---|
 | F1 | temporal-density knee, GSM8K + MuSiQue overlaid | `figures/f1_temporal_density.png` | `temporal_oracle_L20.json`, `temporal_oracle_multihop_L20.json` | **built 2026-08-13** |
 | F2 | oracle layer sweep, L20 peak | — | `lockstep_multihop_single.json` (n=100) — **GSM8K arm has no artifact, see below** | **blocked** |
-| F3 | null ladder vs oracle, with S1 intervals | — | `short_arithmetic.json`, `local_refit_gsm8k.json`, `dagger_refit_gsm8k.json`, `das_subspace_L20.json` | pending |
+| F3 | null ladder vs oracle, with S1 intervals | `null_bounds.json` (generated 2026-08-17 by `bound_procedure_nulls`, CPU-only, from the four committed rung artifacts) — recovery @95%: global ridge [0, 0.217], short-output [0, 0.158], local refit [0, 0.217], DAgger [0, 0.231], DAS [0, 0.168]. NOTE: bounds treat base/donor accuracies as constants; cover the steered run only. | `short_arithmetic.json`, `local_refit_gsm8k.json`, `dagger_refit_gsm8k.json`, `das_subspace_L20.json` | 2026-08-17 |
 | F4 | variance-band cliff | — | `lockstep_pca_band_L20.json` | pending |
 | F5 | gold-token lens by role | — | `gold_token_lens_L20.json`, `gold_token_lens_multihop_L20.json` | pending |
 | F6 | refusal Pareto frontier | — | `refusal_frontier.json` | pending |
