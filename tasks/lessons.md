@@ -173,6 +173,16 @@ completed train split saved nothing.
 the *whole* pipeline — the crash came at the second allocation site, not the first. Accumulation
 belongs on CPU unless the card demonstrably fits both splits plus the models.
 
+**Same day, same run, the disk half (a lesson already written, then half-followed):** the rerun
+completed both splits and died **mid-save at 49 of 65 files** — `results/` hit the same ~53 G
+quota that truncated the Aug 13 donor save, with **447 T "free" in `df`** (quotas are invisible to
+`df`) and **no traceback** (the traceback write went to a log on the same quota'd volume and
+failed too — a silent exit with a truncated file is the quota's signature). My preflight had been
+`df` plus a 2 G write test because the FS lacks `fallocate`; the S2d brief's preflight is
+full-size *for this reason*. **A disk preflight is a write of the size you will write, on the
+filesystem you will write to** — `dd` the full byte count, then delete it. Anything smaller tests
+the wrong thing.
+
 ## A comparison cell needs an artifact, not a recollection
 
 **What happened (2026-08-06):** the multihop writeup's ridge-divergence claim cited "GSM8K ≈0.05,
