@@ -13,7 +13,7 @@ seed: 42
 hidden_dim: 4096
 num_layers: 32
 device: cuda
-accum_device: cuda
+accum_device: cpu   # 2 splits x 32 layers x 3 x 4096^2 f64 = ~26 GB — OOMs beside bf16 models on a 32 GB card
 
 data:
   hf_name: dgslibisey/MuSiQue

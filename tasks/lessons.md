@@ -159,6 +159,20 @@ what it will write (`du -sh` the output's siblings). A round file size — exact
 from parameter counts, and confirm every sidecar file (config/tokenizer/index) exists before
 treating a save as done. Training completing is not the same as the artifact existing.
 
+## A config's capacity assumption is a box assumption — recheck it when the box changes
+
+**What happened (2026-08-17):** the MuSiQue all-positions collect ran 50 minutes to completion of
+its train split, then OOM'd allocating the held-out split's accumulators — on the replacement
+32 GB RTX 5090, where every prior collect had run on 80–96 GB cards. The config said so out loud:
+`accum_device: cuda  # 64 x 4096^2 f64 ~ 8.6 GB; fits 80GB`. Two splits of float64 Gram matrices
+(~26 GB) beside the bf16 models cannot fit in 32 GB, and the write-at-end design meant the
+completed train split saved nothing.
+
+**Rule:** when the hardware changes, grep the configs for capacity assumptions (`accum_device`,
+`device_map`, dtype comments, "fits NN GB") before the first long run, and budget peak memory for
+the *whole* pipeline — the crash came at the second allocation site, not the first. Accumulation
+belongs on CPU unless the card demonstrably fits both splits plus the models.
+
 ## A comparison cell needs an artifact, not a recollection
 
 **What happened (2026-08-06):** the multihop writeup's ridge-divergence claim cited "GSM8K ≈0.05,
