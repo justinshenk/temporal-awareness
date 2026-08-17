@@ -68,15 +68,19 @@ def _diff_high_low(arr: np.ndarray, split: float = 0.5) -> float:
     return float(hi.mean() - lo.mean())
 
 
-def fill_slope_stats(path: Path | None = None) -> dict[str, dict]:
+def fill_slope_stats(path: Path | None = None, max_fill: float | None = None) -> dict[str, dict]:
     """Accuracy-vs-fill interval estimates per stream mode (random / coherent).
 
     Returns, per mode: the point-biserial correlation with a Fisher-z interval, the
     upper-minus-lower-half accuracy difference with a bootstrap interval, and the resulting
     equivalence bound — the largest *decline* (in accuracy points across the context) that the
-    data still permit at 95%.
+    data still permit at 95%. ``max_fill`` restricts to cases below that context fill — the
+    paper's flat claim is scoped to the first ~80% of the window, and once the top-bin dip is
+    established as real (see :func:`final_bin_stats`) the scoped run is the one that supports it.
     """
     df = pd.read_csv(path or (RESULTS / "random_context" / "turns.csv"))
+    if max_fill is not None:
+        df = df[df["context_fill"] < max_fill]
     out: dict[str, dict] = {}
     for mode, g in df.groupby("mode"):
         fill = g["context_fill"].to_numpy(float)

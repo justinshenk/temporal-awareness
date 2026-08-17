@@ -50,7 +50,9 @@ always at the current query and never diluted across length. This \emph{structur
 out attention dilution / lost-in-the-middle} as the cause. With dilution removed, the
 signatures persist but performance does not move: per-case accuracy is flat-to-rising across
 the first ${\sim}80\%$ of context fill ($r{\approx}0$ even when in-context learning is deterred
-with a random-subject stream; a marginal top-bin dip is bounded in \S4), checkable instruction
+with a random-subject stream), and in the final ${\sim}20\%$ a genuine dip appears \emph{only}
+where ICL is deterred ($-0.14$ $[-0.25,-0.03]$; the coherent stream stays flat) --- locating the
+end-of-window cost exactly where in-context comfort cannot mask it (\S4). Checkable instruction
 adherence stays at ceiling, and---conditioning on fill---wrong answers consistently
 \emph{fixate} on the current query rather than under-attend it (sign-positive in every fill bin
 and probed layer, pooled $\Delta{=}+0.045$), while correct answers spread attention onto the
@@ -147,13 +149,25 @@ objection is that a homogeneous repeating task lets in-context learning mask a h
 We remove that crutch: in a \emph{random-subject} stream each question is drawn uniformly from
 all 56 MMLU subjects, so prior context carries no predictive information about the next
 question---only the answer \emph{format} is learnable. Accuracy is still flat across the first
-$\sim$80\% of context ($0.57\to0.69$, $\mathrm{corr}=-0.00$), versus a coherent single-subject
-stream ($0.84$, $\mathrm{corr}=-0.01$); the lower level just reflects harder questions, not a
-slope (Fig.~\ref{fig:main}b). These nulls are \emph{bounded}: the 95\% interval on
-upper-minus-lower-half accuracy excludes declines beyond $7.3$ points (coherent, $n{=}483$)
-and $9.2$ (random, $n{=}344$). The ${\sim}80\%$ restriction reflects a real top-bin dip on
-the random stream ($-0.19$ $[-0.37,-0.00]$, $n{=}31$). With dilution already excluded by
-design, neither accumulation nor the loss of ICL produces decay.
+$\sim$80\% of context (random: $\mathrm{corr}=-0.02$ $[-0.10,+0.05]$, $n{=}699$), versus a
+coherent single-subject stream ($0.82$, $\mathrm{corr}=+0.01$, $n{=}1001$); the lower level just
+reflects harder questions, not a slope (Fig.~\ref{fig:main}b). These nulls are \emph{bounded}:
+the 95\% interval on upper-minus-lower-half accuracy excludes declines beyond $4.1$ points
+(coherent) and $9.4$ (random).
+
+\paragraph{The final 20\% is not flat---and the exception proves the mechanism.} An initial
+batch showed a marginal top-bin dip on the random stream ($-0.19$ $[-0.37,-0.00]$, $n{=}31$).
+Rather than bound it, we resolved it: 15 further sessions per stream at deeper fill (to 93\% of
+the window, with an overflow guard so no near-full question is ever truncated---a bias that would
+otherwise manufacture exactly this dip; the guard skips long, typically harder items, biasing
+\emph{against} it). Pooled, the dip is real and replicates: random-stream accuracy at
+${\geq}80\%$ fill is $0.47$ against $0.61$ below ($-0.141$ $[-0.249,-0.031]$, $n{=}91$; the
+independent batch alone reproduces the sign). The coherent stream, at the same depths, is exactly
+flat ($+0.010$ $[-0.060,+0.075]$, $n{=}137$). So there \emph{is} an end-of-window cost---but only
+where in-context learning cannot compensate, which is the paper's mechanism seen from the other
+side: what looks like robustness to accumulation is ICL actively holding accuracy up, and the
+final fifth of the window is where accumulation finally outruns it. With dilution excluded by
+design, this is a cost of accumulation per se, not of the target being harder to find.
 
 \paragraph{Instruction adherence holds.}
 Looking for a competence-preserved, compliance-degraded dissociation, we add a checkable

@@ -46,6 +46,15 @@ def test_fill_slope_bounds_the_null():
     assert out["random"]["accuracy"] == pytest.approx(0.622, abs=0.005)
 
 
+def test_fill_slope_max_fill_restricts_rows():
+    full = ns.fill_slope_stats()
+    scoped = ns.fill_slope_stats(max_fill=0.8)
+    for mode in ("coherent", "random"):
+        assert scoped[mode]["n"] < full[mode]["n"]
+    # a max_fill above every observed fill is a no-op
+    assert ns.fill_slope_stats(max_fill=1.01) == full
+
+
 def test_final_bin_dip_only_significant_on_random_stream():
     out = ns.final_bin_stats()
     assert out["random"]["diff_top_minus_rest"]["estimate"] < -0.1
