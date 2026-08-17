@@ -66,6 +66,9 @@ GPU box; the reports that quote them are committed.
 | fixed vector, per-problem, additive hook @L20 | 0.000 | `per_problem_vector_commonsense_L20.json` | 2026-08-13 |
 | fixed vector, per-problem, **through the lockstep path** @L20, n=100 | **0.000** | `lockstep_commonsense_single_fixed_vector_per_problem.json` | S2d, 2026-08-14 |
 | fixed vector, pooled over 100 disjoint problems @L20 | 0.000 at α ∈ {0.5, 1, 1.5, 2} | `global_register_vector_commonsense_L20.json` | 2026-08-13 |
+| `mean_delta` at **generated positions only** @L20, n=100 | **0.860** — donor trigger phrase installed | `lockstep_commonsense_single_mean_delta_generated.json` | S2d, 2026-08-17 |
+| `mean_delta` at **prompt positions only** @L20, n=100 | **0.000** — generations base-like | `lockstep_commonsense_single_mean_delta_prompt.json` | S2d, 2026-08-17 |
+| `random_constant` (one coherent random direction @ ‖mean gen δ‖, all positions) @L20, n=100 | **0.000** — generations base-like | `lockstep_commonsense_single_random_constant.json` | S2d, 2026-08-17 |
 | commonsense L20 held-out R²_te (**CoT window — see VOID below**) | 0.8934 @ λ*=1.00e2 | `sweep_commonsense.json` (superseded) | S2c, 2026-08-14 |
 
 #### S2c, all-positions fit (`--fit-positions all`) — the arm that supersedes the void one
@@ -202,15 +205,26 @@ free", "83% of the oracle survives having no temporal structure"). It is not a f
 from a live donor forward each step, and the early steps are near-oracle **by construction** —
 at step 1 there are no generated rows at all, so `generated_rows` falls back to the whole sequence;
 at step 2 the "mean" **is** the true δ of the first generated token; at step 3 it is the mean of two
-true δs. Those early tokens are the trigger phrase, i.e. the span that decides the score. The
-discriminator is `--control fixed_vector` (a frozen whole-trajectory mean through the identical
-delivery path); until it lands, 0.820 has no interpretation.
+true δs. Those early tokens are the trigger phrase, i.e. the span that decides the score.
+
+**PARTIALLY RESOLVED (S2d, 2026-08-17): the positional decomposition is now measured.** Restricting
+the injection to **generated positions only** reads **0.860** (≥ the all-positions 0.820, donor
+trigger phrase installed); **prompt positions only** reads **0.000** (generations base-like). So the
+effect lives entirely in steering the ~7 generated tokens; prompt re-encoding contributes nothing,
+which also clears the prompt-length half of PUSHBACK item 4's confound for this statistic. What
+remains open is only the *early-step* question above: the injected statistic is still recomputed
+from a live donor forward each step, and the frozen final-trajectory-mean re-injection (the clean
+single-variable discriminator) has not been run. Quote 0.820/0.860 only as "a live per-step
+statistic collapsed across positions", never as "no temporal structure".
 
 **The `random_matched` 0.000 does not floor a constant-vector claim either.** It draws an
 *independent* direction per position, where `mean_delta` injects one *coherent* direction at every
 position; independent draws partially cancel downstream where a coherent shift accumulates. The
 matched-by-construction floor is `--control random_constant` (one random direction at
-‖mean generated δ‖), not yet run. The per-token δ norms this rests on (prompt ~28–30, generated
+‖mean generated δ‖) — **run 2026-08-17: 0.000, generations base-like re-listing**
+(`lockstep_commonsense_single_random_constant.json`). Since it shares the exact injection plumbing
+with the `mean_delta` cells that installed the register in the same session, this null is
+direction-specificity, not a no-op. The per-token δ norms this rests on (prompt ~28–30, generated
 ~41–43, base residual ~90 at L20) currently exist **only in `.run_logs/s2_delta_norms.log`** — no
 JSON, so they are an uncitable cell until one exists.
 

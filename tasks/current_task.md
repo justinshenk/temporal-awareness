@@ -278,7 +278,28 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
         **final-step** vector, re-inject it from step 1. Side finding: cosine as low as 0.304
         between successive running means means the required shift **rotates within a 7-token
         generation** — measured evidence against "the register is one direction".
-  - [ ] **S2d controls — built and tested 2026-08-14, awaiting the GPU** (80 CPU tests pass):
+  - [x] **S2d controls RUN 2026-08-17 (new box: RTX 5090 32 GB; donors/caches verified present).**
+        All three cells at L20, n=100, `--n-eval 500`, max_new 32, generations persisted in each JSON:
+    - `random_constant` **0.000** (`lockstep_commonsense_single_random_constant.json`) — generations
+      are base-like option re-listing. The matched floor `random_matched` never supplied: a *coherent*
+      random direction at ‖mean gen δ‖ still installs nothing, and since the same plumbing installs
+      the register in the cells below, the null is direction-specificity, not a no-op.
+    - `mean_delta --control-positions generated` **0.860** (`..._mean_delta_generated.json`) —
+      donor trigger phrase installed. ≥ the all-positions 0.820.
+    - `mean_delta --control-positions prompt` **0.000** (`..._mean_delta_prompt.json`) — base-like.
+    - **Net: the 0.820 lives entirely in steering the ~7 generated tokens.** Prompt re-encoding
+      contributes nothing (clears the prompt half of PUSHBACK item 4 for this statistic). Still open
+      from PUSHBACK item 5: only the early-step question (frozen final-trajectory-mean re-injection
+      not built). numbers.md rows added same day.
+  - [x] **F2 blocker: GSM8K oracle layer sweep** (PUSHBACK item 6) — LAUNCHED 2026-08-17,
+        `lockstep_patch_gsm8k --mode single --layers 0,4,8,12,16,20,24,28,31 --n-eval 200
+        --n-contrast 100 --out results/attribution/lockstep_gsm8k_single_sweep.json`
+        (`.run_logs/f2_single_sweep.log`). NOTE: GSM8K needs `--n-eval 200` to align with the cached
+        113/200 contrast indices — same misindex hazard as multihop's 500. AC1 validate passed 3/3
+        on this box first. Incremental per-cell writes on. Mark done with numbers when it lands.
+  - [ ] S2d leftovers (deprioritized): fixed_vector final-step-mean variant (needs new mode);
+        per-token δ-norm JSON (currently log-only, uncitable).
+  - [ ] (superseded planning block below, kept for provenance):
     - `--control fixed_vector` — **the discriminator PUSHBACK item 5 asks for.** `mean_delta`'s
       0.820 is recomputed from a live donor forward every decode step, and the early steps are
       near-oracle *by construction*: at step 1 there are no generated rows so the statistic falls
