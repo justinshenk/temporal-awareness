@@ -433,29 +433,42 @@ $0.25$ (chance) and $0.288$ (majority class).
 
 \paragraph{The oracle itself separates register from procedure.} Under the same driver and the same
 earliest-plateau rule, all three tasks select $L^{*}{=}20$ --- but the curves differ in exactly the
-way the two-kinds view predicts (Table~\ref{tab:oracle}). The register's onset is earlier and far
-sharper ($0.830$ at L16, where MuSiQue reads $0.020$), and its plateau is essentially total
-($0.990$ against $0.75/0.76$). The onset comparison is within-task-across-layer and thus immune to
-generation-length effects; the ceiling comparison is not (the register's target is ${\sim}7$ tokens
-against 256--512-token chains), and we flag it accordingly.
+way the two-kinds view predicts (Table~\ref{tab:oracle}, Figure~\ref{fig:oracle}). The register's
+onset is both earlier and nearly complete on arrival: $0.830$ at L16, against GSM8K's partial
+$0.310$ and MuSiQue's $0.020$ at the same layer. Its plateau is essentially total ($0.990$ against
+$0.720/0.760$). The two procedures share a plateau to within noise ($0.72$--$0.78$ from L20) while
+differing in ramp shape --- GSM8K climbs gradually through L16 where MuSiQue steps at L20 --- so
+the register/procedure contrast is not a two-task idiosyncrasy: both procedures sit far below the
+register at L16 and far below its ceiling at the plateau. The onset comparison is
+within-task-across-layer and thus immune to generation-length effects; the ceiling comparison is
+not (the register's target is ${\sim}7$ tokens against 256--512-token chains), and we flag it
+accordingly.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.7\linewidth]{figures/f2_oracle_sweep.pdf}
+\caption{Single-layer lockstep oracle recovery by layer, all three tasks on one instrument. The
+register's onset is early and nearly total; both procedures plateau together at ${\sim}0.72$--$0.78$
+from L20. Degenerate layers 28/31 excluded.}
+\label{fig:oracle}
+\end{figure}
 
 \begin{table}[t]
 \centering
-\caption{Single-layer lockstep oracle recovery by task ($n{=}100$ contrast problems each). Layers
-28/31 are degenerate (block-output overwrite) and excluded from $L^*$ selection.
-% TODO(F2): fill the GSM8K column from the per-layer sweep now running
-% (lockstep_gsm8k_single_sweep.json); only the L20 cell is currently doubly-sourced.
-}
+\caption{Single-layer lockstep oracle recovery by task ($n{=}100$ contrast problems each, same
+driver and protocol). Layers 28/31 are degenerate (block-output overwrite) and excluded from
+$L^*$ selection. GSM8K's L20 value at $n{=}100$ ($0.720$) is consistent with the two prior
+$n{=}20$ measurements ($0.75$).}
 \label{tab:oracle}
 \small
 \begin{tabular}{lccc}
 \toprule
 layer & commonsense (register) & MuSiQue & GSM8K \\
 \midrule
-12 & 0.050 & 0.020 & \emph{TODO(F2)} \\
-16 & \textbf{0.830} & 0.020 & \emph{TODO(F2)} \\
-20 & \textbf{0.990} & 0.760 & 0.750 \\
-24 & 0.990 & 0.780 & \emph{TODO(F2)} \\
+12 & 0.050 & 0.020 & 0.000 \\
+16 & \textbf{0.830} & 0.020 & 0.310 \\
+20 & \textbf{0.990} & 0.760 & 0.720 \\
+24 & 0.990 & 0.780 & 0.760 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -510,7 +523,7 @@ sharp onset, and (iii) not time-dense at the trajectory level. Cells we did not 
 \centering
 \caption{The criterion table. ``n.m.'' = not measured (stated, not estimated). Ridge cells for the
 procedures are lower bounds (\S\ref{sec:ladder}).
-% TODO(F2): GSM8K oracle onset cell. TODO(refit): MuSiQue map cell under matched fit window.
+% TODO(refit): MuSiQue map cell under matched fit window.
 }
 \label{tab:criterion}
 \small
@@ -520,7 +533,7 @@ procedures are lower bounds (\S\ref{sec:ladder}).
  & refusal & commonsense register & GSM8K & MuSiQue \\
 \midrule
 map transport (single layer) & 0.62 (Pareto) & 0.972 (format) & 0.09--0.12 & 0.26--0.45 \\
-oracle onset / plateau & n.m.\ / n.m. & L16 0.830 / 0.990 & \emph{TODO(F2)} / 0.75 & L16 0.020 / 0.76 \\
+oracle onset / plateau & n.m.\ / n.m. & L16 0.830 / 0.990 & L16 0.310 / 0.720 & L16 0.020 / 0.760 \\
 fixed vector (time-collapsed) & 0.00 & 0.000 & 0.00 & n.m. \\
 centred held-out $R^2$ of $\delta$ & ${\approx}1.0$ & 0.921 & 0.653 & n.m. \\
 temporal density (periodic-2 gate) & n.m. & n.m.\ (7-token target) & ${\to}0.00$ & 0.05 \\

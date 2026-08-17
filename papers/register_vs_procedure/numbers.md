@@ -15,7 +15,7 @@ GPU box; the reports that quote them are committed.
 | # | figure | file | source artifact(s) | status |
 |---|---|---|---|---|
 | F1 | temporal-density knee, GSM8K + MuSiQue overlaid | `figures/f1_temporal_density.png` | `temporal_oracle_L20.json`, `temporal_oracle_multihop_L20.json` | **built 2026-08-13** |
-| F2 | oracle layer sweep, L20 peak | — | `lockstep_multihop_single.json` (n=100) — **GSM8K arm has no artifact, see below** | **blocked** |
+| F2 | oracle layer sweep, L20 peak | `figures/f2_oracle_sweep.pdf` from `lockstep_gsm8k_single_sweep.json` + `lockstep_{commonsense,multihop}_single.json` (all n=100) | GSM8K sweep re-run 2026-08-17: L0/4/8/12 = 0.000, **L16 = 0.310**, **L20 = 0.720**, **L24 = 0.760** (refs base 0.000 / lora 0.565, max_new 256; L20 consistent with both n=20 artifacts' 0.75). **L28/L31 not measured** — run killed mid-L28 by a session restart; degenerate tail, excluded from every claim; per-cell writes preserved all informative cells. Generations persisted and read: real chains. The old unsourced "L16 0.20" column is replaced by 0.310. | 2026-08-17 |
 | F3 | null ladder vs oracle, with S1 intervals | `null_bounds.json` (generated 2026-08-17 by `bound_procedure_nulls`, CPU-only, from the four committed rung artifacts) — recovery @95%: global ridge [0, 0.217], short-output [0, 0.158], local refit [0, 0.217], DAgger [0, 0.231], DAS [0, 0.168]. NOTE: bounds treat base/donor accuracies as constants; cover the steered run only. | `short_arithmetic.json`, `local_refit_gsm8k.json`, `dagger_refit_gsm8k.json`, `das_subspace_L20.json` | 2026-08-17 |
 | F4 | variance-band cliff | — | `lockstep_pca_band_L20.json` | pending |
 | F5 | gold-token lens by role | — | `gold_token_lens_L20.json`, `gold_token_lens_multihop_L20.json` | pending |

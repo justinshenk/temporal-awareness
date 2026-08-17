@@ -291,7 +291,13 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
       contributes nothing (clears the prompt half of PUSHBACK item 4 for this statistic). Still open
       from PUSHBACK item 5: only the early-step question (frozen final-trajectory-mean re-injection
       not built). numbers.md rows added same day.
-  - [x] **F2 blocker: GSM8K oracle layer sweep** (PUSHBACK item 6) — LAUNCHED 2026-08-17,
+  - [x] **F2 blocker: GSM8K oracle layer sweep — DONE 2026-08-17** (`lockstep_gsm8k_single_sweep.json`,
+        n=100): L0–12 = 0.000, **L16 0.310, L20 0.720, L24 0.760**. L\*=20 confirmed (earliest
+        plateau); both procedures share the 0.72–0.78 plateau; GSM8K ramps gradually through L16
+        where MuSiQue steps at L20 — new onset nuance, in the paper. L28/31 lost to a session
+        restart mid-cell (degenerate tail, not re-run; per-cell writes saved the rest).
+        f2_oracle_sweep.pdf rendered; paper tables + criterion cell filled; numbers.md sourced.
+        Launch details (kept):
         `lockstep_patch_gsm8k --mode single --layers 0,4,8,12,16,20,24,28,31 --n-eval 200
         --n-contrast 100 --out results/attribution/lockstep_gsm8k_single_sweep.json`
         (`.run_logs/f2_single_sweep.log`). NOTE: GSM8K needs `--n-eval 200` to align with the cached
