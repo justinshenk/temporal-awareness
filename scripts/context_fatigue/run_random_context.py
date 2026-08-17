@@ -100,7 +100,13 @@ def main():
                 if ctx / args.max_ctx > args.fill_target:
                     break
                 q = src[qi]
-                conv.append({"role": "user", "content": format_q(q["question"], q["choices"])})
+                q_text = format_q(q["question"], q["choices"])
+                # Near-full context, a long question would be RIGHT-truncated by the tokenizer —
+                # losing its own options and scoring as a spurious error in exactly the top fill
+                # bin. Skip anything that cannot fit whole (with generation headroom) instead.
+                if ctx + len(tokenizer.encode(q_text)) + args.max_new + 16 > args.max_ctx:
+                    continue
+                conv.append({"role": "user", "content": q_text})
                 resp, _, _, _ = generate_with_entropy(
                     model, tokenizer, render_prompt(tokenizer, conv, is_chat),
                     args.device, args.max_new, args.max_ctx)
