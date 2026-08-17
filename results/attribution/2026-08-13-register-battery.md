@@ -467,9 +467,10 @@ the same 500 problems: **base 0.004 / donor 1.000**.
 | format compliance | 0.010 | 0.016 | 0.140 | **0.972** | **0.998** |
 
 A fitted pointwise map installs the donor's register **essentially completely** from L20 onward,
-against base's 0.004. Set beside the same instrument on the procedures — GSM8K 0.03 @L20 / 0.12
-@L24, MuSiQue 0.26 @L20 / 0.45 @L24 — this is the two-sided contrast the paper has so far asserted
-from one side only:
+against base's 0.004. Set beside the same instrument on the procedures — under **matched
+all-positions fits** (2026-08-17): GSM8K 0.09 @L20 / 0.12 @L24, MuSiQue 0.07 @L20 / 0.26 @L24;
+the CoT-window values quoted here before that date (0.03/0.12, 0.26/0.45) are unmatched-window —
+this is the two-sided contrast the paper has so far asserted from one side only:
 
 > **a register transports through a fitted pointwise map at a single layer; a procedure does not.**
 
@@ -602,7 +603,10 @@ the ICL route are roughly 70° apart, and only the ICL route leaves selection in
    0.99-vs-0.75 *ceiling* comparison carries that confound and must be caveated (~7-token target vs
    256–512-token chains).
 2. **The fitted-map arm is the paper's two-sided contrast on one instrument.** Format compliance
-   @α=0.75: L20 **0.972** / L24 0.998 (base 0.004), against GSM8K 0.03/0.12 and MuSiQue 0.26/0.45.
+   @α=0.75: L20 **0.972** / L24 0.998 (base 0.004), against the procedures under **matched
+   all-positions fits** (2026-08-17): GSM8K 0.09/0.12, MuSiQue 0.07/0.26 at L20/L24
+   (`steer_results_allpos.json`, `steer_multihop_allpos.json`; the earlier CoT-window 0.03/0.12 and
+   0.26/0.45 are unmatched-window values — see numbers.md).
    A register transports through a fitted pointwise map at a single layer; a procedure does not.
 3. **The map installs the register and destroys selection.** Accuracy under the map equals the
    constant policy's base rate twice (0.200 vs 8/40; 0.267 vs 16/60); no α installs and selects

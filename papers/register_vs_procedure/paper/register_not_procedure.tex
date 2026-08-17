@@ -402,13 +402,19 @@ trajectory-control deficit is general; the per-step work the base retains is tas
 only on arithmetic is it computation rather than retrieval.
 
 \paragraph{The ladder axis, matched at last --- and what the leak is.} The one place the two
-procedures appeared to differ was the linear rung: multi-hop's ridge map leaks ($0.26$ at L20,
-$0.45$ \ci{0.35}{0.56} at L24, a narrow $\alpha{=}1.0$ resonance) where GSM8K's was believed to
-read ${\approx}0$. Measured at the same layers under the same protocol, GSM8K also leaks late ---
-$0.09$--$0.12$ at L20/L24 (\S\ref{sec:ladder}) --- so the divergence survives only as
-\emph{degree}, not kind.
-% TODO(refit): MuSiQue's 0.45 is still a CoT-window fit; the all-positions re-fit is queued. Until
-% it lands, state the cross-task ratio as unmatched-fit-windows or update it from the new artifact.
+procedures appeared to differ was the linear rung: multi-hop's ridge map leaked $0.26$ at L20 and
+$0.45$ \ci{0.35}{0.56} at L24 where GSM8K's was believed to read ${\approx}0$. Both halves of that
+comparison were mismeasured, in opposite directions, and matching the measurement collapses most
+of the gap. GSM8K, probed at the two layers the original grid missed, also leaks late
+($0.09$--$0.12$ at L20/L24; \S\ref{sec:ladder}). And multi-hop's $0.26/0.45$ came from a map fit
+on chain positions only but applied everywhere --- the fit-window mismatch of
+\S\ref{sec:battery} in milder form. Re-fit over all positions and run under the identical
+protocol ($n{=}200$, same references), multi-hop reads $0.07$ at L20 and $0.26$ at L24. The
+matched comparison is therefore: \textbf{L20 $0.09$ vs.\ $0.07$ --- no task difference at all ---
+and L24 $0.12$ vs.\ $0.26$}, a factor of ${\sim}2$ where the unmatched numbers suggested $9\times$
+and $3.75\times$. All four cells are lower bounds (recovery still rises at the last $\alpha$
+probed). The late-stack leak is real, small, and shared; its size differs across procedures by at
+most a factor of two.
 Two further measurements say what the leak is made of. \textbf{It is task-agnostic:} maps fit on
 \emph{multi-hop} $\delta$s and applied to GSM8K deliver 75--100\% of the native leak (L24 $0.09$
 \ci{0.05}{0.16} vs.\ native $0.12$; L28 $0.13$, equal to native exactly), so the task-fitted
@@ -478,9 +484,11 @@ positions (the fit window must match the application window; fitting on generate
 and applying everywhere destroys the model --- a failure mode we hit, diagnosed from decoded
 generations, and now test for), the ridge map's \emph{format compliance} at $\alpha{=}0.75$ on the
 500-problem scan is: L16 $0.140$, \textbf{L20 $0.972$}, L24 $0.998$ (base $0.004$, donor $1.000$).
-Set beside the same instrument on the procedures --- GSM8K $0.03/0.12$, MuSiQue $0.26/0.45$ at
-L20/L24 --- this is the boundary on one axis: \emph{a register transports through a fitted
-pointwise map at a single layer; a procedure does not.}
+Set beside the same instrument on the procedures, under matched all-positions fits --- GSM8K
+$0.09/0.12$, MuSiQue $0.07/0.26$ at L20/L24 (\S\ref{sec:multihop}) --- this is the boundary on one
+axis: \emph{a register transports through a fitted pointwise map at a single layer, essentially
+completely; a procedure leaks at most a quarter of its budget, late in the stack, and
+\S\ref{sec:multihop} shows even that fraction is a task-agnostic register push.}
 
 \paragraph{It installs the register and destroys the selection the base already had.} Under the
 map, accuracy equals the base rate of a constant policy --- $0.200$ with gold-\texttt{answer1} at
@@ -532,10 +540,10 @@ procedures are lower bounds (\S\ref{sec:ladder}).
 \toprule
  & refusal & commonsense register & GSM8K & MuSiQue \\
 \midrule
-map transport (single layer) & 0.62 (Pareto) & 0.972 (format) & 0.09--0.12 & 0.26--0.45 \\
+map transport (single layer) & 0.62 (Pareto) & 0.972 (format) & 0.09--0.12 & 0.07--0.26 \\
 oracle onset / plateau & n.m.\ / n.m. & L16 0.830 / 0.990 & L16 0.310 / 0.720 & L16 0.020 / 0.760 \\
 fixed vector (time-collapsed) & 0.00 & 0.000 & 0.00 & n.m. \\
-centred held-out $R^2$ of $\delta$ & ${\approx}1.0$ & 0.921 & 0.653 & n.m. \\
+centred held-out $R^2$ of $\delta$ & ${\approx}1.0$ & 0.921 & 0.653 & 0.822 \\
 temporal density (periodic-2 gate) & n.m. & n.m.\ (7-token target) & ${\to}0.00$ & 0.05 \\
 $\delta$-rank / variance band & n.m. & n.m.\ (cut) & 80\% band needed & n.m. \\
 \bottomrule

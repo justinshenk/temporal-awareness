@@ -55,6 +55,27 @@ GPU box; the reports that quote them are committed.
 | cross-task transplant @L28 | 0.13 (= native exactly) | `steer_transplant_multihop_maps_on_gsm8k.json` | P5b |
 | ARC-Challenge chance / majority floor | 0.25 / **0.288** | `data/commonsense/ARC-Challenge_test.json`, n=500 scan | 2026-08-13 |
 
+### MuSiQue all-positions re-fit (2026-08-17) — closing the fit-window mismatch on the 0.45
+
+The committed multihop ridge numbers were CoT-window fits applied at every position (same design
+S2c showed is a mismatch; milder here — chain ≈ 60% of positions — but unmatched against GSM8K's
+re-fitted `_allpos` numbers). Re-collected with `--fit-positions all` (102,861 train / 30,157
+held-out tokens → `accumulators_multihop_allpos`, tree retained). The collect took three runs:
+run 1 OOM'd allocating the held-out split's GPU accumulators on the 32 GB box, run 2 hit the
+~53 G `results/` quota mid-save; see `tasks/lessons.md` for both rules. The GSM8K
+`accumulators_allpos` tree (25 G) was deleted to clear the quota — its maps and sweep are fitted
+and committed, matching the 2026-08-13 precedent.
+
+| claim | value | artifact | verified |
+|---|---|---|---|
+| multihop all-pos ridge fit @L20 | R²_te **0.824** @ λ*=1.00e4, const **0.011**, centred **0.822** | `sweep_multihop_allpos.json` | 2026-08-17 |
+| multihop all-pos ridge fit @L24 | R²_te 0.805 @ 1.00e4, const 0.044, centred **0.796** | `sweep_multihop_allpos.json` | 2026-08-17 |
+| centred R² ordering across tasks @L20 | GSM8K 0.653 < MuSiQue 0.822 < commonsense 0.921 | `sweep_allpos.json`, `sweep_multihop_allpos.json`, `sweep_commonsense_allpos.json` | 2026-08-17 |
+| magnitude diagnostic (all-pos maps, prompt positions, n=10) | ‖Wa‖/‖a‖ L20 0.723 / L24 0.697 vs true ‖δ‖/‖a‖ 0.525/0.573 → **α_match 0.73 / 0.82**; MuSiQue's δ ratio ~0.52–0.63 ≫ GSM8K's ~0.35 | **log-only** (`.run_logs/` + scratchpad script) — run-selection input, not a paper cell | 2026-08-17 |
+| matched steer @L20, α ∈ {0.75, 0.85, 1.0} | 0.01 / 0.02 / **0.07** | `steer_multihop_allpos.json` (n=200, refs 0.000/0.630; generations persisted, real chains) | 2026-08-17 |
+| matched steer @L24, α ∈ {0.75, 0.85, 1.0} | 0.14 / 0.17 / **0.26** | `steer_multihop_allpos.json` | 2026-08-17 |
+| **the matched cross-task comparison** | L20: GSM8K 0.09 vs MuSiQue **0.07** (converged — the committed 9× gap at L20 was a fit-window artifact); L24: 0.12 vs **0.26** (~2×, was 3.75×). All four cells are lower bounds (α curves still rising at the last probed α). The CoT-window 0.26/0.45 stay citable only as *unmatched-window* values. | `steer_results_allpos.json`, `steer_multihop_allpos.json` | 2026-08-17 |
+
 ### S2 — the register battery (commonsense / ARC-Challenge, Llama-2-7b + r32 LoRA donor)
 
 | claim | value | artifact | verified |

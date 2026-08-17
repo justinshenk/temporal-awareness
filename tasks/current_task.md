@@ -348,9 +348,15 @@ pass with no network. All seeded (42); contrast set cached `multihop_contrast_se
     leak's *shape*, not its amplitude: the committed L20→L24 rise of 4× becomes 1.3×, so **§8's
     "GSM8K leaks late" is the claim that weakens.**
   - **Two open limits.** (a) Neither peak is located — both curves still rise at α=1.15, so 0.09 and
-    0.12 are lower bounds. (b) MuSiQue's 0.45 @L24 is **still a CoT-window fit**, so the "3.75×"
-    cross-task ratio compares a re-fitted map against a non-re-fitted one; close or disclose before
-    §8 quotes it.
+    0.12 are lower bounds. (b) ~~MuSiQue's 0.45 @L24 is still a CoT-window fit~~ **CLOSED
+    2026-08-17**: MuSiQue re-collected/re-fit over all positions (`sweep_multihop_allpos.json`:
+    L20 R²_te 0.824/centred 0.822; magnitude diagnostic α_match 0.73/0.82) and re-steered under the
+    committed protocol (`steer_multihop_allpos.json`, n=200, refs 0.000/0.630): **L20 0.07, L24
+    0.26 @α=1.0**. Matched comparison: L20 0.09-vs-0.07 (the 9× gap was a fit-window artifact),
+    L24 0.12-vs-0.26 (~2×, was 3.75×); all cells lower bounds. Generations read: real chains.
+    §8/§9/criterion table updated; CoT-window 0.26/0.45 relabeled unmatched-window everywhere.
+    Collect took three runs — GPU-accumulator OOM, then the ~53 G results/ quota (both in
+    `tasks/lessons.md`; GSM8K `accumulators_allpos` deleted to clear quota, maps/sweep committed).
   - **`constant_r2` is NOT a register/procedure coordinate** (0.096 GSM8K vs 0.106 commonsense at
     L20). Proposed as a §10 criterion coordinate this morning; retracted in the docstring and
     `numbers.md`. The discriminator is the **centred** R² it licenses: **0.653 vs 0.921**.
