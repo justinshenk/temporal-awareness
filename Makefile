@@ -1,45 +1,27 @@
-.PHONY: install verify verify-quick verify-probes verify-steering figures eap-ig-workflow clean help
+.PHONY: install test paper-a paper-b clean help
 
-# Default target
 help:
-	@echo "Temporal Awareness - Available commands:"
+	@echo "Available commands:"
 	@echo ""
-	@echo "  make install        Install dependencies"
-	@echo "  make verify         Verify all claims (requires GPU)"
-	@echo "  make verify-quick   Quick verification (cached results)"
-	@echo "  make figures        Generate all figures"
-	@echo "  make eap-ig-workflow   Run the EAP-IG workflow"
-	@echo "  make clean          Remove generated files"
+	@echo "  make install   Install dependencies"
+	@echo "  make test      Run the CPU test suite (no GPU, no network)"
+	@echo "  make paper-a   Build the register-vs-procedure abstract PDF"
+	@echo "  make paper-b   Build the context-fatigue paper PDF"
+	@echo "  make clean     Remove caches"
 	@echo ""
 
-# Install
 install:
-	pip install -e .
+	uv sync
 
-# Verification
-verify:
-	python scripts/verify_all_claims.py --gpu
+test:
+	uv run pytest tests/ -q
 
-verify-quick:
-	python scripts/verify_all_claims.py --quick
+paper-a:
+	cd papers/register_vs_procedure/abstract && tectonic register_vs_procedure_abstract.tex
 
-verify-probes:
-	python scripts/probes/train_temporal_probes_caa.py --eval-only
+paper-b:
+	cd context_fatigue_paper && tectonic context_fatigue.tex
 
-verify-steering:
-	python scripts/probes/validate_dataset_split.py
-
-# Figures
-figures:
-	jupyter nbconvert --execute --to notebook notebooks/01_reproduce_main_results.ipynb
-	@echo "Figures saved to results/figures/"
-
-eap-ig-workflow:
-	python scripts/experiments/eap_ig/run_eap_ig_workflow.py --top-n 500
-
-# Clean
 clean:
-	rm -rf results/figures/*.png
 	rm -rf __pycache__ */__pycache__ */*/__pycache__
-	rm -rf *.egg-info
-	rm -rf .pytest_cache
+	rm -rf *.egg-info .pytest_cache

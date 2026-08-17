@@ -2,10 +2,16 @@
 
 ## Key Entry Points
 
-1. **Main experiment script**: `scripts/intertemporal/run_intertemporal_experiment.py`
-   - Run experiments: `uv run python scripts/intertemporal/run_intertemporal_experiment.py`
-   - Use cached data: `--cache` or `--cache experiment_name`
-   - Read this script to understand the experiment pipeline
+This repo holds two active projects:
+
+1. **Register vs procedure** (Paper A): drivers in `scripts/attribution/`, library in
+   `src/probes/attribution/` (+ `src/probes/safety/` for the refusal arm), configs in
+   `configs/attribution/`, artifacts in `results/attribution/` (gitignored — the provenance
+   store; every paper number traces here via `papers/register_vs_procedure/numbers.md`).
+   Paper sources in `papers/register_vs_procedure/`.
+2. **Context fatigue** (Paper B): drivers in `scripts/context_fatigue/`, library in
+   `src/probes/context_fatigue/`, artifacts in `results/context_fatigue/`. Paper sources in
+   `context_fatigue_paper/`.
 
 ## Code Style
 

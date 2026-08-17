@@ -1,119 +1,50 @@
-# Temporal Awareness
+# Register vs Procedure & Context Fatigue
 
-> "I want my time to grant me what time can't grant itself."
-> — Al-Mutannabi
+Two active research projects sharing one codebase (Llama-2-7b attribution stack +
+multi-model context-accumulation harness). Both target *Interpretability as a Science*
+(NeurIPS 2026 workshop).
 
-Research on detecting and steering temporal awareness in LLMs.
+## Paper A — Register, Not Procedure
 
-## Overview
+Whether a LoRA-installed behavior transports through a fitted pointwise activation map
+depends on what the behavior *is*: a register (an output format/disposition) installs
+through a single-layer linear map; a multi-step procedure (GSM8K arithmetic, MuSiQue
+multi-hop composition) does not — its full-δ oracle recovers, but every pointwise rung
+of the ladder stays near zero.
 
-This project investigates how LLMs encode temporal reasoning and whether we can:
-1. **Detect** temporal preference from internal representations
-2. **Steer** temporal orientation via activation engineering
-3. **Measure** divergence between stated and internal time horizons
+- Drivers: `scripts/attribution/` (+ `scripts/safety/` for the refusal arm)
+- Library: `src/probes/attribution/`, `src/probes/safety/`
+- Configs: `configs/attribution/`
+- Artifacts: `results/attribution/` (gitignored provenance store; every paper number
+  traces to a JSON there via `papers/register_vs_procedure/numbers.md`)
+- Paper sources: `papers/register_vs_procedure/`
 
-**Key findings:**
-- GPT-2 encodes temporal scope with 92.5% linear separability
-- Steering validation: r=0.935 correlation between steering and probe predictions
-- Late layers (6-11) encode semantic temporal features robust to keyword removal
+## Paper B — Context Fatigue
 
-## Program
+The "context fatigue" signatures (entropy collapse, attention drift) replicate across
+Qwen-2.5-7B, Llama-3.1-8B, Gemma-2-9B, and the OLMo-2-7B post-training chain — but with
+attention dilution structurally removed (individually localized tasks), there is no
+performance cost. The real hazard is a widening confidently-wrong gap.
 
-[Research Program](https://github.com/justinshenk/temporal-awareness/blob/main/docs/RESEARCH_PROGRAM.md)
-
-## Framework
-
-We ground temporal awareness in **intertemporal preference**:
-
-```
-U(o_i; θ) = u(r_i) · D(t_i; θ)     # Value function
-t_internal = inf{t : D(t) ≤ α}     # Internal horizon
-```
-
-**Key questions:**
-- Does `t_internal ≈ t_h` (stated horizon)?
-- Can we detect divergence between stated and internal preference?
-
-See [docs/research_plan.md](docs/research_plan.md) for full framework.
+- Drivers: `scripts/context_fatigue/`
+- Library: `src/probes/context_fatigue/`
+- Artifacts: `results/context_fatigue/`
+- Paper sources: `context_fatigue_paper/`
 
 ## Setup
 
 ```bash
-pip install -e .
-cp .env.example .env  # Add API keys
+uv sync
 ```
 
-For the EAP-IG workflow, install the pinned extra dependency:
+## Tests
 
 ```bash
-pip install -e ".[eap_ig]"
+make test   # CPU-only, no network, seeded
 ```
 
-## Structure
+## Working docs
 
-```
-temporal-awareness/
-├── data/
-│   ├── raw/                 # Intertemporal preference datasets
-│   ├── validated/           # Human-validated
-│   └── processed/           # Train/val/test splits
-├── scripts/
-│   ├── probes/              # Probe training & validation
-│   └── analysis/            # Figures, metrics
-├── results/checkpoints/     # Trained probes & steering vectors
-├── docs/
-│   ├── research_plan.md     # Full framework & roadmap
-│   └── RELATED_WORK.md      # Literature review
-└── paper/                   # Manuscript
-```
-
-## Quick Start
-
-```python
-from latents import SteeringFramework
-from latents.model_adapter import get_model_config
-
-# Use latents library for extraction and steering
-```
-
-```bash
-# Train probes
-python scripts/probes/train_temporal_probes_caa.py
-```
-
-## Q&A EAP-IG Workflow
-
-After installing the EAP-IG extra with `pip install -e ".[eap_ig]"`, the full Q&A EAP-IG pipeline can be run from one CLI command:
-
-```bash
-temporal-awareness-eap-ig-workflow --top-n 500
-```
-
-Equivalent repo-local entrypoint:
-
-```bash
-python scripts/experiments/eap_ig/run_eap_ig_workflow.py --top-n 500
-```
-
-Useful options:
-- `--no-save-to-hf` keeps the workflow fully local.
-- `--start-at top-components --stop-after visualize` reuses existing EAP-IG outputs.
-- `--top-n 200` or `--top-n 1000` reproduces the alternate node-selection variants.
-
-## Related Work
-
-See [docs/RELATED_WORK.md](docs/RELATED_WORK.md):
-- Zhu et al. 2025: Steering Risk Preferences via Behavioral-Neural Alignment
-- Mazyaki et al. 2025: Temporal Preferences in LLMs for Long-Horizon Assistance
-- Time-R1: Comprehensive temporal reasoning ([arXiv:2505.13508](https://arxiv.org/abs/2505.13508))
-
-## Public Datasets
-
-| Dataset | Source | Link |
-|---------|--------|------|
-| Time-Bench | Time-R1 | [HuggingFace](https://huggingface.co/datasets/ulab-ai/Time-Bench) |
-| Test of Time | Google | [HuggingFace](https://huggingface.co/datasets/baharef/ToT) |
-
-## License
-
-MIT
+- `tasks/current_task.md` — live experiment ledger
+- `tasks/lessons.md` — experimental-design and analysis lessons
+- `docs/superpowers/specs/2026-08-07-workshop-papers-design.md` — the two-paper design spec
