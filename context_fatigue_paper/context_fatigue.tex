@@ -48,12 +48,13 @@ choice is to accumulate \textbf{individually localized tasks} (self-contained mu
 cases) rather than one long task, so the information needed for the current answer is
 always at the current query and never diluted across length. This \emph{structurally rules
 out attention dilution / lost-in-the-middle} as the cause. With dilution removed, the
-signatures persist but performance does not move: per-case accuracy is flat-to-rising with
-context fill ($r{\approx}0$ even when in-context learning is deterred with a random-subject
-stream), checkable instruction adherence stays at ceiling, and---conditioning on fill---the
-cases the model gets \emph{wrong} are the ones where it \emph{fixates} on the current query,
-while correct answers spread attention onto the accumulated context (the per-case fingerprint
-of in-context learning). The entropy collapse vanishes on organic WildChat dialogue ($0.99$
+signatures persist but performance does not move: per-case accuracy is flat-to-rising across
+the first ${\sim}80\%$ of context fill ($r{\approx}0$ even when in-context learning is deterred
+with a random-subject stream; a marginal top-bin dip is bounded in \S4), checkable instruction
+adherence stays at ceiling, and---conditioning on fill---wrong answers consistently
+\emph{fixate} on the current query rather than under-attend it (sign-positive in every fill bin
+and probed layer, pooled $\Delta{=}+0.045$), while correct answers spread attention onto the
+accumulated context (the per-case fingerprint of in-context learning). The entropy collapse vanishes on organic WildChat dialogue ($0.99$
 within-conversation late/early ratio) and tracks conversation \emph{homogeneity}, not length.
 An OLMo-2 dose-response shows the collapse is a baseline-confidence \emph{level shift}
 installed mostly by supervised fine-tuning, and a causal test of the boundary-detector
