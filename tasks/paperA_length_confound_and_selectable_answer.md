@@ -104,7 +104,8 @@ A drop-in fifth task through the existing `TaskSpec` seams.
 - `src/probes/attribution/instruct_data.py` — **new**; Ultrafeedback loader and the rule-based
   register scorer, position-resolved.
 - `scripts/attribution/train_lora_aqua.py`, `scripts/attribution/train_lora_instruct.py` — **new**,
-  both modelled on `train_lora_multihop.py`.
+  both modelled on `train_lora_multihop.py`, but shipping with **gradient checkpointing enabled** and a
+  `--grad-accum` override (§5). Do not retrofit the existing trainers.
 - `configs/attribution/aqua_llama2.yaml`, `configs/attribution/instruct_llama2.yaml` — **new**,
   modelled on `multihop_llama2.yaml` (note `accum_device: cpu` — see §5).
 - `tests/attribution/` — per §7.
@@ -141,6 +142,66 @@ A drop-in fifth task through the existing `TaskSpec` seams.
   degenerate output that satisfies the rule.
 - Both arms need their **floor**: AQuA is 5-way (chance 0.20), so a garbled intervention still scores
   at chance. Run `--control` as the commonsense arm does.
+
+### Memory budget — the configs assume 80 GB
+
+Verified 2026-08-18: **no existing trainer enables gradient checkpointing**, and both configs push
+8192 tokens per forward (multihop 8x1024, commonsense 16x512). At bf16 on Llama-2-7B:
+
+| term | 8192 tok/step |
+|---|---|
+| frozen base weights | 13.5 GB |
+| stored activations, no checkpointing | **~30 GB** |
+| logits + fp32 CE + grad (32k vocab) | 2-3 GB |
+| LoRA params + AdamW (56.1M, r=32 x 5 modules) | ~0.8 GB |
+| **peak** | **~47 GB** |
+
+That needs the 80 GB card `metamath_llama2_gsm8k.yaml` was written for ("fits 80GB"). On a 32 GB card
+(e.g. RTX 5090) it OOMs. Two fixes, in order of preference:
+
+1. **Gradient checkpointing** (preferred; the new trainers must ship with it). Activations fall to
+   layer boundaries only, ~2 GB at the same batch — **peak ~18 GB**, at ~30% throughput cost.
+2. **Hold the effective batch, cut tokens per step**: multihop `8x2 -> 2x8`, commonsense `16x2 -> 4x8`
+   — **peak ~23 GB**. The loop already does `(loss / grad_accum).backward()` and derives `total_steps`
+   from `grad_accum`, so this is near-equivalent — but **not bit-identical**: per-batch token-mean
+   weighting shifts with variable-length left-padded sequences. **Do not use this route to claim
+   reproduction of an existing run.**
+
+`--batch-size` is already a CLI override; `grad_accum` is config-only, so add `--grad-accum` to the
+new trainers rather than editing configs per run.
+
+Both new configs keep `accum_device: cpu`. The collect is **2-5x slower** on that path than the
+`cuda` accumulators the GSM8K config assumes — budget for it rather than discovering it mid-run.
+
+### Gradient checkpointing
+
+    model.gradient_checkpointing_enable()
+    model.config.use_cache = False   # incompatible with checkpointing; silently slows generation if left set
+
+**Do not retrofit the existing trainers** as part of this work. The commonsense and multihop donors
+are trained and their artifacts are quoted in `numbers.md`; changing their trainer invalidates nothing
+already produced but invites a diff nobody asked for.
+
+### Throughput — estimates, to be replaced by measurement
+
+At ~50 TFLOPS effective (25-30% MFU for HF + LoRA, not a tuned stack) and LoRA fwd+bwd ~ 4-5 N T:
+
+| donor | n_train | max_len | epochs | estimate, 32 GB Blackwell |
+|---|---|---|---|---|
+| AQuA, multihop-matched | 20K | 1024 | 3 | 6-12 h |
+| AQuA, MATH10K-sized | 10K | 1024 | 3 | 3-6 h |
+| instruct, full | 20K | 1024 | 3 | 6-12 h |
+| **instruct, 1K (preferred)** | **1K** | 1024 | 3 | **20-60 min** |
+
+Prefer the 1K instruct donor. Wu et al. Table 3 trains their instruction model on 1K examples in 18
+minutes on one A100 40G, and that 1K run still scores 81.91 Alpaca-Eval win-rate against 85.60 for the
+full run — and against LoRA's 81.48. **E1 does not need a 20K donor to have a strong one.**
+
+Add ~30% for checkpointing. These extrapolate from an unmeasured MFU: **run the preflight, then
+multiply the measured per-cell rate** — that is what turns a 2x uncertainty into a schedule. Note the
+dominant downstream cost is not training but autoregressive eval: 200 problems x 256-512 new tokens
+per cell, roughly 30-60 min per cell through HF `generate`, multiplied by every layer x alpha in a
+sweep.
 
 ## 6. Acceptance criteria
 
@@ -194,6 +255,8 @@ Write the test before the driver. Tests run on CPU with a tiny model
   position-resolved curve on a synthetic sequence that degrades at a known index.
 - Bootstrap: planted +0.10 recovery difference recovered with 95% CI containing 0.10 and excluding 0,
   seed-stable across two runs.
+- Gradient checkpointing equivalence: on a tiny model, one training step with checkpointing on and off
+  yields losses agreeing to < 1e-4, and `model.config.use_cache is False` whenever checkpointing is on.
 - Config regression: loading both new configs yields `accum_device == "cpu"` and `seed == 42`.
 
 ## 9. Order of work today
@@ -204,7 +267,7 @@ code. Realistic sequencing:
 1. **Now — decide E1's primary metric** (§2). One paragraph written into this file before code.
 2. **Now — E2 seams + tests** (CPU, no GPU): `aqua_data.py`, the `TASKS` entry, tests from §7.1/§7.3.
 3. **Then — E2 Phase 0**: train the AQuA donor, then build the contrast set. Preflight first.
-4. **Then — E1 donor training** launched behind E2's, since E2's ladder can run while it trains.
+4. **Then — E1 donor training** (1K examples, ~20-60 min per §5) launched behind E2's, since E2's ladder can run while it trains.
 5. **Tomorrow — the ladders**: collect -> fit -> per-layer steer (L20, L24) -> oracle -> temporal
    gate, E2 first.
 
