@@ -5,88 +5,28 @@ reuse the exact case-formatting, answer-extraction, and entropy-tracked
 generation used by the original DDXPlus scripts instead of copying them.
 """
 
-import ast
-import json
 import re
-from pathlib import Path
 
 import numpy as np
 import torch
 
-OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"]
+from src.probes.context_fatigue.ddxplus_cases import (
+    DEFAULT_EVIDENCE_PATH,
+    OPTION_LABELS,
+    decode_evidence,
+    format_case_mcq,
+    format_case_question,
+    format_case_vignette,
+    load_evidence_db,
+)
 
-# Repo-root-relative default so runners work regardless of cwd.
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_EVIDENCE_PATH = _REPO_ROOT / "data" / "context_fatigue" / "release_evidences.json"
+__all__ = [
+    "DEFAULT_EVIDENCE_PATH", "OPTION_LABELS", "decode_evidence", "format_case_mcq",
+    "format_case_question", "format_case_vignette", "load_evidence_db",
+    "extract_mcq_answer", "generate_with_entropy", "format_syc_question",
+    "extract_final_answer", "syc_flip_rate", "render_prompt", "SYC_LABELS", "SYC_INTRO",
+]
 
-
-# ── DDXPlus evidence decoding ───────────────────────────────────────────
-
-def load_evidence_db(path=DEFAULT_EVIDENCE_PATH) -> dict:
-    with open(path) as f:
-        raw = json.load(f)
-    db = {}
-    for code, info in raw.items():
-        value_meanings = {}
-        for vk, vv in info.get("value_meaning", {}).items():
-            value_meanings[vk] = vv.get("en", str(vv)) if isinstance(vv, dict) else str(vv)
-        db[code] = {
-            "question": info.get("question_en", ""),
-            "is_antecedent": info.get("is_antecedent", False),
-            "data_type": info.get("data_type", "B"),
-            "value_meanings": value_meanings,
-        }
-    return db
-
-
-def decode_evidence(ev_str: str, evidence_db: dict):
-    evs = ast.literal_eval(ev_str)
-    symptoms, antecedents = [], []
-    grouped: dict[str, list[str]] = {}
-    for ev in evs:
-        if "@" in ev:
-            base, val = ev.split("@", 1)
-            grouped.setdefault(base.strip().rstrip("_"), []).append(val.strip())
-        else:
-            grouped[ev] = []
-
-    for code, values in grouped.items():
-        if code not in evidence_db:
-            continue
-        info = evidence_db[code]
-        statement = info["question"].replace("Do you have ", "Has ").replace("Are you ", "Is ")
-        statement = statement.rstrip("?").rstrip(".")
-        if info["data_type"] == "B":
-            text = f"Yes — {statement}"
-        elif info["data_type"] == "M" and values:
-            decoded = [info["value_meanings"].get(v, v) for v in values
-                       if info["value_meanings"].get(v, v) not in ("NA", None, "")]
-            text = f"{statement}: {', '.join(decoded)}" if decoded else f"Yes — {statement}"
-        elif info["data_type"] == "C" and values:
-            text = f"{statement}: {', '.join(values)}"
-        else:
-            text = f"Yes — {statement}"
-        (antecedents if info["is_antecedent"] else symptoms).append(text)
-    return symptoms, antecedents
-
-
-def format_case_mcq(age, sex, initial_ev, evidence_str, evidence_db, options, n_options=5):
-    sex_full = "Male" if sex == "M" else "Female"
-    chief = evidence_db.get(initial_ev, {}).get("question", initial_ev)
-    chief = chief.replace("Do you have ", "").replace("?", "").strip()
-    symptoms, antecedents = decode_evidence(evidence_str, evidence_db)
-
-    lines = [f"Patient: {age}-year-old {sex_full}", f"Chief complaint: {chief}"]
-    if symptoms:
-        lines.append("Symptoms:")
-        lines.extend(f"  - {s}" for s in symptoms)
-    if antecedents:
-        lines.append("History:")
-        lines.extend(f"  - {a}" for a in antecedents)
-    lines.append("\nMost likely diagnosis:")
-    lines.extend(f"{OPTION_LABELS[i]}) {opt}" for i, opt in enumerate(options[:n_options]))
-    lines.append("\nAnswer:")
-    return "\n".join(lines)
 
 
 def extract_mcq_answer(text: str):

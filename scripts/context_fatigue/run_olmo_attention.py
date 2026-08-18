@@ -26,7 +26,8 @@ import pandas as pd
 import torch
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.models.olmo2.modeling_olmo2 import apply_rotary_pos_emb
+
+from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
 
 from _cf_common import (
     OPTION_LABELS,
@@ -57,46 +58,6 @@ def parse_args():
     return p.parse_args()
 
 
-# ── selective OLMo-2 attention capture (last-token, target layers) ──────
-
-class Olmo2AttentionCapture:
-    def __init__(self, model, target_layers):
-        self.captured = {}
-        self.enabled = False
-        self.hooks = []
-        for li in target_layers:
-            attn = model.model.layers[li].self_attn
-            self.hooks.append(attn.register_forward_pre_hook(self._mk(li), with_kwargs=True))
-
-    def _mk(self, li):
-        def hook(module, args, kwargs):
-            if not self.enabled:
-                return
-            hs = kwargs.get("hidden_states", args[0] if args else None)
-            pe = kwargs.get("position_embeddings", None)
-            if hs is None or pe is None or hs.shape[1] <= 1:
-                return
-            with torch.no_grad():
-                b, seq, _ = hs.shape
-                hd = module.head_dim
-                q = module.q_norm(module.q_proj(hs)).view(b, seq, -1, hd).transpose(1, 2)
-                k = module.k_norm(module.k_proj(hs)).view(b, seq, -1, hd).transpose(1, 2)
-                cos, sin = pe
-                q, k = apply_rotary_pos_emb(q, k, cos, sin)
-                q_last = q[:, :, -1:, :]                                  # [b, H, 1, hd]
-                scores = torch.matmul(q_last, k.transpose(-2, -1)) * (hd ** -0.5)
-                w = torch.softmax(scores.float(), dim=-1)                 # [b, H, 1, seq]
-                self.captured[li] = w[0, :, 0, :].cpu()                   # [H, seq]
-        return hook
-
-    def clear(self):
-        self.captured = {}
-
-    def remove(self):
-        for h in self.hooks:
-            h.remove()
-
-
 def main():
     args = parse_args()
     out_dir = Path(args.out_dir)
@@ -111,7 +72,7 @@ def main():
         args.model, dtype=torch.bfloat16, device_map=args.device).eval()
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
-    capture = Olmo2AttentionCapture(model, target_layers)
+    capture = SelectiveAttentionCapture(model, target_layers)
 
     def n_tokens(conv, gen_prompt):
         return len(tokenizer.encode(tokenizer.apply_chat_template(
