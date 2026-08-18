@@ -60,7 +60,8 @@ GPU box; the reports that quote them are committed.
 The committed multihop ridge numbers were CoT-window fits applied at every position (same design
 S2c showed is a mismatch; milder here — chain ≈ 60% of positions — but unmatched against GSM8K's
 re-fitted `_allpos` numbers). Re-collected with `--fit-positions all` (102,861 train / 30,157
-held-out tokens → `accumulators_multihop_allpos`, tree retained). The collect took three runs:
+held-out tokens → `accumulators_multihop_allpos`, tree **deleted 2026-08-18** — see Known gaps).
+The collect took three runs:
 run 1 OOM'd allocating the held-out split's GPU accumulators on the 32 GB box, run 2 hit the
 ~53 G `results/` quota mid-save; see `tasks/lessons.md` for both rules. The GSM8K
 `accumulators_allpos` tree (25 G) was deleted to clear the quota — its maps and sweep are fitted
@@ -395,3 +396,11 @@ random direction.
   already truncated a trained adapter. The derived `maps/` and `maps_multihop/` are intact, so every
   steering number above remains reproducible; refitting the ridge sweep from scratch would require
   re-running `collect_cot_residuals` (~24 min GPU for GSM8K).
+- The MuSiQue all-positions **`accumulators_multihop_allpos` tree (25 G) was deleted 2026-08-18** to
+  clear the same quota, reversing the "tree retained" note at §MuSiQue all-positions re-fit. Matches
+  the 2026-08-13 and 2026-08-17 precedents: the derived `maps_multihop_allpos/` (32 files, L0–L31)
+  and `sweep_multihop_allpos.json` / `steer_multihop_allpos.json` were verified intact and loadable
+  before deletion — `W` is 4096×4096 f32, all finite, and `W_L20.pt` carries `lam=1.00e4`, matching
+  the λ* behind the 0.824 headline. `meta.json` (collect parameters) was retained. Refitting the
+  sweep from scratch needs a re-run of `collect_cot_residuals --fit-positions all`, which OOM'd
+  twice before completing — budget accordingly.
