@@ -103,8 +103,8 @@ for r in sorted(store):
     print(f"hero r{r} ({LABELS[r]!r}) n={len(V)}")
 
 # ---- grid: rows = tokens, cols = preference | horizon --------------------
-rows = [r for r in (0, 1, 3) if r in store] or sorted(store)
-fig = plt.figure(figsize=(8.2, 2.9 * len(rows)), facecolor="white")
+rows = sorted(store)
+fig = plt.figure(figsize=(8.2, 2.55 * len(rows)), facecolor="white")
 for i, r in enumerate(rows):
     V = store[r]
     Z = pca3(V)
