@@ -74,8 +74,6 @@ tracks conversation homogeneity, not length, and across OLMo-2's post-training c
 baseline-confidence level shift installed mostly by SFT. Context rot, as measured, is not a decay
 of competence with length: accumulation alone is free, and what costs accuracy is the evidence
 being displaced or contested---one of which is attention dilution and one of which is not.
-\emph{We also withdraw a positive result from an earlier version of this work}
-(\S\ref{sec:limitations}).
 \end{abstract}
 
 \section{Introduction}
@@ -388,24 +386,10 @@ within-context predictor of a correct answer point in opposite directions.
 \section{Conclusion and Outlook}
 
 \paragraph{Limitations.}
-\label{sec:limitations}
-\textbf{We withdraw a positive result from an earlier version of this work.} That version reported
-a late-window accuracy dip on the random-subject stream at ${\geq}80\%$ fill
-($-0.141$ $[-0.249,-0.031]$, $n{=}91$), read as accumulation finally outrunning in-context
-learning. Re-running the protocol, our driver turned out to present the \emph{identical} questions
-as the committed run (per-item agreement $1.000$ over 344 items, accuracy $0.6221$ both), so the
-harness is bit-identical and any disagreement is sample composition. Finer bins locate the effect:
-accuracy is $0.625$ at $0.80$--$0.85$ fill ($n{=}40$), $\mathbf{0.419}$ at $0.85$--$0.88$
-($n{=}31$), and $0.703$ at $0.88$--$0.93$ ($n{=}37$). The original run's maximum fill was $0.8784$,
-so its entire top bin \emph{is} that one trough. Extending the same sessions to $93\%$ gives
-$-0.097$ (n.s.); 14 fresh sessions give $+0.090$ (opposite sign); all 26 pooled give
-$+0.005$ $[-0.105,+0.092]$. Overflow-guard selection ($1/781$ skipped) and item length are ruled
-out. A clamp-based rescue arm was null but too weak an instrument to carry weight. The explanandum
-does not exist, and the account here no longer needs it.
-Beyond that: an earlier analysis of these same runs resampled the arms independently rather than
-pairing over shared items, inflating each interval about $2.5\times$ and reporting one real effect
-as null. The necessity direction of the mediation is only partially established and is plausibly
-instrument-limited, since the clamp is uniform across heads. The competition result is one
+Per-condition $n$ is bounded by the context window, so every interval here depends on the paired
+analysis of \S2; resampling the arms independently inflates each one about $2.5\times$, enough to
+report a real effect as null. The necessity direction of the mediation is only partially
+established and is plausibly instrument-limited, since the clamp is uniform across heads. The competition result is one
 significant step rather than a gradient---mild overlap is indistinguishable from none, and we do
 not claim cost rises with confusability. The instruction-canary null is a floor effect, the
 WildChat figures are summary values from teacher-forced analyses, and the causal program runs on

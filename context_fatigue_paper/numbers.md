@@ -71,15 +71,12 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
-## §4 (Limitations) — the withdrawn result
+## Not claimed: the late-window dip
 
-| claim | value | artifact / report |
-|---|---|---|
-| the withdrawn dip | −0.141 [−0.249, −0.031], n=91 | `random_context_topbin/turns_pooled.csv`, **withdrawn** in `NULL_STATISTICS.md` §2 |
-| per-item agreement with the committed run | 1.000 over 344 items | `E2B_DIP_RESCUE.md` |
-| fine bins | 0.625 (n=40) / **0.419 (n=31)** / 0.703 (n=37) | same |
-| committed run's max fill | 0.8784 | same |
-| pooled 26 sessions | +0.005 [−0.105, +0.092] | same |
+The top-fill-bin dip (−0.141 [−0.249, −0.031], n=91) appeared in an earlier draft and **is not in
+the paper** — no number from it enters the tex, so it has no rows here. It was withdrawn on the
+evidence in `E2B_DIP_RESCUE.md` and `NULL_STATISTICS.md` §2, which remain the record. Do not
+reintroduce it.
 
 ## §3.4 — signatures (unchanged from the previous version)
 
