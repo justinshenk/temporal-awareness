@@ -10,6 +10,7 @@ import re
 import numpy as np
 import torch
 
+from src.probes.context_fatigue.attention_clamp import span_share_by_head
 from src.probes.context_fatigue.ddxplus_cases import (
     DEFAULT_EVIDENCE_PATH,
     OPTION_LABELS,
@@ -125,3 +126,20 @@ def render_prompt(tokenizer, conversation, is_chat, assistant_role="assistant"):
         else:
             parts.append(turn["content"] + "\n\n")
     return "".join(parts)
+
+
+def per_head_rows(attn, spans, **keys):
+    """Long-format rows, one per attention head, for the spans named in ``spans``.
+
+    ``attn`` is ``[n_heads, seq]`` last-token attention and ``spans`` maps a name to a
+    ``(start, end)`` key range; each row carries ``keys`` verbatim plus ``head`` and one
+    ``<name>_share`` column per span. The head count is read off the capture, never assumed.
+
+    Kept here rather than in either driver because the distance ladder and the competition sweep
+    both need it, and a per-head table written two slightly different ways is a table that cannot
+    be compared across the two designs.
+    """
+    by_span = {f"{name}_share": span_share_by_head(attn, span) for name, span in spans.items()}
+    n_heads = len(next(iter(by_span.values())))
+    return [{**keys, "head": h, **{col: vals[h] for col, vals in by_span.items()}}
+            for h in range(n_heads)]

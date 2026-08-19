@@ -17,6 +17,7 @@ from src.probes.context_fatigue.attention_clamp import (
     SpanAttentionClamp,
     solve_span_scale,
     span_share,
+    span_share_by_head,
 )
 from tests.probes.context_fatigue.test_attention_capture import (
     MODEL_BUILDERS,
@@ -173,6 +174,46 @@ def test_solver_leaves_no_hooks_behind():
 def test_span_share_reduces_over_heads():
     attn = torch.tensor([[0.5, 0.25, 0.25], [0.1, 0.8, 0.1]])
     assert span_share(attn, (1, 3)) == pytest.approx((0.5 + 0.9) / 2)
+
+
+# ── per-head shares (head analysis) ─────────────────────────────────────
+
+def test_span_share_by_head_keeps_every_head_separate():
+    attn = torch.tensor([[0.5, 0.25, 0.25], [0.1, 0.8, 0.1]])
+    assert span_share_by_head(attn, (1, 3)) == pytest.approx([0.5, 0.9])
+
+
+def test_span_share_is_the_mean_of_the_per_head_shares():
+    """The scalar the paper reports must be exactly the mean of what head analysis resolves.
+
+    If these two ever diverge, every per-head result would be describing a different quantity
+    from the one the accuracy claims are built on.
+    """
+    torch.manual_seed(0)
+    attn = torch.rand(8, 12)
+    attn = attn / attn.sum(-1, keepdim=True)
+    per_head = span_share_by_head(attn, (3, 7))
+    assert len(per_head) == 8
+    assert span_share(attn, (3, 7)) == pytest.approx(sum(per_head) / len(per_head))
+
+
+def test_per_head_shares_sum_to_one_over_the_whole_sequence():
+    """Each head's row is a distribution, so the full-span share is 1 for every head.
+
+    This is what makes "share of head h" comparable across heads and across arms.
+    """
+    torch.manual_seed(1)
+    attn = torch.rand(6, 10)
+    attn = attn / attn.sum(-1, keepdim=True)
+    assert span_share_by_head(attn, (0, 10)) == pytest.approx([1.0] * 6)
+
+
+def test_span_share_by_head_matches_the_model_head_count():
+    """Head count must come from the model, not from an assumed constant."""
+    model = _olmo2_model()
+    attn = _truth_last_token(model, _ids())
+    per_head = span_share_by_head(attn, SPAN)
+    assert len(per_head) == model.config.num_attention_heads
 
 
 # ── guards ──────────────────────────────────────────────────────────────

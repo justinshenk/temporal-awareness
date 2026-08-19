@@ -64,9 +64,11 @@ sweep over the share recovers the same effect to within $0.004$ and shows the ma
 curve is smooth and graded, with no threshold anywhere in it. The drain itself is positional in
 \emph{tokens}, not turns. Holding distance and fill fixed and varying only how \emph{confusable}
 the accumulated context is isolates a \emph{second and separate} cost: near-duplicate context is
-worth $-0.085$ $[-0.140,-0.030]$ while leaving the evidence's attention mass untouched
-($-0.0003$ $[-0.0009,+0.0004]$, where the measured dose-response predicts $2\%$ of the observed
-effect). So context rot is two mechanisms, not one---displacement acts through attention mass and
+worth $-0.085$ $[-0.140,-0.030]$ while leaving the evidence's \emph{total} attention mass
+unchanged ($-0.0003$ $[-0.0009,+0.0004]$, where the measured dose-response predicts $2\%$ of the
+observed effect). Per head, that null is not inaction but cancellation: the evidence's mass is
+reallocated across heads ($19$ of $32$ heads move at Bonferroni) with the total held fixed, a
+signature displacement does not have---there, all $32$ heads lose mass at once. So context rot is two mechanisms, not one---displacement acts through attention mass and
 competition does not---and needle benchmarks vary both at once, which is why they have not been
 told apart. Meanwhile the
 signatures are in-context comfort: the entropy collapse vanishes on organic WildChat dialogue and
@@ -359,18 +361,34 @@ significant step, not a gradient.
 \paragraph{Attention mass under competition.}
 Repeating the sweep with attention capture instead of generation (same probes, same seeds) shows
 the headline contrast moves accuracy $8.5$ points with \textbf{no detectable change in the
-evidence's attention mass}: \texttt{random} $-$ \texttt{near\_dup} $=-0.00027$
+evidence's total attention mass}: \texttt{random} $-$ \texttt{near\_dup} $=-0.00027$
 $[-0.00088,+0.00035]$ in evidence share at layer 24. The dose-response above is $6.29$ accuracy
 per unit share ($R^2{=}0.97$), so that share difference predicts an accuracy gap of $0.0017$---%
 \textbf{2\% of what is measured}, and $6.5\%$ even at the CI's upper end. Reproducing this cost
 through mass would need a share change $50\times$ larger. The two contrasts even run opposite
 ways: \texttt{random} $-$ \texttt{disjoint} has a significant \emph{share} difference and no
 accuracy difference, while \texttt{random} $-$ \texttt{near\_dup} has a significant
-\emph{accuracy} difference and no share difference. \textbf{Displacement costs accuracy by
-draining attention mass; competition costs accuracy while leaving it intact.} ``Attention
-dilution'' is the right account of the first and the wrong account of the second---and a
-needle-in-a-haystack benchmark varies both at once, which is precisely why they have not been
-told apart before.
+\emph{accuracy} difference and no share difference. ``Attention dilution'' is therefore the right
+account of the first and the wrong account of the second---and a needle-in-a-haystack benchmark
+varies both at once, which is precisely why they have not been told apart before.
+
+\paragraph{Per head, the two mechanisms look nothing alike.}
+The share above is a mean over the layer's $32$ heads, and a mean can hold still while heads
+cancel. Re-measuring the same probes per head separates the two readings. Under displacement,
+\textbf{all $32$ heads lose evidence mass} from \texttt{local} to \texttt{back\_20}, every one
+significant at Bonferroni, so nothing is hidden by averaging (mean $|\Delta|$ equals $|$mean
+$\Delta|$ exactly); the heads holding the most mass lose the most ($r{=}0.96$), though the
+\emph{fractional} loss ranges from $32\%$ to $99\%$. Under competition the total is fixed but the
+heads are not: for \texttt{random} $-$ \texttt{near\_dup} the mean per-head $|\Delta|$ is
+$0.00257$ against a paired sign-flip null of $0.00043$ ($p\leq0.0005$, 2{,}000 permutations),
+$\mathbf{9.6\times}$ the net change, with $19$ of $32$ heads individually significant at
+Bonferroni. \textbf{Competition does not leave attention alone; it reallocates the evidence's mass
+across heads at constant total.} That leaves the dilution arithmetic above intact---the
+dose-response is denominated in the head-averaged share, and that is the quantity which did not
+move---but it replaces ``no attention signature'' with a \emph{different} one. Whether the
+reallocation causes the errors or follows from them needs a per-head clamp, which we have not run.
+The evidence's mass is spread broadly in the first place (effective head count $27.3$ of $32$ at
+\texttt{local}), so none of this is a two-head circuit.
 
 \subsection{Confidence signatures}
 

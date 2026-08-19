@@ -35,14 +35,29 @@ from src.probes.context_fatigue.attention_capture import SelectiveAttentionCaptu
 _MAX_BIAS = 60.0
 
 
+def span_share_by_head(attention, span) -> list[float]:
+    """Attention mass falling inside ``span``, one value per head.
+
+    ``attention`` is ``[n_heads, seq]`` last-token attention; ``span`` is a ``(start, end)`` pair of
+    key positions. Each head's row is a distribution over key positions, so each returned value is
+    that head's own share and the values are comparable across heads and across arms.
+
+    :func:`span_share` is the mean of this. Head analysis needs the unreduced vector: a mean can
+    hold still while heads redistribute underneath it, and that possibility is exactly what a
+    head-averaged null leaves open.
+    """
+    start, end = span
+    return torch.as_tensor(attention)[:, start:end].sum(-1).tolist()
+
+
 def span_share(attention, span) -> float:
     """Mean over heads of the attention mass falling inside ``span``.
 
     ``attention`` is ``[n_heads, seq]`` last-token attention; ``span`` is a ``(start, end)`` pair of
     key positions. This is the paper's current-query share, and the quantity E2 sets.
     """
-    start, end = span
-    return float(torch.as_tensor(attention)[:, start:end].sum(-1).mean())
+    per_head = span_share_by_head(attention, span)
+    return float(sum(per_head) / len(per_head))
 
 
 def locate_token_span(tokenizer, text: str, substring: str):

@@ -41,7 +41,12 @@ import torch
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from _cf_common import extract_mcq_answer, generate_with_entropy, render_prompt
+from _cf_common import (
+    extract_mcq_answer,
+    generate_with_entropy,
+    per_head_rows,
+    render_prompt,
+)
 
 from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
 from src.probes.context_fatigue.attention_clamp import locate_token_span, span_share
@@ -78,6 +83,9 @@ def parse_args():
     p.add_argument("--reference-layer", type=int, default=24)
     p.add_argument("--measure-attention", action="store_true",
                    help="record attention mass on the evidence span at --reference-layer")
+    p.add_argument("--per-head", action="store_true",
+                   help="also write heads.csv: one row per probe x arm x head. Implies "
+                        "--attention-only, since the per-head shares come off the same forward.")
     p.add_argument("--attention-only", action="store_true",
                    help="skip generation; measure attention only (fast)")
     p.add_argument("--preflight", action="store_true",
@@ -104,6 +112,8 @@ def load_filler_pool(tokenizer, max_tokens):
 
 def main():
     args = parse_args()
+    if args.per_head:
+        args.attention_only = True
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,6 +143,8 @@ def main():
     records = []
     n_probe_attempts = 0
     turns_path = out_dir / "turns.csv"
+    heads_path = out_dir / "heads.csv"
+    head_records = []
 
     for session in range(sessions):
         rng = random.Random(args.seed + 1000 * session)
@@ -196,6 +208,12 @@ def main():
                             "question_share": span_share(attn, q_span),
                             "evidence_tokens": ev_span[1] - ev_span[0],
                         }
+                        if args.per_head:
+                            head_records.extend(per_head_rows(
+                                attn, {"evidence": ev_span, "question": q_span},
+                                probe=n_probe_attempts, arm=arm, distance=distance,
+                                session=session, filler_turns=depth,
+                                layer=args.reference_layer, pathology=probe["pathology"]))
 
                     if args.attention_only:
                         resp, ctx_len, entropy, pred = None, int(ids.shape[1]), None, None
@@ -214,6 +232,8 @@ def main():
                     torch.cuda.empty_cache()
                 # per-cell write: a killed session keeps every completed cell
                 pd.DataFrame(records).to_csv(turns_path, index=False)
+                if head_records:
+                    pd.DataFrame(head_records).to_csv(heads_path, index=False)
 
         done = len(records)
         acc = pd.DataFrame(records)["correct"].mean() if done else float("nan")

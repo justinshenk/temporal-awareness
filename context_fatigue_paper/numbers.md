@@ -71,6 +71,19 @@ The unpaired intervals previously reported are retained in that JSON for audit.
 | **evidence share unchanged** | −0.00027 [−0.00088, +0.00035] | `e3_attention/` |
 | mass-predicted share of the effect | 2.0% (6.5% at CI bound); 50× share change needed | derived from E1f slope |
 
+## §3.3 — per-head structure
+
+| claim | value | artifact / report |
+|---|---|---|
+| effective heads at `local` | 27.28 of 32 (top-4 fraction 0.261) | `e1_heads/heads.csv`, `E4_HEAD_STRUCTURE.md` |
+| displacement: heads losing mass | 32/32, all significant at Bonferroni (0.05/32) | same |
+| corr(local share, drain) | +0.964 | same |
+| fractional drain range | 31.8% to 99.3% | same |
+| competition: mean per-head \|Δ\| | 0.00257 vs sign-flip null 0.00043, p ≤ 0.0005 | `e3_heads/heads.csv`, same |
+| competition: ratio to net change | 9.63× | same |
+| heads significant at Bonferroni | 19 of 32 | same |
+| head-averaged Δ reproduced | −0.00027 / +0.00152 / −0.00179 | matches `E3_COMPETITION.md` |
+
 ## Not claimed: the late-window dip
 
 The top-fill-bin dip (−0.141 [−0.249, −0.031], n=91) appeared in an earlier draft and **is not in

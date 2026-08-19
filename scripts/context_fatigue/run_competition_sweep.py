@@ -38,7 +38,12 @@ import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from _cf_common import extract_mcq_answer, generate_with_entropy, render_prompt
+from _cf_common import (
+    extract_mcq_answer,
+    generate_with_entropy,
+    per_head_rows,
+    render_prompt,
+)
 
 from src.probes.context_fatigue.attention_capture import SelectiveAttentionCapture
 from src.probes.context_fatigue.attention_clamp import locate_token_span, span_share
@@ -76,6 +81,9 @@ def parse_args():
     p.add_argument("--out-dir", default="results/context_fatigue/e3_competition")
     p.add_argument("--device", default="cuda")
     p.add_argument("--reference-layer", type=int, default=24)
+    p.add_argument("--per-head", action="store_true",
+                   help="also write heads.csv: one row per probe x arm x head. Implies "
+                        "--attention-only, since the per-head shares come off the same forward.")
     p.add_argument("--attention-only", action="store_true",
                    help="skip generation; measure the evidence span's attention share only. "
                         "Answers whether competition drains the evidence's mass (folding it into "
@@ -97,6 +105,8 @@ def build_context_turns(cases, n_options):
 
 def main():
     args = parse_args()
+    if args.per_head:
+        args.attention_only = True
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,6 +132,8 @@ def main():
                           max_ctx=args.max_ctx, max_new=args.max_new, headroom=args.headroom)
     records, leaks, starved = [], 0, 0
     turns_path = out_dir / "turns.csv"
+    heads_path = out_dir / "heads.csv"
+    head_records = []
 
     for idx, probe in enumerate(probes):
         question = format_case_question(probe["options"], args.n_options, referent=REFERENT)
@@ -165,12 +177,14 @@ def main():
                     model(ids)
                 capture.remove()
                 attn = capture.captured[args.reference_layer]
-                attn_cols = {
-                    "evidence_share": span_share(
-                        attn, locate_token_span(tokenizer, rendered, probe["vignette"])),
-                    "question_share": span_share(
-                        attn, locate_token_span(tokenizer, rendered, question)),
-                }
+                spans = {"evidence": locate_token_span(tokenizer, rendered, probe["vignette"]),
+                         "question": locate_token_span(tokenizer, rendered, question)}
+                attn_cols = {"evidence_share": span_share(attn, spans["evidence"]),
+                             "question_share": span_share(attn, spans["question"])}
+                if args.per_head:
+                    head_records.extend(per_head_rows(
+                        attn, spans, probe=idx, arm=arm, layer=args.reference_layer,
+                        pathology=probe["pathology"]))
                 resp, ctx_len, entropy, pred = None, int(ids.shape[1]), None, None
             else:
                 resp, ctx_len, entropy, _ = generate_with_entropy(
@@ -189,6 +203,8 @@ def main():
             torch.cuda.empty_cache()
 
         pd.DataFrame(records).to_csv(turns_path, index=False)  # killed run keeps completed probes
+        if head_records:
+            pd.DataFrame(head_records).to_csv(heads_path, index=False)
         if (idx + 1) % 25 == 0:
             df = pd.DataFrame(records)
             acc = df.groupby("arm")["correct"].mean().to_dict()
