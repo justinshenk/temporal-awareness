@@ -26,7 +26,7 @@
 \captionsetup[sub]{skip=1pt}
 \setlist[itemize]{nosep,leftmargin=1.4em,topsep=2pt}
 
-\title{Accumulation Is Free, Dilution Is Not:\\A Within-Harness Causal Test of Context Rot}
+\title{Context Rot Is Two Mechanisms:\\Displacement Acts Through Attention Mass, Competition Does Not}
 
 \author{%
   Ronen Raj Roy\\
@@ -65,8 +65,10 @@ told apart. Meanwhile the
 signatures are in-context comfort: the entropy collapse vanishes on organic WildChat dialogue and
 tracks conversation homogeneity, not length, and across OLMo-2's post-training chain it is a
 baseline-confidence level shift installed mostly by SFT. Context rot, as measured, is not a decay
-of competence with length; it is dilution of the evidence, and it is dose-dependent in attention
-mass. \emph{We also withdraw a positive result from an earlier version of this work} (\S6).
+of competence with length: accumulation alone is free, and what costs accuracy is the evidence
+being displaced or contested---one of which is attention dilution and one of which is not.
+\emph{We also withdraw a positive result from an earlier version of this work}
+(\S\ref{sec:withdrawn}).
 \end{abstract}
 
 \section{Accumulation and dilution are confounded everywhere else}
@@ -306,6 +308,7 @@ told apart before.
 
 
 \section{A withdrawn result}
+\label{sec:withdrawn}
 
 An earlier version of this work reported one positive finding: a late-window accuracy dip on the
 random-subject stream at ${\geq}80\%$ fill ($-0.141$ $[-0.249,-0.031]$, $n{=}91$), read as
@@ -371,7 +374,8 @@ within-context predictor of a correct answer point in opposite directions.
 
 \section{What context rot actually is}
 
-With accumulation and dilution separated inside one harness: accumulation produces a real, monotone
+With accumulation, displacement and competition separated inside one harness: accumulation
+produces a real, monotone
 reallocation of attention and a real collapse of \emph{confidence}, but no loss of accuracy and no
 loss of instruction adherence. Displacing the evidence produces a large accuracy cost that is
 causally mediated by its attention mass, graded in that mass, and positional in tokens. Making the
@@ -392,7 +396,9 @@ Per-condition $n$ is bounded by the context window, so every clamp experiment is
 shared items and analysed with a paired bootstrap; an earlier analysis of these same runs
 resampled the arms independently, inflating each interval about $2.5\times$ and reporting one real
 effect as null. The necessity direction of the mediation is only partially established and is
-plausibly instrument-limited. The clamp is uniform across heads. The instruction-canary null is a
+plausibly instrument-limited. The clamp is uniform across heads. The competition result is one significant
+step rather than a gradient---mild overlap is indistinguishable from none, and we do not claim
+cost rises with confusability. The instruction-canary null is a
 floor effect, the WildChat figures are summary values from teacher-forced analyses, and the causal
 program runs on one model family. The accuracy null holds for localized tasks; genuinely
 length-dependent single-task settings are where dilution is the point, and are out of scope by
